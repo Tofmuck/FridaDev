@@ -130,6 +130,10 @@ Profiles from complementary backgrounds are especially welcome:
 - documentation
 - epistemology
 
+### License
+
+This repository is distributed under the **MIT License**. See [LICENSE](LICENSE).
+
 ## Français
 
 Frida est un projet indépendant de recherche et de développement en intelligence artificielle.
@@ -259,3 +263,7 @@ Des profils venant d'horizons complémentaires sont particulièrement bienvenus 
 - design de systèmes
 - documentation
 - épistémologie
+
+### Licence
+
+Ce dépôt est distribué sous **licence MIT**. Voir [LICENSE](LICENSE).
