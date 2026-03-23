@@ -1,0 +1,464 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+import sys
+import uuid
+from pathlib import Path
+from typing import Any, Callable, Dict, List
+
+import psycopg
+import requests
+
+APP_DIR = Path(__file__).resolve().parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+import config
+from core import conv_store
+
+
+def _resolve_app_path(raw: str) -> Path:
+    path = Path(str(raw or ""))
+    if not path.is_absolute():
+        path = APP_DIR / path
+    return path
+
+
+def _http_json(method: str, url: str, **kwargs: Any) -> requests.Response:
+    timeout = kwargs.pop("timeout", (5, 20))
+    return requests.request(method=method, url=url, timeout=timeout, **kwargs)
+
+
+def _run_check(
+    results: List[Dict[str, Any]],
+    name: str,
+    fn: Callable[[], Dict[str, Any]],
+) -> None:
+    try:
+        details = fn()
+        results.append({"name": name, "ok": True, "details": details})
+    except Exception as exc:
+        results.append({"name": name, "ok": False, "error": str(exc)})
+
+
+def _check_startup_import() -> Dict[str, Any]:
+    server = importlib.import_module("server")
+    app = getattr(server, "app", None)
+    fingerprint = getattr(server, "_RUNTIME_FINGERPRINT", {})
+    if app is None:
+        raise RuntimeError("server.app manquant")
+    if not isinstance(fingerprint, dict):
+        raise RuntimeError("_RUNTIME_FINGERPRINT invalide")
+
+    config_path = Path(str(fingerprint.get("config_path") or ""))
+    conv_dir = Path(str(fingerprint.get("conv_dir") or ""))
+    logs_path = Path(str(fingerprint.get("logs_path") or ""))
+    config_sha256 = str(fingerprint.get("config_sha256") or "").strip()
+
+    if not config_path.exists():
+        raise RuntimeError(f"config_path introuvable: {config_path}")
+    if not conv_dir.exists():
+        raise RuntimeError(f"conv_dir introuvable: {conv_dir}")
+    if not logs_path.parent.exists():
+        raise RuntimeError(f"logs_path parent introuvable: {logs_path.parent}")
+    if len(config_sha256) < 12:
+        raise RuntimeError("config_sha256 absent ou trop court")
+
+    return {
+        "config_path": str(config_path),
+        "conv_dir": str(conv_dir),
+        "logs_parent": str(logs_path.parent),
+        "config_sha256": config_sha256[:12],
+    }
+
+
+def _check_db_schema() -> Dict[str, Any]:
+    required_tables: Dict[str, set[str]] = {
+        "conversations": {
+            "id",
+            "title",
+            "created_at",
+            "updated_at",
+            "message_count",
+            "last_message_preview",
+            "deleted_at",
+        },
+        "conversation_messages": {
+            "conversation_id",
+            "seq",
+            "role",
+            "content",
+            "timestamp",
+            "summarized_by",
+            "embedded",
+            "meta",
+        },
+        "traces": {
+            "id",
+            "conversation_id",
+            "role",
+            "content",
+            "timestamp",
+            "embedding",
+            "summary_id",
+        },
+        "summaries": {
+            "id",
+            "conversation_id",
+            "start_ts",
+            "end_ts",
+            "content",
+            "embedding",
+        },
+        "identities": {
+            "id",
+            "conversation_id",
+            "subject",
+            "content",
+            "weight",
+            "created_ts",
+            "last_seen_ts",
+            "stability",
+            "utterance_mode",
+            "recurrence",
+            "scope",
+            "evidence_kind",
+            "confidence",
+            "status",
+            "content_norm",
+            "last_reason",
+            "override_state",
+            "override_reason",
+            "override_actor",
+            "override_ts",
+        },
+        "identity_evidence": {
+            "id",
+            "conversation_id",
+            "subject",
+            "content",
+            "content_norm",
+            "stability",
+            "utterance_mode",
+            "recurrence",
+            "scope",
+            "evidence_kind",
+            "confidence",
+            "status",
+            "reason",
+            "source_trace_id",
+            "created_ts",
+        },
+        "identity_conflicts": {
+            "id",
+            "identity_id_a",
+            "identity_id_b",
+            "confidence_conflict",
+            "reason",
+            "resolved_state",
+            "created_ts",
+            "resolved_ts",
+        },
+        "arbiter_decisions": {
+            "id",
+            "conversation_id",
+            "candidate_id",
+            "candidate_role",
+            "candidate_content",
+            "candidate_ts",
+            "candidate_score",
+            "keep",
+            "semantic_relevance",
+            "contextual_gain",
+            "redundant_with_recent",
+            "reason",
+            "model",
+            "decision_source",
+            "created_ts",
+        },
+    }
+
+    with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT extname
+                FROM pg_extension
+                WHERE extname IN ('vector', 'pgcrypto')
+                ORDER BY extname
+                """
+            )
+            extensions = {str(row[0]) for row in cur.fetchall()}
+            if {"vector", "pgcrypto"} - extensions:
+                missing = sorted({"vector", "pgcrypto"} - extensions)
+                raise RuntimeError(f"extensions manquantes: {', '.join(missing)}")
+
+            details: Dict[str, Any] = {
+                "extensions": sorted(extensions),
+                "tables": {},
+            }
+
+            for table_name, expected_columns in required_tables.items():
+                cur.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = %s
+                    """,
+                    (table_name,),
+                )
+                columns = {str(row[0]) for row in cur.fetchall()}
+                if not columns:
+                    raise RuntimeError(f"table absente: {table_name}")
+                missing_columns = sorted(expected_columns - columns)
+                if missing_columns:
+                    raise RuntimeError(
+                        f"colonnes manquantes pour {table_name}: {', '.join(missing_columns)}"
+                    )
+                details["tables"][table_name] = {
+                    "column_count": len(columns),
+                    "checked_columns": sorted(expected_columns),
+                }
+
+    return details
+
+
+def _check_prompt_files() -> Dict[str, Any]:
+    required_files = {
+        "llm_identity": _resolve_app_path(config.FRIDA_LLM_IDENTITY_PATH),
+        "user_identity": _resolve_app_path(config.FRIDA_USER_IDENTITY_PATH),
+        "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
+        "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
+    }
+
+    details: Dict[str, Any] = {}
+    for name, path in required_files.items():
+        if not path.exists():
+            raise RuntimeError(f"fichier prompt/identity absent: {path}")
+        content = path.read_text(encoding="utf-8").strip()
+        if len(content) < 20:
+            raise RuntimeError(f"fichier trop court ou vide: {path}")
+        details[name] = {"path": str(path), "chars": len(content)}
+
+    app_js = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+    required_markers = [
+        "const SYSTEM_PROMPT =",
+        "travail intellectuel ou technique",
+        "Tu adoptes un ton clair, calme, adulte et professionnel.",
+    ]
+    for marker in required_markers:
+        if marker not in app_js:
+            raise RuntimeError(f"marker manquant dans web/app.js: {marker}")
+
+    details["web_system_prompt_markers"] = required_markers
+    return details
+
+
+def _check_ui_assets() -> Dict[str, Any]:
+    web_dir = APP_DIR / "web"
+    required_files = {
+        "index_html": web_dir / "index.html",
+        "admin_html": web_dir / "admin.html",
+        "styles_css": web_dir / "styles.css",
+        "app_js": web_dir / "app.js",
+        "admin_js": web_dir / "admin.js",
+        "frida_svg": web_dir / "frida.svg",
+    }
+
+    for name, path in required_files.items():
+        if not path.exists():
+            raise RuntimeError(f"asset UI absent: {name} -> {path}")
+        if path.stat().st_size <= 0:
+            raise RuntimeError(f"asset UI vide: {path}")
+
+    index_html = required_files["index_html"].read_text(encoding="utf-8")
+    admin_html = required_files["admin_html"].read_text(encoding="utf-8")
+    admin_js = required_files["admin_js"].read_text(encoding="utf-8")
+
+    index_markers = [
+        'src="./frida.svg"',
+        'href="styles.css"',
+        'script src="app.js"',
+        'id="threads"',
+        'id="log"',
+        'id="message"',
+    ]
+    for marker in index_markers:
+        if marker not in index_html:
+            raise RuntimeError(f"marker index.html manquant: {marker}")
+
+    admin_markers = [
+        "Logs techniques",
+        'script src="admin.js"',
+        'id="rows"',
+        'id="restart"',
+    ]
+    for marker in admin_markers:
+        if marker not in admin_html:
+            raise RuntimeError(f"marker admin.html manquant: {marker}")
+
+    admin_js_markers = [
+        "/api/admin/logs",
+        "/api/admin/restart",
+    ]
+    for marker in admin_js_markers:
+        if marker not in admin_js:
+            raise RuntimeError(f"marker admin.js manquant: {marker}")
+
+    return {
+        "files": {name: str(path) for name, path in required_files.items()},
+        "index_markers": index_markers,
+        "admin_markers": admin_markers,
+        "admin_js_markers": admin_js_markers,
+    }
+
+
+def _check_api_smoke(base_url: str) -> Dict[str, Any]:
+    root = _http_json("GET", f"{base_url}/")
+    if root.status_code != 200 or "Frida" not in root.text:
+        raise RuntimeError("root invalide")
+
+    admin = _http_json("GET", f"{base_url}/admin")
+    if admin.status_code != 200 or "Logs techniques" not in admin.text:
+        raise RuntimeError("admin invalide")
+
+    conv_list = _http_json("GET", f"{base_url}/api/conversations?limit=1")
+    conv_payload = conv_list.json()
+    if conv_list.status_code != 200 or conv_payload.get("ok") is not True:
+        raise RuntimeError("api conversations invalide")
+    if not isinstance(conv_payload.get("items"), list):
+        raise RuntimeError("api conversations sans items")
+
+    admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1")
+    admin_logs_payload = admin_logs.json()
+    if admin_logs.status_code != 200 or admin_logs_payload.get("ok") is not True:
+        raise RuntimeError("api admin logs invalide")
+    if not isinstance(admin_logs_payload.get("logs"), list):
+        raise RuntimeError("api admin logs sans logs")
+
+    random_id = str(uuid.uuid4())
+    missing = _http_json("GET", f"{base_url}/api/conversations/{random_id}/messages")
+    missing_payload = missing.json()
+    if missing.status_code != 404:
+        raise RuntimeError("route conversation manquante devrait renvoyer 404")
+    if missing_payload.get("ok") is not False:
+        raise RuntimeError("payload conversation manquante invalide")
+
+    return {
+        "root_status": root.status_code,
+        "admin_status": admin.status_code,
+        "conversations_status": conv_list.status_code,
+        "admin_logs_status": admin_logs.status_code,
+        "missing_conversation_status": missing.status_code,
+    }
+
+
+def _check_legacy_json_guard(base_url: str) -> Dict[str, Any]:
+    legacy_id = str(uuid.uuid4())
+    legacy_path = conv_store.CONV_DIR / f"{legacy_id}.json"
+    payload = {
+        "id": legacy_id,
+        "title": "LEGACY JSON VALIDATION",
+        "created_at": "2026-03-23T09:00:00Z",
+        "updated_at": "2026-03-23T09:00:00Z",
+        "messages": [
+            {"role": "system", "content": "", "timestamp": "2026-03-23T09:00:00Z"},
+            {"role": "user", "content": "legacy should stay ignored", "timestamp": "2026-03-23T09:00:00Z"},
+        ],
+    }
+
+    conv_store.ensure_conv_dir()
+    legacy_path.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+    try:
+        get_messages = _http_json("GET", f"{base_url}/api/conversations/{legacy_id}/messages")
+        if get_messages.status_code != 404:
+            raise RuntimeError("fallback JSON encore actif sur GET /messages")
+
+        chat = _http_json(
+            "POST",
+            f"{base_url}/api/chat",
+            json={
+                "conversation_id": legacy_id,
+                "message": "validation legacy json guard",
+            },
+        )
+        if chat.status_code != 404:
+            raise RuntimeError("fallback JSON encore actif sur POST /api/chat")
+
+        return {
+            "legacy_id": legacy_id,
+            "messages_status": get_messages.status_code,
+            "chat_status": chat.status_code,
+        }
+    finally:
+        if legacy_path.exists():
+            legacy_path.unlink()
+
+
+def _format_text(summary: Dict[str, Any]) -> str:
+    lines = [
+        f"Minimal validation: {'OK' if summary['ok'] else 'FAIL'}",
+        f"Checks: {summary['passed']}/{summary['total']}",
+    ]
+    for item in summary["results"]:
+        prefix = "[OK]" if item["ok"] else "[KO]"
+        lines.append(f"{prefix} {item['name']}")
+        details = item.get("details") or item.get("error")
+        if details:
+            lines.append(f"  {details}")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Validation minimale FridaDev")
+    parser.add_argument(
+        "--base-url",
+        default=f"http://127.0.0.1:{config.WEB_PORT}",
+        help="URL de base du runtime FridaDev",
+    )
+    parser.add_argument(
+        "--skip-live",
+        action="store_true",
+        help="Ne pas executer les checks HTTP live",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Sortie JSON",
+    )
+    args = parser.parse_args()
+
+    results: List[Dict[str, Any]] = []
+    _run_check(results, "startup_import", _check_startup_import)
+    _run_check(results, "db_schema", _check_db_schema)
+    _run_check(results, "prompt_files", _check_prompt_files)
+    _run_check(results, "ui_assets", _check_ui_assets)
+
+    if not args.skip_live:
+        _run_check(results, "api_smoke", lambda: _check_api_smoke(args.base_url))
+        _run_check(results, "legacy_json_guard", lambda: _check_legacy_json_guard(args.base_url))
+
+    passed = sum(1 for item in results if item["ok"])
+    total = len(results)
+    summary = {
+        "ok": passed == total,
+        "base_url": args.base_url,
+        "passed": passed,
+        "total": total,
+        "results": results,
+    }
+
+    if args.json:
+        print(json.dumps(summary, ensure_ascii=True, sort_keys=True, indent=2))
+    else:
+        print(_format_text(summary))
+
+    return 0 if summary["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

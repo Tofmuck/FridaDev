@@ -1,0 +1,41 @@
+# Secrets and local runtime configuration
+app/.env
+app/.env.local
+app/.env.*.local
+
+# Runtime state and generated data
+state/
+app/conv/
+app/logs/
+app/data/
+app/docs/states/*
+!app/docs/states/Frida-State-french-23-03-26.md
+!app/docs/states/Frida-State-english-23-03-26.md
+app/docs/todo-done/
+app/docs/todo-todo/
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Coverage and reports
+.coverage
+htmlcov/
+
+# OS / editor files
+.DS_Store
+._*
+.vscode/
+.idea/
+*.swp
+
+# Temporary and backup files
+*.bak
+*.tmp
+*.tmpcodex
+*.corrupt-*.json

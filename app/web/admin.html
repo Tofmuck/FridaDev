@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin — Logs techniques</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    :root {
+      --bg-base:    #0d0d12;
+      --bg-surface: rgba(255,255,255,0.05);
+      --border:     rgba(255,255,255,0.10);
+      --accent:     #7c6af7;
+      --cyan:       #00d4ff;
+      --fg:         #e8e8f0;
+      --fg-muted:   rgba(232,232,240,0.50);
+      --fg-subtle:  rgba(232,232,240,0.25);
+      --radius:     10px;
+      --radius-sm:  6px;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      color: var(--fg);
+      background: var(--bg-base);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Orb ambiance */
+    body::before {
+      content: '';
+      position: fixed;
+      width: 500px; height: 500px;
+      top: -200px; left: -150px;
+      background: radial-gradient(circle, rgba(124,106,247,0.15) 0%, transparent 70%);
+      filter: blur(60px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 20px;
+      color: var(--fg);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      padding: 7px 14px;
+      background: var(--bg-surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 150ms, box-shadow 150ms;
+    }
+
+    .controls button:hover {
+      background: rgba(255,255,255,0.09);
+      box-shadow: 0 0 12px rgba(124,106,247,0.35);
+    }
+
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--fg-muted);
+    }
+
+    .controls select {
+      background: var(--bg-surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--fg-subtle);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      vertical-align: top;
+      color: var(--fg);
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,0.03);
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    /* Event badges — dark variants */
+    .event-conv     { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.30); }
+    .event-llm      { background: rgba(0,212,255,0.10);  color: #67e8f9; border: 1px solid rgba(0,212,255,0.25); }
+    .event-usage    { background: rgba(52,211,153,0.10); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
+    .event-service  { background: rgba(248,113,113,0.10); color: #fca5a5; border: 1px solid rgba(248,113,113,0.25); }
+    .event-token    { background: rgba(167,139,250,0.10); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.25); }
+    .event-user     { background: rgba(52,211,153,0.10); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
+    .event-assistant{ background: rgba(0,212,255,0.10);  color: #67e8f9; border: 1px solid rgba(0,212,255,0.25); }
+    .event-default  { background: rgba(255,255,255,0.06); color: var(--fg-muted); border: 1px solid var(--border); }
+
+    .level-info  { background: rgba(255,255,255,0.06); color: var(--fg-muted); border: 1px solid var(--border); }
+    .level-error { background: rgba(248,113,113,0.12); color: #fca5a5; border: 1px solid rgba(248,113,113,0.30); }
+  </style>
+</head>
+<body>
+  <h1>Logs techniques</h1>
+  <div class="controls">
+    <button id="refresh">Actualiser</button>
+    <button id="restart">Redémarrer</button>
+    <label>
+      Limite
+      <select id="limit">
+        <option value="100">100</option>
+        <option value="200" selected>200</option>
+        <option value="500">500</option>
+        <option value="1000">1000</option>
+      </select>
+    </label>
+    <span id="status" class="status"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Event</th>
+        <th>Niveau</th>
+        <th>Détails</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+name: fridadev
+
+services:
+  fridadev:
+    container_name: FridaDev
+    image: fridadev-app:local
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./app/.env
+    environment:
+      FRIDA_WEB_PORT: "8089"
+      FRIDA_WEB_HOST: "0.0.0.0"
+    ports:
+      - "8093:8089"
+    volumes:
+      - ./state/conv:/app/conv
+      - ./state/logs:/app/logs
+      - ./state/data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8089/', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
