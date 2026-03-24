@@ -20,6 +20,8 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Le present todo couvre l'ensemble du chantier jusqu'a l'implementation finale.
 - L'execution reelle ne se fera pas en big bang : elle se fera tranche minimale par tranche minimale.
 - Chaque tranche reelle devra etre validee, puis committee et poussee avant d'ouvrir la suivante.
+- Pour `main_model`, `arbiter_model` et `summary_model`, tous les parametres effectivement paramétrables doivent entrer dans le perimetre V1, a l'exception explicite de `max_tokens` de reponse.
+- `temperature` et `top_p` font donc partie de la logique de configuration globale des modeles et ne sont plus des points ouverts.
 - Le routage cible est deja fixe :
   - `/admin` = nouvel admin
   - `/admin-old` = ancien admin
@@ -47,6 +49,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
   - bootstrap externe minimal pour atteindre la base ;
   - lecture des variables V1 depuis la base une fois l'acces etabli ;
   - reduction progressive du bootstrap externe au strict minimum necessaire.
+- Le bloc `database` du nouvel admin V1 decrit donc la configuration stockee en base et relue depuis la base une fois l'acces etabli ; il ne rouvre pas le besoin transitoire de bootstrap externe minimal.
 
 ## Constats depuis le code
 
@@ -85,7 +88,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - `app/web/app.js` envoie encore ces valeurs a `/api/chat` a chaque requete.
 - `app/web/app.js` envoie egalement `system` a `/api/chat`, alimente par une constante `SYSTEM_PROMPT` definie cote client.
 - Il existe donc deja un chevauchement entre futurs reglages globaux de modele et reglages locaux de session chat.
-- Le futur chantier devra arbitrer explicitement la precedence entre configuration globale admin et overrides conversationnels deja presents dans le front.
+- Le chantier devra supprimer ce chevauchement en faisant passer `temperature` et `top_p` sous la logique globale des modeles, tout en laissant `max_tokens` hors du perimetre V1.
 
 ### Ou vit aujourd'hui la configuration
 
@@ -168,17 +171,17 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Aucune table de configuration runtime n'existe aujourd'hui.
 - `memory_store.init_db()` active deja `pgcrypto` en plus de `pgvector` ; `pgcrypto` constitue un point d'ancrage utile si des secrets doivent etre stockes chiffrablement en base.
 
-### Tables nouvelles ou extensions de schema probablement necessaires
+### Tables cibles pour le chantier
 
-- Une table de configuration runtime est probablement necessaire ; nom probable a arbitrer : `runtime_settings`, `admin_settings` ou equivalent.
-- Une table d'historique / revision des changements de configuration est probablement necessaire si l'on veut garder une trace operateur propre des modifications ; nom probable a arbitrer : `runtime_settings_history` ou equivalent.
-- Une colonne ou structure dediee a la gestion des secrets sera probablement necessaire (`is_secret`, valeur chiffree, valeur masquee, indicateur de presence).
-- Aucune extension PostgreSQL supplementaire n'apparait a ce stade strictement necessaire au-dela de `pgcrypto` deja active, sauf decision contraire sur la gestion des secrets.
+- Le chantier doit introduire une table primaire `runtime_settings`.
+- Le chantier doit introduire une table d'historique `runtime_settings_history`.
+- Le chantier doit introduire une structure explicite de gestion des secrets (`value_encrypted`, `is_secret`, `is_set`, redaction de sortie).
+- `pgcrypto`, deja active dans la base, constitue l'ancrage retenu pour la gestion des secrets.
 
-### Routes backend futures probablement necessaires
+### Routes backend cibles pour le chantier
 
-- Une route de lecture agregee du nouvel admin sera probablement necessaire, par exemple `GET /api/admin/settings` ou equivalent.
-- Des routes de lecture / mise a jour par section seront probablement necessaires, par exemple :
+- Le prefixe de configuration du nouvel admin est `/api/admin/settings`.
+- Les routes sectionnelles cibles du chantier sont :
   - `GET/PATCH /api/admin/settings/main-model`
   - `GET/PATCH /api/admin/settings/arbiter-model`
   - `GET/PATCH /api/admin/settings/summary-model`
@@ -186,13 +189,15 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
   - `GET/PATCH /api/admin/settings/database`
   - `GET/PATCH /api/admin/settings/services`
   - `GET/PATCH /api/admin/settings/resources`
-- Une route de statut bootstrap / fallback env-vers-DB sera probablement necessaire pour rendre visible la source effective de configuration.
-- Une route de validation / smoke test par section pourra etre necessaire si l'on veut tester la connectivite d'un endpoint ou la validite d'un DSN avant bascule.
+- Le chantier doit aussi exposer :
+  - `GET /api/admin/settings`
+  - une route de statut bootstrap/fallback env-vers-DB ;
+  - une route de validation / smoke test par section si une verification technique active est necessaire avant sauvegarde finale.
 
 ### Impacts front minimaux deja visibles
 
 - Le bouton `Parametres` du front devra changer de cible, car il pointe aujourd'hui vers `admin.html` legacy direct.
-- Le nouvel admin devra etre cree from scratch dans `app/web/admin.html` et `app/web/admin.js` si l'on suit la decision de conservation de l'ancien admin comme `admin-old.*`.
+- Le nouvel admin devra etre cree from scratch dans `app/web/admin.html` et `app/web/admin.js`, tandis que l'ancien admin sera conserve comme `admin-old.*`.
 - Le style devra idealement reutiliser `app/web/styles.css`, ce qui n'est pas le cas de l'admin actuel.
 - Le front devra traiter la question des secrets masques, des erreurs de validation et de l'eventuel token admin.
 - Le front devra traiter explicitement la coexistence entre reglage global admin et reglage local `frida.settings` deja stocke en `localStorage`.
@@ -217,9 +222,9 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Garder les logs comme chantier distinct et non prioritaire.
 - Reutiliser `app/web/styles.css` si cela reste propre ; sinon limiter la derivation CSS au strict necessaire et la justifier.
 - Ne jamais renvoyer les secrets en clair au frontend par simple lecture des settings.
-- Ne pas oublier le paradoxe de bootstrap : l'application a besoin d'un acces DB avant de pouvoir lire une configuration stockee en DB.
+- Ne pas oublier la contrainte de transition bootstrap DB : l'application a besoin d'un bootstrap externe minimal pour atteindre la base avant de pouvoir lire la configuration V1 stockee en base.
 - Maintenir un chemin de compatibilite/fallback env tant que la bascule complete n'est pas terminee.
-- Garder les routes hermeneutiques existantes hors du premier admin de configuration, sauf decision explicite contraire.
+- Garder les routes hermeneutiques existantes hors du premier admin de configuration.
 
 ## Todo detaille et cochable
 
@@ -237,37 +242,38 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Geler dans le chantier l'exclusion du bloc logs hors du premier admin V1.
 - [ ] Formaliser dans la spec d'implementation que le todo est complet A -> Z mais que l'execution reelle se fera par micro-etapes successives.
 - [ ] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
-- [ ] Fixer le traitement transitoire de l'URL directe `/admin.html` pendant la migration vers `/admin`.
-- [ ] Fixer le traitement transitoire de l'URL directe `/admin-old.html` en plus de `/admin-old`.
-- [ ] Fixer la politique UX quand `FRIDA_ADMIN_TOKEN` est actif : prompt, stockage session, header manuel, ou autre mecanisme explicite.
+- [ ] Documenter le traitement transitoire de l'URL directe `/admin.html` pendant la migration vers `/admin`.
+- [ ] Documenter le maintien transitoire de l'URL directe `/admin-old.html` en plus de `/admin-old`.
+- [ ] Documenter la politique UX appliquee quand `FRIDA_ADMIN_TOKEN` est actif : prompt, stockage session, header manuel, ou autre mecanisme explicite.
 - [ ] Releguer dans un ticket distinct la divergence `frida.svg` / `fridalogo.png` pour qu'elle ne parasite pas le chantier admin.
 
 ### Phase 1 - Conception du modele de donnees de configuration
 
-- [ ] Choisir le nom du futur module de lecture/ecriture de configuration runtime cote backend.
-- [ ] Choisir le nom de la table primaire des settings runtime.
-- [ ] Choisir le niveau de granularite du stockage : une ligne par section JSONB ou une ligne par cle.
-- [ ] Fixer les sections minimales du schema : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
-- [ ] Lister pour `main_model` les champs exacts a stocker en base.
-- [ ] Lister pour `arbiter_model` les champs exacts a stocker en base.
-- [ ] Lister pour `summary_model` les champs exacts a stocker en base.
+- [ ] Creer le module backend de lecture/ecriture de configuration runtime dans `app/admin/runtime_settings.py`.
+- [ ] Poser `runtime_settings` comme table primaire des settings runtime.
+- [ ] Poser une granularite `une ligne par section JSONB` dans `runtime_settings`.
+- [ ] Poser les sections minimales du schema : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
+- [ ] Lister pour `main_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
+- [ ] Lister pour `arbiter_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
+- [ ] Lister pour `summary_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
 - [ ] Lister pour `embedding` les champs exacts a stocker en base.
-- [ ] Lister pour `database` les champs exacts a stocker en base.
+- [ ] Lister pour `database` les champs exacts a stocker en base pour la configuration V1 relue depuis la base.
+- [ ] Documenter dans le schema la distinction entre bootstrap DB minimal externe et configuration `database` stockee en base.
 - [ ] Lister pour `services` les champs exacts a stocker en base.
 - [ ] Lister pour `resources` les champs exacts a stocker en base.
 - [ ] Marquer, champ par champ, lesquels sont des secrets et lesquels ne le sont pas.
-- [ ] Ajouter dans le design un champ `updated_at` ou equivalent.
-- [ ] Ajouter dans le design un champ `updated_by` ou equivalent.
+- [ ] Ajouter dans le design un champ `updated_at`.
+- [ ] Ajouter dans le design un champ `updated_by`.
 - [ ] Ajouter dans le design un champ `source` / `origin` pour distinguer seed env et valeur editee.
-- [ ] Ajouter dans le design un champ de version de schema ou un equivalent minimal.
-- [ ] Decider si une table d'historique des changements est obligatoire des la V1.
-- [ ] Decider si `pgcrypto` suffit pour la politique de secret retenue.
-- [ ] Decider comment exposer au front un secret "present" sans l'exposer en clair.
-- [ ] Decider si `EMBED_MODEL` doit etre introduit dans le schema V1 meme s'il n'existe pas encore dans le code courant.
-- [ ] Decider si `OPENROUTER_BASE`, `OPENROUTER_REFERER`, `OPENROUTER_APP_NAME` et `OPENROUTER_TITLE_*` entrent dans V1 ou restent en fallback env.
-- [ ] Decider si `ARBITER_TIMEOUT_S` entre dans V1 ou reste hors du premier admin.
-- [ ] Decider si `SEARXNG_RESULTS`, `CRAWL4AI_TOP_N` et `CRAWL4AI_MAX_CHARS` entrent dans V1 ou restent hors du premier admin.
-- [ ] Documenter explicitement la strategie retenue pour `FRIDA_MEMORY_DB_DSN` face au bootstrap DB.
+- [ ] Ajouter dans le design un champ minimal de version de schema.
+- [ ] Integrer `runtime_settings_history` des la V1.
+- [ ] Utiliser `pgcrypto` pour la politique de secret retenue.
+- [ ] Exposer au front un secret present sous forme masquee avec un indicateur `is_set`, sans jamais renvoyer sa valeur en clair.
+- [ ] Ajouter `EMBED_MODEL` au schema V1 et au code de consommation associe.
+- [ ] Integrer `OPENROUTER_BASE`, `OPENROUTER_REFERER`, `OPENROUTER_APP_NAME` et `OPENROUTER_TITLE_*` au perimetre V1 du bloc modele principal / provider.
+- [ ] Integrer `ARBITER_TIMEOUT_S` au perimetre V1 du bloc arbitre.
+- [ ] Integrer `SEARXNG_RESULTS`, `CRAWL4AI_TOP_N` et `CRAWL4AI_MAX_CHARS` au perimetre V1 du bloc services.
+- [ ] Documenter explicitement que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB minimal externe tant que la transition n'est pas achevee.
 
 ### Phase 2 - Schema SQL et seed initial
 
@@ -276,13 +282,15 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter les index necessaires a la lecture par section.
 - [ ] Ajouter la structure necessaire au stockage des secrets selon la politique retenue.
 - [ ] Ajouter le champ/indicateur permettant de savoir si une valeur secrete est presente.
-- [ ] Creer la table d'historique/revision si elle a ete retenue.
+- [ ] Creer la table d'historique/revision `runtime_settings_history`.
 - [ ] Prevoir une migration idempotente executable sans casser un environnement deja initialise.
 - [ ] Ecrire la logique de seed des valeurs non secretes depuis l'environnement courant.
-- [ ] Ecrire la logique de seed des valeurs secretes si la politique retenue l'autorise.
-- [ ] Definir la regle "ne pas ecraser une valeur deja presente en DB lors d'un reseed".
+- [ ] Ecrire la logique de seed initial des valeurs secretes depuis l'environnement courant, sans re-exposition en clair.
+- [ ] Implementer la regle "ne pas ecraser une valeur deja presente en DB lors d'un reseed".
 - [ ] Prevoir un moyen explicite de reconnaitre qu'une section n'a jamais encore ete seedee.
 - [ ] Documenter dans la migration qu'aucune extension PostgreSQL supplementaire n'est requise a priori au-dela de `pgcrypto` deja active.
+- [ ] Documenter dans la migration la separation entre bootstrap DB minimal externe et sections V1 stockees dans `runtime_settings`.
+- [ ] Exclure explicitement `FRIDA_MEMORY_DB_DSN` du seed de `runtime_settings` tant que la transition n'est pas achevee.
 - [ ] Prevoir un commit isole pour la migration SQL et le seed initial, sans branchement frontend.
 
 ### Phase 3 - Couche backend de lecture de configuration
@@ -298,12 +306,13 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter un point d'entree backend pour lire la section `resources`.
 - [ ] Ajouter une redaction automatique des secrets dans tous les objets renvoyables au frontend.
 - [ ] Ajouter une validation backend par champ avant toute ecriture.
-- [ ] Decider si cette couche lit la DB a chaque requete ou via un cache explicitement invalide.
-- [ ] Definir le comportement exact quand la table de settings est vide.
-- [ ] Definir le comportement exact quand la DB est indisponible.
-- [ ] Definir le comportement exact quand un secret est requis mais absent.
+- [ ] Implementer une lecture centralisee via un cache explicitement invalide apres ecriture.
+- [ ] Implementer le comportement `table de settings vide = fallback env transitoire + statut visible`.
+- [ ] Implementer le comportement `DB indisponible = fallback env transitoire quand il existe, sinon erreur de configuration explicite`.
+- [ ] Implementer le comportement `secret requis absent = erreur de configuration explicite, sans fuite de valeur`.
 - [ ] Laisser explicitement `app/admin/admin_logs.py` hors de cette bascule V1.
 - [ ] Laisser explicitement `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT` hors de cette bascule V1.
+- [ ] Laisser explicitement `FRIDA_MEMORY_DB_DSN` dans le bootstrap DB minimal externe tant que la transition n'est pas achevee.
 - [ ] Prevoir un commit isole pour la couche backend de lecture avant remplacement des usages.
 
 ### Phase 4 - Remplacement progressif des lectures actuelles dans le code
@@ -319,9 +328,9 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Remplacer la lecture du bloc services externes dans `app/tools/web_search.py`.
 - [ ] Remplacer la lecture des chemins / ressources externes dans `app/identity/identity.py`.
 - [ ] Remplacer la lecture des memes chemins / ressources externes dans `app/minimal_validation.py`.
-- [ ] Remplacer la lecture du bloc base de donnees dans `app/core/conv_store.py` seulement une fois la strategie bootstrap DSN figee.
-- [ ] Remplacer la lecture du bloc base de donnees dans `app/memory/memory_store.py` seulement une fois la strategie bootstrap DSN figee.
-- [ ] Remplacer la lecture du bloc base de donnees dans `app/minimal_validation.py` seulement une fois la strategie bootstrap DSN figee.
+- [ ] Remplacer la lecture du bloc `database` dans `app/core/conv_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
+- [ ] Remplacer la lecture du bloc `database` dans `app/memory/memory_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
+- [ ] Remplacer la lecture du bloc `database` dans `app/minimal_validation.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [ ] Verifier que `app/config.py` reste utilisable comme fallback transitoire tant que la bascule n'est pas complete.
 - [ ] Verifier que `app/admin/admin_logs.py` continue a fonctionner sans regression apres introduction de la nouvelle couche.
 - [ ] Verifier que `app/run.sh` et `docker-compose.yml` ne sont pas touches par inadvertance pendant cette phase.
@@ -329,7 +338,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 5 - API backend du nouvel admin
 
-- [ ] Choisir le prefixe final des routes de configuration (`/api/admin/settings`, `/api/admin/config` ou equivalent).
+- [ ] Ouvrir le prefixe `/api/admin/settings` pour la configuration du nouvel admin.
 - [ ] Ajouter une route de lecture agregee de l'ensemble des sections du nouvel admin.
 - [ ] Ajouter une route `GET` de lecture pour la section `main_model`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `main_model`.
@@ -346,7 +355,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter une route `GET` de lecture pour la section `resources`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `resources`.
 - [ ] Ajouter une route de statut bootstrap/fallback pour rendre visible la source effective de configuration.
-- [ ] Ajouter une route de validation/smoke test par section si la connectivite doit etre testee avant sauvegarde finale.
+- [ ] Ajouter une route de validation/smoke test par section pour les verifications techniques avant sauvegarde finale.
 - [ ] Brancher toutes ces routes sous le garde admin existant.
 - [ ] Verifier que les reponses `GET` masquent tous les secrets.
 - [ ] Verifier que les reponses `PATCH` ne logguent jamais les secrets en clair.
@@ -360,13 +369,13 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Copier `app/web/admin.js` vers `app/web/admin-old.js`.
 - [ ] Mettre a jour `app/web/admin-old.html` pour charger `admin-old.js`.
 - [ ] Ajouter une route Flask `/admin-old` qui serve `admin-old.html`.
-- [ ] Decider si `/admin-old.html` reste un acces technique direct via les fichiers statiques.
+- [ ] Maintenir l'acces technique direct `/admin-old.html` pendant la transition en plus de `/admin-old`.
 - [ ] Reserver `app/web/admin.html` au futur nouvel admin.
 - [ ] Reserver `app/web/admin.js` au futur nouvel admin.
 - [ ] Verifier que `admin-old.js` continue a parler a `/api/admin/logs` et `/api/admin/restart` sans changement de comportement.
 - [ ] Verifier que l'ancien admin conserve son usage actuel de logs/restart sans refactor opportuniste.
 - [ ] Documenter explicitement dans le code ou la doc que les routes hermeneutiques backend existent mais ne sont pas branchees dans l'ancien admin UI.
-- [ ] Ajouter, si retenu, un lien du nouvel admin vers l'ancien admin une fois le nouvel admin en place.
+- [ ] Ajouter un lien visible du nouvel admin vers l'ancien admin une fois le nouvel admin en place.
 - [ ] Prevoir un commit isole uniquement pour la preservation/renommage de l'admin legacy.
 
 ### Phase 7 - Nouveau frontend admin from scratch
@@ -390,23 +399,23 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter un etat "modifications non sauvegardees" par section.
 - [ ] Ajouter un bouton d'enregistrement par section.
 - [ ] Ajouter un retour de validation lisible par champ en cas d'erreur backend.
-- [ ] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`) si l'API l'expose.
-- [ ] Ajouter un lien visible vers l'ancien admin si cela fait partie de la decision finale.
+- [ ] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`).
+- [ ] Ajouter un lien visible vers l'ancien admin.
 - [ ] Verifier que le nouveau `admin.js` n'embarque pas de logique logs/restart par reflexe.
 - [ ] Prevoir un commit isole pour le nouveau frontend admin.
 
 ### Phase 8 - Integration minimale avec le front principal
 
 - [ ] Modifier `app/web/app.js` pour que le bouton `Parametres` vise le nouvel admin et non plus `admin.html` legacy direct.
-- [ ] Choisir explicitement si la cible finale du bouton est `/admin` ou `admin.html`.
-- [ ] Aligner la cible choisie avec la route Flask et avec les assets statiques reellement exposes.
-- [ ] Decider du sort de `frida.settings` dans `localStorage`.
-- [ ] Decider si `temperature` reste un override conversationnel local.
-- [ ] Decider si `top_p` reste un override conversationnel local.
-- [ ] Si `temperature` et `top_p` restent locaux, les requalifier clairement comme reglages de session et non comme config globale.
-- [ ] Si `temperature` et `top_p` deviennent globaux, retirer leur envoi direct dans `/api/chat`.
-- [ ] Maintenir `max_tokens` hors du nouvel admin tant que la decision produit reste inchangée.
-- [ ] Maintenir `SYSTEM_PROMPT` hors du nouvel admin V1 sauf arbitrage explicite contraire.
+- [ ] Pointer le bouton `Parametres` du front principal vers `/admin`.
+- [ ] Aligner cette cible avec la route Flask et avec les assets statiques reellement exposes.
+- [ ] Retirer `temperature` et `top_p` de `frida.settings` dans `localStorage`.
+- [ ] Brancher `temperature` et `top_p` sur la logique globale de configuration des modeles.
+- [ ] Retirer l'envoi direct de `temperature` et `top_p` depuis le front vers `/api/chat`.
+- [ ] Limiter `frida.settings` aux reglages de session restant hors admin V1.
+- [ ] Requalifier clairement `max_tokens` comme reglage de session hors admin V1 tant qu'il reste hors perimetre.
+- [ ] Maintenir `max_tokens` hors du nouvel admin V1.
+- [ ] Maintenir `SYSTEM_PROMPT` hors du nouvel admin V1.
 - [ ] Verifier que la navigation vers l'ancien admin reste possible apres changement du bouton principal.
 - [ ] Prevoir un commit isole pour l'integration minimale du front principal.
 
