@@ -433,7 +433,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
 - [x] Construire une section UI dediee au modele principal.
 - [x] Construire une section UI dediee au modele arbitre.
-- [ ] Construire une section UI dediee au modele resumieur.
+- [x] Construire une section UI dediee au modele resumieur.
 - [ ] Construire une section UI dediee au bloc embeddings.
 - [ ] Construire une section UI dediee au bloc base de donnees.
 - [ ] Construire une section UI dediee au bloc services externes.

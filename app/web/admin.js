@@ -149,6 +149,35 @@
       autocomplete: "off",
     },
   ];
+  const summaryModelFieldSpecs = [
+    {
+      key: "model",
+      label: "Modele",
+      hint: "Modele utilise pour la synthese conversationnelle.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "temperature",
+      label: "Temperature",
+      hint: "Echantillonnage propre au resumieur.",
+      inputType: "number",
+      step: "0.1",
+      min: "0",
+      max: "2",
+      autocomplete: "off",
+    },
+    {
+      key: "top_p",
+      label: "Top p",
+      hint: "Coupe nucleus du resumieur.",
+      inputType: "number",
+      step: "0.05",
+      min: "0.01",
+      max: "1",
+      autocomplete: "off",
+    },
+  ];
 
   const state = {
     mainModel: {
@@ -158,6 +187,12 @@
       draft: null,
     },
     arbiterModel: {
+      loaded: false,
+      view: null,
+      baseline: null,
+      draft: null,
+    },
+    summaryModel: {
       loaded: false,
       view: null,
       baseline: null,
@@ -194,6 +229,14 @@
     arbiterModelDirty: document.getElementById("adminArbiterModelDirty"),
     arbiterModelSource: document.getElementById("adminArbiterModelSource"),
     arbiterModelChecks: document.getElementById("adminArbiterModelChecks"),
+    summaryModelForm: document.getElementById("adminSummaryModelForm"),
+    summaryModelFields: document.getElementById("adminSummaryModelFields"),
+    summaryModelStatus: document.getElementById("adminSummaryModelStatus"),
+    summaryModelSave: document.getElementById("adminSummaryModelSave"),
+    summaryModelValidate: document.getElementById("adminSummaryModelValidate"),
+    summaryModelDirty: document.getElementById("adminSummaryModelDirty"),
+    summaryModelSource: document.getElementById("adminSummaryModelSource"),
+    summaryModelChecks: document.getElementById("adminSummaryModelChecks"),
   };
 
   const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
@@ -286,6 +329,13 @@
     });
     return draft;
   };
+  const emptySummaryModelDraft = () => {
+    const draft = {};
+    summaryModelFieldSpecs.forEach((spec) => {
+      draft[spec.key] = "";
+    });
+    return draft;
+  };
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -293,6 +343,9 @@
   const arbiterModelFieldElement = (field) => document.querySelector(`[data-arbiter-field="${field}"]`);
   const arbiterModelFieldInput = (field) => document.getElementById(`adminArbiterModel-${field}`);
   const arbiterModelErrorElement = (field) => document.getElementById(`adminArbiterModelFieldError-${field}`);
+  const summaryModelFieldElement = (field) => document.querySelector(`[data-summary-field="${field}"]`);
+  const summaryModelFieldInput = (field) => document.getElementById(`adminSummaryModel-${field}`);
+  const summaryModelErrorElement = (field) => document.getElementById(`adminSummaryModelFieldError-${field}`);
 
   const setFieldError = (field, message = "") => {
     const isSecretField = field === "api_key";
@@ -377,6 +430,32 @@
     });
 
     elements.arbiterModelChecks.replaceChildren(fragment);
+  };
+  const renderSummaryModelChecks = (checks = []) => {
+    if (!elements.summaryModelChecks) return;
+    if (!checks.length) {
+      elements.summaryModelChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    checks.forEach((check) => {
+      const row = document.createElement("article");
+      row.className = "admin-check";
+      row.dataset.ok = check.ok ? "true" : "false";
+
+      const name = document.createElement("strong");
+      name.textContent = check.name;
+
+      const detail = document.createElement("span");
+      detail.textContent = check.detail;
+
+      row.appendChild(name);
+      row.appendChild(detail);
+      fragment.appendChild(row);
+    });
+
+    elements.summaryModelChecks.replaceChildren(fragment);
   };
 
   const ensureMainModelFieldSkeleton = () => {
@@ -481,6 +560,57 @@
 
     elements.arbiterModelFields.appendChild(fragment);
   };
+  const ensureSummaryModelFieldSkeleton = () => {
+    if (!elements.summaryModelFields || elements.summaryModelFields.children.length > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    summaryModelFieldSpecs.forEach((spec) => {
+      const field = document.createElement("label");
+      field.className = "admin-field";
+      field.dataset.summaryField = spec.key;
+      field.dataset.dirty = "false";
+      field.setAttribute("for", `adminSummaryModel-${spec.key}`);
+
+      const label = document.createElement("span");
+      label.textContent = spec.label;
+
+      const input = document.createElement("input");
+      input.id = `adminSummaryModel-${spec.key}`;
+      input.name = spec.key;
+      input.type = spec.inputType;
+      input.autocomplete = spec.autocomplete || "off";
+      if (spec.step) input.step = spec.step;
+      if (spec.min) input.min = spec.min;
+      if (spec.max) input.max = spec.max;
+
+      const meta = document.createElement("div");
+      meta.className = "admin-field-meta";
+
+      const hint = document.createElement("small");
+      hint.textContent = spec.hint;
+
+      const source = document.createElement("span");
+      source.id = `adminSummaryModelSource-${spec.key}`;
+      source.className = "admin-field-source";
+      source.textContent = "Source: chargement";
+
+      meta.appendChild(hint);
+      meta.appendChild(source);
+
+      const error = document.createElement("p");
+      error.id = `adminSummaryModelFieldError-${spec.key}`;
+      error.className = "admin-field-error";
+      error.hidden = true;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(meta);
+      field.appendChild(error);
+      fragment.appendChild(field);
+    });
+
+    elements.summaryModelFields.appendChild(fragment);
+  };
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -493,6 +623,13 @@
   const buildArbiterModelDraftFromView = (view) => {
     const draft = {};
     arbiterModelFieldSpecs.forEach((spec) => {
+      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
+    });
+    return draft;
+  };
+  const buildSummaryModelDraftFromView = (view) => {
+    const draft = {};
+    summaryModelFieldSpecs.forEach((spec) => {
       draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
     });
     return draft;
@@ -552,6 +689,27 @@
 
     arbiterModelFieldSpecs.forEach((spec) => {
       const source = document.getElementById(`adminArbiterModelSource-${spec.key}`);
+      if (!source) return;
+      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
+    });
+  };
+  const renderSummaryModelMeta = () => {
+    const view = state.summaryModel.view;
+    if (!view) {
+      if (elements.summaryModelSource) elements.summaryModelSource.textContent = "Section: indisponible";
+      summaryModelFieldSpecs.forEach((spec) => {
+        const source = document.getElementById(`adminSummaryModelSource-${spec.key}`);
+        if (source) source.textContent = "Source: indisponible";
+      });
+      return;
+    }
+
+    if (elements.summaryModelSource) {
+      elements.summaryModelSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
+    }
+
+    summaryModelFieldSpecs.forEach((spec) => {
+      const source = document.getElementById(`adminSummaryModelSource-${spec.key}`);
       if (!source) return;
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
@@ -635,6 +793,23 @@
       elements.arbiterModelDirty.textContent = dirty ? "Modifications" : "A jour";
     }
   };
+  const updateSummaryDirtyChip = () => {
+    const baseline = state.summaryModel.baseline || emptySummaryModelDraft();
+    const draft = state.summaryModel.draft || emptySummaryModelDraft();
+    let dirty = false;
+
+    summaryModelFieldSpecs.forEach((spec) => {
+      const field = summaryModelFieldElement(spec.key);
+      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
+      if (field) field.dataset.dirty = changed ? "true" : "false";
+      if (changed) dirty = true;
+    });
+
+    if (elements.summaryModelDirty) {
+      elements.summaryModelDirty.dataset.state = dirty ? "dirty" : "clean";
+      elements.summaryModelDirty.textContent = dirty ? "Modifications" : "A jour";
+    }
+  };
 
   const applyMainModelDraftToForm = () => {
     const draft = state.mainModel.draft || emptyMainModelDraft();
@@ -661,6 +836,16 @@
       if (input.value !== nextValue) input.value = nextValue;
     });
     updateArbiterDirtyChip();
+  };
+  const applySummaryDraftToForm = () => {
+    const draft = state.summaryModel.draft || emptySummaryModelDraft();
+    summaryModelFieldSpecs.forEach((spec) => {
+      const input = summaryModelFieldInput(spec.key);
+      if (!input) return;
+      const nextValue = toDraftString(draft[spec.key]);
+      if (input.value !== nextValue) input.value = nextValue;
+    });
+    updateSummaryDirtyChip();
   };
 
   const applyMainModelView = (responsePayload) => {
@@ -692,6 +877,20 @@
     applyArbiterDraftToForm();
     renderArbiterModelChecks([]);
   };
+  const applySummaryModelView = (responsePayload) => {
+    state.summaryModel.loaded = true;
+    state.summaryModel.view = {
+      payload: responsePayload.payload || {},
+      source: responsePayload.source || "env",
+      source_reason: responsePayload.source_reason || "unknown",
+    };
+    state.summaryModel.baseline = buildSummaryModelDraftFromView(state.summaryModel.view);
+    state.summaryModel.draft = { ...state.summaryModel.baseline };
+    clearSummaryFieldErrors();
+    renderSummaryModelMeta();
+    applySummaryDraftToForm();
+    renderSummaryModelChecks([]);
+  };
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -716,6 +915,18 @@
     renderArbiterModelChecks([]);
     setArbiterControlsDisabled(true);
     setInlineStatus(elements.arbiterModelStatus, message, stateName);
+  };
+  const resetSummarySurface = (message, stateName = "error") => {
+    state.summaryModel.loaded = false;
+    state.summaryModel.view = null;
+    state.summaryModel.baseline = emptySummaryModelDraft();
+    state.summaryModel.draft = emptySummaryModelDraft();
+    clearSummaryFieldErrors();
+    renderSummaryModelMeta();
+    applySummaryDraftToForm();
+    renderSummaryModelChecks([]);
+    setSummaryControlsDisabled(true);
+    setInlineStatus(elements.summaryModelStatus, message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -756,9 +967,32 @@
   const clearArbiterFieldErrors = () => {
     arbiterModelFieldSpecs.forEach((spec) => setArbiterFieldError(spec.key, ""));
   };
+  const setSummaryFieldError = (field, message = "") => {
+    const host = summaryModelFieldElement(field);
+    const errorElement = summaryModelErrorElement(field);
+    if (host) {
+      host.dataset.error = message ? "true" : "false";
+    }
+    if (!errorElement) return;
+    if (message) {
+      errorElement.hidden = false;
+      errorElement.textContent = message;
+      return;
+    }
+    errorElement.hidden = true;
+    errorElement.textContent = "";
+  };
+  const clearSummaryFieldErrors = () => {
+    summaryModelFieldSpecs.forEach((spec) => setSummaryFieldError(spec.key, ""));
+  };
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
+    });
+  };
+  const applySummaryLocalFieldErrors = (errors) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setSummaryFieldError(field, message);
     });
   };
   const applyArbiterBackendFieldError = (message) => {
@@ -766,6 +1000,14 @@
     arbiterModelFieldSpecs.forEach((spec) => {
       if (message.includes(`arbiter_model.${spec.key}`)) {
         setArbiterFieldError(spec.key, message);
+      }
+    });
+  };
+  const applySummaryBackendFieldError = (message) => {
+    if (!message) return;
+    summaryModelFieldSpecs.forEach((spec) => {
+      if (message.includes(`summary_model.${spec.key}`)) {
+        setSummaryFieldError(spec.key, message);
       }
     });
   };
@@ -777,7 +1019,25 @@
       if (input) input.disabled = disabled;
     });
   };
+  const setSummaryControlsDisabled = (disabled) => {
+    if (elements.summaryModelSave) elements.summaryModelSave.disabled = disabled;
+    if (elements.summaryModelValidate) elements.summaryModelValidate.disabled = disabled;
+    summaryModelFieldSpecs.forEach((spec) => {
+      const input = summaryModelFieldInput(spec.key);
+      if (input) input.disabled = disabled;
+    });
+  };
   const collectArbiterFailedChecks = (checks) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      if (!errors[check.name]) {
+        errors[check.name] = check.detail;
+      }
+    });
+    return errors;
+  };
+  const collectSummaryFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
       if (check.ok) return;
@@ -812,6 +1072,41 @@
         payload[spec.key] = {
           value: spec.key === "timeout_s" ? Math.trunc(parsed) : parsed,
         };
+        return;
+      }
+
+      payload[spec.key] = { value: nextRaw };
+    });
+
+    return {
+      payload,
+      localErrors,
+      dirtyCount: Object.keys(payload).length,
+    };
+  };
+  const buildSummaryPatchPayload = () => {
+    const payload = {};
+    const localErrors = {};
+    const baseline = state.summaryModel.baseline || emptySummaryModelDraft();
+    const draft = state.summaryModel.draft || emptySummaryModelDraft();
+
+    summaryModelFieldSpecs.forEach((spec) => {
+      const nextRaw = toDraftString(draft[spec.key]);
+      const currentRaw = toDraftString(baseline[spec.key]);
+      if (nextRaw === currentRaw) return;
+
+      if (spec.inputType === "number") {
+        const trimmed = nextRaw.trim();
+        if (!trimmed) {
+          localErrors[spec.key] = "Valeur numerique requise.";
+          return;
+        }
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed)) {
+          localErrors[spec.key] = "Valeur numerique invalide.";
+          return;
+        }
+        payload[spec.key] = { value: parsed };
         return;
       }
 
@@ -869,6 +1164,51 @@
       setArbiterControlsDisabled(!state.arbiterModel.loaded);
     }
   };
+  const runSummaryValidation = async (payload) => {
+    clearSummaryFieldErrors();
+    renderSummaryModelChecks([]);
+    setSummaryControlsDisabled(true);
+    setInlineStatus(elements.summaryModelStatus, "Validation technique en cours...", "info");
+
+    try {
+      const body = payload && Object.keys(payload).length ? { payload } : {};
+      const response = await adminFetch("/api/admin/settings/summary-model/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour verifier la section.", "error");
+        return { ok: false };
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applySummaryBackendFieldError(data.error || `Validation impossible (${response.status}).`);
+        setInlineStatus(elements.summaryModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
+        return { ok: false };
+      }
+
+      const checks = Array.isArray(data.checks) ? data.checks : [];
+      renderSummaryModelChecks(checks);
+      const failedChecks = collectSummaryFailedChecks(checks);
+      applySummaryLocalFieldErrors(failedChecks);
+
+      if (!data.valid) {
+        setInlineStatus(elements.summaryModelStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
+        return { ok: false };
+      }
+
+      setInlineStatus(elements.summaryModelStatus, "Validation technique OK.", "ok");
+      return { ok: true, data };
+    } catch (_error) {
+      setInlineStatus(elements.summaryModelStatus, "Validation impossible pour le moment.", "error");
+      return { ok: false };
+    } finally {
+      setSummaryControlsDisabled(!state.summaryModel.loaded);
+    }
+  };
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -881,6 +1221,19 @@
     }
 
     await runArbiterValidation(payload);
+  };
+  const validateSummarySection = async () => {
+    const { payload, localErrors } = buildSummaryPatchPayload();
+    clearSummaryFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applySummaryLocalFieldErrors(localErrors);
+      renderSummaryModelChecks([]);
+      setInlineStatus(elements.summaryModelStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
+      return;
+    }
+
+    await runSummaryValidation(payload);
   };
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
@@ -939,6 +1292,63 @@
       setArbiterControlsDisabled(!state.arbiterModel.loaded);
     }
   };
+  const saveSummarySection = async () => {
+    if (!state.summaryModel.loaded) return;
+
+    const { payload, localErrors, dirtyCount } = buildSummaryPatchPayload();
+    clearSummaryFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applySummaryLocalFieldErrors(localErrors);
+      renderSummaryModelChecks([]);
+      setInlineStatus(elements.summaryModelStatus, "Correction requise avant enregistrement.", "error");
+      return;
+    }
+
+    if (dirtyCount === 0) {
+      setInlineStatus(elements.summaryModelStatus, "Aucune modification a enregistrer.", "info");
+      return;
+    }
+
+    const validation = await runSummaryValidation(payload);
+    if (!validation.ok) return;
+
+    setSummaryControlsDisabled(true);
+    setInlineStatus(elements.summaryModelStatus, "Enregistrement du modele resumieur...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/summary-model", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updated_by: "admin_ui",
+          payload,
+        }),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour enregistrer la section.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applySummaryBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
+        setInlineStatus(elements.summaryModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applySummaryModelView(data);
+      setSummaryControlsDisabled(false);
+      setInlineStatus(elements.summaryModelStatus, "Modele resumieur enregistre.", "ok");
+      banner("Modele resumieur enregistre.", "ok");
+      void loadRuntimeStatus();
+    } catch (_error) {
+      setInlineStatus(elements.summaryModelStatus, "Enregistrement impossible pour le moment.", "error");
+    } finally {
+      setSummaryControlsDisabled(!state.summaryModel.loaded);
+    }
+  };
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -963,6 +1373,32 @@
       setInlineStatus(elements.arbiterModelStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
     } catch (_error) {
       resetArbiterSurface("Lecture impossible du modele arbitre pour le moment.", "error");
+    }
+  };
+  const loadSummaryModelSection = async () => {
+    ensureSummaryModelFieldSkeleton();
+    clearSummaryFieldErrors();
+    setSummaryControlsDisabled(true);
+    setInlineStatus(elements.summaryModelStatus, "Chargement du modele resumieur...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/summary-model");
+      if (response.status === 401) {
+        resetSummarySurface("Acces admin requis pour charger le modele resumieur.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        resetSummarySurface(data.error || `Lecture impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applySummaryModelView(data);
+      setSummaryControlsDisabled(false);
+      setInlineStatus(elements.summaryModelStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
+    } catch (_error) {
+      resetSummarySurface("Lecture impossible du modele resumieur pour le moment.", "error");
     }
   };
 
@@ -1172,6 +1608,12 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
+      if (section.key === "summary_model") {
+        const detailChip = document.createElement("span");
+        detailChip.className = "admin-chip";
+        detailChip.textContent = "Bloc detaille actif";
+        meta.appendChild(detailChip);
+      }
 
       if (status.bootstrap?.database_dsn_mode && section.key === "database") {
         const bootstrapChip = document.createElement("span");
@@ -1227,7 +1669,7 @@
   };
 
   const loadAdminSurface = async () => {
-    await Promise.all([loadRuntimeStatus(), loadMainModelSection(), loadArbiterModelSection()]);
+    await Promise.all([loadRuntimeStatus(), loadMainModelSection(), loadArbiterModelSection(), loadSummaryModelSection()]);
   };
 
   elements.mainModelForm?.addEventListener("input", (event) => {
@@ -1288,21 +1730,44 @@
   elements.arbiterModelSave?.addEventListener("click", () => {
     void saveArbiterSection();
   });
+  elements.summaryModelForm?.addEventListener("input", (event) => {
+    if (!state.summaryModel.draft) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const fieldName = target.name;
+    if (!fieldName) return;
+    state.summaryModel.draft[fieldName] = target.value;
+    setSummaryFieldError(fieldName, "");
+    updateSummaryDirtyChip();
+  });
+  elements.summaryModelValidate?.addEventListener("click", () => {
+    void validateSummarySection();
+  });
+  elements.summaryModelSave?.addEventListener("click", () => {
+    void saveSummarySection();
+  });
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
+  ensureSummaryModelFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = emptyArbiterModelDraft();
   state.arbiterModel.draft = emptyArbiterModelDraft();
+  state.summaryModel.baseline = emptySummaryModelDraft();
+  state.summaryModel.draft = emptySummaryModelDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelChecks([]);
   renderArbiterModelMeta();
   applyArbiterDraftToForm();
   renderArbiterModelChecks([]);
+  renderSummaryModelMeta();
+  applySummaryDraftToForm();
+  renderSummaryModelChecks([]);
   setMainModelControlsDisabled(true);
   setArbiterControlsDisabled(true);
+  setSummaryControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),

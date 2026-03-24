@@ -33,7 +33,7 @@
           Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee s'ouvre section par section.
         </p>
         <p class="admin-sublead">
-          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal et l'arbitre.
+          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal, l'arbitre et le resumieur.
         </p>
       </div>
 
@@ -146,6 +146,38 @@
       </form>
 
       <div id="adminArbiterModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="admin-summary-model-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Troisieme bloc detaille</p>
+          <h2 id="admin-summary-model-title">Modele resumieur</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminSummaryModelDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminSummaryModelValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminSummaryModelSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc de synthese conversationnelle: modele et echantillonnage, avec verification technique avant ecriture.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminSummaryModelSource" class="admin-chip">Section: chargement</span>
+      </div>
+
+      <p id="adminSummaryModelStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du modele resumieur...
+      </p>
+
+      <form id="adminSummaryModelForm" class="admin-form" novalidate>
+        <div id="adminSummaryModelFields" class="admin-form-grid"></div>
+      </form>
+
+      <div id="adminSummaryModelChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
