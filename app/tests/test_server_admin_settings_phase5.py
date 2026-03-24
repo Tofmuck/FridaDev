@@ -857,6 +857,56 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             msg=f'secret leaked to log records: {capture.messages!r}',
         )
 
+    def test_admin_logs_route_keeps_legacy_contract(self) -> None:
+        original_read_logs = self.server.admin_logs.read_logs
+        observed = {'limit': None}
+
+        def fake_read_logs(limit=200):
+            observed['limit'] = limit
+            return [{'event': 'legacy-log', 'level': 'INFO'}]
+
+        self.server.admin_logs.read_logs = fake_read_logs
+        try:
+            response = self.client.get('/api/admin/logs?limit=5')
+        finally:
+            self.server.admin_logs.read_logs = original_read_logs
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['limit'], 5)
+        data = response.get_json()
+        self.assertEqual(
+            data,
+            {
+                'ok': True,
+                'logs': [{'event': 'legacy-log', 'level': 'INFO'}],
+            },
+        )
+
+    def test_admin_restart_route_keeps_legacy_contract(self) -> None:
+        original_restart = self.server.admin_actions.restart_runtime_async
+        observed = {'target': None}
+
+        def fake_restart_runtime_async(target):
+            observed['target'] = target
+
+        self.server.admin_actions.restart_runtime_async = fake_restart_runtime_async
+        try:
+            response = self.client.post('/api/admin/restart')
+        finally:
+            self.server.admin_actions.restart_runtime_async = original_restart
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['target'], 'FridaDev')
+        data = response.get_json()
+        self.assertEqual(
+            data,
+            {
+                'ok': True,
+                'target': 'FridaDev',
+                'mode': 'container_self_exit',
+            },
+        )
+
     def test_all_admin_settings_validate_routes_are_registered(self) -> None:
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
         self.assertIn('/api/admin/settings/main-model/validate', routes)
