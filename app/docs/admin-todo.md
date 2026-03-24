@@ -294,21 +294,21 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 3 - Couche backend de lecture de configuration
 
-- [ ] Creer le module dedie a la lecture des settings runtime depuis la DB.
-- [ ] Ajouter un fallback env explicite tant que la table ou la valeur n'existe pas.
-- [ ] Ajouter un point d'entree backend pour lire la section `main_model`.
-- [ ] Ajouter un point d'entree backend pour lire la section `arbiter_model`.
-- [ ] Ajouter un point d'entree backend pour lire la section `summary_model`.
-- [ ] Ajouter un point d'entree backend pour lire la section `embedding`.
-- [ ] Ajouter un point d'entree backend pour lire la section `database`.
-- [ ] Ajouter un point d'entree backend pour lire la section `services`.
-- [ ] Ajouter un point d'entree backend pour lire la section `resources`.
-- [ ] Ajouter une redaction automatique des secrets dans tous les objets renvoyables au frontend.
+- [x] Creer le module dedie a la lecture des settings runtime depuis la DB.
+- [x] Ajouter un fallback env explicite tant que la table ou la valeur n'existe pas.
+- [x] Ajouter un point d'entree backend pour lire la section `main_model`.
+- [x] Ajouter un point d'entree backend pour lire la section `arbiter_model`.
+- [x] Ajouter un point d'entree backend pour lire la section `summary_model`.
+- [x] Ajouter un point d'entree backend pour lire la section `embedding`.
+- [x] Ajouter un point d'entree backend pour lire la section `database`.
+- [x] Ajouter un point d'entree backend pour lire la section `services`.
+- [x] Ajouter un point d'entree backend pour lire la section `resources`.
+- [x] Ajouter une redaction automatique des secrets dans tous les objets renvoyables au frontend.
 - [ ] Ajouter une validation backend par champ avant toute ecriture.
-- [ ] Implementer une lecture centralisee via un cache explicitement invalide apres ecriture.
-- [ ] Implementer le comportement `table de settings vide = fallback env transitoire + statut visible`.
-- [ ] Implementer le comportement `DB indisponible = fallback env transitoire quand il existe, sinon erreur de configuration explicite`.
-- [ ] Implementer le comportement `secret requis absent = erreur de configuration explicite, sans fuite de valeur`.
+- [x] Implementer une lecture centralisee via un cache explicitement invalide apres ecriture.
+- [x] Implementer le comportement `table de settings vide = fallback env transitoire + statut visible`.
+- [x] Implementer le comportement `DB indisponible = fallback env transitoire quand il existe, sinon erreur de configuration explicite`.
+- [x] Implementer le comportement `secret requis absent = erreur de configuration explicite, sans fuite de valeur`.
 - [ ] Laisser explicitement `app/admin/admin_logs.py` hors de cette bascule V1.
 - [ ] Laisser explicitement `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT` hors de cette bascule V1.
 - [ ] Laisser explicitement `FRIDA_MEMORY_DB_DSN` dans le bootstrap DB minimal externe tant que la transition n'est pas achevee.

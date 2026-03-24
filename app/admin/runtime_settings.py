@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Mapping, Tuple
+from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
 import config
 
@@ -63,6 +63,31 @@ class SectionSeedBundle:
     section: str
     payload: Dict[str, Dict[str, Any]]
     secret_values: Dict[str, str]
+
+
+@dataclass(frozen=True)
+class RuntimeSettingsSnapshot:
+    rows: Dict[str, Dict[str, Dict[str, Any]]]
+    db_state: str
+
+
+@dataclass(frozen=True)
+class RuntimeSectionView:
+    section: str
+    payload: Dict[str, Dict[str, Any]]
+    source: str
+    source_reason: str
+
+
+class RuntimeSettingsDbUnavailableError(RuntimeError):
+    pass
+
+
+class RuntimeSettingsSecretRequiredError(RuntimeError):
+    pass
+
+
+_SNAPSHOT_CACHE: RuntimeSettingsSnapshot | None = None
 
 
 SECTION_SPECS: Dict[str, SectionSpec] = {
@@ -295,3 +320,148 @@ def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
 
 def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
     return tuple(build_env_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
+
+
+def invalidate_runtime_settings_cache() -> None:
+    global _SNAPSHOT_CACHE
+    _SNAPSHOT_CACHE = None
+
+
+def _default_db_fetch_all_sections() -> Dict[str, Dict[str, Dict[str, Any]]]:
+    try:
+        import psycopg
+        from psycopg import errors as psycopg_errors
+    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
+        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
+
+    try:
+        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT section, payload
+                    FROM runtime_settings
+                    ORDER BY section
+                    '''
+                )
+                rows = cur.fetchall()
+    except psycopg_errors.UndefinedTable:
+        return {}
+    except Exception as exc:
+        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
+
+    out: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for section, payload in rows:
+        out[str(section)] = normalize_stored_payload(str(section), payload, default_origin='db')
+    return out
+
+
+def _load_snapshot(
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> RuntimeSettingsSnapshot:
+    global _SNAPSHOT_CACHE
+
+    use_cache = fetcher is None
+    if use_cache and _SNAPSHOT_CACHE is not None:
+        return _SNAPSHOT_CACHE
+
+    active_fetcher = fetcher or _default_db_fetch_all_sections
+    try:
+        rows = active_fetcher()
+    except RuntimeSettingsDbUnavailableError:
+        snapshot = RuntimeSettingsSnapshot(rows={}, db_state='db_unavailable')
+    else:
+        snapshot = RuntimeSettingsSnapshot(
+            rows=rows,
+            db_state='db_rows' if rows else 'empty_table',
+        )
+
+    if use_cache:
+        _SNAPSHOT_CACHE = snapshot
+    return snapshot
+
+
+def _env_payload_for_runtime(section: str) -> Dict[str, Dict[str, Any]]:
+    return build_env_seed_bundle(section).payload
+
+
+def get_runtime_section(
+    section: str,
+    *,
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    get_section_spec(section)
+    snapshot = _load_snapshot(fetcher=fetcher)
+
+    payload = snapshot.rows.get(section)
+    if payload is not None:
+        return RuntimeSectionView(
+            section=section,
+            payload=payload,
+            source='db',
+            source_reason='db_row',
+        )
+
+    source_reason = 'missing_section' if snapshot.db_state == 'db_rows' else snapshot.db_state
+    return RuntimeSectionView(
+        section=section,
+        payload=_env_payload_for_runtime(section),
+        source='env',
+        source_reason=source_reason,
+    )
+
+
+def get_runtime_section_for_api(
+    section: str,
+    *,
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    view = get_runtime_section(section, fetcher=fetcher)
+    return RuntimeSectionView(
+        section=view.section,
+        payload=redact_payload_for_api(section, view.payload),
+        source=view.source,
+        source_reason=view.source_reason,
+    )
+
+
+def get_main_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('main_model', fetcher=fetcher)
+
+
+def get_arbiter_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('arbiter_model', fetcher=fetcher)
+
+
+def get_summary_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('summary_model', fetcher=fetcher)
+
+
+def get_embedding_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('embedding', fetcher=fetcher)
+
+
+def get_database_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('database', fetcher=fetcher)
+
+
+def get_services_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('services', fetcher=fetcher)
+
+
+def get_resources_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('resources', fetcher=fetcher)
+
+
+def require_secret_configured(view: RuntimeSectionView, field: str) -> None:
+    spec = get_field_spec(view.section, field)
+    if not spec.is_secret:
+        raise ValueError(f'field is not secret: {view.section}.{field}')
+
+    payload = view.payload.get(field) or {}
+    if bool(payload.get('is_set')):
+        return
+
+    raise RuntimeSettingsSecretRequiredError(
+        f'missing secret config: {view.section}.{field} (source={view.source}, reason={view.source_reason})'
+    )

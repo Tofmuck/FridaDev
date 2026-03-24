@@ -14,6 +14,9 @@ import config
 
 
 class RuntimeSettingsSchemaTests(unittest.TestCase):
+    def setUp(self) -> None:
+        runtime_settings.invalidate_runtime_settings_cache()
+
     def test_section_order_is_fixed(self) -> None:
         self.assertEqual(
             runtime_settings.list_sections(),
@@ -166,6 +169,122 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'resources',
             ),
         )
+
+    def test_runtime_section_falls_back_to_env_when_table_is_empty(self) -> None:
+        view = runtime_settings.get_runtime_section('main_model', fetcher=lambda: {})
+        self.assertEqual(view.source, 'env')
+        self.assertEqual(view.source_reason, 'empty_table')
+        self.assertEqual(view.payload['model']['value'], config.OR_MODEL)
+
+    def test_runtime_section_falls_back_to_env_when_db_is_unavailable(self) -> None:
+        def failing_fetcher():
+            raise runtime_settings.RuntimeSettingsDbUnavailableError('db down')
+
+        view = runtime_settings.get_runtime_section('services', fetcher=failing_fetcher)
+        self.assertEqual(view.source, 'env')
+        self.assertEqual(view.source_reason, 'db_unavailable')
+        self.assertEqual(view.payload['searxng_url']['value'], config.SEARXNG_URL)
+
+    def test_runtime_section_uses_db_row_when_present(self) -> None:
+        def fetcher():
+            return {
+                'embedding': runtime_settings.normalize_stored_payload(
+                    'embedding',
+                    {
+                        'endpoint': {'value': 'https://embed.override.example', 'origin': 'db'},
+                        'model': {'value': 'custom-embed-model', 'origin': 'db'},
+                        'token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'dimensions': {'value': 768, 'origin': 'db'},
+                        'top_k': {'value': 9, 'origin': 'db'},
+                    },
+                )
+            }
+
+        view = runtime_settings.get_embedding_settings(fetcher=fetcher)
+        self.assertEqual(view.source, 'db')
+        self.assertEqual(view.source_reason, 'db_row')
+        self.assertEqual(view.payload['model']['value'], 'custom-embed-model')
+        self.assertEqual(view.payload['dimensions']['value'], 768)
+
+    def test_runtime_section_marks_missing_section_when_other_rows_exist(self) -> None:
+        def fetcher():
+            return {
+                'services': runtime_settings.normalize_stored_payload(
+                    'services',
+                    {
+                        'searxng_url': {'value': 'http://127.0.0.1:8092', 'origin': 'db'},
+                        'searxng_results': {'value': 5, 'origin': 'db'},
+                        'crawl4ai_url': {'value': 'http://127.0.0.1:11235', 'origin': 'db'},
+                        'crawl4ai_token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
+                        'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+                    },
+                )
+            }
+
+        view = runtime_settings.get_runtime_section('main_model', fetcher=fetcher)
+        self.assertEqual(view.source, 'env')
+        self.assertEqual(view.source_reason, 'missing_section')
+
+    def test_runtime_section_for_api_redacts_secrets(self) -> None:
+        def fetcher():
+            return {
+                'main_model': runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.1', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'app_name': {'value': 'FridaDev', 'origin': 'db'},
+                        'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
+                        'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
+                        'temperature': {'value': 0.4, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                    },
+                )
+            }
+
+        view = runtime_settings.get_runtime_section_for_api('main_model', fetcher=fetcher)
+        self.assertEqual(view.payload['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+        self.assertEqual(view.payload['model']['value'], 'openai/gpt-5.1')
+
+    def test_require_secret_configured_raises_explicit_error(self) -> None:
+        view = runtime_settings.get_runtime_section('database', fetcher=lambda: {})
+        with self.assertRaisesRegex(runtime_settings.RuntimeSettingsSecretRequiredError, 'missing secret config: database.dsn'):
+            runtime_settings.require_secret_configured(view, 'dsn')
+
+    def test_cache_can_be_invalidated(self) -> None:
+        calls = {'count': 0}
+
+        def fetcher():
+            calls['count'] += 1
+            return {}
+
+        runtime_settings.get_runtime_section('main_model', fetcher=fetcher)
+        runtime_settings.get_runtime_section('main_model', fetcher=fetcher)
+        self.assertEqual(calls['count'], 2)
+
+        calls = {'count': 0}
+
+        def cached_fetcher():
+            calls['count'] += 1
+            return {}
+
+        runtime_settings.invalidate_runtime_settings_cache()
+        original = runtime_settings._default_db_fetch_all_sections
+        runtime_settings._default_db_fetch_all_sections = cached_fetcher
+        try:
+            runtime_settings.get_runtime_section('main_model')
+            runtime_settings.get_runtime_section('main_model')
+            self.assertEqual(calls['count'], 1)
+            runtime_settings.invalidate_runtime_settings_cache()
+            runtime_settings.get_runtime_section('main_model')
+            self.assertEqual(calls['count'], 2)
+        finally:
+            runtime_settings._default_db_fetch_all_sections = original
+            runtime_settings.invalidate_runtime_settings_cache()
 
 
 if __name__ == '__main__':
