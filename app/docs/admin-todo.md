@@ -283,14 +283,14 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter le champ/indicateur permettant de savoir si une valeur secrete est presente.
 - [x] Creer la table d'historique/revision `runtime_settings_history`.
 - [x] Prevoir une migration idempotente executable sans casser un environnement deja initialise.
-- [ ] Ecrire la logique de seed des valeurs non secretes depuis l'environnement courant.
-- [ ] Ecrire la logique de seed initial des valeurs secretes depuis l'environnement courant, sans re-exposition en clair.
-- [ ] Implementer la regle "ne pas ecraser une valeur deja presente en DB lors d'un reseed".
-- [ ] Prevoir un moyen explicite de reconnaitre qu'une section n'a jamais encore ete seedee.
+- [x] Ecrire la logique de seed des valeurs non secretes depuis l'environnement courant.
+- [x] Ecrire la logique de seed initial des valeurs secretes depuis l'environnement courant, sans re-exposition en clair.
+- [x] Implementer la regle "ne pas ecraser une valeur deja presente en DB lors d'un reseed".
+- [x] Prevoir un moyen explicite de reconnaitre qu'une section n'a jamais encore ete seedee.
 - [x] Documenter dans la migration qu'aucune extension PostgreSQL supplementaire n'est requise a priori au-dela de `pgcrypto` deja active.
 - [x] Documenter dans la migration la separation entre bootstrap DB minimal externe et sections V1 stockees dans `runtime_settings`.
-- [ ] Exclure explicitement `FRIDA_MEMORY_DB_DSN` du seed de `runtime_settings` tant que la transition n'est pas achevee.
-- [ ] Prevoir un commit isole pour la migration SQL et le seed initial, sans branchement frontend.
+- [x] Exclure explicitement `FRIDA_MEMORY_DB_DSN` du seed de `runtime_settings` tant que la transition n'est pas achevee.
+- [x] Prevoir un commit isole pour la migration SQL et le seed initial, sans branchement frontend.
 
 ### Phase 3 - Couche backend de lecture de configuration
 

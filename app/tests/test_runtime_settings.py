@@ -10,6 +10,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
+import config
 
 
 class RuntimeSettingsSchemaTests(unittest.TestCase):
@@ -112,6 +113,58 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                     'origin': 'env_seed',
                 },
             },
+        )
+
+    def test_build_env_seed_bundle_keeps_secret_value_out_of_payload(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('main_model')
+        self.assertEqual(bundle.section, 'main_model')
+        self.assertEqual(bundle.payload['base_url']['value'], config.OR_BASE)
+        self.assertEqual(bundle.payload['temperature']['value'], 0.4)
+        self.assertEqual(bundle.payload['api_key']['is_secret'], True)
+        self.assertEqual(bundle.payload['api_key']['is_set'], bool(config.OR_KEY))
+        self.assertNotIn('value', bundle.payload['api_key'])
+        self.assertNotIn('value_encrypted', bundle.payload['api_key'])
+        if config.OR_KEY:
+            self.assertEqual(bundle.secret_values['api_key'], config.OR_KEY)
+
+    def test_build_env_seed_bundle_excludes_database_dsn_secret_seed(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('database')
+        self.assertEqual(bundle.payload['backend']['value'], 'postgresql')
+        self.assertEqual(bundle.payload['dsn']['is_secret'], True)
+        self.assertFalse(bundle.payload['dsn']['is_set'])
+        self.assertEqual(bundle.secret_values, {})
+
+    def test_build_env_seed_bundle_uses_current_embedding_value(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('embedding')
+        self.assertEqual(bundle.payload['endpoint']['value'], config.EMBED_BASE_URL)
+        self.assertEqual(bundle.payload['model']['value'], 'intfloat/multilingual-e5-small')
+        self.assertEqual(bundle.payload['dimensions']['value'], config.EMBED_DIM)
+        self.assertEqual(bundle.payload['top_k']['value'], config.MEMORY_TOP_K)
+        self.assertEqual(bundle.payload['token']['is_set'], bool(config.EMBED_TOKEN))
+
+    def test_get_unseeded_sections_uses_missing_rows_as_signal(self) -> None:
+        missing = runtime_settings.get_unseeded_sections(('main_model', 'services'))
+        self.assertEqual(
+            missing,
+            (
+                'arbiter_model',
+                'summary_model',
+                'embedding',
+                'database',
+                'resources',
+            ),
+        )
+
+    def test_build_env_seed_plan_skips_existing_sections(self) -> None:
+        plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))
+        self.assertEqual(
+            tuple(bundle.section for bundle in plan),
+            (
+                'arbiter_model',
+                'summary_model',
+                'database',
+                'resources',
+            ),
         )
 
 

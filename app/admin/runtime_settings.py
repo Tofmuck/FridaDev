@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Iterable, Mapping, Tuple
+
+import config
 
 
 SECTION_NAMES: Tuple[str, ...] = (
@@ -54,6 +56,13 @@ class SectionSpec:
             'name': self.name,
             'fields': [field.public_dict() for field in self.fields],
         }
+
+
+@dataclass(frozen=True)
+class SectionSeedBundle:
+    section: str
+    payload: Dict[str, Dict[str, Any]]
+    secret_values: Dict[str, str]
 
 
 SECTION_SPECS: Dict[str, SectionSpec] = {
@@ -209,3 +218,80 @@ def redact_payload_for_api(section: str, payload: Mapping[str, Any]) -> Dict[str
         else:
             redacted[field_name] = dict(field_payload)
     return redacted
+
+
+def _seed_value(section: str, field: str) -> Any:
+    values: Dict[tuple[str, str], Any] = {
+        ('main_model', 'base_url'): config.OR_BASE,
+        ('main_model', 'model'): config.OR_MODEL,
+        ('main_model', 'api_key'): config.OR_KEY,
+        ('main_model', 'referer'): config.OR_REFERER,
+        ('main_model', 'app_name'): config.OR_TITLE_BASE,
+        ('main_model', 'title_llm'): config.OR_TITLE_LLM,
+        ('main_model', 'title_arbiter'): config.OR_TITLE_ARBITER,
+        ('main_model', 'title_resumer'): config.OR_TITLE_RESUMER,
+        ('main_model', 'temperature'): 0.4,
+        ('main_model', 'top_p'): 1.0,
+        ('arbiter_model', 'model'): config.ARBITER_MODEL,
+        ('arbiter_model', 'temperature'): 0.0,
+        ('arbiter_model', 'top_p'): 1.0,
+        ('arbiter_model', 'timeout_s'): config.ARBITER_TIMEOUT_S,
+        ('summary_model', 'model'): config.SUMMARY_MODEL,
+        ('summary_model', 'temperature'): 0.3,
+        ('summary_model', 'top_p'): 1.0,
+        ('embedding', 'endpoint'): config.EMBED_BASE_URL,
+        ('embedding', 'model'): 'intfloat/multilingual-e5-small',
+        ('embedding', 'token'): config.EMBED_TOKEN,
+        ('embedding', 'dimensions'): config.EMBED_DIM,
+        ('embedding', 'top_k'): config.MEMORY_TOP_K,
+        ('database', 'backend'): 'postgresql',
+        ('services', 'searxng_url'): config.SEARXNG_URL,
+        ('services', 'searxng_results'): config.SEARXNG_RESULTS,
+        ('services', 'crawl4ai_url'): config.CRAWL4AI_URL,
+        ('services', 'crawl4ai_token'): config.CRAWL4AI_TOKEN,
+        ('services', 'crawl4ai_top_n'): config.CRAWL4AI_TOP_N,
+        ('services', 'crawl4ai_max_chars'): config.CRAWL4AI_MAX_CHARS,
+        ('resources', 'llm_identity_path'): config.FRIDA_LLM_IDENTITY_PATH,
+        ('resources', 'user_identity_path'): config.FRIDA_USER_IDENTITY_PATH,
+    }
+    spec = get_field_spec(section, field)
+    return values.get((section, field), spec.seed_default)
+
+
+def build_env_seed_bundle(section: str) -> SectionSeedBundle:
+    spec = get_section_spec(section)
+    payload: Dict[str, Dict[str, Any]] = {}
+    secret_values: Dict[str, str] = {}
+
+    for field in spec.fields:
+        value = _seed_value(section, field.key)
+
+        if field.is_secret:
+            is_set = False
+            if field.seed_from_env and value not in (None, ''):
+                secret_values[field.key] = str(value)
+                is_set = True
+
+            payload[field.key] = {
+                'is_secret': True,
+                'is_set': is_set,
+                'origin': 'env_seed',
+            }
+            continue
+
+        payload[field.key] = {
+            'value': value,
+            'is_secret': False,
+            'origin': 'env_seed',
+        }
+
+    return SectionSeedBundle(section=section, payload=payload, secret_values=secret_values)
+
+
+def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
+    existing = {str(section) for section in existing_sections}
+    return tuple(section for section in SECTION_NAMES if section not in existing)
+
+
+def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
+    return tuple(build_env_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
