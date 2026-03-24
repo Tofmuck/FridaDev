@@ -30,10 +30,10 @@
     <section class="admin-hero">
       <div class="admin-copy">
         <p id="admin-phase7-note" class="admin-lead">
-          Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee arrive par tranches.
+          Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee s'ouvre section par section.
         </p>
         <p class="admin-sublead">
-          Cette premiere facade reste volontairement epuree: elle expose l'etat runtime, la source effective par section et le statut du bootstrap.
+          Cette facade reste volontairement epuree: vue d'ensemble globale, puis un premier bloc complet pour le modele principal.
         </p>
       </div>
 
@@ -54,8 +54,67 @@
     </section>
 
     <p id="adminStatusBanner" class="admin-status" role="status" aria-live="polite">
-      Chargement du statut runtime…
+      Chargement du statut runtime...
     </p>
+
+    <section class="admin-section-block admin-main-model-block" aria-labelledby="admin-main-model-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Premier bloc detaille</p>
+          <h2 id="admin-main-model-title">Modele principal</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminMainModelDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminMainModelValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminMainModelSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Ce premier formulaire fixe le pattern V1: source visible, secret masque, remplacement explicite et sauvegarde a la section.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminMainModelSource" class="admin-chip">Section: chargement</span>
+        <span id="adminMainModelApiKeySource" class="admin-chip">API key: chargement</span>
+        <span id="adminMainModelApiKeyState" class="admin-chip">Secret: inconnu</span>
+      </div>
+
+      <p id="adminMainModelStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du modele principal...
+      </p>
+
+      <form id="adminMainModelForm" class="admin-form" novalidate>
+        <div id="adminMainModelFields" class="admin-form-grid"></div>
+
+        <section class="admin-secret-card" aria-labelledby="admin-main-model-secret-title">
+          <div class="admin-secret-head">
+            <div>
+              <p class="admin-kicker">Secret</p>
+              <h3 id="admin-main-model-secret-title">API key OpenRouter</h3>
+            </div>
+            <span id="adminMainModelApiKeyMask" class="admin-secret-mask">Masque</span>
+          </div>
+          <p class="admin-secret-help">
+            Le secret actuel n'est jamais re-affiche. Laisse le champ vide pour le conserver.
+          </p>
+          <label class="admin-field admin-field-wide" for="adminMainModelApiKeyReplace">
+            <span>Remplacement</span>
+            <input
+              id="adminMainModelApiKeyReplace"
+              name="api_key"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Saisir un nouveau secret"
+            />
+            <small>Le backend n'accepte que replace_value pour un secret.</small>
+          </label>
+          <p id="adminMainModelFieldError-api_key" class="admin-field-error" hidden></p>
+        </section>
+      </form>
+
+      <div id="adminMainModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
 
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
       <div class="admin-section-head">
@@ -63,7 +122,7 @@
           <p class="admin-kicker">Vue d'ensemble</p>
           <h2 id="admin-sections-title">Sections V1</h2>
         </div>
-        <p class="admin-section-note">Lecture seule dans cette tranche. Les formulaires section par section arrivent ensuite.</p>
+        <p class="admin-section-note">Les autres formulaires section par section arrivent ensuite.</p>
       </div>
       <div id="adminSectionGrid" class="admin-section-grid"></div>
     </section>

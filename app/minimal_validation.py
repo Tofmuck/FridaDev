@@ -352,6 +352,11 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="admin.js"',
         'id="adminRefresh"',
         'id="adminStatusBanner"',
+        'id="adminMainModelForm"',
+        'id="adminMainModelValidate"',
+        'id="adminMainModelSave"',
+        'id="adminMainModelApiKeyReplace"',
+        'id="adminMainModelChecks"',
         'id="adminSectionGrid"',
     ]
     for marker in admin_markers:
@@ -360,7 +365,11 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     admin_js_markers = [
         "/api/admin/settings/status",
+        "/api/admin/settings/main-model",
+        "/api/admin/settings/main-model/validate",
         "frida.adminToken",
+        "adminMainModelSave",
+        "adminMainModelApiKeyReplace",
         "adminSectionGrid",
     ]
     for marker in admin_js_markers:
