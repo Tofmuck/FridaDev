@@ -621,6 +621,30 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         finally:
             runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
 
+    def test_normalize_admin_patch_payload_does_not_echo_secret_value_when_encrypt_fails(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        secret_value = 'sk-should-not-leak-via-encrypt-error'
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            raise runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError(
+                f'crypto engine exploded on {value}'
+            )
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            with self.assertRaises(runtime_settings.RuntimeSettingsValidationError) as ctx:
+                runtime_settings.normalize_admin_patch_payload(
+                    'main_model',
+                    {
+                        'api_key': {'replace_value': secret_value},
+                    },
+                )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+
+        self.assertEqual(str(ctx.exception), 'failed to encrypt secret for main_model.api_key')
+        self.assertNotIn(secret_value, str(ctx.exception))
+
     def test_update_runtime_section_uses_external_bootstrap_dsn_and_returns_redacted_payload(self) -> None:
         observed = {
             'dsn': None,
@@ -1120,6 +1144,31 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['crawl4ai_token_runtime']['ok'])
         self.assertIn('db_encrypted', checks['crawl4ai_token_runtime']['detail'])
+
+    def test_validate_runtime_section_does_not_echo_secret_value_when_encrypt_fails(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        secret_value = 'embed-secret-should-not-leak-via-validation'
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            raise runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError(
+                f'validation crypto error on {value}'
+            )
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            with self.assertRaises(runtime_settings.RuntimeSettingsValidationError) as ctx:
+                runtime_settings.validate_runtime_section(
+                    'embedding',
+                    {
+                        'token': {'replace_value': secret_value},
+                    },
+                    fetcher=lambda: {},
+                )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+
+        self.assertEqual(str(ctx.exception), 'failed to encrypt secret for embedding.token')
+        self.assertNotIn(secret_value, str(ctx.exception))
 
     def test_validate_runtime_section_reports_missing_resource_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

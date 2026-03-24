@@ -1033,6 +1033,54 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             msg=f'secret leaked to log records: {capture.messages!r}',
         )
 
+    def test_patch_admin_settings_encrypt_error_does_not_echo_secret_value(self) -> None:
+        class CaptureHandler(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        secret_value = 'sk-should-not-leak-from-patch-error'
+        original_encrypt = self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        capture = CaptureHandler()
+        target_loggers = (
+            logging.getLogger(),
+            logging.getLogger('frida.server'),
+            logging.getLogger('kiki.adminlog'),
+        )
+        for logger in target_loggers:
+            logger.addHandler(capture)
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            raise self.server.runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError(
+                f'crypto engine exploded on {value}'
+            )
+
+        self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/main-model',
+                json={'payload': {'api_key': {'replace_value': secret_value}}},
+            )
+        finally:
+            self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+            for logger in target_loggers:
+                logger.removeHandler(capture)
+
+        self.assertEqual(response.status_code, 400)
+        body = response.get_data(as_text=True)
+        self.assertIn('failed to encrypt secret for main_model.api_key', body)
+        self.assertNotIn(secret_value, body)
+        if self.server.admin_logs.LOG_PATH.exists():
+            admin_log_text = self.server.admin_logs.LOG_PATH.read_text(encoding='utf-8')
+            self.assertNotIn(secret_value, admin_log_text)
+        self.assertFalse(
+            any(secret_value in message for message in capture.messages),
+            msg=f'secret leaked to log records: {capture.messages!r}',
+        )
+
     def test_admin_logs_route_keeps_legacy_contract(self) -> None:
         original_read_logs = self.server.admin_logs.read_logs
         observed = {'limit': None}
@@ -1181,6 +1229,54 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertFalse(data['ok'])
         self.assertIn('ambiguous secret patch payload', data['error'])
+
+    def test_post_admin_settings_validate_encrypt_error_does_not_echo_secret_value(self) -> None:
+        class CaptureHandler(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        secret_value = 'embed-secret-should-not-leak-from-validate-error'
+        original_encrypt = self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        capture = CaptureHandler()
+        target_loggers = (
+            logging.getLogger(),
+            logging.getLogger('frida.server'),
+            logging.getLogger('kiki.adminlog'),
+        )
+        for logger in target_loggers:
+            logger.addHandler(capture)
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            raise self.server.runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError(
+                f'validate crypto failure on {value}'
+            )
+
+        self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            response = self.client.post(
+                '/api/admin/settings/embedding/validate',
+                json={'payload': {'token': {'replace_value': secret_value}}},
+            )
+        finally:
+            self.server.runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+            for logger in target_loggers:
+                logger.removeHandler(capture)
+
+        self.assertEqual(response.status_code, 400)
+        body = response.get_data(as_text=True)
+        self.assertIn('failed to encrypt secret for embedding.token', body)
+        self.assertNotIn(secret_value, body)
+        if self.server.admin_logs.LOG_PATH.exists():
+            admin_log_text = self.server.admin_logs.LOG_PATH.read_text(encoding='utf-8')
+            self.assertNotIn(secret_value, admin_log_text)
+        self.assertFalse(
+            any(secret_value in message for message in capture.messages),
+            msg=f'secret leaked to log records: {capture.messages!r}',
+        )
 
 
 if __name__ == '__main__':

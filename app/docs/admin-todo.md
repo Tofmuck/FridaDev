@@ -382,7 +382,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Refuser tout melange ambigu entre `value`, `replace_value` et `value_encrypted` dans les payloads d'update secret.
 - [x] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings`.
 - [x] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings_history`.
-- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans les logs, traces d'erreur ou retours d'API.
+- [x] Normaliser `replace_value` sans jamais le reinjecter en clair dans les logs, traces d'erreur ou retours d'API.
 - [x] Ouvrir l'ecriture chiffree de `main_model.api_key`.
 - [x] Ouvrir l'ecriture chiffree de `embedding.token`.
 - [x] Ouvrir l'ecriture chiffree de `services.crawl4ai_token`.
@@ -404,7 +404,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter des tests backend sur un `PATCH` secret valide pour `database`.
 - [x] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
 - [x] Ajouter des tests backend sur le cas `value_encrypted` indechiffrable.
-- [ ] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
+- [x] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
 - [ ] Prevoir un commit isole pour la couche crypto.
 - [x] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
 - [ ] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.

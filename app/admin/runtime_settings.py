@@ -807,7 +807,7 @@ def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> D
             except runtime_secrets.RuntimeSettingsCryptoKeyMissingError as exc:
                 raise RuntimeSettingsValidationError(str(exc)) from exc
             except runtime_secrets.RuntimeSettingsCryptoEngineError as exc:
-                raise RuntimeSettingsValidationError(f'failed to encrypt secret for {field_ref}: {exc}') from exc
+                raise RuntimeSettingsValidationError(f'failed to encrypt secret for {field_ref}') from exc
 
             normalized[str(field_name)] = {
                 'is_secret': True,
