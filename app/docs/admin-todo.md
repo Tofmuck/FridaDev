@@ -309,10 +309,10 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Implementer le comportement `table de settings vide = fallback env transitoire + statut visible`.
 - [x] Implementer le comportement `DB indisponible = fallback env transitoire quand il existe, sinon erreur de configuration explicite`.
 - [x] Implementer le comportement `secret requis absent = erreur de configuration explicite, sans fuite de valeur`.
-- [ ] Laisser explicitement `app/admin/admin_logs.py` hors de cette bascule V1.
-- [ ] Laisser explicitement `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT` hors de cette bascule V1.
-- [ ] Laisser explicitement `FRIDA_MEMORY_DB_DSN` dans le bootstrap DB minimal externe tant que la transition n'est pas achevee.
-- [ ] Prevoir un commit isole pour la couche backend de lecture avant remplacement des usages.
+- [x] Laisser explicitement `app/admin/admin_logs.py` hors de cette bascule V1.
+- [x] Laisser explicitement `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT` hors de cette bascule V1.
+- [x] Laisser explicitement `FRIDA_MEMORY_DB_DSN` dans le bootstrap DB minimal externe tant que la transition n'est pas achevee.
+- [x] Prevoir un commit isole pour la couche backend de lecture avant remplacement des usages.
 
 ### Phase 4 - Remplacement progressif des lectures actuelles dans le code
 

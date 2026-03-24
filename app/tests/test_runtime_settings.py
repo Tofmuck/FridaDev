@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -254,6 +256,85 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         view = runtime_settings.get_runtime_section('database', fetcher=lambda: {})
         with self.assertRaisesRegex(runtime_settings.RuntimeSettingsSecretRequiredError, 'missing secret config: database.dsn'):
             runtime_settings.require_secret_configured(view, 'dsn')
+
+    def test_runtime_settings_layer_does_not_import_admin_logs(self) -> None:
+        module_path = APP_DIR / 'admin' / 'runtime_settings.py'
+        tree = ast.parse(module_path.read_text())
+        imported_modules = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported_modules.update(alias.name for alias in node.names)
+            if isinstance(node, ast.ImportFrom) and node.module:
+                imported_modules.add(node.module)
+
+        self.assertNotIn('admin_logs', imported_modules)
+        self.assertNotIn('admin.admin_logs', imported_modules)
+
+    def test_web_host_and_port_stay_out_of_runtime_settings_scope(self) -> None:
+        env_vars = {
+            field.env_var
+            for spec in runtime_settings.SECTION_SPECS.values()
+            for field in spec.fields
+            if field.env_var
+        }
+        self.assertNotIn('FRIDA_WEB_HOST', env_vars)
+        self.assertNotIn('FRIDA_WEB_PORT', env_vars)
+
+    def test_default_db_fetch_uses_external_bootstrap_dsn(self) -> None:
+        observed = {'dsn': None, 'query': None}
+
+        class FakeUndefinedTable(Exception):
+            pass
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query):
+                observed['query'] = query
+
+            def fetchall(self):
+                return []
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_psycopg = sys.modules.get('psycopg')
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(
+            connect=fake_connect,
+            errors=types.SimpleNamespace(UndefinedTable=FakeUndefinedTable),
+        )
+        try:
+            rows = runtime_settings._default_db_fetch_all_sections()
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+
+        self.assertEqual(rows, {})
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertIn('FROM runtime_settings', observed['query'])
 
     def test_cache_can_be_invalidated(self) -> None:
         calls = {'count': 0}
