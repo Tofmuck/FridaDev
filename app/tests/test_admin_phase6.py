@@ -99,6 +99,15 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertNotIn("restartService", source)
         self.assertNotIn("admin-old", source)
 
+    def test_admin_js_extracts_shared_section_helpers(self) -> None:
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertIn("const renderCheckList =", source)
+        self.assertIn("const setSectionControlsDisabled =", source)
+        self.assertIn("const buildSectionPatchPayload =", source)
+        self.assertIn("const updateSectionDirtyChip =", source)
+        self.assertIn("const applySectionDraftToForm =", source)
+
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
         self.assertFalse((APP_DIR / "web" / "admin-old.js").exists())

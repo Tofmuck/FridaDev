@@ -413,6 +413,162 @@
   const embeddingFieldInput = (field) => document.getElementById(`adminEmbedding-${field}`);
   const embeddingErrorElement = (field) => document.getElementById(`adminEmbeddingFieldError-${field}`);
 
+  const renderCheckList = (target, checks = []) => {
+    if (!target) return;
+    if (!checks.length) {
+      target.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    checks.forEach((check) => {
+      const row = document.createElement("article");
+      row.className = "admin-check";
+      row.dataset.ok = check.ok ? "true" : "false";
+
+      const name = document.createElement("strong");
+      name.textContent = check.name;
+
+      const detail = document.createElement("span");
+      detail.textContent = check.detail;
+
+      row.appendChild(name);
+      row.appendChild(detail);
+      fragment.appendChild(row);
+    });
+
+    target.replaceChildren(fragment);
+  };
+
+  const setSectionControlsDisabled = (
+    {
+      saveButton,
+      validateButton,
+      fieldSpecs,
+      inputForField,
+      extraInputs = [],
+    },
+    disabled,
+  ) => {
+    if (saveButton) saveButton.disabled = disabled;
+    if (validateButton) validateButton.disabled = disabled;
+    extraInputs.forEach((input) => {
+      if (input) input.disabled = disabled;
+    });
+    fieldSpecs.forEach((spec) => {
+      const input = inputForField(spec.key);
+      if (input) input.disabled = disabled;
+    });
+  };
+
+  const buildSectionPatchPayload = ({
+    baseline,
+    draft,
+    emptyDraft,
+    fieldSpecs,
+    integerFields = [],
+    secretKey = null,
+  }) => {
+    const payload = {};
+    const localErrors = {};
+    const currentBaseline = baseline || emptyDraft();
+    const currentDraft = draft || emptyDraft();
+    const integerFieldSet = new Set(integerFields);
+
+    fieldSpecs.forEach((spec) => {
+      const nextRaw = toDraftString(currentDraft[spec.key]);
+      const currentRaw = toDraftString(currentBaseline[spec.key]);
+      if (nextRaw === currentRaw) return;
+
+      if (spec.inputType === "number") {
+        const trimmed = nextRaw.trim();
+        if (!trimmed) {
+          localErrors[spec.key] = "Valeur numerique requise.";
+          return;
+        }
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed)) {
+          localErrors[spec.key] = "Valeur numerique invalide.";
+          return;
+        }
+        payload[spec.key] = {
+          value: integerFieldSet.has(spec.key) ? Math.trunc(parsed) : parsed,
+        };
+        return;
+      }
+
+      payload[spec.key] = { value: nextRaw };
+    });
+
+    if (secretKey) {
+      const replaceValue = toDraftString(currentDraft[secretKey]).trim();
+      if (replaceValue) {
+        payload[secretKey] = { replace_value: replaceValue };
+      }
+    }
+
+    return {
+      payload,
+      localErrors,
+      dirtyCount: Object.keys(payload).length,
+    };
+  };
+
+  const updateSectionDirtyChip = ({
+    baseline,
+    draft,
+    emptyDraft,
+    fieldSpecs,
+    fieldElement,
+    dirtyChip,
+    secretKey = null,
+  }) => {
+    const currentBaseline = baseline || emptyDraft();
+    const currentDraft = draft || emptyDraft();
+    let dirty = false;
+
+    fieldSpecs.forEach((spec) => {
+      const field = fieldElement(spec.key);
+      const changed = toDraftString(currentDraft[spec.key]) !== toDraftString(currentBaseline[spec.key]);
+      if (field) field.dataset.dirty = changed ? "true" : "false";
+      if (changed) dirty = true;
+    });
+
+    if (secretKey) {
+      dirty = dirty || Boolean(toDraftString(currentDraft[secretKey]).trim());
+    }
+
+    if (dirtyChip) {
+      dirtyChip.dataset.state = dirty ? "dirty" : "clean";
+      dirtyChip.textContent = dirty ? "Modifications" : "A jour";
+    }
+  };
+
+  const applySectionDraftToForm = ({
+    draft,
+    emptyDraft,
+    fieldSpecs,
+    inputForField,
+    secretInput = null,
+    secretKey = null,
+    onDirtyUpdate = null,
+  }) => {
+    const currentDraft = draft || emptyDraft();
+    fieldSpecs.forEach((spec) => {
+      const input = inputForField(spec.key);
+      if (!input) return;
+      const nextValue = toDraftString(currentDraft[spec.key]);
+      if (input.value !== nextValue) input.value = nextValue;
+    });
+    if (secretInput && secretKey) {
+      const nextSecret = toDraftString(currentDraft[secretKey]);
+      if (secretInput.value !== nextSecret) {
+        secretInput.value = nextSecret;
+      }
+    }
+    if (onDirtyUpdate) onDirtyUpdate();
+  };
+
   const setFieldError = (field, message = "") => {
     const isSecretField = field === "api_key";
     const host = isSecretField ? document.querySelector(".admin-secret-card") : mainModelFieldElement(field);
@@ -436,118 +592,29 @@
   };
 
   const setMainModelControlsDisabled = (disabled) => {
-    if (elements.mainModelSave) elements.mainModelSave.disabled = disabled;
-    if (elements.mainModelValidate) elements.mainModelValidate.disabled = disabled;
-    if (elements.mainModelApiKeyReplace) elements.mainModelApiKeyReplace.disabled = disabled;
-    mainModelFieldSpecs.forEach((spec) => {
-      const input = mainModelFieldInput(spec.key);
-      if (input) input.disabled = disabled;
-    });
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.mainModelSave,
+        validateButton: elements.mainModelValidate,
+        fieldSpecs: mainModelFieldSpecs,
+        inputForField: mainModelFieldInput,
+        extraInputs: [elements.mainModelApiKeyReplace],
+      },
+      disabled,
+    );
   };
 
   const renderMainModelChecks = (checks = []) => {
-    if (!elements.mainModelChecks) return;
-    if (!checks.length) {
-      elements.mainModelChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    checks.forEach((check) => {
-      const row = document.createElement("article");
-      row.className = "admin-check";
-      row.dataset.ok = check.ok ? "true" : "false";
-
-      const name = document.createElement("strong");
-      name.textContent = check.name;
-
-      const detail = document.createElement("span");
-      detail.textContent = check.detail;
-
-      row.appendChild(name);
-      row.appendChild(detail);
-      fragment.appendChild(row);
-    });
-
-    elements.mainModelChecks.replaceChildren(fragment);
+    renderCheckList(elements.mainModelChecks, checks);
   };
   const renderArbiterModelChecks = (checks = []) => {
-    if (!elements.arbiterModelChecks) return;
-    if (!checks.length) {
-      elements.arbiterModelChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    checks.forEach((check) => {
-      const row = document.createElement("article");
-      row.className = "admin-check";
-      row.dataset.ok = check.ok ? "true" : "false";
-
-      const name = document.createElement("strong");
-      name.textContent = check.name;
-
-      const detail = document.createElement("span");
-      detail.textContent = check.detail;
-
-      row.appendChild(name);
-      row.appendChild(detail);
-      fragment.appendChild(row);
-    });
-
-    elements.arbiterModelChecks.replaceChildren(fragment);
+    renderCheckList(elements.arbiterModelChecks, checks);
   };
   const renderSummaryModelChecks = (checks = []) => {
-    if (!elements.summaryModelChecks) return;
-    if (!checks.length) {
-      elements.summaryModelChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    checks.forEach((check) => {
-      const row = document.createElement("article");
-      row.className = "admin-check";
-      row.dataset.ok = check.ok ? "true" : "false";
-
-      const name = document.createElement("strong");
-      name.textContent = check.name;
-
-      const detail = document.createElement("span");
-      detail.textContent = check.detail;
-
-      row.appendChild(name);
-      row.appendChild(detail);
-      fragment.appendChild(row);
-    });
-
-    elements.summaryModelChecks.replaceChildren(fragment);
+    renderCheckList(elements.summaryModelChecks, checks);
   };
   const renderEmbeddingChecks = (checks = []) => {
-    if (!elements.embeddingChecks) return;
-    if (!checks.length) {
-      elements.embeddingChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    checks.forEach((check) => {
-      const row = document.createElement("article");
-      row.className = "admin-check";
-      row.dataset.ok = check.ok ? "true" : "false";
-
-      const name = document.createElement("strong");
-      name.textContent = check.name;
-
-      const detail = document.createElement("span");
-      detail.textContent = check.detail;
-
-      row.appendChild(name);
-      row.appendChild(detail);
-      fragment.appendChild(row);
-    });
-
-    elements.embeddingChecks.replaceChildren(fragment);
+    renderCheckList(elements.embeddingChecks, checks);
   };
 
   const ensureMainModelFieldSkeleton = () => {
@@ -904,172 +971,97 @@
   };
 
   const buildMainModelPatchPayload = () => {
-    const payload = {};
-    const localErrors = {};
-    const baseline = state.mainModel.baseline || emptyMainModelDraft();
-    const draft = state.mainModel.draft || emptyMainModelDraft();
-
-    mainModelFieldSpecs.forEach((spec) => {
-      const nextRaw = toDraftString(draft[spec.key]);
-      const currentRaw = toDraftString(baseline[spec.key]);
-      if (nextRaw === currentRaw) return;
-
-      if (spec.inputType === "number") {
-        const trimmed = nextRaw.trim();
-        if (!trimmed) {
-          localErrors[spec.key] = "Valeur numerique requise.";
-          return;
-        }
-        const parsed = Number(trimmed);
-        if (!Number.isFinite(parsed)) {
-          localErrors[spec.key] = "Valeur numerique invalide.";
-          return;
-        }
-        payload[spec.key] = { value: parsed };
-        return;
-      }
-
-      payload[spec.key] = { value: nextRaw };
+    return buildSectionPatchPayload({
+      baseline: state.mainModel.baseline,
+      draft: state.mainModel.draft,
+      emptyDraft: emptyMainModelDraft,
+      fieldSpecs: mainModelFieldSpecs,
+      secretKey: "api_key",
     });
-
-    const replaceValue = toDraftString(draft.api_key).trim();
-    if (replaceValue) {
-      payload.api_key = { replace_value: replaceValue };
-    }
-
-    return {
-      payload,
-      localErrors,
-      dirtyCount: Object.keys(payload).length,
-    };
   };
 
   const updateDirtyChip = () => {
-    const baseline = state.mainModel.baseline || emptyMainModelDraft();
-    const draft = state.mainModel.draft || emptyMainModelDraft();
-    let dirty = false;
-
-    mainModelFieldSpecs.forEach((spec) => {
-      const field = mainModelFieldElement(spec.key);
-      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
-      if (field) field.dataset.dirty = changed ? "true" : "false";
-      if (changed) dirty = true;
+    updateSectionDirtyChip({
+      baseline: state.mainModel.baseline,
+      draft: state.mainModel.draft,
+      emptyDraft: emptyMainModelDraft,
+      fieldSpecs: mainModelFieldSpecs,
+      fieldElement: mainModelFieldElement,
+      dirtyChip: elements.mainModelDirty,
+      secretKey: "api_key",
     });
-
-    const hasSecretChange = Boolean(toDraftString(draft.api_key).trim());
-    dirty = dirty || hasSecretChange;
-
-    if (elements.mainModelDirty) {
-      elements.mainModelDirty.dataset.state = dirty ? "dirty" : "clean";
-      elements.mainModelDirty.textContent = dirty ? "Modifications" : "A jour";
-    }
   };
   const updateArbiterDirtyChip = () => {
-    const baseline = state.arbiterModel.baseline || emptyArbiterModelDraft();
-    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
-    let dirty = false;
-
-    arbiterModelFieldSpecs.forEach((spec) => {
-      const field = arbiterModelFieldElement(spec.key);
-      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
-      if (field) field.dataset.dirty = changed ? "true" : "false";
-      if (changed) dirty = true;
+    updateSectionDirtyChip({
+      baseline: state.arbiterModel.baseline,
+      draft: state.arbiterModel.draft,
+      emptyDraft: emptyArbiterModelDraft,
+      fieldSpecs: arbiterModelFieldSpecs,
+      fieldElement: arbiterModelFieldElement,
+      dirtyChip: elements.arbiterModelDirty,
     });
-
-    if (elements.arbiterModelDirty) {
-      elements.arbiterModelDirty.dataset.state = dirty ? "dirty" : "clean";
-      elements.arbiterModelDirty.textContent = dirty ? "Modifications" : "A jour";
-    }
   };
   const updateSummaryDirtyChip = () => {
-    const baseline = state.summaryModel.baseline || emptySummaryModelDraft();
-    const draft = state.summaryModel.draft || emptySummaryModelDraft();
-    let dirty = false;
-
-    summaryModelFieldSpecs.forEach((spec) => {
-      const field = summaryModelFieldElement(spec.key);
-      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
-      if (field) field.dataset.dirty = changed ? "true" : "false";
-      if (changed) dirty = true;
+    updateSectionDirtyChip({
+      baseline: state.summaryModel.baseline,
+      draft: state.summaryModel.draft,
+      emptyDraft: emptySummaryModelDraft,
+      fieldSpecs: summaryModelFieldSpecs,
+      fieldElement: summaryModelFieldElement,
+      dirtyChip: elements.summaryModelDirty,
     });
-
-    if (elements.summaryModelDirty) {
-      elements.summaryModelDirty.dataset.state = dirty ? "dirty" : "clean";
-      elements.summaryModelDirty.textContent = dirty ? "Modifications" : "A jour";
-    }
   };
   const updateEmbeddingDirtyChip = () => {
-    const baseline = state.embedding.baseline || emptyEmbeddingDraft();
-    const draft = state.embedding.draft || emptyEmbeddingDraft();
-    let dirty = false;
-
-    embeddingFieldSpecs.forEach((spec) => {
-      const field = embeddingFieldElement(spec.key);
-      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
-      if (field) field.dataset.dirty = changed ? "true" : "false";
-      if (changed) dirty = true;
+    updateSectionDirtyChip({
+      baseline: state.embedding.baseline,
+      draft: state.embedding.draft,
+      emptyDraft: emptyEmbeddingDraft,
+      fieldSpecs: embeddingFieldSpecs,
+      fieldElement: embeddingFieldElement,
+      dirtyChip: elements.embeddingDirty,
+      secretKey: "token",
     });
-
-    const hasSecretChange = Boolean(toDraftString(draft.token).trim());
-    dirty = dirty || hasSecretChange;
-
-    if (elements.embeddingDirty) {
-      elements.embeddingDirty.dataset.state = dirty ? "dirty" : "clean";
-      elements.embeddingDirty.textContent = dirty ? "Modifications" : "A jour";
-    }
   };
 
   const applyMainModelDraftToForm = () => {
-    const draft = state.mainModel.draft || emptyMainModelDraft();
-    mainModelFieldSpecs.forEach((spec) => {
-      const input = mainModelFieldInput(spec.key);
-      if (!input) return;
-      const nextValue = toDraftString(draft[spec.key]);
-      if (input.value !== nextValue) input.value = nextValue;
+    applySectionDraftToForm({
+      draft: state.mainModel.draft,
+      emptyDraft: emptyMainModelDraft,
+      fieldSpecs: mainModelFieldSpecs,
+      inputForField: mainModelFieldInput,
+      secretInput: elements.mainModelApiKeyReplace,
+      secretKey: "api_key",
+      onDirtyUpdate: updateDirtyChip,
     });
-    if (elements.mainModelApiKeyReplace) {
-      const nextSecret = toDraftString(draft.api_key);
-      if (elements.mainModelApiKeyReplace.value !== nextSecret) {
-        elements.mainModelApiKeyReplace.value = nextSecret;
-      }
-    }
-    updateDirtyChip();
   };
   const applyArbiterDraftToForm = () => {
-    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
-    arbiterModelFieldSpecs.forEach((spec) => {
-      const input = arbiterModelFieldInput(spec.key);
-      if (!input) return;
-      const nextValue = toDraftString(draft[spec.key]);
-      if (input.value !== nextValue) input.value = nextValue;
+    applySectionDraftToForm({
+      draft: state.arbiterModel.draft,
+      emptyDraft: emptyArbiterModelDraft,
+      fieldSpecs: arbiterModelFieldSpecs,
+      inputForField: arbiterModelFieldInput,
+      onDirtyUpdate: updateArbiterDirtyChip,
     });
-    updateArbiterDirtyChip();
   };
   const applySummaryDraftToForm = () => {
-    const draft = state.summaryModel.draft || emptySummaryModelDraft();
-    summaryModelFieldSpecs.forEach((spec) => {
-      const input = summaryModelFieldInput(spec.key);
-      if (!input) return;
-      const nextValue = toDraftString(draft[spec.key]);
-      if (input.value !== nextValue) input.value = nextValue;
+    applySectionDraftToForm({
+      draft: state.summaryModel.draft,
+      emptyDraft: emptySummaryModelDraft,
+      fieldSpecs: summaryModelFieldSpecs,
+      inputForField: summaryModelFieldInput,
+      onDirtyUpdate: updateSummaryDirtyChip,
     });
-    updateSummaryDirtyChip();
   };
   const applyEmbeddingDraftToForm = () => {
-    const draft = state.embedding.draft || emptyEmbeddingDraft();
-    embeddingFieldSpecs.forEach((spec) => {
-      const input = embeddingFieldInput(spec.key);
-      if (!input) return;
-      const nextValue = toDraftString(draft[spec.key]);
-      if (input.value !== nextValue) input.value = nextValue;
+    applySectionDraftToForm({
+      draft: state.embedding.draft,
+      emptyDraft: emptyEmbeddingDraft,
+      fieldSpecs: embeddingFieldSpecs,
+      inputForField: embeddingFieldInput,
+      secretInput: elements.embeddingTokenReplace,
+      secretKey: "token",
+      onDirtyUpdate: updateEmbeddingDirtyChip,
     });
-    if (elements.embeddingTokenReplace) {
-      const nextSecret = toDraftString(draft.token);
-      if (elements.embeddingTokenReplace.value !== nextSecret) {
-        elements.embeddingTokenReplace.value = nextSecret;
-      }
-    }
-    updateEmbeddingDirtyChip();
   };
 
   const applyMainModelView = (responsePayload) => {
@@ -1300,29 +1292,38 @@
     });
   };
   const setArbiterControlsDisabled = (disabled) => {
-    if (elements.arbiterModelSave) elements.arbiterModelSave.disabled = disabled;
-    if (elements.arbiterModelValidate) elements.arbiterModelValidate.disabled = disabled;
-    arbiterModelFieldSpecs.forEach((spec) => {
-      const input = arbiterModelFieldInput(spec.key);
-      if (input) input.disabled = disabled;
-    });
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.arbiterModelSave,
+        validateButton: elements.arbiterModelValidate,
+        fieldSpecs: arbiterModelFieldSpecs,
+        inputForField: arbiterModelFieldInput,
+      },
+      disabled,
+    );
   };
   const setSummaryControlsDisabled = (disabled) => {
-    if (elements.summaryModelSave) elements.summaryModelSave.disabled = disabled;
-    if (elements.summaryModelValidate) elements.summaryModelValidate.disabled = disabled;
-    summaryModelFieldSpecs.forEach((spec) => {
-      const input = summaryModelFieldInput(spec.key);
-      if (input) input.disabled = disabled;
-    });
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.summaryModelSave,
+        validateButton: elements.summaryModelValidate,
+        fieldSpecs: summaryModelFieldSpecs,
+        inputForField: summaryModelFieldInput,
+      },
+      disabled,
+    );
   };
   const setEmbeddingControlsDisabled = (disabled) => {
-    if (elements.embeddingSave) elements.embeddingSave.disabled = disabled;
-    if (elements.embeddingValidate) elements.embeddingValidate.disabled = disabled;
-    if (elements.embeddingTokenReplace) elements.embeddingTokenReplace.disabled = disabled;
-    embeddingFieldSpecs.forEach((spec) => {
-      const input = embeddingFieldInput(spec.key);
-      if (input) input.disabled = disabled;
-    });
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.embeddingSave,
+        validateButton: elements.embeddingValidate,
+        fieldSpecs: embeddingFieldSpecs,
+        inputForField: embeddingFieldInput,
+        extraInputs: [elements.embeddingTokenReplace],
+      },
+      disabled,
+    );
   };
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
@@ -1356,118 +1357,31 @@
     return errors;
   };
   const buildArbiterPatchPayload = () => {
-    const payload = {};
-    const localErrors = {};
-    const baseline = state.arbiterModel.baseline || emptyArbiterModelDraft();
-    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
-
-    arbiterModelFieldSpecs.forEach((spec) => {
-      const nextRaw = toDraftString(draft[spec.key]);
-      const currentRaw = toDraftString(baseline[spec.key]);
-      if (nextRaw === currentRaw) return;
-
-      if (spec.inputType === "number") {
-        const trimmed = nextRaw.trim();
-        if (!trimmed) {
-          localErrors[spec.key] = "Valeur numerique requise.";
-          return;
-        }
-        const parsed = Number(trimmed);
-        if (!Number.isFinite(parsed)) {
-          localErrors[spec.key] = "Valeur numerique invalide.";
-          return;
-        }
-        payload[spec.key] = {
-          value: spec.key === "timeout_s" ? Math.trunc(parsed) : parsed,
-        };
-        return;
-      }
-
-      payload[spec.key] = { value: nextRaw };
+    return buildSectionPatchPayload({
+      baseline: state.arbiterModel.baseline,
+      draft: state.arbiterModel.draft,
+      emptyDraft: emptyArbiterModelDraft,
+      fieldSpecs: arbiterModelFieldSpecs,
+      integerFields: ["timeout_s"],
     });
-
-    return {
-      payload,
-      localErrors,
-      dirtyCount: Object.keys(payload).length,
-    };
   };
   const buildSummaryPatchPayload = () => {
-    const payload = {};
-    const localErrors = {};
-    const baseline = state.summaryModel.baseline || emptySummaryModelDraft();
-    const draft = state.summaryModel.draft || emptySummaryModelDraft();
-
-    summaryModelFieldSpecs.forEach((spec) => {
-      const nextRaw = toDraftString(draft[spec.key]);
-      const currentRaw = toDraftString(baseline[spec.key]);
-      if (nextRaw === currentRaw) return;
-
-      if (spec.inputType === "number") {
-        const trimmed = nextRaw.trim();
-        if (!trimmed) {
-          localErrors[spec.key] = "Valeur numerique requise.";
-          return;
-        }
-        const parsed = Number(trimmed);
-        if (!Number.isFinite(parsed)) {
-          localErrors[spec.key] = "Valeur numerique invalide.";
-          return;
-        }
-        payload[spec.key] = { value: parsed };
-        return;
-      }
-
-      payload[spec.key] = { value: nextRaw };
+    return buildSectionPatchPayload({
+      baseline: state.summaryModel.baseline,
+      draft: state.summaryModel.draft,
+      emptyDraft: emptySummaryModelDraft,
+      fieldSpecs: summaryModelFieldSpecs,
     });
-
-    return {
-      payload,
-      localErrors,
-      dirtyCount: Object.keys(payload).length,
-    };
   };
   const buildEmbeddingPatchPayload = () => {
-    const payload = {};
-    const localErrors = {};
-    const baseline = state.embedding.baseline || emptyEmbeddingDraft();
-    const draft = state.embedding.draft || emptyEmbeddingDraft();
-
-    embeddingFieldSpecs.forEach((spec) => {
-      const nextRaw = toDraftString(draft[spec.key]);
-      const currentRaw = toDraftString(baseline[spec.key]);
-      if (nextRaw === currentRaw) return;
-
-      if (spec.inputType === "number") {
-        const trimmed = nextRaw.trim();
-        if (!trimmed) {
-          localErrors[spec.key] = "Valeur numerique requise.";
-          return;
-        }
-        const parsed = Number(trimmed);
-        if (!Number.isFinite(parsed)) {
-          localErrors[spec.key] = "Valeur numerique invalide.";
-          return;
-        }
-        payload[spec.key] = {
-          value: Math.trunc(parsed),
-        };
-        return;
-      }
-
-      payload[spec.key] = { value: nextRaw };
+    return buildSectionPatchPayload({
+      baseline: state.embedding.baseline,
+      draft: state.embedding.draft,
+      emptyDraft: emptyEmbeddingDraft,
+      fieldSpecs: embeddingFieldSpecs,
+      integerFields: embeddingFieldSpecs.map((spec) => spec.key),
+      secretKey: "token",
     });
-
-    const replaceValue = toDraftString(draft.token).trim();
-    if (replaceValue) {
-      payload.token = { replace_value: replaceValue };
-    }
-
-    return {
-      payload,
-      localErrors,
-      dirtyCount: Object.keys(payload).length,
-    };
   };
   const runArbiterValidation = async (payload) => {
     clearArbiterFieldErrors();
