@@ -432,7 +432,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Si la reutilisation directe est propre, brancher `styles.css` dans le nouvel admin.
 - [x] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
 - [x] Construire une section UI dediee au modele principal.
-- [ ] Construire une section UI dediee au modele arbitre.
+- [x] Construire une section UI dediee au modele arbitre.
 - [ ] Construire une section UI dediee au modele resumieur.
 - [ ] Construire une section UI dediee au bloc embeddings.
 - [ ] Construire une section UI dediee au bloc base de donnees.

@@ -33,7 +33,7 @@
           Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee s'ouvre section par section.
         </p>
         <p class="admin-sublead">
-          Cette facade reste volontairement epuree: vue d'ensemble globale, puis un premier bloc complet pour le modele principal.
+          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal et l'arbitre.
         </p>
       </div>
 
@@ -114,6 +114,38 @@
       </form>
 
       <div id="adminMainModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="admin-arbiter-model-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Second bloc detaille</p>
+          <h2 id="admin-arbiter-model-title">Modele arbitre</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminArbiterModelDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminArbiterModelValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminArbiterModelSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc court et fonctionnel: modele, echantillonnage et timeout, avec verification technique avant ecriture.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminArbiterModelSource" class="admin-chip">Section: chargement</span>
+      </div>
+
+      <p id="adminArbiterModelStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du modele arbitre...
+      </p>
+
+      <form id="adminArbiterModelForm" class="admin-form" novalidate>
+        <div id="adminArbiterModelFields" class="admin-form-grid"></div>
+      </form>
+
+      <div id="adminArbiterModelChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
     <section class="admin-section-block" aria-labelledby="admin-sections-title">

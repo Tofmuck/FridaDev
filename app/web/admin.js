@@ -111,9 +111,53 @@
   const mainModelCheckFieldMap = {
     api_key_runtime: "api_key",
   };
+  const arbiterModelFieldSpecs = [
+    {
+      key: "model",
+      label: "Modele",
+      hint: "Modele utilise pour la decision memoire.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "temperature",
+      label: "Temperature",
+      hint: "Echantillonnage propre a l'arbitre.",
+      inputType: "number",
+      step: "0.1",
+      min: "0",
+      max: "2",
+      autocomplete: "off",
+    },
+    {
+      key: "top_p",
+      label: "Top p",
+      hint: "Coupe nucleus de l'arbitre.",
+      inputType: "number",
+      step: "0.05",
+      min: "0.01",
+      max: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "timeout_s",
+      label: "Timeout",
+      hint: "Timeout applique aux appels arbitre.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+  ];
 
   const state = {
     mainModel: {
+      loaded: false,
+      view: null,
+      baseline: null,
+      draft: null,
+    },
+    arbiterModel: {
       loaded: false,
       view: null,
       baseline: null,
@@ -142,6 +186,14 @@
     mainModelApiKeyMask: document.getElementById("adminMainModelApiKeyMask"),
     mainModelApiKeyReplace: document.getElementById("adminMainModelApiKeyReplace"),
     mainModelChecks: document.getElementById("adminMainModelChecks"),
+    arbiterModelForm: document.getElementById("adminArbiterModelForm"),
+    arbiterModelFields: document.getElementById("adminArbiterModelFields"),
+    arbiterModelStatus: document.getElementById("adminArbiterModelStatus"),
+    arbiterModelSave: document.getElementById("adminArbiterModelSave"),
+    arbiterModelValidate: document.getElementById("adminArbiterModelValidate"),
+    arbiterModelDirty: document.getElementById("adminArbiterModelDirty"),
+    arbiterModelSource: document.getElementById("adminArbiterModelSource"),
+    arbiterModelChecks: document.getElementById("adminArbiterModelChecks"),
   };
 
   const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
@@ -227,10 +279,20 @@
     draft.api_key = "";
     return draft;
   };
+  const emptyArbiterModelDraft = () => {
+    const draft = {};
+    arbiterModelFieldSpecs.forEach((spec) => {
+      draft[spec.key] = "";
+    });
+    return draft;
+  };
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
   const mainModelErrorElement = (field) => document.getElementById(`adminMainModelFieldError-${field}`);
+  const arbiterModelFieldElement = (field) => document.querySelector(`[data-arbiter-field="${field}"]`);
+  const arbiterModelFieldInput = (field) => document.getElementById(`adminArbiterModel-${field}`);
+  const arbiterModelErrorElement = (field) => document.getElementById(`adminArbiterModelFieldError-${field}`);
 
   const setFieldError = (field, message = "") => {
     const isSecretField = field === "api_key";
@@ -290,6 +352,32 @@
 
     elements.mainModelChecks.replaceChildren(fragment);
   };
+  const renderArbiterModelChecks = (checks = []) => {
+    if (!elements.arbiterModelChecks) return;
+    if (!checks.length) {
+      elements.arbiterModelChecks.innerHTML = '<p class="admin-check-empty">Aucune validation recente.</p>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    checks.forEach((check) => {
+      const row = document.createElement("article");
+      row.className = "admin-check";
+      row.dataset.ok = check.ok ? "true" : "false";
+
+      const name = document.createElement("strong");
+      name.textContent = check.name;
+
+      const detail = document.createElement("span");
+      detail.textContent = check.detail;
+
+      row.appendChild(name);
+      row.appendChild(detail);
+      fragment.appendChild(row);
+    });
+
+    elements.arbiterModelChecks.replaceChildren(fragment);
+  };
 
   const ensureMainModelFieldSkeleton = () => {
     if (!elements.mainModelFields || elements.mainModelFields.children.length > 0) return;
@@ -342,6 +430,57 @@
 
     elements.mainModelFields.appendChild(fragment);
   };
+  const ensureArbiterModelFieldSkeleton = () => {
+    if (!elements.arbiterModelFields || elements.arbiterModelFields.children.length > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const field = document.createElement("label");
+      field.className = "admin-field";
+      field.dataset.arbiterField = spec.key;
+      field.dataset.dirty = "false";
+      field.setAttribute("for", `adminArbiterModel-${spec.key}`);
+
+      const label = document.createElement("span");
+      label.textContent = spec.label;
+
+      const input = document.createElement("input");
+      input.id = `adminArbiterModel-${spec.key}`;
+      input.name = spec.key;
+      input.type = spec.inputType;
+      input.autocomplete = spec.autocomplete || "off";
+      if (spec.step) input.step = spec.step;
+      if (spec.min) input.min = spec.min;
+      if (spec.max) input.max = spec.max;
+
+      const meta = document.createElement("div");
+      meta.className = "admin-field-meta";
+
+      const hint = document.createElement("small");
+      hint.textContent = spec.hint;
+
+      const source = document.createElement("span");
+      source.id = `adminArbiterModelSource-${spec.key}`;
+      source.className = "admin-field-source";
+      source.textContent = "Source: chargement";
+
+      meta.appendChild(hint);
+      meta.appendChild(source);
+
+      const error = document.createElement("p");
+      error.id = `adminArbiterModelFieldError-${spec.key}`;
+      error.className = "admin-field-error";
+      error.hidden = true;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(meta);
+      field.appendChild(error);
+      fragment.appendChild(field);
+    });
+
+    elements.arbiterModelFields.appendChild(fragment);
+  };
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -349,6 +488,13 @@
       draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
     });
     draft.api_key = "";
+    return draft;
+  };
+  const buildArbiterModelDraftFromView = (view) => {
+    const draft = {};
+    arbiterModelFieldSpecs.forEach((spec) => {
+      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
+    });
     return draft;
   };
 
@@ -385,6 +531,27 @@
 
     mainModelFieldSpecs.forEach((spec) => {
       const source = document.getElementById(`adminMainModelSource-${spec.key}`);
+      if (!source) return;
+      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
+    });
+  };
+  const renderArbiterModelMeta = () => {
+    const view = state.arbiterModel.view;
+    if (!view) {
+      if (elements.arbiterModelSource) elements.arbiterModelSource.textContent = "Section: indisponible";
+      arbiterModelFieldSpecs.forEach((spec) => {
+        const source = document.getElementById(`adminArbiterModelSource-${spec.key}`);
+        if (source) source.textContent = "Source: indisponible";
+      });
+      return;
+    }
+
+    if (elements.arbiterModelSource) {
+      elements.arbiterModelSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
+    }
+
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const source = document.getElementById(`adminArbiterModelSource-${spec.key}`);
       if (!source) return;
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
@@ -451,6 +618,23 @@
       elements.mainModelDirty.textContent = dirty ? "Modifications" : "A jour";
     }
   };
+  const updateArbiterDirtyChip = () => {
+    const baseline = state.arbiterModel.baseline || emptyArbiterModelDraft();
+    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
+    let dirty = false;
+
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const field = arbiterModelFieldElement(spec.key);
+      const changed = toDraftString(draft[spec.key]) !== toDraftString(baseline[spec.key]);
+      if (field) field.dataset.dirty = changed ? "true" : "false";
+      if (changed) dirty = true;
+    });
+
+    if (elements.arbiterModelDirty) {
+      elements.arbiterModelDirty.dataset.state = dirty ? "dirty" : "clean";
+      elements.arbiterModelDirty.textContent = dirty ? "Modifications" : "A jour";
+    }
+  };
 
   const applyMainModelDraftToForm = () => {
     const draft = state.mainModel.draft || emptyMainModelDraft();
@@ -468,6 +652,16 @@
     }
     updateDirtyChip();
   };
+  const applyArbiterDraftToForm = () => {
+    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const input = arbiterModelFieldInput(spec.key);
+      if (!input) return;
+      const nextValue = toDraftString(draft[spec.key]);
+      if (input.value !== nextValue) input.value = nextValue;
+    });
+    updateArbiterDirtyChip();
+  };
 
   const applyMainModelView = (responsePayload) => {
     state.mainModel.loaded = true;
@@ -484,6 +678,20 @@
     applyMainModelDraftToForm();
     renderMainModelChecks([]);
   };
+  const applyArbiterModelView = (responsePayload) => {
+    state.arbiterModel.loaded = true;
+    state.arbiterModel.view = {
+      payload: responsePayload.payload || {},
+      source: responsePayload.source || "env",
+      source_reason: responsePayload.source_reason || "unknown",
+    };
+    state.arbiterModel.baseline = buildArbiterModelDraftFromView(state.arbiterModel.view);
+    state.arbiterModel.draft = { ...state.arbiterModel.baseline };
+    clearArbiterFieldErrors();
+    renderArbiterModelMeta();
+    applyArbiterDraftToForm();
+    renderArbiterModelChecks([]);
+  };
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -496,6 +704,18 @@
     renderMainModelChecks([]);
     setMainModelControlsDisabled(true);
     setInlineStatus(elements.mainModelStatus, message, stateName);
+  };
+  const resetArbiterSurface = (message, stateName = "error") => {
+    state.arbiterModel.loaded = false;
+    state.arbiterModel.view = null;
+    state.arbiterModel.baseline = emptyArbiterModelDraft();
+    state.arbiterModel.draft = emptyArbiterModelDraft();
+    clearArbiterFieldErrors();
+    renderArbiterModelMeta();
+    applyArbiterDraftToForm();
+    renderArbiterModelChecks([]);
+    setArbiterControlsDisabled(true);
+    setInlineStatus(elements.arbiterModelStatus, message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -517,6 +737,233 @@
     Object.entries(errors).forEach(([field, message]) => {
       setFieldError(field, message);
     });
+  };
+  const setArbiterFieldError = (field, message = "") => {
+    const host = arbiterModelFieldElement(field);
+    const errorElement = arbiterModelErrorElement(field);
+    if (host) {
+      host.dataset.error = message ? "true" : "false";
+    }
+    if (!errorElement) return;
+    if (message) {
+      errorElement.hidden = false;
+      errorElement.textContent = message;
+      return;
+    }
+    errorElement.hidden = true;
+    errorElement.textContent = "";
+  };
+  const clearArbiterFieldErrors = () => {
+    arbiterModelFieldSpecs.forEach((spec) => setArbiterFieldError(spec.key, ""));
+  };
+  const applyArbiterLocalFieldErrors = (errors) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setArbiterFieldError(field, message);
+    });
+  };
+  const applyArbiterBackendFieldError = (message) => {
+    if (!message) return;
+    arbiterModelFieldSpecs.forEach((spec) => {
+      if (message.includes(`arbiter_model.${spec.key}`)) {
+        setArbiterFieldError(spec.key, message);
+      }
+    });
+  };
+  const setArbiterControlsDisabled = (disabled) => {
+    if (elements.arbiterModelSave) elements.arbiterModelSave.disabled = disabled;
+    if (elements.arbiterModelValidate) elements.arbiterModelValidate.disabled = disabled;
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const input = arbiterModelFieldInput(spec.key);
+      if (input) input.disabled = disabled;
+    });
+  };
+  const collectArbiterFailedChecks = (checks) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      if (!errors[check.name]) {
+        errors[check.name] = check.detail;
+      }
+    });
+    return errors;
+  };
+  const buildArbiterPatchPayload = () => {
+    const payload = {};
+    const localErrors = {};
+    const baseline = state.arbiterModel.baseline || emptyArbiterModelDraft();
+    const draft = state.arbiterModel.draft || emptyArbiterModelDraft();
+
+    arbiterModelFieldSpecs.forEach((spec) => {
+      const nextRaw = toDraftString(draft[spec.key]);
+      const currentRaw = toDraftString(baseline[spec.key]);
+      if (nextRaw === currentRaw) return;
+
+      if (spec.inputType === "number") {
+        const trimmed = nextRaw.trim();
+        if (!trimmed) {
+          localErrors[spec.key] = "Valeur numerique requise.";
+          return;
+        }
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed)) {
+          localErrors[spec.key] = "Valeur numerique invalide.";
+          return;
+        }
+        payload[spec.key] = {
+          value: spec.key === "timeout_s" ? Math.trunc(parsed) : parsed,
+        };
+        return;
+      }
+
+      payload[spec.key] = { value: nextRaw };
+    });
+
+    return {
+      payload,
+      localErrors,
+      dirtyCount: Object.keys(payload).length,
+    };
+  };
+  const runArbiterValidation = async (payload) => {
+    clearArbiterFieldErrors();
+    renderArbiterModelChecks([]);
+    setArbiterControlsDisabled(true);
+    setInlineStatus(elements.arbiterModelStatus, "Validation technique en cours...", "info");
+
+    try {
+      const body = payload && Object.keys(payload).length ? { payload } : {};
+      const response = await adminFetch("/api/admin/settings/arbiter-model/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.arbiterModelStatus, "Acces admin requis pour verifier la section.", "error");
+        return { ok: false };
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyArbiterBackendFieldError(data.error || `Validation impossible (${response.status}).`);
+        setInlineStatus(elements.arbiterModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
+        return { ok: false };
+      }
+
+      const checks = Array.isArray(data.checks) ? data.checks : [];
+      renderArbiterModelChecks(checks);
+      const failedChecks = collectArbiterFailedChecks(checks);
+      applyArbiterLocalFieldErrors(failedChecks);
+
+      if (!data.valid) {
+        setInlineStatus(elements.arbiterModelStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
+        return { ok: false };
+      }
+
+      setInlineStatus(elements.arbiterModelStatus, "Validation technique OK.", "ok");
+      return { ok: true, data };
+    } catch (_error) {
+      setInlineStatus(elements.arbiterModelStatus, "Validation impossible pour le moment.", "error");
+      return { ok: false };
+    } finally {
+      setArbiterControlsDisabled(!state.arbiterModel.loaded);
+    }
+  };
+  const validateArbiterSection = async () => {
+    const { payload, localErrors } = buildArbiterPatchPayload();
+    clearArbiterFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyArbiterLocalFieldErrors(localErrors);
+      renderArbiterModelChecks([]);
+      setInlineStatus(elements.arbiterModelStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
+      return;
+    }
+
+    await runArbiterValidation(payload);
+  };
+  const saveArbiterSection = async () => {
+    if (!state.arbiterModel.loaded) return;
+
+    const { payload, localErrors, dirtyCount } = buildArbiterPatchPayload();
+    clearArbiterFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyArbiterLocalFieldErrors(localErrors);
+      renderArbiterModelChecks([]);
+      setInlineStatus(elements.arbiterModelStatus, "Correction requise avant enregistrement.", "error");
+      return;
+    }
+
+    if (dirtyCount === 0) {
+      setInlineStatus(elements.arbiterModelStatus, "Aucune modification a enregistrer.", "info");
+      return;
+    }
+
+    const validation = await runArbiterValidation(payload);
+    if (!validation.ok) return;
+
+    setArbiterControlsDisabled(true);
+    setInlineStatus(elements.arbiterModelStatus, "Enregistrement du modele arbitre...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/arbiter-model", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updated_by: "admin_ui",
+          payload,
+        }),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.arbiterModelStatus, "Acces admin requis pour enregistrer la section.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyArbiterBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
+        setInlineStatus(elements.arbiterModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyArbiterModelView(data);
+      setArbiterControlsDisabled(false);
+      setInlineStatus(elements.arbiterModelStatus, "Modele arbitre enregistre.", "ok");
+      banner("Modele arbitre enregistre.", "ok");
+      void loadRuntimeStatus();
+    } catch (_error) {
+      setInlineStatus(elements.arbiterModelStatus, "Enregistrement impossible pour le moment.", "error");
+    } finally {
+      setArbiterControlsDisabled(!state.arbiterModel.loaded);
+    }
+  };
+  const loadArbiterModelSection = async () => {
+    ensureArbiterModelFieldSkeleton();
+    clearArbiterFieldErrors();
+    setArbiterControlsDisabled(true);
+    setInlineStatus(elements.arbiterModelStatus, "Chargement du modele arbitre...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/arbiter-model");
+      if (response.status === 401) {
+        resetArbiterSurface("Acces admin requis pour charger le modele arbitre.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        resetArbiterSurface(data.error || `Lecture impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyArbiterModelView(data);
+      setArbiterControlsDisabled(false);
+      setInlineStatus(elements.arbiterModelStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
+    } catch (_error) {
+      resetArbiterSurface("Lecture impossible du modele arbitre pour le moment.", "error");
+    }
   };
 
   const collectFailedChecks = (checks) => {
@@ -719,6 +1166,12 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
+      if (section.key === "arbiter_model") {
+        const detailChip = document.createElement("span");
+        detailChip.className = "admin-chip";
+        detailChip.textContent = "Bloc detaille actif";
+        meta.appendChild(detailChip);
+      }
 
       if (status.bootstrap?.database_dsn_mode && section.key === "database") {
         const bootstrapChip = document.createElement("span");
@@ -774,7 +1227,7 @@
   };
 
   const loadAdminSurface = async () => {
-    await Promise.all([loadRuntimeStatus(), loadMainModelSection()]);
+    await Promise.all([loadRuntimeStatus(), loadMainModelSection(), loadArbiterModelSection()]);
   };
 
   elements.mainModelForm?.addEventListener("input", (event) => {
@@ -819,14 +1272,37 @@
   elements.mainModelSave?.addEventListener("click", () => {
     void saveMainModelSection();
   });
+  elements.arbiterModelForm?.addEventListener("input", (event) => {
+    if (!state.arbiterModel.draft) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const fieldName = target.name;
+    if (!fieldName) return;
+    state.arbiterModel.draft[fieldName] = target.value;
+    setArbiterFieldError(fieldName, "");
+    updateArbiterDirtyChip();
+  });
+  elements.arbiterModelValidate?.addEventListener("click", () => {
+    void validateArbiterSection();
+  });
+  elements.arbiterModelSave?.addEventListener("click", () => {
+    void saveArbiterSection();
+  });
 
   ensureMainModelFieldSkeleton();
+  ensureArbiterModelFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
+  state.arbiterModel.baseline = emptyArbiterModelDraft();
+  state.arbiterModel.draft = emptyArbiterModelDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelChecks([]);
+  renderArbiterModelMeta();
+  applyArbiterDraftToForm();
+  renderArbiterModelChecks([]);
   setMainModelControlsDisabled(true);
+  setArbiterControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),
