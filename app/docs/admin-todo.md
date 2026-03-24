@@ -249,30 +249,30 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 ### Phase 1 - Conception du modele de donnees de configuration
 
 - [ ] Creer le module backend de lecture/ecriture de configuration runtime dans `app/admin/runtime_settings.py`.
-- [ ] Poser `runtime_settings` comme table primaire des settings runtime.
-- [ ] Poser une granularite `une ligne par section JSONB` dans `runtime_settings`.
-- [ ] Poser les sections minimales du schema : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
-- [ ] Lister pour `main_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
-- [ ] Lister pour `arbiter_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
-- [ ] Lister pour `summary_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
-- [ ] Lister pour `embedding` les champs exacts a stocker en base.
-- [ ] Lister pour `database` les champs exacts a stocker en base pour la configuration V1 relue depuis la base.
-- [ ] Documenter dans le schema la distinction entre bootstrap DB minimal externe et configuration `database` stockee en base.
-- [ ] Lister pour `services` les champs exacts a stocker en base.
-- [ ] Lister pour `resources` les champs exacts a stocker en base.
-- [ ] Marquer, champ par champ, lesquels sont des secrets et lesquels ne le sont pas.
-- [ ] Ajouter dans le design un champ `updated_at`.
-- [ ] Ajouter dans le design un champ `updated_by`.
-- [ ] Ajouter dans le design un champ `source` / `origin` pour distinguer seed env et valeur editee.
-- [ ] Ajouter dans le design un champ minimal de version de schema.
-- [ ] Integrer `runtime_settings_history` des la V1.
-- [ ] Utiliser `pgcrypto` pour la politique de secret retenue.
-- [ ] Exposer au front un secret present sous forme masquee avec un indicateur `is_set`, sans jamais renvoyer sa valeur en clair.
+- [x] Poser `runtime_settings` comme table primaire des settings runtime.
+- [x] Poser une granularite `une ligne par section JSONB` dans `runtime_settings`.
+- [x] Poser les sections minimales du schema : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
+- [x] Lister pour `main_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
+- [x] Lister pour `arbiter_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
+- [x] Lister pour `summary_model` tous les champs effectivement paramétrables a stocker en base, y compris `temperature` et `top_p`, hors `max_tokens` de reponse.
+- [x] Lister pour `embedding` les champs exacts a stocker en base.
+- [x] Lister pour `database` les champs exacts a stocker en base pour la configuration V1 relue depuis la base.
+- [x] Documenter dans le schema la distinction entre bootstrap DB minimal externe et configuration `database` stockee en base.
+- [x] Lister pour `services` les champs exacts a stocker en base.
+- [x] Lister pour `resources` les champs exacts a stocker en base.
+- [x] Marquer, champ par champ, lesquels sont des secrets et lesquels ne le sont pas.
+- [x] Ajouter dans le design un champ `updated_at`.
+- [x] Ajouter dans le design un champ `updated_by`.
+- [x] Ajouter dans le design un champ `source` / `origin` pour distinguer seed env et valeur editee.
+- [x] Ajouter dans le design un champ minimal de version de schema.
+- [x] Integrer `runtime_settings_history` des la V1.
+- [x] Utiliser `pgcrypto` pour la politique de secret retenue.
+- [x] Exposer au front un secret present sous forme masquee avec un indicateur `is_set`, sans jamais renvoyer sa valeur en clair.
 - [ ] Ajouter `EMBED_MODEL` au schema V1 et au code de consommation associe.
-- [ ] Integrer `OPENROUTER_BASE`, `OPENROUTER_REFERER`, `OPENROUTER_APP_NAME` et `OPENROUTER_TITLE_*` au perimetre V1 du bloc modele principal / provider.
-- [ ] Integrer `ARBITER_TIMEOUT_S` au perimetre V1 du bloc arbitre.
-- [ ] Integrer `SEARXNG_RESULTS`, `CRAWL4AI_TOP_N` et `CRAWL4AI_MAX_CHARS` au perimetre V1 du bloc services.
-- [ ] Documenter explicitement que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB minimal externe tant que la transition n'est pas achevee.
+- [x] Integrer `OPENROUTER_BASE`, `OPENROUTER_REFERER`, `OPENROUTER_APP_NAME` et `OPENROUTER_TITLE_*` au perimetre V1 du bloc modele principal / provider.
+- [x] Integrer `ARBITER_TIMEOUT_S` au perimetre V1 du bloc arbitre.
+- [x] Integrer `SEARXNG_RESULTS`, `CRAWL4AI_TOP_N` et `CRAWL4AI_MAX_CHARS` au perimetre V1 du bloc services.
+- [x] Documenter explicitement que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB minimal externe tant que la transition n'est pas achevee.
 
 ### Phase 2 - Schema SQL et seed initial
 
