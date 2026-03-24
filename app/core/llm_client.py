@@ -16,6 +16,11 @@ def _sanitize_encoding(text: str) -> str:
     return repaired
 
 
+def _runtime_main_api_key() -> str:
+    secret = runtime_settings.get_runtime_secret_value('main_model', 'api_key')
+    return str(secret.value)
+
+
 def or_headers(caller: str = "llm") -> dict:
     """Construit les headers HTTP pour OpenRouter, selon le composant appelant."""
     caller_key = str(caller or "llm").strip().lower()
@@ -28,7 +33,7 @@ def or_headers(caller: str = "llm") -> dict:
 
     h = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {config.OR_KEY}",
+        "Authorization": f"Bearer {_runtime_main_api_key()}",
     }
     if config.OR_REFERER:
         h["HTTP-Referer"] = config.OR_REFERER

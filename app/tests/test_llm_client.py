@@ -18,6 +18,51 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
 
+    def test_or_headers_uses_decrypted_db_api_key_when_available(self) -> None:
+        original = llm_client.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('main_model', 'api_key'))
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-db-runtime-key',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        try:
+            headers = llm_client.or_headers(caller='arbiter')
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original
+
+        self.assertEqual(headers['Authorization'], 'Bearer sk-db-runtime-key')
+        self.assertEqual(headers['X-Title'], config.OR_TITLE_ARBITER)
+
+    def test_or_headers_keeps_env_fallback_when_db_secret_is_missing(self) -> None:
+        original = llm_client.runtime_settings.get_runtime_secret_value
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-env-fallback-key'
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-env-fallback-key',
+                source='env_fallback',
+                source_reason='empty_table',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        try:
+            headers = llm_client.or_headers(caller='llm')
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original
+            config.OR_KEY = original_api_key
+
+        self.assertEqual(headers['Authorization'], 'Bearer sk-env-fallback-key')
+
     def test_build_payload_uses_runtime_main_model_from_db_when_present(self) -> None:
         original = llm_client.runtime_settings.get_main_model_settings
 

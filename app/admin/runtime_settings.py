@@ -83,11 +83,24 @@ class RuntimeSectionView:
     source_reason: str
 
 
+@dataclass(frozen=True)
+class RuntimeSecretValue:
+    section: str
+    field: str
+    value: str
+    source: str
+    source_reason: str
+
+
 class RuntimeSettingsDbUnavailableError(RuntimeError):
     pass
 
 
 class RuntimeSettingsSecretRequiredError(RuntimeError):
+    pass
+
+
+class RuntimeSettingsSecretResolutionError(RuntimeError):
     pass
 
 
@@ -505,6 +518,71 @@ def require_secret_configured(view: RuntimeSectionView, field: str) -> None:
     )
 
 
+def _resolve_runtime_secret_from_view(view: RuntimeSectionView, field: str) -> RuntimeSecretValue:
+    spec = get_field_spec(view.section, field)
+    if not spec.is_secret:
+        raise ValueError(f'field is not secret: {view.section}.{field}')
+
+    payload = view.payload.get(field) or {}
+    field_ref = f'{view.section}.{field}'
+    encrypted_value = str(payload.get('value_encrypted') or '').strip()
+    is_set = bool(payload.get('is_set'))
+
+    if encrypted_value:
+        try:
+            decrypted_value = runtime_secrets.decrypt_runtime_secret_value(encrypted_value)
+        except runtime_secrets.RuntimeSettingsCryptoKeyMissingError as exc:
+            raise RuntimeSettingsSecretResolutionError(
+                f'missing runtime settings crypto key while decrypting {field_ref}'
+            ) from exc
+        except runtime_secrets.RuntimeSettingsCryptoEngineError as exc:
+            raise RuntimeSettingsSecretResolutionError(
+                f'failed to decrypt runtime secret {field_ref}: {exc}'
+            ) from exc
+
+        if not str(decrypted_value or '').strip():
+            raise RuntimeSettingsSecretResolutionError(
+                f'empty decrypted runtime secret: {field_ref}'
+            )
+
+        return RuntimeSecretValue(
+            section=view.section,
+            field=field,
+            value=str(decrypted_value),
+            source='db_encrypted',
+            source_reason=view.source_reason,
+        )
+
+    env_value = str(_seed_value(view.section, field) or '').strip()
+    if payload.get('origin') == 'env_seed' and env_value:
+        return RuntimeSecretValue(
+            section=view.section,
+            field=field,
+            value=env_value,
+            source='env_fallback',
+            source_reason=view.source_reason,
+        )
+
+    if view.source in {'db', 'candidate'} and is_set:
+        raise RuntimeSettingsSecretResolutionError(
+            f'secret marked as set but no decryptable value is available: {field_ref}'
+        )
+
+    raise RuntimeSettingsSecretRequiredError(
+        f'missing secret config: {field_ref} (source={view.source}, reason={view.source_reason})'
+    )
+
+
+def get_runtime_secret_value(
+    section: str,
+    field: str,
+    *,
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> RuntimeSecretValue:
+    view = get_runtime_section(section, fetcher=fetcher)
+    return _resolve_runtime_secret_from_view(view, field)
+
+
 def _coerce_field_value(section: str, field: str, value: Any) -> Any:
     spec = get_field_spec(section, field)
     field_ref = f'{section}.{field}'
@@ -757,7 +835,13 @@ def validate_runtime_section(
         model = _runtime_text_value(view, 'model')
         temperature = _runtime_float_value(view, 'temperature')
         top_p = _runtime_float_value(view, 'top_p')
-        api_key = str(config.OR_KEY or '').strip()
+        try:
+            api_key_secret = _resolve_runtime_secret_from_view(view, 'api_key')
+            api_key_ok = bool(str(api_key_secret.value).strip())
+            api_key_detail = f'main_model.api_key available from {api_key_secret.source}'
+        except (RuntimeSettingsSecretRequiredError, RuntimeSettingsSecretResolutionError) as exc:
+            api_key_ok = False
+            api_key_detail = str(exc)
         checks.extend(
             (
                 _validation_check('base_url', _is_http_url(base_url), f'base_url={base_url or "missing"}'),
@@ -772,13 +856,7 @@ def validate_runtime_section(
                     top_p is not None and 0.0 < top_p <= 1.0,
                     f'top_p={top_p!r}',
                 ),
-                _validation_check(
-                    'api_key_transition',
-                    bool(api_key),
-                    'OPENROUTER_API_KEY env fallback available'
-                    if api_key
-                    else 'OPENROUTER_API_KEY env fallback missing during transition',
-                ),
+                _validation_check('api_key_runtime', api_key_ok, api_key_detail),
             )
         )
     elif section == 'arbiter_model':
@@ -897,29 +975,29 @@ def validate_runtime_section(
             )
         )
     elif section == 'resources':
-        llm_path = _resolve_app_path(_runtime_text_value(view, 'llm_identity_path'))
-        user_path = _resolve_app_path(_runtime_text_value(view, 'user_identity_path'))
+        llm_identity_path = _resolve_app_path(_runtime_text_value(view, 'llm_identity_path'))
+        user_identity_path = _resolve_app_path(_runtime_text_value(view, 'user_identity_path'))
         checks.extend(
             (
                 _validation_check(
                     'llm_identity_path',
-                    llm_path.is_file(),
-                    f'llm_identity_path={llm_path}',
+                    llm_identity_path.is_file(),
+                    f'llm_identity_path={llm_identity_path}',
                 ),
                 _validation_check(
                     'user_identity_path',
-                    user_path.is_file(),
-                    f'user_identity_path={user_path}',
+                    user_identity_path.is_file(),
+                    f'user_identity_path={user_identity_path}',
                 ),
             )
         )
-    else:
+    else:  # pragma: no cover - SECTION_NAMES locks known values
         raise KeyError(f'unknown runtime settings section: {section}')
 
     return {
         'section': section,
-        'valid': all(check['ok'] for check in checks),
         'source': view.source,
         'source_reason': view.source_reason,
+        'valid': all(check['ok'] for check in checks),
         'checks': checks,
     }

@@ -285,6 +285,94 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(runtime_settings.RuntimeSettingsSecretRequiredError, 'missing secret config: database.dsn'):
             runtime_settings.require_secret_configured(view, 'dsn')
 
+    def test_get_runtime_secret_value_uses_env_fallback_when_section_is_from_env(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-env-fallback-secret'
+        try:
+            secret = runtime_settings.get_runtime_secret_value('main_model', 'api_key', fetcher=lambda: {})
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertEqual(secret.value, 'sk-env-fallback-secret')
+        self.assertEqual(secret.source, 'env_fallback')
+        self.assertEqual(secret.source_reason, 'empty_table')
+
+    def test_get_runtime_secret_value_decrypts_db_secret_when_encrypted_value_is_present(self) -> None:
+        original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value
+
+        def fake_decrypt_runtime_secret_value(value_encrypted: str) -> str:
+            self.assertEqual(value_encrypted, 'cipher-main-model')
+            return 'sk-db-main-model'
+
+        def fetcher():
+            return {
+                'main_model': runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openrouter/runtime-main', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'cipher-main-model', 'origin': 'db'},
+                    },
+                )
+            }
+
+        runtime_settings.runtime_secrets.decrypt_runtime_secret_value = fake_decrypt_runtime_secret_value
+        try:
+            secret = runtime_settings.get_runtime_secret_value('main_model', 'api_key', fetcher=fetcher)
+        finally:
+            runtime_settings.runtime_secrets.decrypt_runtime_secret_value = original_decrypt
+
+        self.assertEqual(secret.value, 'sk-db-main-model')
+        self.assertEqual(secret.source, 'db_encrypted')
+        self.assertEqual(secret.source_reason, 'db_row')
+
+    def test_get_runtime_secret_value_raises_explicit_error_when_db_secret_is_not_decryptable(self) -> None:
+        original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value
+
+        def fake_decrypt_runtime_secret_value(value_encrypted: str) -> str:
+            raise runtime_settings.runtime_secrets.RuntimeSettingsCryptoEngineError('bad ciphertext')
+
+        def fetcher():
+            return {
+                'main_model': runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openrouter/runtime-main', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'cipher-main-model', 'origin': 'db'},
+                    },
+                )
+            }
+
+        runtime_settings.runtime_secrets.decrypt_runtime_secret_value = fake_decrypt_runtime_secret_value
+        try:
+            with self.assertRaisesRegex(
+                runtime_settings.RuntimeSettingsSecretResolutionError,
+                'failed to decrypt runtime secret main_model.api_key: bad ciphertext',
+            ):
+                runtime_settings.get_runtime_secret_value('main_model', 'api_key', fetcher=fetcher)
+        finally:
+            runtime_settings.runtime_secrets.decrypt_runtime_secret_value = original_decrypt
+
+    def test_get_runtime_secret_value_raises_explicit_error_when_db_secret_is_marked_set_without_ciphertext(self) -> None:
+        def fetcher():
+            return {
+                'main_model': runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openrouter/runtime-main', 'origin': 'db'},
+                        'api_key': {'is_set': True, 'origin': 'db'},
+                    },
+                )
+            }
+
+        with self.assertRaisesRegex(
+            runtime_settings.RuntimeSettingsSecretResolutionError,
+            'secret marked as set but no decryptable value is available: main_model.api_key',
+        ):
+            runtime_settings.get_runtime_secret_value('main_model', 'api_key', fetcher=fetcher)
+
     def test_runtime_settings_layer_does_not_import_admin_logs(self) -> None:
         module_path = APP_DIR / 'admin' / 'runtime_settings.py'
         tree = ast.parse(module_path.read_text())
@@ -676,7 +764,34 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(checks['model']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
-        self.assertTrue(checks['api_key_transition']['ok'])
+        self.assertTrue(checks['api_key_runtime']['ok'])
+        self.assertIn('env_fallback', checks['api_key_runtime']['detail'])
+
+    def test_validate_runtime_section_accepts_candidate_main_model_secret_patch_from_db_encrypted(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value
+        original_api_key = config.OR_KEY
+        config.OR_KEY = ''
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = lambda value: 'cipher-main-model'
+        runtime_settings.runtime_secrets.decrypt_runtime_secret_value = lambda value: 'sk-candidate-main-model'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'api_key': {'replace_value': 'sk-candidate-main-model'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+            runtime_settings.runtime_secrets.decrypt_runtime_secret_value = original_decrypt
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['api_key_runtime']['ok'])
+        self.assertIn('db_encrypted', checks['api_key_runtime']['detail'])
 
     def test_validate_runtime_section_reports_missing_resource_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

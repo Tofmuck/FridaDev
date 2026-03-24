@@ -462,8 +462,10 @@ def api_chat():
                                  results=n_results, ticketmaster=has_tm)
 
     # ── Appel LLM
-    if not config.OR_KEY:
-        return jsonify({"ok": False, "error": "OPENROUTER_API_KEY manquant"}), 500
+    try:
+        runtime_settings.get_runtime_secret_value('main_model', 'api_key')
+    except (runtime_settings.RuntimeSettingsSecretRequiredError, runtime_settings.RuntimeSettingsSecretResolutionError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
     headers = llm.or_headers(caller="llm")
     payload = llm.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
