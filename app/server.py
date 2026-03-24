@@ -583,6 +583,7 @@ def _admin_settings_section_response(section: str) -> Dict[str, Any]:
     return {
         'section': section,
         'payload': view.payload,
+        'secret_sources': runtime_settings.describe_secret_sources(section, view.payload),
         'source': view.source,
         'source_reason': view.source_reason,
     }
@@ -613,7 +614,14 @@ def _admin_settings_section_patch_response(section: str):
     except runtime_settings.RuntimeSettingsDbUnavailableError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 503
 
-    return jsonify({'ok': True, 'section': view.section, 'payload': view.payload, 'source': view.source, 'source_reason': view.source_reason})
+    return jsonify({
+        'ok': True,
+        'section': view.section,
+        'payload': view.payload,
+        'secret_sources': runtime_settings.describe_secret_sources(section, view.payload),
+        'source': view.source,
+        'source_reason': view.source_reason,
+    })
 
 
 def _admin_settings_section_validate_response(section: str):

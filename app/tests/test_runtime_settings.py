@@ -121,6 +121,41 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             },
         )
 
+    def test_describe_secret_sources_marks_env_seed_secret_as_env_fallback(self) -> None:
+        payload = runtime_settings.build_env_seed_bundle('main_model').payload
+        secret_sources = runtime_settings.describe_secret_sources('main_model', payload)
+        self.assertEqual(secret_sources['api_key'], 'env_fallback' if config.OR_KEY else 'missing')
+
+    def test_describe_secret_sources_marks_db_secret_as_db_encrypted(self) -> None:
+        secret_sources = runtime_settings.describe_secret_sources(
+            'services',
+            {
+                'searxng_url': {'value': 'http://127.0.0.1:8092', 'origin': 'db'},
+                'searxng_results': {'value': 5, 'origin': 'db'},
+                'crawl4ai_url': {'value': 'http://127.0.0.1:11235', 'origin': 'db'},
+                'crawl4ai_token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
+                'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+            },
+        )
+        self.assertEqual(secret_sources['crawl4ai_token'], 'db_encrypted')
+
+    def test_describe_secret_sources_keeps_database_dsn_on_env_fallback_while_bootstrap_env_exists(self) -> None:
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        try:
+            secret_sources = runtime_settings.describe_secret_sources(
+                'database',
+                {
+                    'backend': {'value': 'postgresql', 'origin': 'db'},
+                    'dsn': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                },
+            )
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertEqual(secret_sources['dsn'], 'env_fallback')
+
     def test_build_env_seed_bundle_keeps_secret_value_out_of_payload(self) -> None:
         bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(bundle.section, 'main_model')

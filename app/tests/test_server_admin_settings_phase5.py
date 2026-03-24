@@ -70,7 +70,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 )
             return runtime_settings.RuntimeSectionView(
                 section=section,
-                payload={'placeholder': {'value': section, 'is_secret': False, 'origin': 'env_seed'}},
+                payload={},
                 source='env',
                 source_reason='empty_table',
             )
@@ -93,6 +93,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             data['sections']['main_model']['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
+        self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
         original_get_status = self.server.runtime_settings.get_runtime_status
@@ -156,6 +157,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             data['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
+        self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_arbiter_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -241,6 +243,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'embedding')
         self.assertEqual(data['payload']['endpoint']['value'], 'https://embed.override.example')
         self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+        self.assertEqual(data['secret_sources']['token'], 'db_encrypted')
 
     def test_get_admin_settings_database_returns_single_section_with_redacted_secret(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -269,6 +272,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'database')
         self.assertEqual(data['payload']['backend']['value'], 'postgresql')
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': False, 'origin': 'db'})
+        self.assertEqual(data['secret_sources']['dsn'], 'env_fallback')
 
     def test_get_admin_settings_services_returns_single_section_with_redacted_secret(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -297,6 +301,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8092')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+        self.assertEqual(data['secret_sources']['crawl4ai_token'], 'db_encrypted')
 
     def test_get_admin_settings_resources_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -510,6 +515,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'main_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/patched-main-model')
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+        self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
 
     def test_patch_admin_settings_main_model_rejects_invalid_payload(self) -> None:
         response = self.client.patch(
@@ -560,6 +566,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_patch_admin_settings_arbiter_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -709,6 +716,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'embedding')
         self.assertEqual(data['payload']['endpoint']['value'], 'https://embed.next.example')
         self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+        self.assertEqual(data['secret_sources']['token'], 'env_fallback')
 
     def test_patch_admin_settings_embedding_accepts_secret_replace_value(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -749,6 +757,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertEqual(data['secret_sources']['token'], 'db_encrypted')
 
     def test_patch_admin_settings_database_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -791,6 +800,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'database')
         self.assertEqual(data['payload']['backend']['value'], 'postgresql')
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': False, 'origin': 'env_seed'})
+        self.assertEqual(data['secret_sources']['dsn'], 'env_fallback')
 
     def test_patch_admin_settings_database_accepts_secret_replace_value(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -831,6 +841,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertEqual(data['secret_sources']['dsn'], 'env_fallback')
 
     def test_patch_admin_settings_services_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -881,6 +892,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8093')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+        self.assertEqual(data['secret_sources']['crawl4ai_token'], 'env_fallback')
 
     def test_patch_admin_settings_services_accepts_secret_replace_value(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -921,6 +933,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertEqual(data['secret_sources']['crawl4ai_token'], 'db_encrypted')
 
     def test_patch_admin_settings_resources_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}

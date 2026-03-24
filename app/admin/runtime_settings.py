@@ -266,6 +266,40 @@ def redact_payload_for_api(section: str, payload: Mapping[str, Any]) -> Dict[str
     return redacted
 
 
+def _secret_effective_source(section: str, field: str, payload: Mapping[str, Any]) -> str:
+    spec = get_field_spec(section, field)
+    if not spec.is_secret:
+        raise ValueError(f'field is not secret: {section}.{field}')
+
+    if section == 'database' and field == 'dsn':
+        if str(config.FRIDA_MEMORY_DB_DSN or '').strip():
+            return 'env_fallback'
+        return 'db_encrypted' if bool(payload.get('is_set')) else 'missing'
+
+    is_set = bool(payload.get('is_set'))
+    if not is_set:
+        return 'missing'
+
+    origin = str(payload.get('origin') or '').strip()
+    if origin == 'env_seed':
+        return 'env_fallback'
+    return 'db_encrypted'
+
+
+def describe_secret_sources(section: str, payload: Mapping[str, Any]) -> Dict[str, str]:
+    normalized = normalize_stored_payload(section, payload)
+    secret_sources: Dict[str, str] = {}
+    for field in get_section_spec(section).fields:
+        if not field.is_secret:
+            continue
+        secret_sources[field.key] = _secret_effective_source(
+            section,
+            field.key,
+            normalized.get(field.key) or {},
+        )
+    return secret_sources
+
+
 def _seed_value(section: str, field: str) -> Any:
     values: Dict[tuple[str, str], Any] = {
         ('main_model', 'base_url'): config.OR_BASE,
