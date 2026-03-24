@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,7 +11,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from admin import runtime_settings
+from admin import admin_logs, runtime_settings
 from core import conv_store
 from memory import memory_store
 
@@ -34,7 +35,22 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
 
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self._original_log_path = self.server.admin_logs.LOG_PATH
+        self._original_bootstrap_done = self.server.admin_logs._BOOTSTRAP_DONE
+        temp_log_path = Path(self._tmpdir.name) / 'admin.log.jsonl'
+        admin_logs.LOG_PATH = temp_log_path
+        admin_logs._BOOTSTRAP_DONE = True
+        self.server.admin_logs.LOG_PATH = temp_log_path
+        self.server.admin_logs._BOOTSTRAP_DONE = True
         self.client = self.server.app.test_client()
+
+    def tearDown(self) -> None:
+        admin_logs.LOG_PATH = self._original_log_path
+        admin_logs._BOOTSTRAP_DONE = self._original_bootstrap_done
+        self.server.admin_logs.LOG_PATH = self._original_log_path
+        self.server.admin_logs._BOOTSTRAP_DONE = self._original_bootstrap_done
+        self._tmpdir.cleanup()
 
     def test_get_admin_settings_returns_aggregated_sections_with_redacted_secrets(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
