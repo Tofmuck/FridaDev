@@ -325,7 +325,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer la lecture du modele resumieur dans `app/memory/summarizer.py`.
 - [x] Remplacer la lecture du bloc embeddings dans `app/memory/memory_store.py`.
 - [x] Remplacer la lecture du bloc services externes dans `app/tools/web_search.py`.
-- [ ] Remplacer la lecture des chemins / ressources externes dans `app/identity/identity.py`.
+- [x] Remplacer la lecture des chemins / ressources externes dans `app/identity/identity.py`.
 - [ ] Remplacer la lecture des memes chemins / ressources externes dans `app/minimal_validation.py`.
 - [ ] Remplacer la lecture du bloc `database` dans `app/core/conv_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [ ] Remplacer la lecture du bloc `database` dans `app/memory/memory_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.

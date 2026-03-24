@@ -18,6 +18,20 @@ def _runtime_main_model_name() -> str:
     return str(view.payload['model']['value'])
 
 
+def _runtime_resource_path(field: str) -> str:
+    view = runtime_settings.get_resources_settings()
+    payload = view.payload.get(field) or {}
+    if 'value' in payload:
+        return str(payload['value'])
+
+    env_bundle = runtime_settings.build_env_seed_bundle('resources')
+    fallback = env_bundle.payload.get(field) or {}
+    if 'value' in fallback:
+        return str(fallback['value'])
+
+    raise KeyError(f'missing resources runtime value: {field}')
+
+
 def _load_file(path_str: str) -> str:
     path = Path(path_str)
     if not path.is_absolute():
@@ -32,11 +46,11 @@ def _load_file(path_str: str) -> str:
 
 
 def load_llm_identity() -> str:
-    return _load_file(config.FRIDA_LLM_IDENTITY_PATH)
+    return _load_file(_runtime_resource_path('llm_identity_path'))
 
 
 def load_user_identity() -> str:
-    return _load_file(config.FRIDA_USER_IDENTITY_PATH)
+    return _load_file(_runtime_resource_path('user_identity_path'))
 
 
 def _get_identities(subject: str, top_n: int) -> List[Dict[str, Any]]:
