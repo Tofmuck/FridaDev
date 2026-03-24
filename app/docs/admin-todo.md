@@ -374,19 +374,19 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
 - [x] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
 - [x] Ajouter dans ce module un helper de verification de presence de `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
-- [ ] Implementer le comportement `cle crypto absente = ecriture de secret refusee avec erreur explicite`.
+- [x] Implementer le comportement `cle crypto absente = ecriture de secret refusee avec erreur explicite`.
 - [ ] Implementer le comportement `secret chiffre present mais indechiffrable = erreur de configuration explicite`.
 - [ ] Implementer le comportement `is_set=true sans valeur dechiffrable exploitable = erreur de configuration explicite`.
-- [ ] Fixer le format de remplacement d'un secret en `PATCH` a `payload.<field>.replace_value`.
-- [ ] Refuser tout `PATCH` secret sans `replace_value`.
-- [ ] Refuser tout melange ambigu entre `value`, `replace_value` et `value_encrypted` dans les payloads d'update secret.
-- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings`.
-- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings_history`.
+- [x] Fixer le format de remplacement d'un secret en `PATCH` a `payload.<field>.replace_value`.
+- [x] Refuser tout `PATCH` secret sans `replace_value`.
+- [x] Refuser tout melange ambigu entre `value`, `replace_value` et `value_encrypted` dans les payloads d'update secret.
+- [x] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings`.
+- [x] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings_history`.
 - [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans les logs, traces d'erreur ou retours d'API.
-- [ ] Ouvrir l'ecriture chiffree de `main_model.api_key`.
-- [ ] Ouvrir l'ecriture chiffree de `embedding.token`.
-- [ ] Ouvrir l'ecriture chiffree de `services.crawl4ai_token`.
-- [ ] Ouvrir l'ecriture chiffree de `database.dsn`.
+- [x] Ouvrir l'ecriture chiffree de `main_model.api_key`.
+- [x] Ouvrir l'ecriture chiffree de `embedding.token`.
+- [x] Ouvrir l'ecriture chiffree de `services.crawl4ai_token`.
+- [x] Ouvrir l'ecriture chiffree de `database.dsn`.
 - [ ] Ajouter la lecture runtime dechiffree de `main_model.api_key`.
 - [ ] Remplacer le fallback `OPENROUTER_API_KEY` par le secret DB dechiffre quand il est disponible.
 - [ ] Ajouter la lecture runtime dechiffree de `embedding.token`.
@@ -398,15 +398,15 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.
 - [ ] Garantir qu'un reseed secret n'ecrase jamais une valeur deja chiffree en base.
 - [x] Ajouter des tests unitaires sur le chiffrement et le dechiffrement des secrets runtime.
-- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `main_model`.
-- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
-- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `services`.
-- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `database`.
+- [x] Ajouter des tests backend sur un `PATCH` secret valide pour `main_model`.
+- [x] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
+- [x] Ajouter des tests backend sur un `PATCH` secret valide pour `services`.
+- [x] Ajouter des tests backend sur un `PATCH` secret valide pour `database`.
 - [x] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
 - [ ] Ajouter des tests backend sur le cas `value_encrypted` indechiffrable.
 - [ ] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
 - [ ] Prevoir un commit isole pour la couche crypto.
-- [ ] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
+- [x] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
 - [ ] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
 - [ ] Prevoir un commit isole pour le backfill initial des secrets existants.
 

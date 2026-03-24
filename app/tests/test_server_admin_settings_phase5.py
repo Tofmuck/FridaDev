@@ -519,7 +519,47 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn('secret updates are not supported yet', data['error'])
+        self.assertIn('ambiguous secret patch payload', data['error'])
+
+    def test_patch_admin_settings_main_model_accepts_secret_replace_value(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openrouter/patched-main-model', 'is_secret': False, 'origin': 'db'},
+                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/main-model',
+                json={
+                    'updated_by': 'phase5bis-admin',
+                    'payload': {
+                        'api_key': {'replace_value': 'sk-main-replaced'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'main_model')
+        self.assertEqual(observed['updated_by'], 'phase5bis-admin')
+        self.assertEqual(observed['payload'], {'api_key': {'replace_value': 'sk-main-replaced'}})
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
 
     def test_patch_admin_settings_arbiter_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -670,6 +710,46 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['endpoint']['value'], 'https://embed.next.example')
         self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
 
+    def test_patch_admin_settings_embedding_accepts_secret_replace_value(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'endpoint': {'value': 'https://embed.next.example', 'is_secret': False, 'origin': 'db'},
+                    'token': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/embedding',
+                json={
+                    'updated_by': 'phase5bis-admin',
+                    'payload': {
+                        'token': {'replace_value': 'embed-secret-replaced'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'embedding')
+        self.assertEqual(observed['updated_by'], 'phase5bis-admin')
+        self.assertEqual(observed['payload'], {'token': {'replace_value': 'embed-secret-replaced'}})
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+
     def test_patch_admin_settings_database_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section
@@ -711,6 +791,46 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'database')
         self.assertEqual(data['payload']['backend']['value'], 'postgresql')
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': False, 'origin': 'env_seed'})
+
+    def test_patch_admin_settings_database_accepts_secret_replace_value(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'backend': {'value': 'postgresql', 'is_secret': False, 'origin': 'db'},
+                    'dsn': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/database',
+                json={
+                    'updated_by': 'phase5bis-admin',
+                    'payload': {
+                        'dsn': {'replace_value': 'postgresql://user:pass@host/db'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'database')
+        self.assertEqual(observed['updated_by'], 'phase5bis-admin')
+        self.assertEqual(observed['payload'], {'dsn': {'replace_value': 'postgresql://user:pass@host/db'}})
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
 
     def test_patch_admin_settings_services_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -761,6 +881,46 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8093')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+
+    def test_patch_admin_settings_services_accepts_secret_replace_value(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'searxng_url': {'value': 'http://127.0.0.1:8093', 'is_secret': False, 'origin': 'db'},
+                    'crawl4ai_token': {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/services',
+                json={
+                    'updated_by': 'phase5bis-admin',
+                    'payload': {
+                        'crawl4ai_token': {'replace_value': 'crawl-secret-replaced'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'services')
+        self.assertEqual(observed['updated_by'], 'phase5bis-admin')
+        self.assertEqual(observed['payload'], {'crawl4ai_token': {'replace_value': 'crawl-secret-replaced'}})
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
 
     def test_patch_admin_settings_resources_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -843,7 +1003,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 self.assertEqual(response.status_code, 400, msg=path)
                 body = response.get_data(as_text=True)
                 self.assertNotIn(secret_value, body, msg=path)
-                self.assertIn('secret updates are not supported yet', body, msg=path)
+                self.assertTrue(
+                    'ambiguous secret patch payload' in body or 'missing runtime settings crypto key' in body,
+                    msg=body,
+                )
         finally:
             for logger in target_loggers:
                 logger.removeHandler(capture)
@@ -1004,7 +1167,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
         self.assertFalse(data['ok'])
-        self.assertIn('secret updates are not supported yet', data['error'])
+        self.assertIn('ambiguous secret patch payload', data['error'])
 
 
 if __name__ == '__main__':

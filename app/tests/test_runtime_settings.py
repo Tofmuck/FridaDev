@@ -410,13 +410,81 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(normalized['model']['origin'], 'admin_ui')
 
     def test_normalize_admin_patch_payload_rejects_secret_updates_for_now(self) -> None:
-        with self.assertRaisesRegex(runtime_settings.RuntimeSettingsValidationError, 'secret updates are not supported yet: main_model.api_key'):
+        with self.assertRaisesRegex(
+            runtime_settings.RuntimeSettingsValidationError,
+            'ambiguous secret patch payload for main_model.api_key: use replace_value only',
+        ):
             runtime_settings.normalize_admin_patch_payload(
                 'main_model',
                 {
                     'api_key': {'value': 'sk-secret'},
                 },
             )
+
+    def test_normalize_admin_patch_payload_encrypts_secret_replace_value(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            self.assertEqual(value, 'sk-phase5bis-secret')
+            return 'ciphertext-main-model'
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            normalized = runtime_settings.normalize_admin_patch_payload(
+                'main_model',
+                {
+                    'api_key': {'replace_value': 'sk-phase5bis-secret'},
+                },
+            )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+
+        self.assertEqual(
+            normalized,
+            {
+                'api_key': {
+                    'is_secret': True,
+                    'is_set': True,
+                    'origin': 'admin_ui',
+                    'value_encrypted': 'ciphertext-main-model',
+                }
+            },
+        )
+
+    def test_normalize_admin_patch_payload_rejects_secret_patch_without_replace_value(self) -> None:
+        with self.assertRaisesRegex(
+            runtime_settings.RuntimeSettingsValidationError,
+            'missing replace_value for services.crawl4ai_token',
+        ):
+            runtime_settings.normalize_admin_patch_payload(
+                'services',
+                {
+                    'crawl4ai_token': {},
+                },
+            )
+
+    def test_normalize_admin_patch_payload_rejects_secret_patch_when_crypto_key_is_missing(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+
+        def fake_encrypt_runtime_secret_value(value: str) -> str:
+            raise runtime_settings.runtime_secrets.RuntimeSettingsCryptoKeyMissingError(
+                'missing runtime settings crypto key: FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY'
+            )
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = fake_encrypt_runtime_secret_value
+        try:
+            with self.assertRaisesRegex(
+                runtime_settings.RuntimeSettingsValidationError,
+                'missing runtime settings crypto key: FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY',
+            ):
+                runtime_settings.normalize_admin_patch_payload(
+                    'embedding',
+                    {
+                        'token': {'replace_value': 'embed-secret'},
+                    },
+                )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
 
     def test_update_runtime_section_uses_external_bootstrap_dsn_and_returns_redacted_payload(self) -> None:
         observed = {
@@ -495,6 +563,94 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(view.payload['api_key']['is_secret'], True)
         self.assertIn('INSERT INTO runtime_settings', observed['queries'][1])
         self.assertIn('INSERT INTO runtime_settings_history', observed['queries'][2])
+
+    def test_update_runtime_section_encrypts_secret_patch_without_persisting_clear_text(self) -> None:
+        observed = {
+            'dsn': None,
+            'queries': [],
+            'params': [],
+        }
+
+        class FakeUndefinedTable(Exception):
+            pass
+
+        class FakeCursor:
+            def __init__(self):
+                self.last_query = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                self.last_query = query
+                observed['queries'].append(query)
+                observed['params'].append(params)
+
+            def fetchone(self):
+                if self.last_query and 'pgp_sym_encrypt' in self.last_query:
+                    return ('ciphertext-main-model',)
+                if self.last_query and 'SELECT payload' in self.last_query:
+                    return None
+                return None
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                return None
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        original_crypto_key = config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_psycopg = sys.modules.get('psycopg')
+        config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = 'phase5bis-key'
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(
+            connect=fake_connect,
+            errors=types.SimpleNamespace(UndefinedTable=FakeUndefinedTable),
+        )
+        try:
+            view = runtime_settings.update_runtime_section(
+                'main_model',
+                {
+                    'api_key': {'replace_value': 'sk-phase5bis-secret'},
+                },
+                updated_by='phase5bis-test',
+                fetcher=lambda: {},
+            )
+        finally:
+            config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = original_crypto_key
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+            runtime_settings.invalidate_runtime_settings_cache()
+
+        payload_after = observed['params'][2][2]
+        history_after = observed['params'][3][3]
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertEqual(view.payload['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
+        self.assertIn('ciphertext-main-model', payload_after)
+        self.assertIn('ciphertext-main-model', history_after)
+        self.assertNotIn('sk-phase5bis-secret', payload_after)
+        self.assertNotIn('sk-phase5bis-secret', history_after)
 
     def test_validate_runtime_section_accepts_candidate_main_model_payload(self) -> None:
         original_api_key = config.OR_KEY

@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 from urllib.parse import urlparse
 
 import config
+from admin import runtime_secrets
 
 
 SECTION_NAMES: Tuple[str, ...] = (
@@ -540,7 +541,34 @@ def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> D
             raise RuntimeSettingsValidationError(f'field patch must be a mapping for {field_ref}')
 
         if spec.is_secret:
-            raise RuntimeSettingsValidationError(f'secret updates are not supported yet: {field_ref}')
+            has_replace_value = 'replace_value' in raw_value
+            has_plain_value = 'value' in raw_value
+            has_encrypted_value = 'value_encrypted' in raw_value
+
+            if has_plain_value or has_encrypted_value:
+                raise RuntimeSettingsValidationError(
+                    f'ambiguous secret patch payload for {field_ref}: use replace_value only'
+                )
+            if not has_replace_value:
+                raise RuntimeSettingsValidationError(f'missing replace_value for {field_ref}')
+
+            replace_value = raw_value.get('replace_value')
+            if not isinstance(replace_value, str):
+                raise RuntimeSettingsValidationError(f'invalid text value for {field_ref}')
+            try:
+                encrypted_value = runtime_secrets.encrypt_runtime_secret_value(replace_value)
+            except runtime_secrets.RuntimeSettingsCryptoKeyMissingError as exc:
+                raise RuntimeSettingsValidationError(str(exc)) from exc
+            except runtime_secrets.RuntimeSettingsCryptoEngineError as exc:
+                raise RuntimeSettingsValidationError(f'failed to encrypt secret for {field_ref}: {exc}') from exc
+
+            normalized[str(field_name)] = {
+                'is_secret': True,
+                'is_set': True,
+                'origin': 'admin_ui',
+                'value_encrypted': encrypted_value,
+            }
+            continue
 
         if 'value' not in raw_value:
             raise RuntimeSettingsValidationError(f'missing value for {field_ref}')
