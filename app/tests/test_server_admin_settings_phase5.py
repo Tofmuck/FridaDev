@@ -907,6 +907,36 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             },
         )
 
+    def test_hermeneutics_and_settings_routes_stay_separated(self) -> None:
+        routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
+
+        settings_routes = {
+            route for route in routes
+            if route.startswith('/api/admin/settings')
+        }
+        hermeneutics_routes = {
+            route for route in routes
+            if route.startswith('/api/admin/hermeneutics')
+        }
+
+        self.assertEqual(
+            hermeneutics_routes,
+            {
+                '/api/admin/hermeneutics/identity-candidates',
+                '/api/admin/hermeneutics/arbiter-decisions',
+                '/api/admin/hermeneutics/identity/force-accept',
+                '/api/admin/hermeneutics/identity/force-reject',
+                '/api/admin/hermeneutics/identity/relabel',
+                '/api/admin/hermeneutics/dashboard',
+                '/api/admin/hermeneutics/corrections-export',
+            },
+        )
+        self.assertTrue(settings_routes)
+        self.assertTrue(hermeneutics_routes)
+        self.assertTrue(settings_routes.isdisjoint(hermeneutics_routes))
+        self.assertFalse(any('hermeneutics' in route for route in settings_routes))
+        self.assertFalse(any('/settings' in route for route in hermeneutics_routes))
+
     def test_all_admin_settings_validate_routes_are_registered(self) -> None:
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
         self.assertIn('/api/admin/settings/main-model/validate', routes)

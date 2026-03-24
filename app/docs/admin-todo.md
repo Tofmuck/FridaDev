@@ -359,7 +359,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Verifier que les reponses `GET` masquent tous les secrets.
 - [x] Verifier que les reponses `PATCH` ne logguent jamais les secrets en clair.
 - [x] Conserver inchangées `GET /api/admin/logs` et `POST /api/admin/restart`.
-- [ ] Ne pas melanger les endpoints hermeneutiques existants avec les endpoints de configuration V1.
+- [x] Ne pas melanger les endpoints hermeneutiques existants avec les endpoints de configuration V1.
 - [ ] Prevoir un commit isole pour l'ouverture des routes API de configuration.
 
 ### Phase 6 - Conservation explicite de l'ancien admin
