@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -16,9 +17,14 @@ import config
 class RuntimeSecretsTests(unittest.TestCase):
     def setUp(self) -> None:
         self._original_crypto_key = config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY
+        self._original_psycopg = sys.modules.get('psycopg')
 
     def tearDown(self) -> None:
         config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = self._original_crypto_key
+        if self._original_psycopg is None:
+            sys.modules.pop('psycopg', None)
+        else:
+            sys.modules['psycopg'] = self._original_psycopg
 
     def test_has_runtime_settings_crypto_key_is_false_when_missing(self) -> None:
         config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = ''
@@ -54,6 +60,103 @@ class RuntimeSecretsTests(unittest.TestCase):
             },
         )
         self.assertNotIn('phase5bis-key', repr(policy))
+
+    def test_encrypt_runtime_secret_value_uses_pgcrypto_with_external_key(self) -> None:
+        observed = {'dsn': None, 'query': None, 'params': None}
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['query'] = query
+                observed['params'] = params
+
+            def fetchone(self):
+                return ('-----BEGIN PGP MESSAGE-----ciphertext',)
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = 'phase5bis-key'
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=fake_connect)
+        try:
+            encrypted = runtime_secrets.encrypt_runtime_secret_value('plain-secret')
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertEqual(encrypted, '-----BEGIN PGP MESSAGE-----ciphertext')
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertIn('armor', observed['query'])
+        self.assertIn('pgp_sym_encrypt', observed['query'])
+        self.assertEqual(observed['params'], ('plain-secret', 'phase5bis-key'))
+
+    def test_decrypt_runtime_secret_value_uses_pgcrypto_with_external_key(self) -> None:
+        observed = {'query': None, 'params': None}
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['query'] = query
+                observed['params'] = params
+
+            def fetchone(self):
+                return ('plain-secret',)
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=lambda dsn: FakeConnection())
+        config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = 'phase5bis-key'
+
+        decrypted = runtime_secrets.decrypt_runtime_secret_value('-----BEGIN PGP MESSAGE-----ciphertext')
+
+        self.assertEqual(decrypted, 'plain-secret')
+        self.assertIn('pgp_sym_decrypt', observed['query'])
+        self.assertIn('dearmor', observed['query'])
+        self.assertEqual(
+            observed['params'],
+            ('-----BEGIN PGP MESSAGE-----ciphertext', 'phase5bis-key'),
+        )
+
+    def test_encrypt_runtime_secret_value_requires_crypto_key(self) -> None:
+        config.FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = ''
+        with self.assertRaisesRegex(
+            runtime_secrets.RuntimeSettingsCryptoKeyMissingError,
+            'missing runtime settings crypto key: FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY',
+        ):
+            runtime_secrets.encrypt_runtime_secret_value('plain-secret')
 
 
 if __name__ == '__main__':

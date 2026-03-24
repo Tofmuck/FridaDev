@@ -371,8 +371,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
 - [ ] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
 - [x] Creer le module dedie `app/admin/runtime_secrets.py`.
-- [ ] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
-- [ ] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
+- [x] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
+- [x] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
 - [x] Ajouter dans ce module un helper de verification de presence de `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
 - [ ] Implementer le comportement `cle crypto absente = ecriture de secret refusee avec erreur explicite`.
 - [ ] Implementer le comportement `secret chiffre present mais indechiffrable = erreur de configuration explicite`.
@@ -397,7 +397,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter dans l'API admin un indicateur de source effective du secret (`db_encrypted` vs `env_fallback`) sans jamais exposer la valeur.
 - [ ] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.
 - [ ] Garantir qu'un reseed secret n'ecrase jamais une valeur deja chiffree en base.
-- [ ] Ajouter des tests unitaires sur le chiffrement et le dechiffrement des secrets runtime.
+- [x] Ajouter des tests unitaires sur le chiffrement et le dechiffrement des secrets runtime.
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `main_model`.
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `services`.
