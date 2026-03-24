@@ -638,6 +638,11 @@ def api_admin_settings_embedding_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
 
 
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/database')
+def api_admin_settings_database_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
+
+
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/embedding')
 def api_admin_settings_embedding_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
