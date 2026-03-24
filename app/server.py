@@ -623,6 +623,11 @@ def api_admin_settings_main_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
 
 
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model')
+def api_admin_settings_arbiter_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
+
+
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
 def api_admin_settings_main_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])

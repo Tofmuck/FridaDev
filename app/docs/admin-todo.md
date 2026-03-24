@@ -341,7 +341,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter une route de lecture agregee de l'ensemble des sections du nouvel admin.
 - [x] Ajouter une route `GET` de lecture pour la section `main_model`.
 - [x] Ajouter une route `PATCH` de mise a jour pour la section `main_model`.
-- [ ] Ajouter une route `GET` de lecture pour la section `arbiter_model`.
+- [x] Ajouter une route `GET` de lecture pour la section `arbiter_model`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `arbiter_model`.
 - [ ] Ajouter une route `GET` de lecture pour la section `summary_model`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `summary_model`.
