@@ -356,7 +356,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter une route de statut bootstrap/fallback pour rendre visible la source effective de configuration.
 - [x] Ajouter une route de validation/smoke test par section pour les verifications techniques avant sauvegarde finale.
 - [x] Brancher toutes ces routes sous le garde admin existant.
-- [ ] Verifier que les reponses `GET` masquent tous les secrets.
+- [x] Verifier que les reponses `GET` masquent tous les secrets.
 - [ ] Verifier que les reponses `PATCH` ne logguent jamais les secrets en clair.
 - [ ] Conserver inchangées `GET /api/admin/logs` et `POST /api/admin/restart`.
 - [ ] Ne pas melanger les endpoints hermeneutiques existants avec les endpoints de configuration V1.

@@ -325,6 +325,94 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.txt')
         self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.txt')
 
+    def test_all_get_admin_settings_routes_mask_secret_fields(self) -> None:
+        original_fetcher = self.server.runtime_settings._default_db_fetch_all_sections
+
+        fake_rows = {
+            'main_model': runtime_settings.normalize_stored_payload(
+                'main_model',
+                {
+                    'model': {'value': 'openrouter/db-main', 'origin': 'db'},
+                    'api_key': {'value_encrypted': 'cipher-main', 'origin': 'db'},
+                },
+            ),
+            'embedding': runtime_settings.normalize_stored_payload(
+                'embedding',
+                {
+                    'endpoint': {'value': 'https://embed.override.example', 'origin': 'db'},
+                    'model': {'value': 'intfloat/multilingual-e5-small', 'origin': 'db'},
+                    'token': {'value_encrypted': 'cipher-embed', 'origin': 'db'},
+                    'dimensions': {'value': 384, 'origin': 'db'},
+                    'top_k': {'value': 9, 'origin': 'db'},
+                },
+            ),
+            'database': runtime_settings.normalize_stored_payload(
+                'database',
+                {
+                    'backend': {'value': 'postgresql', 'origin': 'db'},
+                    'dsn': {'value_encrypted': 'cipher-dsn', 'origin': 'db'},
+                },
+            ),
+            'services': runtime_settings.normalize_stored_payload(
+                'services',
+                {
+                    'searxng_url': {'value': 'http://127.0.0.1:8092', 'origin': 'db'},
+                    'searxng_results': {'value': 5, 'origin': 'db'},
+                    'crawl4ai_url': {'value': 'http://127.0.0.1:11235', 'origin': 'db'},
+                    'crawl4ai_token': {'value_encrypted': 'cipher-crawl', 'origin': 'db'},
+                    'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
+                    'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+                },
+            ),
+        }
+
+        def fake_fetcher():
+            return fake_rows
+
+        def assert_secret_payload_masked(section: str, payload: dict) -> None:
+            secret_fields = [
+                field.key
+                for field in runtime_settings.get_section_spec(section).fields
+                if field.is_secret
+            ]
+            for field_name in secret_fields:
+                secret_payload = payload[field_name]
+                self.assertEqual(
+                    set(secret_payload.keys()),
+                    {'is_secret', 'is_set', 'origin'},
+                    msg=f'unexpected keys in masked secret payload for {section}.{field_name}: {secret_payload}',
+                )
+                self.assertTrue(secret_payload['is_secret'])
+                self.assertIsInstance(secret_payload['is_set'], bool)
+
+        self.server.runtime_settings._default_db_fetch_all_sections = fake_fetcher
+        self.server.runtime_settings.invalidate_runtime_settings_cache()
+        try:
+            aggregated = self.client.get('/api/admin/settings')
+            self.assertEqual(aggregated.status_code, 200)
+            aggregated_data = aggregated.get_json()
+            self.assertTrue(aggregated_data['ok'])
+            for section in ('main_model', 'embedding', 'database', 'services'):
+                assert_secret_payload_masked(
+                    section,
+                    aggregated_data['sections'][section]['payload'],
+                )
+
+            for path, section in (
+                ('/api/admin/settings/main-model', 'main_model'),
+                ('/api/admin/settings/embedding', 'embedding'),
+                ('/api/admin/settings/database', 'database'),
+                ('/api/admin/settings/services', 'services'),
+            ):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200, msg=path)
+                data = response.get_json()
+                self.assertTrue(data['ok'])
+                assert_secret_payload_masked(section, data['payload'])
+        finally:
+            self.server.runtime_settings._default_db_fetch_all_sections = original_fetcher
+            self.server.runtime_settings.invalidate_runtime_settings_cache()
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
