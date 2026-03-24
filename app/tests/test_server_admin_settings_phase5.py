@@ -265,6 +265,34 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8092')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
 
+    def test_get_admin_settings_resources_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'resources')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'is_secret': False, 'origin': 'db'},
+                    'user_identity_path': {'value': 'data/identity/user_identity.txt', 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/resources')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'resources')
+        self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.txt')
+        self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.txt')
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
