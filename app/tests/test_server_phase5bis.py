@@ -11,6 +11,10 @@ if str(APP_DIR) not in sys.path:
 
 
 class ServerPhase5BisSecretRuntimeTests(unittest.TestCase):
+    def test_server_triggers_runtime_secret_env_backfill_at_startup(self) -> None:
+        source = (APP_DIR / 'server.py').read_text()
+        self.assertIn('runtime_settings.backfill_runtime_secrets_from_env()', source)
+
     def test_server_uses_runtime_main_model_secret_for_llm_call_flow(self) -> None:
         source = (APP_DIR / 'server.py').read_text()
         self.assertIn("runtime_settings.get_runtime_secret_value('main_model', 'api_key')", source)

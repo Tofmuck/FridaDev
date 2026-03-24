@@ -57,6 +57,16 @@ conv_store.ensure_conv_dir()
 memory_store.init_db()
 conv_store.init_catalog_db()
 conv_store.init_messages_db()
+try:
+    _runtime_secret_backfill = runtime_settings.backfill_runtime_secrets_from_env()
+except (runtime_settings.RuntimeSettingsDbUnavailableError, runtime_settings.runtime_secrets.RuntimeSettingsCryptoKeyMissingError) as exc:
+    logger.info('runtime_secret_backfill skipped reason=%s', exc)
+else:
+    logger.info(
+        'runtime_secret_backfill updated_fields=%s updated_sections=%s',
+        len(_runtime_secret_backfill['updated_fields']),
+        ','.join(_runtime_secret_backfill['updated_sections']) or 'none',
+    )
 logger.info('conv_json_bootstrap disabled for db_only_migration')
 
 _RUNTIME_FINGERPRINT = _runtime_fingerprint()

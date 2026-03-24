@@ -369,7 +369,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
 - [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
 - [ ] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
-- [ ] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
+- [x] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
 - [x] Creer le module dedie `app/admin/runtime_secrets.py`.
 - [x] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
 - [x] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
@@ -395,8 +395,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer le fallback `CRAWL4AI_TOKEN` par le secret DB dechiffre quand il est disponible.
 - [x] Garder `database.dsn` stockable et lisible en mode masque dans l'admin sans le substituer au bootstrap externe minimal tant que la transition DB n'est pas explicitement refermee.
 - [x] Ajouter dans l'API admin un indicateur de source effective du secret (`db_encrypted` vs `env_fallback`) sans jamais exposer la valeur.
-- [ ] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.
-- [ ] Garantir qu'un reseed secret n'ecrase jamais une valeur deja chiffree en base.
+- [x] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.
+- [x] Garantir qu'un reseed secret n'ecrase jamais une valeur deja chiffree en base.
 - [x] Ajouter des tests unitaires sur le chiffrement et le dechiffrement des secrets runtime.
 - [x] Ajouter des tests backend sur un `PATCH` secret valide pour `main_model`.
 - [x] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
@@ -408,7 +408,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Prevoir un commit isole pour la couche crypto.
 - [x] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
 - [ ] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
-- [ ] Prevoir un commit isole pour le backfill initial des secrets existants.
+- [x] Prevoir un commit isole pour le backfill initial des secrets existants.
 
 ### Phase 6 - Conservation explicite de l'ancien admin
 

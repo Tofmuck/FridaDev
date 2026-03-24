@@ -111,6 +111,14 @@ class RuntimeSettingsValidationError(ValueError):
 _SNAPSHOT_CACHE: RuntimeSettingsSnapshot | None = None
 
 
+SECRET_V1_FIELDS: Tuple[Tuple[str, str], ...] = (
+    ('main_model', 'api_key'),
+    ('embedding', 'token'),
+    ('services', 'crawl4ai_token'),
+    ('database', 'dsn'),
+)
+
+
 SECTION_SPECS: Dict[str, SectionSpec] = {
     'main_model': SectionSpec(
         name='main_model',
@@ -184,6 +192,10 @@ SECTION_SPECS: Dict[str, SectionSpec] = {
 
 def list_sections() -> Tuple[str, ...]:
     return SECTION_NAMES
+
+
+def list_secret_v1_fields() -> Tuple[Tuple[str, str], ...]:
+    return SECRET_V1_FIELDS
 
 
 def get_section_spec(section: str) -> SectionSpec:
@@ -375,6 +387,129 @@ def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
 
 def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
     return tuple(build_env_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
+
+
+def _backfill_env_secret_value(section: str, field: str) -> str:
+    if section == 'database' and field == 'dsn':
+        return str(config.FRIDA_MEMORY_DB_DSN or '').strip()
+
+    value = _seed_value(section, field)
+    if value in (None, ''):
+        return ''
+    return str(value).strip()
+
+
+def _should_backfill_secret_field(field_payload: Mapping[str, Any]) -> bool:
+    encrypted_value = str(field_payload.get('value_encrypted') or '').strip()
+    if encrypted_value:
+        return False
+
+    is_set = bool(field_payload.get('is_set'))
+    origin = str(field_payload.get('origin') or '').strip()
+    if is_set and origin not in {'', 'env_seed'}:
+        return False
+
+    return True
+
+
+def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backfill') -> Dict[str, Any]:
+    actor = str(updated_by or '').strip() or 'runtime_secret_backfill'
+
+    try:
+        import psycopg
+        from psycopg import errors as psycopg_errors
+    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
+        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
+
+    updated_fields: list[str] = []
+    updated_sections: set[str] = set()
+
+    try:
+        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT section, payload
+                    FROM runtime_settings
+                    ORDER BY section
+                    '''
+                )
+                rows = {
+                    str(section): normalize_stored_payload(str(section), payload, default_origin='db')
+                    for section, payload in cur.fetchall()
+                }
+
+                for section, field in SECRET_V1_FIELDS:
+                    env_value = _backfill_env_secret_value(section, field)
+                    if not env_value:
+                        continue
+
+                    current_payload = rows.get(section)
+                    if current_payload is None:
+                        next_payload = normalize_stored_payload(
+                            section,
+                            build_env_seed_bundle(section).payload,
+                            default_origin='env_seed',
+                        )
+                        before_payload: Dict[str, Dict[str, Any]] = {}
+                    else:
+                        next_payload = normalize_stored_payload(section, current_payload, default_origin='db')
+                        before_payload = normalize_stored_payload(section, current_payload, default_origin='db')
+
+                    current_field_payload = next_payload.get(field) or {}
+                    if not _should_backfill_secret_field(current_field_payload):
+                        continue
+
+                    encrypted_value = runtime_secrets.encrypt_runtime_secret_value(env_value)
+                    next_payload[field] = {
+                        'is_secret': True,
+                        'is_set': True,
+                        'origin': 'env_backfill',
+                        'value_encrypted': encrypted_value,
+                    }
+
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
+                        VALUES (%s, 'v1', %s, %s::jsonb)
+                        ON CONFLICT (section) DO UPDATE
+                        SET schema_version = EXCLUDED.schema_version,
+                            updated_at = now(),
+                            updated_by = EXCLUDED.updated_by,
+                            payload = EXCLUDED.payload
+                        ''',
+                        (section, actor, json.dumps(next_payload)),
+                    )
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings_history (
+                            section,
+                            schema_version,
+                            changed_by,
+                            payload_before,
+                            payload_after
+                        )
+                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
+                        ''',
+                        (section, actor, json.dumps(before_payload), json.dumps(next_payload)),
+                    )
+
+                    rows[section] = next_payload
+                    updated_sections.add(section)
+                    updated_fields.append(f'{section}.{field}')
+            conn.commit()
+    except psycopg_errors.UndefinedTable as exc:
+        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
+    except Exception as exc:
+        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
+
+    if updated_fields:
+        invalidate_runtime_settings_cache()
+
+    return {
+        'updated_fields': tuple(updated_fields),
+        'updated_sections': tuple(sorted(updated_sections)),
+    }
 
 
 def invalidate_runtime_settings_cache() -> None:
