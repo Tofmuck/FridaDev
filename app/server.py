@@ -590,6 +590,11 @@ def _admin_settings_single_section_json(section: str):
     return jsonify({'ok': True, **_admin_settings_section_response(section)})
 
 
+def _admin_settings_status_json():
+    status = runtime_settings.get_runtime_status()
+    return jsonify({'ok': True, **status})
+
+
 def _admin_settings_section_patch_response(section: str):
     data = request.get_json(force=True, silent=True) or {}
     patch_payload = data.get('payload')
@@ -616,6 +621,11 @@ def api_admin_settings():
         for section in runtime_settings.list_sections()
     }
     return jsonify({'ok': True, 'sections': sections})
+
+
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/status')
+def api_admin_settings_status():
+    return _admin_settings_status_json()
 
 
 @app.get(f'{_ADMIN_SETTINGS_PREFIX}/main-model')

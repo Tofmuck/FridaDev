@@ -252,6 +252,33 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(view.payload['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
         self.assertEqual(view.payload['model']['value'], 'openai/gpt-5.1')
 
+    def test_runtime_status_reports_db_state_and_section_sources(self) -> None:
+        def fetcher():
+            return {
+                'main_model': runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.1', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'app_name': {'value': 'FridaDev', 'origin': 'db'},
+                        'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
+                        'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
+                        'temperature': {'value': 0.4, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                    },
+                )
+            }
+
+        status = runtime_settings.get_runtime_status(fetcher=fetcher)
+        self.assertEqual(status['db_state'], 'db_rows')
+        self.assertEqual(status['bootstrap']['database_dsn_source'], 'env')
+        self.assertEqual(status['bootstrap']['database_dsn_env_var'], 'FRIDA_MEMORY_DB_DSN')
+        self.assertEqual(status['sections']['main_model'], {'source': 'db', 'source_reason': 'db_row'})
+        self.assertEqual(status['sections']['services'], {'source': 'env', 'source_reason': 'missing_section'})
+
     def test_require_secret_configured_raises_explicit_error(self) -> None:
         view = runtime_settings.get_runtime_section('database', fetcher=lambda: {})
         with self.assertRaisesRegex(runtime_settings.RuntimeSettingsSecretRequiredError, 'missing secret config: database.dsn'):

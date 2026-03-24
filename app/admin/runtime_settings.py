@@ -458,6 +458,36 @@ def get_resources_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str
     return get_runtime_section('resources', fetcher=fetcher)
 
 
+def get_runtime_status(
+    *,
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> Dict[str, Any]:
+    snapshot = _load_snapshot(fetcher=fetcher)
+    sections: Dict[str, Dict[str, str]] = {}
+    for section in SECTION_NAMES:
+        if section in snapshot.rows:
+            sections[section] = {
+                'source': 'db',
+                'source_reason': 'db_row',
+            }
+        else:
+            source_reason = 'missing_section' if snapshot.db_state == 'db_rows' else snapshot.db_state
+            sections[section] = {
+                'source': 'env',
+                'source_reason': source_reason,
+            }
+
+    return {
+        'db_state': snapshot.db_state,
+        'bootstrap': {
+            'database_dsn_source': 'env',
+            'database_dsn_env_var': 'FRIDA_MEMORY_DB_DSN',
+            'database_dsn_mode': 'external_bootstrap',
+        },
+        'sections': sections,
+    }
+
+
 def require_secret_configured(view: RuntimeSectionView, field: str) -> None:
     spec = get_field_spec(view.section, field)
     if not spec.is_secret:

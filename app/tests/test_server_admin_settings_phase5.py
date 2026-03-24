@@ -93,6 +93,38 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
 
+    def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
+        original_get_status = self.server.runtime_settings.get_runtime_status
+
+        def fake_get_runtime_status():
+            return {
+                'db_state': 'db_rows',
+                'bootstrap': {
+                    'database_dsn_source': 'env',
+                    'database_dsn_env_var': 'FRIDA_MEMORY_DB_DSN',
+                    'database_dsn_mode': 'external_bootstrap',
+                },
+                'sections': {
+                    'main_model': {'source': 'db', 'source_reason': 'db_row'},
+                    'services': {'source': 'env', 'source_reason': 'missing_section'},
+                },
+            }
+
+        self.server.runtime_settings.get_runtime_status = fake_get_runtime_status
+        try:
+            response = self.client.get('/api/admin/settings/status')
+        finally:
+            self.server.runtime_settings.get_runtime_status = original_get_status
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['db_state'], 'db_rows')
+        self.assertEqual(data['bootstrap']['database_dsn_source'], 'env')
+        self.assertEqual(data['bootstrap']['database_dsn_env_var'], 'FRIDA_MEMORY_DB_DSN')
+        self.assertEqual(data['sections']['main_model'], {'source': 'db', 'source_reason': 'db_row'})
+        self.assertEqual(data['sections']['services'], {'source': 'env', 'source_reason': 'missing_section'})
+
     def test_get_admin_settings_main_model_returns_single_section_with_redacted_secrets(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
 
