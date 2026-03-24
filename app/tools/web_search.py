@@ -4,8 +4,14 @@ import requests
 from datetime import datetime, timezone
 
 import config
+from admin import runtime_settings
 
 logger = logging.getLogger("kiki.web_search")
+
+
+def _runtime_main_model_name() -> str:
+    view = runtime_settings.get_main_model_settings()
+    return str(view.payload['model']['value'])
 
 
 def reformulate(user_msg: str) -> str:
@@ -13,7 +19,7 @@ def reformulate(user_msg: str) -> str:
     try:
         today = datetime.now(timezone.utc).strftime("%d %B %Y")
         payload = {
-            "model": config.OR_MODEL,
+            "model": _runtime_main_model_name(),
             "messages": [
                 {
                     "role": "system",
