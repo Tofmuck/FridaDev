@@ -945,7 +945,13 @@ def validate_runtime_section(
         crawl4ai_url = _runtime_text_value(view, 'crawl4ai_url')
         crawl4ai_top_n = _runtime_int_value(view, 'crawl4ai_top_n')
         crawl4ai_max_chars = _runtime_int_value(view, 'crawl4ai_max_chars')
-        crawl4ai_token = str(config.CRAWL4AI_TOKEN or '').strip()
+        try:
+            crawl4ai_token_secret = _resolve_runtime_secret_from_view(view, 'crawl4ai_token')
+            crawl4ai_token_ok = bool(str(crawl4ai_token_secret.value).strip())
+            crawl4ai_token_detail = f'services.crawl4ai_token available from {crawl4ai_token_secret.source}'
+        except (RuntimeSettingsSecretRequiredError, RuntimeSettingsSecretResolutionError) as exc:
+            crawl4ai_token_ok = False
+            crawl4ai_token_detail = str(exc)
         checks.extend(
             (
                 _validation_check('searxng_url', _is_http_url(searxng_url), f'searxng_url={searxng_url or "missing"}'),
@@ -965,13 +971,7 @@ def validate_runtime_section(
                     crawl4ai_max_chars is not None and crawl4ai_max_chars > 0,
                     f'crawl4ai_max_chars={crawl4ai_max_chars!r}',
                 ),
-                _validation_check(
-                    'crawl4ai_token_transition',
-                    bool(crawl4ai_token),
-                    'CRAWL4AI_TOKEN env fallback available'
-                    if crawl4ai_token
-                    else 'CRAWL4AI_TOKEN env fallback missing during transition',
-                ),
+                _validation_check('crawl4ai_token_runtime', crawl4ai_token_ok, crawl4ai_token_detail),
             )
         )
     elif section == 'resources':

@@ -33,19 +33,8 @@ def _runtime_services_value(field: str):
 
 
 def _runtime_crawl4ai_token() -> str:
-    env_token = str(config.CRAWL4AI_TOKEN or '').strip()
-    if env_token:
-        return env_token
-
-    view = _runtime_services_view()
-    payload = view.payload.get('crawl4ai_token') or {}
-    if bool(payload.get('is_set')):
-        raise runtime_settings.RuntimeSettingsSecretRequiredError(
-            'services.crawl4ai_token is set in runtime settings but runtime secret decryption is not available; CRAWL4AI_TOKEN env fallback is required during the transition'
-        )
-
-    runtime_settings.require_secret_configured(view, 'crawl4ai_token')
-    raise AssertionError('unreachable')
+    secret = runtime_settings.get_runtime_secret_value('services', 'crawl4ai_token')
+    return str(secret.value)
 
 
 def reformulate(user_msg: str) -> str:

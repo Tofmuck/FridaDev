@@ -72,8 +72,8 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
     def test_crawl_uses_runtime_services_settings_and_env_token_fallback(self) -> None:
         observed = {'url': None, 'auth': None}
         original_get_settings = web_search.runtime_settings.get_services_settings
+        original_get_secret = web_search.runtime_settings.get_runtime_secret_value
         original_post = web_search.requests.post
-        original_token = config.CRAWL4AI_TOKEN
 
         class FakeResponse:
             def raise_for_status(self) -> None:
@@ -87,19 +87,29 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
             observed['auth'] = headers['Authorization']
             return FakeResponse()
 
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('services', 'crawl4ai_token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='services',
+                field='crawl4ai_token',
+                value='crawl-db-token',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
         web_search.runtime_settings.get_services_settings = self._db_services_view
+        web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         web_search.requests.post = fake_post
-        config.CRAWL4AI_TOKEN = 'crawl-env-token'
         try:
             content = web_search.crawl('https://source.example')
         finally:
             web_search.runtime_settings.get_services_settings = original_get_settings
+            web_search.runtime_settings.get_runtime_secret_value = original_get_secret
             web_search.requests.post = original_post
-            config.CRAWL4AI_TOKEN = original_token
 
         self.assertEqual(content, 'contenu crawl')
         self.assertEqual(observed['url'], 'https://crawl.override.example/md')
-        self.assertEqual(observed['auth'], 'Bearer crawl-env-token')
+        self.assertEqual(observed['auth'], 'Bearer crawl-db-token')
 
     def test_format_context_uses_runtime_crawl_limits(self) -> None:
         original_get_settings = web_search.runtime_settings.get_services_settings
@@ -127,20 +137,44 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         self.assertEqual(calls['count'], 1)
         self.assertIn('abcdefghij\n[...contenu tronqué]', text)
 
-    def test_crawl_requires_env_token_fallback_while_db_secret_decryption_is_unavailable(self) -> None:
-        original_get_settings = web_search.runtime_settings.get_services_settings
-        original_token = config.CRAWL4AI_TOKEN
-        web_search.runtime_settings.get_services_settings = self._db_services_view
-        config.CRAWL4AI_TOKEN = ''
+    def test_runtime_crawl4ai_token_uses_env_fallback_when_runtime_layer_returns_it(self) -> None:
+        original_get_secret = web_search.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('services', 'crawl4ai_token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='services',
+                field='crawl4ai_token',
+                value='crawl-env-fallback-token',
+                source='env_fallback',
+                source_reason='empty_table',
+            )
+
+        web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        try:
+            token = web_search._runtime_crawl4ai_token()
+        finally:
+            web_search.runtime_settings.get_runtime_secret_value = original_get_secret
+
+        self.assertEqual(token, 'crawl-env-fallback-token')
+
+    def test_runtime_crawl4ai_token_raises_explicit_error_when_db_secret_is_not_decryptable(self) -> None:
+        original_get_secret = web_search.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            raise runtime_settings.RuntimeSettingsSecretResolutionError(
+                'failed to decrypt runtime secret services.crawl4ai_token: bad ciphertext'
+            )
+
+        web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         try:
             with self.assertRaisesRegex(
-                runtime_settings.RuntimeSettingsSecretRequiredError,
-                'runtime secret decryption is not available',
+                runtime_settings.RuntimeSettingsSecretResolutionError,
+                'failed to decrypt runtime secret services.crawl4ai_token: bad ciphertext',
             ):
                 web_search._runtime_crawl4ai_token()
         finally:
-            web_search.runtime_settings.get_services_settings = original_get_settings
-            config.CRAWL4AI_TOKEN = original_token
+            web_search.runtime_settings.get_runtime_secret_value = original_get_secret
 
 
 if __name__ == '__main__':

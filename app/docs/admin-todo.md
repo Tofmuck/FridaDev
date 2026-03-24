@@ -391,8 +391,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer le fallback `OPENROUTER_API_KEY` par le secret DB dechiffre quand il est disponible.
 - [x] Ajouter la lecture runtime dechiffree de `embedding.token`.
 - [x] Remplacer le fallback `EMBED_TOKEN` par le secret DB dechiffre quand il est disponible.
-- [ ] Ajouter la lecture runtime dechiffree de `services.crawl4ai_token`.
-- [ ] Remplacer le fallback `CRAWL4AI_TOKEN` par le secret DB dechiffre quand il est disponible.
+- [x] Ajouter la lecture runtime dechiffree de `services.crawl4ai_token`.
+- [x] Remplacer le fallback `CRAWL4AI_TOKEN` par le secret DB dechiffre quand il est disponible.
 - [ ] Garder `database.dsn` stockable et lisible en mode masque dans l'admin sans le substituer au bootstrap externe minimal tant que la transition DB n'est pas explicitement refermee.
 - [ ] Ajouter dans l'API admin un indicateur de source effective du secret (`db_encrypted` vs `env_fallback`) sans jamais exposer la valeur.
 - [ ] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.

@@ -819,6 +819,32 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(checks['token_runtime']['ok'])
         self.assertIn('db_encrypted', checks['token_runtime']['detail'])
 
+    def test_validate_runtime_section_accepts_candidate_services_secret_patch_from_db_encrypted(self) -> None:
+        original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
+        original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value
+        original_token = config.CRAWL4AI_TOKEN
+        config.CRAWL4AI_TOKEN = ''
+
+        runtime_settings.runtime_secrets.encrypt_runtime_secret_value = lambda value: 'cipher-crawl4ai-token'
+        runtime_settings.runtime_secrets.decrypt_runtime_secret_value = lambda value: 'crawl-candidate-token'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'services',
+                {
+                    'crawl4ai_token': {'replace_value': 'crawl-candidate-token'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            runtime_settings.runtime_secrets.encrypt_runtime_secret_value = original_encrypt
+            runtime_settings.runtime_secrets.decrypt_runtime_secret_value = original_decrypt
+            config.CRAWL4AI_TOKEN = original_token
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['crawl4ai_token_runtime']['ok'])
+        self.assertIn('db_encrypted', checks['crawl4ai_token_runtime']['detail'])
+
     def test_validate_runtime_section_reports_missing_resource_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             existing = Path(tmpdir) / 'llm.txt'
