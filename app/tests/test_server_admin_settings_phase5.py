@@ -533,6 +533,56 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['backend']['value'], 'postgresql')
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': False, 'origin': 'env_seed'})
 
+    def test_patch_admin_settings_services_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'searxng_url': {'value': 'http://127.0.0.1:8093', 'is_secret': False, 'origin': 'admin_ui'},
+                    'crawl4ai_max_chars': {'value': 6000, 'is_secret': False, 'origin': 'admin_ui'},
+                    'crawl4ai_token': {'is_secret': True, 'is_set': True, 'origin': 'env_seed'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/services',
+                json={
+                    'updated_by': 'phase5-admin',
+                    'payload': {
+                        'searxng_url': {'value': 'http://127.0.0.1:8093'},
+                        'crawl4ai_max_chars': {'value': 6000},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'services')
+        self.assertEqual(observed['updated_by'], 'phase5-admin')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'searxng_url': {'value': 'http://127.0.0.1:8093'},
+                'crawl4ai_max_chars': {'value': 6000},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'services')
+        self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8093')
+        self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+
 
 if __name__ == '__main__':
     unittest.main()

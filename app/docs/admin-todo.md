@@ -350,7 +350,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter une route `GET` de lecture pour la section `database`.
 - [x] Ajouter une route `PATCH` de mise a jour pour la section `database`.
 - [x] Ajouter une route `GET` de lecture pour la section `services`.
-- [ ] Ajouter une route `PATCH` de mise a jour pour la section `services`.
+- [x] Ajouter une route `PATCH` de mise a jour pour la section `services`.
 - [ ] Ajouter une route `GET` de lecture pour la section `resources`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `resources`.
 - [ ] Ajouter une route de statut bootstrap/fallback pour rendre visible la source effective de configuration.

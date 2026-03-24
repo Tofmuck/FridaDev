@@ -648,6 +648,11 @@ def api_admin_settings_services_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
 
 
+@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/services')
+def api_admin_settings_services_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
+
+
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/database')
 def api_admin_settings_database_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
