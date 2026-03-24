@@ -8,6 +8,46 @@ Objectif du chantier prepare ici : introduire un nouvel admin centre sur les var
 
 Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 
+## Decisions deja prises
+
+- L'admin V1 porte sur les variables contingentes de deploiement.
+- Ces variables doivent vivre en base de donnees.
+- Le code doit lire ces variables depuis la base.
+- L'admin actuel est conserve comme ancien admin sous `admin-old.*`.
+- Le nouvel admin est cree from scratch.
+- Le nouvel admin reprend le style du front existant, avec priorite a la reutilisation de `app/web/styles.css` si cela reste propre.
+- Les logs constituent un chantier distinct et ulterieur.
+- Le present todo couvre l'ensemble du chantier jusqu'a l'implementation finale.
+- L'execution reelle ne se fera pas en big bang : elle se fera tranche minimale par tranche minimale.
+- Chaque tranche reelle devra etre validee, puis committee et poussee avant d'ouvrir la suivante.
+- Le routage cible est deja fixe :
+  - `/admin` = nouvel admin
+  - `/admin-old` = ancien admin
+- Le lien depuis le front devra etre adapte vers le nouvel admin ; ce n'est plus un point a rouvrir.
+
+## Methode d'execution
+
+- Ce document est une feuille de route complete A -> Z, pas un lot de travail a executer d'un seul bloc.
+- Son usage normal est le suivant :
+  - prendre une tranche minimale ;
+  - l'executer sans elargir le perimetre ;
+  - verifier la tranche ;
+  - commit + push ;
+  - reprendre ensuite la tranche suivante.
+- Les cases ci-dessous doivent donc rester suffisamment fines pour permettre une execution pas a pas.
+- Une phase peut s'etaler sur plusieurs commits ; l'important est de garder des increments petits, testables et refermables.
+- Les arbitrages deja fixes par le cadrage ne doivent plus revenir comme faux choix dans les premieres etapes.
+
+## Contrainte structurelle de bootstrap DB
+
+- La base est la source de verite cible des variables V1.
+- Tant que la bascule complete n'est pas terminee, l'acces initial a cette base exige encore un bootstrap minimal externe.
+- Ce bootstrap minimal externe est une contrainte structurelle de transition, pas une objection bloquante au schema cible.
+- Le chantier doit donc organiser proprement la coexistence transitoire suivante :
+  - bootstrap externe minimal pour atteindre la base ;
+  - lecture des variables V1 depuis la base une fois l'acces etabli ;
+  - reduction progressive du bootstrap externe au strict minimum necessaire.
+
 ## Constats depuis le code
 
 ### Surface admin reelle aujourd'hui
@@ -185,18 +225,22 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 
 Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable et committable.
 
-### Phase 0 - Cadrage final avant implementation
+### Phase 0 - Verrouillage operatoire du cadrage
 
-- [ ] Confirmer noir sur blanc la liste exacte des familles de configuration a couvrir en V1 : modele principal, modele arbitre, modele resumieur, embeddings, base de donnees, services externes, chemins / ressources externes.
-- [ ] Confirmer noir sur blanc la liste des familles explicitement exclues de V1 : logs, seuils hermeneutiques, prompts internes, binding host/port, max tokens de reponse.
-- [ ] Confirmer que la route canonique du nouvel admin sera `/admin`.
-- [ ] Confirmer que la route canonique de l'ancien admin sera `/admin-old`.
-- [ ] Decider si l'URL directe `/admin.html` restera un alias temporaire ou devra etre retiree une fois le nouvel admin en place.
-- [ ] Decider si l'URL directe `/admin-old.html` sera conservee comme acces technique direct ou seulement `/admin-old`.
-- [ ] Decider si l'ancien admin doit rester strictement limite a logs/restart, sans y ajouter le nouvel espace de configuration.
-- [ ] Decider la politique UX quand `FRIDA_ADMIN_TOKEN` est actif : prompt, stockage session, header manuel, ou autre mecanisme explicite.
-- [ ] Decider si le nouvel admin doit afficher un lien visible vers l'ancien admin des la V1.
-- [ ] Ouvrir un ticket separe pour la divergence `frida.svg` / `fridalogo.png` afin qu'elle ne pollue pas la migration admin.
+- [ ] Reporter les decisions deja prises en tete du document dans la spec technique d'implementation du chantier.
+- [ ] Geler dans le chantier la cible `/admin` pour le nouvel admin.
+- [ ] Geler dans le chantier la cible `/admin-old` pour l'ancien admin.
+- [ ] Geler dans le chantier le principe de conservation de l'admin actuel sous `admin-old.*`.
+- [ ] Geler dans le chantier le principe de creation du nouvel admin from scratch dans `admin.html` / `admin.js`.
+- [ ] Geler dans le chantier le principe d'adaptation du lien depuis le front vers le nouvel admin.
+- [ ] Geler dans le chantier le principe de priorite a la reutilisation de `app/web/styles.css`.
+- [ ] Geler dans le chantier l'exclusion du bloc logs hors du premier admin V1.
+- [ ] Formaliser dans la spec d'implementation que le todo est complet A -> Z mais que l'execution reelle se fera par micro-etapes successives.
+- [ ] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
+- [ ] Fixer le traitement transitoire de l'URL directe `/admin.html` pendant la migration vers `/admin`.
+- [ ] Fixer le traitement transitoire de l'URL directe `/admin-old.html` en plus de `/admin-old`.
+- [ ] Fixer la politique UX quand `FRIDA_ADMIN_TOKEN` est actif : prompt, stockage session, header manuel, ou autre mecanisme explicite.
+- [ ] Releguer dans un ticket distinct la divergence `frida.svg` / `fridalogo.png` pour qu'elle ne parasite pas le chantier admin.
 
 ### Phase 1 - Conception du modele de donnees de configuration
 
