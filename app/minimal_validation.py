@@ -42,6 +42,41 @@ def _runtime_resource_path(field: str) -> Path:
     raise KeyError(f'missing resources runtime value: {field}')
 
 
+def _runtime_database_view() -> runtime_settings.RuntimeSectionView:
+    return runtime_settings.get_database_settings()
+
+
+def _runtime_database_backend() -> str:
+    view = _runtime_database_view()
+    payload = view.payload.get('backend') or {}
+    if 'value' in payload:
+        return str(payload['value'])
+
+    env_bundle = runtime_settings.build_env_seed_bundle('database')
+    fallback = env_bundle.payload.get('backend') or {}
+    if 'value' in fallback:
+        return str(fallback['value'])
+
+    raise KeyError('missing database runtime value: backend')
+
+
+def _bootstrap_database_dsn() -> str:
+    env_dsn = str(config.FRIDA_MEMORY_DB_DSN or '').strip()
+    if env_dsn:
+        return env_dsn
+
+    view = _runtime_database_view()
+    payload = view.payload.get('dsn') or {}
+    if bool(payload.get('is_set')):
+        raise runtime_settings.RuntimeSettingsSecretRequiredError(
+            'database.dsn is set in runtime settings but runtime secret decryption is not available; '
+            'FRIDA_MEMORY_DB_DSN env fallback is required during the transition'
+        )
+
+    runtime_settings.require_secret_configured(view, 'dsn')
+    raise AssertionError('unreachable')
+
+
 def _http_json(method: str, url: str, **kwargs: Any) -> requests.Response:
     timeout = kwargs.pop("timeout", (5, 20))
     return requests.request(method=method, url=url, timeout=timeout, **kwargs)
@@ -91,6 +126,10 @@ def _check_startup_import() -> Dict[str, Any]:
 
 
 def _check_db_schema() -> Dict[str, Any]:
+    backend = _runtime_database_backend()
+    if backend != 'postgresql':
+        raise ValueError(f'unsupported runtime database backend: {backend}')
+
     required_tables: Dict[str, set[str]] = {
         "conversations": {
             "id",
@@ -196,7 +235,7 @@ def _check_db_schema() -> Dict[str, Any]:
         },
     }
 
-    with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+    with psycopg.connect(_bootstrap_database_dsn()) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """

@@ -329,7 +329,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer la lecture des memes chemins / ressources externes dans `app/minimal_validation.py`.
 - [x] Remplacer la lecture du bloc `database` dans `app/core/conv_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [x] Remplacer la lecture du bloc `database` dans `app/memory/memory_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
-- [ ] Remplacer la lecture du bloc `database` dans `app/minimal_validation.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
+- [x] Remplacer la lecture du bloc `database` dans `app/minimal_validation.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [x] Verifier que `app/config.py` reste utilisable comme fallback transitoire tant que la bascule n'est pas complete.
 - [x] Verifier que `app/admin/admin_logs.py` continue a fonctionner sans regression apres introduction de la nouvelle couche.
 - [x] Verifier que `app/run.sh` et `docker-compose.yml` ne sont pas touches par inadvertance pendant cette phase.

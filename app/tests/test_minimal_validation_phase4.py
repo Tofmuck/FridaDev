@@ -87,5 +87,53 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         self.assertEqual(details['user_identity']['path'], str(user_file))
 
 
+class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
+    def setUp(self) -> None:
+        runtime_settings.invalidate_runtime_settings_cache()
+
+    def _db_database_view(self, *, backend: str = 'postgresql'):
+        return runtime_settings.RuntimeSectionView(
+            section='database',
+            payload=runtime_settings.normalize_stored_payload(
+                'database',
+                {
+                    'backend': {'value': backend, 'origin': 'db'},
+                    'dsn': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                },
+            ),
+            source='db',
+            source_reason='db_row',
+        )
+
+    def test_check_db_schema_uses_bootstrap_database_dsn_helper(self) -> None:
+        source = (APP_DIR / 'minimal_validation.py').read_text(encoding='utf-8')
+        self.assertIn('with psycopg.connect(_bootstrap_database_dsn()) as conn:', source)
+        self.assertNotIn('psycopg.connect(config.FRIDA_MEMORY_DB_DSN)', source)
+
+    def test_check_db_schema_rejects_unsupported_runtime_database_backend(self) -> None:
+        original_get_database = minimal_validation.runtime_settings.get_database_settings
+        minimal_validation.runtime_settings.get_database_settings = lambda: self._db_database_view(backend='mysql')
+        try:
+            with self.assertRaisesRegex(ValueError, 'unsupported runtime database backend: mysql'):
+                minimal_validation._check_db_schema()
+        finally:
+            minimal_validation.runtime_settings.get_database_settings = original_get_database
+
+    def test_bootstrap_database_dsn_requires_env_fallback_while_db_secret_decryption_is_unavailable(self) -> None:
+        original_get_database = minimal_validation.runtime_settings.get_database_settings
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        minimal_validation.runtime_settings.get_database_settings = self._db_database_view
+        config.FRIDA_MEMORY_DB_DSN = ''
+        try:
+            with self.assertRaisesRegex(
+                runtime_settings.RuntimeSettingsSecretRequiredError,
+                'runtime secret decryption is not available',
+            ):
+                minimal_validation._bootstrap_database_dsn()
+        finally:
+            minimal_validation.runtime_settings.get_database_settings = original_get_database
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+
 if __name__ == '__main__':
     unittest.main()
