@@ -206,7 +206,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 
 - `app/minimal_validation.py` verifie aujourd'hui l'existence de `admin.html` et `admin.js`, ainsi que des marqueurs lies a `/api/admin/logs` et `/api/admin/restart`.
 - Toute future conservation de l'ancien admin par renommage exigera donc une mise a jour explicite de la validation minimale.
-- `app/minimal_validation.py` attend encore `frida.svg` alors que le front courant charge `fridalogo.png` ; ce n'est pas le sujet du present patch, mais c'est une divergence reelle a garder visible lors du futur chantier.
+- `app/minimal_validation.py` est aligne sur `fridalogo.png`, qui constitue la reference UI canonique du front courant.
 
 ## Invariants a respecter
 
@@ -232,20 +232,19 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 0 - Verrouillage operatoire du cadrage
 
-- [ ] Reporter les decisions deja prises en tete du document dans la spec technique d'implementation du chantier.
-- [ ] Geler dans le chantier la cible `/admin` pour le nouvel admin.
-- [ ] Geler dans le chantier la cible `/admin-old` pour l'ancien admin.
-- [ ] Geler dans le chantier le principe de conservation de l'admin actuel sous `admin-old.*`.
-- [ ] Geler dans le chantier le principe de creation du nouvel admin from scratch dans `admin.html` / `admin.js`.
-- [ ] Geler dans le chantier le principe d'adaptation du lien depuis le front vers le nouvel admin.
-- [ ] Geler dans le chantier le principe de priorite a la reutilisation de `app/web/styles.css`.
-- [ ] Geler dans le chantier l'exclusion du bloc logs hors du premier admin V1.
-- [ ] Formaliser dans la spec d'implementation que le todo est complet A -> Z mais que l'execution reelle se fera par micro-etapes successives.
-- [ ] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
-- [ ] Documenter le traitement transitoire de l'URL directe `/admin.html` pendant la migration vers `/admin`.
-- [ ] Documenter le maintien transitoire de l'URL directe `/admin-old.html` en plus de `/admin-old`.
-- [ ] Documenter la politique UX appliquee quand `FRIDA_ADMIN_TOKEN` est actif : prompt, stockage session, header manuel, ou autre mecanisme explicite.
-- [ ] Releguer dans un ticket distinct la divergence `frida.svg` / `fridalogo.png` pour qu'elle ne parasite pas le chantier admin.
+- [x] Reporter les decisions deja prises en tete du document dans la spec technique d'implementation du chantier.
+- [x] Geler dans le chantier la cible `/admin` pour le nouvel admin.
+- [x] Geler dans le chantier la cible `/admin-old` pour l'ancien admin.
+- [x] Geler dans le chantier le principe de conservation de l'admin actuel sous `admin-old.*`.
+- [x] Geler dans le chantier le principe de creation du nouvel admin from scratch dans `admin.html` / `admin.js`.
+- [x] Geler dans le chantier le principe d'adaptation du lien depuis le front vers le nouvel admin.
+- [x] Geler dans le chantier le principe de priorite a la reutilisation de `app/web/styles.css`.
+- [x] Geler dans le chantier l'exclusion du bloc logs hors du premier admin V1.
+- [x] Formaliser dans la spec d'implementation que le todo est complet A -> Z mais que l'execution reelle se fera par micro-etapes successives.
+- [x] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
+- [x] Documenter que l'entree canonique du nouvel admin est `/admin` et que `admin.html` reste un acces technique transitoire pendant la migration.
+- [x] Documenter que l'entree canonique de l'ancien admin est `/admin-old` et que `admin-old.html` reste un acces technique transitoire pendant la migration.
+- [x] Documenter la politique UX appliquee quand `FRIDA_ADMIN_TOKEN` est actif : saisie a l'ouverture, stockage en `sessionStorage`, envoi via `X-Admin-Token` sur les requetes `/api/admin/*`.
 
 ### Phase 1 - Conception du modele de donnees de configuration
 
@@ -434,7 +433,6 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Verifier manuellement que l'ancien admin logs/restart continue a fonctionner.
 - [ ] Verifier manuellement que les routes hermeneutiques existantes repondent encore apres l'ajout du nouvel admin.
 - [ ] Verifier manuellement que le chat principal fonctionne encore apres bascule des lectures runtime vers la DB.
-- [ ] Traiter separement la divergence `frida.svg` / `fridalogo.png` avant de conclure que la validation UI est saine.
 - [ ] Prevoir un commit isole pour la couche de validation et de non-regression.
 
 ### Phase 10 - Sequence de commits recommandee

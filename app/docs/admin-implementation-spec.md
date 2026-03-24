@@ -17,6 +17,7 @@ Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne s
 - Les logs sont hors V1.
 - `/admin` = nouvel admin.
 - `/admin-old` = ancien admin.
+- Le lien du front principal pointe vers `/admin`.
 - `temperature` et `top_p` appartiennent a la logique globale de configuration des modeles.
 - `max_tokens` de reponse est hors perimetre V1.
 
@@ -53,7 +54,9 @@ Sont exclus de V1 :
 
 ## Regle d'execution
 
+- `app/docs/admin-todo.md` couvre le chantier complet A -> Z.
 - Une seule tranche minimale a la fois.
+- Une tranche minimale = un changement cible, sa validation, son commit, puis son push.
 - Validation obligatoire avant cloture de tranche.
 - Commit puis push apres chaque tranche validee.
 - Aucun refactor opportuniste hors perimetre.
@@ -61,13 +64,13 @@ Sont exclus de V1 :
 
 ## Traitement transitoire de l'acces admin
 
-- La question de `FRIDA_ADMIN_TOKEN` doit etre documentee et traitee de maniere coherente cote frontend quand il est active.
-- Le frontend admin devra disposer d'un mecanisme unique et explicite pour transmettre ce token aux routes `/api/admin/*` lorsque la protection token est active.
+- `/admin` est l'entree canonique du nouvel admin ; `admin.html` reste un acces technique transitoire tant que le statique l'expose, mais le front et la documentation pointent vers `/admin`.
+- `/admin-old` est l'entree canonique de l'ancien admin ; `admin-old.html` reste un acces technique transitoire pendant la migration.
+- Quand `FRIDA_ADMIN_TOKEN` est actif, le frontend admin demande le token a l'ouverture, le conserve en `sessionStorage` pour la session courante, et l'envoie via `X-Admin-Token` sur toutes les requetes `/api/admin/*`.
 - Cette tranche documente cette contrainte mais ne l'implemente pas.
 
 ## Sujets explicitement hors tranche
 
-- la divergence `frida.svg` / `fridalogo.png`
 - le chantier logs
 - l'implementation SQL
 - l'implementation backend

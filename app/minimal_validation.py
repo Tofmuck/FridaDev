@@ -266,7 +266,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
         "admin_js": web_dir / "admin.js",
-        "frida_svg": web_dir / "frida.svg",
+        "frida_logo_png": web_dir / "fridalogo.png",
     }
 
     for name, path in required_files.items():
@@ -280,7 +280,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
 
     index_markers = [
-        'src="./frida.svg"',
+        'src="./fridalogo.png"',
         'href="styles.css"',
         'script src="app.js"',
         'id="threads"',
