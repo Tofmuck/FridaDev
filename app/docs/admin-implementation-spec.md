@@ -11,12 +11,11 @@ Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne s
 - L'admin V1 porte sur les variables contingentes de deploiement.
 - Les variables V1 sont stockees en base de donnees.
 - Le code lit les variables V1 depuis la base.
-- L'admin actuel est conserve comme ancien admin sous `admin-old.*`.
 - Le nouvel admin est cree from scratch dans `admin.html` / `admin.js`.
 - Le nouvel admin reprend le style du front existant, avec priorite a la reutilisation de `app/web/styles.css`.
 - Les logs sont hors V1.
+- L'UI admin actuelle orientee logs/restart n'est pas conservee comme UI legacy ; le chantier logs sera refait from scratch apres le nouvel admin de configuration.
 - `/admin` = nouvel admin.
-- `/admin-old` = ancien admin.
 - Le lien du front principal pointe vers `/admin`.
 - `temperature` et `top_p` appartiennent a la logique globale de configuration des modeles.
 - `max_tokens` de reponse est hors perimetre V1.
@@ -65,7 +64,8 @@ Sont exclus de V1 :
 ## Traitement transitoire de l'acces admin
 
 - `/admin` est l'entree canonique du nouvel admin ; `admin.html` reste un acces technique transitoire tant que le statique l'expose, mais le front et la documentation pointent vers `/admin`.
-- `/admin-old` est l'entree canonique de l'ancien admin ; `admin-old.html` reste un acces technique transitoire pendant la migration.
+- Aucune entree UI `/admin-old` n'est retenue pour cette migration ; l'UI logs/restart actuelle n'est pas preservee comme legacy.
+- `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles cote backend jusqu'au futur chantier logs.
 - Quand `FRIDA_ADMIN_TOKEN` est actif, le frontend admin demande le token a l'ouverture, le conserve en `sessionStorage` pour la session courante, et l'envoie via `X-Admin-Token` sur toutes les requetes `/api/admin/*`.
 - Cette tranche documente cette contrainte mais ne l'implemente pas.
 

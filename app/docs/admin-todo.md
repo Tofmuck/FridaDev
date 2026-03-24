@@ -4,7 +4,7 @@
 
 Ce document est un livrable d'audit et de planification, pas une implementation.
 
-Objectif du chantier prepare ici : introduire un nouvel admin centre sur les variables contingentes de deploiement, stockees en base, lues par le code depuis la base, sans supprimer brutalement l'admin actuel oriente logs.
+Objectif du chantier prepare ici : introduire un nouvel admin centre sur les variables contingentes de deploiement, stockees en base, lues par le code depuis la base, sans melanger le chantier logs/restart dans cette V1.
 
 Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 
@@ -13,10 +13,10 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - L'admin V1 porte sur les variables contingentes de deploiement.
 - Ces variables doivent vivre en base de donnees.
 - Le code doit lire ces variables depuis la base.
-- L'admin actuel est conserve comme ancien admin sous `admin-old.*`.
 - Le nouvel admin est cree from scratch.
 - Le nouvel admin reprend le style du front existant, avec priorite a la reutilisation de `app/web/styles.css` si cela reste propre.
 - Les logs constituent un chantier distinct et ulterieur.
+- L'UI admin actuelle orientee logs/restart n'est pas conservee comme UI legacy ; le chantier logs sera refait from scratch apres le nouvel admin de configuration.
 - Le present todo couvre l'ensemble du chantier jusqu'a l'implementation finale.
 - L'execution reelle ne se fera pas en big bang : elle se fera tranche minimale par tranche minimale.
 - Chaque tranche reelle devra etre validee, puis committee et poussee avant d'ouvrir la suivante.
@@ -24,7 +24,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - `temperature` et `top_p` font donc partie de la logique de configuration globale des modeles et ne sont plus des points ouverts.
 - Le routage cible est deja fixe :
   - `/admin` = nouvel admin
-  - `/admin-old` = ancien admin
+  - aucune UI legacy `/admin-old` n'est retenue
 - Le lien depuis le front devra etre adapte vers le nouvel admin ; ce n'est plus un point a rouvrir.
 
 ## Methode d'execution
@@ -197,7 +197,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 ### Impacts front minimaux deja visibles
 
 - Le bouton `Parametres` du front devra changer de cible, car il pointe aujourd'hui vers `admin.html` legacy direct.
-- Le nouvel admin devra etre cree from scratch dans `app/web/admin.html` et `app/web/admin.js`, tandis que l'ancien admin sera conserve comme `admin-old.*`.
+- Le nouvel admin devra etre cree from scratch dans `app/web/admin.html` et `app/web/admin.js` ; l'UI logs/restart actuelle ne sera pas preservee sous `admin-old.*`.
 - Le style devra idealement reutiliser `app/web/styles.css`, ce qui n'est pas le cas de l'admin actuel.
 - Le front devra traiter la question des secrets masques, des erreurs de validation et de l'eventuel token admin.
 - Le front devra traiter explicitement la coexistence entre reglage global admin et reglage local `frida.settings` deja stocke en `localStorage`.
@@ -205,17 +205,17 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 ### Validation et couplages existants a ne pas oublier
 
 - `app/minimal_validation.py` verifie aujourd'hui l'existence de `admin.html` et `admin.js`, ainsi que des marqueurs lies a `/api/admin/logs` et `/api/admin/restart`.
-- Toute future conservation de l'ancien admin par renommage exigera donc une mise a jour explicite de la validation minimale.
+- La liberation de `admin.html` et `admin.js` pour le nouvel admin exigera donc une mise a jour explicite de la validation minimale.
 - `app/minimal_validation.py` est aligne sur `fridalogo.png`, qui constitue la reference UI canonique du front courant.
 
 ## Invariants a respecter
 
 - Ne pas implementer le nouvel admin dans cette phase preparatoire.
 - Ne pas modifier le runtime, les routes actives, le schema SQL ou les comportements applicatifs dans cette phase preparatoire.
-- Conserver l'admin actuel comme ancien admin ; ne pas le supprimer brutalement.
-- Planifier explicitement le futur renommage `admin.html -> admin-old.html`.
-- Planifier explicitement le futur renommage `admin.js -> admin-old.js`.
+- Ne pas conserver l'UI admin actuelle comme legacy `admin-old.*`.
+- Ne pas introduire de route UI `/admin-old` dans ce chantier.
 - Planifier explicitement la creation d'un nouveau `admin.html` from scratch.
+- Planifier explicitement la liberation de `admin.js` pour le nouvel admin from scratch.
 - Planifier explicitement l'adaptation du lien depuis le front vers le nouvel admin.
 - Limiter le premier nouvel admin aux variables contingentes de deploiement, pas aux invariants conceptuels du systeme.
 - Faire de la base la source de verite cible pour ces variables contingentes.
@@ -234,8 +234,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 - [x] Reporter les decisions deja prises en tete du document dans la spec technique d'implementation du chantier.
 - [x] Geler dans le chantier la cible `/admin` pour le nouvel admin.
-- [x] Geler dans le chantier la cible `/admin-old` pour l'ancien admin.
-- [x] Geler dans le chantier le principe de conservation de l'admin actuel sous `admin-old.*`.
+- [x] Geler dans le chantier l'absence de route UI `/admin-old`.
+- [x] Geler dans le chantier le principe de non-conservation de l'UI admin actuelle comme legacy `admin-old.*`.
 - [x] Geler dans le chantier le principe de creation du nouvel admin from scratch dans `admin.html` / `admin.js`.
 - [x] Geler dans le chantier le principe d'adaptation du lien depuis le front vers le nouvel admin.
 - [x] Geler dans le chantier le principe de priorite a la reutilisation de `app/web/styles.css`.
@@ -243,7 +243,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Formaliser dans la spec d'implementation que le todo est complet A -> Z mais que l'execution reelle se fera par micro-etapes successives.
 - [x] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
 - [x] Documenter que l'entree canonique du nouvel admin est `/admin` et que `admin.html` reste un acces technique transitoire pendant la migration.
-- [x] Documenter que l'entree canonique de l'ancien admin est `/admin-old` et que `admin-old.html` reste un acces technique transitoire pendant la migration.
+- [x] Documenter qu'aucune entree UI `/admin-old` n'est retenue et que l'UI logs/restart actuelle n'est pas preservee comme legacy.
 - [x] Documenter la politique UX appliquee quand `FRIDA_ADMIN_TOKEN` est actif : saisie a l'ouverture, stockage en `sessionStorage`, envoi via `X-Admin-Token` sur les requetes `/api/admin/*`.
 
 ### Phase 1 - Conception du modele de donnees de configuration
@@ -410,20 +410,19 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
 - [x] Prevoir un commit isole pour le backfill initial des secrets existants.
 
-### Phase 6 - Conservation explicite de l'ancien admin
+### Phase 6 - Liberation de `admin.html` / `admin.js` pour le nouvel admin
 
-- [ ] Copier `app/web/admin.html` vers `app/web/admin-old.html`.
-- [ ] Copier `app/web/admin.js` vers `app/web/admin-old.js`.
-- [ ] Mettre a jour `app/web/admin-old.html` pour charger `admin-old.js`.
-- [ ] Ajouter une route Flask `/admin-old` qui serve `admin-old.html`.
-- [ ] Maintenir l'acces technique direct `/admin-old.html` pendant la transition en plus de `/admin-old`.
 - [ ] Reserver `app/web/admin.html` au futur nouvel admin.
 - [ ] Reserver `app/web/admin.js` au futur nouvel admin.
-- [ ] Verifier que `admin-old.js` continue a parler a `/api/admin/logs` et `/api/admin/restart` sans changement de comportement.
-- [ ] Verifier que l'ancien admin conserve son usage actuel de logs/restart sans refactor opportuniste.
-- [ ] Documenter explicitement dans le code ou la doc que les routes hermeneutiques backend existent mais ne sont pas branchees dans l'ancien admin UI.
-- [ ] Ajouter un lien visible du nouvel admin vers l'ancien admin une fois le nouvel admin en place.
-- [ ] Prevoir un commit isole uniquement pour la preservation/renommage de l'admin legacy.
+- [ ] Retirer de `app/web/admin.html` tout contenu UI logs/restart legacy au moment de la bascule vers le nouvel admin.
+- [ ] Retirer de `app/web/admin.js` toute logique UI logs/restart legacy au moment de la bascule vers le nouvel admin.
+- [ ] Ne pas creer `app/web/admin-old.html`.
+- [ ] Ne pas creer `app/web/admin-old.js`.
+- [ ] Ne pas ajouter de route Flask `/admin-old`.
+- [ ] Ne pas maintenir d'acces technique direct `/admin-old.html`.
+- [ ] Documenter explicitement que `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles sans UI legacy dediee jusqu'au futur chantier logs.
+- [ ] Documenter explicitement dans le code ou la doc que les routes hermeneutiques backend existent mais ne sont pas branchees dans l'UI admin V1.
+- [ ] Prevoir un commit isole uniquement pour la liberation de `admin.html` / `admin.js` sans `admin-old.*`.
 
 ### Phase 7 - Nouveau frontend admin from scratch
 
@@ -447,7 +446,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter un bouton d'enregistrement par section.
 - [ ] Ajouter un retour de validation lisible par champ en cas d'erreur backend.
 - [ ] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`).
-- [ ] Ajouter un lien visible vers l'ancien admin.
+- [ ] Ne pas ajouter de lien vers une UI admin legacy logs/restart.
 - [ ] Verifier que le nouveau `admin.js` n'embarque pas de logique logs/restart par reflexe.
 - [ ] Prevoir un commit isole pour le nouveau frontend admin.
 
@@ -463,22 +462,22 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Requalifier clairement `max_tokens` comme reglage de session hors admin V1 tant qu'il reste hors perimetre.
 - [ ] Maintenir `max_tokens` hors du nouvel admin V1.
 - [ ] Maintenir `SYSTEM_PROMPT` hors du nouvel admin V1.
-- [ ] Verifier que la navigation vers l'ancien admin reste possible apres changement du bouton principal.
+- [ ] Verifier que la navigation du front principal n'expose plus d'entree UI legacy logs/restart.
 - [ ] Prevoir un commit isole pour l'integration minimale du front principal.
 
 ### Phase 9 - Validation automatique et non-regression
 
 - [ ] Mettre a jour `app/minimal_validation.py` pour couvrir le nouvel admin.
-- [ ] Mettre a jour `app/minimal_validation.py` pour conserver un smoke test de l'ancien admin.
+- [ ] Mettre a jour `app/minimal_validation.py` pour ne plus attendre l'UI legacy logs/restart dans `admin.html` / `admin.js`.
 - [ ] Ajouter un test de presence des nouveaux assets `admin.html` et `admin.js`.
-- [ ] Ajouter un test de presence des assets legacy `admin-old.html` et `admin-old.js`.
+- [ ] Ajouter un test garantissant que les assets `admin-old.html` et `admin-old.js` ne sont pas introduits.
 - [ ] Ajouter un smoke test `GET /admin`.
-- [ ] Ajouter un smoke test `GET /admin-old`.
+- [ ] Ajouter un smoke test garantissant que `/admin-old` n'est pas expose.
 - [ ] Ajouter un smoke test de lecture agregee de la configuration admin.
 - [ ] Ajouter un smoke test d'update valide sur une section non secrete.
 - [ ] Ajouter un smoke test d'update invalide pour verifier la validation backend.
 - [ ] Ajouter un smoke test garantissant qu'un secret ne ressort jamais en clair via un `GET`.
-- [ ] Verifier manuellement que l'ancien admin logs/restart continue a fonctionner.
+- [ ] Verifier manuellement que `GET /api/admin/logs` et `POST /api/admin/restart` continuent a fonctionner sans UI legacy dediee.
 - [ ] Verifier manuellement que les routes hermeneutiques existantes repondent encore apres l'ajout du nouvel admin.
 - [ ] Verifier manuellement que le chat principal fonctionne encore apres bascule des lectures runtime vers la DB.
 - [ ] Prevoir un commit isole pour la couche de validation et de non-regression.
@@ -490,7 +489,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Commit 3 : remplacement progressif des lectures code sur un premier bloc isole (`main_model` ou `services`).
 - [ ] Commit 4 : ouverture des routes API de configuration.
 - [ ] Commit 5 : chiffrement, ecriture, lecture et backfill initial des secrets runtime en base.
-- [ ] Commit 6 : preservation/renommage de l'ancien admin en `admin-old.*`.
+- [ ] Commit 6 : liberation de `admin.html` / `admin.js` sans `admin-old.*`.
 - [ ] Commit 7 : creation du nouveau frontend admin.
 - [ ] Commit 8 : adaptation du bouton `Parametres` dans le front principal.
 - [ ] Commit 9 : validation minimale, smoke tests et non-regression.
