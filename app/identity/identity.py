@@ -7,9 +7,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import config
+from admin import runtime_settings
 from core import token_utils
 
 logger = logging.getLogger('kiki.identity')
+
+
+def _runtime_main_model_name() -> str:
+    view = runtime_settings.get_main_model_settings()
+    return str(view.payload['model']['value'])
 
 
 def _load_file(path_str: str) -> str:
@@ -65,7 +71,7 @@ def _count_tokens(text: str) -> int:
     if not text:
         return 0
     try:
-        return token_utils.count_tokens([{'content': text}], config.OR_MODEL)
+        return token_utils.count_tokens([{'content': text}], _runtime_main_model_name())
     except Exception as exc:
         logger.warning('identity_token_count_error err=%s', exc)
         return max(1, len(text.split()))
