@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -494,6 +495,66 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(view.payload['api_key']['is_secret'], True)
         self.assertIn('INSERT INTO runtime_settings', observed['queries'][1])
         self.assertIn('INSERT INTO runtime_settings_history', observed['queries'][2])
+
+    def test_validate_runtime_section_accepts_candidate_main_model_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'model': {'value': 'openrouter/validate-main'},
+                    'temperature': {'value': 0.5},
+                    'top_p': {'value': 0.8},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        self.assertEqual(result['section'], 'main_model')
+        self.assertEqual(result['source'], 'candidate')
+        self.assertEqual(result['source_reason'], 'validate_payload')
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['model']['ok'])
+        self.assertTrue(checks['temperature']['ok'])
+        self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['api_key_transition']['ok'])
+
+    def test_validate_runtime_section_reports_missing_resource_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            existing = Path(tmpdir) / 'llm.txt'
+            existing.write_text('llm identity', encoding='utf-8')
+            missing = Path(tmpdir) / 'missing.txt'
+
+            result = runtime_settings.validate_runtime_section(
+                'resources',
+                {
+                    'llm_identity_path': {'value': str(existing)},
+                    'user_identity_path': {'value': str(missing)},
+                },
+                fetcher=lambda: {},
+            )
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['llm_identity_path']['ok'])
+        self.assertFalse(checks['user_identity_path']['ok'])
+        self.assertIn(str(missing), checks['user_identity_path']['detail'])
+
+    def test_validate_runtime_section_requires_bootstrap_dsn_during_transition(self) -> None:
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        config.FRIDA_MEMORY_DB_DSN = ''
+        try:
+            result = runtime_settings.validate_runtime_section('database', fetcher=lambda: {})
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['backend']['ok'])
+        self.assertFalse(checks['dsn_transition']['ok'])
 
 
 if __name__ == '__main__':

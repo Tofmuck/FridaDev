@@ -692,6 +692,75 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.next.txt')
         self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.next.txt')
 
+    def test_all_admin_settings_validate_routes_are_registered(self) -> None:
+        routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
+        self.assertIn('/api/admin/settings/main-model/validate', routes)
+        self.assertIn('/api/admin/settings/arbiter-model/validate', routes)
+        self.assertIn('/api/admin/settings/summary-model/validate', routes)
+        self.assertIn('/api/admin/settings/embedding/validate', routes)
+        self.assertIn('/api/admin/settings/database/validate', routes)
+        self.assertIn('/api/admin/settings/services/validate', routes)
+        self.assertIn('/api/admin/settings/resources/validate', routes)
+
+    def test_post_admin_settings_validate_uses_runtime_validation_result(self) -> None:
+        observed = {'section': None, 'payload': None}
+        original_validate = self.server.runtime_settings.validate_runtime_section
+
+        def fake_validate_runtime_section(section, patch_payload=None, *, fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            return {
+                'section': section,
+                'valid': True,
+                'source': 'candidate',
+                'source_reason': 'validate_payload',
+                'checks': [
+                    {'name': 'endpoint', 'ok': True, 'detail': 'endpoint=https://embed.next.example'},
+                    {'name': 'dimensions', 'ok': True, 'detail': 'dimensions=384'},
+                ],
+            }
+
+        self.server.runtime_settings.validate_runtime_section = fake_validate_runtime_section
+        try:
+            response = self.client.post(
+                '/api/admin/settings/embedding/validate',
+                json={
+                    'payload': {
+                        'endpoint': {'value': 'https://embed.next.example'},
+                        'dimensions': {'value': 384},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.validate_runtime_section = original_validate
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'embedding')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'endpoint': {'value': 'https://embed.next.example'},
+                'dimensions': {'value': 384},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['valid'])
+        self.assertEqual(data['section'], 'embedding')
+        self.assertEqual(data['source'], 'candidate')
+        self.assertEqual(data['source_reason'], 'validate_payload')
+        self.assertEqual(len(data['checks']), 2)
+
+    def test_post_admin_settings_validate_rejects_invalid_payload(self) -> None:
+        response = self.client.post(
+            '/api/admin/settings/main-model/validate',
+            json={'payload': {'api_key': {'value': 'sk-secret'}}},
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertIn('secret updates are not supported yet', data['error'])
+
 
 if __name__ == '__main__':
     unittest.main()

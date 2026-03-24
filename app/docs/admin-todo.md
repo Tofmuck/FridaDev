@@ -354,7 +354,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter une route `GET` de lecture pour la section `resources`.
 - [x] Ajouter une route `PATCH` de mise a jour pour la section `resources`.
 - [x] Ajouter une route de statut bootstrap/fallback pour rendre visible la source effective de configuration.
-- [ ] Ajouter une route de validation/smoke test par section pour les verifications techniques avant sauvegarde finale.
+- [x] Ajouter une route de validation/smoke test par section pour les verifications techniques avant sauvegarde finale.
 - [ ] Brancher toutes ces routes sous le garde admin existant.
 - [ ] Verifier que les reponses `GET` masquent tous les secrets.
 - [ ] Verifier que les reponses `PATCH` ne logguent jamais les secrets en clair.

@@ -614,6 +614,25 @@ def _admin_settings_section_patch_response(section: str):
     return jsonify({'ok': True, 'section': view.section, 'payload': view.payload, 'source': view.source, 'source_reason': view.source_reason})
 
 
+def _admin_settings_section_validate_response(section: str):
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        patch_payload = None
+    else:
+        if not isinstance(data, dict):
+            return jsonify({'ok': False, 'error': 'validation payload must be a mapping'}), 400
+        patch_payload = data.get('payload')
+        if patch_payload is not None and not isinstance(patch_payload, dict):
+            return jsonify({'ok': False, 'error': 'validation payload must be a mapping'}), 400
+
+    try:
+        result = runtime_settings.validate_runtime_section(section, patch_payload=patch_payload)
+    except runtime_settings.RuntimeSettingsValidationError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    return jsonify({'ok': True, **result})
+
+
 @app.get(_ADMIN_SETTINGS_PREFIX)
 def api_admin_settings():
     sections = {
@@ -696,6 +715,41 @@ def api_admin_settings_arbiter_model_patch():
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
 def api_admin_settings_main_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/main-model/validate')
+def api_admin_settings_main_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model/validate')
+def api_admin_settings_arbiter_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/summary-model/validate')
+def api_admin_settings_summary_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/embedding/validate')
+def api_admin_settings_embedding_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/database/validate')
+def api_admin_settings_database_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/services/validate')
+def api_admin_settings_services_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/resources/validate')
+def api_admin_settings_resources_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['resources'])
 
 
 @app.get("/api/admin/logs")
