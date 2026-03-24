@@ -346,18 +346,18 @@ def _check_ui_assets() -> Dict[str, Any]:
             raise RuntimeError(f"marker index.html manquant: {marker}")
 
     admin_markers = [
-        "Logs techniques",
+        "Admin de configuration",
         'script src="admin.js"',
-        'id="rows"',
-        'id="restart"',
+        'id="admin-phase6-note"',
+        'id="admin-phase6-status"',
     ]
     for marker in admin_markers:
         if marker not in admin_html:
             raise RuntimeError(f"marker admin.html manquant: {marker}")
 
     admin_js_markers = [
-        "/api/admin/logs",
-        "/api/admin/restart",
+        'admin-phase6-status',
+        'settings-v1-shell',
     ]
     for marker in admin_js_markers:
         if marker not in admin_js:
@@ -377,7 +377,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         raise RuntimeError("root invalide")
 
     admin = _http_json("GET", f"{base_url}/admin")
-    if admin.status_code != 200 or "Logs techniques" not in admin.text:
+    if admin.status_code != 200 or "Admin de configuration" not in admin.text:
         raise RuntimeError("admin invalide")
 
     conv_list = _http_json("GET", f"{base_url}/api/conversations?limit=1")

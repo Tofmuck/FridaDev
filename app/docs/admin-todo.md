@@ -412,17 +412,17 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 6 - Liberation de `admin.html` / `admin.js` pour le nouvel admin
 
-- [ ] Reserver `app/web/admin.html` au futur nouvel admin.
-- [ ] Reserver `app/web/admin.js` au futur nouvel admin.
-- [ ] Retirer de `app/web/admin.html` tout contenu UI logs/restart legacy au moment de la bascule vers le nouvel admin.
-- [ ] Retirer de `app/web/admin.js` toute logique UI logs/restart legacy au moment de la bascule vers le nouvel admin.
-- [ ] Ne pas creer `app/web/admin-old.html`.
-- [ ] Ne pas creer `app/web/admin-old.js`.
-- [ ] Ne pas ajouter de route Flask `/admin-old`.
-- [ ] Ne pas maintenir d'acces technique direct `/admin-old.html`.
-- [ ] Documenter explicitement que `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles sans UI legacy dediee jusqu'au futur chantier logs.
-- [ ] Documenter explicitement dans le code ou la doc que les routes hermeneutiques backend existent mais ne sont pas branchees dans l'UI admin V1.
-- [ ] Prevoir un commit isole uniquement pour la liberation de `admin.html` / `admin.js` sans `admin-old.*`.
+- [x] Reserver `app/web/admin.html` au futur nouvel admin.
+- [x] Reserver `app/web/admin.js` au futur nouvel admin.
+- [x] Retirer de `app/web/admin.html` tout contenu UI logs/restart legacy au moment de la bascule vers le nouvel admin.
+- [x] Retirer de `app/web/admin.js` toute logique UI logs/restart legacy au moment de la bascule vers le nouvel admin.
+- [x] Ne pas creer `app/web/admin-old.html`.
+- [x] Ne pas creer `app/web/admin-old.js`.
+- [x] Ne pas ajouter de route Flask `/admin-old`.
+- [x] Ne pas maintenir d'acces technique direct `/admin-old.html`.
+- [x] Documenter explicitement que `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles sans UI legacy dediee jusqu'au futur chantier logs.
+- [x] Documenter explicitement dans le code ou la doc que les routes hermeneutiques backend existent mais ne sont pas branchees dans l'UI admin V1.
+- [x] Prevoir un commit isole uniquement pour la liberation de `admin.html` / `admin.js` sans `admin-old.*`.
 
 ### Phase 7 - Nouveau frontend admin from scratch
 
