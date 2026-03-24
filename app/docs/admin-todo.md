@@ -389,8 +389,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ouvrir l'ecriture chiffree de `database.dsn`.
 - [x] Ajouter la lecture runtime dechiffree de `main_model.api_key`.
 - [x] Remplacer le fallback `OPENROUTER_API_KEY` par le secret DB dechiffre quand il est disponible.
-- [ ] Ajouter la lecture runtime dechiffree de `embedding.token`.
-- [ ] Remplacer le fallback `EMBED_TOKEN` par le secret DB dechiffre quand il est disponible.
+- [x] Ajouter la lecture runtime dechiffree de `embedding.token`.
+- [x] Remplacer le fallback `EMBED_TOKEN` par le secret DB dechiffre quand il est disponible.
 - [ ] Ajouter la lecture runtime dechiffree de `services.crawl4ai_token`.
 - [ ] Remplacer le fallback `CRAWL4AI_TOKEN` par le secret DB dechiffre quand il est disponible.
 - [ ] Garder `database.dsn` stockable et lisible en mode masque dans l'admin sans le substituer au bootstrap externe minimal tant que la transition DB n'est pas explicitement refermee.

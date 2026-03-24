@@ -90,19 +90,8 @@ def _runtime_embedding_value(field: str) -> Any:
 
 
 def _runtime_embedding_token() -> str:
-    env_token = str(config.EMBED_TOKEN or '').strip()
-    if env_token:
-        return env_token
-
-    view = _runtime_embedding_view()
-    payload = view.payload.get('token') or {}
-    if bool(payload.get('is_set')):
-        raise runtime_settings.RuntimeSettingsSecretRequiredError(
-            'embedding.token is set in runtime settings but runtime secret decryption is not available; EMBED_TOKEN env fallback is required during the transition'
-        )
-
-    runtime_settings.require_secret_configured(view, 'token')
-    raise AssertionError('unreachable')
+    secret = runtime_settings.get_runtime_secret_value('embedding', 'token')
+    return str(secret.value)
 
 
 # Schema initialization

@@ -904,20 +904,20 @@ def validate_runtime_section(
         model = _runtime_text_value(view, 'model')
         dimensions = _runtime_int_value(view, 'dimensions')
         top_k = _runtime_int_value(view, 'top_k')
-        token = str(config.EMBED_TOKEN or '').strip()
+        try:
+            token_secret = _resolve_runtime_secret_from_view(view, 'token')
+            token_ok = bool(str(token_secret.value).strip())
+            token_detail = f'embedding.token available from {token_secret.source}'
+        except (RuntimeSettingsSecretRequiredError, RuntimeSettingsSecretResolutionError) as exc:
+            token_ok = False
+            token_detail = str(exc)
         checks.extend(
             (
                 _validation_check('endpoint', _is_http_url(endpoint), f'endpoint={endpoint or "missing"}'),
                 _validation_check('model', bool(model), f'model={model or "missing"}'),
                 _validation_check('dimensions', dimensions is not None and dimensions > 0, f'dimensions={dimensions!r}'),
                 _validation_check('top_k', top_k is not None and top_k > 0, f'top_k={top_k!r}'),
-                _validation_check(
-                    'token_transition',
-                    bool(token),
-                    'EMBED_TOKEN env fallback available'
-                    if token
-                    else 'EMBED_TOKEN env fallback missing during transition',
-                ),
+                _validation_check('token_runtime', token_ok, token_detail),
             )
         )
     elif section == 'database':

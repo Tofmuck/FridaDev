@@ -52,8 +52,8 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
     def test_embed_uses_runtime_embedding_settings_and_model(self) -> None:
         observed = {'url': None, 'headers': None, 'json': None}
         original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_get_secret = memory_store.runtime_settings.get_runtime_secret_value
         original_post = memory_store.requests.post
-        original_token = config.EMBED_TOKEN
 
         class FakeResponse:
             def raise_for_status(self) -> None:
@@ -68,19 +68,29 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
             observed['json'] = json
             return FakeResponse()
 
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('embedding', 'token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='embedding',
+                field='token',
+                value='embed-db-token',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
         memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
+        memory_store.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         memory_store.requests.post = fake_post
-        config.EMBED_TOKEN = 'embed-env-token'
         try:
             vec = memory_store.embed('bonjour', mode='query')
         finally:
             memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store.runtime_settings.get_runtime_secret_value = original_get_secret
             memory_store.requests.post = original_post
-            config.EMBED_TOKEN = original_token
 
         self.assertEqual(vec, [0.1, 0.2, 0.3])
         self.assertEqual(observed['url'], 'https://embed.override.example/embed')
-        self.assertEqual(observed['headers']['X-Embed-Token'], 'embed-env-token')
+        self.assertEqual(observed['headers']['X-Embed-Token'], 'embed-db-token')
         self.assertEqual(observed['json']['model'], 'intfloat/multilingual-e5-small')
         self.assertEqual(observed['json']['inputs'], ['query: bonjour'])
 
@@ -165,20 +175,44 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         joined = '\n'.join(observed_queries)
         self.assertIn('embedding       vector(768)', joined)
 
-    def test_embedding_token_requires_env_fallback_while_db_secret_decryption_is_unavailable(self) -> None:
-        original_get_settings = memory_store.runtime_settings.get_embedding_settings
-        original_token = config.EMBED_TOKEN
-        memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
-        config.EMBED_TOKEN = ''
+    def test_runtime_embedding_token_uses_env_fallback_when_runtime_layer_returns_it(self) -> None:
+        original_get_secret = memory_store.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('embedding', 'token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='embedding',
+                field='token',
+                value='embed-env-fallback-token',
+                source='env_fallback',
+                source_reason='empty_table',
+            )
+
+        memory_store.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        try:
+            token = memory_store._runtime_embedding_token()
+        finally:
+            memory_store.runtime_settings.get_runtime_secret_value = original_get_secret
+
+        self.assertEqual(token, 'embed-env-fallback-token')
+
+    def test_runtime_embedding_token_raises_explicit_error_when_db_secret_is_not_decryptable(self) -> None:
+        original_get_secret = memory_store.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            raise runtime_settings.RuntimeSettingsSecretResolutionError(
+                'failed to decrypt runtime secret embedding.token: bad ciphertext'
+            )
+
+        memory_store.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         try:
             with self.assertRaisesRegex(
-                runtime_settings.RuntimeSettingsSecretRequiredError,
-                'runtime secret decryption is not available',
+                runtime_settings.RuntimeSettingsSecretResolutionError,
+                'failed to decrypt runtime secret embedding.token: bad ciphertext',
             ):
                 memory_store._runtime_embedding_token()
         finally:
-            memory_store.runtime_settings.get_embedding_settings = original_get_settings
-            config.EMBED_TOKEN = original_token
+            memory_store.runtime_settings.get_runtime_secret_value = original_get_secret
 
     def test_conn_uses_external_bootstrap_dsn_with_runtime_postgresql_backend(self) -> None:
         observed = {'dsn': None}
