@@ -9,9 +9,15 @@ from typing import Any, Dict, List, Tuple
 import requests
 
 import config
+from admin import runtime_settings
 from core.llm_client import _sanitize_encoding, or_headers
 
 logger = logging.getLogger('kiki.arbiter')
+
+
+def _runtime_arbiter_model_name() -> str:
+    view = runtime_settings.get_arbiter_model_settings()
+    return str(view.payload['model']['value'])
 
 _ALLOWED_STABILITY = {'durable', 'episodic', 'unknown'}
 _ALLOWED_UTTERANCE_MODE = {
@@ -278,6 +284,7 @@ def filter_traces_with_diagnostics(
     if not traces:
         return [], []
 
+    arbiter_model = _runtime_arbiter_model_name()
     system_prompt = _load_prompt(config.ARBITER_PROMPT_PATH, 'arbiter')
     if not system_prompt:
         return _deterministic_fallback(traces, 'prompt_missing')
@@ -304,7 +311,7 @@ def filter_traces_with_diagnostics(
     )
 
     payload = {
-        'model': config.ARBITER_MODEL,
+        'model': arbiter_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_content},
@@ -326,7 +333,7 @@ def filter_traces_with_diagnostics(
         result = _safe_json_loads(raw)
         decisions = _validate_arbiter_output(result)
     except requests.exceptions.Timeout:
-        logger.warning('arbiter_timeout model=%s', config.ARBITER_MODEL)
+        logger.warning('arbiter_timeout model=%s', arbiter_model)
         return _deterministic_fallback(traces, 'timeout')
     except Exception as exc:
         parse_count = _inc_metric('arbiter_parse_error_count')
@@ -430,7 +437,7 @@ def filter_traces_with_diagnostics(
         len(completed_decisions),
         len(kept),
         len(traces) - len(kept),
-        config.ARBITER_MODEL,
+        arbiter_model,
     )
     return kept, completed_decisions
 
@@ -509,6 +516,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
     if not recent_turns:
         return []
 
+    arbiter_model = _runtime_arbiter_model_name()
     system_prompt = _load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, 'identity_extractor')
     if not system_prompt:
         return []
@@ -518,7 +526,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         for t in recent_turns
     )
     payload = {
-        'model': config.ARBITER_MODEL,
+        'model': arbiter_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': f'Here is the dialogue:\\n\\n{dialogue}'},
@@ -542,7 +550,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         logger.info('identity_extracted count=%s', len(entries))
         return entries
     except requests.exceptions.Timeout:
-        logger.warning('identity_extractor_timeout model=%s', config.ARBITER_MODEL)
+        logger.warning('identity_extractor_timeout model=%s', arbiter_model)
         return []
     except Exception as exc:
         parse_count = _inc_metric('identity_parse_error_count')
