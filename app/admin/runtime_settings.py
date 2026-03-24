@@ -93,7 +93,7 @@ SECTION_SPECS: Dict[str, SectionSpec] = {
         name='embedding',
         fields=(
             FieldSpec('endpoint', 'text', env_var='EMBED_BASE_URL'),
-            FieldSpec('model', 'text', seed_from_env=False, seed_default=''),
+            FieldSpec('model', 'text', seed_from_env=False, seed_default='intfloat/multilingual-e5-small'),
             FieldSpec('token', 'text', is_secret=True, env_var='EMBED_TOKEN'),
             FieldSpec('dimensions', 'int', env_var='EMBED_DIM'),
             FieldSpec('top_k', 'int', env_var='MEMORY_TOP_K'),

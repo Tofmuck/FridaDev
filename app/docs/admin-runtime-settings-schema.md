@@ -131,10 +131,17 @@ Valeurs d'`origin` retenues :
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
 | `endpoint` | `text` | non | `EMBED_BASE_URL` |
-| `model` | `text` | non | nouveau champ V1 `EMBED_MODEL`, seed initial vide |
+| `model` | `text` | non | valeur courante observee via `GET /info` sur le service actif : `intfloat/multilingual-e5-small` |
 | `token` | `text` | oui | `EMBED_TOKEN` |
 | `dimensions` | `int` | non | `EMBED_DIM` |
 | `top_k` | `int` | non | `MEMORY_TOP_K` |
+
+Constat d'exploitation actuel :
+
+- endpoint actif : `https://embed.frida-system.fr`
+- acces protege par `X-Embed-Token`
+- `GET /info` retourne actuellement `model_id=intfloat/multilingual-e5-small`
+- le service annonce `model_dtype=float32`, `max_input_length=512`, `version=1.9.1`
 
 ### `database`
 

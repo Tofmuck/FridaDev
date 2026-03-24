@@ -37,7 +37,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(spec.value_type, 'text')
         self.assertFalse(spec.is_secret)
         self.assertFalse(spec.seed_from_env)
-        self.assertEqual(spec.seed_default, '')
+        self.assertEqual(spec.seed_default, 'intfloat/multilingual-e5-small')
 
     def test_database_dsn_stays_out_of_env_seed(self) -> None:
         spec = runtime_settings.get_field_spec('database', 'dsn')
