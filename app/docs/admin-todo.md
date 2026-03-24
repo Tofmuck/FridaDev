@@ -426,11 +426,11 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 7 - Nouveau frontend admin from scratch
 
-- [ ] Creer le nouveau `app/web/admin.html` from scratch.
-- [ ] Creer le nouveau `app/web/admin.js` from scratch.
-- [ ] Verifier d'abord si `app/web/styles.css` peut etre reutilise tel quel sans casser le front principal.
+- [x] Creer le nouveau `app/web/admin.html` from scratch.
+- [x] Creer le nouveau `app/web/admin.js` from scratch.
+- [x] Verifier d'abord si `app/web/styles.css` peut etre reutilise tel quel sans casser le front principal.
 - [ ] Si la reutilisation directe est propre, brancher `styles.css` dans le nouvel admin.
-- [ ] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
+- [x] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
 - [ ] Construire une section UI dediee au modele principal.
 - [ ] Construire une section UI dediee au modele arbitre.
 - [ ] Construire une section UI dediee au modele resumieur.
@@ -447,7 +447,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter un retour de validation lisible par champ en cas d'erreur backend.
 - [ ] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`).
 - [ ] Ne pas ajouter de lien vers une UI admin legacy logs/restart.
-- [ ] Verifier que le nouveau `admin.js` n'embarque pas de logique logs/restart par reflexe.
+- [x] Verifier que le nouveau `admin.js` n'embarque pas de logique logs/restart par reflexe.
 - [ ] Prevoir un commit isole pour le nouveau frontend admin.
 
 ### Phase 8 - Integration minimale avec le front principal

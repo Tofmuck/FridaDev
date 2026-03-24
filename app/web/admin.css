@@ -1,0 +1,337 @@
+/* Derived from styles.css tokens.
+   Direct reuse of styles.css is avoided here because it hardcodes the chat layout
+   (`body` overflow, `.sidebar`, `.main`) and would distort the admin surface. */
+
+:root {
+  --bg-base:    #f8f6f3;
+  --bg-sidebar: #f1efe9;
+  --surface:        rgba(0, 0, 0, 0.04);
+  --surface-hover:  rgba(0, 0, 0, 0.055);
+  --border:        rgba(0, 0, 0, 0.09);
+  --border-muted:  rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --fg:        #191714;
+  --fg-muted:  rgba(25, 23, 20, 0.60);
+  --fg-subtle: rgba(25, 23, 20, 0.36);
+  --accent:    #5a3e1b;
+  --accent-bg: rgba(90, 62, 27, 0.08);
+  --radius:    6px;
+  --radius-lg: 10px;
+  --shadow: 0 12px 32px rgba(25, 23, 20, 0.07);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body.admin-page {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(90, 62, 27, 0.06), transparent 28%),
+    var(--bg-base);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.admin-shell {
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.admin-brand img {
+  display: block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.admin-kicker {
+  margin: 0 0 6px;
+  color: var(--fg-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-topbar h1,
+.admin-section-head h2,
+.admin-transition-note h2 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: white;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.admin-btn:hover {
+  background: var(--bg-sidebar);
+  border-color: var(--border-strong);
+}
+
+.admin-btn:active {
+  transform: translateY(1px);
+}
+
+.admin-btn-primary {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg-base);
+}
+
+.admin-btn-primary:hover {
+  background: #2b2824;
+  border-color: #2b2824;
+}
+
+.admin-hero,
+.admin-section-block,
+.admin-transition-note {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
+}
+
+.admin-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  padding: 24px;
+}
+
+.admin-lead,
+.admin-sublead,
+.admin-section-note {
+  margin: 0;
+}
+
+.admin-lead {
+  max-width: 42rem;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.admin-sublead {
+  margin-top: 10px;
+  color: var(--fg-muted);
+}
+
+.admin-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-meta-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border-muted);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.admin-meta-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--fg-subtle);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.admin-meta-card strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.admin-status {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  background: var(--accent-bg);
+  color: var(--fg);
+}
+
+.admin-status[data-state="error"] {
+  border-left-color: #9f3d29;
+  background: rgba(159, 61, 41, 0.09);
+}
+
+.admin-status[data-state="ok"] {
+  border-left-color: #3e6c4e;
+  background: rgba(62, 108, 78, 0.09);
+}
+
+.admin-section-block,
+.admin-transition-note {
+  margin-top: 20px;
+  padding: 22px 24px;
+}
+
+.admin-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+
+.admin-section-note {
+  max-width: 26rem;
+  color: var(--fg-muted);
+  font-size: 14px;
+  text-align: right;
+}
+
+.admin-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-card {
+  padding: 16px;
+  border: 1px solid var(--border-muted);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.admin-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.admin-card-head h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.admin-card-source {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-card-source[data-source="db"] {
+  background: var(--accent-bg);
+  border-color: rgba(90, 62, 27, 0.16);
+  color: var(--accent);
+}
+
+.admin-card-source[data-source="env"] {
+  background: rgba(25, 23, 20, 0.04);
+  color: var(--fg);
+}
+
+.admin-card p {
+  margin: 10px 0 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+}
+
+.admin-card-meta {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-chip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--border-muted);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.admin-transition-note ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--fg-muted);
+}
+
+.admin-transition-note li + li {
+  margin-top: 8px;
+}
+
+@media (max-width: 860px) {
+  .admin-shell {
+    width: min(100vw - 24px, 1120px);
+    padding-top: 18px;
+  }
+
+  .admin-topbar,
+  .admin-section-head,
+  .admin-hero {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .admin-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-section-note {
+    text-align: left;
+  }
+
+  .admin-section-grid {
+    grid-template-columns: 1fr;
+  }
+}

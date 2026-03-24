@@ -317,6 +317,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     required_files = {
         "index_html": web_dir / "index.html",
         "admin_html": web_dir / "admin.html",
+        "admin_css": web_dir / "admin.css",
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
         "admin_js": web_dir / "admin.js",
@@ -347,17 +348,20 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     admin_markers = [
         "Admin de configuration",
+        'href="admin.css"',
         'script src="admin.js"',
-        'id="admin-phase6-note"',
-        'id="admin-phase6-status"',
+        'id="adminRefresh"',
+        'id="adminStatusBanner"',
+        'id="adminSectionGrid"',
     ]
     for marker in admin_markers:
         if marker not in admin_html:
             raise RuntimeError(f"marker admin.html manquant: {marker}")
 
     admin_js_markers = [
-        'admin-phase6-status',
-        'settings-v1-shell',
+        "/api/admin/settings/status",
+        "frida.adminToken",
+        "adminSectionGrid",
     ]
     for marker in admin_js_markers:
         if marker not in admin_js:

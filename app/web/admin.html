@@ -4,109 +4,77 @@
   <meta charset="utf-8" />
   <title>Admin de configuration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0f1115;
-      --panel: #171a21;
-      --border: rgba(255, 255, 255, 0.12);
-      --text: #f2f4f8;
-      --muted: rgba(242, 244, 248, 0.72);
-      --accent: #6fc7ff;
-      --warn: #ffd166;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding: 32px 20px;
-      background:
-        radial-gradient(circle at top left, rgba(111, 199, 255, 0.10), transparent 32%),
-        linear-gradient(180deg, #0f1115 0%, #11141b 100%);
-      color: var(--text);
-      font: 16px/1.5 system-ui, sans-serif;
-    }
-
-    .shell {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 24px;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      background: rgba(23, 26, 33, 0.92);
-      backdrop-filter: blur(10px);
-    }
-
-    .eyebrow {
-      margin: 0 0 10px;
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 0 0 12px;
-      font-size: 34px;
-      line-height: 1.1;
-    }
-
-    .intro,
-    .status {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    .panel {
-      margin-top: 28px;
-      padding: 18px 20px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .panel h2 {
-      margin: 0 0 12px;
-      font-size: 18px;
-    }
-
-    .panel ul {
-      margin: 0;
-      padding-left: 18px;
-    }
-
-    .panel li + li {
-      margin-top: 8px;
-    }
-
-    .status {
-      margin-top: 16px;
-      padding: 12px 14px;
-      border-left: 3px solid var(--warn);
-      background: rgba(255, 209, 102, 0.08);
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
 </head>
-<body>
-  <main class="shell">
-    <p class="eyebrow">FridaDev</p>
-    <h1>Admin de configuration</h1>
-    <p id="admin-phase6-note" class="intro">
-      Cette page est maintenant reservee au nouvel admin V1 centre sur la configuration runtime.
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Admin de configuration</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <button id="adminTokenButton" class="admin-btn admin-btn-secondary" type="button">Token admin</button>
+        <button id="adminClearToken" class="admin-btn admin-btn-secondary" type="button">Effacer</button>
+        <button id="adminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="admin-hero">
+      <div class="admin-copy">
+        <p id="admin-phase7-note" class="admin-lead">
+          Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee arrive par tranches.
+        </p>
+        <p class="admin-sublead">
+          Cette premiere facade reste volontairement epuree: elle expose l'etat runtime, la source effective par section et le statut du bootstrap.
+        </p>
+      </div>
+
+      <div class="admin-meta">
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Etat DB</span>
+          <strong id="adminDbState">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Bootstrap</span>
+          <strong id="adminBootstrapMode">Externe</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Cle admin</span>
+          <strong id="adminTokenState">Session vide</strong>
+        </article>
+      </div>
+    </section>
+
+    <p id="adminStatusBanner" class="admin-status" role="status" aria-live="polite">
+      Chargement du statut runtime…
     </p>
 
-    <section class="panel" aria-labelledby="admin-phase6-heading">
-      <h2 id="admin-phase6-heading">Etat de transition</h2>
+    <section class="admin-section-block" aria-labelledby="admin-sections-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Vue d'ensemble</p>
+          <h2 id="admin-sections-title">Sections V1</h2>
+        </div>
+        <p class="admin-section-note">Lecture seule dans cette tranche. Les formulaires section par section arrivent ensuite.</p>
+      </div>
+      <div id="adminSectionGrid" class="admin-section-grid"></div>
+    </section>
+
+    <section class="admin-transition-note" aria-labelledby="admin-transition-title">
+      <h2 id="admin-transition-title">Transition</h2>
       <ul>
-        <li>L'UI logs/restart legacy a ete retiree de cette surface.</li>
-        <li>Les endpoints backend <code>/api/admin/logs</code> et <code>/api/admin/restart</code> restent disponibles.</li>
+        <li>Les logs et le restart restent disponibles cote backend pendant cette migration.</li>
         <li>Les routes hermeneutiques backend restent hors UI admin V1.</li>
-        <li>Le chantier logs sera reconstruit from scratch apres le nouvel admin de configuration.</li>
+        <li>Le chantier logs sera reconstruit apres le nouvel admin de configuration.</li>
       </ul>
-      <p id="admin-phase6-status" class="status">Preparation du socle frontend admin…</p>
     </section>
   </main>
 
