@@ -276,19 +276,19 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 2 - Schema SQL et seed initial
 
-- [ ] Creer la migration SQL de la table principale des settings runtime.
-- [ ] Ajouter la contrainte d'unicite necessaire sur la cle ou sur le couple section/cle.
-- [ ] Ajouter les index necessaires a la lecture par section.
-- [ ] Ajouter la structure necessaire au stockage des secrets selon la politique retenue.
-- [ ] Ajouter le champ/indicateur permettant de savoir si une valeur secrete est presente.
-- [ ] Creer la table d'historique/revision `runtime_settings_history`.
-- [ ] Prevoir une migration idempotente executable sans casser un environnement deja initialise.
+- [x] Creer la migration SQL de la table principale des settings runtime.
+- [x] Ajouter la contrainte d'unicite necessaire sur la cle ou sur le couple section/cle.
+- [x] Ajouter les index necessaires a la lecture par section.
+- [x] Ajouter la structure necessaire au stockage des secrets selon la politique retenue.
+- [x] Ajouter le champ/indicateur permettant de savoir si une valeur secrete est presente.
+- [x] Creer la table d'historique/revision `runtime_settings_history`.
+- [x] Prevoir une migration idempotente executable sans casser un environnement deja initialise.
 - [ ] Ecrire la logique de seed des valeurs non secretes depuis l'environnement courant.
 - [ ] Ecrire la logique de seed initial des valeurs secretes depuis l'environnement courant, sans re-exposition en clair.
 - [ ] Implementer la regle "ne pas ecraser une valeur deja presente en DB lors d'un reseed".
 - [ ] Prevoir un moyen explicite de reconnaitre qu'une section n'a jamais encore ete seedee.
-- [ ] Documenter dans la migration qu'aucune extension PostgreSQL supplementaire n'est requise a priori au-dela de `pgcrypto` deja active.
-- [ ] Documenter dans la migration la separation entre bootstrap DB minimal externe et sections V1 stockees dans `runtime_settings`.
+- [x] Documenter dans la migration qu'aucune extension PostgreSQL supplementaire n'est requise a priori au-dela de `pgcrypto` deja active.
+- [x] Documenter dans la migration la separation entre bootstrap DB minimal externe et sections V1 stockees dans `runtime_settings`.
 - [ ] Exclure explicitement `FRIDA_MEMORY_DB_DSN` du seed de `runtime_settings` tant que la transition n'est pas achevee.
 - [ ] Prevoir un commit isole pour la migration SQL et le seed initial, sans branchement frontend.
 
