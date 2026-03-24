@@ -180,6 +180,35 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-route')
         self.assertEqual(data['payload']['temperature']['value'], 0.3)
 
+    def test_get_admin_settings_embedding_returns_single_section_with_redacted_secret(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'embedding')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'endpoint': {'value': 'https://embed.override.example', 'is_secret': False, 'origin': 'db'},
+                    'model': {'value': 'intfloat/multilingual-e5-small', 'is_secret': False, 'origin': 'db'},
+                    'token': {'is_secret': True, 'is_set': True, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/embedding')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'embedding')
+        self.assertEqual(data['payload']['endpoint']['value'], 'https://embed.override.example')
+        self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY

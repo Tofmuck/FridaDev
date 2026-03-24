@@ -633,6 +633,11 @@ def api_admin_settings_summary_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
 
 
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/embedding')
+def api_admin_settings_embedding_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
+
+
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/summary-model')
 def api_admin_settings_summary_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
