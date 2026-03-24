@@ -121,8 +121,16 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
 
     def test_bootstrap_database_dsn_requires_env_fallback_while_db_secret_decryption_is_unavailable(self) -> None:
         original_get_database = minimal_validation.runtime_settings.get_database_settings
+        original_get_secret = minimal_validation.runtime_settings.get_runtime_secret_value
         original_dsn = config.FRIDA_MEMORY_DB_DSN
+        observed = {'called': False}
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            observed['called'] = True
+            raise AssertionError('database bootstrap must not resolve runtime secret values')
+
         minimal_validation.runtime_settings.get_database_settings = self._db_database_view
+        minimal_validation.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
         config.FRIDA_MEMORY_DB_DSN = ''
         try:
             with self.assertRaisesRegex(
@@ -132,7 +140,10 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
                 minimal_validation._bootstrap_database_dsn()
         finally:
             minimal_validation.runtime_settings.get_database_settings = original_get_database
+            minimal_validation.runtime_settings.get_runtime_secret_value = original_get_secret
             config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertFalse(observed['called'])
 
 
 if __name__ == '__main__':
