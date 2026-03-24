@@ -316,7 +316,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 4 - Remplacement progressif des lectures actuelles dans le code
 
-- [ ] Remplacer la lecture du modele principal dans `app/core/llm_client.py` par la nouvelle couche runtime config.
+- [x] Remplacer la lecture du modele principal dans `app/core/llm_client.py` par la nouvelle couche runtime config.
 - [ ] Remplacer la lecture du modele principal dans `app/server.py` par la nouvelle couche runtime config.
 - [ ] Remplacer la lecture du modele principal utilisee par `app/tools/web_search.py`.
 - [ ] Remplacer la lecture du modele principal utilisee pour le comptage de tokens dans `app/server.py`.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import config
+from admin import runtime_settings
 
 
 def _sanitize_encoding(text: str) -> str:
@@ -36,11 +37,16 @@ def or_headers(caller: str = "llm") -> dict:
     return h
 
 
+def _runtime_main_model_name() -> str:
+    view = runtime_settings.get_main_model_settings()
+    return str(view.payload['model']['value'])
+
+
 def build_payload(messages: list, temperature: float, top_p: float,
                   max_tokens: int, stream: bool = False) -> dict:
     """Construit le payload pour l'API OpenRouter."""
     payload = {
-        "model": config.OR_MODEL,
+        "model": _runtime_main_model_name(),
         "messages": messages,
         "temperature": temperature,
         "top_p": top_p,
