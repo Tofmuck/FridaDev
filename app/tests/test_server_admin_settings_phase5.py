@@ -152,6 +152,34 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-route')
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
 
+    def test_get_admin_settings_summary_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'summary_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openrouter/summary-route', 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.3, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/summary-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'summary_model')
+        self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-route')
+        self.assertEqual(data['payload']['temperature']['value'], 0.3)
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
