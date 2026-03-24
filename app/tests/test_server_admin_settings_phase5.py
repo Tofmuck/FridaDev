@@ -237,6 +237,34 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['backend']['value'], 'postgresql')
         self.assertEqual(data['payload']['dsn'], {'is_secret': True, 'is_set': False, 'origin': 'db'})
 
+    def test_get_admin_settings_services_returns_single_section_with_redacted_secret(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'services')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'searxng_url': {'value': 'http://127.0.0.1:8092', 'is_secret': False, 'origin': 'db'},
+                    'crawl4ai_token': {'is_secret': True, 'is_set': True, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/services')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'services')
+        self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8092')
+        self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
