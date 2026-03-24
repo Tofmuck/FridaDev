@@ -365,15 +365,15 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 ### Phase 5 bis - Secrets runtime chiffres en base
 
 - [ ] Documenter que les secrets runtime V1 sont stockes chiffres en base via `pgcrypto`, jamais en clair.
-- [ ] Introduire une cle externe minimale dediee au chiffrement/dechiffrement des settings runtime sous `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
+- [x] Introduire une cle externe minimale dediee au chiffrement/dechiffrement des settings runtime sous `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
 - [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
 - [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
 - [ ] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
 - [ ] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
-- [ ] Creer le module dedie `app/admin/runtime_secrets.py`.
+- [x] Creer le module dedie `app/admin/runtime_secrets.py`.
 - [ ] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
 - [ ] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
-- [ ] Ajouter dans ce module un helper de verification de presence de `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
+- [x] Ajouter dans ce module un helper de verification de presence de `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
 - [ ] Implementer le comportement `cle crypto absente = ecriture de secret refusee avec erreur explicite`.
 - [ ] Implementer le comportement `secret chiffre present mais indechiffrable = erreur de configuration explicite`.
 - [ ] Implementer le comportement `is_set=true sans valeur dechiffrable exploitable = erreur de configuration explicite`.
@@ -402,7 +402,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `services`.
 - [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `database`.
-- [ ] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
+- [x] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
 - [ ] Ajouter des tests backend sur le cas `value_encrypted` indechiffrable.
 - [ ] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
 - [ ] Prevoir un commit isole pour la couche crypto.

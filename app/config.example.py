@@ -89,6 +89,7 @@ FRIDA_USER_IDENTITY_PATH = os.environ.get('FRIDA_USER_IDENTITY_PATH', 'data/iden
 
 # PostgreSQL / pgvector
 FRIDA_MEMORY_DB_DSN = os.environ.get('FRIDA_MEMORY_DB_DSN', 'postgresql://user:password@127.0.0.1:5432/fridadev')
+FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY = os.environ.get('FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY', '').strip()
 
 # Embedding service
 EMBED_BASE_URL = os.environ.get('EMBED_BASE_URL', 'https://embed.example.com')
