@@ -330,10 +330,10 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Remplacer la lecture du bloc `database` dans `app/core/conv_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [ ] Remplacer la lecture du bloc `database` dans `app/memory/memory_store.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
 - [ ] Remplacer la lecture du bloc `database` dans `app/minimal_validation.py` une fois la separation bootstrap externe / config V1 effectivement branchee.
-- [ ] Verifier que `app/config.py` reste utilisable comme fallback transitoire tant que la bascule n'est pas complete.
-- [ ] Verifier que `app/admin/admin_logs.py` continue a fonctionner sans regression apres introduction de la nouvelle couche.
-- [ ] Verifier que `app/run.sh` et `docker-compose.yml` ne sont pas touches par inadvertance pendant cette phase.
-- [ ] Prevoir un commit isole pour chaque bloc remplace (`main_model`, `arbiter_model`, `summary_model`, `embedding`, `services`, `resources`, puis `database`).
+- [x] Verifier que `app/config.py` reste utilisable comme fallback transitoire tant que la bascule n'est pas complete.
+- [x] Verifier que `app/admin/admin_logs.py` continue a fonctionner sans regression apres introduction de la nouvelle couche.
+- [x] Verifier que `app/run.sh` et `docker-compose.yml` ne sont pas touches par inadvertance pendant cette phase.
+- [x] Prevoir un commit isole pour chaque bloc remplace (`main_model`, `arbiter_model`, `summary_model`, `embedding`, `services`, `resources`, puis `database`).
 
 ### Phase 5 - API backend du nouvel admin
 

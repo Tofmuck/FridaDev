@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+APP_DIR = Path(__file__).resolve().parents[1]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from admin import admin_logs, runtime_settings
+import config
+
+
+class Phase4TransversalTests(unittest.TestCase):
+    def setUp(self) -> None:
+        runtime_settings.invalidate_runtime_settings_cache()
+
+    def test_runtime_settings_env_fallback_still_exposes_config_values(self) -> None:
+        main_model = runtime_settings.get_main_model_settings(fetcher=lambda: {})
+        arbiter_model = runtime_settings.get_arbiter_model_settings(fetcher=lambda: {})
+        summary_model = runtime_settings.get_summary_model_settings(fetcher=lambda: {})
+        embedding = runtime_settings.get_embedding_settings(fetcher=lambda: {})
+        services = runtime_settings.get_services_settings(fetcher=lambda: {})
+        resources = runtime_settings.get_resources_settings(fetcher=lambda: {})
+
+        self.assertEqual(main_model.source, 'env')
+        self.assertEqual(main_model.payload['model']['value'], config.OR_MODEL)
+        self.assertEqual(main_model.payload['base_url']['value'], config.OR_BASE)
+        self.assertEqual(arbiter_model.payload['model']['value'], config.ARBITER_MODEL)
+        self.assertEqual(summary_model.payload['model']['value'], config.SUMMARY_MODEL)
+        self.assertEqual(embedding.payload['endpoint']['value'], config.EMBED_BASE_URL)
+        self.assertEqual(embedding.payload['dimensions']['value'], config.EMBED_DIM)
+        self.assertEqual(embedding.payload['top_k']['value'], config.MEMORY_TOP_K)
+        self.assertEqual(services.payload['searxng_url']['value'], config.SEARXNG_URL)
+        self.assertEqual(services.payload['crawl4ai_url']['value'], config.CRAWL4AI_URL)
+        self.assertEqual(resources.payload['llm_identity_path']['value'], config.FRIDA_LLM_IDENTITY_PATH)
+        self.assertEqual(resources.payload['user_identity_path']['value'], config.FRIDA_USER_IDENTITY_PATH)
+
+    def test_admin_logs_still_write_and_read_without_runtime_settings_dependency(self) -> None:
+        original_log_path = admin_logs.LOG_PATH
+        original_bootstrap_done = admin_logs._BOOTSTRAP_DONE
+
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / 'admin.log.jsonl'
+            admin_logs.LOG_PATH = log_path
+            admin_logs._BOOTSTRAP_DONE = True
+            try:
+                admin_logs.log_event('phase4_admin_logs_test', foo='bar')
+                entries = admin_logs.read_logs(limit=10)
+            finally:
+                admin_logs.LOG_PATH = original_log_path
+                admin_logs._BOOTSTRAP_DONE = original_bootstrap_done
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]['event'], 'phase4_admin_logs_test')
+        self.assertEqual(entries[0]['foo'], 'bar')
+
+    def test_run_and_compose_runtime_binding_contract_is_unchanged(self) -> None:
+        run_sh = (APP_DIR / 'run.sh').read_text(encoding='utf-8')
+        compose = (APP_DIR.parent / 'docker-compose.yml').read_text(encoding='utf-8')
+
+        self.assertIn('PORT="${FRIDA_WEB_PORT:-8089}"', run_sh)
+        self.assertIn('HOST="${FRIDA_WEB_HOST:-0.0.0.0}"', run_sh)
+        self.assertIn('exec python3 server.py', run_sh)
+
+        self.assertIn('env_file:', compose)
+        self.assertIn('- ./app/.env', compose)
+        self.assertIn('FRIDA_WEB_PORT: "8089"', compose)
+        self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
+        self.assertIn('- "8093:8089"', compose)
+
+
+if __name__ == '__main__':
+    unittest.main()
