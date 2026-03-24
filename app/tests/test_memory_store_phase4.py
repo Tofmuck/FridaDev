@@ -35,6 +35,20 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
             source_reason='db_row',
         )
 
+    def _db_database_view(self, *, backend: str = 'postgresql'):
+        return runtime_settings.RuntimeSectionView(
+            section='database',
+            payload=runtime_settings.normalize_stored_payload(
+                'database',
+                {
+                    'backend': {'value': backend, 'origin': 'db'},
+                    'dsn': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                },
+            ),
+            source='db',
+            source_reason='db_row',
+        )
+
     def test_embed_uses_runtime_embedding_settings_and_model(self) -> None:
         observed = {'url': None, 'headers': None, 'json': None}
         original_get_settings = memory_store.runtime_settings.get_embedding_settings
@@ -165,6 +179,59 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         finally:
             memory_store.runtime_settings.get_embedding_settings = original_get_settings
             config.EMBED_TOKEN = original_token
+
+    def test_conn_uses_external_bootstrap_dsn_with_runtime_postgresql_backend(self) -> None:
+        observed = {'dsn': None}
+        original_get_settings = memory_store.runtime_settings.get_database_settings
+        original_connect = memory_store.psycopg.connect
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return object()
+
+        memory_store.runtime_settings.get_database_settings = self._db_database_view
+        memory_store.psycopg.connect = fake_connect
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        try:
+            conn = memory_store._conn()
+        finally:
+            memory_store.runtime_settings.get_database_settings = original_get_settings
+            memory_store.psycopg.connect = original_connect
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertIsNotNone(conn)
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+
+    def test_conn_rejects_unsupported_runtime_database_backend(self) -> None:
+        original_get_settings = memory_store.runtime_settings.get_database_settings
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        memory_store.runtime_settings.get_database_settings = lambda: self._db_database_view(backend='mysql')
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        try:
+            with self.assertRaisesRegex(ValueError, 'unsupported runtime database backend: mysql'):
+                memory_store._conn()
+        finally:
+            memory_store.runtime_settings.get_database_settings = original_get_settings
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+    def test_bootstrap_database_dsn_requires_env_fallback_while_db_secret_decryption_is_unavailable(self) -> None:
+        original_get_settings = memory_store.runtime_settings.get_database_settings
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        memory_store.runtime_settings.get_database_settings = self._db_database_view
+        config.FRIDA_MEMORY_DB_DSN = ''
+        try:
+            with self.assertRaisesRegex(
+                runtime_settings.RuntimeSettingsSecretRequiredError,
+                'runtime secret decryption is not available',
+            ):
+                memory_store._bootstrap_database_dsn()
+        finally:
+            memory_store.runtime_settings.get_database_settings = original_get_settings
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
 
 
 if __name__ == '__main__':
