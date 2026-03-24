@@ -362,6 +362,54 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ne pas melanger les endpoints hermeneutiques existants avec les endpoints de configuration V1.
 - [x] Prevoir un commit isole pour l'ouverture des routes API de configuration.
 
+### Phase 5 bis - Secrets runtime chiffres en base
+
+- [ ] Documenter que les secrets runtime V1 sont stockes chiffres en base via `pgcrypto`, jamais en clair.
+- [ ] Introduire une cle externe minimale dediee au chiffrement/dechiffrement des settings runtime sous `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
+- [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
+- [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
+- [ ] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
+- [ ] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
+- [ ] Creer le module dedie `app/admin/runtime_secrets.py`.
+- [ ] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
+- [ ] Ajouter dans ce module un helper de dechiffrement applicatif depuis `value_encrypted` via `pgp_sym_decrypt`.
+- [ ] Ajouter dans ce module un helper de verification de presence de `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
+- [ ] Implementer le comportement `cle crypto absente = ecriture de secret refusee avec erreur explicite`.
+- [ ] Implementer le comportement `secret chiffre present mais indechiffrable = erreur de configuration explicite`.
+- [ ] Implementer le comportement `is_set=true sans valeur dechiffrable exploitable = erreur de configuration explicite`.
+- [ ] Fixer le format de remplacement d'un secret en `PATCH` a `payload.<field>.replace_value`.
+- [ ] Refuser tout `PATCH` secret sans `replace_value`.
+- [ ] Refuser tout melange ambigu entre `value`, `replace_value` et `value_encrypted` dans les payloads d'update secret.
+- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings`.
+- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans `runtime_settings_history`.
+- [ ] Normaliser `replace_value` sans jamais le reinjecter en clair dans les logs, traces d'erreur ou retours d'API.
+- [ ] Ouvrir l'ecriture chiffree de `main_model.api_key`.
+- [ ] Ouvrir l'ecriture chiffree de `embedding.token`.
+- [ ] Ouvrir l'ecriture chiffree de `services.crawl4ai_token`.
+- [ ] Ouvrir l'ecriture chiffree de `database.dsn`.
+- [ ] Ajouter la lecture runtime dechiffree de `main_model.api_key`.
+- [ ] Remplacer le fallback `OPENROUTER_API_KEY` par le secret DB dechiffre quand il est disponible.
+- [ ] Ajouter la lecture runtime dechiffree de `embedding.token`.
+- [ ] Remplacer le fallback `EMBED_TOKEN` par le secret DB dechiffre quand il est disponible.
+- [ ] Ajouter la lecture runtime dechiffree de `services.crawl4ai_token`.
+- [ ] Remplacer le fallback `CRAWL4AI_TOKEN` par le secret DB dechiffre quand il est disponible.
+- [ ] Garder `database.dsn` stockable et lisible en mode masque dans l'admin sans le substituer au bootstrap externe minimal tant que la transition DB n'est pas explicitement refermee.
+- [ ] Ajouter dans l'API admin un indicateur de source effective du secret (`db_encrypted` vs `env_fallback`) sans jamais exposer la valeur.
+- [ ] Ajouter un backfill initial des secrets deja presents en env vers `value_encrypted`, sans re-exposition en clair.
+- [ ] Garantir qu'un reseed secret n'ecrase jamais une valeur deja chiffree en base.
+- [ ] Ajouter des tests unitaires sur le chiffrement et le dechiffrement des secrets runtime.
+- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `main_model`.
+- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `embedding`.
+- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `services`.
+- [ ] Ajouter des tests backend sur un `PATCH` secret valide pour `database`.
+- [ ] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
+- [ ] Ajouter des tests backend sur le cas `value_encrypted` indechiffrable.
+- [ ] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
+- [ ] Prevoir un commit isole pour la couche crypto.
+- [ ] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
+- [ ] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
+- [ ] Prevoir un commit isole pour le backfill initial des secrets existants.
+
 ### Phase 6 - Conservation explicite de l'ancien admin
 
 - [ ] Copier `app/web/admin.html` vers `app/web/admin-old.html`.
@@ -441,8 +489,9 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Commit 2 : couche backend de lecture runtime config avec fallback env, sans front.
 - [ ] Commit 3 : remplacement progressif des lectures code sur un premier bloc isole (`main_model` ou `services`).
 - [ ] Commit 4 : ouverture des routes API de configuration.
-- [ ] Commit 5 : preservation/renommage de l'ancien admin en `admin-old.*`.
-- [ ] Commit 6 : creation du nouveau frontend admin.
-- [ ] Commit 7 : adaptation du bouton `Parametres` dans le front principal.
-- [ ] Commit 8 : validation minimale, smoke tests et non-regression.
-- [ ] Commit 9 : documentation finale d'exploitation/migration du nouvel admin.
+- [ ] Commit 5 : chiffrement, ecriture, lecture et backfill initial des secrets runtime en base.
+- [ ] Commit 6 : preservation/renommage de l'ancien admin en `admin-old.*`.
+- [ ] Commit 7 : creation du nouveau frontend admin.
+- [ ] Commit 8 : adaptation du bouton `Parametres` dans le front principal.
+- [ ] Commit 9 : validation minimale, smoke tests et non-regression.
+- [ ] Commit 10 : documentation finale d'exploitation/migration du nouvel admin.
