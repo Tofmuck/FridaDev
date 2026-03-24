@@ -384,6 +384,57 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-patched')
         self.assertEqual(data['payload']['temperature']['value'], 0.15)
 
+    def test_patch_admin_settings_embedding_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'endpoint': {'value': 'https://embed.next.example', 'is_secret': False, 'origin': 'admin_ui'},
+                    'model': {'value': 'intfloat/multilingual-e5-small', 'is_secret': False, 'origin': 'admin_ui'},
+                    'dimensions': {'value': 384, 'is_secret': False, 'origin': 'admin_ui'},
+                    'token': {'is_secret': True, 'is_set': True, 'origin': 'env_seed'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/embedding',
+                json={
+                    'updated_by': 'phase5-admin',
+                    'payload': {
+                        'endpoint': {'value': 'https://embed.next.example'},
+                        'dimensions': {'value': 384},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'embedding')
+        self.assertEqual(observed['updated_by'], 'phase5-admin')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'endpoint': {'value': 'https://embed.next.example'},
+                'dimensions': {'value': 384},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'embedding')
+        self.assertEqual(data['payload']['endpoint']['value'], 'https://embed.next.example')
+        self.assertEqual(data['payload']['token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+
 
 if __name__ == '__main__':
     unittest.main()
