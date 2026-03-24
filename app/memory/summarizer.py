@@ -8,10 +8,16 @@ from typing import Any, Dict, List
 import requests
 
 import config
+from admin import runtime_settings
 from core.llm_client import or_headers, _sanitize_encoding
 from core.token_utils import count_tokens
 
 logger = logging.getLogger("kiki.summarizer")
+
+
+def _runtime_summary_model_name() -> str:
+    view = runtime_settings.get_summary_model_settings()
+    return str(view.payload['model']['value'])
 
 
 def _now_iso() -> str:
@@ -104,7 +110,7 @@ def maybe_summarize(conversation: Dict[str, Any], model: str) -> bool:
     )
 
     try:
-        summary_text = summarize_conversation(to_summarize, config.SUMMARY_MODEL)
+        summary_text = summarize_conversation(to_summarize, _runtime_summary_model_name())
     except Exception as exc:
         logger.error("summarize_failed conv_id=%s err=%s", conversation.get("id"), exc)
         return False
