@@ -364,11 +364,11 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 5 bis - Secrets runtime chiffres en base
 
-- [ ] Documenter que les secrets runtime V1 sont stockes chiffres en base via `pgcrypto`, jamais en clair.
+- [x] Documenter que les secrets runtime V1 sont stockes chiffres en base via `pgcrypto`, jamais en clair.
 - [x] Introduire une cle externe minimale dediee au chiffrement/dechiffrement des settings runtime sous `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`.
-- [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
-- [ ] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
-- [ ] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
+- [x] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
+- [x] Documenter que `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
+- [x] Documenter que `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
 - [x] Geler la liste des secrets V1 couverts par cette phase : `main_model.api_key`, `embedding.token`, `services.crawl4ai_token`, `database.dsn`.
 - [x] Creer le module dedie `app/admin/runtime_secrets.py`.
 - [x] Ajouter dans ce module un helper de chiffrement applicatif vers `value_encrypted` via `pgp_sym_encrypt`.
@@ -405,9 +405,9 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter des tests backend sur le cas `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` absent.
 - [x] Ajouter des tests backend sur le cas `value_encrypted` indechiffrable.
 - [x] Ajouter des tests backend garantissant qu'aucun secret ne fuit en clair via `GET`, `PATCH`, logs, erreurs, historique ou validation.
-- [ ] Prevoir un commit isole pour la couche crypto.
+- [x] Prevoir un commit isole pour la couche crypto.
 - [x] Prevoir un commit isole pour l'ouverture des `PATCH` secrets.
-- [ ] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
+- [x] Prevoir un commit isole pour la lecture runtime dechiffree des secrets.
 - [x] Prevoir un commit isole pour le backfill initial des secrets existants.
 
 ### Phase 6 - Conservation explicite de l'ancien admin

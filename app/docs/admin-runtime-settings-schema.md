@@ -16,6 +16,13 @@ Il complete `app/docs/admin-implementation-spec.md` et ferme la partie modele de
 - Les secrets ne ressortent jamais en clair cote lecture admin ; ils exposent seulement `is_secret=true` et `is_set=true|false`.
 - `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal tant que la transition n'est pas achevee ; il n'est donc ni seede ni consomme depuis `runtime_settings` dans les premieres tranches.
 
+## Secrets runtime V1
+
+- Les secrets runtime V1 sont stockes chiffres en base via `pgcrypto`, jamais en clair.
+- `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` reste externe a la base, au meme titre que le bootstrap DB minimal.
+- `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` ne transite jamais vers le frontend, les logs applicatifs, ni les reponses d'erreur.
+- `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal meme si `database.dsn` devient stockable chiffre en base.
+
 ## Table `runtime_settings`
 
 Colonnes cibles :
