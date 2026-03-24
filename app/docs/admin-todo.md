@@ -304,7 +304,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un point d'entree backend pour lire la section `services`.
 - [x] Ajouter un point d'entree backend pour lire la section `resources`.
 - [x] Ajouter une redaction automatique des secrets dans tous les objets renvoyables au frontend.
-- [ ] Ajouter une validation backend par champ avant toute ecriture.
+- [x] Ajouter une validation backend par champ avant toute ecriture.
 - [x] Implementer une lecture centralisee via un cache explicitement invalide apres ecriture.
 - [x] Implementer le comportement `table de settings vide = fallback env transitoire + statut visible`.
 - [x] Implementer le comportement `DB indisponible = fallback env transitoire quand il existe, sinon erreur de configuration explicite`.
@@ -340,7 +340,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ouvrir le prefixe `/api/admin/settings` pour la configuration du nouvel admin.
 - [x] Ajouter une route de lecture agregee de l'ensemble des sections du nouvel admin.
 - [x] Ajouter une route `GET` de lecture pour la section `main_model`.
-- [ ] Ajouter une route `PATCH` de mise a jour pour la section `main_model`.
+- [x] Ajouter une route `PATCH` de mise a jour pour la section `main_model`.
 - [ ] Ajouter une route `GET` de lecture pour la section `arbiter_model`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `arbiter_model`.
 - [ ] Ajouter une route `GET` de lecture pour la section `summary_model`.

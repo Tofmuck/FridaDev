@@ -590,6 +590,25 @@ def _admin_settings_single_section_json(section: str):
     return jsonify({'ok': True, **_admin_settings_section_response(section)})
 
 
+def _admin_settings_section_patch_response(section: str):
+    data = request.get_json(force=True, silent=True) or {}
+    patch_payload = data.get('payload')
+    updated_by = str(data.get('updated_by') or 'admin_api').strip() or 'admin_api'
+
+    try:
+        view = runtime_settings.update_runtime_section(
+            section,
+            patch_payload,
+            updated_by=updated_by,
+        )
+    except runtime_settings.RuntimeSettingsValidationError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except runtime_settings.RuntimeSettingsDbUnavailableError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 503
+
+    return jsonify({'ok': True, 'section': view.section, 'payload': view.payload, 'source': view.source, 'source_reason': view.source_reason})
+
+
 @app.get(_ADMIN_SETTINGS_PREFIX)
 def api_admin_settings():
     sections = {
@@ -602,6 +621,11 @@ def api_admin_settings():
 @app.get(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
 def api_admin_settings_main_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
+
+
+@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
+def api_admin_settings_main_model_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
 
 
 @app.get("/api/admin/logs")

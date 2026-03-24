@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
@@ -84,6 +85,10 @@ class RuntimeSettingsDbUnavailableError(RuntimeError):
 
 
 class RuntimeSettingsSecretRequiredError(RuntimeError):
+    pass
+
+
+class RuntimeSettingsValidationError(ValueError):
     pass
 
 
@@ -464,4 +469,130 @@ def require_secret_configured(view: RuntimeSectionView, field: str) -> None:
 
     raise RuntimeSettingsSecretRequiredError(
         f'missing secret config: {view.section}.{field} (source={view.source}, reason={view.source_reason})'
+    )
+
+
+def _coerce_field_value(section: str, field: str, value: Any) -> Any:
+    spec = get_field_spec(section, field)
+    field_ref = f'{section}.{field}'
+
+    if spec.value_type == 'text':
+        if not isinstance(value, str):
+            raise RuntimeSettingsValidationError(f'invalid text value for {field_ref}')
+        return value
+
+    if spec.value_type == 'int':
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise RuntimeSettingsValidationError(f'invalid int value for {field_ref}')
+        return int(value)
+
+    if spec.value_type == 'float':
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise RuntimeSettingsValidationError(f'invalid float value for {field_ref}')
+        return float(value)
+
+    raise RuntimeSettingsValidationError(f'unsupported value type for {field_ref}: {spec.value_type}')
+
+
+def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
+    get_section_spec(section)
+    if not isinstance(payload, Mapping) or not payload:
+        raise RuntimeSettingsValidationError(f'patch payload must be a non-empty mapping for {section}')
+
+    normalized: Dict[str, Dict[str, Any]] = {}
+    for field_name, raw_value in payload.items():
+        spec = get_field_spec(section, str(field_name))
+        field_ref = f'{section}.{field_name}'
+
+        if not isinstance(raw_value, Mapping):
+            raise RuntimeSettingsValidationError(f'field patch must be a mapping for {field_ref}')
+
+        if spec.is_secret:
+            raise RuntimeSettingsValidationError(f'secret updates are not supported yet: {field_ref}')
+
+        if 'value' not in raw_value:
+            raise RuntimeSettingsValidationError(f'missing value for {field_ref}')
+
+        normalized[str(field_name)] = {
+            'value': _coerce_field_value(section, str(field_name), raw_value.get('value')),
+            'is_secret': False,
+            'origin': 'admin_ui',
+        }
+
+    return normalized
+
+
+def update_runtime_section(
+    section: str,
+    patch_payload: Mapping[str, Any],
+    *,
+    updated_by: str = 'admin_api',
+    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    actor = str(updated_by or '').strip() or 'admin_api'
+    normalized_patch = normalize_admin_patch_payload(section, patch_payload)
+    current_view = get_runtime_section(section, fetcher=fetcher)
+    next_payload = normalize_stored_payload(section, current_view.payload, default_origin=current_view.source_reason)
+    next_payload.update(normalized_patch)
+
+    try:
+        import psycopg
+        from psycopg import errors as psycopg_errors
+    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
+        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
+
+    try:
+        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT payload
+                    FROM runtime_settings
+                    WHERE section = %s
+                    ''',
+                    (section,),
+                )
+                row = cur.fetchone()
+                if row:
+                    before_payload = normalize_stored_payload(section, row[0], default_origin='db')
+                else:
+                    before_payload = {}
+
+                cur.execute(
+                    '''
+                    INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
+                    VALUES (%s, 'v1', %s, %s::jsonb)
+                    ON CONFLICT (section) DO UPDATE
+                    SET schema_version = EXCLUDED.schema_version,
+                        updated_at = now(),
+                        updated_by = EXCLUDED.updated_by,
+                        payload = EXCLUDED.payload
+                    ''',
+                    (section, actor, json.dumps(next_payload)),
+                )
+                cur.execute(
+                    '''
+                    INSERT INTO runtime_settings_history (
+                        section,
+                        schema_version,
+                        changed_by,
+                        payload_before,
+                        payload_after
+                    )
+                    VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
+                    ''',
+                    (section, actor, json.dumps(before_payload), json.dumps(next_payload)),
+                )
+            conn.commit()
+    except psycopg_errors.UndefinedTable as exc:
+        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
+    except Exception as exc:
+        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
+
+    invalidate_runtime_settings_cache()
+    return RuntimeSectionView(
+        section=section,
+        payload=redact_payload_for_api(section, next_payload),
+        source='db',
+        source_reason='db_row',
     )
