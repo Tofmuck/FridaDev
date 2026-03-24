@@ -454,19 +454,19 @@ def api_chat():
 
     headers = llm.or_headers(caller="llm")
     payload = llm.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
+    call_model = str(payload["model"])
     url     = f"{config.OR_BASE}/chat/completions"
-    model   = config.OR_MODEL
 
-    admin_logs.log_event("llm_payload", conversation_id=conversation["id"], model=model,
+    admin_logs.log_event("llm_payload", conversation_id=conversation["id"], model=call_model,
                          temperature=temperature, top_p=top_p, max_tokens=max_tokens,
                          stream=stream_req, message_count=len(prompt_messages))
 
     try:
         # ── Mode synchrone
         if not stream_req:
-            logger.info("llm_call id=%s model=%s messages=%s", conversation["id"], model, len(prompt_messages))
+            logger.info("llm_call id=%s model=%s messages=%s", conversation["id"], call_model, len(prompt_messages))
             admin_logs.log_event("llm_call", conversation_id=conversation["id"],
-                                 model=model, message_count=len(prompt_messages), stream=False)
+                                 model=call_model, message_count=len(prompt_messages), stream=False)
             r = requests.post(url, json=payload, headers=headers, timeout=config.TIMEOUT_S)
             r.raise_for_status()
             obj  = r.json()
@@ -519,12 +519,12 @@ def api_chat():
             except requests.exceptions.RequestException as exc:
                 logger.error("llm_stream_error id=%s err=%s", conversation["id"], exc)
                 admin_logs.log_event("llm_stream_error", level="ERROR",
-                                     conversation_id=conversation["id"], model=model, error=str(exc))
+                                     conversation_id=conversation["id"], model=call_model, error=str(exc))
             finally:
                 assistant_text = llm._sanitize_encoding("".join(assistant_chunks)).strip()
                 if assistant_text:
                     conv_store.append_message(conversation, "assistant", assistant_text, timestamp=response_updated_at)
-                    assistant_tokens = token_utils.count_tokens([{"content": assistant_text}], model)
+                    assistant_tokens = token_utils.count_tokens([{"content": assistant_text}], config.OR_MODEL)
                     admin_logs.log_event("AssistantText", conversation_id=conversation["id"],
                                          assistant_tokens=assistant_tokens,
                                          message_timestamp=response_updated_at)
@@ -538,9 +538,9 @@ def api_chat():
                 conv_store.save_conversation(conversation, updated_at=response_updated_at)
 
         logger.info("llm_call id=%s model=%s messages=%s stream=true",
-                    conversation["id"], model, len(prompt_messages))
+                    conversation["id"], call_model, len(prompt_messages))
         admin_logs.log_event("llm_call", conversation_id=conversation["id"],
-                             model=model, message_count=len(prompt_messages), stream=True)
+                             model=call_model, message_count=len(prompt_messages), stream=True)
         resp = Response(stream_with_context(event_stream()),
                         content_type="text/plain; charset=utf-8")
         resp.headers["X-Conversation-Id"]         = conversation["id"]
@@ -551,12 +551,12 @@ def api_chat():
     except requests.exceptions.RequestException as e:
         conv_store.save_conversation(conversation)
         admin_logs.log_event("llm_error", level="ERROR",
-                             conversation_id=conversation["id"], model=model, error=str(e))
+                             conversation_id=conversation["id"], model=call_model, error=str(e))
         return jsonify({"ok": False, "error": f"Connexion au LLM: {e}"}), 502
     except Exception as e:
         conv_store.save_conversation(conversation)
         admin_logs.log_event("llm_error", level="ERROR",
-                             conversation_id=conversation["id"], model=model, error=str(e))
+                             conversation_id=conversation["id"], model=call_model, error=str(e))
         return jsonify({"ok": False, "error": f"Erreur: {e}"}), 500
 
 
