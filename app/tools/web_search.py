@@ -14,6 +14,40 @@ def _runtime_main_model_name() -> str:
     return str(view.payload['model']['value'])
 
 
+def _runtime_services_view() -> runtime_settings.RuntimeSectionView:
+    return runtime_settings.get_services_settings()
+
+
+def _runtime_services_value(field: str):
+    view = _runtime_services_view()
+    payload = view.payload.get(field) or {}
+    if 'value' in payload:
+        return payload['value']
+
+    env_bundle = runtime_settings.build_env_seed_bundle('services')
+    fallback = env_bundle.payload.get(field) or {}
+    if 'value' in fallback:
+        return fallback['value']
+
+    raise KeyError(f'missing services runtime value: {field}')
+
+
+def _runtime_crawl4ai_token() -> str:
+    env_token = str(config.CRAWL4AI_TOKEN or '').strip()
+    if env_token:
+        return env_token
+
+    view = _runtime_services_view()
+    payload = view.payload.get('crawl4ai_token') or {}
+    if bool(payload.get('is_set')):
+        raise runtime_settings.RuntimeSettingsSecretRequiredError(
+            'services.crawl4ai_token is set in runtime settings but runtime secret decryption is not available; CRAWL4AI_TOKEN env fallback is required during the transition'
+        )
+
+    runtime_settings.require_secret_configured(view, 'crawl4ai_token')
+    raise AssertionError('unreachable')
+
+
 def reformulate(user_msg: str) -> str:
     """Reformule le message utilisateur en requête de recherche web concise."""
     try:
@@ -52,10 +86,11 @@ def reformulate(user_msg: str) -> str:
 def search(query: str, max_results: int = None) -> list[dict]:
     """Interroge SearXNG et retourne les résultats."""
     if max_results is None:
-        max_results = config.SEARXNG_RESULTS
+        max_results = int(_runtime_services_value('searxng_results'))
     try:
         params = {"q": query, "format": "json", "language": "fr-FR", "safesearch": "0"}
-        resp = requests.get(f"{config.SEARXNG_URL}/search", params=params, timeout=10)
+        searxng_url = str(_runtime_services_value('searxng_url')).rstrip('/')
+        resp = requests.get(f"{searxng_url}/search", params=params, timeout=10)
         resp.raise_for_status()
         results = resp.json().get("results", [])[:max_results]
         return [{"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
@@ -68,11 +103,12 @@ def search(query: str, max_results: int = None) -> list[dict]:
 def crawl(url: str) -> str:
     """Récupère le contenu markdown d'une URL via Crawl4AI."""
     try:
+        crawl4ai_url = str(_runtime_services_value('crawl4ai_url')).rstrip('/')
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {config.CRAWL4AI_TOKEN}",
+            "Authorization": f"Bearer {_runtime_crawl4ai_token()}",
         }
-        resp = requests.post(f"{config.CRAWL4AI_URL}/md",
+        resp = requests.post(f"{crawl4ai_url}/md",
                              json={"url": url, "only_text": True, "cache": "0"},
                              headers=headers, timeout=20)
         resp.raise_for_status()
@@ -92,6 +128,8 @@ def _format_context(query: str, results: list[dict]) -> str:
             f"[RECHERCHE WEB — aucun résultat pour : « {query} »]\n"
             "Je n'ai rien trouvé pour cette recherche.\n"
         )
+    crawl4ai_top_n = int(_runtime_services_value('crawl4ai_top_n'))
+    crawl4ai_max_chars = int(_runtime_services_value('crawl4ai_max_chars'))
     today = datetime.now(timezone.utc).strftime("%d %B %Y")
     lines = [
         f"[RECHERCHE WEB — {today}]",
@@ -103,11 +141,11 @@ def _format_context(query: str, results: list[dict]) -> str:
     for i, r in enumerate(results, 1):
         lines.append(f"--- Source {i} : {r['title']}")
         lines.append(f"URL : {r['url']}")
-        if crawled < config.CRAWL4AI_TOP_N:
+        if crawled < crawl4ai_top_n:
             content = crawl(r["url"])
             if content:
-                truncated = content[:config.CRAWL4AI_MAX_CHARS]
-                if len(content) > config.CRAWL4AI_MAX_CHARS:
+                truncated = content[:crawl4ai_max_chars]
+                if len(content) > crawl4ai_max_chars:
                     truncated += "\n[...contenu tronqué]"
                 lines.append(truncated)
                 crawled += 1
