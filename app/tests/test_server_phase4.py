@@ -18,11 +18,14 @@ class ServerPhase4MainModelTests(unittest.TestCase):
         self.assertNotIn('model   = config.OR_MODEL', source)
         self.assertNotIn('model = config.OR_MODEL', source)
 
-    def test_server_keeps_token_count_uses_separate_for_now(self) -> None:
+    def test_server_uses_runtime_main_model_for_token_count_flow(self) -> None:
         source = (APP_DIR / 'server.py').read_text()
-        self.assertIn('token_utils.count_tokens([{"content": user_msg}], config.OR_MODEL)', source)
-        self.assertIn('summarizer.maybe_summarize(conversation, config.OR_MODEL)', source)
-        self.assertIn('config.OR_MODEL,', source)
+        self.assertIn("runtime_main_model = str(runtime_settings.get_main_model_settings().payload['model']['value'])", source)
+        self.assertIn('token_utils.count_tokens([{"content": user_msg}], runtime_main_model)', source)
+        self.assertIn('summarizer.maybe_summarize(conversation, runtime_main_model)', source)
+        self.assertIn('token_utils.count_tokens([{"content": text}], runtime_main_model)', source)
+        self.assertIn('token_utils.count_tokens([{"content": assistant_text}], runtime_main_model)', source)
+        self.assertNotIn('config.OR_MODEL', source)
 
 
 if __name__ == '__main__':

@@ -21,6 +21,7 @@ from tools import web_search as ws
 from core import conv_store
 from admin import admin_logs
 from admin import admin_actions
+from admin import runtime_settings
 from core import token_utils
 from identity import identity
 from memory import summarizer
@@ -303,15 +304,17 @@ def api_chat():
                     conversation["id"], conv_store.conversation_path(conversation["id"]))
         memory_store.decay_identities()  # nouvelle session → décroissance des identités
 
+    runtime_main_model = str(runtime_settings.get_main_model_settings().payload['model']['value'])
+
     # ── Enregistrement message utilisateur
     user_timestamp = _now_iso()
-    user_tokens = token_utils.count_tokens([{"content": user_msg}], config.OR_MODEL)
+    user_tokens = token_utils.count_tokens([{"content": user_msg}], runtime_main_model)
     admin_logs.log_event("UserMessage", conversation_id=conversation["id"],
                          user_tokens=user_tokens, message_timestamp=user_timestamp)
     conv_store.append_message(conversation, "user", user_msg, timestamp=user_timestamp)
 
     # ── Résumé périodique (si seuil dépassé)
-    if summarizer.maybe_summarize(conversation, config.OR_MODEL):
+    if summarizer.maybe_summarize(conversation, runtime_main_model):
         conv_store.save_conversation(conversation)
         admin_logs.log_event("summary_generated", conversation_id=conversation["id"])
 
@@ -427,7 +430,7 @@ def api_chat():
 
     prompt_messages = conv_store.build_prompt_messages(
         conversation,
-        config.OR_MODEL,
+        runtime_main_model,
         now=now_iso,
         memory_traces=memory_traces or None,
         context_hints=context_hints or None,
@@ -473,7 +476,7 @@ def api_chat():
             text = llm._sanitize_encoding(obj["choices"][0]["message"]["content"])
             updated_at = _now_iso()
             conv_store.append_message(conversation, "assistant", text, timestamp=updated_at)
-            assistant_tokens = token_utils.count_tokens([{"content": text}], model)
+            assistant_tokens = token_utils.count_tokens([{"content": text}], runtime_main_model)
             admin_logs.log_event("AssistantText", conversation_id=conversation["id"],
                                  assistant_tokens=assistant_tokens, message_timestamp=updated_at)
             memory_store.save_new_traces(conversation)
@@ -524,7 +527,7 @@ def api_chat():
                 assistant_text = llm._sanitize_encoding("".join(assistant_chunks)).strip()
                 if assistant_text:
                     conv_store.append_message(conversation, "assistant", assistant_text, timestamp=response_updated_at)
-                    assistant_tokens = token_utils.count_tokens([{"content": assistant_text}], config.OR_MODEL)
+                    assistant_tokens = token_utils.count_tokens([{"content": assistant_text}], runtime_main_model)
                     admin_logs.log_event("AssistantText", conversation_id=conversation["id"],
                                          assistant_tokens=assistant_tokens,
                                          message_timestamp=response_updated_at)
