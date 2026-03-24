@@ -337,8 +337,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 5 - API backend du nouvel admin
 
-- [ ] Ouvrir le prefixe `/api/admin/settings` pour la configuration du nouvel admin.
-- [ ] Ajouter une route de lecture agregee de l'ensemble des sections du nouvel admin.
+- [x] Ouvrir le prefixe `/api/admin/settings` pour la configuration du nouvel admin.
+- [x] Ajouter une route de lecture agregee de l'ensemble des sections du nouvel admin.
 - [ ] Ajouter une route `GET` de lecture pour la section `main_model`.
 - [ ] Ajouter une route `PATCH` de mise a jour pour la section `main_model`.
 - [ ] Ajouter une route `GET` de lecture pour la section `arbiter_model`.

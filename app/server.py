@@ -195,6 +195,7 @@ _HERMENEUTIC_MODE_OFF = 'off'
 _HERMENEUTIC_MODE_SHADOW = 'shadow'
 _HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
 _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
+_ADMIN_SETTINGS_PREFIX = '/api/admin/settings'
 
 
 def _hermeneutic_mode() -> str:
@@ -564,6 +565,26 @@ def api_chat():
 
 
 # ── /api/admin/* ──────────────────────────────────────────────────────────────
+
+
+def _admin_settings_section_response(section: str) -> Dict[str, Any]:
+    view = runtime_settings.get_runtime_section_for_api(section)
+    return {
+        'section': section,
+        'payload': view.payload,
+        'source': view.source,
+        'source_reason': view.source_reason,
+    }
+
+
+@app.get(_ADMIN_SETTINGS_PREFIX)
+def api_admin_settings():
+    sections = {
+        section: _admin_settings_section_response(section)
+        for section in runtime_settings.list_sections()
+    }
+    return jsonify({'ok': True, 'sections': sections})
+
 
 @app.get("/api/admin/logs")
 def api_admin_logs():
