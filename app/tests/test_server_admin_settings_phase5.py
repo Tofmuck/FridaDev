@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
 import tempfile
 import unittest
@@ -809,6 +810,52 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'resources')
         self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.next.txt')
         self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.next.txt')
+
+    def test_patch_admin_settings_secret_values_are_not_logged_in_clear(self) -> None:
+        class CaptureHandler(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        secret_value = 'sk-phase5-secret-should-never-be-logged'
+        cases = (
+            ('/api/admin/settings/main-model', {'api_key': {'value': secret_value}}),
+            ('/api/admin/settings/embedding', {'token': {'value': secret_value}}),
+            ('/api/admin/settings/database', {'dsn': {'value': secret_value}}),
+            ('/api/admin/settings/services', {'crawl4ai_token': {'value': secret_value}}),
+        )
+
+        capture = CaptureHandler()
+        target_loggers = (
+            logging.getLogger(),
+            logging.getLogger('frida.server'),
+            logging.getLogger('kiki.adminlog'),
+        )
+        for logger in target_loggers:
+            logger.addHandler(capture)
+
+        try:
+            for path, payload in cases:
+                response = self.client.patch(path, json={'payload': payload})
+                self.assertEqual(response.status_code, 400, msg=path)
+                body = response.get_data(as_text=True)
+                self.assertNotIn(secret_value, body, msg=path)
+                self.assertIn('secret updates are not supported yet', body, msg=path)
+        finally:
+            for logger in target_loggers:
+                logger.removeHandler(capture)
+
+        if self.server.admin_logs.LOG_PATH.exists():
+            admin_log_text = self.server.admin_logs.LOG_PATH.read_text(encoding='utf-8')
+            self.assertNotIn(secret_value, admin_log_text)
+
+        self.assertFalse(
+            any(secret_value in message for message in capture.messages),
+            msg=f'secret leaked to log records: {capture.messages!r}',
+        )
 
     def test_all_admin_settings_validate_routes_are_registered(self) -> None:
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
