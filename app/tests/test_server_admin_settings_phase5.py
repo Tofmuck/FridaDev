@@ -611,6 +611,55 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8093')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
 
+    def test_patch_admin_settings_resources_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'llm_identity_path': {'value': 'data/identity/llm_identity.next.txt', 'is_secret': False, 'origin': 'admin_ui'},
+                    'user_identity_path': {'value': 'data/identity/user_identity.next.txt', 'is_secret': False, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/resources',
+                json={
+                    'updated_by': 'phase5-admin',
+                    'payload': {
+                        'llm_identity_path': {'value': 'data/identity/llm_identity.next.txt'},
+                        'user_identity_path': {'value': 'data/identity/user_identity.next.txt'},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'resources')
+        self.assertEqual(observed['updated_by'], 'phase5-admin')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'llm_identity_path': {'value': 'data/identity/llm_identity.next.txt'},
+                'user_identity_path': {'value': 'data/identity/user_identity.next.txt'},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'resources')
+        self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.next.txt')
+        self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.next.txt')
+
 
 if __name__ == '__main__':
     unittest.main()
