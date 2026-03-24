@@ -323,7 +323,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer la lecture du modele principal utilisee pour le comptage de tokens dans `app/identity/identity.py`.
 - [x] Remplacer la lecture du modele arbitre dans `app/memory/arbiter.py`.
 - [x] Remplacer la lecture du modele resumieur dans `app/memory/summarizer.py`.
-- [ ] Remplacer la lecture du bloc embeddings dans `app/memory/memory_store.py`.
+- [x] Remplacer la lecture du bloc embeddings dans `app/memory/memory_store.py`.
 - [ ] Remplacer la lecture du bloc services externes dans `app/tools/web_search.py`.
 - [ ] Remplacer la lecture des chemins / ressources externes dans `app/identity/identity.py`.
 - [ ] Remplacer la lecture des memes chemins / ressources externes dans `app/minimal_validation.py`.

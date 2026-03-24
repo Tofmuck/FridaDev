@@ -10,6 +10,7 @@ import psycopg
 import requests
 
 import config
+from admin import runtime_settings
 from memory import hermeneutics_policy as policy
 
 logger = logging.getLogger('kiki.memory_store')
@@ -32,10 +33,45 @@ def _trace_float(value: Any) -> float:
         return 0.0
 
 
+def _runtime_embedding_view() -> runtime_settings.RuntimeSectionView:
+    return runtime_settings.get_embedding_settings()
+
+
+def _runtime_embedding_value(field: str) -> Any:
+    view = _runtime_embedding_view()
+    payload = view.payload.get(field) or {}
+    if 'value' in payload:
+        return payload['value']
+
+    env_bundle = runtime_settings.build_env_seed_bundle('embedding')
+    fallback = env_bundle.payload.get(field) or {}
+    if 'value' in fallback:
+        return fallback['value']
+
+    raise KeyError(f'missing embedding runtime value: {field}')
+
+
+def _runtime_embedding_token() -> str:
+    env_token = str(config.EMBED_TOKEN or '').strip()
+    if env_token:
+        return env_token
+
+    view = _runtime_embedding_view()
+    payload = view.payload.get('token') or {}
+    if bool(payload.get('is_set')):
+        raise runtime_settings.RuntimeSettingsSecretRequiredError(
+            'embedding.token is set in runtime settings but runtime secret decryption is not available; EMBED_TOKEN env fallback is required during the transition'
+        )
+
+    runtime_settings.require_secret_configured(view, 'token')
+    raise AssertionError('unreachable')
+
+
 # Schema initialization
 
 def init_db() -> None:
     """Create tables/indexes if absent. Never crash app startup when DB is unavailable."""
+    embed_dim = int(_runtime_embedding_value('dimensions'))
     try:
         with _conn() as conn:
             with conn.cursor() as cur:
@@ -50,7 +86,7 @@ def init_db() -> None:
                         role            TEXT        NOT NULL,
                         content         TEXT        NOT NULL,
                         timestamp       TIMESTAMPTZ,
-                        embedding       vector({config.EMBED_DIM}),
+                        embedding       vector({embed_dim}),
                         summary_id      TEXT
                     );
                     '''
@@ -64,7 +100,7 @@ def init_db() -> None:
                         start_ts        TIMESTAMPTZ,
                         end_ts          TIMESTAMPTZ,
                         content         TEXT        NOT NULL,
-                        embedding       vector({config.EMBED_DIM})
+                        embedding       vector({embed_dim})
                     );
                     '''
                 )
@@ -268,13 +304,18 @@ def embed(text: str, mode: str = 'passage') -> List[float]:
     mode='passage' for stored docs, mode='query' for retrieval requests.
     """
     prefix = 'query: ' if mode == 'query' else 'passage: '
+    endpoint = str(_runtime_embedding_value('endpoint')).rstrip('/')
+    model = str(_runtime_embedding_value('model') or '').strip()
     r = requests.post(
-        f'{config.EMBED_BASE_URL}/embed',
+        f'{endpoint}/embed',
         headers={
-            'X-Embed-Token': config.EMBED_TOKEN,
+            'X-Embed-Token': _runtime_embedding_token(),
             'Content-Type': 'application/json',
         },
-        json={'inputs': [f'{prefix}{text}']},
+        json={
+            'inputs': [f'{prefix}{text}'],
+            'model': model,
+        },
         timeout=(5, 120),
     )
     r.raise_for_status()
@@ -387,7 +428,7 @@ def retrieve(query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
     Return [] on error to avoid blocking response pipeline.
     """
     if top_k is None:
-        top_k = config.MEMORY_TOP_K
+        top_k = int(_runtime_embedding_value('top_k'))
 
     try:
         q_vec = embed(query, mode='query')
