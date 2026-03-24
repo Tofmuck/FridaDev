@@ -268,7 +268,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Integrer `runtime_settings_history` des la V1.
 - [x] Utiliser `pgcrypto` pour la politique de secret retenue.
 - [x] Exposer au front un secret present sous forme masquee avec un indicateur `is_set`, sans jamais renvoyer sa valeur en clair.
-- [ ] Ajouter `EMBED_MODEL` au schema V1 et au code de consommation associe.
+- [x] Ajouter `EMBED_MODEL` au schema V1 et au code de consommation associe.
 - [x] Integrer `OPENROUTER_BASE`, `OPENROUTER_REFERER`, `OPENROUTER_APP_NAME` et `OPENROUTER_TITLE_*` au perimetre V1 du bloc modele principal / provider.
 - [x] Integrer `ARBITER_TIMEOUT_S` au perimetre V1 du bloc arbitre.
 - [x] Integrer `SEARXNG_RESULTS`, `CRAWL4AI_TOP_N` et `CRAWL4AI_MAX_CHARS` au perimetre V1 du bloc services.
