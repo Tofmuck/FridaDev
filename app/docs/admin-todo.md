@@ -434,7 +434,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Construire une section UI dediee au modele principal.
 - [x] Construire une section UI dediee au modele arbitre.
 - [x] Construire une section UI dediee au modele resumieur.
-- [ ] Construire une section UI dediee au bloc embeddings.
+- [x] Construire une section UI dediee au bloc embeddings.
 - [ ] Construire une section UI dediee au bloc base de donnees.
 - [ ] Construire une section UI dediee au bloc services externes.
 - [ ] Construire une section UI dediee au bloc chemins / ressources externes.

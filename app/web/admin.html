@@ -33,7 +33,7 @@
           Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee s'ouvre section par section.
         </p>
         <p class="admin-sublead">
-          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal, l'arbitre et le resumieur.
+          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal, l'arbitre, le resumieur et les embeddings.
         </p>
       </div>
 
@@ -178,6 +178,65 @@
       </form>
 
       <div id="adminSummaryModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="admin-embedding-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Quatrieme bloc detaille</p>
+          <h2 id="admin-embedding-title">Embeddings</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminEmbeddingDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminEmbeddingValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminEmbeddingSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc memoire vectorielle: endpoint, modele, dimensions et top-k, avec token masque et remplacement explicite.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminEmbeddingSource" class="admin-chip">Section: chargement</span>
+        <span id="adminEmbeddingTokenSource" class="admin-chip">Token: chargement</span>
+        <span id="adminEmbeddingTokenState" class="admin-chip">Secret: inconnu</span>
+      </div>
+
+      <p id="adminEmbeddingStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc embeddings...
+      </p>
+
+      <form id="adminEmbeddingForm" class="admin-form" novalidate>
+        <div id="adminEmbeddingFields" class="admin-form-grid"></div>
+
+        <section id="adminEmbeddingSecretCard" class="admin-secret-card" aria-labelledby="admin-embedding-secret-title">
+          <div class="admin-secret-head">
+            <div>
+              <p class="admin-kicker">Secret</p>
+              <h3 id="admin-embedding-secret-title">Token embedding</h3>
+            </div>
+            <span id="adminEmbeddingTokenMask" class="admin-secret-mask">Masque</span>
+          </div>
+          <p class="admin-secret-help">
+            Le token actuel n'est jamais re-affiche. Laisse le champ vide pour le conserver.
+          </p>
+          <label class="admin-field admin-field-wide" for="adminEmbeddingTokenReplace">
+            <span>Remplacement</span>
+            <input
+              id="adminEmbeddingTokenReplace"
+              name="token"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Saisir un nouveau token"
+            />
+            <small>Le backend n'accepte que replace_value pour un secret.</small>
+          </label>
+          <p id="adminEmbeddingFieldError-token" class="admin-field-error" hidden></p>
+        </section>
+      </form>
+
+      <div id="adminEmbeddingChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
