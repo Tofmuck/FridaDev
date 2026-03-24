@@ -196,6 +196,15 @@ _HERMENEUTIC_MODE_SHADOW = 'shadow'
 _HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
 _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
 _ADMIN_SETTINGS_PREFIX = '/api/admin/settings'
+_ADMIN_SETTINGS_ROUTE_SECTIONS = {
+    'main-model': 'main_model',
+    'arbiter-model': 'arbiter_model',
+    'summary-model': 'summary_model',
+    'embedding': 'embedding',
+    'database': 'database',
+    'services': 'services',
+    'resources': 'resources',
+}
 
 
 def _hermeneutic_mode() -> str:
@@ -577,6 +586,10 @@ def _admin_settings_section_response(section: str) -> Dict[str, Any]:
     }
 
 
+def _admin_settings_single_section_json(section: str):
+    return jsonify({'ok': True, **_admin_settings_section_response(section)})
+
+
 @app.get(_ADMIN_SETTINGS_PREFIX)
 def api_admin_settings():
     sections = {
@@ -584,6 +597,11 @@ def api_admin_settings():
         for section in runtime_settings.list_sections()
     }
     return jsonify({'ok': True, 'sections': sections})
+
+
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
+def api_admin_settings_main_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
 
 
 @app.get("/api/admin/logs")

@@ -93,6 +93,37 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
 
+    def test_get_admin_settings_main_model_returns_single_section_with_redacted_secrets(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'main_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openrouter/main-model-route', 'is_secret': False, 'origin': 'db'},
+                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/main-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'main_model')
+        self.assertEqual(data['payload']['model']['value'], 'openrouter/main-model-route')
+        self.assertEqual(
+            data['payload']['api_key'],
+            {'is_secret': True, 'is_set': True, 'origin': 'db'},
+        )
+
     def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
