@@ -248,7 +248,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 1 - Conception du modele de donnees de configuration
 
-- [ ] Creer le module backend de lecture/ecriture de configuration runtime dans `app/admin/runtime_settings.py`.
+- [x] Creer le module backend de lecture/ecriture de configuration runtime dans `app/admin/runtime_settings.py`.
 - [x] Poser `runtime_settings` comme table primaire des settings runtime.
 - [x] Poser une granularite `une ligne par section JSONB` dans `runtime_settings`.
 - [x] Poser les sections minimales du schema : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
