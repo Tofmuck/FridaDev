@@ -17,6 +17,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 import config
+from admin import runtime_settings
 from core import conv_store
 
 
@@ -25,6 +26,20 @@ def _resolve_app_path(raw: str) -> Path:
     if not path.is_absolute():
         path = APP_DIR / path
     return path
+
+
+def _runtime_resource_path(field: str) -> Path:
+    view = runtime_settings.get_resources_settings()
+    payload = view.payload.get(field) or {}
+    if 'value' in payload:
+        return _resolve_app_path(str(payload['value']))
+
+    env_bundle = runtime_settings.build_env_seed_bundle('resources')
+    fallback = env_bundle.payload.get(field) or {}
+    if 'value' in fallback:
+        return _resolve_app_path(str(fallback['value']))
+
+    raise KeyError(f'missing resources runtime value: {field}')
 
 
 def _http_json(method: str, url: str, **kwargs: Any) -> requests.Response:
@@ -229,8 +244,8 @@ def _check_db_schema() -> Dict[str, Any]:
 
 def _check_prompt_files() -> Dict[str, Any]:
     required_files = {
-        "llm_identity": _resolve_app_path(config.FRIDA_LLM_IDENTITY_PATH),
-        "user_identity": _resolve_app_path(config.FRIDA_USER_IDENTITY_PATH),
+        "llm_identity": _runtime_resource_path('llm_identity_path'),
+        "user_identity": _runtime_resource_path('user_identity_path'),
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
     }
