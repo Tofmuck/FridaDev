@@ -25,6 +25,23 @@ class _FakeResponse:
 
 
 class MinimalValidationPhase9Tests(unittest.TestCase):
+    def test_build_non_secret_patch_payload_keeps_only_value_fields(self) -> None:
+        patch_payload = minimal_validation._build_non_secret_patch_payload(
+            {
+                "llm_identity_path": {"value": "data/identity/llm.txt", "origin": "env_seed"},
+                "user_identity_path": {"value": "data/identity/user.txt", "origin": "env_seed"},
+                "api_key": {"is_secret": True, "is_set": True, "origin": "db"},
+            }
+        )
+
+        self.assertEqual(
+            patch_payload,
+            {
+                "llm_identity_path": {"value": "data/identity/llm.txt"},
+                "user_identity_path": {"value": "data/identity/user.txt"},
+            },
+        )
+
     def test_check_ui_assets_requires_new_admin_assets_and_rejects_legacy_assets(self) -> None:
         details = minimal_validation._check_ui_assets()
 
@@ -62,6 +79,31 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                         },
                     },
                 )
+            if url.endswith("/api/admin/settings/resources"):
+                if method == "GET":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "section": "resources",
+                            "payload": {
+                                "llm_identity_path": {"value": "data/identity/llm_identity.txt", "origin": "env_seed"},
+                                "user_identity_path": {"value": "data/identity/user_identity.txt", "origin": "env_seed"},
+                            },
+                        },
+                    )
+                if method == "PATCH":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "section": "resources",
+                            "payload": {
+                                "llm_identity_path": {"value": "data/identity/llm_identity.txt", "origin": "admin_ui"},
+                                "user_identity_path": {"value": "data/identity/user_identity.txt", "origin": "admin_ui"},
+                            },
+                        },
+                    )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -78,19 +120,26 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_status"], 200)
         self.assertEqual(details["admin_old_status"], 404)
         self.assertEqual(details["admin_settings_status"], 200)
+        self.assertEqual(details["admin_resources_status"], 200)
+        self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
+        self.assertIn(("GET", "http://frida.test/api/admin/settings/resources"), calls)
+        self.assertIn(("PATCH", "http://frida.test/api/admin/settings/resources"), calls)
 
     def test_check_api_smoke_forwards_admin_token_to_admin_endpoints(self) -> None:
         original_http_json = minimal_validation._http_json
         original_token = config.FRIDA_ADMIN_TOKEN
         admin_headers = []
+        patch_payloads = []
 
         def fake_http_json(method: str, url: str, **kwargs):
             headers = kwargs.get("headers") or {}
             if "/api/admin/" in url:
                 admin_headers.append(headers)
+            if method == "PATCH" and url.endswith("/api/admin/settings/resources"):
+                patch_payloads.append(kwargs.get("json"))
             if url.endswith("/"):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
@@ -110,6 +159,31 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                         },
                     },
                 )
+            if url.endswith("/api/admin/settings/resources"):
+                if method == "GET":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "section": "resources",
+                            "payload": {
+                                "llm_identity_path": {"value": "data/identity/llm_identity.txt", "origin": "env_seed"},
+                                "user_identity_path": {"value": "data/identity/user_identity.txt", "origin": "env_seed"},
+                            },
+                        },
+                    )
+                if method == "PATCH":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "section": "resources",
+                            "payload": {
+                                "llm_identity_path": {"value": "data/identity/llm_identity.txt", "origin": "admin_ui"},
+                                "user_identity_path": {"value": "data/identity/user_identity.txt", "origin": "admin_ui"},
+                            },
+                        },
+                    )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -125,9 +199,24 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             config.FRIDA_ADMIN_TOKEN = original_token
 
         self.assertEqual(details["admin_settings_status"], 200)
-        self.assertEqual(len(admin_headers), 2)
+        self.assertEqual(details["admin_resources_patch_status"], 200)
+        self.assertEqual(len(admin_headers), 4)
         self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[2], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[3], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(
+            patch_payloads,
+            [
+                {
+                    "updated_by": "minimal_validation",
+                    "payload": {
+                        "llm_identity_path": {"value": "data/identity/llm_identity.txt"},
+                        "user_identity_path": {"value": "data/identity/user_identity.txt"},
+                    },
+                }
+            ],
+        )
 
 
 if __name__ == "__main__":

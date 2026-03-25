@@ -473,7 +473,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un smoke test `GET /admin`.
 - [x] Ajouter un smoke test garantissant que `/admin-old` n'est pas expose.
 - [x] Ajouter un smoke test de lecture agregee de la configuration admin.
-- [ ] Ajouter un smoke test d'update valide sur une section non secrete.
+- [x] Ajouter un smoke test d'update valide sur une section non secrete.
 - [ ] Ajouter un smoke test d'update invalide pour verifier la validation backend.
 - [ ] Ajouter un smoke test garantissant qu'un secret ne ressort jamais en clair via un `GET`.
 - [ ] Verifier manuellement que `GET /api/admin/logs` et `POST /api/admin/restart` continuent a fonctionner sans UI legacy dediee.

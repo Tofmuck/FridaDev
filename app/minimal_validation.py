@@ -89,6 +89,21 @@ def _admin_request_kwargs() -> Dict[str, Any]:
     return {"headers": {"X-Admin-Token": token}}
 
 
+def _build_non_secret_patch_payload(payload: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    patch_payload: Dict[str, Dict[str, Any]] = {}
+    for field, field_payload in payload.items():
+        if not isinstance(field_payload, dict):
+            continue
+        if "value" not in field_payload:
+            continue
+        patch_payload[str(field)] = {"value": field_payload["value"]}
+
+    if not patch_payload:
+        raise RuntimeError("aucune valeur non secrete disponible pour le smoke PATCH")
+
+    return patch_payload
+
+
 def _run_check(
     results: List[Dict[str, Any]],
     name: str,
@@ -499,6 +514,21 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if set(admin_settings_payload["sections"].keys()) != expected_sections:
         raise RuntimeError("api admin settings sections invalides")
 
+    resources_get = _http_json("GET", f"{base_url}/api/admin/settings/resources", **_admin_request_kwargs())
+    resources_payload = resources_get.json()
+    if resources_get.status_code != 200 or resources_payload.get("ok") is not True:
+        raise RuntimeError("api admin resources invalide")
+    resources_patch_payload = _build_non_secret_patch_payload(resources_payload.get("payload") or {})
+    resources_patch = _http_json(
+        "PATCH",
+        f"{base_url}/api/admin/settings/resources",
+        json={"updated_by": "minimal_validation", "payload": resources_patch_payload},
+        **_admin_request_kwargs(),
+    )
+    resources_patch_result = resources_patch.json()
+    if resources_patch.status_code != 200 or resources_patch_result.get("ok") is not True:
+        raise RuntimeError("api admin resources patch invalide")
+
     admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1", **_admin_request_kwargs())
     admin_logs_payload = admin_logs.json()
     if admin_logs.status_code != 200 or admin_logs_payload.get("ok") is not True:
@@ -520,6 +550,8 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
         "admin_settings_status": admin_settings.status_code,
+        "admin_resources_status": resources_get.status_code,
+        "admin_resources_patch_status": resources_patch.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
     }
