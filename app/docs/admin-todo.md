@@ -429,7 +429,6 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Creer le nouveau `app/web/admin.html` from scratch.
 - [x] Creer le nouveau `app/web/admin.js` from scratch.
 - [x] Verifier d'abord si `app/web/styles.css` peut etre reutilise tel quel sans casser le front principal.
-- [ ] Si la reutilisation directe est propre, brancher `styles.css` dans le nouvel admin.
 - [x] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
 - [x] Construire une section UI dediee au modele principal.
 - [x] Construire une section UI dediee au modele arbitre.
@@ -452,9 +451,9 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 8 - Integration minimale avec le front principal
 
-- [ ] Modifier `app/web/app.js` pour que le bouton `Parametres` vise le nouvel admin et non plus `admin.html` legacy direct.
-- [ ] Pointer le bouton `Parametres` du front principal vers `/admin`.
-- [ ] Aligner cette cible avec la route Flask et avec les assets statiques reellement exposes.
+- [x] Modifier `app/web/app.js` pour que le bouton `Parametres` vise le nouvel admin et non plus `admin.html` legacy direct.
+- [x] Pointer le bouton `Parametres` du front principal vers `/admin`.
+- [x] Aligner cette cible avec la route Flask et avec les assets statiques reellement exposes.
 - [ ] Retirer `temperature` et `top_p` de `frida.settings` dans `localStorage`.
 - [ ] Brancher `temperature` et `top_p` sur la logique globale de configuration des modeles.
 - [ ] Retirer l'envoi direct de `temperature` et `top_p` depuis le front vers `/api/chat`.

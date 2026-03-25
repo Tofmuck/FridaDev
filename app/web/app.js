@@ -636,7 +636,7 @@
 
   // ---- Paramètres
   btnSettings.addEventListener("click", () => {
-    window.location.href = "admin.html";
+    window.location.href = "/admin";
   });
 
   [temperature, top_p, max_tokens].forEach(el => {
