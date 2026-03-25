@@ -496,8 +496,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 11 - Activation effective de la configuration runtime en base
 
-- [ ] Acter explicitement qu'apres cette phase, toutes les variables V1 non invariantes doivent exister en base, pas seulement les secrets.
-- [ ] Geler explicitement la liste residuelle des invariants/bootstrap restant hors DB, au minimum `FRIDA_MEMORY_DB_DSN`, `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`, `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT`.
+- [x] Acter explicitement qu'apres cette phase, toutes les variables V1 non invariantes doivent exister en base, pas seulement les secrets.
+- [x] Geler explicitement la liste residuelle des invariants/bootstrap restant hors DB, au minimum `FRIDA_MEMORY_DB_DSN`, `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`, `FRIDA_WEB_HOST` et `FRIDA_WEB_PORT`.
 - [x] Considerer l'absence de `runtime_settings` et `runtime_settings_history` comme une anomalie de deploiement a corriger, plus comme un fallback normal.
 - [x] Ne plus traiter `UndefinedTable` comme un simple etat `empty_table` silencieux une fois cette phase activee.
 - [x] Ajouter une etape explicite d'application de `app/admin/sql/runtime_settings_v1.sql` sur la vraie DB cible avant exposition du nouvel admin.

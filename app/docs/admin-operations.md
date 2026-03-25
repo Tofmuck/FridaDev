@@ -2,7 +2,7 @@
 
 ## Objet
 
-Ce document fige l'etat d'exploitation et de migration du nouvel admin V1 de FridaDev apres la fermeture des phases 0 a 9 du chantier.
+Ce document fige l'etat d'exploitation et de migration du nouvel admin V1 de FridaDev apres la fermeture des phases 0 a 11 du chantier.
 
 Il complete :
 
@@ -67,6 +67,38 @@ Les endpoints suivants restent disponibles cote backend, sans UI dediee dans ce 
 - `FRIDA_MEMORY_DB_DSN` reste le bootstrap DB externe minimal
 - Le bloc `database` de l'admin V1 est visible et editable cote admin, mais `database.dsn` ne remplace pas encore le bootstrap externe minimal
 
+## Regle de perimetre V1 apres phase 11
+
+- Toutes les variables V1 non invariantes doivent desormais exister en base, pas seulement les secrets.
+- Cela couvre les sections runtime V1 suivantes :
+  - `main_model`
+  - `arbiter_model`
+  - `summary_model`
+  - `embedding`
+  - `database.backend`
+  - `services`
+  - `resources`
+- Le libelle `env fallback` ne doit plus decrire qu'un vrai fallback temporaire :
+  - table absente
+  - DB indisponible
+  - section manquante
+  - invariant externe encore assume comme tel
+
+## Invariants et bootstrap restant hors DB
+
+Restent explicitement hors DB a ce stade :
+
+- `FRIDA_MEMORY_DB_DSN`
+- `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`
+- `FRIDA_WEB_HOST`
+- `FRIDA_WEB_PORT`
+
+Regle d'exploitation associee :
+
+- ces quatre variables ne sont pas des champs admin V1
+- elles restent des invariants/process bootstrap
+- elles ne doivent pas etre relabelisees comme configuration runtime contingente modifiable depuis la DB
+
 ## Regles de secrets
 
 Secrets V1 couverts :
@@ -105,7 +137,7 @@ Pour un secret :
 
 ## Migration effective atteinte
 
-Etat atteint a la fin des phases 0 a 9 :
+Etat atteint a la fin des phases 0 a 11 :
 
 - schema runtime V1 defini
 - migration SQL et seed initial en place
@@ -117,6 +149,9 @@ Etat atteint a la fin des phases 0 a 9 :
 - front principal repointe vers `/admin`
 - `temperature` et `top_p` ne sont plus pilotes par le front principal
 - couche de validation minimale et de non-regression fermee
+- tables `runtime_settings` / `runtime_settings_history` presentes sur la DB cible
+- sections V1 non secretes bootstrappees en base avec `db_seed`
+- secrets V1 chiffres en base et identifies comme `db_encrypted` hors cas special `database.dsn`
 
 ## Verification minimale recommandee apres deploiement
 
