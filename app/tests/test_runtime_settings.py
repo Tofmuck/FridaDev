@@ -1041,6 +1041,18 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             },
         )
 
+    def test_normalize_admin_patch_payload_rejects_readonly_prompt_field(self) -> None:
+        with self.assertRaisesRegex(
+            runtime_settings.RuntimeSettingsValidationError,
+            'unknown runtime settings field: main_model.system_prompt',
+        ):
+            runtime_settings.normalize_admin_patch_payload(
+                'main_model',
+                {
+                    'system_prompt': {'value': 'should-not-pass'},
+                },
+            )
+
     def test_update_runtime_section_uses_external_bootstrap_dsn_and_returns_redacted_payload(self) -> None:
         observed = {
             'dsn': None,

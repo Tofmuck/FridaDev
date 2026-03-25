@@ -1181,7 +1181,10 @@ def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> D
 
     normalized: Dict[str, Dict[str, Any]] = {}
     for field_name, raw_value in payload.items():
-        spec = get_field_spec(section, str(field_name))
+        try:
+            spec = get_field_spec(section, str(field_name))
+        except KeyError as exc:
+            raise RuntimeSettingsValidationError(str(exc)) from exc
         field_ref = f'{section}.{field_name}'
 
         if not isinstance(raw_value, Mapping):
