@@ -133,6 +133,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertNotIn("restartService", source)
         self.assertNotIn("admin-old", source)
 
+    def test_admin_js_exposes_editable_main_model_response_max_tokens(self) -> None:
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertIn('key: "response_max_tokens"', source)
+        self.assertIn('label: "Max tokens reponse"', source)
+        self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', source)
+        self.assertIn('integerFields: ["response_max_tokens"]', source)
+
     def test_admin_js_extracts_shared_section_helpers(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
 
@@ -167,6 +175,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
         self.assertIn('id="adminMainModelSave"', source)
+        self.assertIn("response_max_tokens", source)
         self.assertIn('id="adminArbiterModelForm"', source)
         self.assertIn('id="adminArbiterModelSave"', source)
         self.assertIn('id="adminSummaryModelForm"', source)

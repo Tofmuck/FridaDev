@@ -508,6 +508,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "frida.adminToken",
         "adminMainModelSave",
         "adminMainModelApiKeyReplace",
+        "response_max_tokens",
         "adminArbiterModelSave",
         "adminSummaryModelSave",
         "adminEmbeddingSave",

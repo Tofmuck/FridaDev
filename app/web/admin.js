@@ -107,6 +107,15 @@
       max: "1",
       autocomplete: "off",
     },
+    {
+      key: "response_max_tokens",
+      label: "Max tokens reponse",
+      hint: "Budget de generation par defaut envoye au modele principal.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
   ];
   const mainModelCheckFieldMap = {
     api_key_runtime: "api_key",
@@ -1412,6 +1421,7 @@
       draft: state.mainModel.draft,
       emptyDraft: emptyMainModelDraft,
       fieldSpecs: mainModelFieldSpecs,
+      integerFields: ["response_max_tokens"],
       secretKey: "api_key",
     });
   };
