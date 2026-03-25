@@ -521,4 +521,4 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter des tests backend sur la taxonomie d'origine (`db_seed` / `admin_ui` vs `env_fallback`).
 - [x] Ajouter un smoke test de deploiement qui echoue si `runtime_settings` n'existe pas.
 - [x] Verifier manuellement sur le conteneur cible que l'admin affiche majoritairement `db` apres activation effective de la baseline.
-- [ ] Prevoir un commit isole pour l'activation reelle de la configuration runtime en base.
+- [x] Prevoir un commit isole pour l'activation reelle de la configuration runtime en base.
