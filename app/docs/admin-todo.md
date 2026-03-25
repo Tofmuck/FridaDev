@@ -560,5 +560,5 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter dans le frontend admin un champ editable pour `main_model.response_max_tokens`.
 - [x] Ajouter dans le frontend admin des cartes read-only naturelles pour tous les prompts systeme exposes par cette phase.
 - [x] Ajouter un rendu lisible des prompts longs (bloc scrollable / pre-wrap / textarea readonly) sans introduire de mode edition.
-- [ ] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
+- [x] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
 - [ ] Prevoir un commit isole pour cette extension.

@@ -167,6 +167,22 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('if (origin === "db" || origin === "db_seed" || origin === "admin_ui") return "db";', source)
         self.assertIn('if (origin === "env_seed") return "env fallback";', source)
 
+    def test_admin_readonly_prompt_cards_stay_out_of_edit_mode(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        readonly_block = source.split("const renderReadonlyInfoCards =", 1)[1].split(
+            "const setSectionControlsDisabled =",
+            1,
+        )[0]
+
+        self.assertEqual(html.count("Hors edition"), 4)
+        self.assertNotIn("Invariant", html)
+        self.assertNotIn("invariant", html)
+        self.assertIn("textarea.readOnly = true", readonly_block)
+        self.assertNotIn('createElement("input")', readonly_block)
+        self.assertNotIn('createElement("button")', readonly_block)
+
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
         self.assertFalse((APP_DIR / "web" / "admin-old.js").exists())
