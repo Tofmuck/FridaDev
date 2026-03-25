@@ -227,6 +227,52 @@
   const databaseCheckFieldMap = {
     dsn_transition: "dsn",
   };
+  const servicesFieldSpecs = [
+    {
+      key: "searxng_url",
+      label: "SearXNG URL",
+      hint: "Endpoint de recherche federative.",
+      inputType: "url",
+      autocomplete: "url",
+    },
+    {
+      key: "searxng_results",
+      label: "SearXNG results",
+      hint: "Nombre de resultats pris en compte cote recherche.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "crawl4ai_url",
+      label: "Crawl4AI URL",
+      hint: "Endpoint du service de crawl.",
+      inputType: "url",
+      autocomplete: "url",
+    },
+    {
+      key: "crawl4ai_top_n",
+      label: "Crawl4AI top n",
+      hint: "Nombre de pages retenues dans le contexte.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "crawl4ai_max_chars",
+      label: "Crawl4AI max chars",
+      hint: "Budget maximal de caracteres injectes en contexte.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+  ];
+  const servicesCheckFieldMap = {
+    crawl4ai_token_runtime: "crawl4ai_token",
+  };
 
   const state = {
     mainModel: {
@@ -254,6 +300,12 @@
       draft: null,
     },
     database: {
+      loaded: false,
+      view: null,
+      baseline: null,
+      draft: null,
+    },
+    services: {
       loaded: false,
       view: null,
       baseline: null,
@@ -322,6 +374,18 @@
     databaseDsnMask: document.getElementById("adminDatabaseDsnMask"),
     databaseDsnReplace: document.getElementById("adminDatabaseDsnReplace"),
     databaseChecks: document.getElementById("adminDatabaseChecks"),
+    servicesForm: document.getElementById("adminServicesForm"),
+    servicesFields: document.getElementById("adminServicesFields"),
+    servicesStatus: document.getElementById("adminServicesStatus"),
+    servicesSave: document.getElementById("adminServicesSave"),
+    servicesValidate: document.getElementById("adminServicesValidate"),
+    servicesDirty: document.getElementById("adminServicesDirty"),
+    servicesSource: document.getElementById("adminServicesSource"),
+    servicesCrawl4aiTokenSource: document.getElementById("adminServicesCrawl4aiTokenSource"),
+    servicesCrawl4aiTokenState: document.getElementById("adminServicesCrawl4aiTokenState"),
+    servicesCrawl4aiTokenMask: document.getElementById("adminServicesCrawl4aiTokenMask"),
+    servicesCrawl4aiTokenReplace: document.getElementById("adminServicesCrawl4aiTokenReplace"),
+    servicesChecks: document.getElementById("adminServicesChecks"),
   };
 
   const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
@@ -437,6 +501,14 @@
     draft.dsn = "";
     return draft;
   };
+  const emptyServicesDraft = () => {
+    const draft = {};
+    servicesFieldSpecs.forEach((spec) => {
+      draft[spec.key] = "";
+    });
+    draft.crawl4ai_token = "";
+    return draft;
+  };
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -453,6 +525,9 @@
   const databaseFieldElement = (field) => document.querySelector(`[data-database-field="${field}"]`);
   const databaseFieldInput = (field) => document.getElementById(`adminDatabase-${field}`);
   const databaseErrorElement = (field) => document.getElementById(`adminDatabaseFieldError-${field}`);
+  const servicesFieldElement = (field) => document.querySelector(`[data-services-field="${field}"]`);
+  const servicesFieldInput = (field) => document.getElementById(`adminServices-${field}`);
+  const servicesErrorElement = (field) => document.getElementById(`adminServicesFieldError-${field}`);
 
   const renderCheckList = (target, checks = []) => {
     if (!target) return;
@@ -659,6 +734,9 @@
   };
   const renderDatabaseChecks = (checks = []) => {
     renderCheckList(elements.databaseChecks, checks);
+  };
+  const renderServicesChecks = (checks = []) => {
+    renderCheckList(elements.servicesChecks, checks);
   };
 
   const ensureMainModelFieldSkeleton = () => {
@@ -916,6 +994,57 @@
 
     elements.databaseFields.appendChild(fragment);
   };
+  const ensureServicesFieldSkeleton = () => {
+    if (!elements.servicesFields || elements.servicesFields.children.length > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    servicesFieldSpecs.forEach((spec) => {
+      const field = document.createElement("label");
+      field.className = "admin-field";
+      field.dataset.servicesField = spec.key;
+      field.dataset.dirty = "false";
+      field.setAttribute("for", `adminServices-${spec.key}`);
+
+      const label = document.createElement("span");
+      label.textContent = spec.label;
+
+      const input = document.createElement("input");
+      input.id = `adminServices-${spec.key}`;
+      input.name = spec.key;
+      input.type = spec.inputType;
+      input.autocomplete = spec.autocomplete || "off";
+      if (spec.step) input.step = spec.step;
+      if (spec.min) input.min = spec.min;
+      if (spec.max) input.max = spec.max;
+
+      const meta = document.createElement("div");
+      meta.className = "admin-field-meta";
+
+      const hint = document.createElement("small");
+      hint.textContent = spec.hint;
+
+      const source = document.createElement("span");
+      source.id = `adminServicesSource-${spec.key}`;
+      source.className = "admin-field-source";
+      source.textContent = "Source: chargement";
+
+      meta.appendChild(hint);
+      meta.appendChild(source);
+
+      const error = document.createElement("p");
+      error.id = `adminServicesFieldError-${spec.key}`;
+      error.className = "admin-field-error";
+      error.hidden = true;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(meta);
+      field.appendChild(error);
+      fragment.appendChild(field);
+    });
+
+    elements.servicesFields.appendChild(fragment);
+  };
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -953,6 +1082,14 @@
       draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
     });
     draft.dsn = "";
+    return draft;
+  };
+  const buildServicesDraftFromView = (view) => {
+    const draft = {};
+    servicesFieldSpecs.forEach((spec) => {
+      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
+    });
+    draft.crawl4ai_token = "";
     return draft;
   };
 
@@ -1109,6 +1246,43 @@
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
   };
+  const renderServicesMeta = () => {
+    const view = state.services.view;
+    if (!view) {
+      if (elements.servicesSource) elements.servicesSource.textContent = "Section: indisponible";
+      if (elements.servicesCrawl4aiTokenSource) elements.servicesCrawl4aiTokenSource.textContent = "Token: indisponible";
+      if (elements.servicesCrawl4aiTokenState) elements.servicesCrawl4aiTokenState.textContent = "Secret: indisponible";
+      if (elements.servicesCrawl4aiTokenMask) elements.servicesCrawl4aiTokenMask.textContent = "Masque";
+      servicesFieldSpecs.forEach((spec) => {
+        const source = document.getElementById(`adminServicesSource-${spec.key}`);
+        if (source) source.textContent = "Source: indisponible";
+      });
+      return;
+    }
+
+    if (elements.servicesSource) {
+      elements.servicesSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
+    }
+
+    const secretSource = view.secret_sources?.crawl4ai_token || "missing";
+    if (elements.servicesCrawl4aiTokenSource) {
+      elements.servicesCrawl4aiTokenSource.textContent = `Token: ${secretSourceLabel(secretSource)}`;
+    }
+
+    const secretPresent = Boolean(view.payload?.crawl4ai_token?.is_set);
+    if (elements.servicesCrawl4aiTokenState) {
+      elements.servicesCrawl4aiTokenState.textContent = secretPresent ? "Secret: present" : "Secret: absent";
+    }
+    if (elements.servicesCrawl4aiTokenMask) {
+      elements.servicesCrawl4aiTokenMask.textContent = secretPresent ? "Masque" : "Aucun secret";
+    }
+
+    servicesFieldSpecs.forEach((spec) => {
+      const source = document.getElementById(`adminServicesSource-${spec.key}`);
+      if (!source) return;
+      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
+    });
+  };
 
   const buildMainModelPatchPayload = () => {
     return buildSectionPatchPayload({
@@ -1173,6 +1347,17 @@
       secretKey: "dsn",
     });
   };
+  const updateServicesDirtyChip = () => {
+    updateSectionDirtyChip({
+      baseline: state.services.baseline,
+      draft: state.services.draft,
+      emptyDraft: emptyServicesDraft,
+      fieldSpecs: servicesFieldSpecs,
+      fieldElement: servicesFieldElement,
+      dirtyChip: elements.servicesDirty,
+      secretKey: "crawl4ai_token",
+    });
+  };
 
   const applyMainModelDraftToForm = () => {
     applySectionDraftToForm({
@@ -1223,6 +1408,17 @@
       secretInput: elements.databaseDsnReplace,
       secretKey: "dsn",
       onDirtyUpdate: updateDatabaseDirtyChip,
+    });
+  };
+  const applyServicesDraftToForm = () => {
+    applySectionDraftToForm({
+      draft: state.services.draft,
+      emptyDraft: emptyServicesDraft,
+      fieldSpecs: servicesFieldSpecs,
+      inputForField: servicesFieldInput,
+      secretInput: elements.servicesCrawl4aiTokenReplace,
+      secretKey: "crawl4ai_token",
+      onDirtyUpdate: updateServicesDirtyChip,
     });
   };
 
@@ -1299,6 +1495,21 @@
     applyDatabaseDraftToForm();
     renderDatabaseChecks([]);
   };
+  const applyServicesView = (responsePayload) => {
+    state.services.loaded = true;
+    state.services.view = {
+      payload: responsePayload.payload || {},
+      secret_sources: responsePayload.secret_sources || {},
+      source: responsePayload.source || "env",
+      source_reason: responsePayload.source_reason || "unknown",
+    };
+    state.services.baseline = buildServicesDraftFromView(state.services.view);
+    state.services.draft = { ...state.services.baseline };
+    clearServicesFieldErrors();
+    renderServicesMeta();
+    applyServicesDraftToForm();
+    renderServicesChecks([]);
+  };
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -1359,6 +1570,18 @@
     renderDatabaseChecks([]);
     setDatabaseControlsDisabled(true);
     setInlineStatus(elements.databaseStatus, message, stateName);
+  };
+  const resetServicesSurface = (message, stateName = "error") => {
+    state.services.loaded = false;
+    state.services.view = null;
+    state.services.baseline = emptyServicesDraft();
+    state.services.draft = emptyServicesDraft();
+    clearServicesFieldErrors();
+    renderServicesMeta();
+    applyServicesDraftToForm();
+    renderServicesChecks([]);
+    setServicesControlsDisabled(true);
+    setInlineStatus(elements.servicesStatus, message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -1457,6 +1680,26 @@
     databaseFieldSpecs.forEach((spec) => setDatabaseFieldError(spec.key, ""));
     setDatabaseFieldError("dsn", "");
   };
+  const setServicesFieldError = (field, message = "") => {
+    const isSecretField = field === "crawl4ai_token";
+    const host = isSecretField ? document.getElementById("adminServicesSecretCard") : servicesFieldElement(field);
+    const errorElement = servicesErrorElement(field);
+    if (host) {
+      host.dataset.error = message ? "true" : "false";
+    }
+    if (!errorElement) return;
+    if (message) {
+      errorElement.hidden = false;
+      errorElement.textContent = message;
+      return;
+    }
+    errorElement.hidden = true;
+    errorElement.textContent = "";
+  };
+  const clearServicesFieldErrors = () => {
+    servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
+    setServicesFieldError("crawl4ai_token", "");
+  };
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
@@ -1475,6 +1718,11 @@
   const applyDatabaseLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setDatabaseFieldError(field, message);
+    });
+  };
+  const applyServicesLocalFieldErrors = (errors) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setServicesFieldError(field, message);
     });
   };
   const applyArbiterBackendFieldError = (message) => {
@@ -1514,6 +1762,18 @@
     databaseFieldSpecs.forEach((spec) => {
       if (message.includes(`database.${spec.key}`)) {
         setDatabaseFieldError(spec.key, message);
+      }
+    });
+  };
+  const applyServicesBackendFieldError = (message) => {
+    if (!message) return;
+    if (message.includes("services.crawl4ai_token")) {
+      setServicesFieldError("crawl4ai_token", message);
+      return;
+    }
+    servicesFieldSpecs.forEach((spec) => {
+      if (message.includes(`services.${spec.key}`)) {
+        setServicesFieldError(spec.key, message);
       }
     });
   };
@@ -1563,6 +1823,18 @@
       disabled,
     );
   };
+  const setServicesControlsDisabled = (disabled) => {
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.servicesSave,
+        validateButton: elements.servicesValidate,
+        fieldSpecs: servicesFieldSpecs,
+        inputForField: servicesFieldInput,
+        extraInputs: [elements.servicesCrawl4aiTokenReplace],
+      },
+      disabled,
+    );
+  };
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -1605,6 +1877,17 @@
     });
     return errors;
   };
+  const collectServicesFailedChecks = (checks) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      const field = servicesCheckFieldMap[check.name] || check.name;
+      if (!errors[field]) {
+        errors[field] = check.detail;
+      }
+    });
+    return errors;
+  };
   const buildArbiterPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.arbiterModel.baseline,
@@ -1639,6 +1922,16 @@
       emptyDraft: emptyDatabaseDraft,
       fieldSpecs: databaseFieldSpecs,
       secretKey: "dsn",
+    });
+  };
+  const buildServicesPatchPayload = () => {
+    return buildSectionPatchPayload({
+      baseline: state.services.baseline,
+      draft: state.services.draft,
+      emptyDraft: emptyServicesDraft,
+      fieldSpecs: servicesFieldSpecs,
+      integerFields: ["searxng_results", "crawl4ai_top_n", "crawl4ai_max_chars"],
+      secretKey: "crawl4ai_token",
     });
   };
   const runArbiterValidation = async (payload) => {
@@ -1821,6 +2114,51 @@
       setDatabaseControlsDisabled(!state.database.loaded);
     }
   };
+  const runServicesValidation = async (payload) => {
+    clearServicesFieldErrors();
+    renderServicesChecks([]);
+    setServicesControlsDisabled(true);
+    setInlineStatus(elements.servicesStatus, "Validation technique en cours...", "info");
+
+    try {
+      const body = payload && Object.keys(payload).length ? { payload } : {};
+      const response = await adminFetch("/api/admin/settings/services/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.servicesStatus, "Acces admin requis pour verifier la section.", "error");
+        return { ok: false };
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyServicesBackendFieldError(data.error || `Validation impossible (${response.status}).`);
+        setInlineStatus(elements.servicesStatus, data.error || `Validation impossible (${response.status}).`, "error");
+        return { ok: false };
+      }
+
+      const checks = Array.isArray(data.checks) ? data.checks : [];
+      renderServicesChecks(checks);
+      const failedChecks = collectServicesFailedChecks(checks);
+      applyServicesLocalFieldErrors(failedChecks);
+
+      if (!data.valid) {
+        setInlineStatus(elements.servicesStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
+        return { ok: false };
+      }
+
+      setInlineStatus(elements.servicesStatus, "Validation technique OK.", "ok");
+      return { ok: true, data };
+    } catch (_error) {
+      setInlineStatus(elements.servicesStatus, "Validation impossible pour le moment.", "error");
+      return { ok: false };
+    } finally {
+      setServicesControlsDisabled(!state.services.loaded);
+    }
+  };
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -1872,6 +2210,19 @@
     }
 
     await runDatabaseValidation(payload);
+  };
+  const validateServicesSection = async () => {
+    const { payload, localErrors } = buildServicesPatchPayload();
+    clearServicesFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyServicesLocalFieldErrors(localErrors);
+      renderServicesChecks([]);
+      setInlineStatus(elements.servicesStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
+      return;
+    }
+
+    await runServicesValidation(payload);
   };
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
@@ -2101,6 +2452,63 @@
       setDatabaseControlsDisabled(!state.database.loaded);
     }
   };
+  const saveServicesSection = async () => {
+    if (!state.services.loaded) return;
+
+    const { payload, localErrors, dirtyCount } = buildServicesPatchPayload();
+    clearServicesFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyServicesLocalFieldErrors(localErrors);
+      renderServicesChecks([]);
+      setInlineStatus(elements.servicesStatus, "Correction requise avant enregistrement.", "error");
+      return;
+    }
+
+    if (dirtyCount === 0) {
+      setInlineStatus(elements.servicesStatus, "Aucune modification a enregistrer.", "info");
+      return;
+    }
+
+    const validation = await runServicesValidation(payload);
+    if (!validation.ok) return;
+
+    setServicesControlsDisabled(true);
+    setInlineStatus(elements.servicesStatus, "Enregistrement du bloc services externes...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updated_by: "admin_ui",
+          payload,
+        }),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.servicesStatus, "Acces admin requis pour enregistrer la section.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyServicesBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
+        setInlineStatus(elements.servicesStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyServicesView(data);
+      setServicesControlsDisabled(false);
+      setInlineStatus(elements.servicesStatus, "Bloc services externes enregistre.", "ok");
+      banner("Bloc services externes enregistre.", "ok");
+      void loadRuntimeStatus();
+    } catch (_error) {
+      setInlineStatus(elements.servicesStatus, "Enregistrement impossible pour le moment.", "error");
+    } finally {
+      setServicesControlsDisabled(!state.services.loaded);
+    }
+  };
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -2203,6 +2611,32 @@
       setInlineStatus(elements.databaseStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
     } catch (_error) {
       resetDatabaseSurface("Lecture impossible du bloc base de donnees pour le moment.", "error");
+    }
+  };
+  const loadServicesSection = async () => {
+    ensureServicesFieldSkeleton();
+    clearServicesFieldErrors();
+    setServicesControlsDisabled(true);
+    setInlineStatus(elements.servicesStatus, "Chargement du bloc services externes...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/services");
+      if (response.status === 401) {
+        resetServicesSurface("Acces admin requis pour charger le bloc services externes.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        resetServicesSurface(data.error || `Lecture impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyServicesView(data);
+      setServicesControlsDisabled(false);
+      setInlineStatus(elements.servicesStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
+    } catch (_error) {
+      resetServicesSurface("Lecture impossible du bloc services externes pour le moment.", "error");
     }
   };
 
@@ -2430,6 +2864,12 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
+      if (section.key === "services") {
+        const detailChip = document.createElement("span");
+        detailChip.className = "admin-chip";
+        detailChip.textContent = "Bloc detaille actif";
+        meta.appendChild(detailChip);
+      }
 
       if (status.bootstrap?.database_dsn_mode && section.key === "database") {
         const bootstrapChip = document.createElement("span");
@@ -2492,6 +2932,7 @@
       loadSummaryModelSection(),
       loadEmbeddingSection(),
       loadDatabaseSection(),
+      loadServicesSection(),
     ]);
   };
 
@@ -2617,12 +3058,37 @@
   elements.databaseSave?.addEventListener("click", () => {
     void saveDatabaseSection();
   });
+  elements.servicesForm?.addEventListener("input", (event) => {
+    if (!state.services.draft) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+
+    if (target.id === "adminServicesCrawl4aiTokenReplace") {
+      state.services.draft.crawl4ai_token = target.value;
+      setServicesFieldError("crawl4ai_token", "");
+      updateServicesDirtyChip();
+      return;
+    }
+
+    const fieldName = target.name;
+    if (!fieldName) return;
+    state.services.draft[fieldName] = target.value;
+    setServicesFieldError(fieldName, "");
+    updateServicesDirtyChip();
+  });
+  elements.servicesValidate?.addEventListener("click", () => {
+    void validateServicesSection();
+  });
+  elements.servicesSave?.addEventListener("click", () => {
+    void saveServicesSection();
+  });
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
   ensureSummaryModelFieldSkeleton();
   ensureEmbeddingFieldSkeleton();
   ensureDatabaseFieldSkeleton();
+  ensureServicesFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = emptyArbiterModelDraft();
@@ -2633,6 +3099,8 @@
   state.embedding.draft = emptyEmbeddingDraft();
   state.database.baseline = emptyDatabaseDraft();
   state.database.draft = emptyDatabaseDraft();
+  state.services.baseline = emptyServicesDraft();
+  state.services.draft = emptyServicesDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelChecks([]);
@@ -2648,11 +3116,15 @@
   renderDatabaseMeta();
   applyDatabaseDraftToForm();
   renderDatabaseChecks([]);
+  renderServicesMeta();
+  applyServicesDraftToForm();
+  renderServicesChecks([]);
   setMainModelControlsDisabled(true);
   setArbiterControlsDisabled(true);
   setSummaryControlsDisabled(true);
   setEmbeddingControlsDisabled(true);
   setDatabaseControlsDisabled(true);
+  setServicesControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),

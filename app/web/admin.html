@@ -298,6 +298,65 @@
       <div id="adminDatabaseChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="admin-services-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Sixieme bloc detaille</p>
+          <h2 id="admin-services-title">Services externes</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminServicesDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminServicesValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminServicesSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc reseau externe: SearXNG et Crawl4AI, avec token masque et remplacement explicite pour le connecteur de crawl.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminServicesSource" class="admin-chip">Section: chargement</span>
+        <span id="adminServicesCrawl4aiTokenSource" class="admin-chip">Token: chargement</span>
+        <span id="adminServicesCrawl4aiTokenState" class="admin-chip">Secret: inconnu</span>
+      </div>
+
+      <p id="adminServicesStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc services externes...
+      </p>
+
+      <form id="adminServicesForm" class="admin-form" novalidate>
+        <div id="adminServicesFields" class="admin-form-grid"></div>
+
+        <section id="adminServicesSecretCard" class="admin-secret-card" aria-labelledby="admin-services-secret-title">
+          <div class="admin-secret-head">
+            <div>
+              <p class="admin-kicker">Secret</p>
+              <h3 id="admin-services-secret-title">Token Crawl4AI</h3>
+            </div>
+            <span id="adminServicesCrawl4aiTokenMask" class="admin-secret-mask">Masque</span>
+          </div>
+          <p class="admin-secret-help">
+            Le token actuel n'est jamais re-affiche. Laisse le champ vide pour le conserver.
+          </p>
+          <label class="admin-field admin-field-wide" for="adminServicesCrawl4aiTokenReplace">
+            <span>Remplacement</span>
+            <input
+              id="adminServicesCrawl4aiTokenReplace"
+              name="crawl4ai_token"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Saisir un nouveau token Crawl4AI"
+            />
+            <small>Le backend n'accepte que replace_value pour un secret.</small>
+          </label>
+          <p id="adminServicesFieldError-crawl4ai_token" class="admin-field-error" hidden></p>
+        </section>
+      </form>
+
+      <div id="adminServicesChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
       <div class="admin-section-head">
         <div>

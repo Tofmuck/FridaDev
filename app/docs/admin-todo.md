@@ -436,7 +436,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Construire une section UI dediee au modele resumieur.
 - [x] Construire une section UI dediee au bloc embeddings.
 - [x] Construire une section UI dediee au bloc base de donnees.
-- [ ] Construire une section UI dediee au bloc services externes.
+- [x] Construire une section UI dediee au bloc services externes.
 - [ ] Construire une section UI dediee au bloc chemins / ressources externes.
 - [ ] Ajouter un affichage masque des secrets deja presents.
 - [ ] Ajouter un mecanisme explicite de remplacement des secrets sans re-affichage en clair.
