@@ -38,10 +38,6 @@
   // Settings popover
   const btnSettings = $("#btnSettings");
   const panel = $("#panel");
-  const temperature = $("#temperature");
-  const temperatureVal = $("#temperatureVal");
-  const top_p = $("#top_p");
-  const toppVal = $("#toppVal");
   const max_tokens = $("#max_tokens");
   const system = $("#system");
 
@@ -114,8 +110,6 @@
 
   const saveSettings = () => {
     const cfg = {
-      temperature: Number(temperature.value),
-      top_p: Number(top_p.value),
       max_tokens: Number(max_tokens.value)
     };
     localStorage.setItem("frida.settings", JSON.stringify(cfg));
@@ -126,15 +120,8 @@
     if (!raw) return;
     try {
       const cfg = JSON.parse(raw);
-      if (typeof cfg.temperature === "number") temperature.value = cfg.temperature;
-      if (typeof cfg.top_p === "number") top_p.value = cfg.top_p;
       if (typeof cfg.max_tokens === "number") max_tokens.value = cfg.max_tokens;
     } catch {}
-  };
-
-  const syncRangeBadges = () => {
-    temperatureVal.textContent = temperature.value;
-    toppVal.textContent = top_p.value;
   };
 
   const setHero = async () => {
@@ -639,9 +626,8 @@
     window.location.href = "/admin";
   });
 
-  [temperature, top_p, max_tokens].forEach(el => {
+  [max_tokens].forEach(el => {
     el.addEventListener("input", () => {
-      syncRangeBadges();
       saveSettings();
     });
   });
@@ -693,8 +679,6 @@
   });
 
   const currentSettings = () => ({
-    temperature: Number(temperature.value),
-    top_p: Number(top_p.value),
     max_tokens: Number(max_tokens.value),
     system: SYSTEM_PROMPT,
   });
@@ -707,8 +691,6 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: userText,
-        temperature: cfg.temperature,
-        top_p: cfg.top_p,
         max_tokens: cfg.max_tokens,
         system: cfg.system,
         history: Array.isArray(history) ? history : [],
@@ -785,7 +767,6 @@
 
   // ---- Init
   loadSettings();
-  syncRangeBadges();
 
   if (system) {
     system.value = SYSTEM_PROMPT;

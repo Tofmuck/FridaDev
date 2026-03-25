@@ -20,7 +20,8 @@ class ServerPhase4MainModelTests(unittest.TestCase):
 
     def test_server_uses_runtime_main_model_for_token_count_flow(self) -> None:
         source = (APP_DIR / 'server.py').read_text()
-        self.assertIn("runtime_main_model = str(runtime_settings.get_main_model_settings().payload['model']['value'])", source)
+        self.assertIn('runtime_main_view = runtime_settings.get_main_model_settings()', source)
+        self.assertIn("runtime_main_model = str(runtime_main_payload['model']['value'])", source)
         self.assertIn('token_utils.count_tokens([{"content": user_msg}], runtime_main_model)', source)
         self.assertIn('summarizer.maybe_summarize(conversation, runtime_main_model)', source)
         self.assertIn('token_utils.count_tokens([{"content": text}], runtime_main_model)', source)

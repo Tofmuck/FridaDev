@@ -454,15 +454,15 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Modifier `app/web/app.js` pour que le bouton `Parametres` vise le nouvel admin et non plus `admin.html` legacy direct.
 - [x] Pointer le bouton `Parametres` du front principal vers `/admin`.
 - [x] Aligner cette cible avec la route Flask et avec les assets statiques reellement exposes.
-- [ ] Retirer `temperature` et `top_p` de `frida.settings` dans `localStorage`.
-- [ ] Brancher `temperature` et `top_p` sur la logique globale de configuration des modeles.
-- [ ] Retirer l'envoi direct de `temperature` et `top_p` depuis le front vers `/api/chat`.
-- [ ] Limiter `frida.settings` aux reglages de session restant hors admin V1.
-- [ ] Requalifier clairement `max_tokens` comme reglage de session hors admin V1 tant qu'il reste hors perimetre.
-- [ ] Maintenir `max_tokens` hors du nouvel admin V1.
-- [ ] Maintenir `SYSTEM_PROMPT` hors du nouvel admin V1.
-- [ ] Verifier que la navigation du front principal n'expose plus d'entree UI legacy logs/restart.
-- [ ] Prevoir un commit isole pour l'integration minimale du front principal.
+- [x] Retirer `temperature` et `top_p` de `frida.settings` dans `localStorage`.
+- [x] Brancher `temperature` et `top_p` sur la logique globale de configuration des modeles.
+- [x] Retirer l'envoi direct de `temperature` et `top_p` depuis le front vers `/api/chat`.
+- [x] Limiter `frida.settings` aux reglages de session restant hors admin V1.
+- [x] Requalifier clairement `max_tokens` comme reglage de session hors admin V1 tant qu'il reste hors perimetre.
+- [x] Maintenir `max_tokens` hors du nouvel admin V1.
+- [x] Maintenir `SYSTEM_PROMPT` hors du nouvel admin V1.
+- [x] Verifier que la navigation du front principal n'expose plus d'entree UI legacy logs/restart.
+- [x] Prevoir un commit isole pour l'integration minimale du front principal.
 
 ### Phase 9 - Validation automatique et non-regression
 

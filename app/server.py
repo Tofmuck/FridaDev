@@ -300,8 +300,6 @@ def api_chat():
     user_msg         = (data.get("message") or "").strip()
     system_prompt    = (data.get("system")  or "").strip()
     conversation_id_raw = data.get("conversation_id")
-    temperature      = float(data.get("temperature") or 0.4)
-    top_p            = float(data.get("top_p")        or 1.0)
     max_tokens       = int(data.get("max_tokens")     or 1500)
     stream_req       = bool(data.get("stream"))
     web_search_on    = bool(data.get("web_search"))
@@ -324,7 +322,11 @@ def api_chat():
                     conversation["id"], conv_store.conversation_path(conversation["id"]))
         memory_store.decay_identities()  # nouvelle session → décroissance des identités
 
-    runtime_main_model = str(runtime_settings.get_main_model_settings().payload['model']['value'])
+    runtime_main_view = runtime_settings.get_main_model_settings()
+    runtime_main_payload = runtime_main_view.payload
+    runtime_main_model = str(runtime_main_payload['model']['value'])
+    temperature = float(runtime_main_payload['temperature']['value'])
+    top_p = float(runtime_main_payload['top_p']['value'])
 
     # ── Enregistrement message utilisateur
     user_timestamp = _now_iso()
