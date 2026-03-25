@@ -554,7 +554,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - `main_model.response_max_tokens` dans le `payload` editable
   - un bloc `readonly_info` distinct pour les prompts et budgets non editables
 - [x] Refuser ou ignorer explicitement tout `PATCH` tentant d'ecrire `readonly_info`.
-- [ ] Ajouter des tests backend sur la presence des informations read-only.
+- [x] Ajouter des tests backend sur la presence des informations read-only.
 - [x] Ajouter des tests backend sur l'edition de `main_model.response_max_tokens`.
 - [x] Ajouter des tests backend garantissant la non-editabilite des prompts et des budgets restant purement informationnels.
 - [x] Ajouter dans le frontend admin un champ editable pour `main_model.response_max_tokens`.

@@ -292,6 +292,29 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
     def test_get_section_readonly_info_other_sections_stays_empty_in_fourth_phase12_slice(self) -> None:
         self.assertEqual(runtime_settings.get_section_readonly_info('database'), {})
 
+    def test_get_section_readonly_info_exposed_sections_use_readonly_item_shape(self) -> None:
+        expected_non_empty = {
+            'main_model',
+            'arbiter_model',
+            'summary_model',
+            'services',
+        }
+        expected_empty = {
+            'embedding',
+            'database',
+            'resources',
+        }
+
+        for section in expected_non_empty:
+            readonly_info = runtime_settings.get_section_readonly_info(section)
+            self.assertTrue(readonly_info, section)
+            for item in readonly_info.values():
+                self.assertEqual(set(item.keys()), {'label', 'value', 'is_editable', 'source'})
+                self.assertFalse(item['is_editable'])
+
+        for section in expected_empty:
+            self.assertEqual(runtime_settings.get_section_readonly_info(section), {}, section)
+
     def test_build_env_seed_plan_skips_existing_sections(self) -> None:
         plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))
         self.assertEqual(
