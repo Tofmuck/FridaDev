@@ -562,3 +562,74 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un rendu lisible des prompts longs (bloc scrollable / pre-wrap / textarea readonly) sans introduire de mode edition.
 - [x] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
 - [x] Prevoir un commit isole pour cette extension.
+
+### Phase 13 - Audit d'interpretabilite du pipeline principal
+
+- [ ] Cadrer explicitement que cet audit porte sur le pipeline du modele principal hors details internes de l'arbitre.
+- [ ] Produire dans l'admin un audit `clair / ambigu / absent` centre sur ce que le modele principal voit reellement et sur ce qu'il sait explicitement interpreter.
+- [ ] Classer comme `clair` dans cet audit :
+  - le `SYSTEM_PROMPT` de base
+  - la reference temporelle globale (`Nous sommes le...`)
+  - les labels Delta-T ajoutes aux messages (`[il y a ...]`)
+  - les marqueurs de silence (`[— silence de X —]`)
+  - le resume actif (`[Resume de la periode ...]`)
+  - les souvenirs pertinents (`[Memoire — souvenirs pertinents]`)
+  - le contexte du souvenir (`[Contexte du souvenir — resume ...]`)
+  - le contexte web injecte avant la question finale
+- [ ] Classer comme `ambigu` dans cet audit :
+  - le bloc identites (`[IDENTITE DU MODELE]`, `[IDENTITE DE L'UTILISATEUR]`)
+  - les identites dynamiques avec `stability`, `recurrence` et `confidence`
+  - les `Indices contextuels recents`
+  - la signification operative du score `confidence` a l'interieur de ces indices
+- [ ] Classer comme `absent` dans cet audit :
+  - une hierarchie explicite entre resume actif, souvenirs pertinents, contexte web et question courante
+  - une hierarchie explicite entre identite statique et identite dynamique
+  - une regle explicite indiquant comment ponderer `confidence`
+  - une provenance explicite des blocs injectes et de leur niveau de fiabilite
+- [ ] Exposer dans l'admin, pour `main_model`, un bloc `Pipeline effectif vu par le modele` listant l'ordre exact des briques injectees.
+- [ ] Exposer dans ce bloc l'ordre exact de construction du prompt final, au minimum :
+  - `SYSTEM_PROMPT` de base
+  - augmentation temporelle
+  - bloc identites
+  - resume actif si present
+  - indices contextuels recents si presents
+  - contexte du souvenir si present
+  - souvenirs pertinents si presents
+  - contexte web si present
+  - message utilisateur final
+- [ ] Exposer pour chaque brique les colonnes minimales suivantes :
+  - `visible par le modele`
+  - `interpretation explicite par le modele`
+  - `statut audit` (`clair`, `ambigu`, `absent`)
+  - `source technique`
+  - `condition d'apparition`
+- [ ] Exposer pour chaque brique sa source technique concrete, sans imposer d'ouvrir le code, par exemple :
+  - `web/app.js`
+  - `server.py`
+  - `core/conv_store.py`
+  - `identity/identity.py`
+  - `tools/web_search.py`
+- [ ] Exposer distinctement ce qui est toujours present, ce qui est conditionnel, et ce qui n'est jamais visible par le modele principal.
+- [ ] Exposer dans l'admin la liste des informations aujourd'hui non visibles par le modele principal mais souvent supposees a tort comme presentes.
+- [ ] Y inclure explicitement :
+  - les decisions d'arbitre brutes
+  - les scores internes de l'arbitre
+  - les sorties brutes de l'identity extractor
+- [ ] Exposer un apercu read-only du `prompt final compose` du modele principal, decoupe par blocs, sans ouvrir de mode edition.
+- [ ] Exposer dans cet apercu les marqueurs reels utilises en runtime (`[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
+- [ ] Exposer les budgets et limites qui structurent ce pipeline, au minimum :
+  - `FRIDA_MAX_TOKENS`
+  - `IDENTITY_MAX_TOKENS`
+  - `CONTEXT_HINTS_MAX_ITEMS`
+  - `CONTEXT_HINTS_MAX_TOKENS`
+  - `SUMMARY_TARGET_TOKENS`
+  - `SUMMARY_THRESHOLD_TOKENS`
+  - `SUMMARY_KEEP_TURNS`
+- [ ] Exposer les conditions runtime qui changent concretement le prompt final, au minimum :
+  - presence ou non d'un resume actif
+  - presence ou non de souvenirs pertinents
+  - presence ou non d'indices contextuels recents
+  - activation ou non de la recherche web
+- [ ] Ajouter des tests backend sur la surface d'audit et sur la presence du bloc `Pipeline effectif vu par le modele`.
+- [ ] Ajouter des tests frontend sur l'affichage `clair / ambigu / absent` et sur l'apercu read-only du prompt final.
+- [ ] Prevoir un commit isole pour cette phase d'audit et de transparence runtime.
