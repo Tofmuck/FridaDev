@@ -381,6 +381,25 @@ def build_env_seed_bundle(section: str) -> SectionSeedBundle:
     return SectionSeedBundle(section=section, payload=payload, secret_values=secret_values)
 
 
+def build_db_seed_bundle(section: str) -> SectionSeedBundle:
+    env_bundle = build_env_seed_bundle(section)
+    payload = normalize_stored_payload(section, env_bundle.payload, default_origin='env_seed')
+    seeded_payload: Dict[str, Dict[str, Any]] = {}
+
+    for field_name, field_payload in payload.items():
+        spec = get_field_spec(section, field_name)
+        next_field_payload = dict(field_payload)
+        if not spec.is_secret:
+            next_field_payload['origin'] = 'db_seed'
+        seeded_payload[field_name] = next_field_payload
+
+    return SectionSeedBundle(
+        section=env_bundle.section,
+        payload=seeded_payload,
+        secret_values=env_bundle.secret_values,
+    )
+
+
 def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
     existing = {str(section) for section in existing_sections}
     return tuple(section for section in SECTION_NAMES if section not in existing)
@@ -388,6 +407,10 @@ def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
 
 def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
     return tuple(build_env_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
+
+
+def build_db_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
+    return tuple(build_db_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
 
 
 def _backfill_env_secret_value(section: str, field: str) -> str:
@@ -535,6 +558,64 @@ def init_runtime_settings_db() -> Dict[str, Any]:
     return {
         'sql_path': str(RUNTIME_SETTINGS_SQL_PATH),
         'tables': ('runtime_settings', 'runtime_settings_history'),
+    }
+
+
+def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_bootstrap') -> Dict[str, Any]:
+    actor = str(updated_by or '').strip() or 'runtime_settings_bootstrap'
+
+    try:
+        import psycopg
+    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
+        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
+
+    inserted_sections: list[str] = []
+    inserted_fields: list[str] = []
+
+    try:
+        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT section
+                    FROM runtime_settings
+                    ORDER BY section
+                    '''
+                )
+                existing_sections = tuple(str(row[0]) for row in cur.fetchall())
+                for bundle in build_db_seed_plan(existing_sections):
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
+                        VALUES (%s, 'v1', %s, %s::jsonb)
+                        ''',
+                        (bundle.section, actor, json.dumps(bundle.payload)),
+                    )
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings_history (
+                            section,
+                            schema_version,
+                            changed_by,
+                            payload_before,
+                            payload_after
+                        )
+                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
+                        ''',
+                        (bundle.section, actor, json.dumps({}), json.dumps(bundle.payload)),
+                    )
+                    inserted_sections.append(bundle.section)
+                    inserted_fields.extend(f'{bundle.section}.{field_name}' for field_name in bundle.payload.keys())
+            conn.commit()
+    except Exception as exc:
+        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
+
+    if inserted_sections:
+        invalidate_runtime_settings_cache()
+
+    return {
+        'inserted_sections': tuple(inserted_sections),
+        'inserted_fields': tuple(inserted_fields),
     }
 
 

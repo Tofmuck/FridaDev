@@ -195,6 +195,13 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(bundle.payload['top_k']['value'], config.MEMORY_TOP_K)
         self.assertEqual(bundle.payload['token']['is_set'], bool(config.EMBED_TOKEN))
 
+    def test_build_db_seed_bundle_uses_db_seed_for_non_secret_fields(self) -> None:
+        bundle = runtime_settings.build_db_seed_bundle('main_model')
+        self.assertEqual(bundle.payload['base_url']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['model']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['temperature']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['api_key']['origin'], 'env_seed')
+
     def test_get_unseeded_sections_uses_missing_rows_as_signal(self) -> None:
         missing = runtime_settings.get_unseeded_sections(('main_model', 'services'))
         self.assertEqual(
@@ -219,6 +226,20 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'resources',
             ),
         )
+
+    def test_build_db_seed_plan_skips_existing_sections_and_marks_non_secret_payloads(self) -> None:
+        plan = runtime_settings.build_db_seed_plan(('main_model', 'embedding', 'services'))
+        self.assertEqual(
+            tuple(bundle.section for bundle in plan),
+            (
+                'arbiter_model',
+                'summary_model',
+                'database',
+                'resources',
+            ),
+        )
+        self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
+        self.assertEqual(plan[2].payload['backend']['origin'], 'db_seed')
 
     def test_runtime_section_falls_back_to_env_when_table_is_empty(self) -> None:
         view = runtime_settings.get_runtime_section('main_model', fetcher=lambda: {})
@@ -564,6 +585,132 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(observed['committed'])
         self.assertEqual(details['tables'], ('runtime_settings', 'runtime_settings_history'))
         self.assertEqual(details['sql_path'], str(sql_path))
+
+    def test_bootstrap_runtime_settings_from_env_inserts_missing_sections_with_db_seed_non_secret_values(self) -> None:
+        observed = {
+            'dsn': None,
+            'queries': [],
+            'params': [],
+            'committed': False,
+        }
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params=None):
+                observed['queries'].append(query)
+                observed['params'].append(params)
+
+            def fetchall(self):
+                return [('main_model',), ('embedding',)]
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_psycopg = sys.modules.get('psycopg')
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=fake_connect)
+        try:
+            result = runtime_settings.bootstrap_runtime_settings_from_env(updated_by='phase11-bootstrap-test')
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+            runtime_settings.invalidate_runtime_settings_cache()
+
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertTrue(observed['committed'])
+        self.assertEqual(
+            result['inserted_sections'],
+            ('arbiter_model', 'summary_model', 'database', 'services', 'resources'),
+        )
+
+        runtime_payloads = [
+            json.loads(params[2])
+            for query, params in zip(observed['queries'], observed['params'])
+            if params and 'INSERT INTO runtime_settings (section' in query
+        ]
+        self.assertEqual(len(runtime_payloads), 5)
+        self.assertEqual(runtime_payloads[0]['model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[0]['timeout_s']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[2]['backend']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[3]['searxng_url']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[4]['llm_identity_path']['origin'], 'db_seed')
+
+    def test_bootstrap_runtime_settings_from_env_does_not_overwrite_existing_sections(self) -> None:
+        observed = {
+            'queries': [],
+            'params': [],
+        }
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params=None):
+                observed['queries'].append(query)
+                observed['params'].append(params)
+
+            def fetchall(self):
+                return [(section,) for section in runtime_settings.list_sections()]
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                return None
+
+        def fake_connect(_dsn):
+            return FakeConnection()
+
+        original_psycopg = sys.modules.get('psycopg')
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=fake_connect)
+        try:
+            result = runtime_settings.bootstrap_runtime_settings_from_env(updated_by='phase11-noop-test')
+        finally:
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+            runtime_settings.invalidate_runtime_settings_cache()
+
+        self.assertEqual(result, {'inserted_sections': (), 'inserted_fields': ()})
+        self.assertEqual(len(observed['queries']), 1)
+        self.assertIn('SELECT section', observed['queries'][0])
 
     def test_cache_can_be_invalidated(self) -> None:
         calls = {'count': 0}

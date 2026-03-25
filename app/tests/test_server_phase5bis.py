@@ -14,6 +14,7 @@ class ServerPhase5BisSecretRuntimeTests(unittest.TestCase):
     def test_server_triggers_runtime_secret_env_backfill_at_startup(self) -> None:
         source = (APP_DIR / 'server.py').read_text()
         self.assertIn('runtime_settings.init_runtime_settings_db()', source)
+        self.assertIn('runtime_settings.bootstrap_runtime_settings_from_env()', source)
         self.assertIn('runtime_settings.backfill_runtime_secrets_from_env()', source)
 
     def test_server_uses_runtime_main_model_secret_for_llm_call_flow(self) -> None:

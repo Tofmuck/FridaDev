@@ -445,7 +445,7 @@
   };
 
   const fieldOriginLabel = (origin) => {
-    if (origin === "db" || origin === "admin_ui") return "db";
+    if (origin === "db" || origin === "db_seed" || origin === "admin_ui") return "db";
     if (origin === "env_seed") return "env fallback";
     if (origin === "seed_default") return "default";
     return String(origin || "inconnu");

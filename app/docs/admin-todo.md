@@ -502,23 +502,23 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ne plus traiter `UndefinedTable` comme un simple etat `empty_table` silencieux une fois cette phase activee.
 - [x] Ajouter une etape explicite d'application de `app/admin/sql/runtime_settings_v1.sql` sur la vraie DB cible avant exposition du nouvel admin.
 - [x] Ajouter une verification automatique de presence des tables `runtime_settings` et `runtime_settings_history` au demarrage ou au deploy.
-- [ ] Ajouter un bootstrap idempotent qui cree en DB toutes les sections V1 manquantes a partir de la config effective courante.
-- [ ] Ecrire en base les valeurs non secretes de `main_model`.
-- [ ] Ecrire en base les valeurs non secretes de `arbiter_model`.
-- [ ] Ecrire en base les valeurs non secretes de `summary_model`.
-- [ ] Ecrire en base les valeurs non secretes de `embedding`.
-- [ ] Ecrire en base `database.backend`.
-- [ ] Ecrire en base les valeurs non secretes de `services`.
-- [ ] Ecrire en base les valeurs non secretes de `resources`.
+- [x] Ajouter un bootstrap idempotent qui cree en DB toutes les sections V1 manquantes a partir de la config effective courante.
+- [x] Ecrire en base les valeurs non secretes de `main_model`.
+- [x] Ecrire en base les valeurs non secretes de `arbiter_model`.
+- [x] Ecrire en base les valeurs non secretes de `summary_model`.
+- [x] Ecrire en base les valeurs non secretes de `embedding`.
+- [x] Ecrire en base `database.backend`.
+- [x] Ecrire en base les valeurs non secretes de `services`.
+- [x] Ecrire en base les valeurs non secretes de `resources`.
 - [ ] Fusionner ce bootstrap non secret avec le backfill des secrets deja chiffres pour obtenir une baseline DB complete et idempotente.
-- [ ] Introduire un origin persiste explicite pour les valeurs importees en base (`db_seed` ou equivalent), distinct du fallback env.
+- [x] Introduire un origin persiste explicite pour les valeurs importees en base (`db_seed` ou equivalent), distinct du fallback env.
 - [ ] Reserver le libelle `env fallback` au seul cas ou une valeur est encore synthesee depuis l'env faute de row DB exploitable.
-- [ ] Verifier qu'apres bootstrap complet, toutes les sections V1 apparaissent avec `source=db` dans `/api/admin/settings/status`.
+- [x] Verifier qu'apres bootstrap complet, toutes les sections V1 apparaissent avec `source=db` dans `/api/admin/settings/status`.
 - [ ] Verifier qu'apres bootstrap complet, les champs non secrets n'affichent plus `env fallback` dans l'UI lorsqu'ils sont deja persistes en base.
 - [ ] Verifier qu'apres bootstrap complet, les secrets V1 affichent `db_encrypted` des qu'ils sont chiffres en base, hors cas special `database.dsn`.
 - [ ] Maintenir `database.dsn` stockable et masque en base sans remplacer le bootstrap externe tant que `FRIDA_MEMORY_DB_DSN` reste l'invariant.
-- [ ] Ajouter des tests backend sur le bootstrap DB complet des sections manquantes.
-- [ ] Ajouter des tests backend sur la taxonomie d'origine (`db_seed` / `admin_ui` vs `env_fallback`).
+- [x] Ajouter des tests backend sur le bootstrap DB complet des sections manquantes.
+- [x] Ajouter des tests backend sur la taxonomie d'origine (`db_seed` / `admin_ui` vs `env_fallback`).
 - [ ] Ajouter un smoke test de deploiement qui echoue si `runtime_settings` n'existe pas.
 - [ ] Verifier manuellement sur le conteneur cible que l'admin affiche majoritairement `db` apres activation effective de la baseline.
 - [ ] Prevoir un commit isole pour l'activation reelle de la configuration runtime en base.

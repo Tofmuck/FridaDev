@@ -141,6 +141,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const buildSectionPatchPayload =", source)
         self.assertIn("const updateSectionDirtyChip =", source)
         self.assertIn("const applySectionDraftToForm =", source)
+        self.assertIn('origin === "db_seed"', source)
 
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
