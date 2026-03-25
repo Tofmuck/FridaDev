@@ -274,6 +274,22 @@ def _check_db_schema() -> Dict[str, Any]:
             "decision_source",
             "created_ts",
         },
+        "runtime_settings": {
+            "section",
+            "schema_version",
+            "updated_at",
+            "updated_by",
+            "payload",
+        },
+        "runtime_settings_history": {
+            "id",
+            "section",
+            "schema_version",
+            "changed_at",
+            "changed_by",
+            "payload_before",
+            "payload_after",
+        },
     }
 
     with psycopg.connect(_bootstrap_database_dsn()) as conn:

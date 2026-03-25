@@ -109,6 +109,8 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         source = (APP_DIR / 'minimal_validation.py').read_text(encoding='utf-8')
         self.assertIn('with psycopg.connect(_bootstrap_database_dsn()) as conn:', source)
         self.assertNotIn('psycopg.connect(config.FRIDA_MEMORY_DB_DSN)', source)
+        self.assertIn('"runtime_settings": {', source)
+        self.assertIn('"runtime_settings_history": {', source)
 
     def test_check_db_schema_rejects_unsupported_runtime_database_backend(self) -> None:
         original_get_database = minimal_validation.runtime_settings.get_database_settings

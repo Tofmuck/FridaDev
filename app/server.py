@@ -53,6 +53,16 @@ app = Flask(__name__, static_folder="web", static_url_path="")
 logging.basicConfig(level="INFO")
 logger = logging.getLogger("frida.server")
 config.log_hermeneutic_effective_config(logger)
+try:
+    _runtime_settings_db_init = runtime_settings.init_runtime_settings_db()
+except RuntimeError as exc:
+    logger.error('runtime_settings_init_failed err=%s', exc)
+else:
+    logger.info(
+        'runtime_settings_init_ok tables=%s sql=%s',
+        ','.join(_runtime_settings_db_init['tables']),
+        _runtime_settings_db_init['sql_path'],
+    )
 conv_store.ensure_conv_dir()
 memory_store.init_db()
 conv_store.init_catalog_db()

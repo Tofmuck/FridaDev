@@ -109,6 +109,7 @@ class RuntimeSettingsValidationError(ValueError):
 
 
 _SNAPSHOT_CACHE: RuntimeSettingsSnapshot | None = None
+RUNTIME_SETTINGS_SQL_PATH = Path(__file__).resolve().parent / 'sql' / 'runtime_settings_v1.sql'
 
 
 SECRET_V1_FIELDS: Tuple[Tuple[str, str], ...] = (
@@ -512,6 +513,31 @@ def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backf
     }
 
 
+def init_runtime_settings_db() -> Dict[str, Any]:
+    try:
+        migration_sql = RUNTIME_SETTINGS_SQL_PATH.read_text(encoding='utf-8')
+    except OSError as exc:
+        raise RuntimeError(f'cannot read runtime settings migration sql: {exc}') from exc
+
+    try:
+        import psycopg
+    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
+        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
+
+    try:
+        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
+            with conn.cursor() as cur:
+                cur.execute(migration_sql)
+            conn.commit()
+    except Exception as exc:
+        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
+
+    return {
+        'sql_path': str(RUNTIME_SETTINGS_SQL_PATH),
+        'tables': ('runtime_settings', 'runtime_settings_history'),
+    }
+
+
 def invalidate_runtime_settings_cache() -> None:
     global _SNAPSHOT_CACHE
     _SNAPSHOT_CACHE = None
@@ -535,8 +561,8 @@ def _default_db_fetch_all_sections() -> Dict[str, Dict[str, Dict[str, Any]]]:
                     '''
                 )
                 rows = cur.fetchall()
-    except psycopg_errors.UndefinedTable:
-        return {}
+    except psycopg_errors.UndefinedTable as exc:
+        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
     except Exception as exc:
         raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
 

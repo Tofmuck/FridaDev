@@ -458,6 +458,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
 
             def execute(self, query):
                 observed['query'] = query
+                raise FakeUndefinedTable('relation "runtime_settings" does not exist')
 
             def fetchall(self):
                 return []
@@ -484,7 +485,11 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             errors=types.SimpleNamespace(UndefinedTable=FakeUndefinedTable),
         )
         try:
-            rows = runtime_settings._default_db_fetch_all_sections()
+            with self.assertRaisesRegex(
+                runtime_settings.RuntimeSettingsDbUnavailableError,
+                'runtime settings tables missing',
+            ):
+                runtime_settings._default_db_fetch_all_sections()
         finally:
             config.FRIDA_MEMORY_DB_DSN = original_dsn
             if original_psycopg is None:
@@ -492,12 +497,73 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             else:
                 sys.modules['psycopg'] = original_psycopg
 
-        self.assertEqual(rows, {})
         self.assertEqual(
             observed['dsn'],
             'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
         )
         self.assertIn('FROM runtime_settings', observed['query'])
+
+    def test_init_runtime_settings_db_uses_external_bootstrap_dsn_and_executes_sql(self) -> None:
+        observed = {
+            'dsn': None,
+            'queries': [],
+            'committed': False,
+        }
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query):
+                observed['queries'].append(query)
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_psycopg = sys.modules.get('psycopg')
+        original_sql_path = runtime_settings.RUNTIME_SETTINGS_SQL_PATH
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=fake_connect)
+        with tempfile.TemporaryDirectory() as tmp:
+            sql_path = Path(tmp) / 'runtime_settings_v1.sql'
+            sql_path.write_text('CREATE TABLE IF NOT EXISTS runtime_settings (section TEXT PRIMARY KEY);', encoding='utf-8')
+            runtime_settings.RUNTIME_SETTINGS_SQL_PATH = sql_path
+            try:
+                details = runtime_settings.init_runtime_settings_db()
+            finally:
+                runtime_settings.RUNTIME_SETTINGS_SQL_PATH = original_sql_path
+                config.FRIDA_MEMORY_DB_DSN = original_dsn
+                if original_psycopg is None:
+                    del sys.modules['psycopg']
+                else:
+                    sys.modules['psycopg'] = original_psycopg
+
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertEqual(observed['queries'], ['CREATE TABLE IF NOT EXISTS runtime_settings (section TEXT PRIMARY KEY);'])
+        self.assertTrue(observed['committed'])
+        self.assertEqual(details['tables'], ('runtime_settings', 'runtime_settings_history'))
+        self.assertEqual(details['sql_path'], str(sql_path))
 
     def test_cache_can_be_invalidated(self) -> None:
         calls = {'count': 0}
