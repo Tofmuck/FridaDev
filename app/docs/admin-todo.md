@@ -563,11 +563,48 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
 - [x] Prevoir un commit isole pour cette extension.
 
-### Phase 13 - Prompt hermeneutique du modele principal
+### Phase 13 - Centralisation physique des prompts et prompt hermeneutique
 
 - [ ] Cadrer explicitement que cette phase ne traite pas des logs runtime, ni du deroule chronologique des injections effectives, ni d'un audit post-hoc requete par requete.
-- [ ] Cadrer explicitement que cette phase traite d'une couche fixe d'interpretation placee juste sous le `SYSTEM_PROMPT` du modele principal.
-- [ ] Nommer explicitement cette couche `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
+- [ ] Cadrer explicitement que cette phase traite de deux choses solidaires :
+  - la centralisation physique de tous les prompts dans `app/prompts/`
+  - la formalisation d'un `hermeneutical_prompt` fixe place juste sous le `SYSTEM_PROMPT` du modele principal
+- [ ] Cadrer explicitement qu'aucun prompt ne doit plus avoir sa source de verite dans le frontend ou dans du texte inline Python/JS si ce prompt peut vivre physiquement dans `app/prompts/`.
+- [ ] Exiger que tous les prompts de l'application fonctionnent de la meme maniere :
+  - fichier physique dans `app/prompts/`
+  - chemin explicite en config
+  - chargement par un loader backend unique
+  - exposition read-only dans l'admin depuis cette meme source
+- [ ] Migrer vers cette architecture unifiee, au minimum :
+  - le `SYSTEM_PROMPT` principal
+  - le futur `hermeneutical_prompt` principal
+  - le prompt de l'arbitre
+  - le prompt de l'identity extractor
+  - le prompt systeme inline du resumieur
+  - le prompt systeme inline de reformulation web
+- [ ] Ajouter dans `config.py` et `config.example.py` des chemins explicites pour tous ces prompts, selon une convention homogene.
+- [ ] Choisir et figer une convention de nommage physique dans `app/prompts/`, au minimum :
+  - `main_system.txt`
+  - `main_hermeneutical.txt`
+  - `arbiter.txt`
+  - `identity_extractor.txt`
+  - `summary_system.txt`
+  - `web_reformulation.txt`
+- [ ] Introduire un loader backend unique de prompts, reutilisable par :
+  - `server.py`
+  - l'admin
+  - les modules memoire/services qui consomment deja des prompts
+- [ ] Interdire apres cette phase tout scraping d'un prompt depuis `web/app.js` ou depuis une constante inline lorsque l'equivalent physique existe dans `app/prompts/`.
+- [ ] Sortir le `SYSTEM_PROMPT` principal de `web/app.js` pour le faire vivre physiquement dans `app/prompts/main_system.txt`.
+- [ ] Sortir le prompt systeme inline du resumieur pour le faire vivre physiquement dans `app/prompts/summary_system.txt`.
+- [ ] Sortir le prompt systeme inline de reformulation web pour le faire vivre physiquement dans `app/prompts/web_reformulation.txt`.
+- [ ] Faire du backend la source de verite du `SYSTEM_PROMPT` principal ; le frontend principal ne doit plus etre la source active de ce prompt.
+- [ ] Realigner le frontend principal pour qu'il n'envoie plus un `system` source de verite a `/api/chat` quand ce prompt est desormais porte par le backend.
+- [ ] Realigner la creation de conversation pour que le message systeme initial vienne de la meme source backend unique.
+- [ ] Exposer dans l'admin, pour `main_model`, deux blocs read-only distincts et ordonnes :
+  - `System Prompt`
+  - `Hermeneutical Prompt`
+- [ ] Nommer explicitement `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
 - [ ] Definir `hermeneutical_prompt` comme un bloc concatene, exhaustif et stable qui explique au modele principal comment interpreter toutes les briques susceptibles d'apparaitre ensuite dans le prompt augmente.
 - [ ] Exiger que `hermeneutical_prompt` soit lu comme un contrat d'interpretation et non comme un simple commentaire documentaire.
 - [ ] Exiger que `hermeneutical_prompt` explicite, pour chaque brique du prompt augmente, au minimum :
@@ -607,13 +644,11 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - insuffisant mais provisoirement acceptable
   - manquant et devant etre ajoute a `hermeneutical_prompt`
 - [ ] Lorsqu'un element interpretatif manque completement, prevoir des maintenant une formulation candidate dans `hermeneutical_prompt`, meme si elle doit etre retravaillee ensuite.
-- [ ] Exposer dans l'admin, sous `SYSTEM_PROMPT`, un bloc distinct intitule `Hermeneutical Prompt`.
-- [ ] Exposer dans ce bloc la version complete, concatenee et read-only de `hermeneutical_prompt`, sans mode edition dans cette phase.
-- [ ] Exposer a cote, de maniere lisible, la liste des briques qu'il est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
-- [ ] Exposer distinctement, pour chaque brique, ce qui est deja correctement interpretable par le modele, ce qui reste flou, et ce qui doit encore etre explicite.
+- [ ] Exposer dans l'admin, a cote de ces deux blocs, la liste des briques que `hermeneutical_prompt` est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
 - [ ] Exposer dans l'admin les balises et marqueurs reels utilises en runtime pour ces briques (`[Resume de la periode ...]`, `[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
-- [ ] Exposer dans l'admin, a titre informationnel, les sources techniques qui alimentent ce `hermeneutical_prompt`, sans imposer d'ouvrir le code.
-- [ ] Ajouter une surface backend read-only pour `hermeneutical_prompt` dans `main_model`, distincte du `SYSTEM_PROMPT` et distincte des futurs logs runtime.
-- [ ] Ajouter des tests backend sur la presence et la separation stricte entre `SYSTEM_PROMPT` et `hermeneutical_prompt`.
-- [ ] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt` et sur la lisibilite des balises documentees.
-- [ ] Prevoir un commit isole pour cette phase de formalisation hermeneutique.
+- [ ] Exposer dans l'admin, a titre informationnel, les sources techniques et les chemins physiques qui alimentent `System Prompt` et `Hermeneutical Prompt`, sans imposer d'ouvrir le code.
+- [ ] Ajouter une surface backend read-only pour `system_prompt` et `hermeneutical_prompt` dans `main_model`, distincte des futurs logs runtime.
+- [ ] Ajouter des tests backend sur la centralisation physique des prompts et sur la separation stricte entre `System Prompt` et `Hermeneutical Prompt`.
+- [ ] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt`, sur la lisibilite des balises documentees, et sur l'absence de source de verite prompt cote frontend.
+- [ ] Ajouter un smoke check dans `minimal_validation.py` pour verifier la presence physique des prompts centralises et l'absence de prompt inline restant la ou il ne doit plus y en avoir.
+- [ ] Prevoir un commit isole pour cette phase de centralisation et de formalisation hermeneutique.
