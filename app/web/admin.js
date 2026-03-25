@@ -364,6 +364,7 @@
     mainModelApiKeyState: document.getElementById("adminMainModelApiKeyState"),
     mainModelApiKeyMask: document.getElementById("adminMainModelApiKeyMask"),
     mainModelApiKeyReplace: document.getElementById("adminMainModelApiKeyReplace"),
+    mainModelReadonlyInfo: document.getElementById("adminMainModelReadonlyInfo"),
     mainModelChecks: document.getElementById("adminMainModelChecks"),
     arbiterModelForm: document.getElementById("adminArbiterModelForm"),
     arbiterModelFields: document.getElementById("adminArbiterModelFields"),
@@ -605,6 +606,62 @@
     target.replaceChildren(fragment);
   };
 
+  const renderReadonlyInfoCards = (target, readonlyInfo = {}) => {
+    if (!target) return;
+    const entries = Object.entries(readonlyInfo || {});
+    if (!entries.length) {
+      target.innerHTML = '<p class="admin-readonly-empty">Aucune information read-only disponible.</p>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    entries.forEach(([key, item]) => {
+      const card = document.createElement("article");
+      card.className = "admin-readonly-card";
+      card.dataset.key = key;
+
+      const head = document.createElement("div");
+      head.className = "admin-readonly-card-head";
+
+      const titleBlock = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = item.label || key;
+
+      const label = document.createElement("p");
+      label.className = "admin-readonly-label";
+      label.textContent = key;
+
+      titleBlock.appendChild(title);
+      titleBlock.appendChild(label);
+
+      const source = document.createElement("span");
+      source.className = "admin-readonly-source";
+      source.textContent = item.source || "read_only";
+
+      head.appendChild(titleBlock);
+      head.appendChild(source);
+      card.appendChild(head);
+
+      const value = item.value;
+      if (typeof value === "string" && (value.includes("\n") || value.length > 180)) {
+        const textarea = document.createElement("textarea");
+        textarea.className = "admin-readonly-textarea";
+        textarea.readOnly = true;
+        textarea.value = value;
+        card.appendChild(textarea);
+      } else {
+        const body = document.createElement("div");
+        body.className = "admin-readonly-value";
+        body.textContent = value === undefined || value === null ? "" : String(value);
+        card.appendChild(body);
+      }
+
+      fragment.appendChild(card);
+    });
+
+    target.replaceChildren(fragment);
+  };
+
   const setSectionControlsDisabled = (
     {
       saveButton,
@@ -771,6 +828,9 @@
 
   const renderMainModelChecks = (checks = []) => {
     renderCheckList(elements.mainModelChecks, checks);
+  };
+  const renderMainModelReadonlyInfo = () => {
+    renderReadonlyInfoCards(elements.mainModelReadonlyInfo, state.mainModel.view?.readonly_info || {});
   };
   const renderArbiterModelChecks = (checks = []) => {
     renderCheckList(elements.arbiterModelChecks, checks);
@@ -1577,6 +1637,7 @@
     state.mainModel.loaded = true;
     state.mainModel.view = {
       payload: responsePayload.payload || {},
+      readonly_info: responsePayload.readonly_info || {},
       secret_sources: responsePayload.secret_sources || {},
       source: responsePayload.source || "env",
       source_reason: responsePayload.source_reason || "unknown",
@@ -1586,6 +1647,7 @@
     clearMainModelFieldErrors();
     renderMainModelMeta();
     applyMainModelDraftToForm();
+    renderMainModelReadonlyInfo();
     renderMainModelChecks([]);
   };
   const applyArbiterModelView = (responsePayload) => {
@@ -1684,6 +1746,7 @@
     clearMainModelFieldErrors();
     renderMainModelMeta();
     applyMainModelDraftToForm();
+    renderMainModelReadonlyInfo();
     renderMainModelChecks([]);
     setMainModelControlsDisabled(true);
     setInlineStatus(elements.mainModelStatus, message, stateName);
@@ -3507,6 +3570,7 @@
   state.resources.draft = emptyResourcesDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
+  renderMainModelReadonlyInfo();
   renderMainModelChecks([]);
   renderArbiterModelMeta();
   applyArbiterDraftToForm();

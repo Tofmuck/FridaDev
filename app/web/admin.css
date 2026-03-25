@@ -474,6 +474,114 @@ body.admin-page {
   margin-top: 14px;
 }
 
+.admin-readonly-panel {
+  margin-top: 2px;
+  padding: 16px;
+  border: 1px solid var(--border-muted);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.admin-readonly-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.admin-readonly-head h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.admin-readonly-badge {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--border-muted);
+  color: var(--fg-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-readonly-grid {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-readonly-card {
+  padding: 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.admin-readonly-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.admin-readonly-card-head strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.admin-readonly-source {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid var(--border-muted);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+
+.admin-readonly-label {
+  margin: 2px 0 0;
+  color: var(--fg-subtle);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-readonly-value {
+  margin-top: 12px;
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-readonly-textarea {
+  width: 100%;
+  min-height: 168px;
+  margin-top: 12px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(248, 246, 243, 0.8);
+  color: var(--fg);
+  font: inherit;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.admin-readonly-empty {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .admin-check-list {
   margin-top: 14px;
   display: grid;
