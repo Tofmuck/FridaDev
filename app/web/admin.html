@@ -357,6 +357,38 @@
       <div id="adminServicesChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="admin-resources-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Septieme bloc detaille</p>
+          <h2 id="admin-resources-title">Ressources</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminResourcesDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminResourcesValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminResourcesSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc de chemins runtime: identite LLM et identite utilisateur, avec verification directe de presence des fichiers.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminResourcesSource" class="admin-chip">Section: chargement</span>
+      </div>
+
+      <p id="adminResourcesStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc ressources...
+      </p>
+
+      <form id="adminResourcesForm" class="admin-form" novalidate>
+        <div id="adminResourcesFields" class="admin-form-grid"></div>
+      </form>
+
+      <div id="adminResourcesChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
       <div class="admin-section-head">
         <div>

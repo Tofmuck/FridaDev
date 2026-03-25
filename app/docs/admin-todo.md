@@ -437,18 +437,18 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Construire une section UI dediee au bloc embeddings.
 - [x] Construire une section UI dediee au bloc base de donnees.
 - [x] Construire une section UI dediee au bloc services externes.
-- [ ] Construire une section UI dediee au bloc chemins / ressources externes.
-- [ ] Ajouter un affichage masque des secrets deja presents.
-- [ ] Ajouter un mecanisme explicite de remplacement des secrets sans re-affichage en clair.
-- [ ] Ajouter un etat de chargement par section.
-- [ ] Ajouter un etat d'erreur par section.
-- [ ] Ajouter un etat "modifications non sauvegardees" par section.
-- [ ] Ajouter un bouton d'enregistrement par section.
-- [ ] Ajouter un retour de validation lisible par champ en cas d'erreur backend.
-- [ ] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`).
+- [x] Construire une section UI dediee au bloc chemins / ressources externes.
+- [x] Ajouter un affichage masque des secrets deja presents.
+- [x] Ajouter un mecanisme explicite de remplacement des secrets sans re-affichage en clair.
+- [x] Ajouter un etat de chargement par section.
+- [x] Ajouter un etat d'erreur par section.
+- [x] Ajouter un etat "modifications non sauvegardees" par section.
+- [x] Ajouter un bouton d'enregistrement par section.
+- [x] Ajouter un retour de validation lisible par champ en cas d'erreur backend.
+- [x] Ajouter un indicateur visible de source de valeur (`env fallback` vs `db`).
 - [x] Ne pas ajouter de lien vers une UI admin legacy logs/restart.
 - [x] Verifier que le nouveau `admin.js` n'embarque pas de logique logs/restart par reflexe.
-- [ ] Prevoir un commit isole pour le nouveau frontend admin.
+- [x] Prevoir un commit isole pour le nouveau frontend admin.
 
 ### Phase 8 - Integration minimale avec le front principal
 

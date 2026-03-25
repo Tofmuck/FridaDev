@@ -273,6 +273,22 @@
   const servicesCheckFieldMap = {
     crawl4ai_token_runtime: "crawl4ai_token",
   };
+  const resourcesFieldSpecs = [
+    {
+      key: "llm_identity_path",
+      label: "LLM identity path",
+      hint: "Chemin du fichier d'identite charge cote modele.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "user_identity_path",
+      label: "User identity path",
+      hint: "Chemin du fichier d'identite utilisateur.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+  ];
 
   const state = {
     mainModel: {
@@ -306,6 +322,12 @@
       draft: null,
     },
     services: {
+      loaded: false,
+      view: null,
+      baseline: null,
+      draft: null,
+    },
+    resources: {
       loaded: false,
       view: null,
       baseline: null,
@@ -386,6 +408,14 @@
     servicesCrawl4aiTokenMask: document.getElementById("adminServicesCrawl4aiTokenMask"),
     servicesCrawl4aiTokenReplace: document.getElementById("adminServicesCrawl4aiTokenReplace"),
     servicesChecks: document.getElementById("adminServicesChecks"),
+    resourcesForm: document.getElementById("adminResourcesForm"),
+    resourcesFields: document.getElementById("adminResourcesFields"),
+    resourcesStatus: document.getElementById("adminResourcesStatus"),
+    resourcesSave: document.getElementById("adminResourcesSave"),
+    resourcesValidate: document.getElementById("adminResourcesValidate"),
+    resourcesDirty: document.getElementById("adminResourcesDirty"),
+    resourcesSource: document.getElementById("adminResourcesSource"),
+    resourcesChecks: document.getElementById("adminResourcesChecks"),
   };
 
   const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
@@ -509,6 +539,13 @@
     draft.crawl4ai_token = "";
     return draft;
   };
+  const emptyResourcesDraft = () => {
+    const draft = {};
+    resourcesFieldSpecs.forEach((spec) => {
+      draft[spec.key] = "";
+    });
+    return draft;
+  };
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -528,6 +565,9 @@
   const servicesFieldElement = (field) => document.querySelector(`[data-services-field="${field}"]`);
   const servicesFieldInput = (field) => document.getElementById(`adminServices-${field}`);
   const servicesErrorElement = (field) => document.getElementById(`adminServicesFieldError-${field}`);
+  const resourcesFieldElement = (field) => document.querySelector(`[data-resources-field="${field}"]`);
+  const resourcesFieldInput = (field) => document.getElementById(`adminResources-${field}`);
+  const resourcesErrorElement = (field) => document.getElementById(`adminResourcesFieldError-${field}`);
 
   const renderCheckList = (target, checks = []) => {
     if (!target) return;
@@ -737,6 +777,9 @@
   };
   const renderServicesChecks = (checks = []) => {
     renderCheckList(elements.servicesChecks, checks);
+  };
+  const renderResourcesChecks = (checks = []) => {
+    renderCheckList(elements.resourcesChecks, checks);
   };
 
   const ensureMainModelFieldSkeleton = () => {
@@ -1045,6 +1088,57 @@
 
     elements.servicesFields.appendChild(fragment);
   };
+  const ensureResourcesFieldSkeleton = () => {
+    if (!elements.resourcesFields || elements.resourcesFields.children.length > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    resourcesFieldSpecs.forEach((spec) => {
+      const field = document.createElement("label");
+      field.className = "admin-field";
+      field.dataset.resourcesField = spec.key;
+      field.dataset.dirty = "false";
+      field.setAttribute("for", `adminResources-${spec.key}`);
+
+      const label = document.createElement("span");
+      label.textContent = spec.label;
+
+      const input = document.createElement("input");
+      input.id = `adminResources-${spec.key}`;
+      input.name = spec.key;
+      input.type = spec.inputType;
+      input.autocomplete = spec.autocomplete || "off";
+      if (spec.step) input.step = spec.step;
+      if (spec.min) input.min = spec.min;
+      if (spec.max) input.max = spec.max;
+
+      const meta = document.createElement("div");
+      meta.className = "admin-field-meta";
+
+      const hint = document.createElement("small");
+      hint.textContent = spec.hint;
+
+      const source = document.createElement("span");
+      source.id = `adminResourcesSource-${spec.key}`;
+      source.className = "admin-field-source";
+      source.textContent = "Source: chargement";
+
+      meta.appendChild(hint);
+      meta.appendChild(source);
+
+      const error = document.createElement("p");
+      error.id = `adminResourcesFieldError-${spec.key}`;
+      error.className = "admin-field-error";
+      error.hidden = true;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(meta);
+      field.appendChild(error);
+      fragment.appendChild(field);
+    });
+
+    elements.resourcesFields.appendChild(fragment);
+  };
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -1090,6 +1184,13 @@
       draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
     });
     draft.crawl4ai_token = "";
+    return draft;
+  };
+  const buildResourcesDraftFromView = (view) => {
+    const draft = {};
+    resourcesFieldSpecs.forEach((spec) => {
+      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
+    });
     return draft;
   };
 
@@ -1283,6 +1384,27 @@
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
   };
+  const renderResourcesMeta = () => {
+    const view = state.resources.view;
+    if (!view) {
+      if (elements.resourcesSource) elements.resourcesSource.textContent = "Section: indisponible";
+      resourcesFieldSpecs.forEach((spec) => {
+        const source = document.getElementById(`adminResourcesSource-${spec.key}`);
+        if (source) source.textContent = "Source: indisponible";
+      });
+      return;
+    }
+
+    if (elements.resourcesSource) {
+      elements.resourcesSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
+    }
+
+    resourcesFieldSpecs.forEach((spec) => {
+      const source = document.getElementById(`adminResourcesSource-${spec.key}`);
+      if (!source) return;
+      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
+    });
+  };
 
   const buildMainModelPatchPayload = () => {
     return buildSectionPatchPayload({
@@ -1358,6 +1480,16 @@
       secretKey: "crawl4ai_token",
     });
   };
+  const updateResourcesDirtyChip = () => {
+    updateSectionDirtyChip({
+      baseline: state.resources.baseline,
+      draft: state.resources.draft,
+      emptyDraft: emptyResourcesDraft,
+      fieldSpecs: resourcesFieldSpecs,
+      fieldElement: resourcesFieldElement,
+      dirtyChip: elements.resourcesDirty,
+    });
+  };
 
   const applyMainModelDraftToForm = () => {
     applySectionDraftToForm({
@@ -1419,6 +1551,15 @@
       secretInput: elements.servicesCrawl4aiTokenReplace,
       secretKey: "crawl4ai_token",
       onDirtyUpdate: updateServicesDirtyChip,
+    });
+  };
+  const applyResourcesDraftToForm = () => {
+    applySectionDraftToForm({
+      draft: state.resources.draft,
+      emptyDraft: emptyResourcesDraft,
+      fieldSpecs: resourcesFieldSpecs,
+      inputForField: resourcesFieldInput,
+      onDirtyUpdate: updateResourcesDirtyChip,
     });
   };
 
@@ -1510,6 +1651,20 @@
     applyServicesDraftToForm();
     renderServicesChecks([]);
   };
+  const applyResourcesView = (responsePayload) => {
+    state.resources.loaded = true;
+    state.resources.view = {
+      payload: responsePayload.payload || {},
+      source: responsePayload.source || "env",
+      source_reason: responsePayload.source_reason || "unknown",
+    };
+    state.resources.baseline = buildResourcesDraftFromView(state.resources.view);
+    state.resources.draft = { ...state.resources.baseline };
+    clearResourcesFieldErrors();
+    renderResourcesMeta();
+    applyResourcesDraftToForm();
+    renderResourcesChecks([]);
+  };
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -1582,6 +1737,18 @@
     renderServicesChecks([]);
     setServicesControlsDisabled(true);
     setInlineStatus(elements.servicesStatus, message, stateName);
+  };
+  const resetResourcesSurface = (message, stateName = "error") => {
+    state.resources.loaded = false;
+    state.resources.view = null;
+    state.resources.baseline = emptyResourcesDraft();
+    state.resources.draft = emptyResourcesDraft();
+    clearResourcesFieldErrors();
+    renderResourcesMeta();
+    applyResourcesDraftToForm();
+    renderResourcesChecks([]);
+    setResourcesControlsDisabled(true);
+    setInlineStatus(elements.resourcesStatus, message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -1700,6 +1867,24 @@
     servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
     setServicesFieldError("crawl4ai_token", "");
   };
+  const setResourcesFieldError = (field, message = "") => {
+    const host = resourcesFieldElement(field);
+    const errorElement = resourcesErrorElement(field);
+    if (host) {
+      host.dataset.error = message ? "true" : "false";
+    }
+    if (!errorElement) return;
+    if (message) {
+      errorElement.hidden = false;
+      errorElement.textContent = message;
+      return;
+    }
+    errorElement.hidden = true;
+    errorElement.textContent = "";
+  };
+  const clearResourcesFieldErrors = () => {
+    resourcesFieldSpecs.forEach((spec) => setResourcesFieldError(spec.key, ""));
+  };
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
@@ -1723,6 +1908,11 @@
   const applyServicesLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setServicesFieldError(field, message);
+    });
+  };
+  const applyResourcesLocalFieldErrors = (errors) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setResourcesFieldError(field, message);
     });
   };
   const applyArbiterBackendFieldError = (message) => {
@@ -1774,6 +1964,14 @@
     servicesFieldSpecs.forEach((spec) => {
       if (message.includes(`services.${spec.key}`)) {
         setServicesFieldError(spec.key, message);
+      }
+    });
+  };
+  const applyResourcesBackendFieldError = (message) => {
+    if (!message) return;
+    resourcesFieldSpecs.forEach((spec) => {
+      if (message.includes(`resources.${spec.key}`)) {
+        setResourcesFieldError(spec.key, message);
       }
     });
   };
@@ -1835,6 +2033,17 @@
       disabled,
     );
   };
+  const setResourcesControlsDisabled = (disabled) => {
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.resourcesSave,
+        validateButton: elements.resourcesValidate,
+        fieldSpecs: resourcesFieldSpecs,
+        inputForField: resourcesFieldInput,
+      },
+      disabled,
+    );
+  };
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -1888,6 +2097,16 @@
     });
     return errors;
   };
+  const collectResourcesFailedChecks = (checks) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      if (!errors[check.name]) {
+        errors[check.name] = check.detail;
+      }
+    });
+    return errors;
+  };
   const buildArbiterPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.arbiterModel.baseline,
@@ -1932,6 +2151,14 @@
       fieldSpecs: servicesFieldSpecs,
       integerFields: ["searxng_results", "crawl4ai_top_n", "crawl4ai_max_chars"],
       secretKey: "crawl4ai_token",
+    });
+  };
+  const buildResourcesPatchPayload = () => {
+    return buildSectionPatchPayload({
+      baseline: state.resources.baseline,
+      draft: state.resources.draft,
+      emptyDraft: emptyResourcesDraft,
+      fieldSpecs: resourcesFieldSpecs,
     });
   };
   const runArbiterValidation = async (payload) => {
@@ -2159,6 +2386,51 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
+  const runResourcesValidation = async (payload) => {
+    clearResourcesFieldErrors();
+    renderResourcesChecks([]);
+    setResourcesControlsDisabled(true);
+    setInlineStatus(elements.resourcesStatus, "Validation technique en cours...", "info");
+
+    try {
+      const body = payload && Object.keys(payload).length ? { payload } : {};
+      const response = await adminFetch("/api/admin/settings/resources/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.resourcesStatus, "Acces admin requis pour verifier la section.", "error");
+        return { ok: false };
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyResourcesBackendFieldError(data.error || `Validation impossible (${response.status}).`);
+        setInlineStatus(elements.resourcesStatus, data.error || `Validation impossible (${response.status}).`, "error");
+        return { ok: false };
+      }
+
+      const checks = Array.isArray(data.checks) ? data.checks : [];
+      renderResourcesChecks(checks);
+      const failedChecks = collectResourcesFailedChecks(checks);
+      applyResourcesLocalFieldErrors(failedChecks);
+
+      if (!data.valid) {
+        setInlineStatus(elements.resourcesStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
+        return { ok: false };
+      }
+
+      setInlineStatus(elements.resourcesStatus, "Validation technique OK.", "ok");
+      return { ok: true, data };
+    } catch (_error) {
+      setInlineStatus(elements.resourcesStatus, "Validation impossible pour le moment.", "error");
+      return { ok: false };
+    } finally {
+      setResourcesControlsDisabled(!state.resources.loaded);
+    }
+  };
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -2223,6 +2495,19 @@
     }
 
     await runServicesValidation(payload);
+  };
+  const validateResourcesSection = async () => {
+    const { payload, localErrors } = buildResourcesPatchPayload();
+    clearResourcesFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyResourcesLocalFieldErrors(localErrors);
+      renderResourcesChecks([]);
+      setInlineStatus(elements.resourcesStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
+      return;
+    }
+
+    await runResourcesValidation(payload);
   };
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
@@ -2509,6 +2794,63 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
+  const saveResourcesSection = async () => {
+    if (!state.resources.loaded) return;
+
+    const { payload, localErrors, dirtyCount } = buildResourcesPatchPayload();
+    clearResourcesFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyResourcesLocalFieldErrors(localErrors);
+      renderResourcesChecks([]);
+      setInlineStatus(elements.resourcesStatus, "Correction requise avant enregistrement.", "error");
+      return;
+    }
+
+    if (dirtyCount === 0) {
+      setInlineStatus(elements.resourcesStatus, "Aucune modification a enregistrer.", "info");
+      return;
+    }
+
+    const validation = await runResourcesValidation(payload);
+    if (!validation.ok) return;
+
+    setResourcesControlsDisabled(true);
+    setInlineStatus(elements.resourcesStatus, "Enregistrement du bloc ressources...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/resources", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updated_by: "admin_ui",
+          payload,
+        }),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.resourcesStatus, "Acces admin requis pour enregistrer la section.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyResourcesBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
+        setInlineStatus(elements.resourcesStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyResourcesView(data);
+      setResourcesControlsDisabled(false);
+      setInlineStatus(elements.resourcesStatus, "Bloc ressources enregistre.", "ok");
+      banner("Bloc ressources enregistre.", "ok");
+      void loadRuntimeStatus();
+    } catch (_error) {
+      setInlineStatus(elements.resourcesStatus, "Enregistrement impossible pour le moment.", "error");
+    } finally {
+      setResourcesControlsDisabled(!state.resources.loaded);
+    }
+  };
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -2637,6 +2979,32 @@
       setInlineStatus(elements.servicesStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
     } catch (_error) {
       resetServicesSurface("Lecture impossible du bloc services externes pour le moment.", "error");
+    }
+  };
+  const loadResourcesSection = async () => {
+    ensureResourcesFieldSkeleton();
+    clearResourcesFieldErrors();
+    setResourcesControlsDisabled(true);
+    setInlineStatus(elements.resourcesStatus, "Chargement du bloc ressources...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/resources");
+      if (response.status === 401) {
+        resetResourcesSurface("Acces admin requis pour charger le bloc ressources.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        resetResourcesSurface(data.error || `Lecture impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyResourcesView(data);
+      setResourcesControlsDisabled(false);
+      setInlineStatus(elements.resourcesStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
+    } catch (_error) {
+      resetResourcesSurface("Lecture impossible du bloc ressources pour le moment.", "error");
     }
   };
 
@@ -2870,6 +3238,12 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
+      if (section.key === "resources") {
+        const detailChip = document.createElement("span");
+        detailChip.className = "admin-chip";
+        detailChip.textContent = "Bloc detaille actif";
+        meta.appendChild(detailChip);
+      }
 
       if (status.bootstrap?.database_dsn_mode && section.key === "database") {
         const bootstrapChip = document.createElement("span");
@@ -2933,6 +3307,7 @@
       loadEmbeddingSection(),
       loadDatabaseSection(),
       loadServicesSection(),
+      loadResourcesSection(),
     ]);
   };
 
@@ -3082,6 +3457,22 @@
   elements.servicesSave?.addEventListener("click", () => {
     void saveServicesSection();
   });
+  elements.resourcesForm?.addEventListener("input", (event) => {
+    if (!state.resources.draft) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const fieldName = target.name;
+    if (!fieldName) return;
+    state.resources.draft[fieldName] = target.value;
+    setResourcesFieldError(fieldName, "");
+    updateResourcesDirtyChip();
+  });
+  elements.resourcesValidate?.addEventListener("click", () => {
+    void validateResourcesSection();
+  });
+  elements.resourcesSave?.addEventListener("click", () => {
+    void saveResourcesSection();
+  });
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
@@ -3089,6 +3480,7 @@
   ensureEmbeddingFieldSkeleton();
   ensureDatabaseFieldSkeleton();
   ensureServicesFieldSkeleton();
+  ensureResourcesFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = emptyArbiterModelDraft();
@@ -3101,6 +3493,8 @@
   state.database.draft = emptyDatabaseDraft();
   state.services.baseline = emptyServicesDraft();
   state.services.draft = emptyServicesDraft();
+  state.resources.baseline = emptyResourcesDraft();
+  state.resources.draft = emptyResourcesDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelChecks([]);
@@ -3119,12 +3513,16 @@
   renderServicesMeta();
   applyServicesDraftToForm();
   renderServicesChecks([]);
+  renderResourcesMeta();
+  applyResourcesDraftToForm();
+  renderResourcesChecks([]);
   setMainModelControlsDisabled(true);
   setArbiterControlsDisabled(true);
   setSummaryControlsDisabled(true);
   setEmbeddingControlsDisabled(true);
   setDatabaseControlsDisabled(true);
   setServicesControlsDisabled(true);
+  setResourcesControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),
