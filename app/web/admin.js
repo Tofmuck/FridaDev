@@ -382,6 +382,7 @@
     summaryModelValidate: document.getElementById("adminSummaryModelValidate"),
     summaryModelDirty: document.getElementById("adminSummaryModelDirty"),
     summaryModelSource: document.getElementById("adminSummaryModelSource"),
+    summaryModelReadonlyInfo: document.getElementById("adminSummaryModelReadonlyInfo"),
     summaryModelChecks: document.getElementById("adminSummaryModelChecks"),
     embeddingForm: document.getElementById("adminEmbeddingForm"),
     embeddingFields: document.getElementById("adminEmbeddingFields"),
@@ -841,6 +842,9 @@
   };
   const renderSummaryModelChecks = (checks = []) => {
     renderCheckList(elements.summaryModelChecks, checks);
+  };
+  const renderSummaryModelReadonlyInfo = () => {
+    renderReadonlyInfoCards(elements.summaryModelReadonlyInfo, state.summaryModel.view?.readonly_info || {});
   };
   const renderEmbeddingChecks = (checks = []) => {
     renderCheckList(elements.embeddingChecks, checks);
@@ -1674,6 +1678,7 @@
     state.summaryModel.loaded = true;
     state.summaryModel.view = {
       payload: responsePayload.payload || {},
+      readonly_info: responsePayload.readonly_info || {},
       source: responsePayload.source || "env",
       source_reason: responsePayload.source_reason || "unknown",
     };
@@ -1682,6 +1687,7 @@
     clearSummaryFieldErrors();
     renderSummaryModelMeta();
     applySummaryDraftToForm();
+    renderSummaryModelReadonlyInfo();
     renderSummaryModelChecks([]);
   };
   const applyEmbeddingView = (responsePayload) => {
@@ -1778,6 +1784,7 @@
     clearSummaryFieldErrors();
     renderSummaryModelMeta();
     applySummaryDraftToForm();
+    renderSummaryModelReadonlyInfo();
     renderSummaryModelChecks([]);
     setSummaryControlsDisabled(true);
     setInlineStatus(elements.summaryModelStatus, message, stateName);
@@ -3585,6 +3592,7 @@
   renderArbiterModelChecks([]);
   renderSummaryModelMeta();
   applySummaryDraftToForm();
+  renderSummaryModelReadonlyInfo();
   renderSummaryModelChecks([]);
   renderEmbeddingMeta();
   applyEmbeddingDraftToForm();
