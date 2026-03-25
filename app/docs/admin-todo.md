@@ -565,7 +565,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 13 - Audit d'interpretabilite du pipeline principal
 
-- [ ] Cadrer explicitement que cet audit porte sur le pipeline du modele principal hors details internes de l'arbitre.
+- [ ] Cadrer explicitement que cet audit porte sur le pipeline du modele principal hors details internes de l'arbitre, qui restent hors perimetre de cette phase.
 - [ ] Produire dans l'admin un audit `clair / ambigu / absent` centre sur ce que le modele principal voit reellement et sur ce qu'il sait explicitement interpreter.
 - [ ] Classer comme `clair` dans cet audit :
   - le `SYSTEM_PROMPT` de base
@@ -612,9 +612,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Exposer distinctement ce qui est toujours present, ce qui est conditionnel, et ce qui n'est jamais visible par le modele principal.
 - [ ] Exposer dans l'admin la liste des informations aujourd'hui non visibles par le modele principal mais souvent supposees a tort comme presentes.
 - [ ] Y inclure explicitement :
-  - les decisions d'arbitre brutes
-  - les scores internes de l'arbitre
   - les sorties brutes de l'identity extractor
+  - les evenements internes de pipeline non injectes au prompt final
 - [ ] Exposer un apercu read-only du `prompt final compose` du modele principal, decoupe par blocs, sans ouvrir de mode edition.
 - [ ] Exposer dans cet apercu les marqueurs reels utilises en runtime (`[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
 - [ ] Exposer les budgets et limites qui structurent ce pipeline, au minimum :
