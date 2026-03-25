@@ -466,12 +466,12 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 9 - Validation automatique et non-regression
 
-- [ ] Mettre a jour `app/minimal_validation.py` pour couvrir le nouvel admin.
-- [ ] Mettre a jour `app/minimal_validation.py` pour ne plus attendre l'UI legacy logs/restart dans `admin.html` / `admin.js`.
-- [ ] Ajouter un test de presence des nouveaux assets `admin.html` et `admin.js`.
-- [ ] Ajouter un test garantissant que les assets `admin-old.html` et `admin-old.js` ne sont pas introduits.
-- [ ] Ajouter un smoke test `GET /admin`.
-- [ ] Ajouter un smoke test garantissant que `/admin-old` n'est pas expose.
+- [x] Mettre a jour `app/minimal_validation.py` pour couvrir le nouvel admin.
+- [x] Mettre a jour `app/minimal_validation.py` pour ne plus attendre l'UI legacy logs/restart dans `admin.html` / `admin.js`.
+- [x] Ajouter un test de presence des nouveaux assets `admin.html` et `admin.js`.
+- [x] Ajouter un test garantissant que les assets `admin-old.html` et `admin-old.js` ne sont pas introduits.
+- [x] Ajouter un smoke test `GET /admin`.
+- [x] Ajouter un smoke test garantissant que `/admin-old` n'est pas expose.
 - [ ] Ajouter un smoke test de lecture agregee de la configuration admin.
 - [ ] Ajouter un smoke test d'update valide sur une section non secrete.
 - [ ] Ajouter un smoke test d'update invalide pour verifier la validation backend.

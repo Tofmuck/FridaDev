@@ -323,12 +323,19 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_js": web_dir / "admin.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
+    forbidden_files = {
+        "admin_old_html": web_dir / "admin-old.html",
+        "admin_old_js": web_dir / "admin-old.js",
+    }
 
     for name, path in required_files.items():
         if not path.exists():
             raise RuntimeError(f"asset UI absent: {name} -> {path}")
         if path.stat().st_size <= 0:
             raise RuntimeError(f"asset UI vide: {path}")
+    for name, path in forbidden_files.items():
+        if path.exists():
+            raise RuntimeError(f"asset UI legacy inattendu: {name} -> {path}")
 
     index_html = required_files["index_html"].read_text(encoding="utf-8")
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
@@ -389,6 +396,16 @@ def _check_ui_assets() -> Dict[str, Any]:
     for marker in admin_markers:
         if marker not in admin_html:
             raise RuntimeError(f"marker admin.html manquant: {marker}")
+    admin_html_forbidden_markers = [
+        'id="rows"',
+        'id="restart"',
+        "admin-old.html",
+        "admin-old.js",
+        "/admin-old",
+    ]
+    for marker in admin_html_forbidden_markers:
+        if marker in admin_html:
+            raise RuntimeError(f"marker admin.html legacy inattendu: {marker}")
 
     admin_js_markers = [
         "/api/admin/settings/status",
@@ -423,12 +440,25 @@ def _check_ui_assets() -> Dict[str, Any]:
     for marker in admin_js_markers:
         if marker not in admin_js:
             raise RuntimeError(f"marker admin.js manquant: {marker}")
+    admin_js_forbidden_markers = [
+        "/api/admin/logs",
+        "/api/admin/restart",
+        "loadLogs",
+        "restartService",
+        "admin-old",
+    ]
+    for marker in admin_js_forbidden_markers:
+        if marker in admin_js:
+            raise RuntimeError(f"marker admin.js legacy inattendu: {marker}")
 
     return {
         "files": {name: str(path) for name, path in required_files.items()},
+        "legacy_admin_assets_absent": {name: str(path) for name, path in forbidden_files.items()},
         "index_markers": index_markers,
         "admin_markers": admin_markers,
+        "admin_html_forbidden_markers": admin_html_forbidden_markers,
         "admin_js_markers": admin_js_markers,
+        "admin_js_forbidden_markers": admin_js_forbidden_markers,
     }
 
 
@@ -440,6 +470,10 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     admin = _http_json("GET", f"{base_url}/admin")
     if admin.status_code != 200 or "Admin de configuration" not in admin.text:
         raise RuntimeError("admin invalide")
+
+    admin_old = _http_json("GET", f"{base_url}/admin-old")
+    if admin_old.status_code != 404:
+        raise RuntimeError("admin-old devrait etre absent (404)")
 
     conv_list = _http_json("GET", f"{base_url}/api/conversations?limit=1")
     conv_payload = conv_list.json()
@@ -466,6 +500,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     return {
         "root_status": root.status_code,
         "admin_status": admin.status_code,
+        "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
