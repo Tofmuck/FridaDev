@@ -13,7 +13,7 @@
     },
     {
       key: "summary_model",
-      title: "Modele resumieur",
+      title: "Modele resumeur",
       description: "Synthese conversationnelle et reglages de resume.",
     },
     {
@@ -82,7 +82,7 @@
     },
     {
       key: "title_resumer",
-      label: "Titre resumieur",
+      label: "Titre resumeur",
       hint: "Titre du flux resume cote provider.",
       inputType: "text",
       autocomplete: "off",
@@ -160,7 +160,7 @@
     {
       key: "temperature",
       label: "Temperature",
-      hint: "Echantillonnage propre au resumieur.",
+      hint: "Echantillonnage propre au resumeur.",
       inputType: "number",
       step: "0.1",
       min: "0",
@@ -170,7 +170,7 @@
     {
       key: "top_p",
       label: "Top p",
-      hint: "Coupe nucleus du resumieur.",
+      hint: "Coupe nucleus du resumeur.",
       inputType: "number",
       step: "0.05",
       min: "0.01",
@@ -2588,7 +2588,7 @@
     if (!validation.ok) return;
 
     setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, "Enregistrement du modele resumieur...", "info");
+    setInlineStatus(elements.summaryModelStatus, "Enregistrement du modele resumeur...", "info");
 
     try {
       const response = await adminFetch("/api/admin/settings/summary-model", {
@@ -2614,8 +2614,8 @@
 
       applySummaryModelView(data);
       setSummaryControlsDisabled(false);
-      setInlineStatus(elements.summaryModelStatus, "Modele resumieur enregistre.", "ok");
-      banner("Modele resumieur enregistre.", "ok");
+      setInlineStatus(elements.summaryModelStatus, "Modele resumeur enregistre.", "ok");
+      banner("Modele resumeur enregistre.", "ok");
       void loadRuntimeStatus();
     } catch (_error) {
       setInlineStatus(elements.summaryModelStatus, "Enregistrement impossible pour le moment.", "error");
@@ -2881,12 +2881,12 @@
     ensureSummaryModelFieldSkeleton();
     clearSummaryFieldErrors();
     setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, "Chargement du modele resumieur...", "info");
+    setInlineStatus(elements.summaryModelStatus, "Chargement du modele resumeur...", "info");
 
     try {
       const response = await adminFetch("/api/admin/settings/summary-model");
       if (response.status === 401) {
-        resetSummarySurface("Acces admin requis pour charger le modele resumieur.", "error");
+        resetSummarySurface("Acces admin requis pour charger le modele resumeur.", "error");
         return;
       }
 
@@ -2900,7 +2900,7 @@
       setSummaryControlsDisabled(false);
       setInlineStatus(elements.summaryModelStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
     } catch (_error) {
-      resetSummarySurface("Lecture impossible du modele resumieur pour le moment.", "error");
+      resetSummarySurface("Lecture impossible du modele resumeur pour le moment.", "error");
     }
   };
   const loadEmbeddingSection = async () => {

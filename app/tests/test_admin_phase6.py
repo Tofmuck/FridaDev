@@ -57,7 +57,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("Le backend n'accepte que replace_value pour un secret.", html)
         self.assertIn("Modele arbitre", html)
         self.assertIn("Bloc court et fonctionnel", html)
-        self.assertIn("Modele resumieur", html)
+        self.assertIn("Modele resumeur", html)
         self.assertIn("Bloc de synthese conversationnelle", html)
         self.assertIn("Embeddings", html)
         self.assertIn("Bloc memoire vectorielle", html)

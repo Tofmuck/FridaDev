@@ -114,7 +114,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Bloc modele arbitre aujourd'hui en env via `app/config.py` :
   - `ARBITER_MODEL`
   - `ARBITER_TIMEOUT_S`
-- Bloc modele resumieur aujourd'hui en env via `app/config.py` :
+- Bloc modele resumeur aujourd'hui en env via `app/config.py` :
   - `SUMMARY_MODEL`
 - Bloc embeddings aujourd'hui en env via `app/config.py` :
   - `EMBED_BASE_URL`
@@ -322,7 +322,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Remplacer la lecture du modele principal utilisee pour le comptage de tokens dans `app/server.py`.
 - [x] Remplacer la lecture du modele principal utilisee pour le comptage de tokens dans `app/identity/identity.py`.
 - [x] Remplacer la lecture du modele arbitre dans `app/memory/arbiter.py`.
-- [x] Remplacer la lecture du modele resumieur dans `app/memory/summarizer.py`.
+- [x] Remplacer la lecture du modele resumeur dans `app/memory/summarizer.py`.
 - [x] Remplacer la lecture du bloc embeddings dans `app/memory/memory_store.py`.
 - [x] Remplacer la lecture du bloc services externes dans `app/tools/web_search.py`.
 - [x] Remplacer la lecture des chemins / ressources externes dans `app/identity/identity.py`.
@@ -432,7 +432,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Si la reutilisation directe n'est pas propre, creer une derivation CSS minimale et justifiee au lieu d'un nouveau bloc inline massif.
 - [x] Construire une section UI dediee au modele principal.
 - [x] Construire une section UI dediee au modele arbitre.
-- [x] Construire une section UI dediee au modele resumieur.
+- [x] Construire une section UI dediee au modele resumeur.
 - [x] Construire une section UI dediee au bloc embeddings.
 - [x] Construire une section UI dediee au bloc base de donnees.
 - [x] Construire une section UI dediee au bloc services externes.
