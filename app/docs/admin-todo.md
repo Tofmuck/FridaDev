@@ -563,72 +563,57 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
 - [x] Prevoir un commit isole pour cette extension.
 
-### Phase 13 - Audit d'interpretabilite du pipeline principal
+### Phase 13 - Prompt hermeneutique du modele principal
 
-- [ ] Cadrer explicitement que cet audit porte sur le pipeline du modele principal hors details internes de l'arbitre, qui restent hors perimetre de cette phase.
-- [ ] Produire dans l'admin un audit `clair / ambigu / absent` centre sur ce que le modele principal voit reellement et sur ce qu'il sait explicitement interpreter.
-- [ ] Classer comme `clair` dans cet audit :
-  - le `SYSTEM_PROMPT` de base
-  - la reference temporelle globale (`Nous sommes le...`)
-  - les labels Delta-T ajoutes aux messages (`[il y a ...]`)
+- [ ] Cadrer explicitement que cette phase ne traite pas des logs runtime, ni du deroule chronologique des injections effectives, ni d'un audit post-hoc requete par requete.
+- [ ] Cadrer explicitement que cette phase traite d'une couche fixe d'interpretation placee juste sous le `SYSTEM_PROMPT` du modele principal.
+- [ ] Nommer explicitement cette couche `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
+- [ ] Definir `hermeneutical_prompt` comme un bloc concatene, exhaustif et stable qui explique au modele principal comment interpreter toutes les briques susceptibles d'apparaitre ensuite dans le prompt augmente.
+- [ ] Exiger que `hermeneutical_prompt` soit lu comme un contrat d'interpretation et non comme un simple commentaire documentaire.
+- [ ] Exiger que `hermeneutical_prompt` explicite, pour chaque brique du prompt augmente, au minimum :
+  - la balise ou la forme visible par le modele
+  - la fonction de cette brique
+  - la maniere dont le modele doit l'interpreter
+  - la maniere dont le modele doit la ponderer relativement aux autres briques
+  - les limites de fiabilite a garder en tete
+- [ ] Construire une premiere version exhaustive de `hermeneutical_prompt` pour le modele principal, meme si certaines parties doivent d'abord etre formulees de maniere provisoire.
+- [ ] Y couvrir explicitement, au minimum :
+  - le repere temporel global (`Nous sommes le...`)
+  - les labels Delta-T (`[il y a ...]`)
   - les marqueurs de silence (`[— silence de X —]`)
-  - le resume actif (`[Resume de la periode ...]`)
-  - les souvenirs pertinents (`[Memoire — souvenirs pertinents]`)
-  - le contexte du souvenir (`[Contexte du souvenir — resume ...]`)
-  - le contexte web injecte avant la question finale
-- [ ] Classer comme `ambigu` dans cet audit :
-  - le bloc identites (`[IDENTITE DU MODELE]`, `[IDENTITE DE L'UTILISATEUR]`)
-  - les identites dynamiques avec `stability`, `recurrence` et `confidence`
-  - les `Indices contextuels recents`
-  - la signification operative du score `confidence` a l'interieur de ces indices
-- [ ] Classer comme `absent` dans cet audit :
-  - une hierarchie explicite entre resume actif, souvenirs pertinents, contexte web et question courante
-  - une hierarchie explicite entre identite statique et identite dynamique
-  - une regle explicite indiquant comment ponderer `confidence`
-  - une provenance explicite des blocs injectes et de leur niveau de fiabilite
-- [ ] Exposer dans l'admin, pour `main_model`, un bloc `Pipeline effectif vu par le modele` listant l'ordre exact des briques injectees.
-- [ ] Exposer dans ce bloc l'ordre exact de construction du prompt final, au minimum :
-  - `SYSTEM_PROMPT` de base
-  - augmentation temporelle
-  - bloc identites
-  - resume actif si present
-  - indices contextuels recents si presents
-  - contexte du souvenir si present
-  - souvenirs pertinents si presents
-  - contexte web si present
-  - message utilisateur final
-- [ ] Exposer pour chaque brique les colonnes minimales suivantes :
-  - `visible par le modele`
-  - `interpretation explicite par le modele`
-  - `statut audit` (`clair`, `ambigu`, `absent`)
-  - `source technique`
-  - `condition d'apparition`
-- [ ] Exposer pour chaque brique sa source technique concrete, sans imposer d'ouvrir le code, par exemple :
-  - `web/app.js`
-  - `server.py`
-  - `core/conv_store.py`
-  - `identity/identity.py`
-  - `tools/web_search.py`
-- [ ] Exposer distinctement ce qui est toujours present, ce qui est conditionnel, et ce qui n'est jamais visible par le modele principal.
-- [ ] Exposer dans l'admin la liste des informations aujourd'hui non visibles par le modele principal mais souvent supposees a tort comme presentes.
-- [ ] Y inclure explicitement :
+  - le bloc identites
+  - le resume actif
+  - les indices contextuels recents
+  - le contexte du souvenir
+  - les souvenirs pertinents
+  - le contexte web injecte
+  - le message utilisateur final
+- [ ] Exiger que `hermeneutical_prompt` dise explicitement ce qui est prioritaire ou non entre :
+  - question courante
+  - contexte web
+  - souvenirs pertinents
+  - resume actif
+  - identites
+- [ ] Exiger que `hermeneutical_prompt` precise explicitement le statut du bloc identites, y compris la relation entre identite statique et identite dynamique.
+- [ ] Exiger que `hermeneutical_prompt` precise explicitement comment interpreter `stability`, `recurrence` et `confidence`, ou dise clairement que leur semantique reste encore provisoire.
+- [ ] Exiger que `hermeneutical_prompt` precise explicitement le statut des `Indices contextuels recents` : aide contextuelle, memoire faible, simple indice, ou autre formulation retenue.
+- [ ] Exiger que `hermeneutical_prompt` dise explicitement ce que le modele ne voit pas et ne doit donc pas supposer present.
+- [ ] Y inclure explicitement, au minimum :
   - les sorties brutes de l'identity extractor
   - les evenements internes de pipeline non injectes au prompt final
-- [ ] Exposer un apercu read-only du `prompt final compose` du modele principal, decoupe par blocs, sans ouvrir de mode edition.
-- [ ] Exposer dans cet apercu les marqueurs reels utilises en runtime (`[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
-- [ ] Exposer les budgets et limites qui structurent ce pipeline, au minimum :
-  - `FRIDA_MAX_TOKENS`
-  - `IDENTITY_MAX_TOKENS`
-  - `CONTEXT_HINTS_MAX_ITEMS`
-  - `CONTEXT_HINTS_MAX_TOKENS`
-  - `SUMMARY_TARGET_TOKENS`
-  - `SUMMARY_THRESHOLD_TOKENS`
-  - `SUMMARY_KEEP_TURNS`
-- [ ] Exposer les conditions runtime qui changent concretement le prompt final, au minimum :
-  - presence ou non d'un resume actif
-  - presence ou non de souvenirs pertinents
-  - presence ou non d'indices contextuels recents
-  - activation ou non de la recherche web
-- [ ] Ajouter des tests backend sur la surface d'audit et sur la presence du bloc `Pipeline effectif vu par le modele`.
-- [ ] Ajouter des tests frontend sur l'affichage `clair / ambigu / absent` et sur l'apercu read-only du prompt final.
-- [ ] Prevoir un commit isole pour cette phase d'audit et de transparence runtime.
+  - toute metadonnee interne non exposee textuellement au modele principal
+- [ ] Pour chaque point aujourd'hui flou, ambigu ou absent, documenter dans la phase 13 l'une des trois positions suivantes :
+  - deja explicite et conserve en l'etat
+  - insuffisant mais provisoirement acceptable
+  - manquant et devant etre ajoute a `hermeneutical_prompt`
+- [ ] Lorsqu'un element interpretatif manque completement, prevoir des maintenant une formulation candidate dans `hermeneutical_prompt`, meme si elle doit etre retravaillee ensuite.
+- [ ] Exposer dans l'admin, sous `SYSTEM_PROMPT`, un bloc distinct intitule `Hermeneutical Prompt`.
+- [ ] Exposer dans ce bloc la version complete, concatenee et read-only de `hermeneutical_prompt`, sans mode edition dans cette phase.
+- [ ] Exposer a cote, de maniere lisible, la liste des briques qu'il est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
+- [ ] Exposer distinctement, pour chaque brique, ce qui est deja correctement interpretable par le modele, ce qui reste flou, et ce qui doit encore etre explicite.
+- [ ] Exposer dans l'admin les balises et marqueurs reels utilises en runtime pour ces briques (`[Resume de la periode ...]`, `[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
+- [ ] Exposer dans l'admin, a titre informationnel, les sources techniques qui alimentent ce `hermeneutical_prompt`, sans imposer d'ouvrir le code.
+- [ ] Ajouter une surface backend read-only pour `hermeneutical_prompt` dans `main_model`, distincte du `SYSTEM_PROMPT` et distincte des futurs logs runtime.
+- [ ] Ajouter des tests backend sur la presence et la separation stricte entre `SYSTEM_PROMPT` et `hermeneutical_prompt`.
+- [ ] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt` et sur la lisibilite des balises documentees.
+- [ ] Prevoir un commit isole pour cette phase de formalisation hermeneutique.
