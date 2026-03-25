@@ -113,6 +113,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'You are a conversational memory arbiter.',
             data['sections']['arbiter_model']['readonly_info']['arbiter_prompt']['value'],
         )
+        self.assertEqual(
+            data['sections']['summary_model']['readonly_info']['summary_target_tokens']['value'],
+            runtime_settings.config.SUMMARY_TARGET_TOKENS,
+        )
+        self.assertIn(
+            'Tu es un assistant de synthèse.',
+            data['sections']['summary_model']['readonly_info']['system_prompt']['value'],
+        )
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
@@ -251,6 +259,22 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'summary_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-route')
         self.assertEqual(data['payload']['temperature']['value'], 0.3)
+        self.assertEqual(
+            data['readonly_info']['summary_target_tokens']['value'],
+            runtime_settings.config.SUMMARY_TARGET_TOKENS,
+        )
+        self.assertEqual(
+            data['readonly_info']['summary_threshold_tokens']['value'],
+            runtime_settings.config.SUMMARY_THRESHOLD_TOKENS,
+        )
+        self.assertEqual(
+            data['readonly_info']['summary_keep_turns']['value'],
+            runtime_settings.config.SUMMARY_KEEP_TURNS,
+        )
+        self.assertIn(
+            'Tu es un assistant de synthèse.',
+            data['readonly_info']['system_prompt']['value'],
+        )
 
     def test_get_admin_settings_embedding_returns_single_section_with_redacted_secret(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

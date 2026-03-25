@@ -542,7 +542,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - `ARBITER_PROMPT_PATH`
   - `IDENTITY_EXTRACTOR_PROMPT_PATH`
   - le contenu actuel des deux prompts
-- [ ] Exposer en lecture seule, dans la section `summary_model`, un bloc informationnel pour :
+- [x] Exposer en lecture seule, dans la section `summary_model`, un bloc informationnel pour :
   - `SUMMARY_TARGET_TOKENS`
   - `SUMMARY_THRESHOLD_TOKENS`
   - `SUMMARY_KEEP_TURNS`

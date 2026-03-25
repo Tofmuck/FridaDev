@@ -246,8 +246,26 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('You are a conversational memory arbiter.', readonly_info['arbiter_prompt']['value'])
         self.assertIn('You are an identity evidence extractor.', readonly_info['identity_extractor_prompt']['value'])
 
-    def test_get_section_readonly_info_other_sections_stays_empty_in_second_phase12_slice(self) -> None:
-        self.assertEqual(runtime_settings.get_section_readonly_info('summary_model'), {})
+    def test_get_section_readonly_info_summary_model_exposes_budgets_and_inline_prompt(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('summary_model')
+
+        self.assertEqual(readonly_info['summary_target_tokens']['label'], 'SUMMARY_TARGET_TOKENS')
+        self.assertEqual(readonly_info['summary_target_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
+        self.assertFalse(readonly_info['summary_target_tokens']['is_editable'])
+        self.assertEqual(readonly_info['summary_threshold_tokens']['label'], 'SUMMARY_THRESHOLD_TOKENS')
+        self.assertEqual(
+            readonly_info['summary_threshold_tokens']['value'],
+            config.SUMMARY_THRESHOLD_TOKENS,
+        )
+        self.assertEqual(readonly_info['summary_keep_turns']['label'], 'SUMMARY_KEEP_TURNS')
+        self.assertEqual(readonly_info['summary_keep_turns']['value'], config.SUMMARY_KEEP_TURNS)
+        self.assertFalse(readonly_info['summary_keep_turns']['is_editable'])
+        self.assertEqual(readonly_info['system_prompt']['label'], 'summary_system_prompt')
+        self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
+        self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
+
+    def test_get_section_readonly_info_other_sections_stays_empty_in_third_phase12_slice(self) -> None:
+        self.assertEqual(runtime_settings.get_section_readonly_info('services'), {})
 
     def test_build_env_seed_plan_skips_existing_sections(self) -> None:
         plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))

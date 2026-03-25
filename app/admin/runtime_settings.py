@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import ast
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
@@ -744,6 +745,33 @@ def _read_app_text_file(path_str: str) -> str:
     return source.strip()
 
 
+def _read_python_function_string_assignment(module_relpath: str, function_name: str, variable_name: str) -> str:
+    module_path = Path(__file__).resolve().parents[1] / module_relpath
+    try:
+        source = module_path.read_text(encoding='utf-8')
+        tree = ast.parse(source)
+    except (OSError, SyntaxError):
+        return ''
+
+    for node in tree.body:
+        if not isinstance(node, ast.FunctionDef) or node.name != function_name:
+            continue
+        for statement in node.body:
+            if not isinstance(statement, ast.Assign):
+                continue
+            if len(statement.targets) != 1:
+                continue
+            target = statement.targets[0]
+            if not isinstance(target, ast.Name) or target.id != variable_name:
+                continue
+            try:
+                value = ast.literal_eval(statement.value)
+            except (TypeError, ValueError):
+                return ''
+            return str(value).strip() if isinstance(value, str) else ''
+    return ''
+
+
 def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
@@ -798,6 +826,37 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
                 'value': _read_app_text_file(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
                 'is_editable': False,
                 'source': 'app_prompt_file',
+            },
+        }
+    if section == 'summary_model':
+        return {
+            'summary_target_tokens': {
+                'label': 'SUMMARY_TARGET_TOKENS',
+                'value': int(config.SUMMARY_TARGET_TOKENS),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'summary_threshold_tokens': {
+                'label': 'SUMMARY_THRESHOLD_TOKENS',
+                'value': int(config.SUMMARY_THRESHOLD_TOKENS),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'summary_keep_turns': {
+                'label': 'SUMMARY_KEEP_TURNS',
+                'value': int(config.SUMMARY_KEEP_TURNS),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'system_prompt': {
+                'label': 'summary_system_prompt',
+                'value': _read_python_function_string_assignment(
+                    'memory/summarizer.py',
+                    'summarize_conversation',
+                    'system',
+                ),
+                'is_editable': False,
+                'source': 'memory_summarizer_py',
             },
         }
     return {}
