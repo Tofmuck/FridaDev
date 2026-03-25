@@ -373,6 +373,7 @@
     arbiterModelValidate: document.getElementById("adminArbiterModelValidate"),
     arbiterModelDirty: document.getElementById("adminArbiterModelDirty"),
     arbiterModelSource: document.getElementById("adminArbiterModelSource"),
+    arbiterModelReadonlyInfo: document.getElementById("adminArbiterModelReadonlyInfo"),
     arbiterModelChecks: document.getElementById("adminArbiterModelChecks"),
     summaryModelForm: document.getElementById("adminSummaryModelForm"),
     summaryModelFields: document.getElementById("adminSummaryModelFields"),
@@ -834,6 +835,9 @@
   };
   const renderArbiterModelChecks = (checks = []) => {
     renderCheckList(elements.arbiterModelChecks, checks);
+  };
+  const renderArbiterModelReadonlyInfo = () => {
+    renderReadonlyInfoCards(elements.arbiterModelReadonlyInfo, state.arbiterModel.view?.readonly_info || {});
   };
   const renderSummaryModelChecks = (checks = []) => {
     renderCheckList(elements.summaryModelChecks, checks);
@@ -1654,6 +1658,7 @@
     state.arbiterModel.loaded = true;
     state.arbiterModel.view = {
       payload: responsePayload.payload || {},
+      readonly_info: responsePayload.readonly_info || {},
       source: responsePayload.source || "env",
       source_reason: responsePayload.source_reason || "unknown",
     };
@@ -1662,6 +1667,7 @@
     clearArbiterFieldErrors();
     renderArbiterModelMeta();
     applyArbiterDraftToForm();
+    renderArbiterModelReadonlyInfo();
     renderArbiterModelChecks([]);
   };
   const applySummaryModelView = (responsePayload) => {
@@ -1759,6 +1765,7 @@
     clearArbiterFieldErrors();
     renderArbiterModelMeta();
     applyArbiterDraftToForm();
+    renderArbiterModelReadonlyInfo();
     renderArbiterModelChecks([]);
     setArbiterControlsDisabled(true);
     setInlineStatus(elements.arbiterModelStatus, message, stateName);
@@ -3574,6 +3581,7 @@
   renderMainModelChecks([]);
   renderArbiterModelMeta();
   applyArbiterDraftToForm();
+  renderArbiterModelReadonlyInfo();
   renderArbiterModelChecks([]);
   renderSummaryModelMeta();
   applySummaryDraftToForm();
