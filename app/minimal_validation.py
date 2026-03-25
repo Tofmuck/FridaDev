@@ -471,6 +471,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="adminServicesValidate"',
         'id="adminServicesSave"',
         'id="adminServicesCrawl4aiTokenReplace"',
+        'id="adminServicesReadonlyInfo"',
         'id="adminServicesChecks"',
         'id="adminResourcesForm"',
         'id="adminResourcesValidate"',
@@ -524,6 +525,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminDatabaseDsnReplace",
         "adminServicesSave",
         "adminServicesCrawl4aiTokenReplace",
+        "adminServicesReadonlyInfo",
         "adminResourcesSave",
         "adminSectionGrid",
     ]

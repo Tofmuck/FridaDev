@@ -419,6 +419,7 @@
     servicesCrawl4aiTokenState: document.getElementById("adminServicesCrawl4aiTokenState"),
     servicesCrawl4aiTokenMask: document.getElementById("adminServicesCrawl4aiTokenMask"),
     servicesCrawl4aiTokenReplace: document.getElementById("adminServicesCrawl4aiTokenReplace"),
+    servicesReadonlyInfo: document.getElementById("adminServicesReadonlyInfo"),
     servicesChecks: document.getElementById("adminServicesChecks"),
     resourcesForm: document.getElementById("adminResourcesForm"),
     resourcesFields: document.getElementById("adminResourcesFields"),
@@ -854,6 +855,9 @@
   };
   const renderServicesChecks = (checks = []) => {
     renderCheckList(elements.servicesChecks, checks);
+  };
+  const renderServicesReadonlyInfo = () => {
+    renderReadonlyInfoCards(elements.servicesReadonlyInfo, state.services.view?.readonly_info || {});
   };
   const renderResourcesChecks = (checks = []) => {
     renderCheckList(elements.resourcesChecks, checks);
@@ -1724,6 +1728,7 @@
     state.services.loaded = true;
     state.services.view = {
       payload: responsePayload.payload || {},
+      readonly_info: responsePayload.readonly_info || {},
       secret_sources: responsePayload.secret_sources || {},
       source: responsePayload.source || "env",
       source_reason: responsePayload.source_reason || "unknown",
@@ -1733,6 +1738,7 @@
     clearServicesFieldErrors();
     renderServicesMeta();
     applyServicesDraftToForm();
+    renderServicesReadonlyInfo();
     renderServicesChecks([]);
   };
   const applyResourcesView = (responsePayload) => {
@@ -1821,6 +1827,7 @@
     clearServicesFieldErrors();
     renderServicesMeta();
     applyServicesDraftToForm();
+    renderServicesReadonlyInfo();
     renderServicesChecks([]);
     setServicesControlsDisabled(true);
     setInlineStatus(elements.servicesStatus, message, stateName);
@@ -3602,6 +3609,7 @@
   renderDatabaseChecks([]);
   renderServicesMeta();
   applyServicesDraftToForm();
+  renderServicesReadonlyInfo();
   renderServicesChecks([]);
   renderResourcesMeta();
   applyResourcesDraftToForm();
