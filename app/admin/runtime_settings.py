@@ -136,6 +136,7 @@ SECTION_SPECS: Dict[str, SectionSpec] = {
             FieldSpec('title_resumer', 'text', env_var='OPENROUTER_TITLE_RESUMER'),
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.4),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
+            FieldSpec('response_max_tokens', 'int', seed_from_env=False, seed_default=1500),
         ),
     ),
     'arbiter_model': SectionSpec(
@@ -327,6 +328,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'title_resumer'): config.OR_TITLE_RESUMER,
         ('main_model', 'temperature'): 0.4,
         ('main_model', 'top_p'): 1.0,
+        ('main_model', 'response_max_tokens'): 1500,
         ('arbiter_model', 'model'): config.ARBITER_MODEL,
         ('arbiter_model', 'temperature'): 0.0,
         ('arbiter_model', 'top_p'): 1.0,
@@ -413,6 +415,25 @@ def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionS
 
 def build_db_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
     return tuple(build_db_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
+
+
+def _merge_missing_db_seed_fields(
+    section: str,
+    current_payload: Mapping[str, Any],
+) -> Tuple[Dict[str, Dict[str, Any]], Tuple[str, ...]]:
+    normalized_current = normalize_stored_payload(section, current_payload, default_origin='db')
+    seeded_payload = build_db_seed_bundle(section).payload
+    merged_payload = dict(normalized_current)
+    added_fields: list[str] = []
+
+    for field_name, field_payload in seeded_payload.items():
+        spec = get_field_spec(section, field_name)
+        if spec.is_secret or field_name in merged_payload:
+            continue
+        merged_payload[field_name] = dict(field_payload)
+        added_fields.append(field_name)
+
+    return merged_payload, tuple(added_fields)
 
 
 def _backfill_env_secret_value(section: str, field: str) -> str:
@@ -573,18 +594,24 @@ def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_b
 
     inserted_sections: list[str] = []
     inserted_fields: list[str] = []
+    updated_sections: list[str] = []
+    updated_fields: list[str] = []
 
     try:
         with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     '''
-                    SELECT section
+                    SELECT section, payload
                     FROM runtime_settings
                     ORDER BY section
                     '''
                 )
-                existing_sections = tuple(str(row[0]) for row in cur.fetchall())
+                existing_rows = {
+                    str(section): normalize_stored_payload(str(section), payload, default_origin='db')
+                    for section, payload in cur.fetchall()
+                }
+                existing_sections = tuple(existing_rows.keys())
                 for bundle in build_db_seed_plan(existing_sections):
                     cur.execute(
                         '''
@@ -608,16 +635,49 @@ def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_b
                     )
                     inserted_sections.append(bundle.section)
                     inserted_fields.extend(f'{bundle.section}.{field_name}' for field_name in bundle.payload.keys())
+                for section, current_payload in existing_rows.items():
+                    next_payload, missing_fields = _merge_missing_db_seed_fields(section, current_payload)
+                    if not missing_fields:
+                        continue
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
+                        VALUES (%s, 'v1', %s, %s::jsonb)
+                        ON CONFLICT (section) DO UPDATE
+                        SET schema_version = EXCLUDED.schema_version,
+                            updated_at = now(),
+                            updated_by = EXCLUDED.updated_by,
+                            payload = EXCLUDED.payload
+                        ''',
+                        (section, actor, json.dumps(next_payload)),
+                    )
+                    cur.execute(
+                        '''
+                        INSERT INTO runtime_settings_history (
+                            section,
+                            schema_version,
+                            changed_by,
+                            payload_before,
+                            payload_after
+                        )
+                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
+                        ''',
+                        (section, actor, json.dumps(current_payload), json.dumps(next_payload)),
+                    )
+                    updated_sections.append(section)
+                    updated_fields.extend(f'{section}.{field_name}' for field_name in missing_fields)
             conn.commit()
     except Exception as exc:
         raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
 
-    if inserted_sections:
+    if inserted_sections or updated_sections:
         invalidate_runtime_settings_cache()
 
     return {
         'inserted_sections': tuple(inserted_sections),
         'inserted_fields': tuple(inserted_fields),
+        'updated_sections': tuple(updated_sections),
+        'updated_fields': tuple(updated_fields),
     }
 
 

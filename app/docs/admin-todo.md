@@ -530,8 +530,8 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Acter explicitement que tous les prompts systeme / prompts internes envoyes aux modeles doivent etre visibles dans l'admin en lecture seule, sans obliger a ouvrir le code.
 - [x] Acter explicitement que, dans cette phase, le seul budget de generation editable est `main_model.response_max_tokens`.
 - [x] Maintenir les autres budgets de generation en lecture seule tant qu'ils ne sont pas explicitement ouverts a l'edition.
-- [ ] Ajouter au schema runtime un champ editable `main_model.response_max_tokens`.
-- [ ] Seed en base `main_model.response_max_tokens = 1500`, valeur actuellement envoyee a `/api/chat` par defaut.
+- [x] Ajouter au schema runtime un champ editable `main_model.response_max_tokens`.
+- [x] Seed en base `main_model.response_max_tokens = 1500`, valeur actuellement envoyee a `/api/chat` par defaut.
 - [ ] Remplacer la lecture du budget de generation principal actuellement envoye a `/api/chat` pour qu'il vienne de `main_model.response_max_tokens` quand aucune surcharge locale de session n'est fournie.
 - [x] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
   - le budget de contexte `FRIDA_MAX_TOKENS`
@@ -550,7 +550,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Exposer en lecture seule, dans la section `services`, un bloc informationnel pour :
   - `max_tokens=40` du flux de reformulation web
   - le prompt systeme inline de reformulation web
-- [ ] Ajouter dans les `GET` admin concernes :
+- [x] Ajouter dans les `GET` admin concernes :
   - `main_model.response_max_tokens` dans le `payload` editable
   - un bloc `readonly_info` distinct pour les prompts et budgets non editables
 - [ ] Refuser ou ignorer explicitement tout `PATCH` tentant d'ecrire `readonly_info`.

@@ -51,6 +51,13 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('temperature', spec.field_names())
         self.assertIn('top_p', spec.field_names())
 
+    def test_main_model_includes_response_max_tokens_field(self) -> None:
+        spec = runtime_settings.get_field_spec('main_model', 'response_max_tokens')
+        self.assertEqual(spec.value_type, 'int')
+        self.assertFalse(spec.is_secret)
+        self.assertFalse(spec.seed_from_env)
+        self.assertEqual(spec.seed_default, 1500)
+
     def test_embedding_model_exists_but_is_not_seeded_from_env(self) -> None:
         spec = runtime_settings.get_field_spec('embedding', 'model')
         self.assertEqual(spec.value_type, 'text')
@@ -200,6 +207,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(bundle.payload['base_url']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['model']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['temperature']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['response_max_tokens']['origin'], 'db_seed')
+        self.assertEqual(bundle.payload['response_max_tokens']['value'], 1500)
         self.assertEqual(bundle.payload['api_key']['origin'], 'env_seed')
 
     def test_get_unseeded_sections_uses_missing_rows_as_signal(self) -> None:
@@ -674,7 +683,10 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 observed['params'].append(params)
 
             def fetchall(self):
-                return [('main_model',), ('embedding',)]
+                return [
+                    ('main_model', runtime_settings.build_db_seed_bundle('main_model').payload),
+                    ('embedding', runtime_settings.build_db_seed_bundle('embedding').payload),
+                ]
 
         class FakeConnection:
             def __enter__(self):
@@ -716,6 +728,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             result['inserted_sections'],
             ('arbiter_model', 'summary_model', 'database', 'services', 'resources'),
         )
+        self.assertEqual(result['updated_sections'], ())
+        self.assertEqual(result['updated_fields'], ())
 
         runtime_payloads = [
             json.loads(params[2])
@@ -747,7 +761,10 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 observed['params'].append(params)
 
             def fetchall(self):
-                return [(section,) for section in runtime_settings.list_sections()]
+                return [
+                    (section, runtime_settings.build_db_seed_bundle(section).payload)
+                    for section in runtime_settings.list_sections()
+                ]
 
         class FakeConnection:
             def __enter__(self):
@@ -776,9 +793,88 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 sys.modules['psycopg'] = original_psycopg
             runtime_settings.invalidate_runtime_settings_cache()
 
-        self.assertEqual(result, {'inserted_sections': (), 'inserted_fields': ()})
+        self.assertEqual(
+            result,
+            {
+                'inserted_sections': (),
+                'inserted_fields': (),
+                'updated_sections': (),
+                'updated_fields': (),
+            },
+        )
         self.assertEqual(len(observed['queries']), 1)
         self.assertIn('SELECT section', observed['queries'][0])
+
+    def test_bootstrap_runtime_settings_from_env_backfills_missing_non_secret_fields_on_existing_sections(self) -> None:
+        observed = {
+            'queries': [],
+            'params': [],
+            'committed': False,
+        }
+
+        existing_rows = []
+        for section in runtime_settings.list_sections():
+            payload = runtime_settings.build_db_seed_bundle(section).payload
+            if section == 'main_model':
+                payload = dict(payload)
+                payload.pop('response_max_tokens', None)
+            existing_rows.append((section, payload))
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params=None):
+                observed['queries'].append(query)
+                observed['params'].append(params)
+
+            def fetchall(self):
+                return list(existing_rows)
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+
+        def fake_connect(_dsn):
+            return FakeConnection()
+
+        original_psycopg = sys.modules.get('psycopg')
+        sys.modules['psycopg'] = types.SimpleNamespace(connect=fake_connect)
+        try:
+            result = runtime_settings.bootstrap_runtime_settings_from_env(updated_by='phase12-backfill-test')
+        finally:
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+            runtime_settings.invalidate_runtime_settings_cache()
+
+        self.assertTrue(observed['committed'])
+        self.assertEqual(result['inserted_sections'], ())
+        self.assertEqual(result['inserted_fields'], ())
+        self.assertEqual(result['updated_sections'], ('main_model',))
+        self.assertEqual(result['updated_fields'], ('main_model.response_max_tokens',))
+
+        updated_payloads = [
+            json.loads(params[2])
+            for query, params in zip(observed['queries'], observed['params'])
+            if params and 'INSERT INTO runtime_settings (section' in query
+        ]
+        self.assertEqual(len(updated_payloads), 1)
+        self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 1500)
+        self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
 
     def test_cache_can_be_invalidated(self) -> None:
         calls = {'count': 0}

@@ -115,6 +115,7 @@ Valeurs d'`origin` retenues :
 | `title_resumer` | `text` | non | `OPENROUTER_TITLE_RESUMER` |
 | `temperature` | `float` | non | valeur par defaut `/api/chat` = `0.4` |
 | `top_p` | `float` | non | valeur par defaut `/api/chat` = `1.0` |
+| `response_max_tokens` | `int` | non | valeur par defaut `/api/chat` = `1500` |
 
 ### `arbiter_model`
 

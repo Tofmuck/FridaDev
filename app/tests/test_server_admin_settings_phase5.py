@@ -60,6 +60,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             if section == 'main_model':
                 payload = {
                     'model': {'value': 'openrouter/test-runtime-model', 'is_secret': False, 'origin': 'db'},
+                    'response_max_tokens': {'value': 1500, 'is_secret': False, 'origin': 'db_seed'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
                 }
                 return runtime_settings.RuntimeSectionView(
@@ -88,6 +89,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(
             data['sections']['main_model']['payload']['model']['value'],
             'openrouter/test-runtime-model',
+        )
+        self.assertEqual(
+            data['sections']['main_model']['payload']['response_max_tokens']['value'],
+            1500,
         )
         self.assertEqual(
             data['sections']['main_model']['payload']['api_key'],
@@ -172,6 +177,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 section=section,
                 payload={
                     'model': {'value': 'openrouter/main-model-route', 'is_secret': False, 'origin': 'db'},
+                    'response_max_tokens': {'value': 1500, 'is_secret': False, 'origin': 'db_seed'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
                 },
                 source='db',
@@ -189,6 +195,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'main_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/main-model-route')
+        self.assertEqual(data['payload']['response_max_tokens']['value'], 1500)
         self.assertEqual(
             data['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},

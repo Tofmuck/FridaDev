@@ -69,9 +69,11 @@ except runtime_settings.RuntimeSettingsDbUnavailableError as exc:
     logger.error('runtime_settings_bootstrap_failed err=%s', exc)
 else:
     logger.info(
-        'runtime_settings_bootstrap inserted_sections=%s inserted_fields=%s',
+        'runtime_settings_bootstrap inserted_sections=%s inserted_fields=%s updated_sections=%s updated_fields=%s',
         ','.join(_runtime_settings_bootstrap['inserted_sections']) or 'none',
         len(_runtime_settings_bootstrap['inserted_fields']),
+        ','.join(_runtime_settings_bootstrap['updated_sections']) or 'none',
+        len(_runtime_settings_bootstrap['updated_fields']),
     )
 conv_store.ensure_conv_dir()
 memory_store.init_db()
