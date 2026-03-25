@@ -631,6 +631,8 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'main_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/patched-main-model')
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
+        self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
+        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
 
     def test_patch_admin_settings_main_model_rejects_invalid_payload(self) -> None:
@@ -747,6 +749,8 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertTrue(data['ok'])
         self.assertEqual(data['payload']['response_max_tokens']['value'], 4096)
         self.assertEqual(data['payload']['response_max_tokens']['origin'], 'admin_ui')
+        self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
+        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_patch_admin_settings_main_model_accepts_secret_replace_value(self) -> None:
