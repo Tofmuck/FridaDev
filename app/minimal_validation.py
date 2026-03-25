@@ -370,6 +370,11 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="adminEmbeddingSave"',
         'id="adminEmbeddingTokenReplace"',
         'id="adminEmbeddingChecks"',
+        'id="adminDatabaseForm"',
+        'id="adminDatabaseValidate"',
+        'id="adminDatabaseSave"',
+        'id="adminDatabaseDsnReplace"',
+        'id="adminDatabaseChecks"',
         'id="adminSectionGrid"',
     ]
     for marker in admin_markers:
@@ -386,6 +391,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/settings/summary-model/validate",
         "/api/admin/settings/embedding",
         "/api/admin/settings/embedding/validate",
+        "/api/admin/settings/database",
+        "/api/admin/settings/database/validate",
         "frida.adminToken",
         "adminMainModelSave",
         "adminMainModelApiKeyReplace",
@@ -393,6 +400,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminSummaryModelSave",
         "adminEmbeddingSave",
         "adminEmbeddingTokenReplace",
+        "adminDatabaseSave",
+        "adminDatabaseDsnReplace",
         "adminSectionGrid",
     ]
     for marker in admin_js_markers:

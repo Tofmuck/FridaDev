@@ -215,6 +215,18 @@
   const embeddingCheckFieldMap = {
     token_runtime: "token",
   };
+  const databaseFieldSpecs = [
+    {
+      key: "backend",
+      label: "Backend",
+      hint: "Backend runtime supporte pendant cette phase.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+  ];
+  const databaseCheckFieldMap = {
+    dsn_transition: "dsn",
+  };
 
   const state = {
     mainModel: {
@@ -236,6 +248,12 @@
       draft: null,
     },
     embedding: {
+      loaded: false,
+      view: null,
+      baseline: null,
+      draft: null,
+    },
+    database: {
       loaded: false,
       view: null,
       baseline: null,
@@ -292,6 +310,18 @@
     embeddingTokenMask: document.getElementById("adminEmbeddingTokenMask"),
     embeddingTokenReplace: document.getElementById("adminEmbeddingTokenReplace"),
     embeddingChecks: document.getElementById("adminEmbeddingChecks"),
+    databaseForm: document.getElementById("adminDatabaseForm"),
+    databaseFields: document.getElementById("adminDatabaseFields"),
+    databaseStatus: document.getElementById("adminDatabaseStatus"),
+    databaseSave: document.getElementById("adminDatabaseSave"),
+    databaseValidate: document.getElementById("adminDatabaseValidate"),
+    databaseDirty: document.getElementById("adminDatabaseDirty"),
+    databaseSource: document.getElementById("adminDatabaseSource"),
+    databaseDsnSource: document.getElementById("adminDatabaseDsnSource"),
+    databaseDsnState: document.getElementById("adminDatabaseDsnState"),
+    databaseDsnMask: document.getElementById("adminDatabaseDsnMask"),
+    databaseDsnReplace: document.getElementById("adminDatabaseDsnReplace"),
+    databaseChecks: document.getElementById("adminDatabaseChecks"),
   };
 
   const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
@@ -399,6 +429,14 @@
     draft.token = "";
     return draft;
   };
+  const emptyDatabaseDraft = () => {
+    const draft = {};
+    databaseFieldSpecs.forEach((spec) => {
+      draft[spec.key] = "";
+    });
+    draft.dsn = "";
+    return draft;
+  };
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -412,6 +450,9 @@
   const embeddingFieldElement = (field) => document.querySelector(`[data-embedding-field="${field}"]`);
   const embeddingFieldInput = (field) => document.getElementById(`adminEmbedding-${field}`);
   const embeddingErrorElement = (field) => document.getElementById(`adminEmbeddingFieldError-${field}`);
+  const databaseFieldElement = (field) => document.querySelector(`[data-database-field="${field}"]`);
+  const databaseFieldInput = (field) => document.getElementById(`adminDatabase-${field}`);
+  const databaseErrorElement = (field) => document.getElementById(`adminDatabaseFieldError-${field}`);
 
   const renderCheckList = (target, checks = []) => {
     if (!target) return;
@@ -615,6 +656,9 @@
   };
   const renderEmbeddingChecks = (checks = []) => {
     renderCheckList(elements.embeddingChecks, checks);
+  };
+  const renderDatabaseChecks = (checks = []) => {
+    renderCheckList(elements.databaseChecks, checks);
   };
 
   const ensureMainModelFieldSkeleton = () => {
@@ -821,6 +865,57 @@
 
     elements.embeddingFields.appendChild(fragment);
   };
+  const ensureDatabaseFieldSkeleton = () => {
+    if (!elements.databaseFields || elements.databaseFields.children.length > 0) return;
+
+    const fragment = document.createDocumentFragment();
+    databaseFieldSpecs.forEach((spec) => {
+      const field = document.createElement("label");
+      field.className = "admin-field";
+      field.dataset.databaseField = spec.key;
+      field.dataset.dirty = "false";
+      field.setAttribute("for", `adminDatabase-${spec.key}`);
+
+      const label = document.createElement("span");
+      label.textContent = spec.label;
+
+      const input = document.createElement("input");
+      input.id = `adminDatabase-${spec.key}`;
+      input.name = spec.key;
+      input.type = spec.inputType;
+      input.autocomplete = spec.autocomplete || "off";
+      if (spec.step) input.step = spec.step;
+      if (spec.min) input.min = spec.min;
+      if (spec.max) input.max = spec.max;
+
+      const meta = document.createElement("div");
+      meta.className = "admin-field-meta";
+
+      const hint = document.createElement("small");
+      hint.textContent = spec.hint;
+
+      const source = document.createElement("span");
+      source.id = `adminDatabaseSource-${spec.key}`;
+      source.className = "admin-field-source";
+      source.textContent = "Source: chargement";
+
+      meta.appendChild(hint);
+      meta.appendChild(source);
+
+      const error = document.createElement("p");
+      error.id = `adminDatabaseFieldError-${spec.key}`;
+      error.className = "admin-field-error";
+      error.hidden = true;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      field.appendChild(meta);
+      field.appendChild(error);
+      fragment.appendChild(field);
+    });
+
+    elements.databaseFields.appendChild(fragment);
+  };
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -850,6 +945,14 @@
       draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
     });
     draft.token = "";
+    return draft;
+  };
+  const buildDatabaseDraftFromView = (view) => {
+    const draft = {};
+    databaseFieldSpecs.forEach((spec) => {
+      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
+    });
+    draft.dsn = "";
     return draft;
   };
 
@@ -969,6 +1072,43 @@
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
   };
+  const renderDatabaseMeta = () => {
+    const view = state.database.view;
+    if (!view) {
+      if (elements.databaseSource) elements.databaseSource.textContent = "Section: indisponible";
+      if (elements.databaseDsnSource) elements.databaseDsnSource.textContent = "DSN: indisponible";
+      if (elements.databaseDsnState) elements.databaseDsnState.textContent = "Secret: indisponible";
+      if (elements.databaseDsnMask) elements.databaseDsnMask.textContent = "Masque";
+      databaseFieldSpecs.forEach((spec) => {
+        const source = document.getElementById(`adminDatabaseSource-${spec.key}`);
+        if (source) source.textContent = "Source: indisponible";
+      });
+      return;
+    }
+
+    if (elements.databaseSource) {
+      elements.databaseSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
+    }
+
+    const secretSource = view.secret_sources?.dsn || "missing";
+    if (elements.databaseDsnSource) {
+      elements.databaseDsnSource.textContent = `DSN: ${secretSourceLabel(secretSource)}`;
+    }
+
+    const secretPresent = Boolean(view.payload?.dsn?.is_set);
+    if (elements.databaseDsnState) {
+      elements.databaseDsnState.textContent = secretPresent ? "Secret: present" : "Secret: absent";
+    }
+    if (elements.databaseDsnMask) {
+      elements.databaseDsnMask.textContent = secretPresent ? "Masque" : "Aucun secret";
+    }
+
+    databaseFieldSpecs.forEach((spec) => {
+      const source = document.getElementById(`adminDatabaseSource-${spec.key}`);
+      if (!source) return;
+      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
+    });
+  };
 
   const buildMainModelPatchPayload = () => {
     return buildSectionPatchPayload({
@@ -1022,6 +1162,17 @@
       secretKey: "token",
     });
   };
+  const updateDatabaseDirtyChip = () => {
+    updateSectionDirtyChip({
+      baseline: state.database.baseline,
+      draft: state.database.draft,
+      emptyDraft: emptyDatabaseDraft,
+      fieldSpecs: databaseFieldSpecs,
+      fieldElement: databaseFieldElement,
+      dirtyChip: elements.databaseDirty,
+      secretKey: "dsn",
+    });
+  };
 
   const applyMainModelDraftToForm = () => {
     applySectionDraftToForm({
@@ -1061,6 +1212,17 @@
       secretInput: elements.embeddingTokenReplace,
       secretKey: "token",
       onDirtyUpdate: updateEmbeddingDirtyChip,
+    });
+  };
+  const applyDatabaseDraftToForm = () => {
+    applySectionDraftToForm({
+      draft: state.database.draft,
+      emptyDraft: emptyDatabaseDraft,
+      fieldSpecs: databaseFieldSpecs,
+      inputForField: databaseFieldInput,
+      secretInput: elements.databaseDsnReplace,
+      secretKey: "dsn",
+      onDirtyUpdate: updateDatabaseDirtyChip,
     });
   };
 
@@ -1122,6 +1284,21 @@
     applyEmbeddingDraftToForm();
     renderEmbeddingChecks([]);
   };
+  const applyDatabaseView = (responsePayload) => {
+    state.database.loaded = true;
+    state.database.view = {
+      payload: responsePayload.payload || {},
+      secret_sources: responsePayload.secret_sources || {},
+      source: responsePayload.source || "env",
+      source_reason: responsePayload.source_reason || "unknown",
+    };
+    state.database.baseline = buildDatabaseDraftFromView(state.database.view);
+    state.database.draft = { ...state.database.baseline };
+    clearDatabaseFieldErrors();
+    renderDatabaseMeta();
+    applyDatabaseDraftToForm();
+    renderDatabaseChecks([]);
+  };
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -1170,6 +1347,18 @@
     renderEmbeddingChecks([]);
     setEmbeddingControlsDisabled(true);
     setInlineStatus(elements.embeddingStatus, message, stateName);
+  };
+  const resetDatabaseSurface = (message, stateName = "error") => {
+    state.database.loaded = false;
+    state.database.view = null;
+    state.database.baseline = emptyDatabaseDraft();
+    state.database.draft = emptyDatabaseDraft();
+    clearDatabaseFieldErrors();
+    renderDatabaseMeta();
+    applyDatabaseDraftToForm();
+    renderDatabaseChecks([]);
+    setDatabaseControlsDisabled(true);
+    setInlineStatus(elements.databaseStatus, message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -1248,6 +1437,26 @@
     embeddingFieldSpecs.forEach((spec) => setEmbeddingFieldError(spec.key, ""));
     setEmbeddingFieldError("token", "");
   };
+  const setDatabaseFieldError = (field, message = "") => {
+    const isSecretField = field === "dsn";
+    const host = isSecretField ? document.getElementById("adminDatabaseSecretCard") : databaseFieldElement(field);
+    const errorElement = databaseErrorElement(field);
+    if (host) {
+      host.dataset.error = message ? "true" : "false";
+    }
+    if (!errorElement) return;
+    if (message) {
+      errorElement.hidden = false;
+      errorElement.textContent = message;
+      return;
+    }
+    errorElement.hidden = true;
+    errorElement.textContent = "";
+  };
+  const clearDatabaseFieldErrors = () => {
+    databaseFieldSpecs.forEach((spec) => setDatabaseFieldError(spec.key, ""));
+    setDatabaseFieldError("dsn", "");
+  };
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
@@ -1261,6 +1470,11 @@
   const applyEmbeddingLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setEmbeddingFieldError(field, message);
+    });
+  };
+  const applyDatabaseLocalFieldErrors = (errors) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setDatabaseFieldError(field, message);
     });
   };
   const applyArbiterBackendFieldError = (message) => {
@@ -1288,6 +1502,18 @@
     embeddingFieldSpecs.forEach((spec) => {
       if (message.includes(`embedding.${spec.key}`)) {
         setEmbeddingFieldError(spec.key, message);
+      }
+    });
+  };
+  const applyDatabaseBackendFieldError = (message) => {
+    if (!message) return;
+    if (message.includes("database.dsn")) {
+      setDatabaseFieldError("dsn", message);
+      return;
+    }
+    databaseFieldSpecs.forEach((spec) => {
+      if (message.includes(`database.${spec.key}`)) {
+        setDatabaseFieldError(spec.key, message);
       }
     });
   };
@@ -1325,6 +1551,18 @@
       disabled,
     );
   };
+  const setDatabaseControlsDisabled = (disabled) => {
+    setSectionControlsDisabled(
+      {
+        saveButton: elements.databaseSave,
+        validateButton: elements.databaseValidate,
+        fieldSpecs: databaseFieldSpecs,
+        inputForField: databaseFieldInput,
+        extraInputs: [elements.databaseDsnReplace],
+      },
+      disabled,
+    );
+  };
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -1356,6 +1594,17 @@
     });
     return errors;
   };
+  const collectDatabaseFailedChecks = (checks) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      const field = databaseCheckFieldMap[check.name] || check.name;
+      if (!errors[field]) {
+        errors[field] = check.detail;
+      }
+    });
+    return errors;
+  };
   const buildArbiterPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.arbiterModel.baseline,
@@ -1381,6 +1630,15 @@
       fieldSpecs: embeddingFieldSpecs,
       integerFields: embeddingFieldSpecs.map((spec) => spec.key),
       secretKey: "token",
+    });
+  };
+  const buildDatabasePatchPayload = () => {
+    return buildSectionPatchPayload({
+      baseline: state.database.baseline,
+      draft: state.database.draft,
+      emptyDraft: emptyDatabaseDraft,
+      fieldSpecs: databaseFieldSpecs,
+      secretKey: "dsn",
     });
   };
   const runArbiterValidation = async (payload) => {
@@ -1518,6 +1776,51 @@
       setEmbeddingControlsDisabled(!state.embedding.loaded);
     }
   };
+  const runDatabaseValidation = async (payload) => {
+    clearDatabaseFieldErrors();
+    renderDatabaseChecks([]);
+    setDatabaseControlsDisabled(true);
+    setInlineStatus(elements.databaseStatus, "Validation technique en cours...", "info");
+
+    try {
+      const body = payload && Object.keys(payload).length ? { payload } : {};
+      const response = await adminFetch("/api/admin/settings/database/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.databaseStatus, "Acces admin requis pour verifier la section.", "error");
+        return { ok: false };
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyDatabaseBackendFieldError(data.error || `Validation impossible (${response.status}).`);
+        setInlineStatus(elements.databaseStatus, data.error || `Validation impossible (${response.status}).`, "error");
+        return { ok: false };
+      }
+
+      const checks = Array.isArray(data.checks) ? data.checks : [];
+      renderDatabaseChecks(checks);
+      const failedChecks = collectDatabaseFailedChecks(checks);
+      applyDatabaseLocalFieldErrors(failedChecks);
+
+      if (!data.valid) {
+        setInlineStatus(elements.databaseStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
+        return { ok: false };
+      }
+
+      setInlineStatus(elements.databaseStatus, "Validation technique OK.", "ok");
+      return { ok: true, data };
+    } catch (_error) {
+      setInlineStatus(elements.databaseStatus, "Validation impossible pour le moment.", "error");
+      return { ok: false };
+    } finally {
+      setDatabaseControlsDisabled(!state.database.loaded);
+    }
+  };
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -1556,6 +1859,19 @@
     }
 
     await runEmbeddingValidation(payload);
+  };
+  const validateDatabaseSection = async () => {
+    const { payload, localErrors } = buildDatabasePatchPayload();
+    clearDatabaseFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyDatabaseLocalFieldErrors(localErrors);
+      renderDatabaseChecks([]);
+      setInlineStatus(elements.databaseStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
+      return;
+    }
+
+    await runDatabaseValidation(payload);
   };
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
@@ -1728,6 +2044,63 @@
       setEmbeddingControlsDisabled(!state.embedding.loaded);
     }
   };
+  const saveDatabaseSection = async () => {
+    if (!state.database.loaded) return;
+
+    const { payload, localErrors, dirtyCount } = buildDatabasePatchPayload();
+    clearDatabaseFieldErrors();
+
+    if (Object.keys(localErrors).length > 0) {
+      applyDatabaseLocalFieldErrors(localErrors);
+      renderDatabaseChecks([]);
+      setInlineStatus(elements.databaseStatus, "Correction requise avant enregistrement.", "error");
+      return;
+    }
+
+    if (dirtyCount === 0) {
+      setInlineStatus(elements.databaseStatus, "Aucune modification a enregistrer.", "info");
+      return;
+    }
+
+    const validation = await runDatabaseValidation(payload);
+    if (!validation.ok) return;
+
+    setDatabaseControlsDisabled(true);
+    setInlineStatus(elements.databaseStatus, "Enregistrement du bloc base de donnees...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/database", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updated_by: "admin_ui",
+          payload,
+        }),
+      });
+
+      if (response.status === 401) {
+        setInlineStatus(elements.databaseStatus, "Acces admin requis pour enregistrer la section.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        applyDatabaseBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
+        setInlineStatus(elements.databaseStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyDatabaseView(data);
+      setDatabaseControlsDisabled(false);
+      setInlineStatus(elements.databaseStatus, "Bloc base de donnees enregistre.", "ok");
+      banner("Bloc base de donnees enregistre.", "ok");
+      void loadRuntimeStatus();
+    } catch (_error) {
+      setInlineStatus(elements.databaseStatus, "Enregistrement impossible pour le moment.", "error");
+    } finally {
+      setDatabaseControlsDisabled(!state.database.loaded);
+    }
+  };
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -1804,6 +2177,32 @@
       setInlineStatus(elements.embeddingStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
     } catch (_error) {
       resetEmbeddingSurface("Lecture impossible du bloc embeddings pour le moment.", "error");
+    }
+  };
+  const loadDatabaseSection = async () => {
+    ensureDatabaseFieldSkeleton();
+    clearDatabaseFieldErrors();
+    setDatabaseControlsDisabled(true);
+    setInlineStatus(elements.databaseStatus, "Chargement du bloc base de donnees...", "info");
+
+    try {
+      const response = await adminFetch("/api/admin/settings/database");
+      if (response.status === 401) {
+        resetDatabaseSurface("Acces admin requis pour charger le bloc base de donnees.", "error");
+        return;
+      }
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        resetDatabaseSurface(data.error || `Lecture impossible (${response.status}).`, "error");
+        return;
+      }
+
+      applyDatabaseView(data);
+      setDatabaseControlsDisabled(false);
+      setInlineStatus(elements.databaseStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
+    } catch (_error) {
+      resetDatabaseSurface("Lecture impossible du bloc base de donnees pour le moment.", "error");
     }
   };
 
@@ -2025,6 +2424,12 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
+      if (section.key === "database") {
+        const detailChip = document.createElement("span");
+        detailChip.className = "admin-chip";
+        detailChip.textContent = "Bloc detaille actif";
+        meta.appendChild(detailChip);
+      }
 
       if (status.bootstrap?.database_dsn_mode && section.key === "database") {
         const bootstrapChip = document.createElement("span");
@@ -2080,7 +2485,14 @@
   };
 
   const loadAdminSurface = async () => {
-    await Promise.all([loadRuntimeStatus(), loadMainModelSection(), loadArbiterModelSection(), loadSummaryModelSection(), loadEmbeddingSection()]);
+    await Promise.all([
+      loadRuntimeStatus(),
+      loadMainModelSection(),
+      loadArbiterModelSection(),
+      loadSummaryModelSection(),
+      loadEmbeddingSection(),
+      loadDatabaseSection(),
+    ]);
   };
 
   elements.mainModelForm?.addEventListener("input", (event) => {
@@ -2181,11 +2593,36 @@
   elements.embeddingSave?.addEventListener("click", () => {
     void saveEmbeddingSection();
   });
+  elements.databaseForm?.addEventListener("input", (event) => {
+    if (!state.database.draft) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+
+    if (target.id === "adminDatabaseDsnReplace") {
+      state.database.draft.dsn = target.value;
+      setDatabaseFieldError("dsn", "");
+      updateDatabaseDirtyChip();
+      return;
+    }
+
+    const fieldName = target.name;
+    if (!fieldName) return;
+    state.database.draft[fieldName] = target.value;
+    setDatabaseFieldError(fieldName, "");
+    updateDatabaseDirtyChip();
+  });
+  elements.databaseValidate?.addEventListener("click", () => {
+    void validateDatabaseSection();
+  });
+  elements.databaseSave?.addEventListener("click", () => {
+    void saveDatabaseSection();
+  });
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
   ensureSummaryModelFieldSkeleton();
   ensureEmbeddingFieldSkeleton();
+  ensureDatabaseFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = emptyArbiterModelDraft();
@@ -2194,6 +2631,8 @@
   state.summaryModel.draft = emptySummaryModelDraft();
   state.embedding.baseline = emptyEmbeddingDraft();
   state.embedding.draft = emptyEmbeddingDraft();
+  state.database.baseline = emptyDatabaseDraft();
+  state.database.draft = emptyDatabaseDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelChecks([]);
@@ -2206,10 +2645,14 @@
   renderEmbeddingMeta();
   applyEmbeddingDraftToForm();
   renderEmbeddingChecks([]);
+  renderDatabaseMeta();
+  applyDatabaseDraftToForm();
+  renderDatabaseChecks([]);
   setMainModelControlsDisabled(true);
   setArbiterControlsDisabled(true);
   setSummaryControlsDisabled(true);
   setEmbeddingControlsDisabled(true);
+  setDatabaseControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),

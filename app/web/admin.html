@@ -239,6 +239,65 @@
       <div id="adminEmbeddingChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="admin-database-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Cinquieme bloc detaille</p>
+          <h2 id="admin-database-title">Base de donnees</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminDatabaseDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminDatabaseValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminDatabaseSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc de transition: backend runtime cote admin, avec `dsn` stockable et remplacable, mais bootstrap externe maintenu pendant la migration.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminDatabaseSource" class="admin-chip">Section: chargement</span>
+        <span id="adminDatabaseDsnSource" class="admin-chip">DSN: chargement</span>
+        <span id="adminDatabaseDsnState" class="admin-chip">Secret: inconnu</span>
+      </div>
+
+      <p id="adminDatabaseStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc base de donnees...
+      </p>
+
+      <form id="adminDatabaseForm" class="admin-form" novalidate>
+        <div id="adminDatabaseFields" class="admin-form-grid"></div>
+
+        <section id="adminDatabaseSecretCard" class="admin-secret-card" aria-labelledby="admin-database-secret-title">
+          <div class="admin-secret-head">
+            <div>
+              <p class="admin-kicker">Secret</p>
+              <h3 id="admin-database-secret-title">DSN runtime stocke</h3>
+            </div>
+            <span id="adminDatabaseDsnMask" class="admin-secret-mask">Masque</span>
+          </div>
+          <p class="admin-secret-help">
+            Le DSN stocke ici reste masque. Pendant cette transition, le bootstrap actif reste `FRIDA_MEMORY_DB_DSN`.
+          </p>
+          <label class="admin-field admin-field-wide" for="adminDatabaseDsnReplace">
+            <span>Remplacement</span>
+            <input
+              id="adminDatabaseDsnReplace"
+              name="dsn"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Saisir un nouveau DSN stocke"
+            />
+            <small>Le backend n'accepte que replace_value pour un secret.</small>
+          </label>
+          <p id="adminDatabaseFieldError-dsn" class="admin-field-error" hidden></p>
+        </section>
+      </form>
+
+      <div id="adminDatabaseChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="admin-sections-title">
       <div class="admin-section-head">
         <div>

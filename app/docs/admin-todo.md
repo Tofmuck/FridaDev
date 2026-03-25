@@ -435,7 +435,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Construire une section UI dediee au modele arbitre.
 - [x] Construire une section UI dediee au modele resumieur.
 - [x] Construire une section UI dediee au bloc embeddings.
-- [ ] Construire une section UI dediee au bloc base de donnees.
+- [x] Construire une section UI dediee au bloc base de donnees.
 - [ ] Construire une section UI dediee au bloc services externes.
 - [ ] Construire une section UI dediee au bloc chemins / ressources externes.
 - [ ] Ajouter un affichage masque des secrets deja presents.
