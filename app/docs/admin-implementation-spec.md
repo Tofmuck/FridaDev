@@ -18,8 +18,10 @@ Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne s
 - `/admin` = nouvel admin.
 - Le lien du front principal pointe vers `/admin`.
 - `temperature` et `top_p` appartiennent a la logique globale de configuration des modeles.
-- Les budgets de generation `max_tokens` par flux modele ne sont plus hors perimetre ; ils doivent pouvoir devenir editables dans l'admin.
-- Les prompts internes ne deviennent pas editables pour autant dans cette phase ; ils peuvent etre exposes en lecture seule a titre informationnel.
+- Les prompts systeme / prompts internes envoyes aux modeles doivent etre visibles dans l'admin en lecture seule.
+- Dans cette extension, le seul budget de generation a ouvrir a l'edition est `main_model.response_max_tokens`.
+- Les autres budgets de generation peuvent rester d'abord visibles en lecture seule.
+- Les prompts internes ne deviennent pas editables pour autant dans cette phase.
 
 ## Perimetre exact de V1
 
@@ -41,6 +43,7 @@ Sont exclus de V1 :
 - les seuils hermeneutiques
 - les prompts internes en edition
 - les budgets de contexte / resume / identite en edition tant qu'ils restent seulement informationnels
+- les autres budgets de generation tant qu'ils ne sont pas explicitement ouverts apres `main_model.response_max_tokens`
 - `FRIDA_WEB_HOST`
 - `FRIDA_WEB_PORT`
 - tout invariant conceptuel du systeme

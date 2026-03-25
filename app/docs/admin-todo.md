@@ -20,9 +20,10 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Le present todo couvre l'ensemble du chantier jusqu'a l'implementation finale.
 - L'execution reelle ne se fera pas en big bang : elle se fera tranche minimale par tranche minimale.
 - Chaque tranche reelle devra etre validee, puis committee et poussee avant d'ouvrir la suivante.
-- Pour `main_model`, `arbiter_model` et `summary_model`, tous les parametres effectivement paramétrables doivent entrer dans le perimetre V1, y compris les budgets de generation `max_tokens`.
+- Pour `main_model`, `arbiter_model` et `summary_model`, les parametres effectivement paramétrables doivent entrer dans le perimetre V1, avec une priorite immediate donnee a `main_model.response_max_tokens`.
 - `temperature` et `top_p` font donc partie de la logique de configuration globale des modeles et ne sont plus des points ouverts.
-- Les budgets de generation `max_tokens` ne sont plus consideres comme hors perimetre editable ; en revanche, les budgets de contexte et les prompts internes peuvent rester en lecture seule dans une phase dediee.
+- Les prompts systeme et prompts internes envoyes aux modeles doivent etre visibles dans l'admin en lecture seule, pour comprehension, meme s'ils ne deviennent pas editables dans cette phase.
+- Dans l'immediat, le seul budget de generation a rendre editable est `main_model.response_max_tokens` ; les autres budgets de generation peuvent d'abord rester visibles en lecture seule.
 - Le routage cible est deja fixe :
   - `/admin` = nouvel admin
   - aucune UI legacy `/admin-old` n'est retenue
@@ -524,44 +525,40 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Verifier manuellement sur le conteneur cible que l'admin affiche majoritairement `db` apres activation effective de la baseline.
 - [x] Prevoir un commit isole pour l'activation reelle de la configuration runtime en base.
 
-### Phase 12 - Budgets de generation editables et prompts read-only
+### Phase 12 - Prompts visibles et `response_max_tokens` principal editable
 
-- [ ] Acter explicitement que les budgets de generation `max_tokens` par flux modele deviennent editables dans l'admin, tandis que les prompts internes restent en lecture seule dans cette phase.
-- [ ] Distinguer explicitement les budgets de generation editables des budgets de contexte / resume / identite qui restent seulement informationnels pour l'instant.
-- [ ] Ajouter au schema runtime des champs editables pour les budgets de generation suivants :
-  - `main_model.response_max_tokens`
-  - `arbiter_model.decision_max_tokens`
-  - `arbiter_model.identity_extractor_max_tokens`
-  - `summary_model.target_max_tokens`
-- [ ] Seed en base des budgets de generation actuels observes dans le code :
-  - `main_model.response_max_tokens = 1500`
-  - `arbiter_model.decision_max_tokens = 600`
-  - `arbiter_model.identity_extractor_max_tokens = 700`
-  - `summary_model.target_max_tokens = SUMMARY_TARGET_TOKENS`
+- [ ] Acter explicitement que tous les prompts systeme / prompts internes envoyes aux modeles doivent etre visibles dans l'admin en lecture seule, sans obliger a ouvrir le code.
+- [ ] Acter explicitement que, dans cette phase, le seul budget de generation editable est `main_model.response_max_tokens`.
+- [ ] Maintenir les autres budgets de generation en lecture seule tant qu'ils ne sont pas explicitement ouverts a l'edition.
+- [ ] Ajouter au schema runtime un champ editable `main_model.response_max_tokens`.
+- [ ] Seed en base `main_model.response_max_tokens = 1500`, valeur actuellement envoyee a `/api/chat` par defaut.
 - [ ] Remplacer la lecture du budget de generation principal actuellement envoye a `/api/chat` pour qu'il vienne de `main_model.response_max_tokens` quand aucune surcharge locale de session n'est fournie.
-- [ ] Remplacer la lecture du budget de generation arbitre pour qu'il vienne de `arbiter_model.decision_max_tokens`.
-- [ ] Remplacer la lecture du budget de generation `identity_extractor` pour qu'il vienne de `arbiter_model.identity_extractor_max_tokens`.
-- [ ] Remplacer la lecture du budget de generation du resumieur pour qu'il vienne de `summary_model.target_max_tokens`.
 - [ ] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
   - le budget de contexte `FRIDA_MAX_TOKENS`
   - le `SYSTEM_PROMPT` de base actuellement injecte par le front principal
 - [ ] Exposer en lecture seule, dans la section `arbiter_model`, un bloc informationnel pour :
+  - `max_tokens=600` du flux de decision memoire
+  - `max_tokens=700` du flux `identity_extractor`
   - `ARBITER_PROMPT_PATH`
   - `IDENTITY_EXTRACTOR_PROMPT_PATH`
   - le contenu actuel des deux prompts
 - [ ] Exposer en lecture seule, dans la section `summary_model`, un bloc informationnel pour :
+  - `SUMMARY_TARGET_TOKENS`
   - `SUMMARY_THRESHOLD_TOKENS`
   - `SUMMARY_KEEP_TURNS`
   - le prompt systeme inline actuellement utilise par le resumeur
+- [ ] Exposer en lecture seule, dans la section `services`, un bloc informationnel pour :
+  - `max_tokens=40` du flux de reformulation web
+  - le prompt systeme inline de reformulation web
 - [ ] Ajouter dans les `GET` admin concernes :
-  - les champs editables de budgets de generation dans le `payload` runtime
+  - `main_model.response_max_tokens` dans le `payload` editable
   - un bloc `readonly_info` distinct pour les prompts et budgets non editables
 - [ ] Refuser ou ignorer explicitement tout `PATCH` tentant d'ecrire `readonly_info`.
 - [ ] Ajouter des tests backend sur la presence des informations read-only.
-- [ ] Ajouter des tests backend sur l'edition des budgets de generation.
-- [ ] Ajouter des tests backend garantissant la non-editabilite des prompts et budgets purement informationnels.
-- [ ] Ajouter dans le frontend admin des champs editables pour les budgets de generation de `main_model`, `arbiter_model` et `summary_model`.
-- [ ] Ajouter dans le frontend admin des cartes read-only pour les prompts et budgets de contexte associes.
+- [ ] Ajouter des tests backend sur l'edition de `main_model.response_max_tokens`.
+- [ ] Ajouter des tests backend garantissant la non-editabilite des prompts et des budgets restant purement informationnels.
+- [ ] Ajouter dans le frontend admin un champ editable pour `main_model.response_max_tokens`.
+- [ ] Ajouter dans le frontend admin des cartes read-only naturelles pour tous les prompts systeme exposes par cette phase.
 - [ ] Ajouter un rendu lisible des prompts longs (bloc scrollable / pre-wrap / textarea readonly) sans introduire de mode edition.
 - [ ] Maintenir les prompts internes hors edition dans cette phase, sans les rebaptiser en invariants.
 - [ ] Prevoir un commit isole pour cette extension.
