@@ -104,6 +104,25 @@ def _build_non_secret_patch_payload(payload: Dict[str, Any]) -> Dict[str, Dict[s
     return patch_payload
 
 
+def _assert_masked_secret_fields(section_payloads: Dict[str, Any]) -> None:
+    for section in runtime_settings.list_sections():
+        payload = section_payloads.get(section) or {}
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"payload admin settings invalide pour {section}")
+        for field in runtime_settings.get_section_spec(section).fields:
+            if not field.is_secret:
+                continue
+            secret_payload = payload.get(field.key)
+            if not isinstance(secret_payload, dict):
+                raise RuntimeError(f"payload secret manquant pour {section}.{field.key}")
+            if set(secret_payload.keys()) != {"is_secret", "is_set", "origin"}:
+                raise RuntimeError(f"payload secret non masque pour {section}.{field.key}")
+            if secret_payload.get("is_secret") is not True:
+                raise RuntimeError(f"payload secret invalide pour {section}.{field.key}")
+            if not isinstance(secret_payload.get("is_set"), bool):
+                raise RuntimeError(f"etat secret invalide pour {section}.{field.key}")
+
+
 def _run_check(
     results: List[Dict[str, Any]],
     name: str,
@@ -513,6 +532,12 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     expected_sections = set(runtime_settings.list_sections())
     if set(admin_settings_payload["sections"].keys()) != expected_sections:
         raise RuntimeError("api admin settings sections invalides")
+    _assert_masked_secret_fields(
+        {
+            section: section_payload.get("payload")
+            for section, section_payload in admin_settings_payload["sections"].items()
+        }
+    )
 
     resources_get = _http_json("GET", f"{base_url}/api/admin/settings/resources", **_admin_request_kwargs())
     resources_payload = resources_get.json()

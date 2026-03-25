@@ -475,7 +475,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un smoke test de lecture agregee de la configuration admin.
 - [x] Ajouter un smoke test d'update valide sur une section non secrete.
 - [x] Ajouter un smoke test d'update invalide pour verifier la validation backend.
-- [ ] Ajouter un smoke test garantissant qu'un secret ne ressort jamais en clair via un `GET`.
+- [x] Ajouter un smoke test garantissant qu'un secret ne ressort jamais en clair via un `GET`.
 - [ ] Verifier manuellement que `GET /api/admin/logs` et `POST /api/admin/restart` continuent a fonctionner sans UI legacy dediee.
 - [ ] Verifier manuellement que les routes hermeneutiques existantes repondent encore apres l'ajout du nouvel admin.
 - [ ] Verifier manuellement que le chat principal fonctionne encore apres bascule des lectures runtime vers la DB.

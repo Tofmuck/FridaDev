@@ -25,6 +25,31 @@ class _FakeResponse:
 
 
 class MinimalValidationPhase9Tests(unittest.TestCase):
+    def test_assert_masked_secret_fields_accepts_redacted_secret_payloads(self) -> None:
+        section_payloads = {
+            "main_model": {
+                "model": {"value": "openrouter/test", "origin": "db"},
+                "api_key": {"is_secret": True, "is_set": True, "origin": "db"},
+            },
+            "arbiter_model": {},
+            "summary_model": {},
+            "embedding": {
+                "endpoint": {"value": "https://embed.example", "origin": "db"},
+                "token": {"is_secret": True, "is_set": True, "origin": "db"},
+            },
+            "database": {
+                "backend": {"value": "postgresql", "origin": "db"},
+                "dsn": {"is_secret": True, "is_set": False, "origin": "db"},
+            },
+            "services": {
+                "searxng_url": {"value": "http://127.0.0.1:8080", "origin": "db"},
+                "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "db"},
+            },
+            "resources": {},
+        }
+
+        minimal_validation._assert_masked_secret_fields(section_payloads)
+
     def test_build_non_secret_patch_payload_keeps_only_value_fields(self) -> None:
         patch_payload = minimal_validation._build_non_secret_patch_payload(
             {
@@ -74,8 +99,45 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                     payload={
                         "ok": True,
                         "sections": {
-                            section: {"section": section, "payload": {}, "source": "env", "source_reason": "empty_table"}
-                            for section in runtime_settings.list_sections()
+                            "main_model": {
+                                "section": "main_model",
+                                "payload": {
+                                    "model": {"value": "openrouter/test-main", "origin": "env_seed"},
+                                    "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "arbiter_model": {"section": "arbiter_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                            "summary_model": {"section": "summary_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                            "embedding": {
+                                "section": "embedding",
+                                "payload": {
+                                    "endpoint": {"value": "https://embed.example", "origin": "env_seed"},
+                                    "token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "database": {
+                                "section": "database",
+                                "payload": {
+                                    "backend": {"value": "postgresql", "origin": "env_seed"},
+                                    "dsn": {"is_secret": True, "is_set": False, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "services": {
+                                "section": "services",
+                                "payload": {
+                                    "searxng_url": {"value": "http://127.0.0.1:8080", "origin": "env_seed"},
+                                    "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "resources": {"section": "resources", "payload": {}, "source": "env", "source_reason": "empty_table"},
                         },
                     },
                 )
@@ -163,8 +225,45 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                     payload={
                         "ok": True,
                         "sections": {
-                            section: {"section": section, "payload": {}, "source": "env", "source_reason": "empty_table"}
-                            for section in runtime_settings.list_sections()
+                            "main_model": {
+                                "section": "main_model",
+                                "payload": {
+                                    "model": {"value": "openrouter/test-main", "origin": "env_seed"},
+                                    "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "arbiter_model": {"section": "arbiter_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                            "summary_model": {"section": "summary_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                            "embedding": {
+                                "section": "embedding",
+                                "payload": {
+                                    "endpoint": {"value": "https://embed.example", "origin": "env_seed"},
+                                    "token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "database": {
+                                "section": "database",
+                                "payload": {
+                                    "backend": {"value": "postgresql", "origin": "env_seed"},
+                                    "dsn": {"is_secret": True, "is_set": False, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "services": {
+                                "section": "services",
+                                "payload": {
+                                    "searxng_url": {"value": "http://127.0.0.1:8080", "origin": "env_seed"},
+                                    "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                                },
+                                "source": "env",
+                                "source_reason": "empty_table",
+                            },
+                            "resources": {"section": "resources", "payload": {}, "source": "env", "source_reason": "empty_table"},
                         },
                     },
                 )
