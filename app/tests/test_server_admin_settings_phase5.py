@@ -93,6 +93,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             data['sections']['main_model']['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
+        self.assertEqual(
+            data['sections']['main_model']['readonly_info']['context_max_tokens']['label'],
+            'FRIDA_MAX_TOKENS',
+        )
+        self.assertIn(
+            'Cadre de réponse',
+            data['sections']['main_model']['readonly_info']['system_prompt']['value'],
+        )
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
@@ -157,6 +165,8 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             data['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
         )
+        self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
+        self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_arbiter_model_returns_single_section(self) -> None:

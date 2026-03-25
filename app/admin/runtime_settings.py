@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
@@ -720,6 +721,40 @@ def get_runtime_section_for_api(
         source=view.source,
         source_reason=view.source_reason,
     )
+
+
+def _read_front_system_prompt() -> str:
+    app_js_path = Path(__file__).resolve().parents[1] / 'web' / 'app.js'
+    try:
+        source = app_js_path.read_text(encoding='utf-8')
+    except OSError:
+        return ''
+
+    match = re.search(r'const SYSTEM_PROMPT = `(.*?)`;', source, re.DOTALL)
+    if not match:
+        return ''
+    return str(match.group(1)).strip()
+
+
+def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
+    get_section_spec(section)
+    if section != 'main_model':
+        return {}
+
+    return {
+        'context_max_tokens': {
+            'label': 'FRIDA_MAX_TOKENS',
+            'value': int(config.MAX_TOKENS),
+            'is_editable': False,
+            'source': 'config_py',
+        },
+        'system_prompt': {
+            'label': 'SYSTEM_PROMPT',
+            'value': _read_front_system_prompt(),
+            'is_editable': False,
+            'source': 'web_app_js',
+        },
+    }
 
 
 def get_main_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:

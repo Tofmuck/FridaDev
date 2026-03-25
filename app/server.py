@@ -615,6 +615,7 @@ def _admin_settings_section_response(section: str) -> Dict[str, Any]:
     return {
         'section': section,
         'payload': view.payload,
+        'readonly_info': runtime_settings.get_section_readonly_info(section),
         'secret_sources': runtime_settings.describe_secret_sources(section, view.payload),
         'source': view.source,
         'source_reason': view.source_reason,

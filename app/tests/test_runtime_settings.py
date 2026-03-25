@@ -215,6 +215,20 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             ),
         )
 
+    def test_get_section_readonly_info_main_model_exposes_context_budget_and_system_prompt(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('main_model')
+
+        self.assertEqual(readonly_info['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
+        self.assertEqual(readonly_info['context_max_tokens']['value'], config.MAX_TOKENS)
+        self.assertFalse(readonly_info['context_max_tokens']['is_editable'])
+        self.assertEqual(readonly_info['system_prompt']['label'], 'SYSTEM_PROMPT')
+        self.assertFalse(readonly_info['system_prompt']['is_editable'])
+        self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
+        self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
+
+    def test_get_section_readonly_info_other_sections_stays_empty_in_first_phase12_slice(self) -> None:
+        self.assertEqual(runtime_settings.get_section_readonly_info('arbiter_model'), {})
+
     def test_build_env_seed_plan_skips_existing_sections(self) -> None:
         plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))
         self.assertEqual(

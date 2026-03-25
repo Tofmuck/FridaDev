@@ -533,7 +533,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Ajouter au schema runtime un champ editable `main_model.response_max_tokens`.
 - [ ] Seed en base `main_model.response_max_tokens = 1500`, valeur actuellement envoyee a `/api/chat` par defaut.
 - [ ] Remplacer la lecture du budget de generation principal actuellement envoye a `/api/chat` pour qu'il vienne de `main_model.response_max_tokens` quand aucune surcharge locale de session n'est fournie.
-- [ ] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
+- [x] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
   - le budget de contexte `FRIDA_MAX_TOKENS`
   - le `SYSTEM_PROMPT` de base actuellement injecte par le front principal
 - [ ] Exposer en lecture seule, dans la section `arbiter_model`, un bloc informationnel pour :
