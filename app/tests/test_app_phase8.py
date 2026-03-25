@@ -12,10 +12,15 @@ if str(APP_DIR) not in sys.path:
 
 class AppPhase8Tests(unittest.TestCase):
     def test_settings_button_points_to_admin_route(self) -> None:
-        source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        js_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn('window.location.href = "/admin";', source)
-        self.assertNotIn('window.location.href = "admin.html";', source)
+        self.assertIn('id="btnSettings"', html_source)
+        self.assertIn('class="icon-link"', html_source)
+        self.assertIn('href="/admin"', html_source)
+        self.assertNotIn('href="admin.html"', html_source)
+        self.assertNotIn('window.location.href = "/admin";', js_source)
+        self.assertNotIn('window.location.href = "admin.html";', js_source)
 
     def test_admin_route_alignment_stays_server_side(self) -> None:
         source = (APP_DIR / "server.py").read_text(encoding="utf-8")

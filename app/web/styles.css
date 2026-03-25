@@ -313,6 +313,7 @@ body {
   gap: 2px;
 }
 
+.topbar .icon-link,
 .topbar button:not(.btn-menu) {
   padding: 5px 10px;
   background: none;
@@ -324,8 +325,10 @@ body {
   cursor: pointer;
   transition: color 120ms ease, background 120ms ease;
   white-space: nowrap;
+  text-decoration: none;
 }
 
+.topbar .icon-link:hover,
 .topbar button:not(.btn-menu):hover {
   color: var(--fg);
   background: var(--surface);

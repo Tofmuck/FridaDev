@@ -36,7 +36,6 @@
   }
 
   // Settings popover
-  const btnSettings = $("#btnSettings");
   const panel = $("#panel");
   const max_tokens = $("#max_tokens");
   const system = $("#system");
@@ -620,11 +619,6 @@
       content: m.content,
     }));
   };
-
-  // ---- Paramètres
-  btnSettings.addEventListener("click", () => {
-    window.location.href = "/admin";
-  });
 
   [max_tokens].forEach(el => {
     el.addEventListener("input", () => {
