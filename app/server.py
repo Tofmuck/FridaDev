@@ -636,7 +636,13 @@ def _admin_settings_status_json():
 
 def _admin_settings_section_patch_response(section: str):
     data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'ok': False, 'error': 'patch request must be a mapping'}), 400
+    if 'readonly_info' in data:
+        return jsonify({'ok': False, 'error': 'readonly_info is read-only and cannot be patched'}), 400
     patch_payload = data.get('payload')
+    if isinstance(patch_payload, dict) and 'readonly_info' in patch_payload:
+        return jsonify({'ok': False, 'error': 'readonly_info is read-only and cannot be patched'}), 400
     updated_by = str(data.get('updated_by') or 'admin_api').strip() or 'admin_api'
 
     try:

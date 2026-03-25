@@ -612,6 +612,36 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertFalse(data['ok'])
         self.assertIn('ambiguous secret patch payload', data['error'])
 
+    def test_patch_admin_settings_main_model_rejects_top_level_readonly_info(self) -> None:
+        response = self.client.patch(
+            '/api/admin/settings/main-model',
+            json={
+                'payload': {'model': {'value': 'openrouter/test'}},
+                'readonly_info': {'system_prompt': {'value': 'should-not-pass'}},
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'readonly_info is read-only and cannot be patched')
+
+    def test_patch_admin_settings_main_model_rejects_payload_readonly_info(self) -> None:
+        response = self.client.patch(
+            '/api/admin/settings/main-model',
+            json={
+                'payload': {
+                    'model': {'value': 'openrouter/test'},
+                    'readonly_info': {'system_prompt': {'value': 'should-not-pass'}},
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'readonly_info is read-only and cannot be patched')
+
     def test_patch_admin_settings_main_model_updates_response_max_tokens(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section
