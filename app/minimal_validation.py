@@ -528,6 +528,17 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     resources_patch_result = resources_patch.json()
     if resources_patch.status_code != 200 or resources_patch_result.get("ok") is not True:
         raise RuntimeError("api admin resources patch invalide")
+    resources_invalid_patch = _http_json(
+        "PATCH",
+        f"{base_url}/api/admin/settings/resources",
+        json={"updated_by": "minimal_validation", "payload": {"llm_identity_path": {"value": 123}}},
+        **_admin_request_kwargs(),
+    )
+    resources_invalid_patch_result = resources_invalid_patch.json()
+    if resources_invalid_patch.status_code != 400 or resources_invalid_patch_result.get("ok") is not False:
+        raise RuntimeError("api admin resources invalid patch should fail with 400")
+    if "invalid text value for resources.llm_identity_path" not in str(resources_invalid_patch_result.get("error") or ""):
+        raise RuntimeError("api admin resources invalid patch error invalide")
 
     admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1", **_admin_request_kwargs())
     admin_logs_payload = admin_logs.json()
@@ -552,6 +563,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "admin_settings_status": admin_settings.status_code,
         "admin_resources_status": resources_get.status_code,
         "admin_resources_patch_status": resources_patch.status_code,
+        "admin_resources_invalid_patch_status": resources_invalid_patch.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
     }

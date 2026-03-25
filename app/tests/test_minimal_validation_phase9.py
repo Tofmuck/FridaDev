@@ -93,6 +93,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                         },
                     )
                 if method == "PATCH":
+                    if kwargs.get("json", {}).get("payload", {}).get("llm_identity_path", {}).get("value") == 123:
+                        return _FakeResponse(
+                            400,
+                            payload={
+                                "ok": False,
+                                "error": "invalid text value for resources.llm_identity_path",
+                            },
+                        )
                     return _FakeResponse(
                         200,
                         payload={
@@ -122,6 +130,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
+        self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
@@ -173,6 +182,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                         },
                     )
                 if method == "PATCH":
+                    if kwargs.get("json", {}).get("payload", {}).get("llm_identity_path", {}).get("value") == 123:
+                        return _FakeResponse(
+                            400,
+                            payload={
+                                "ok": False,
+                                "error": "invalid text value for resources.llm_identity_path",
+                            },
+                        )
                     return _FakeResponse(
                         200,
                         payload={
@@ -200,11 +217,13 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
 
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
-        self.assertEqual(len(admin_headers), 4)
+        self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
+        self.assertEqual(len(admin_headers), 5)
         self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[2], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[3], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[4], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(
             patch_payloads,
             [
@@ -214,7 +233,13 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                         "llm_identity_path": {"value": "data/identity/llm_identity.txt"},
                         "user_identity_path": {"value": "data/identity/user_identity.txt"},
                     },
-                }
+                },
+                {
+                    "updated_by": "minimal_validation",
+                    "payload": {
+                        "llm_identity_path": {"value": 123},
+                    },
+                },
             ],
         )
 
