@@ -547,7 +547,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - `SUMMARY_THRESHOLD_TOKENS`
   - `SUMMARY_KEEP_TURNS`
   - le prompt systeme inline actuellement utilise par le resumeur
-- [ ] Exposer en lecture seule, dans la section `services`, un bloc informationnel pour :
+- [x] Exposer en lecture seule, dans la section `services`, un bloc informationnel pour :
   - `max_tokens=40` du flux de reformulation web
   - le prompt systeme inline de reformulation web
 - [ ] Ajouter dans les `GET` admin concernes :

@@ -264,8 +264,24 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
         self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
 
-    def test_get_section_readonly_info_other_sections_stays_empty_in_third_phase12_slice(self) -> None:
-        self.assertEqual(runtime_settings.get_section_readonly_info('services'), {})
+    def test_get_section_readonly_info_services_exposes_web_reformulation_prompt(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('services')
+
+        self.assertEqual(readonly_info['web_reformulation_max_tokens']['value'], 40)
+        self.assertFalse(readonly_info['web_reformulation_max_tokens']['is_editable'])
+        self.assertEqual(
+            readonly_info['web_reformulation_system_prompt']['label'],
+            'web_reformulation_system_prompt',
+        )
+        self.assertIn('Nous sommes le {today}.', readonly_info['web_reformulation_system_prompt']['value'])
+        self.assertIn(
+            'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
+            readonly_info['web_reformulation_system_prompt']['value'],
+        )
+        self.assertIn('Maximum 8 mots.', readonly_info['web_reformulation_system_prompt']['value'])
+
+    def test_get_section_readonly_info_other_sections_stays_empty_in_fourth_phase12_slice(self) -> None:
+        self.assertEqual(runtime_settings.get_section_readonly_info('database'), {})
 
     def test_build_env_seed_plan_skips_existing_sections(self) -> None:
         plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))

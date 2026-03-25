@@ -121,6 +121,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'Tu es un assistant de synthèse.',
             data['sections']['summary_model']['readonly_info']['system_prompt']['value'],
         )
+        self.assertEqual(
+            data['sections']['services']['readonly_info']['web_reformulation_max_tokens']['value'],
+            40,
+        )
+        self.assertIn(
+            'Nous sommes le {today}.',
+            data['sections']['services']['readonly_info']['web_reformulation_system_prompt']['value'],
+        )
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
@@ -362,6 +370,15 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8092')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
+        self.assertEqual(data['readonly_info']['web_reformulation_max_tokens']['value'], 40)
+        self.assertIn(
+            'Nous sommes le {today}.',
+            data['readonly_info']['web_reformulation_system_prompt']['value'],
+        )
+        self.assertIn(
+            'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
+            data['readonly_info']['web_reformulation_system_prompt']['value'],
+        )
         self.assertEqual(data['secret_sources']['crawl4ai_token'], 'db_encrypted')
 
     def test_get_admin_settings_resources_returns_single_section(self) -> None:
