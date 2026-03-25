@@ -18,8 +18,8 @@ Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne s
 - `/admin` = nouvel admin.
 - Le lien du front principal pointe vers `/admin`.
 - `temperature` et `top_p` appartiennent a la logique globale de configuration des modeles.
-- `max_tokens` de reponse et les prompts internes sont hors perimetre V1 editable.
-- Une extension ulterieure peut toutefois les exposer en lecture seule a titre informationnel, sans en faire des champs DB editables.
+- Les budgets de generation `max_tokens` par flux modele ne sont plus hors perimetre ; ils doivent pouvoir devenir editables dans l'admin.
+- Les prompts internes ne deviennent pas editables pour autant dans cette phase ; ils peuvent etre exposes en lecture seule a titre informationnel.
 
 ## Perimetre exact de V1
 
@@ -40,9 +40,9 @@ Sont exclus de V1 :
 - les logs
 - les seuils hermeneutiques
 - les prompts internes en edition
+- les budgets de contexte / resume / identite en edition tant qu'ils restent seulement informationnels
 - `FRIDA_WEB_HOST`
 - `FRIDA_WEB_PORT`
-- `max_tokens` en edition
 - tout invariant conceptuel du systeme
 
 ## Contrainte de bootstrap DB
