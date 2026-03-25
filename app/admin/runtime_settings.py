@@ -736,25 +736,71 @@ def _read_front_system_prompt() -> str:
     return str(match.group(1)).strip()
 
 
+def _read_app_text_file(path_str: str) -> str:
+    try:
+        source = (Path(__file__).resolve().parents[1] / path_str).read_text(encoding='utf-8')
+    except OSError:
+        return ''
+    return source.strip()
+
+
 def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
     get_section_spec(section)
-    if section != 'main_model':
-        return {}
-
-    return {
-        'context_max_tokens': {
-            'label': 'FRIDA_MAX_TOKENS',
-            'value': int(config.MAX_TOKENS),
-            'is_editable': False,
-            'source': 'config_py',
-        },
-        'system_prompt': {
-            'label': 'SYSTEM_PROMPT',
-            'value': _read_front_system_prompt(),
-            'is_editable': False,
-            'source': 'web_app_js',
-        },
-    }
+    if section == 'main_model':
+        return {
+            'context_max_tokens': {
+                'label': 'FRIDA_MAX_TOKENS',
+                'value': int(config.MAX_TOKENS),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'system_prompt': {
+                'label': 'SYSTEM_PROMPT',
+                'value': _read_front_system_prompt(),
+                'is_editable': False,
+                'source': 'web_app_js',
+            },
+        }
+    if section == 'arbiter_model':
+        return {
+            'decision_max_tokens': {
+                'label': 'decision_max_tokens',
+                'value': 600,
+                'is_editable': False,
+                'source': 'memory_arbiter_py',
+            },
+            'identity_extractor_max_tokens': {
+                'label': 'identity_extractor_max_tokens',
+                'value': 700,
+                'is_editable': False,
+                'source': 'memory_arbiter_py',
+            },
+            'arbiter_prompt_path': {
+                'label': 'ARBITER_PROMPT_PATH',
+                'value': str(config.ARBITER_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'identity_extractor_prompt_path': {
+                'label': 'IDENTITY_EXTRACTOR_PROMPT_PATH',
+                'value': str(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'arbiter_prompt': {
+                'label': 'arbiter_prompt',
+                'value': _read_app_text_file(str(config.ARBITER_PROMPT_PATH)),
+                'is_editable': False,
+                'source': 'app_prompt_file',
+            },
+            'identity_extractor_prompt': {
+                'label': 'identity_extractor_prompt',
+                'value': _read_app_text_file(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
+                'is_editable': False,
+                'source': 'app_prompt_file',
+            },
+        }
+    return {}
 
 
 def get_main_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:

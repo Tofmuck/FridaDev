@@ -226,8 +226,28 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
         self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
 
-    def test_get_section_readonly_info_other_sections_stays_empty_in_first_phase12_slice(self) -> None:
-        self.assertEqual(runtime_settings.get_section_readonly_info('arbiter_model'), {})
+    def test_get_section_readonly_info_arbiter_model_exposes_budgets_paths_and_prompts(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
+
+        self.assertEqual(readonly_info['decision_max_tokens']['value'], 600)
+        self.assertFalse(readonly_info['decision_max_tokens']['is_editable'])
+        self.assertEqual(readonly_info['identity_extractor_max_tokens']['value'], 700)
+        self.assertFalse(readonly_info['identity_extractor_max_tokens']['is_editable'])
+        self.assertEqual(readonly_info['arbiter_prompt_path']['label'], 'ARBITER_PROMPT_PATH')
+        self.assertEqual(readonly_info['arbiter_prompt_path']['value'], config.ARBITER_PROMPT_PATH)
+        self.assertEqual(
+            readonly_info['identity_extractor_prompt_path']['label'],
+            'IDENTITY_EXTRACTOR_PROMPT_PATH',
+        )
+        self.assertEqual(
+            readonly_info['identity_extractor_prompt_path']['value'],
+            config.IDENTITY_EXTRACTOR_PROMPT_PATH,
+        )
+        self.assertIn('You are a conversational memory arbiter.', readonly_info['arbiter_prompt']['value'])
+        self.assertIn('You are an identity evidence extractor.', readonly_info['identity_extractor_prompt']['value'])
+
+    def test_get_section_readonly_info_other_sections_stays_empty_in_second_phase12_slice(self) -> None:
+        self.assertEqual(runtime_settings.get_section_readonly_info('summary_model'), {})
 
     def test_build_env_seed_plan_skips_existing_sections(self) -> None:
         plan = runtime_settings.build_env_seed_plan(('main_model', 'embedding', 'services'))

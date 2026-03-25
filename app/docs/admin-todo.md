@@ -536,7 +536,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
   - le budget de contexte `FRIDA_MAX_TOKENS`
   - le `SYSTEM_PROMPT` de base actuellement injecte par le front principal
-- [ ] Exposer en lecture seule, dans la section `arbiter_model`, un bloc informationnel pour :
+- [x] Exposer en lecture seule, dans la section `arbiter_model`, un bloc informationnel pour :
   - `max_tokens=600` du flux de decision memoire
   - `max_tokens=700` du flux `identity_extractor`
   - `ARBITER_PROMPT_PATH`

@@ -101,6 +101,18 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'Cadre de réponse',
             data['sections']['main_model']['readonly_info']['system_prompt']['value'],
         )
+        self.assertEqual(
+            data['sections']['arbiter_model']['readonly_info']['decision_max_tokens']['value'],
+            600,
+        )
+        self.assertEqual(
+            data['sections']['arbiter_model']['readonly_info']['identity_extractor_max_tokens']['value'],
+            700,
+        )
+        self.assertIn(
+            'You are a conversational memory arbiter.',
+            data['sections']['arbiter_model']['readonly_info']['arbiter_prompt']['value'],
+        )
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_status_returns_bootstrap_and_section_sources(self) -> None:
@@ -196,6 +208,21 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'arbiter_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-route')
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
+        self.assertEqual(data['readonly_info']['decision_max_tokens']['value'], 600)
+        self.assertEqual(data['readonly_info']['identity_extractor_max_tokens']['value'], 700)
+        self.assertEqual(data['readonly_info']['arbiter_prompt_path']['value'], 'prompts/arbiter.txt')
+        self.assertEqual(
+            data['readonly_info']['identity_extractor_prompt_path']['value'],
+            'prompts/identity_extractor.txt',
+        )
+        self.assertIn(
+            'You are a conversational memory arbiter.',
+            data['readonly_info']['arbiter_prompt']['value'],
+        )
+        self.assertIn(
+            'You are an identity evidence extractor.',
+            data['readonly_info']['identity_extractor_prompt']['value'],
+        )
 
     def test_get_admin_settings_summary_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
