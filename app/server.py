@@ -322,7 +322,6 @@ def api_chat():
     user_msg         = (data.get("message") or "").strip()
     system_prompt    = (data.get("system")  or "").strip()
     conversation_id_raw = data.get("conversation_id")
-    max_tokens       = int(data.get("max_tokens")     or 1500)
     stream_req       = bool(data.get("stream"))
     web_search_on    = bool(data.get("web_search"))
 
@@ -349,6 +348,8 @@ def api_chat():
     runtime_main_model = str(runtime_main_payload['model']['value'])
     temperature = float(runtime_main_payload['temperature']['value'])
     top_p = float(runtime_main_payload['top_p']['value'])
+    runtime_response_max_tokens = int(runtime_main_payload['response_max_tokens']['value'])
+    max_tokens = int(data.get("max_tokens") or runtime_response_max_tokens)
 
     # ── Enregistrement message utilisateur
     user_timestamp = _now_iso()
