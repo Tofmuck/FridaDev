@@ -143,6 +143,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const applySectionDraftToForm =", source)
         self.assertIn('origin === "db_seed"', source)
 
+    def test_admin_js_reserves_env_fallback_label_for_env_seed_only(self) -> None:
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertIn('if (origin === "db" || origin === "db_seed" || origin === "admin_ui") return "db";', source)
+        self.assertIn('if (origin === "env_seed") return "env fallback";', source)
+
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
         self.assertFalse((APP_DIR / "web" / "admin-old.js").exists())

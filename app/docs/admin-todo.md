@@ -512,9 +512,9 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ecrire en base les valeurs non secretes de `resources`.
 - [x] Fusionner ce bootstrap non secret avec le backfill des secrets deja chiffres pour obtenir une baseline DB complete et idempotente.
 - [x] Introduire un origin persiste explicite pour les valeurs importees en base (`db_seed` ou equivalent), distinct du fallback env.
-- [ ] Reserver le libelle `env fallback` au seul cas ou une valeur est encore synthesee depuis l'env faute de row DB exploitable.
+- [x] Reserver le libelle `env fallback` au seul cas ou une valeur est encore synthesee depuis l'env faute de row DB exploitable.
 - [x] Verifier qu'apres bootstrap complet, toutes les sections V1 apparaissent avec `source=db` dans `/api/admin/settings/status`.
-- [ ] Verifier qu'apres bootstrap complet, les champs non secrets n'affichent plus `env fallback` dans l'UI lorsqu'ils sont deja persistes en base.
+- [x] Verifier qu'apres bootstrap complet, les champs non secrets n'affichent plus `env fallback` dans l'UI lorsqu'ils sont deja persistes en base.
 - [x] Verifier qu'apres bootstrap complet, les secrets V1 affichent `db_encrypted` des qu'ils sont chiffres en base, hors cas special `database.dsn`.
 - [x] Maintenir `database.dsn` stockable et masque en base sans remplacer le bootstrap externe tant que `FRIDA_MEMORY_DB_DSN` reste l'invariant.
 - [x] Ajouter des tests backend sur le bootstrap DB complet des sections manquantes.

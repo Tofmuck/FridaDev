@@ -123,6 +123,31 @@ def _assert_masked_secret_fields(section_payloads: Dict[str, Any]) -> None:
                 raise RuntimeError(f"etat secret invalide pour {section}.{field.key}")
 
 
+def _assert_no_env_fallback_for_persisted_non_secret_fields(
+    section_payloads: Dict[str, Any],
+    section_statuses: Dict[str, Any],
+) -> None:
+    for section in runtime_settings.list_sections():
+        section_status = section_statuses.get(section) or {}
+        if str(section_status.get("source") or "") != "db":
+            continue
+
+        payload = section_payloads.get(section) or {}
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"payload admin settings invalide pour {section}")
+
+        for field in runtime_settings.get_section_spec(section).fields:
+            if field.is_secret:
+                continue
+            field_payload = payload.get(field.key)
+            if not isinstance(field_payload, dict):
+                raise RuntimeError(f"payload champ manquant pour {section}.{field.key}")
+            if str(field_payload.get("origin") or "") == "env_seed":
+                raise RuntimeError(
+                    f"persisted non-secret field still uses env fallback origin: {section}.{field.key}"
+                )
+
+
 def _run_check(
     results: List[Dict[str, Any]],
     name: str,
@@ -553,6 +578,19 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
             section: section_payload.get("payload")
             for section, section_payload in admin_settings_payload["sections"].items()
         }
+    )
+    _assert_no_env_fallback_for_persisted_non_secret_fields(
+        {
+            section: section_payload.get("payload")
+            for section, section_payload in admin_settings_payload["sections"].items()
+        },
+        {
+            section: {
+                "source": section_payload.get("source"),
+                "source_reason": section_payload.get("source_reason"),
+            }
+            for section, section_payload in admin_settings_payload["sections"].items()
+        },
     )
 
     resources_get = _http_json("GET", f"{base_url}/api/admin/settings/resources", **_admin_request_kwargs())

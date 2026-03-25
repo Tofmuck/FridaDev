@@ -143,6 +143,82 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
         self.assertIn('"ok": false', output)
         self.assertIn("table absente: runtime_settings", output)
 
+    def test_assert_no_env_fallback_for_persisted_non_secret_fields_accepts_db_seed(self) -> None:
+        section_payloads = {
+            "main_model": {
+                "base_url": {"value": "https://openrouter.ai/api/v1", "origin": "db_seed"},
+                "model": {"value": "openai/gpt-5.1", "origin": "db_seed"},
+                "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                "referer": {"value": "https://frida-system.fr", "origin": "db_seed"},
+                "app_name": {"value": "FridaDev", "origin": "db_seed"},
+                "title_llm": {"value": "FridaDev/LLM", "origin": "db_seed"},
+                "title_arbiter": {"value": "FridaDev/Arbiter", "origin": "db_seed"},
+                "title_resumer": {"value": "FridaDev/Resumer", "origin": "db_seed"},
+                "temperature": {"value": 0.4, "origin": "db_seed"},
+                "top_p": {"value": 1.0, "origin": "db_seed"},
+            },
+            "arbiter_model": {},
+            "summary_model": {},
+            "embedding": {},
+            "database": {},
+            "services": {},
+            "resources": {},
+        }
+        section_statuses = {
+            "main_model": {"source": "db", "source_reason": "db_row"},
+            "arbiter_model": {"source": "env", "source_reason": "missing_section"},
+            "summary_model": {"source": "env", "source_reason": "missing_section"},
+            "embedding": {"source": "env", "source_reason": "missing_section"},
+            "database": {"source": "env", "source_reason": "missing_section"},
+            "services": {"source": "env", "source_reason": "missing_section"},
+            "resources": {"source": "env", "source_reason": "missing_section"},
+        }
+
+        minimal_validation._assert_no_env_fallback_for_persisted_non_secret_fields(
+            section_payloads,
+            section_statuses,
+        )
+
+    def test_assert_no_env_fallback_for_persisted_non_secret_fields_rejects_env_seed(self) -> None:
+        section_payloads = {
+            "main_model": {
+                "base_url": {"value": "https://openrouter.ai/api/v1", "origin": "env_seed"},
+                "model": {"value": "openai/gpt-5.1", "origin": "db_seed"},
+                "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
+                "referer": {"value": "https://frida-system.fr", "origin": "db_seed"},
+                "app_name": {"value": "FridaDev", "origin": "db_seed"},
+                "title_llm": {"value": "FridaDev/LLM", "origin": "db_seed"},
+                "title_arbiter": {"value": "FridaDev/Arbiter", "origin": "db_seed"},
+                "title_resumer": {"value": "FridaDev/Resumer", "origin": "db_seed"},
+                "temperature": {"value": 0.4, "origin": "db_seed"},
+                "top_p": {"value": 1.0, "origin": "db_seed"},
+            },
+            "arbiter_model": {},
+            "summary_model": {},
+            "embedding": {},
+            "database": {},
+            "services": {},
+            "resources": {},
+        }
+        section_statuses = {
+            "main_model": {"source": "db", "source_reason": "db_row"},
+            "arbiter_model": {"source": "env", "source_reason": "missing_section"},
+            "summary_model": {"source": "env", "source_reason": "missing_section"},
+            "embedding": {"source": "env", "source_reason": "missing_section"},
+            "database": {"source": "env", "source_reason": "missing_section"},
+            "services": {"source": "env", "source_reason": "missing_section"},
+            "resources": {"source": "env", "source_reason": "missing_section"},
+        }
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "persisted non-secret field still uses env fallback origin: main_model.base_url",
+        ):
+            minimal_validation._assert_no_env_fallback_for_persisted_non_secret_fields(
+                section_payloads,
+                section_statuses,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
