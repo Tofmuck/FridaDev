@@ -472,7 +472,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un test garantissant que les assets `admin-old.html` et `admin-old.js` ne sont pas introduits.
 - [x] Ajouter un smoke test `GET /admin`.
 - [x] Ajouter un smoke test garantissant que `/admin-old` n'est pas expose.
-- [ ] Ajouter un smoke test de lecture agregee de la configuration admin.
+- [x] Ajouter un smoke test de lecture agregee de la configuration admin.
 - [ ] Ajouter un smoke test d'update valide sur une section non secrete.
 - [ ] Ajouter un smoke test d'update invalide pour verifier la validation backend.
 - [ ] Ajouter un smoke test garantissant qu'un secret ne ressort jamais en clair via un `GET`.

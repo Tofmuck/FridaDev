@@ -82,6 +82,13 @@ def _http_json(method: str, url: str, **kwargs: Any) -> requests.Response:
     return requests.request(method=method, url=url, timeout=timeout, **kwargs)
 
 
+def _admin_request_kwargs() -> Dict[str, Any]:
+    token = str(config.FRIDA_ADMIN_TOKEN or "").strip()
+    if not token:
+        return {}
+    return {"headers": {"X-Admin-Token": token}}
+
+
 def _run_check(
     results: List[Dict[str, Any]],
     name: str,
@@ -482,7 +489,17 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if not isinstance(conv_payload.get("items"), list):
         raise RuntimeError("api conversations sans items")
 
-    admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1")
+    admin_settings = _http_json("GET", f"{base_url}/api/admin/settings", **_admin_request_kwargs())
+    admin_settings_payload = admin_settings.json()
+    if admin_settings.status_code != 200 or admin_settings_payload.get("ok") is not True:
+        raise RuntimeError("api admin settings invalide")
+    if not isinstance(admin_settings_payload.get("sections"), dict):
+        raise RuntimeError("api admin settings sans sections")
+    expected_sections = set(runtime_settings.list_sections())
+    if set(admin_settings_payload["sections"].keys()) != expected_sections:
+        raise RuntimeError("api admin settings sections invalides")
+
+    admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1", **_admin_request_kwargs())
     admin_logs_payload = admin_logs.json()
     if admin_logs.status_code != 200 or admin_logs_payload.get("ok") is not True:
         raise RuntimeError("api admin logs invalide")
@@ -502,6 +519,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "admin_status": admin.status_code,
         "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
+        "admin_settings_status": admin_settings.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
     }

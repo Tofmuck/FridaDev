@@ -10,6 +10,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 import minimal_validation
+import config
+from admin import runtime_settings
 
 
 class _FakeResponse:
@@ -49,6 +51,17 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(404, text="not found")
             if url.endswith("/api/conversations?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "items": []})
+            if url.endswith("/api/admin/settings"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "sections": {
+                            section: {"section": section, "payload": {}, "source": "env", "source_reason": "empty_table"}
+                            for section in runtime_settings.list_sections()
+                        },
+                    },
+                )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -64,8 +77,57 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["root_status"], 200)
         self.assertEqual(details["admin_status"], 200)
         self.assertEqual(details["admin_old_status"], 404)
+        self.assertEqual(details["admin_settings_status"], 200)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
+        self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
+
+    def test_check_api_smoke_forwards_admin_token_to_admin_endpoints(self) -> None:
+        original_http_json = minimal_validation._http_json
+        original_token = config.FRIDA_ADMIN_TOKEN
+        admin_headers = []
+
+        def fake_http_json(method: str, url: str, **kwargs):
+            headers = kwargs.get("headers") or {}
+            if "/api/admin/" in url:
+                admin_headers.append(headers)
+            if url.endswith("/"):
+                return _FakeResponse(200, text="Frida")
+            if url.endswith("/admin"):
+                return _FakeResponse(200, text="Admin de configuration")
+            if url.endswith("/admin-old"):
+                return _FakeResponse(404, text="not found")
+            if url.endswith("/api/conversations?limit=1"):
+                return _FakeResponse(200, payload={"ok": True, "items": []})
+            if url.endswith("/api/admin/settings"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "sections": {
+                            section: {"section": section, "payload": {}, "source": "env", "source_reason": "empty_table"}
+                            for section in runtime_settings.list_sections()
+                        },
+                    },
+                )
+            if url.endswith("/api/admin/logs?limit=1"):
+                return _FakeResponse(200, payload={"ok": True, "logs": []})
+            if "/api/conversations/" in url and url.endswith("/messages"):
+                return _FakeResponse(404, payload={"ok": False, "error": "conversation introuvable"})
+            raise AssertionError(f"unexpected request: {method} {url}")
+
+        config.FRIDA_ADMIN_TOKEN = "phase9-admin-token"
+        minimal_validation._http_json = fake_http_json
+        try:
+            details = minimal_validation._check_api_smoke("http://frida.test")
+        finally:
+            minimal_validation._http_json = original_http_json
+            config.FRIDA_ADMIN_TOKEN = original_token
+
+        self.assertEqual(details["admin_settings_status"], 200)
+        self.assertEqual(len(admin_headers), 2)
+        self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
 
 
 if __name__ == "__main__":
