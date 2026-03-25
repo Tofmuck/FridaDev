@@ -483,13 +483,13 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 10 - Sequence de commits recommandee
 
-- [ ] Commit 1 : migration SQL + seed initial + design documentaire du bootstrap DB.
-- [ ] Commit 2 : couche backend de lecture runtime config avec fallback env, sans front.
-- [ ] Commit 3 : remplacement progressif des lectures code sur un premier bloc isole (`main_model` ou `services`).
-- [ ] Commit 4 : ouverture des routes API de configuration.
-- [ ] Commit 5 : chiffrement, ecriture, lecture et backfill initial des secrets runtime en base.
-- [ ] Commit 6 : liberation de `admin.html` / `admin.js` sans `admin-old.*`.
-- [ ] Commit 7 : creation du nouveau frontend admin.
-- [ ] Commit 8 : adaptation du bouton `Parametres` dans le front principal.
-- [ ] Commit 9 : validation minimale, smoke tests et non-regression.
-- [ ] Commit 10 : documentation finale d'exploitation/migration du nouvel admin.
+- [x] Commit 1 : migration SQL + seed initial + design documentaire du bootstrap DB.
+- [x] Commit 2 : couche backend de lecture runtime config avec fallback env, sans front.
+- [x] Commit 3 : remplacement progressif des lectures code sur un premier bloc isole (`main_model` ou `services`).
+- [x] Commit 4 : ouverture des routes API de configuration.
+- [x] Commit 5 : chiffrement, ecriture, lecture et backfill initial des secrets runtime en base.
+- [x] Commit 6 : liberation de `admin.html` / `admin.js` sans `admin-old.*`.
+- [x] Commit 7 : creation du nouveau frontend admin.
+- [x] Commit 8 : adaptation du bouton `Parametres` dans le front principal.
+- [x] Commit 9 : validation minimale, smoke tests et non-regression.
+- [x] Commit 10 : documentation finale d'exploitation/migration du nouvel admin.
