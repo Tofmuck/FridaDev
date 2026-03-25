@@ -555,7 +555,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - un bloc `readonly_info` distinct pour les prompts et budgets non editables
 - [ ] Refuser ou ignorer explicitement tout `PATCH` tentant d'ecrire `readonly_info`.
 - [ ] Ajouter des tests backend sur la presence des informations read-only.
-- [ ] Ajouter des tests backend sur l'edition de `main_model.response_max_tokens`.
+- [x] Ajouter des tests backend sur l'edition de `main_model.response_max_tokens`.
 - [ ] Ajouter des tests backend garantissant la non-editabilite des prompts et des budgets restant purement informationnels.
 - [ ] Ajouter dans le frontend admin un champ editable pour `main_model.response_max_tokens`.
 - [ ] Ajouter dans le frontend admin des cartes read-only naturelles pour tous les prompts systeme exposes par cette phase.

@@ -1022,6 +1022,25 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(str(ctx.exception), 'failed to encrypt secret for main_model.api_key')
         self.assertNotIn(secret_value, str(ctx.exception))
 
+    def test_normalize_admin_patch_payload_accepts_main_model_response_max_tokens(self) -> None:
+        normalized = runtime_settings.normalize_admin_patch_payload(
+            'main_model',
+            {
+                'response_max_tokens': {'value': 4096},
+            },
+        )
+
+        self.assertEqual(
+            normalized,
+            {
+                'response_max_tokens': {
+                    'value': 4096,
+                    'is_secret': False,
+                    'origin': 'admin_ui',
+                },
+            },
+        )
+
     def test_update_runtime_section_uses_external_bootstrap_dsn_and_returns_redacted_payload(self) -> None:
         observed = {
             'dsn': None,
@@ -1187,6 +1206,82 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('ciphertext-main-model', history_after)
         self.assertNotIn('sk-phase5bis-secret', payload_after)
         self.assertNotIn('sk-phase5bis-secret', history_after)
+
+    def test_update_runtime_section_updates_main_model_response_max_tokens(self) -> None:
+        observed = {
+            'dsn': None,
+            'queries': [],
+            'params': [],
+        }
+
+        class FakeUndefinedTable(Exception):
+            pass
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['queries'].append(query)
+                observed['params'].append(params)
+
+            def fetchone(self):
+                return None
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                return None
+
+        def fake_connect(dsn):
+            observed['dsn'] = dsn
+            return FakeConnection()
+
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_psycopg = sys.modules.get('psycopg')
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        sys.modules['psycopg'] = types.SimpleNamespace(
+            connect=fake_connect,
+            errors=types.SimpleNamespace(UndefinedTable=FakeUndefinedTable),
+        )
+        try:
+            view = runtime_settings.update_runtime_section(
+                'main_model',
+                {
+                    'response_max_tokens': {'value': 4096},
+                },
+                updated_by='phase12-test',
+                fetcher=lambda: {},
+            )
+        finally:
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+            if original_psycopg is None:
+                del sys.modules['psycopg']
+            else:
+                sys.modules['psycopg'] = original_psycopg
+            runtime_settings.invalidate_runtime_settings_cache()
+
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertEqual(view.payload['response_max_tokens']['value'], 4096)
+        self.assertEqual(view.payload['response_max_tokens']['origin'], 'admin_ui')
+        payload_after = observed['params'][1][2]
+        history_after = observed['params'][2][3]
+        self.assertIn('"response_max_tokens": {"value": 4096, "is_secret": false, "origin": "admin_ui"}', payload_after)
+        self.assertIn('"response_max_tokens": {"value": 4096, "is_secret": false, "origin": "admin_ui"}', history_after)
 
     def test_backfill_runtime_secrets_from_env_encrypts_env_secrets_without_persisting_clear_text(self) -> None:
         observed = {
