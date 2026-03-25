@@ -22,6 +22,7 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - Chaque tranche reelle devra etre validee, puis committee et poussee avant d'ouvrir la suivante.
 - Pour `main_model`, `arbiter_model` et `summary_model`, tous les parametres effectivement paramétrables doivent entrer dans le perimetre V1, a l'exception explicite de `max_tokens` de reponse.
 - `temperature` et `top_p` font donc partie de la logique de configuration globale des modeles et ne sont plus des points ouverts.
+- `max_tokens` et les prompts internes restent hors perimetre editable V1, mais peuvent etre exposes en lecture seule a titre informationnel dans une phase ulterieure dediee.
 - Le routage cible est deja fixe :
   - `/admin` = nouvel admin
   - aucune UI legacy `/admin-old` n'est retenue
@@ -522,3 +523,33 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter un smoke test de deploiement qui echoue si `runtime_settings` n'existe pas.
 - [x] Verifier manuellement sur le conteneur cible que l'admin affiche majoritairement `db` apres activation effective de la baseline.
 - [x] Prevoir un commit isole pour l'activation reelle de la configuration runtime en base.
+
+### Phase 12 - Surfaces informationnelles read-only pour max tokens et prompts
+
+- [ ] Acter explicitement que `max_tokens` et les prompts internes restent hors edition V1, mais doivent etre visibles en lecture seule dans l'admin.
+- [ ] Distinguer explicitement les budgets de generation (`max_tokens`) des budgets de contexte / resume / identite pour ne pas melanger des concepts differents.
+- [ ] Exposer en lecture seule, dans la section `main_model`, un bloc informationnel pour :
+  - la valeur par defaut actuellement envoyee a `/api/chat` comme `max_tokens`
+  - le budget de contexte `FRIDA_MAX_TOKENS`
+  - le `SYSTEM_PROMPT` de base actuellement injecte par le front principal
+- [ ] Exposer en lecture seule, dans la section `arbiter_model`, un bloc informationnel pour :
+  - `max_tokens=600` du flux de decision memoire
+  - `max_tokens=700` du flux `identity_extractor`
+  - `ARBITER_PROMPT_PATH`
+  - `IDENTITY_EXTRACTOR_PROMPT_PATH`
+  - le contenu actuel des deux prompts
+- [ ] Exposer en lecture seule, dans la section `summary_model`, un bloc informationnel pour :
+  - `SUMMARY_TARGET_TOKENS`
+  - `SUMMARY_THRESHOLD_TOKENS`
+  - `SUMMARY_KEEP_TURNS`
+  - le prompt systeme inline actuellement utilise par le resumieur
+- [ ] Ne pas rendre ces valeurs modifiables dans cette phase.
+- [ ] Ne pas les stocker en base dans cette phase tant qu'elles restent purement informationnelles.
+- [ ] Ajouter dans les `GET` admin concernes un bloc `readonly_info` (ou equivalent) distinct du payload runtime editable.
+- [ ] Refuser ou ignorer explicitement tout `PATCH` tentant d'ecrire ce bloc `readonly_info`.
+- [ ] Ajouter des tests backend sur la presence de ces informations en lecture seule.
+- [ ] Ajouter des tests backend garantissant leur non-editabilite.
+- [ ] Ajouter dans le frontend admin des cartes read-only pour `main_model`, `arbiter_model` et `summary_model`.
+- [ ] Ajouter un rendu lisible des prompts longs (bloc scrollable / pre-wrap / textarea readonly) sans introduire de mode edition.
+- [ ] Maintenir `max_tokens` local de session hors edition globale tant que cette phase n'introduit qu'une lecture informative.
+- [ ] Prevoir un commit isole pour cette extension read-only.
