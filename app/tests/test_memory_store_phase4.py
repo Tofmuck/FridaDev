@@ -10,6 +10,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
+from memory import arbiter
 from memory import memory_store
 import config
 
@@ -423,6 +424,112 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
         self.assertEqual(observed['models'], [config.ARBITER_MODEL])
         self.assertTrue(observed['committed'])
+
+    def test_record_arbiter_decisions_persists_effective_model_even_if_runtime_changes_before_insert(self) -> None:
+        observed = {'persisted_models': [], 'request_models': []}
+        original_arbiter_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_memory_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_conn = memory_store._conn
+
+        call_count = {'n': 0}
+
+        def fake_get_arbiter_model_settings():
+            call_count['n'] += 1
+            model = (
+                'openrouter/runtime-arbiter-v1'
+                if call_count['n'] == 1
+                else 'openrouter/runtime-arbiter-v2'
+            )
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'arbiter_model',
+                    {
+                        'model': {'value': model, 'origin': 'db'},
+                        'temperature': {'value': 0.0, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                        'timeout_s': {'value': 45, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        class FakeArbiterResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {
+                    'choices': [
+                        {
+                            'message': {
+                                'content': (
+                                    '{"decisions":[{"candidate_id":"0","keep":true,'
+                                    '"semantic_relevance":0.9,"contextual_gain":0.9,'
+                                    '"redundant_with_recent":false,"reason":"kept"}]}'
+                                )
+                            }
+                        }
+                    ]
+                }
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['persisted_models'].append(params[11])
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                return None
+
+        def fake_post(url, json, headers, timeout):
+            observed['request_models'].append(json['model'])
+            return FakeArbiterResponse()
+
+        traces = [
+            {
+                'role': 'assistant',
+                'content': 'memoire candidate',
+                'timestamp': '2026-03-26T00:00:00Z',
+                'score': 0.9,
+            }
+        ]
+        recent_turns = [{'role': 'user', 'content': 'question recente'}]
+
+        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter._load_prompt = lambda _path, _label: 'prompt'
+        arbiter.requests.post = fake_post
+        memory_store._conn = lambda: FakeConnection()
+        try:
+            _kept, decisions = arbiter.filter_traces_with_diagnostics(traces, recent_turns)
+            memory_store.record_arbiter_decisions('conv-phase4-arbiter-race', traces, decisions)
+        finally:
+            arbiter.runtime_settings.get_arbiter_model_settings = original_arbiter_get_settings
+            memory_store.runtime_settings.get_arbiter_model_settings = original_memory_get_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            memory_store._conn = original_conn
+
+        self.assertEqual(observed['request_models'], ['openrouter/runtime-arbiter-v1'])
+        self.assertEqual(observed['persisted_models'], ['openrouter/runtime-arbiter-v1'])
 
 
 if __name__ == '__main__':

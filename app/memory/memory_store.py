@@ -1128,7 +1128,7 @@ def record_arbiter_decisions(
         return
 
     try:
-        arbiter_model = _runtime_arbiter_model_name()
+        fallback_arbiter_model: str | None = None
         with _conn() as conn:
             with conn.cursor() as cur:
                 for decision in decisions:
@@ -1137,6 +1137,11 @@ def record_arbiter_decisions(
                         continue
                     idx = int(candidate_id)
                     trace = traces[idx] if 0 <= idx < len(traces) else {}
+                    decision_model = str(decision.get('model') or '').strip()
+                    if not decision_model:
+                        if fallback_arbiter_model is None:
+                            fallback_arbiter_model = _runtime_arbiter_model_name()
+                        decision_model = fallback_arbiter_model
 
                     cur.execute(
                         '''
@@ -1169,7 +1174,7 @@ def record_arbiter_decisions(
                             _trace_float(decision.get('contextual_gain')),
                             bool(decision.get('redundant_with_recent', False)),
                             str(decision.get('reason', ''))[:500],
-                            arbiter_model,
+                            decision_model,
                             str(decision.get('decision_source', 'llm'))[:32],
                         ),
                     )

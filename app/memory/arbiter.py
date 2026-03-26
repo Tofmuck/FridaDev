@@ -167,6 +167,7 @@ def _build_fallback_decisions(
     traces: List[Dict[str, Any]],
     keep_idx: int,
     reason: str,
+    model: str,
 ) -> List[Dict[str, Any]]:
     decisions: List[Dict[str, Any]] = []
     threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
@@ -181,6 +182,7 @@ def _build_fallback_decisions(
                 'contextual_gain': semantic if keep else 0.0,
                 'redundant_with_recent': False,
                 'reason': f'fallback:{reason}',
+                'model': model,
                 'decision_source': 'fallback',
             }
         )
@@ -190,6 +192,7 @@ def _build_fallback_decisions(
 def _deterministic_fallback(
     traces: List[Dict[str, Any]],
     reason: str,
+    model: str,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if not traces:
         return [], []
@@ -209,7 +212,7 @@ def _deterministic_fallback(
         threshold,
         fallback_count,
     )
-    decisions = _build_fallback_decisions(traces, keep_idx=keep_idx, reason=reason)
+    decisions = _build_fallback_decisions(traces, keep_idx=keep_idx, reason=reason, model=model)
     return kept, decisions
 
 
@@ -287,7 +290,7 @@ def filter_traces_with_diagnostics(
     arbiter_model = _runtime_arbiter_model_name()
     system_prompt = _load_prompt(config.ARBITER_PROMPT_PATH, 'arbiter')
     if not system_prompt:
-        return _deterministic_fallback(traces, 'prompt_missing')
+        return _deterministic_fallback(traces, 'prompt_missing', arbiter_model)
 
     recent_text = '\n'.join(
         f"{t.get('role', '?').upper()}: {t.get('content', '')}"
@@ -334,11 +337,11 @@ def filter_traces_with_diagnostics(
         decisions = _validate_arbiter_output(result)
     except requests.exceptions.Timeout:
         logger.warning('arbiter_timeout model=%s', arbiter_model)
-        return _deterministic_fallback(traces, 'timeout')
+        return _deterministic_fallback(traces, 'timeout', arbiter_model)
     except Exception as exc:
         parse_count = _inc_metric('arbiter_parse_error_count')
         logger.error('arbiter_parse_or_runtime_error err=%s parse_error_count=%s', exc, parse_count)
-        return _deterministic_fallback(traces, 'parse_or_runtime_error')
+        return _deterministic_fallback(traces, 'parse_or_runtime_error', arbiter_model)
 
     decisions_by_id: Dict[int, Dict[str, Any]] = {}
     for decision in decisions:
@@ -430,6 +433,7 @@ def filter_traces_with_diagnostics(
     for d in completed_decisions:
         idx = int(d['candidate_id'])
         d['keep'] = idx in chosen
+        d['model'] = arbiter_model
 
     logger.info(
         'arbiter_done raw=%s parsed=%s kept=%s rejected=%s model=%s',
