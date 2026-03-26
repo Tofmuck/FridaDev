@@ -5,7 +5,14 @@ import unittest
 from pathlib import Path
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
+def _resolve_app_dir() -> Path:
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "web").exists() and (parent / "server.py").exists():
+            return parent
+    raise RuntimeError("Unable to resolve APP_DIR from test path")
+
+
+APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 

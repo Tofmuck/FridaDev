@@ -17,6 +17,10 @@ Fourth migrated lot:
 - `unit/web_search/test_web_search_phase4.py`
 - `unit/web_search/test_web_search_services_phase4.py`
 - `unit/web_search/test_web_search_phase13.py`
+Fifth migrated lot:
+- `unit/memory/test_arbiter_phase4.py`
+- `unit/memory/test_summarizer_phase4.py`
+- `unit/memory/test_summarizer_phase13.py`
 
 ## Target levels
 
