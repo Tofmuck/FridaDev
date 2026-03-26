@@ -12,6 +12,7 @@
 - **Phase 2 — Extraire le bootstrap runtime partagé**: supprimer la duplication du bootstrap DB/runtime.
 - **Phase 3 — Scinder `runtime_settings.py`**: découper le module admin runtime en sous-modules cohérents.
 - **Phase 4 — Extraire les services applicatifs de `server.py`**: réduire le monolithe HTTP/orchestration.
+- **Phase 4 bis — Démonolithiser `chat_service.py`**: réduire le hotspot post-extraction sans changer le contrat HTTP.
 - **Phase 5 — Découper `admin.js`**: isoler état/API/rendu/forms par section sans changer l’UI.
 - **Phase 6 — Traiter les reliquats JSON / legacy / code mort**: purger les reliquats confirmés et gérer les zones incertaines.
 - **Phase 7 — Reclasser les tests**: passer d’une nomenclature “phase historique” à une nomenclature métier.
@@ -173,6 +174,48 @@
 **Definition of Done**
 - `server.py` n’est plus le lieu de l’orchestration métier complète.
 - Comportement HTTP inchangé (contrats conservés).
+
+---
+
+### Phase 4 bis — Démonolithiser `chat_service.py`
+**Why**
+- Réduire le risque de recréer un nouveau monolithe métier après extraction hors `server.py`.
+- Améliorer la maintenabilité pour un contributeur humain sur le pipeline chat.
+
+**Scope**
+- Découpage interne progressif de `app/core/chat_service.py` en sous-flux cohérents.
+- Conservation d’une façade d’orchestration `chat_service.py` lisible et stable.
+- Renforcement ciblé des tests service/HTTP autour des flux extraits.
+
+**Out of scope**
+- Refonte de design globale ou architecture “big-bang”.
+- Refacto interne large de `memory_store`, `conv_store`, `arbiter`, `runtime_settings`, `llm`.
+- Changement de contrat HTTP externe (`/api/chat`, payloads, headers, codes, erreurs).
+
+**Risks**
+- Faux refacto: déplacer du code sans réduire réellement la charge cognitive.
+- Fragmentation artificielle en pseudo sous-modules fourre-tout.
+- Régression subtile sur sync/stream, logs métier, ou persistance conversation.
+
+**Fichiers / zones concernés**
+- `app/core/chat_service.py`
+- sous-modules adjacents éventuels sous `app/core/` (strictement si extraction utile et ciblée)
+- `app/server.py` (façade route uniquement, ajustements minimaux)
+- tests chat/service dans `app/tests/`
+
+**Cases à cocher**
+- [ ] Cartographier explicitement les responsabilités internes de `chat_service.py`.
+- [ ] Extraire le flux conversation/session dans un sous-module ciblé.
+- [ ] Extraire le flux contexte/prompt (system + hermeneutical + temporalité + identité).
+- [ ] Extraire le flux mémoire/arbitrage (retrieve/filter/record/hints).
+- [ ] Extraire le flux appel LLM sync/stream (payload, erreurs, persistance, headers).
+- [ ] Garder `chat_service.py` comme façade d’orchestration lisible (point d’entrée stable).
+- [ ] Ajouter/adapter tests unitaires service + non-régression HTTP ciblés.
+
+**Definition of Done**
+- `chat_service.py` n’est plus un hotspot monolithique difficile à maintenir.
+- Les sous-flux sont séparés sans créer de nouveaux fourre-tout.
+- Contrat HTTP et comportement métier restent strictement inchangés, prouvés par tests.
 
 ---
 
