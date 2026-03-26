@@ -4,8 +4,8 @@ import json
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping
-from zoneinfo import ZoneInfo
 
+from core import chat_prompt_context
 from core import chat_session_flow
 
 
@@ -16,7 +16,7 @@ _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
 
 # Phase 4 bis - Cartographie locale des responsabilités de ce module:
 # 1) Session/conversation + headers HTTP: delegue a core.chat_session_flow
-# 2) Contexte prompt: system + hermeneutical + temporalite + identite
+# 2) Contexte/prompt: prompts backend + temporalite + identite + injection web
 # 3) Memoire/arbitrage: retrieve/filter/record/enrich/context hints
 # 4) Appel LLM: sync + stream, persistance conversation, gestion erreurs
 
@@ -161,8 +161,7 @@ def chat_response(
     config_module: Any,
     logger: Any,
 ) -> Dict[str, Any]:
-    system_prompt = prompt_loader_module.get_main_system_prompt()
-    hermeneutical_prompt = prompt_loader_module.get_main_hermeneutical_prompt()
+    system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader_module)
     session, session_error = chat_session_flow.resolve_chat_session(
         data,
         system_prompt=system_prompt,
@@ -202,23 +201,13 @@ def chat_response(
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
 
     now_iso_value = user_timestamp
-    tz_paris = ZoneInfo(config_module.FRIDA_TIMEZONE)
-    now_paris = datetime.now(tz_paris)
-    now_fmt = now_paris.strftime('%A %d %B %Y à %H:%M') + f" (heure de Paris, UTC{now_paris.strftime('%z')[:3]})"
-    id_block, identity_ids = identity_module.build_identity_block()
-    delta_rule = (
-        '[RÉFÉRENCE TEMPORELLE]\n'
-        f"Nous sommes le {now_fmt}. C'est ton 'maintenant'.\n"
-        "Les messages ci-dessous sont horodatés relativement à ce maintenant (ex : 'il y a 2 jours').\n"
-        'Les marqueurs [— silence de X —] indiquent une interruption de la conversation. '
-        "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
-        "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
-        'sauf si on te le demande explicitement.'
+    augmented_system, identity_ids = chat_prompt_context.build_augmented_system(
+        system_prompt=system_prompt,
+        hermeneutical_prompt=hermeneutical_prompt,
+        config_module=config_module,
+        identity_module=identity_module,
     )
-    parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
-    augmented_system = '\n\n'.join(parts)
-    if conversation['messages'] and conversation['messages'][0]['role'] == 'system':
-        conversation['messages'][0]['content'] = augmented_system
+    chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
     current_mode = _hermeneutic_mode(config_module)
     admin_logs_module.log_event(
@@ -312,23 +301,13 @@ def chat_response(
     )
 
     if web_search_on:
-        ctx, search_query, n_results, has_tm = web_search_module.build_context(user_msg)
-        if ctx:
-            for index in range(len(prompt_messages) - 1, -1, -1):
-                if prompt_messages[index].get('role') == 'user':
-                    prompt_messages[index] = {
-                        'role': 'user',
-                        'content': ctx + '\n\nQuestion : ' + prompt_messages[index]['content'],
-                    }
-                    break
-            admin_logs_module.log_event(
-                'web_search',
-                conversation_id=conversation['id'],
-                query=search_query,
-                original=user_msg,
-                results=n_results,
-                ticketmaster=has_tm,
-            )
+        chat_prompt_context.inject_web_context(
+            prompt_messages,
+            user_msg=user_msg,
+            conversation_id=conversation['id'],
+            web_search_module=web_search_module,
+            admin_logs_module=admin_logs_module,
+        )
 
     try:
         runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
