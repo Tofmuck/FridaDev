@@ -25,3 +25,7 @@ def get_main_system_prompt() -> str:
 
 def get_main_hermeneutical_prompt() -> str:
     return read_prompt_text(str(config.MAIN_HERMENEUTICAL_PROMPT_PATH))
+
+
+def get_summary_system_prompt() -> str:
+    return read_prompt_text(str(config.SUMMARY_SYSTEM_PROMPT_PATH))

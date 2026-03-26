@@ -9,6 +9,7 @@ import requests
 
 import config
 from admin import runtime_settings
+from core import prompt_loader
 from core.llm_client import or_headers, _sanitize_encoding
 from core.token_utils import count_tokens
 
@@ -54,13 +55,7 @@ def summarize_conversation(turns: List[Dict[str, Any]], model: str) -> str:
         parts.append(f"{prefix}{role} : {turn.get('content', '')}")
     dialogue_text = "\n\n".join(parts)
 
-    system = (
-        "Tu es un assistant de synthèse. Résume le dialogue suivant en conservant "
-        "les faits importants, les préférences exprimées, les décisions prises, "
-        "et les informations personnelles mentionnées. "
-        "Sois concis mais exhaustif sur les éléments utiles pour la suite de la conversation. "
-        "Écris en français. Réponds uniquement par le résumé, sans introduction ni conclusion."
-    )
+    system = prompt_loader.get_summary_system_prompt()
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": f"Voici le dialogue à résumer :\n\n{dialogue_text}"},

@@ -962,13 +962,9 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
             },
             'system_prompt': {
                 'label': 'summary_system_prompt',
-                'value': _read_python_function_string_assignment(
-                    'memory/summarizer.py',
-                    'summarize_conversation',
-                    'system',
-                ),
+                'value': prompt_loader.get_summary_system_prompt(),
                 'is_editable': False,
-                'source': 'memory_summarizer_py',
+                'source': 'prompt_file',
             },
         }
     if section == 'services':

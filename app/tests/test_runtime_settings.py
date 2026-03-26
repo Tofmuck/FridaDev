@@ -273,6 +273,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(readonly_info['summary_keep_turns']['value'], config.SUMMARY_KEEP_TURNS)
         self.assertFalse(readonly_info['summary_keep_turns']['is_editable'])
         self.assertEqual(readonly_info['system_prompt']['label'], 'summary_system_prompt')
+        self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
         self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
         self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
 

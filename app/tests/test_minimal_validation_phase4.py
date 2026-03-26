@@ -59,6 +59,10 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['main_hermeneutical_prompt']['path'],
             str(APP_DIR / config.MAIN_HERMENEUTICAL_PROMPT_PATH),
         )
+        self.assertEqual(
+            details['summary_system_prompt']['path'],
+            str(APP_DIR / config.SUMMARY_SYSTEM_PROMPT_PATH),
+        )
 
     def test_check_prompt_files_keeps_env_fallback_when_db_row_is_missing(self) -> None:
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings
@@ -100,6 +104,10 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         self.assertEqual(
             details['main_hermeneutical_prompt']['path'],
             str(APP_DIR / config.MAIN_HERMENEUTICAL_PROMPT_PATH),
+        )
+        self.assertEqual(
+            details['summary_system_prompt']['path'],
+            str(APP_DIR / config.SUMMARY_SYSTEM_PROMPT_PATH),
         )
 
 

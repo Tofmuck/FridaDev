@@ -596,7 +596,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - les modules memoire/services qui consomment deja des prompts
 - [ ] Interdire apres cette phase tout scraping d'un prompt depuis `web/app.js` ou depuis une constante inline lorsque l'equivalent physique existe dans `app/prompts/`.
 - [x] Sortir le `SYSTEM_PROMPT` principal de `web/app.js` pour le faire vivre physiquement dans `app/prompts/main_system.txt`.
-- [ ] Sortir le prompt systeme inline du resumieur pour le faire vivre physiquement dans `app/prompts/summary_system.txt`.
+- [x] Sortir le prompt systeme inline du resumieur pour le faire vivre physiquement dans `app/prompts/summary_system.txt`.
 - [ ] Sortir le prompt systeme inline de reformulation web pour le faire vivre physiquement dans `app/prompts/web_reformulation.txt`.
 - [x] Faire du backend la source de verite du `SYSTEM_PROMPT` principal ; le frontend principal ne doit plus etre la source active de ce prompt.
 - [x] Realigner le frontend principal pour qu'il n'envoie plus un `system` source de verite a `/api/chat` quand ce prompt est desormais porte par le backend.
