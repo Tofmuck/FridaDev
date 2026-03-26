@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from admin import runtime_settings, runtime_settings_repo, runtime_settings_spec
+from admin import runtime_settings, runtime_settings_repo, runtime_settings_spec, runtime_settings_validation
 import config
 from core import prompt_loader
 
@@ -97,6 +97,34 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'tables': ('runtime_settings', 'runtime_settings_history'),
             },
         )
+
+    def test_runtime_settings_validate_facade_delegates_to_validation_module(self) -> None:
+        observed: dict[str, object] = {}
+
+        def fake_validate_runtime_section(**kwargs):
+            observed.update(kwargs)
+            return {'section': kwargs['section'], 'valid': True, 'checks': []}
+
+        original_impl = runtime_settings_validation.validate_runtime_section
+        runtime_settings_validation.validate_runtime_section = fake_validate_runtime_section
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'services',
+                {'searxng_url': {'value': 'http://127.0.0.1:8092'}},
+                fetcher=lambda: {},
+            )
+        finally:
+            runtime_settings_validation.validate_runtime_section = original_impl
+
+        self.assertEqual(observed['section'], 'services')
+        self.assertEqual(observed['patch_payload'], {'searxng_url': {'value': 'http://127.0.0.1:8092'}})
+        self.assertTrue(callable(observed['fetcher']))
+        self.assertIs(observed['candidate_runtime_section'], runtime_settings._candidate_runtime_section)
+        self.assertIs(observed['resolve_runtime_secret_from_view'], runtime_settings._resolve_runtime_secret_from_view)
+        self.assertIs(observed['secret_required_error_cls'], runtime_settings.RuntimeSettingsSecretRequiredError)
+        self.assertIs(observed['secret_resolution_error_cls'], runtime_settings.RuntimeSettingsSecretResolutionError)
+        self.assertIs(observed['config_module'], config)
+        self.assertEqual(result, {'section': 'services', 'valid': True, 'checks': []})
 
     def test_main_model_includes_global_sampling_fields(self) -> None:
         spec = runtime_settings.get_section_spec('main_model')
