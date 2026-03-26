@@ -19,6 +19,7 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertEqual(config.MAIN_HERMENEUTICAL_PROMPT_PATH, 'prompts/main_hermeneutical.txt')
         self.assertEqual(config.SUMMARY_SYSTEM_PROMPT_PATH, 'prompts/summary_system.txt')
         self.assertEqual(config.WEB_REFORMULATION_PROMPT_PATH, 'prompts/web_reformulation.txt')
+        self.assertNotEqual(config.MAIN_SYSTEM_PROMPT_PATH, config.MAIN_HERMENEUTICAL_PROMPT_PATH)
 
     def test_main_system_prompt_reads_centralized_prompt_file(self) -> None:
         path = prompt_loader.resolve_app_prompt_path(config.MAIN_SYSTEM_PROMPT_PATH)
@@ -61,6 +62,15 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "Tu ne vois pas les evenements internes de pipeline",
         ]:
             self.assertIn(snippet, prompt)
+
+    def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:
+        system_path = prompt_loader.resolve_app_prompt_path(config.MAIN_SYSTEM_PROMPT_PATH)
+        hermeneutical_path = prompt_loader.resolve_app_prompt_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH)
+
+        self.assertNotEqual(system_path, hermeneutical_path)
+        self.assertNotEqual(prompt_loader.get_main_system_prompt(), prompt_loader.get_main_hermeneutical_prompt())
+        self.assertIn('Cadre de réponse', prompt_loader.get_main_system_prompt())
+        self.assertIn("Contrat d'interpretation du prompt augmente", prompt_loader.get_main_hermeneutical_prompt())
 
     def test_summary_system_prompt_reads_centralized_prompt_file(self) -> None:
         path = prompt_loader.resolve_app_prompt_path(config.SUMMARY_SYSTEM_PROMPT_PATH)

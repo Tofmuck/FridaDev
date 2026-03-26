@@ -106,9 +106,25 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'Cadre de réponse',
             data['sections']['main_model']['readonly_info']['system_prompt']['value'],
         )
+        self.assertEqual(
+            data['sections']['main_model']['readonly_info']['system_prompt_path']['value'],
+            runtime_settings.config.MAIN_SYSTEM_PROMPT_PATH,
+        )
+        self.assertEqual(
+            data['sections']['main_model']['readonly_info']['system_prompt_loader']['value'],
+            'core.prompt_loader.get_main_system_prompt()',
+        )
         self.assertIn(
             "Contrat d'interpretation du prompt augmente",
             data['sections']['main_model']['readonly_info']['hermeneutical_prompt']['value'],
+        )
+        self.assertEqual(
+            data['sections']['main_model']['readonly_info']['hermeneutical_prompt_path']['value'],
+            runtime_settings.config.MAIN_HERMENEUTICAL_PROMPT_PATH,
+        )
+        self.assertEqual(
+            data['sections']['main_model']['readonly_info']['hermeneutical_prompt_loader']['value'],
+            'core.prompt_loader.get_main_hermeneutical_prompt()',
         )
         self.assertIn(
             '[RÉFÉRENCE TEMPORELLE]',
@@ -245,7 +261,12 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         )
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertEqual(data['readonly_info']['system_prompt_path']['value'], runtime_settings.config.MAIN_SYSTEM_PROMPT_PATH)
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertEqual(
+            data['readonly_info']['hermeneutical_prompt_path']['value'],
+            runtime_settings.config.MAIN_HERMENEUTICAL_PROMPT_PATH,
+        )
         self.assertIn('[Indices contextuels recents]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
@@ -647,7 +668,12 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertEqual(data['readonly_info']['system_prompt_loader']['value'], 'core.prompt_loader.get_main_system_prompt()')
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertEqual(
+            data['readonly_info']['hermeneutical_prompt_loader']['value'],
+            'core.prompt_loader.get_main_hermeneutical_prompt()',
+        )
         self.assertIn('[FIN DES RÉSULTATS WEB]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
 

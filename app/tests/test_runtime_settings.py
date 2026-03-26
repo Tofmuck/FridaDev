@@ -234,6 +234,18 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(readonly_info['system_prompt']['value'], prompt_loader.get_main_system_prompt())
         self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
         self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
+        self.assertEqual(readonly_info['system_prompt_path']['label'], 'MAIN_SYSTEM_PROMPT_PATH')
+        self.assertEqual(readonly_info['system_prompt_path']['value'], config.MAIN_SYSTEM_PROMPT_PATH)
+        self.assertEqual(readonly_info['system_prompt_path']['source'], 'config_py')
+        self.assertEqual(
+            readonly_info['system_prompt_loader']['label'],
+            'SYSTEM_PROMPT_RUNTIME_SOURCE',
+        )
+        self.assertEqual(
+            readonly_info['system_prompt_loader']['value'],
+            'core.prompt_loader.get_main_system_prompt()',
+        )
+        self.assertEqual(readonly_info['system_prompt_loader']['source'], 'backend_loader')
         self.assertEqual(readonly_info['hermeneutical_prompt']['label'], 'HERMENEUTICAL_PROMPT')
         self.assertFalse(readonly_info['hermeneutical_prompt']['is_editable'])
         self.assertEqual(readonly_info['hermeneutical_prompt']['source'], 'prompt_file')
@@ -245,6 +257,28 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             "Contrat d'interpretation du prompt augmente",
             readonly_info['hermeneutical_prompt']['value'],
         )
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt_path']['label'],
+            'MAIN_HERMENEUTICAL_PROMPT_PATH',
+        )
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt_path']['value'],
+            config.MAIN_HERMENEUTICAL_PROMPT_PATH,
+        )
+        self.assertEqual(readonly_info['hermeneutical_prompt_path']['source'], 'config_py')
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt_loader']['label'],
+            'HERMENEUTICAL_PROMPT_RUNTIME_SOURCE',
+        )
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt_loader']['value'],
+            'core.prompt_loader.get_main_hermeneutical_prompt()',
+        )
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt_loader']['source'],
+            'backend_loader',
+        )
+        self.assertNotEqual(readonly_info['system_prompt']['value'], readonly_info['hermeneutical_prompt']['value'])
         self.assertEqual(
             readonly_info['hermeneutical_runtime_bricks']['label'],
             'HERMENEUTICAL_RUNTIME_BRICKS',

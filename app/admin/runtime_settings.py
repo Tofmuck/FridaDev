@@ -811,11 +811,35 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
                 'is_editable': False,
                 'source': 'prompt_file',
             },
+            'system_prompt_path': {
+                'label': 'MAIN_SYSTEM_PROMPT_PATH',
+                'value': str(config.MAIN_SYSTEM_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'system_prompt_loader': {
+                'label': 'SYSTEM_PROMPT_RUNTIME_SOURCE',
+                'value': 'core.prompt_loader.get_main_system_prompt()',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
             'hermeneutical_prompt': {
                 'label': 'HERMENEUTICAL_PROMPT',
                 'value': prompt_loader.get_main_hermeneutical_prompt(),
                 'is_editable': False,
                 'source': 'prompt_file',
+            },
+            'hermeneutical_prompt_path': {
+                'label': 'MAIN_HERMENEUTICAL_PROMPT_PATH',
+                'value': str(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'hermeneutical_prompt_loader': {
+                'label': 'HERMENEUTICAL_PROMPT_RUNTIME_SOURCE',
+                'value': 'core.prompt_loader.get_main_hermeneutical_prompt()',
+                'is_editable': False,
+                'source': 'backend_loader',
             },
             'hermeneutical_runtime_bricks': {
                 'label': 'HERMENEUTICAL_RUNTIME_BRICKS',
