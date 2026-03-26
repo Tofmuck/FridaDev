@@ -38,6 +38,30 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             prompt_loader.get_main_hermeneutical_prompt(),
         )
 
+    def test_main_hermeneutical_prompt_covers_runtime_bricks_and_explicit_limits(self) -> None:
+        prompt = prompt_loader.get_main_hermeneutical_prompt()
+
+        for snippet in [
+            "Lis ce bloc comme un contrat d'interpretation stable.",
+            "Priorite 1 : la question utilisateur finale",
+            "[REFERENCE TEMPORELLE]",
+            "[il y a ...]",
+            "[-- silence de X --]",
+            "[IDENTITE DU MODELE]",
+            "[IDENTITE DE L'UTILISATEUR]",
+            "[Resume de la periode ...]",
+            "[Indices contextuels recents]",
+            "[Contexte du souvenir -- resume ...]",
+            "[Memoire -- souvenirs pertinents]",
+            "[RECHERCHE WEB -- ...]",
+            "[FIN DES RESULTATS WEB]",
+            "Question :",
+            "stability, recurrence et confidence reste partiellement provisoire",
+            "Tu ne vois pas les sorties brutes de l'identity extractor.",
+            "Tu ne vois pas les evenements internes de pipeline",
+        ]:
+            self.assertIn(snippet, prompt)
+
     def test_summary_system_prompt_reads_centralized_prompt_file(self) -> None:
         path = prompt_loader.resolve_app_prompt_path(config.SUMMARY_SYSTEM_PROMPT_PATH)
         self.assertTrue(path.exists())

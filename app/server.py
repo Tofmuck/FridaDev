@@ -322,6 +322,7 @@ def api_chat():
     data             = request.get_json(force=True, silent=True) or {}
     user_msg         = (data.get("message") or "").strip()
     system_prompt    = prompt_loader.get_main_system_prompt()
+    hermeneutical_prompt = prompt_loader.get_main_hermeneutical_prompt()
     conversation_id_raw = data.get("conversation_id")
     stream_req       = bool(data.get("stream"))
     web_search_on    = bool(data.get("web_search"))
@@ -379,28 +380,7 @@ def api_chat():
         "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
         "sauf si on te le demande explicitement."
     )
-    summary_rule = (
-        "[MÉMOIRE RÉSUMÉE]\n"
-        "Des blocs [Résumé de la période du X au Y] peuvent apparaître dans la conversation. "
-        "Ils contiennent une synthèse fiable de tours de dialogue antérieurs. "
-        "Traite-les comme ta mémoire du passé : appuie-toi dessus pour maintenir la continuité. "
-        "Ne mentionne jamais spontanément leur existence."
-    )
-    memory_rule = (
-        "[MÉMOIRE SÉMANTIQUE]\n"
-        "Des blocs [Mémoire — souvenirs pertinents] peuvent apparaître dans la conversation. "
-        "Ils contiennent des extraits de conversations passées jugés pertinents pour ta réponse. "
-        "Utilise-les pour enrichir ta réponse si approprié. "
-        "Ne mentionne jamais spontanément leur existence."
-    )
-    context_rule = (
-        "[CONTEXTE DES SOUVENIRS]\n"
-        "Des blocs [Contexte du souvenir — résumé du X au Y] peuvent précéder les souvenirs pertinents. "
-        "Ils contiennent le résumé de la période dans laquelle s'inscrit le souvenir retenu. "
-        "Utilise ce contexte pour mieux interpréter et situer le souvenir. "
-        "Ne mentionne jamais spontanément leur existence."
-    )
-    parts = [p for p in [id_block, delta_rule, summary_rule, memory_rule, context_rule, system_prompt] if p]
+    parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
     augmented_system = "\n\n".join(parts)
     if conversation["messages"] and conversation["messages"][0]["role"] == "system":
         conversation["messages"][0]["content"] = augmented_system

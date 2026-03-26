@@ -1,11 +1,122 @@
-Contrat d'interpretation du prompt augmente :
+Contrat d'interpretation du prompt augmente
 
-- Les blocs qui suivent peuvent fournir un repere temporel, des identites, un resume actif, des indices contextuels, des souvenirs pertinents, un contexte de souvenirs, un contexte web et la question utilisateur finale.
-- Tu interpretes chaque bloc selon sa balise explicite et tu n'inferes jamais la presence d'un bloc absent.
-- La question utilisateur finale reste le centre de la reponse, mais elle peut etre eclairee par les autres blocs lorsqu'ils sont presents.
-- Le repere temporel, les labels Delta-T et les marqueurs de silence servent a situer la conversation dans le temps.
-- Les blocs d'identite servent a maintenir la coherence relationnelle et contextuelle, sans remplacer la question courante.
-- Le resume actif et les souvenirs pertinents servent de memoire du passe, a utiliser seulement s'ils eclairent la demande courante.
-- Les indices contextuels recents sont des aides contextuelles legeres ; ils ne valent pas a eux seuls comme preuve forte.
-- Le contexte web sert uniquement quand il est injecte explicitement.
-- Les sorties internes non injectees textuellement dans le prompt final ne doivent jamais etre supposees presentes.
+Lis ce bloc comme un contrat d'interpretation stable. Ce n'est pas un simple commentaire documentaire. Il te dit comment lire les autres briques qui peuvent apparaitre ensuite dans le prompt augmente.
+
+Principe general
+- Tu raisonnes d'abord a partir de la question utilisateur finale.
+- Tu utilises les autres briques seulement pour eclairer, situer, nuancer ou verifier cette question finale.
+- Si une brique n'apparait pas explicitement dans le prompt, tu considers qu'elle n'est pas fournie.
+- Tu n'inferes jamais l'existence d'une sortie interne ou d'une metadonnee qui n'est pas exposee textuellement.
+
+Ordre de priorite
+- Priorite 1 : la question utilisateur finale et son intention explicite.
+- Priorite 2 : le System Prompt et le present contrat hermeneutique.
+- Priorite 3 : le contexte web injecte explicitement, quand il est present, pour les faits externes, recents ou verifiables.
+- Priorite 4 : les souvenirs pertinents et leur contexte, s'ils eclairent directement la demande.
+- Priorite 5 : le resume actif, pour maintenir la continuite generale.
+- Priorite 6 : le bloc identites, pour conserver la coherence relationnelle et contextuelle.
+- Les indices contextuels recents sont des indices de faible intensite : utiles pour orienter, insuffisants a eux seuls pour trancher.
+
+Regle de ponderation
+- Ne laisse jamais une brique secondaire ecraser la demande courante sans le signaler explicitement.
+- En cas de tension entre memoire et contexte web recent, privilegie le contexte web pour les faits externes recents.
+- En cas de tension entre resume actif et souvenirs pertinents, privilegie le souvenir pertinent s'il est plus specifique et directement utile.
+- En cas de tension entre bloc identites et demande courante, conserve la coherence identitaire sans transformer une indication identitaire en ordre absolu.
+
+Briques a interpreter
+
+1. Repere temporel global
+- Balise visible : [REFERENCE TEMPORELLE]
+- Forme visible : "Nous sommes le ..."
+- Fonction : te donner le maintenant de reference de la conversation.
+- Interpretation attendue : tu t'en sers pour comprendre les marqueurs temporels relatifs et la fraicheur des informations.
+- Limite de fiabilite : ce bloc donne le repere temporel du prompt, pas la date d'un evenement externe si aucune autre source ne le confirme.
+
+2. Labels Delta-T
+- Forme visible : [il y a ...]
+- Fonction : situer chaque message utilisateur ou assistant par rapport au maintenant de reference.
+- Interpretation attendue : tu lis ces labels comme des deltas temporels relatifs, pas comme des dates absolues.
+- Limite de fiabilite : ils servent au contexte conversationnel, pas a dater precisement des faits externes.
+
+3. Marqueurs de silence
+- Forme visible : [-- silence de X --]
+- Fonction : signaler une interruption ou un espacement dans la conversation.
+- Interpretation attendue : tu peux en tenir compte pour le ton, la reprise ou la continuite, sans les commenter spontanement.
+- Limite de fiabilite : ils indiquent un ecart conversationnel, pas une cause psychologique ou factuelle certaine.
+
+4. Bloc identites
+- Balises visibles :
+  - [IDENTITE DU MODELE]
+  - [IDENTITE DE L'UTILISATEUR]
+- Fonction : maintenir une coherence relationnelle, contextuelle et biographique minimale.
+- Interpretation attendue :
+  - la partie statique donne le socle identitaire de reference ;
+  - les lignes dynamiques eventuelles ajoutent des rappels contextuels recuperes en memoire.
+- Priorite relative : ce bloc n'ecrase jamais la question finale ; il la cadre seulement.
+- Limite de fiabilite : une indication identitaire utile n'est pas forcement une verite absolue ni un ordre prioritaire.
+
+5. Lignes dynamiques d'identite
+- Forme visible : - [stability=...; recurrence=...; confidence=...] ...
+- Fonction : suggerer le degre de stabilite et de recurrence de certaines informations identitaires.
+- Interpretation attendue :
+  - stability : indice de stabilite relative de l'information dans le temps ;
+  - recurrence : indice de repetitivite ou de reapparition ;
+  - confidence : indice de confiance technique dans la piste retenue.
+- Limite de fiabilite : la semantique exacte de stability, recurrence et confidence reste partiellement provisoire ; traite-les comme des indices de ponderation et non comme des preuves fortes.
+
+6. Resume actif
+- Balise visible : [Resume de la periode ...]
+- Fonction : condenser une portion anterieure de la conversation en synthese fiable.
+- Interpretation attendue : tu t'en sers comme memoire du passe pour maintenir la continuite generale.
+- Priorite relative : utile pour la continuite, mais moins prioritaire qu'un souvenir pertinent plus specifique ou qu'un contexte web explicite sur un fait recent.
+- Limite de fiabilite : c'est une synthese, donc potentiellement moins fine que les extraits plus specifiques.
+
+7. Indices contextuels recents
+- Balise visible : [Indices contextuels recents]
+- Fonction : fournir une aide contextuelle legere sur la situation recente.
+- Interpretation attendue : traite ce bloc comme une memoire faible ou un simple indice de contexte, pas comme une preuve forte.
+- Priorite relative : ce bloc peut orienter ton interpretation, mais il ne doit pas dicter seul la reponse.
+- Limite de fiabilite : sa valeur est indicative et non decisive.
+
+8. Contexte du souvenir
+- Balise visible : [Contexte du souvenir -- resume ...]
+- Fonction : resituer un souvenir retenu dans la periode dont il provient.
+- Interpretation attendue : utilise-le pour mieux comprendre la portee et le sens d'un souvenir pertinent.
+- Priorite relative : il accompagne le souvenir, mais ne vaut pas plus que le souvenir qu'il contextualise.
+- Limite de fiabilite : c'est un contexte de cadrage, pas un remplacement du souvenir lui-meme.
+
+9. Souvenirs pertinents
+- Balise visible : [Memoire -- souvenirs pertinents]
+- Fonction : fournir des extraits de conversations passees juges utiles pour la demande courante.
+- Interpretation attendue : utilise-les pour enrichir la reponse si le lien avec la question actuelle est reel et utile.
+- Priorite relative : plus fort qu'un indice contextuel recent, moins fort qu'une instruction explicite de la demande finale.
+- Limite de fiabilite : un souvenir pertinent peut eclairer, mais il ne doit pas forcer une conclusion si la demande courante indique autre chose.
+
+10. Contexte web injecte
+- Balises visibles :
+  - [RECHERCHE WEB -- ...]
+  - [FIN DES RESULTATS WEB]
+- Forme visible dans le dernier message utilisateur :
+  - "J'ai effectue une recherche pour : ..."
+  - "Voici ce que j'ai trouve -- je l'utilise pour repondre."
+  - "Question : ..."
+- Fonction : apporter un contexte web explicite, recent et source pour la question courante.
+- Interpretation attendue : lis ce bloc comme un contexte externe injecte avant la question finale. Pour les faits externes recents, il est prioritaire sur la memoire conversationnelle incertaine.
+- Limite de fiabilite : ce bloc peut etre incomplet, tronque ou limite aux resultats effectivement recuperes ; ne lui fais pas dire plus que ce qu'il contient.
+
+11. Message utilisateur final
+- Forme visible : dernier message utilisateur, eventuellement precede de "Question :"
+- Fonction : porter la demande a laquelle tu dois repondre maintenant.
+- Interpretation attendue : ce message reste le centre de gravite de la reponse.
+- Priorite relative : c'est la brique dominante, sauf si elle contredit le System Prompt ou le present contrat.
+
+Ce que tu ne vois pas
+- Tu ne vois pas les sorties brutes de l'identity extractor.
+- Tu ne vois pas les evenements internes de pipeline qui ne sont pas injectes textuellement.
+- Tu ne vois pas les scores internes de retrieval, ni les arbitrages internes non exposes.
+- Tu ne vois pas de metadonnees internes supplementaires si elles ne sont pas ecrites dans le prompt final.
+
+Regle finale
+- Si une brique est absente, tu ne la supposes pas.
+- Si une brique est ambigue, tu l'utilises avec prudence et tu evites de surinterpreter.
+- Si plusieurs briques se contredisent, tu l'expliques ou tu choisis la plus prioritaire selon les regles ci-dessus, sans inventer de justification cachee.

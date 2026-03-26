@@ -74,6 +74,7 @@ class ServerPhase13Tests(unittest.TestCase):
     def test_api_chat_ignores_request_system_and_uses_backend_main_system_prompt(self) -> None:
         observed = {}
         original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt
+        original_get_main_hermeneutical_prompt = self.server.prompt_loader.get_main_hermeneutical_prompt
         original_get_main = self.server.runtime_settings.get_main_model_settings
         original_get_secret = self.server.runtime_settings.get_runtime_secret_value
         original_new_conversation = self.server.conv_store.new_conversation
@@ -95,8 +96,6 @@ class ServerPhase13Tests(unittest.TestCase):
         original_record_identity = self.server._record_identity_entries_for_mode
         original_reactivate = self.server.memory_store.reactivate_identities
 
-        conversation = {"id": "conv-phase13", "created_at": "2026-03-26T00:00:00Z", "messages": []}
-
         class FakeResponse:
             def raise_for_status(self):
                 return None
@@ -116,13 +115,28 @@ class ServerPhase13Tests(unittest.TestCase):
                 },
                 source='db',
                 source_reason='db_row',
-            )
+        )
 
         def fake_new_conversation(system_prompt: str):
             observed['system_prompt'] = system_prompt
-            return conversation
+            return {
+                "id": "conv-phase13",
+                "created_at": "2026-03-26T00:00:00Z",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt,
+                        "timestamp": "2026-03-26T00:00:00Z",
+                    }
+                ],
+            }
+
+        def fake_build_prompt_messages(conversation_arg, *_args, **_kwargs):
+            observed['augmented_system'] = conversation_arg["messages"][0]["content"]
+            return [{"role": "user", "content": "Bonjour"}]
 
         self.server.prompt_loader.get_main_system_prompt = lambda: 'BACKEND SYSTEM PROMPT'
+        self.server.prompt_loader.get_main_hermeneutical_prompt = lambda: 'BACKEND HERMENEUTICAL PROMPT'
         self.server.runtime_settings.get_main_model_settings = fake_get_main_model_settings
         self.server.runtime_settings.get_runtime_secret_value = lambda *args, **kwargs: self.server.runtime_settings.RuntimeSecretValue(
             section='main_model',
@@ -139,10 +153,10 @@ class ServerPhase13Tests(unittest.TestCase):
             )
         )
         self.server.conv_store.conversation_path = lambda _id: 'conv/conv-phase13.json'
-        self.server.conv_store.build_prompt_messages = lambda *args, **kwargs: [{"role": "user", "content": "Bonjour"}]
+        self.server.conv_store.build_prompt_messages = fake_build_prompt_messages
         self.server.memory_store.decay_identities = lambda: None
         self.server.summarizer.maybe_summarize = lambda *args, **kwargs: False
-        self.server.identity.build_identity_block = lambda: ("", [])
+        self.server.identity.build_identity_block = lambda: ("[IDENTITÉ DU MODÈLE]\\nbloc identite", [])
         self.server.memory_store.retrieve = lambda *_args, **_kwargs: []
         self.server.memory_store.get_recent_context_hints = lambda **_kwargs: []
         self.server.admin_logs.log_event = lambda *args, **kwargs: None
@@ -165,6 +179,7 @@ class ServerPhase13Tests(unittest.TestCase):
             )
         finally:
             self.server.prompt_loader.get_main_system_prompt = original_get_main_system_prompt
+            self.server.prompt_loader.get_main_hermeneutical_prompt = original_get_main_hermeneutical_prompt
             self.server.runtime_settings.get_main_model_settings = original_get_main
             self.server.runtime_settings.get_runtime_secret_value = original_get_secret
             self.server.conv_store.new_conversation = original_new_conversation
@@ -188,3 +203,15 @@ class ServerPhase13Tests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(observed['system_prompt'], 'BACKEND SYSTEM PROMPT')
+        self.assertIn('BACKEND SYSTEM PROMPT', observed['augmented_system'])
+        self.assertIn('BACKEND HERMENEUTICAL PROMPT', observed['augmented_system'])
+        self.assertIn('[RÉFÉRENCE TEMPORELLE]', observed['augmented_system'])
+        self.assertIn('[IDENTITÉ DU MODÈLE]', observed['augmented_system'])
+        self.assertLess(
+            observed['augmented_system'].index('BACKEND SYSTEM PROMPT'),
+            observed['augmented_system'].index('BACKEND HERMENEUTICAL PROMPT'),
+        )
+        self.assertLess(
+            observed['augmented_system'].index('BACKEND HERMENEUTICAL PROMPT'),
+            observed['augmented_system'].index('[RÉFÉRENCE TEMPORELLE]'),
+        )

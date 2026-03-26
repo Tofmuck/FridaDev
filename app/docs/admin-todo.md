@@ -605,16 +605,16 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - `System Prompt`
   - `Hermeneutical Prompt`
 - [x] Nommer explicitement `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
-- [ ] Definir `hermeneutical_prompt` comme un bloc concatene, exhaustif et stable qui explique au modele principal comment interpreter toutes les briques susceptibles d'apparaitre ensuite dans le prompt augmente.
-- [ ] Exiger que `hermeneutical_prompt` soit lu comme un contrat d'interpretation et non comme un simple commentaire documentaire.
-- [ ] Exiger que `hermeneutical_prompt` explicite, pour chaque brique du prompt augmente, au minimum :
+- [x] Definir `hermeneutical_prompt` comme un bloc concatene, exhaustif et stable qui explique au modele principal comment interpreter toutes les briques susceptibles d'apparaitre ensuite dans le prompt augmente.
+- [x] Exiger que `hermeneutical_prompt` soit lu comme un contrat d'interpretation et non comme un simple commentaire documentaire.
+- [x] Exiger que `hermeneutical_prompt` explicite, pour chaque brique du prompt augmente, au minimum :
   - la balise ou la forme visible par le modele
   - la fonction de cette brique
   - la maniere dont le modele doit l'interpreter
   - la maniere dont le modele doit la ponderer relativement aux autres briques
   - les limites de fiabilite a garder en tete
-- [ ] Construire une premiere version exhaustive de `hermeneutical_prompt` pour le modele principal, meme si certaines parties doivent d'abord etre formulees de maniere provisoire.
-- [ ] Y couvrir explicitement, au minimum :
+- [x] Construire une premiere version exhaustive de `hermeneutical_prompt` pour le modele principal, meme si certaines parties doivent d'abord etre formulees de maniere provisoire.
+- [x] Y couvrir explicitement, au minimum :
   - le repere temporel global (`Nous sommes le...`)
   - les labels Delta-T (`[il y a ...]`)
   - les marqueurs de silence (`[— silence de X —]`)
@@ -625,17 +625,17 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - les souvenirs pertinents
   - le contexte web injecte
   - le message utilisateur final
-- [ ] Exiger que `hermeneutical_prompt` dise explicitement ce qui est prioritaire ou non entre :
+- [x] Exiger que `hermeneutical_prompt` dise explicitement ce qui est prioritaire ou non entre :
   - question courante
   - contexte web
   - souvenirs pertinents
   - resume actif
   - identites
-- [ ] Exiger que `hermeneutical_prompt` precise explicitement le statut du bloc identites, y compris la relation entre identite statique et identite dynamique.
-- [ ] Exiger que `hermeneutical_prompt` precise explicitement comment interpreter `stability`, `recurrence` et `confidence`, ou dise clairement que leur semantique reste encore provisoire.
-- [ ] Exiger que `hermeneutical_prompt` precise explicitement le statut des `Indices contextuels recents` : aide contextuelle, memoire faible, simple indice, ou autre formulation retenue.
-- [ ] Exiger que `hermeneutical_prompt` dise explicitement ce que le modele ne voit pas et ne doit donc pas supposer present.
-- [ ] Y inclure explicitement, au minimum :
+- [x] Exiger que `hermeneutical_prompt` precise explicitement le statut du bloc identites, y compris la relation entre identite statique et identite dynamique.
+- [x] Exiger que `hermeneutical_prompt` precise explicitement comment interpreter `stability`, `recurrence` et `confidence`, ou dise clairement que leur semantique reste encore provisoire.
+- [x] Exiger que `hermeneutical_prompt` precise explicitement le statut des `Indices contextuels recents` : aide contextuelle, memoire faible, simple indice, ou autre formulation retenue.
+- [x] Exiger que `hermeneutical_prompt` dise explicitement ce que le modele ne voit pas et ne doit donc pas supposer present.
+- [x] Y inclure explicitement, au minimum :
   - les sorties brutes de l'identity extractor
   - les evenements internes de pipeline non injectes au prompt final
   - toute metadonnee interne non exposee textuellement au modele principal
