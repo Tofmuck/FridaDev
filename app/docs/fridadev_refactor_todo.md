@@ -125,7 +125,7 @@
 **Cases à cocher**
 - [x] Définir le plan de découpage interne: `spec/schema`, `repo DB`, `service runtime`, `validation`, `api_view`.
 - [x] Extraire les `dataclass` et `SectionSpec/FieldSpec` dans un module dédié.
-- [ ] Extraire la couche accès DB/seed/backfill dans un module repository.
+- [x] Extraire la couche accès DB/seed/backfill dans un module repository.
 - [ ] Extraire la validation runtime sectionnelle dans un module dédié.
 - [ ] Garder un point d’entrée compatibilité (`runtime_settings`) pendant transition.
 - [ ] Adapter les imports appelants + tests de non-régression.

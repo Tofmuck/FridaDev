@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 from urllib.parse import urlparse
 
 import config
-from admin import runtime_secrets
+from admin import runtime_secrets, runtime_settings_repo
 from admin.runtime_settings_spec import (
     FieldSpec,
     SECRET_V1_FIELDS,
@@ -24,7 +24,7 @@ from core import prompt_loader
 
 # Phase 3 internal split plan (incremental, compatibility-first):
 # 1) spec/schema/catalogue -> admin.runtime_settings_spec (this tranche)
-# 2) DB + seed + backfill -> future repository module
+# 2) DB + seed + backfill -> admin.runtime_settings_repo (this tranche)
 # 3) runtime section/secret resolution -> future runtime service module
 # 4) section validation -> future validation module
 # 5) admin API view assembly -> future api_view module
@@ -320,225 +320,38 @@ def _should_backfill_secret_field(field_payload: Mapping[str, Any]) -> bool:
 
 
 def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backfill') -> Dict[str, Any]:
-    actor = str(updated_by or '').strip() or 'runtime_secret_backfill'
-
-    try:
-        import psycopg
-        from psycopg import errors as psycopg_errors
-    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
-        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
-
-    updated_fields: list[str] = []
-    updated_sections: set[str] = set()
-
-    try:
-        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT section, payload
-                    FROM runtime_settings
-                    ORDER BY section
-                    '''
-                )
-                rows = {
-                    str(section): normalize_stored_payload(str(section), payload, default_origin='db')
-                    for section, payload in cur.fetchall()
-                }
-
-                for section, field in SECRET_V1_FIELDS:
-                    env_value = _backfill_env_secret_value(section, field)
-                    if not env_value:
-                        continue
-
-                    current_payload = rows.get(section)
-                    if current_payload is None:
-                        next_payload = normalize_stored_payload(
-                            section,
-                            build_env_seed_bundle(section).payload,
-                            default_origin='env_seed',
-                        )
-                        before_payload: Dict[str, Dict[str, Any]] = {}
-                    else:
-                        next_payload = normalize_stored_payload(section, current_payload, default_origin='db')
-                        before_payload = normalize_stored_payload(section, current_payload, default_origin='db')
-
-                    current_field_payload = next_payload.get(field) or {}
-                    if not _should_backfill_secret_field(current_field_payload):
-                        continue
-
-                    encrypted_value = runtime_secrets.encrypt_runtime_secret_value(env_value)
-                    next_payload[field] = {
-                        'is_secret': True,
-                        'is_set': True,
-                        'origin': 'env_backfill',
-                        'value_encrypted': encrypted_value,
-                    }
-
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
-                        VALUES (%s, 'v1', %s, %s::jsonb)
-                        ON CONFLICT (section) DO UPDATE
-                        SET schema_version = EXCLUDED.schema_version,
-                            updated_at = now(),
-                            updated_by = EXCLUDED.updated_by,
-                            payload = EXCLUDED.payload
-                        ''',
-                        (section, actor, json.dumps(next_payload)),
-                    )
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings_history (
-                            section,
-                            schema_version,
-                            changed_by,
-                            payload_before,
-                            payload_after
-                        )
-                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
-                        ''',
-                        (section, actor, json.dumps(before_payload), json.dumps(next_payload)),
-                    )
-
-                    rows[section] = next_payload
-                    updated_sections.add(section)
-                    updated_fields.append(f'{section}.{field}')
-            conn.commit()
-    except psycopg_errors.UndefinedTable as exc:
-        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
-    except Exception as exc:
-        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
-
-    if updated_fields:
-        invalidate_runtime_settings_cache()
-
-    return {
-        'updated_fields': tuple(updated_fields),
-        'updated_sections': tuple(sorted(updated_sections)),
-    }
+    return runtime_settings_repo.backfill_runtime_secrets_from_env(
+        dsn=config.FRIDA_MEMORY_DB_DSN,
+        updated_by=updated_by,
+        secret_v1_fields=SECRET_V1_FIELDS,
+        normalize_stored_payload=normalize_stored_payload,
+        build_env_seed_bundle=build_env_seed_bundle,
+        backfill_env_secret_value=_backfill_env_secret_value,
+        should_backfill_secret_field=_should_backfill_secret_field,
+        encrypt_runtime_secret_value=runtime_secrets.encrypt_runtime_secret_value,
+        invalidate_runtime_settings_cache=invalidate_runtime_settings_cache,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
+    )
 
 
 def init_runtime_settings_db() -> Dict[str, Any]:
-    try:
-        migration_sql = RUNTIME_SETTINGS_SQL_PATH.read_text(encoding='utf-8')
-    except OSError as exc:
-        raise RuntimeError(f'cannot read runtime settings migration sql: {exc}') from exc
-
-    try:
-        import psycopg
-    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
-        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
-
-    try:
-        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
-            with conn.cursor() as cur:
-                cur.execute(migration_sql)
-            conn.commit()
-    except Exception as exc:
-        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
-
-    return {
-        'sql_path': str(RUNTIME_SETTINGS_SQL_PATH),
-        'tables': ('runtime_settings', 'runtime_settings_history'),
-    }
+    return runtime_settings_repo.init_runtime_settings_db(
+        dsn=config.FRIDA_MEMORY_DB_DSN,
+        sql_path=RUNTIME_SETTINGS_SQL_PATH,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
+    )
 
 
 def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_bootstrap') -> Dict[str, Any]:
-    actor = str(updated_by or '').strip() or 'runtime_settings_bootstrap'
-
-    try:
-        import psycopg
-    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
-        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
-
-    inserted_sections: list[str] = []
-    inserted_fields: list[str] = []
-    updated_sections: list[str] = []
-    updated_fields: list[str] = []
-
-    try:
-        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT section, payload
-                    FROM runtime_settings
-                    ORDER BY section
-                    '''
-                )
-                existing_rows = {
-                    str(section): normalize_stored_payload(str(section), payload, default_origin='db')
-                    for section, payload in cur.fetchall()
-                }
-                existing_sections = tuple(existing_rows.keys())
-                for bundle in build_db_seed_plan(existing_sections):
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
-                        VALUES (%s, 'v1', %s, %s::jsonb)
-                        ''',
-                        (bundle.section, actor, json.dumps(bundle.payload)),
-                    )
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings_history (
-                            section,
-                            schema_version,
-                            changed_by,
-                            payload_before,
-                            payload_after
-                        )
-                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
-                        ''',
-                        (bundle.section, actor, json.dumps({}), json.dumps(bundle.payload)),
-                    )
-                    inserted_sections.append(bundle.section)
-                    inserted_fields.extend(f'{bundle.section}.{field_name}' for field_name in bundle.payload.keys())
-                for section, current_payload in existing_rows.items():
-                    next_payload, missing_fields = _merge_missing_db_seed_fields(section, current_payload)
-                    if not missing_fields:
-                        continue
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
-                        VALUES (%s, 'v1', %s, %s::jsonb)
-                        ON CONFLICT (section) DO UPDATE
-                        SET schema_version = EXCLUDED.schema_version,
-                            updated_at = now(),
-                            updated_by = EXCLUDED.updated_by,
-                            payload = EXCLUDED.payload
-                        ''',
-                        (section, actor, json.dumps(next_payload)),
-                    )
-                    cur.execute(
-                        '''
-                        INSERT INTO runtime_settings_history (
-                            section,
-                            schema_version,
-                            changed_by,
-                            payload_before,
-                            payload_after
-                        )
-                        VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
-                        ''',
-                        (section, actor, json.dumps(current_payload), json.dumps(next_payload)),
-                    )
-                    updated_sections.append(section)
-                    updated_fields.extend(f'{section}.{field_name}' for field_name in missing_fields)
-            conn.commit()
-    except Exception as exc:
-        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
-
-    if inserted_sections or updated_sections:
-        invalidate_runtime_settings_cache()
-
-    return {
-        'inserted_sections': tuple(inserted_sections),
-        'inserted_fields': tuple(inserted_fields),
-        'updated_sections': tuple(updated_sections),
-        'updated_fields': tuple(updated_fields),
-    }
+    return runtime_settings_repo.bootstrap_runtime_settings_from_env(
+        dsn=config.FRIDA_MEMORY_DB_DSN,
+        updated_by=updated_by,
+        build_db_seed_plan=build_db_seed_plan,
+        normalize_stored_payload=normalize_stored_payload,
+        merge_missing_db_seed_fields=_merge_missing_db_seed_fields,
+        invalidate_runtime_settings_cache=invalidate_runtime_settings_cache,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
+    )
 
 
 def invalidate_runtime_settings_cache() -> None:
@@ -547,32 +360,11 @@ def invalidate_runtime_settings_cache() -> None:
 
 
 def _default_db_fetch_all_sections() -> Dict[str, Dict[str, Dict[str, Any]]]:
-    try:
-        import psycopg
-        from psycopg import errors as psycopg_errors
-    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
-        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
-
-    try:
-        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT section, payload
-                    FROM runtime_settings
-                    ORDER BY section
-                    '''
-                )
-                rows = cur.fetchall()
-    except psycopg_errors.UndefinedTable as exc:
-        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
-    except Exception as exc:
-        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
-
-    out: Dict[str, Dict[str, Dict[str, Any]]] = {}
-    for section, payload in rows:
-        out[str(section)] = normalize_stored_payload(str(section), payload, default_origin='db')
-    return out
+    return runtime_settings_repo.fetch_all_sections(
+        dsn=config.FRIDA_MEMORY_DB_DSN,
+        normalize_stored_payload=normalize_stored_payload,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
+    )
 
 
 def _load_snapshot(

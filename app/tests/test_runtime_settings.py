@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from admin import runtime_settings, runtime_settings_spec
+from admin import runtime_settings, runtime_settings_repo, runtime_settings_spec
 import config
 from core import prompt_loader
 
@@ -56,6 +56,46 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIs(
             runtime_settings.get_section_spec('services'),
             runtime_settings_spec.get_section_spec('services'),
+        )
+
+    def test_runtime_settings_init_db_facade_delegates_to_repository_module(self) -> None:
+        observed: dict[str, object] = {}
+
+        def fake_init_runtime_settings_db(**kwargs):
+            observed.update(kwargs)
+            return {
+                'sql_path': str(kwargs['sql_path']),
+                'tables': ('runtime_settings', 'runtime_settings_history'),
+            }
+
+        original_impl = runtime_settings_repo.init_runtime_settings_db
+        original_dsn = config.FRIDA_MEMORY_DB_DSN
+        original_sql_path = runtime_settings.RUNTIME_SETTINGS_SQL_PATH
+        config.FRIDA_MEMORY_DB_DSN = 'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db'
+        runtime_settings.RUNTIME_SETTINGS_SQL_PATH = Path('/tmp/runtime_settings_v1.sql')
+        runtime_settings_repo.init_runtime_settings_db = fake_init_runtime_settings_db
+        try:
+            details = runtime_settings.init_runtime_settings_db()
+        finally:
+            runtime_settings_repo.init_runtime_settings_db = original_impl
+            runtime_settings.RUNTIME_SETTINGS_SQL_PATH = original_sql_path
+            config.FRIDA_MEMORY_DB_DSN = original_dsn
+
+        self.assertEqual(
+            observed['dsn'],
+            'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
+        )
+        self.assertEqual(observed['sql_path'], Path('/tmp/runtime_settings_v1.sql'))
+        self.assertIs(
+            observed['db_unavailable_error_cls'],
+            runtime_settings.RuntimeSettingsDbUnavailableError,
+        )
+        self.assertEqual(
+            details,
+            {
+                'sql_path': '/tmp/runtime_settings_v1.sql',
+                'tables': ('runtime_settings', 'runtime_settings_history'),
+            },
         )
 
     def test_main_model_includes_global_sampling_fields(self) -> None:
