@@ -282,10 +282,12 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
 
         self.assertEqual(readonly_info['web_reformulation_max_tokens']['value'], 40)
         self.assertFalse(readonly_info['web_reformulation_max_tokens']['is_editable'])
+        self.assertEqual(readonly_info['web_reformulation_max_tokens']['source'], 'prompt_file')
         self.assertEqual(
             readonly_info['web_reformulation_system_prompt']['label'],
             'web_reformulation_system_prompt',
         )
+        self.assertEqual(readonly_info['web_reformulation_system_prompt']['source'], 'prompt_file')
         self.assertIn('Nous sommes le {today}.', readonly_info['web_reformulation_system_prompt']['value'])
         self.assertIn(
             'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',

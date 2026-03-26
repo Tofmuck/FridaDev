@@ -43,3 +43,9 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertTrue(path.exists())
         self.assertEqual(prompt_loader.get_summary_system_prompt(), path.read_text(encoding='utf-8').strip())
         self.assertIn('Tu es un assistant de synthèse.', prompt_loader.get_summary_system_prompt())
+
+    def test_web_reformulation_prompt_reads_centralized_prompt_file(self) -> None:
+        path = prompt_loader.resolve_app_prompt_path(config.WEB_REFORMULATION_PROMPT_PATH)
+        self.assertTrue(path.exists())
+        self.assertEqual(prompt_loader.get_web_reformulation_prompt(), path.read_text(encoding='utf-8').strip())
+        self.assertIn('Nous sommes le {today}.', prompt_loader.get_web_reformulation_prompt())

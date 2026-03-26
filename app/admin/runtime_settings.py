@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import ast
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
@@ -784,106 +783,6 @@ def get_runtime_section_for_api(
     )
 
 
-def _ast_expr_to_string(expr: ast.AST) -> str:
-    if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
-        return expr.value
-    if isinstance(expr, ast.JoinedStr):
-        parts = []
-        for value in expr.values:
-            if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                parts.append(value.value)
-            elif isinstance(value, ast.FormattedValue):
-                try:
-                    rendered = ast.unparse(value.value)
-                except Exception:
-                    rendered = 'expr'
-                parts.append('{' + rendered + '}')
-        return ''.join(parts)
-    if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Add):
-        return _ast_expr_to_string(expr.left) + _ast_expr_to_string(expr.right)
-    return ''
-
-
-def _read_python_function_string_assignment(module_relpath: str, function_name: str, variable_name: str) -> str:
-    module_path = Path(__file__).resolve().parents[1] / module_relpath
-    try:
-        source = module_path.read_text(encoding='utf-8')
-        tree = ast.parse(source)
-    except (OSError, SyntaxError):
-        return ''
-
-    for node in tree.body:
-        if not isinstance(node, ast.FunctionDef) or node.name != function_name:
-            continue
-        for statement in ast.walk(node):
-            if not isinstance(statement, ast.Assign):
-                continue
-            if len(statement.targets) != 1:
-                continue
-            target = statement.targets[0]
-            if not isinstance(target, ast.Name) or target.id != variable_name:
-                continue
-            value = _ast_expr_to_string(statement.value)
-            return value.strip()
-    return ''
-
-
-def _read_python_function_dict_path_string(
-    module_relpath: str,
-    function_name: str,
-    variable_name: str,
-    path: Tuple[Any, ...],
-) -> str:
-    module_path = Path(__file__).resolve().parents[1] / module_relpath
-    try:
-        source = module_path.read_text(encoding='utf-8')
-        tree = ast.parse(source)
-    except (OSError, SyntaxError):
-        return ''
-
-    current: ast.AST | None = None
-    for node in tree.body:
-        if not isinstance(node, ast.FunctionDef) or node.name != function_name:
-            continue
-        for statement in ast.walk(node):
-            if not isinstance(statement, ast.Assign):
-                continue
-            if len(statement.targets) != 1:
-                continue
-            target = statement.targets[0]
-            if isinstance(target, ast.Name) and target.id == variable_name:
-                current = statement.value
-                break
-        break
-
-    if current is None:
-        return ''
-
-    for step in path:
-        if isinstance(step, str):
-            if not isinstance(current, ast.Dict):
-                return ''
-            next_node = None
-            for key_node, value_node in zip(current.keys, current.values):
-                if isinstance(key_node, ast.Constant) and key_node.value == step:
-                    next_node = value_node
-                    break
-            if next_node is None:
-                return ''
-            current = next_node
-            continue
-        if isinstance(step, int):
-            if not isinstance(current, ast.List):
-                return ''
-            if step < 0 or step >= len(current.elts):
-                return ''
-            current = current.elts[step]
-            continue
-        return ''
-
-    return _ast_expr_to_string(current).strip()
-
-
 def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
@@ -973,18 +872,13 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
                 'label': 'web_reformulation_max_tokens',
                 'value': 40,
                 'is_editable': False,
-                'source': 'tools_web_search_py',
+                'source': 'prompt_file',
             },
             'web_reformulation_system_prompt': {
                 'label': 'web_reformulation_system_prompt',
-                'value': _read_python_function_dict_path_string(
-                    'tools/web_search.py',
-                    'reformulate',
-                    'payload',
-                    ('messages', 0, 'content'),
-                ),
+                'value': prompt_loader.get_web_reformulation_prompt(),
                 'is_editable': False,
-                'source': 'tools_web_search_py',
+                'source': 'prompt_file',
             },
         }
     return {}

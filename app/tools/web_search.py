@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import config
 from admin import runtime_settings
+from core import prompt_loader
 
 logger = logging.getLogger("kiki.web_search")
 
@@ -41,19 +42,13 @@ def reformulate(user_msg: str) -> str:
     """Reformule le message utilisateur en requête de recherche web concise."""
     try:
         today = datetime.now(timezone.utc).strftime("%d %B %Y")
+        system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
         payload = {
             "model": _runtime_main_model_name(),
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        f"Nous sommes le {today}. "
-                        "Tu es un assistant qui transforme un message en requête de recherche web courte et efficace. "
-                        "Réponds UNIQUEMENT avec la requête de recherche, sans explication, sans guillemets, sans ponctuation finale. "
-                        "La requête doit être en français sauf si le sujet est clairement anglophone. "
-                        "Utilise l'année en cours si la recherche porte sur des événements récents ou à venir. "
-                        "Maximum 8 mots."
-                    ),
+                    "content": system_prompt,
                 },
                 {"role": "user", "content": user_msg},
             ],

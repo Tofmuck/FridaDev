@@ -370,6 +370,7 @@ def _check_prompt_files() -> Dict[str, Any]:
         "main_system_prompt": _resolve_app_path(config.MAIN_SYSTEM_PROMPT_PATH),
         "main_hermeneutical_prompt": _resolve_app_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
         "summary_system_prompt": _resolve_app_path(config.SUMMARY_SYSTEM_PROMPT_PATH),
+        "web_reformulation_prompt": _resolve_app_path(config.WEB_REFORMULATION_PROMPT_PATH),
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
     }
