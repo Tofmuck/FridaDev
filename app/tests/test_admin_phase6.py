@@ -20,6 +20,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_ui_common.js"', html)
         self.assertIn('script src="admin_section_arbiter_model.js"', html)
         self.assertIn('script src="admin_section_summary_model.js"', html)
+        self.assertIn('script src="admin_section_embedding.js"', html)
         self.assertIn('script src="admin_section_database.js"', html)
         self.assertIn('script src="admin_section_resources.js"', html)
         self.assertIn('script src="admin.js"', html)
@@ -110,11 +111,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
         source_all = (
             f"{api_source}\n{ui_source}\n{arbiter_source}\n"
-            f"{summary_source}\n{database_source}\n{resources_source}\n{source}"
+            f"{summary_source}\n{embedding_source}\n{database_source}\n{resources_source}\n{source}"
         )
 
         self.assertIn("/api/admin/settings/status", source_all)
@@ -175,6 +177,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
 
@@ -182,6 +185,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("window.FridaAdminUiCommon", source)
         self.assertIn("window.FridaAdminArbiterModelSection", source)
         self.assertIn("window.FridaAdminSummaryModelSection", source)
+        self.assertIn("window.FridaAdminEmbeddingSection", source)
         self.assertIn("window.FridaAdminDatabaseSection", source)
         self.assertIn("window.FridaAdminResourcesSection", source)
         self.assertIn("const sectionRoutes = adminApi.sectionRoutes;", source)
@@ -212,6 +216,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const runSummaryValidation = async (payload) => {", summary_source)
         self.assertIn("const saveSummarySection = async () => {", summary_source)
         self.assertIn("window.FridaAdminSummaryModelSection = Object.freeze({", summary_source)
+        self.assertIn("const createEmbeddingSectionController = ({", embedding_source)
+        self.assertIn("const runEmbeddingValidation = async (payload) => {", embedding_source)
+        self.assertIn("const saveEmbeddingSection = async () => {", embedding_source)
+        self.assertIn("window.FridaAdminEmbeddingSection = Object.freeze({", embedding_source)
         self.assertIn("const createDatabaseSectionController = ({", database_source)
         self.assertIn("const runDatabaseValidation = async (payload) => {", database_source)
         self.assertIn("const saveDatabaseSection = async () => {", database_source)
@@ -249,6 +257,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("summaryModelSection.loadSummaryModelSection(),", source)
         self.assertNotIn("const saveSummarySection = async () => {", source)
         self.assertNotIn("const runSummaryValidation = async (payload) => {", source)
+        self.assertIn("embeddingSection.bindEmbeddingSectionEvents();", source)
+        self.assertIn("embeddingSection.loadEmbeddingSection(),", source)
+        self.assertNotIn("const saveEmbeddingSection = async () => {", source)
+        self.assertNotIn("const runEmbeddingValidation = async (payload) => {", source)
         self.assertIn("databaseSection.bindDatabaseSectionEvents();", source)
         self.assertIn("databaseSection.loadDatabaseSection(),", source)
         self.assertNotIn("const saveDatabaseSection = async () => {", source)
@@ -339,6 +351,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_ui_common.js"', source)
         self.assertIn('script src="admin_section_arbiter_model.js"', source)
         self.assertIn('script src="admin_section_summary_model.js"', source)
+        self.assertIn('script src="admin_section_embedding.js"', source)
         self.assertIn('script src="admin_section_database.js"', source)
         self.assertIn('script src="admin_section_resources.js"', source)
         self.assertIn('id="adminStatusBanner"', source)

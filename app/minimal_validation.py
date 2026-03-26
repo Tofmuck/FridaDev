@@ -414,6 +414,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_ui_common_js": web_dir / "admin_ui_common.js",
         "admin_section_arbiter_model_js": web_dir / "admin_section_arbiter_model.js",
         "admin_section_summary_model_js": web_dir / "admin_section_summary_model.js",
+        "admin_section_embedding_js": web_dir / "admin_section_embedding.js",
         "admin_section_database_js": web_dir / "admin_section_database.js",
         "admin_section_resources_js": web_dir / "admin_section_resources.js",
         "admin_js": web_dir / "admin.js",
@@ -439,6 +440,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
     admin_section_arbiter_model_js = required_files["admin_section_arbiter_model_js"].read_text(encoding="utf-8")
     admin_section_summary_model_js = required_files["admin_section_summary_model_js"].read_text(encoding="utf-8")
+    admin_section_embedding_js = required_files["admin_section_embedding_js"].read_text(encoding="utf-8")
     admin_section_database_js = required_files["admin_section_database_js"].read_text(encoding="utf-8")
     admin_section_resources_js = required_files["admin_section_resources_js"].read_text(encoding="utf-8")
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
@@ -447,6 +449,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{admin_ui_common_js}\n"
         f"{admin_section_arbiter_model_js}\n"
         f"{admin_section_summary_model_js}\n"
+        f"{admin_section_embedding_js}\n"
         f"{admin_section_database_js}\n"
         f"{admin_section_resources_js}\n"
         f"{admin_js}"
@@ -471,6 +474,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="admin_ui_common.js"',
         'script src="admin_section_arbiter_model.js"',
         'script src="admin_section_summary_model.js"',
+        'script src="admin_section_embedding.js"',
         'script src="admin_section_database.js"',
         'script src="admin_section_resources.js"',
         'script src="admin.js"',
@@ -560,6 +564,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "applyFieldError",
         "createArbiterModelSectionController",
         "createSummaryModelSectionController",
+        "createEmbeddingSectionController",
         "createDatabaseSectionController",
         "createResourcesSectionController",
         "response_max_tokens",
