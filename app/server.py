@@ -2,17 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
-import json
 import logging
-import time
 from ipaddress import ip_address, ip_network
 from pathlib import Path
 from typing import Any, Dict, List
 
 import requests
 from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
 import config
 from core import llm_client as llm
@@ -102,22 +98,6 @@ logger.info(
     _RUNTIME_FINGERPRINT['logs_path'],
 )
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _log_stage_latency(conversation_id: str, stage: str, started_at: float) -> float:
-    duration_ms = max(0.0, (time.perf_counter() - started_at) * 1000.0)
-    admin_logs.log_event(
-        'stage_latency',
-        conversation_id=conversation_id,
-        stage=stage,
-        duration_ms=round(duration_ms, 3),
-    )
-    return duration_ms
-
-
 def _parse_admin_cidr_allowlist(raw_cidrs: str) -> List[Any]:
     allowlist: List[Any] = []
     for raw in str(raw_cidrs or '').split(','):
@@ -182,10 +162,6 @@ def enforce_admin_guard():
     return None
 
 
-_HERMENEUTIC_MODE_OFF = 'off'
-_HERMENEUTIC_MODE_SHADOW = 'shadow'
-_HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
-_HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
 _ADMIN_SETTINGS_PREFIX = '/api/admin/settings'
 _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'main-model': 'main_model',
@@ -196,82 +172,6 @@ _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'services': 'services',
     'resources': 'resources',
 }
-
-
-def _hermeneutic_mode() -> str:
-    mode = str(config.HERMENEUTIC_MODE or _HERMENEUTIC_MODE_SHADOW).strip().lower()
-    if mode == 'enforced':
-        return _HERMENEUTIC_MODE_ENFORCED_ALL
-    return mode
-
-
-def _mode_runs_arbiter(mode: str) -> bool:
-    return mode in {
-        _HERMENEUTIC_MODE_SHADOW,
-        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
-        _HERMENEUTIC_MODE_ENFORCED_ALL,
-    }
-
-
-def _mode_enforces_memory(mode: str) -> bool:
-    return mode == _HERMENEUTIC_MODE_ENFORCED_ALL
-
-
-def _mode_runs_identity(mode: str) -> bool:
-    return mode in {
-        _HERMENEUTIC_MODE_SHADOW,
-        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
-        _HERMENEUTIC_MODE_ENFORCED_ALL,
-    }
-
-
-def _mode_enforces_identity(mode: str) -> bool:
-    return mode in {
-        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
-        _HERMENEUTIC_MODE_ENFORCED_ALL,
-    }
-
-
-def _record_identity_entries_for_mode(
-    conversation_id: str,
-    recent_turns: List[Dict[str, Any]],
-    mode: str,
-) -> None:
-    if not _mode_runs_identity(mode):
-        admin_logs.log_event(
-            'identity_mode_apply',
-            conversation_id=conversation_id,
-            mode=mode,
-            action='skip_mode_off',
-            entries=0,
-        )
-        return
-
-    _extract_t0 = time.perf_counter()
-    id_entries = arbiter.extract_identities(recent_turns)
-    _log_stage_latency(conversation_id, 'identity_extractor', _extract_t0)
-
-    if _mode_enforces_identity(mode):
-        memory_store.persist_identity_entries(conversation_id, id_entries)
-        admin_logs.log_event(
-            'identity_mode_apply',
-            conversation_id=conversation_id,
-            mode=mode,
-            action='persist_enforced',
-            entries=len(id_entries),
-        )
-        return
-
-    preview_entries = memory_store.preview_identity_entries(id_entries)
-    memory_store.record_identity_evidence(conversation_id, preview_entries)
-    admin_logs.log_event(
-        'identity_mode_apply',
-        conversation_id=conversation_id,
-        mode=mode,
-        action='record_evidence_shadow',
-        entries=len(preview_entries),
-    )
-
 
 # ── /api/chat ─────────────────────────────────────────────────────────────────
 
@@ -294,13 +194,6 @@ def api_chat():
         web_search_module=ws,
         config_module=config,
         logger=logger,
-        now_iso=_now_iso,
-        log_stage_latency=_log_stage_latency,
-        hermeneutic_mode=_hermeneutic_mode,
-        mode_runs_arbiter=_mode_runs_arbiter,
-        mode_enforces_memory=_mode_enforces_memory,
-        mode_enforces_identity=_mode_enforces_identity,
-        record_identity_entries_for_mode=_record_identity_entries_for_mode,
     )
 
     if result['kind'] == 'stream':

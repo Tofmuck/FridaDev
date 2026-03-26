@@ -167,6 +167,40 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertEqual(data['error'], 'title requis')
         self.assertFalse(observed['rename_called'])
 
+    def test_api_delete_conversation_returns_400_on_invalid_conversation_id(self) -> None:
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_soft_delete = self.server.conv_store.soft_delete_conversation
+
+        self.server.conv_store.normalize_conversation_id = lambda _raw: None
+        self.server.conv_store.soft_delete_conversation = lambda _conv_id: True
+        try:
+            response = self.client.delete('/api/conversations/@@bad@@')
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.soft_delete_conversation = original_soft_delete
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'conversation_id invalide')
+
+    def test_api_delete_conversation_returns_404_when_not_found(self) -> None:
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_soft_delete = self.server.conv_store.soft_delete_conversation
+
+        self.server.conv_store.normalize_conversation_id = lambda _raw: 'conv-phase13'
+        self.server.conv_store.soft_delete_conversation = lambda _conv_id: False
+        try:
+            response = self.client.delete('/api/conversations/conv-phase13')
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.soft_delete_conversation = original_soft_delete
+
+        self.assertEqual(response.status_code, 404)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'conversation introuvable')
+
     def test_api_chat_ignores_request_system_and_uses_backend_main_system_prompt(self) -> None:
         observed = {}
         original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt
@@ -189,7 +223,7 @@ class ServerPhase13Tests(unittest.TestCase):
         original_requests_post = self.server.requests.post
         original_count_tokens = self.server.token_utils.count_tokens
         original_save_new_traces = self.server.memory_store.save_new_traces
-        original_record_identity = self.server._record_identity_entries_for_mode
+        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
         original_reactivate = self.server.memory_store.reactivate_identities
 
         class FakeResponse:
@@ -266,7 +300,7 @@ class ServerPhase13Tests(unittest.TestCase):
         self.server.requests.post = lambda *args, **kwargs: FakeResponse()
         self.server.token_utils.count_tokens = lambda *_args, **_kwargs: 1
         self.server.memory_store.save_new_traces = lambda *_args, **_kwargs: None
-        self.server._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
+        self.server.chat_service._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
         self.server.memory_store.reactivate_identities = lambda *_args, **_kwargs: None
         try:
             response = self.client.post(
@@ -294,7 +328,7 @@ class ServerPhase13Tests(unittest.TestCase):
             self.server.requests.post = original_requests_post
             self.server.token_utils.count_tokens = original_count_tokens
             self.server.memory_store.save_new_traces = original_save_new_traces
-            self.server._record_identity_entries_for_mode = original_record_identity
+            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
             self.server.memory_store.reactivate_identities = original_reactivate
 
         self.assertEqual(response.status_code, 200)

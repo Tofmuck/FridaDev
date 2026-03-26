@@ -117,7 +117,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         patch_attr(self.server.requests, 'post', requests_post)
         patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
         patch_attr(self.server.memory_store, 'save_new_traces', lambda *_args, **_kwargs: None)
-        patch_attr(self.server, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
+        patch_attr(self.server.chat_service, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
         patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
 
         def restore():
@@ -176,6 +176,37 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
             response.headers.get('X-Conversation-Updated-At'),
         )
+
+    def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
+        response = self.client.post('/api/chat', json={'message': '   '})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'message vide'})
+
+    def test_api_chat_returns_404_when_conversation_id_is_normalized_but_missing(self) -> None:
+        observed = {'new_conversation_called': False}
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_load = self.server.conv_store.load_conversation
+        original_new = self.server.conv_store.new_conversation
+
+        self.server.conv_store.normalize_conversation_id = lambda _raw: 'conv-missing-phase14'
+        self.server.conv_store.load_conversation = lambda *_args, **_kwargs: None
+
+        def fake_new_conversation(_system):
+            observed['new_conversation_called'] = True
+            return {'id': 'should-not-be-created', 'created_at': '2026-03-26T00:00:00Z', 'messages': []}
+
+        self.server.conv_store.new_conversation = fake_new_conversation
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'conversation_id': 'conv-missing'})
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.load_conversation = original_load
+            self.server.conv_store.new_conversation = original_new
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'conversation introuvable'})
+        self.assertFalse(observed['new_conversation_called'])
 
     def test_api_chat_returns_502_on_llm_request_exception(self) -> None:
         conversation = {
@@ -249,6 +280,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
         self.assertEqual(response.get_json()['conversation_id'], 'conv-invalid-raw-phase14')
+        self.assertEqual(response.headers.get('X-Conversation-Id'), 'conv-invalid-raw-phase14')
+        self.assertEqual(response.headers.get('X-Conversation-Created-At'), '2026-03-26T00:00:00Z')
+        self.assertTrue(response.headers.get('X-Conversation-Updated-At'))
         self.assertEqual(observed['normalized_raw'], '@@bad@@')
         self.assertEqual(observed['new_conversation_calls'], 1)
         self.assertFalse(observed['load_called'])

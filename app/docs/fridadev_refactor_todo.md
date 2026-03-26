@@ -167,8 +167,8 @@
 - [x] Extraire un service `conversations` (list/create/read/rename/delete soft).
 - [x] Extraire un service `admin_settings` (GET/PATCH/VALIDATE).
 - [x] Extraire un service `admin_hermeneutics` (dashboard, candidates, decisions, overrides).
-- [ ] Réduire `server.py` aux routes + composition + garde admin.
-- [ ] Vérifier strictement la stabilité des payloads/headers/codes via tests.
+- [x] Réduire `server.py` aux routes + composition + garde admin.
+- [x] Vérifier strictement la stabilité des payloads/headers/codes via tests.
 
 **Definition of Done**
 - `server.py` n’est plus le lieu de l’orchestration métier complète.

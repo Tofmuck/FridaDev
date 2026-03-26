@@ -2,9 +2,19 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Mapping
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Mapping
 from zoneinfo import ZoneInfo
+
+
+_HERMENEUTIC_MODE_OFF = 'off'
+_HERMENEUTIC_MODE_SHADOW = 'shadow'
+_HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
+_HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def _json_result(payload: Dict[str, Any], status: int, headers: Dict[str, str] | None = None) -> Dict[str, Any]:
@@ -24,6 +34,107 @@ def _stream_result(stream: Any, headers: Dict[str, str]) -> Dict[str, Any]:
     }
 
 
+def _log_stage_latency(
+    conversation_id: str,
+    stage: str,
+    started_at: float,
+    *,
+    admin_logs_module: Any,
+) -> float:
+    duration_ms = max(0.0, (time.perf_counter() - started_at) * 1000.0)
+    admin_logs_module.log_event(
+        'stage_latency',
+        conversation_id=conversation_id,
+        stage=stage,
+        duration_ms=round(duration_ms, 3),
+    )
+    return duration_ms
+
+
+def _hermeneutic_mode(config_module: Any) -> str:
+    mode = str(config_module.HERMENEUTIC_MODE or _HERMENEUTIC_MODE_SHADOW).strip().lower()
+    if mode == 'enforced':
+        return _HERMENEUTIC_MODE_ENFORCED_ALL
+    return mode
+
+
+def _mode_runs_arbiter(mode: str) -> bool:
+    return mode in {
+        _HERMENEUTIC_MODE_SHADOW,
+        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
+        _HERMENEUTIC_MODE_ENFORCED_ALL,
+    }
+
+
+def _mode_enforces_memory(mode: str) -> bool:
+    return mode == _HERMENEUTIC_MODE_ENFORCED_ALL
+
+
+def _mode_runs_identity(mode: str) -> bool:
+    return mode in {
+        _HERMENEUTIC_MODE_SHADOW,
+        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
+        _HERMENEUTIC_MODE_ENFORCED_ALL,
+    }
+
+
+def _mode_enforces_identity(mode: str) -> bool:
+    return mode in {
+        _HERMENEUTIC_MODE_ENFORCED_IDENTITIES,
+        _HERMENEUTIC_MODE_ENFORCED_ALL,
+    }
+
+
+def _record_identity_entries_for_mode(
+    conversation_id: str,
+    recent_turns: List[Dict[str, Any]],
+    mode: str,
+    *,
+    arbiter_module: Any,
+    memory_store_module: Any,
+    admin_logs_module: Any,
+) -> None:
+    if not _mode_runs_identity(mode):
+        admin_logs_module.log_event(
+            'identity_mode_apply',
+            conversation_id=conversation_id,
+            mode=mode,
+            action='skip_mode_off',
+            entries=0,
+        )
+        return
+
+    extract_t0 = time.perf_counter()
+    id_entries = arbiter_module.extract_identities(recent_turns)
+    _log_stage_latency(
+        conversation_id,
+        'identity_extractor',
+        extract_t0,
+        admin_logs_module=admin_logs_module,
+    )
+
+    if _mode_enforces_identity(mode):
+        memory_store_module.persist_identity_entries(conversation_id, id_entries)
+        admin_logs_module.log_event(
+            'identity_mode_apply',
+            conversation_id=conversation_id,
+            mode=mode,
+            action='persist_enforced',
+            entries=len(id_entries),
+        )
+        return
+
+    preview_entries = memory_store_module.preview_identity_entries(id_entries)
+    memory_store_module.record_identity_evidence(conversation_id, preview_entries)
+    admin_logs_module.log_event(
+        'identity_mode_apply',
+        conversation_id=conversation_id,
+        mode=mode,
+        action='record_evidence_shadow',
+        entries=len(preview_entries),
+    )
+
+
 def chat_response(
     data: Mapping[str, Any],
     *,
@@ -41,13 +152,6 @@ def chat_response(
     web_search_module: Any,
     config_module: Any,
     logger: Any,
-    now_iso: Callable[[], str],
-    log_stage_latency: Callable[[str, str, float], float],
-    hermeneutic_mode: Callable[[], str],
-    mode_runs_arbiter: Callable[[str], bool],
-    mode_enforces_memory: Callable[[str], bool],
-    mode_enforces_identity: Callable[[str], bool],
-    record_identity_entries_for_mode: Callable[[str, List[Dict[str, Any]], str], None],
 ) -> Dict[str, Any]:
     user_msg = (data.get('message') or '').strip()
     system_prompt = prompt_loader_module.get_main_system_prompt()
@@ -84,7 +188,7 @@ def chat_response(
     runtime_response_max_tokens = int(runtime_main_payload['response_max_tokens']['value'])
     max_tokens = int(data.get('max_tokens') or runtime_response_max_tokens)
 
-    user_timestamp = now_iso()
+    user_timestamp = _now_iso()
     user_tokens = token_utils_module.count_tokens([{'content': user_msg}], runtime_main_model)
     admin_logs_module.log_event(
         'UserMessage',
@@ -117,7 +221,7 @@ def chat_response(
     if conversation['messages'] and conversation['messages'][0]['role'] == 'system':
         conversation['messages'][0]['content'] = augmented_system
 
-    current_mode = hermeneutic_mode()
+    current_mode = _hermeneutic_mode(config_module)
     admin_logs_module.log_event(
         'hermeneutic_mode',
         conversation_id=conversation['id'],
@@ -126,7 +230,12 @@ def chat_response(
 
     retrieve_t0 = time.perf_counter()
     raw_traces = memory_store_module.retrieve(user_msg)
-    log_stage_latency(conversation['id'], 'retrieve', retrieve_t0)
+    _log_stage_latency(
+        conversation['id'],
+        'retrieve',
+        retrieve_t0,
+        admin_logs_module=admin_logs_module,
+    )
 
     recent_turns = [
         message
@@ -141,10 +250,15 @@ def chat_response(
         filtered_traces: List[Dict[str, Any]] = []
         arbiter_decisions: List[Dict[str, Any]] = []
 
-        if mode_runs_arbiter(current_mode):
+        if _mode_runs_arbiter(current_mode):
             arbiter_t0 = time.perf_counter()
             filtered_traces, arbiter_decisions = arbiter_module.filter_traces_with_diagnostics(raw_traces, recent_turns)
-            log_stage_latency(conversation['id'], 'arbiter', arbiter_t0)
+            _log_stage_latency(
+                conversation['id'],
+                'arbiter',
+                arbiter_t0,
+                admin_logs_module=admin_logs_module,
+            )
 
             memory_store_module.record_arbiter_decisions(conversation['id'], raw_traces, arbiter_decisions)
             admin_logs_module.log_event(
@@ -155,7 +269,7 @@ def chat_response(
                 decisions=len(arbiter_decisions),
             )
 
-            if mode_enforces_memory(current_mode):
+            if _mode_enforces_memory(current_mode):
                 memory_traces = filtered_traces
                 memory_source = 'arbiter_enforced'
             else:
@@ -255,7 +369,7 @@ def chat_response(
             response.raise_for_status()
             obj = response.json()
             text = llm_module._sanitize_encoding(obj['choices'][0]['message']['content'])
-            updated_at = now_iso()
+            updated_at = _now_iso()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
             assistant_tokens = token_utils_module.count_tokens([{'content': text}], runtime_main_model)
             admin_logs_module.log_event(
@@ -270,8 +384,15 @@ def chat_response(
                 for message in conversation.get('messages', [])
                 if message.get('role') in {'user', 'assistant'}
             ][-2:]
-            record_identity_entries_for_mode(conversation['id'], recent_2, current_mode)
-            if identity_ids and mode_enforces_identity(current_mode):
+            _record_identity_entries_for_mode(
+                conversation['id'],
+                recent_2,
+                current_mode,
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+            if identity_ids and _mode_enforces_identity(current_mode):
                 memory_store_module.reactivate_identities(identity_ids)
             conv_store_module.save_conversation(conversation, updated_at=updated_at)
             return _json_result(
@@ -290,7 +411,7 @@ def chat_response(
                 },
             )
 
-        response_updated_at = now_iso()
+        response_updated_at = _now_iso()
 
         def event_stream():
             assistant_chunks: list[str] = []
@@ -350,8 +471,15 @@ def chat_response(
                     for message in conversation.get('messages', [])
                     if message.get('role') in {'user', 'assistant'}
                 ][-2:]
-                record_identity_entries_for_mode(conversation['id'], recent_2, current_mode)
-                if identity_ids and mode_enforces_identity(current_mode):
+                _record_identity_entries_for_mode(
+                    conversation['id'],
+                    recent_2,
+                    current_mode,
+                    arbiter_module=arbiter_module,
+                    memory_store_module=memory_store_module,
+                    admin_logs_module=admin_logs_module,
+                )
+                if identity_ids and _mode_enforces_identity(current_mode):
                     memory_store_module.reactivate_identities(identity_ids)
                 conv_store_module.save_conversation(conversation, updated_at=response_updated_at)
 

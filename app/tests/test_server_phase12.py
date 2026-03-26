@@ -55,7 +55,7 @@ class ServerPhase12Tests(unittest.TestCase):
         original_requests_post = self.server.requests.post
         original_count_tokens = self.server.token_utils.count_tokens
         original_save_new_traces = self.server.memory_store.save_new_traces
-        original_record_identity = self.server._record_identity_entries_for_mode
+        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
         original_reactivate = self.server.memory_store.reactivate_identities
 
         conversation = {"id": "conv-phase12", "created_at": "2026-03-25T00:00:00Z", "messages": []}
@@ -125,7 +125,7 @@ class ServerPhase12Tests(unittest.TestCase):
         self.server.requests.post = lambda *args, **kwargs: FakeResponse()
         self.server.token_utils.count_tokens = lambda *_args, **_kwargs: 1
         self.server.memory_store.save_new_traces = lambda *_args, **_kwargs: None
-        self.server._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
+        self.server.chat_service._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
         self.server.memory_store.reactivate_identities = lambda *_args, **_kwargs: None
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour'})
@@ -155,7 +155,7 @@ class ServerPhase12Tests(unittest.TestCase):
             self.server.requests.post = original_requests_post
             self.server.token_utils.count_tokens = original_count_tokens
             self.server.memory_store.save_new_traces = original_save_new_traces
-            self.server._record_identity_entries_for_mode = original_record_identity
+            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
             self.server.memory_store.reactivate_identities = original_reactivate
 
         self.assertEqual(response.status_code, 200)
@@ -186,7 +186,7 @@ class ServerPhase12Tests(unittest.TestCase):
         original_requests_post = self.server.requests.post
         original_count_tokens = self.server.token_utils.count_tokens
         original_save_new_traces = self.server.memory_store.save_new_traces
-        original_record_identity = self.server._record_identity_entries_for_mode
+        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
         original_reactivate = self.server.memory_store.reactivate_identities
 
         conversation = {"id": "conv-phase12", "created_at": "2026-03-25T00:00:00Z", "messages": []}
@@ -250,7 +250,7 @@ class ServerPhase12Tests(unittest.TestCase):
         self.server.requests.post = lambda *args, **kwargs: FakeResponse()
         self.server.token_utils.count_tokens = lambda *_args, **_kwargs: 1
         self.server.memory_store.save_new_traces = lambda *_args, **_kwargs: None
-        self.server._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
+        self.server.chat_service._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
         self.server.memory_store.reactivate_identities = lambda *_args, **_kwargs: None
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'max_tokens': 512})
@@ -273,7 +273,7 @@ class ServerPhase12Tests(unittest.TestCase):
             self.server.requests.post = original_requests_post
             self.server.token_utils.count_tokens = original_count_tokens
             self.server.memory_store.save_new_traces = original_save_new_traces
-            self.server._record_identity_entries_for_mode = original_record_identity
+            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
             self.server.memory_store.reactivate_identities = original_reactivate
 
         self.assertEqual(response.status_code, 200)
