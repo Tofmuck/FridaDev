@@ -12,6 +12,10 @@
     toDraftString,
     renderCheckList,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -168,26 +172,24 @@
     };
 
     const clearEmbeddingFieldErrors = () => {
-      embeddingFieldSpecs.forEach((spec) => setEmbeddingFieldError(spec.key, ""));
-      setEmbeddingFieldError("token", "");
-    };
-
-    const applyEmbeddingLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setEmbeddingFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: embeddingFieldSpecs,
+        setFieldError: setEmbeddingFieldError,
+        extraFields: ["token"],
       });
     };
 
+    const applyEmbeddingLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setEmbeddingFieldError);
+    };
+
     const applyEmbeddingBackendFieldError = (message) => {
-      if (!message) return;
-      if (message.includes("embedding.token")) {
-        setEmbeddingFieldError("token", message);
-        return;
-      }
-      embeddingFieldSpecs.forEach((spec) => {
-        if (message.includes(`embedding.${spec.key}`)) {
-          setEmbeddingFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "embedding",
+        fieldSpecs: embeddingFieldSpecs,
+        setFieldError: setEmbeddingFieldError,
+        secretField: "token",
       });
     };
 
@@ -205,15 +207,7 @@
     };
 
     const collectEmbeddingFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        const field = embeddingCheckFieldMap[check.name] || check.name;
-        if (!errors[field]) {
-          errors[field] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks, (checkName) => embeddingCheckFieldMap[checkName] || checkName);
     };
 
     const buildEmbeddingPatchPayload = () => {

@@ -14,6 +14,10 @@
     renderReadonlyInfoEntries,
     renderReadonlyInfoCards,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -190,26 +194,24 @@
     };
 
     const clearMainModelFieldErrors = () => {
-      mainModelFieldSpecs.forEach((spec) => setMainModelFieldError(spec.key, ""));
-      setMainModelFieldError("api_key", "");
-    };
-
-    const applyMainModelLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setMainModelFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: mainModelFieldSpecs,
+        setFieldError: setMainModelFieldError,
+        extraFields: ["api_key"],
       });
     };
 
+    const applyMainModelLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setMainModelFieldError);
+    };
+
     const applyMainModelBackendFieldError = (message) => {
-      if (!message) return;
-      if (message.includes("main_model.api_key")) {
-        setMainModelFieldError("api_key", message);
-        return;
-      }
-      mainModelFieldSpecs.forEach((spec) => {
-        if (message.includes(`main_model.${spec.key}`)) {
-          setMainModelFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "main_model",
+        fieldSpecs: mainModelFieldSpecs,
+        setFieldError: setMainModelFieldError,
+        secretField: "api_key",
       });
     };
 
@@ -227,15 +229,7 @@
     };
 
     const collectMainModelFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        const field = mainModelCheckFieldMap[check.name] || check.name;
-        if (!errors[field]) {
-          errors[field] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks, (checkName) => mainModelCheckFieldMap[checkName] || checkName);
     };
 
     const buildMainModelPatchPayload = () => {

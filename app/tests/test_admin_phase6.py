@@ -335,6 +335,61 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('if (origin === "db" || origin === "db_seed" || origin === "admin_ui") return "db";', source)
         self.assertIn('if (origin === "env_seed") return "env fallback";', source)
 
+    def test_admin_error_mapping_helpers_are_centralized_and_keep_secret_specific_hosts(self) -> None:
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
+        arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
+        summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
+        database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
+        services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
+        resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
+        section_sources = (
+            main_model_source,
+            arbiter_source,
+            summary_source,
+            embedding_source,
+            database_source,
+            services_source,
+            resources_source,
+        )
+
+        self.assertIn("const clearSectionFieldErrors =", ui_source)
+        self.assertIn("const applySectionLocalFieldErrors =", ui_source)
+        self.assertIn("const applySectionBackendFieldError =", ui_source)
+        self.assertIn("const collectSectionFailedChecks =", ui_source)
+        self.assertIn("clearSectionFieldErrors,", ui_source)
+        self.assertIn("applySectionLocalFieldErrors,", ui_source)
+        self.assertIn("applySectionBackendFieldError,", ui_source)
+        self.assertIn("collectSectionFailedChecks,", ui_source)
+        self.assertIn("clearSectionFieldErrors,", source)
+        self.assertIn("applySectionLocalFieldErrors,", source)
+        self.assertIn("applySectionBackendFieldError,", source)
+        self.assertIn("collectSectionFailedChecks,", source)
+
+        for section_source in section_sources:
+            self.assertIn("clearSectionFieldErrors({", section_source)
+            self.assertIn("applySectionLocalFieldErrors(errors, ", section_source)
+            self.assertIn("applySectionBackendFieldError({", section_source)
+            self.assertIn("return collectSectionFailedChecks(", section_source)
+
+        self.assertIn('sectionKey: "main_model"', main_model_source)
+        self.assertIn('secretField: "api_key"', main_model_source)
+        self.assertIn('document.querySelector(".admin-secret-card")', main_model_source)
+
+        self.assertIn('sectionKey: "embedding"', embedding_source)
+        self.assertIn('secretField: "token"', embedding_source)
+        self.assertIn('document.getElementById("adminEmbeddingSecretCard")', embedding_source)
+
+        self.assertIn('sectionKey: "database"', database_source)
+        self.assertIn('secretField: "dsn"', database_source)
+        self.assertIn('document.getElementById("adminDatabaseSecretCard")', database_source)
+
+        self.assertIn('sectionKey: "services"', services_source)
+        self.assertIn('secretField: "crawl4ai_token"', services_source)
+        self.assertIn('document.getElementById("adminServicesSecretCard")', services_source)
+
     def test_admin_readonly_prompt_cards_stay_out_of_edit_mode(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")

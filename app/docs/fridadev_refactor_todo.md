@@ -245,7 +245,7 @@
 - [x] Isoler un module `api` (fetch admin + token + gestion erreurs standard).
 - [x] Isoler un module `ui_common` (render checks, readonly cards, field errors).
 - [x] Isoler les formulaires de section (`main_model`, `arbiter`, `summary`, `embedding`, `database`, `services`, `resources`).
-- [ ] Centraliser la logique de mapping erreurs backend/locales.
+- [x] Centraliser la logique de mapping erreurs backend/locales.
 - [ ] Vérifier que le DOM final et les endpoints consommés restent inchangés.
 
 **Definition of Done**

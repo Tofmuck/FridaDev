@@ -12,6 +12,10 @@
     toDraftString,
     renderCheckList,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -168,26 +172,24 @@
     };
 
     const clearDatabaseFieldErrors = () => {
-      databaseFieldSpecs.forEach((spec) => setDatabaseFieldError(spec.key, ""));
-      setDatabaseFieldError("dsn", "");
-    };
-
-    const applyDatabaseLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setDatabaseFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: databaseFieldSpecs,
+        setFieldError: setDatabaseFieldError,
+        extraFields: ["dsn"],
       });
     };
 
+    const applyDatabaseLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setDatabaseFieldError);
+    };
+
     const applyDatabaseBackendFieldError = (message) => {
-      if (!message) return;
-      if (message.includes("database.dsn")) {
-        setDatabaseFieldError("dsn", message);
-        return;
-      }
-      databaseFieldSpecs.forEach((spec) => {
-        if (message.includes(`database.${spec.key}`)) {
-          setDatabaseFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "database",
+        fieldSpecs: databaseFieldSpecs,
+        setFieldError: setDatabaseFieldError,
+        secretField: "dsn",
       });
     };
 
@@ -205,15 +207,7 @@
     };
 
     const collectDatabaseFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        const field = databaseCheckFieldMap[check.name] || check.name;
-        if (!errors[field]) {
-          errors[field] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks, (checkName) => databaseCheckFieldMap[checkName] || checkName);
     };
 
     const buildDatabasePatchPayload = () => {

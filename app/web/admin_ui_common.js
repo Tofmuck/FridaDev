@@ -102,11 +102,66 @@
     errorElement.textContent = "";
   };
 
+  const clearSectionFieldErrors = ({
+    fieldSpecs = [],
+    setFieldError,
+    extraFields = [],
+  }) => {
+    fieldSpecs.forEach((spec) => {
+      setFieldError(spec.key, "");
+    });
+    extraFields.forEach((field) => {
+      setFieldError(field, "");
+    });
+  };
+
+  const applySectionLocalFieldErrors = (errors = {}, setFieldError) => {
+    Object.entries(errors).forEach(([field, message]) => {
+      setFieldError(field, message);
+    });
+  };
+
+  const applySectionBackendFieldError = ({
+    message,
+    sectionKey,
+    fieldSpecs = [],
+    setFieldError,
+    secretField = null,
+  }) => {
+    if (!message) return;
+    const scopedMessage = String(message);
+    if (secretField && scopedMessage.includes(`${sectionKey}.${secretField}`)) {
+      setFieldError(secretField, scopedMessage);
+      return;
+    }
+    fieldSpecs.forEach((spec) => {
+      if (scopedMessage.includes(`${sectionKey}.${spec.key}`)) {
+        setFieldError(spec.key, scopedMessage);
+      }
+    });
+  };
+
+  const collectSectionFailedChecks = (checks = [], mapCheckName = null) => {
+    const errors = {};
+    checks.forEach((check) => {
+      if (check.ok) return;
+      const field = typeof mapCheckName === "function" ? mapCheckName(check.name) : check.name;
+      if (!errors[field]) {
+        errors[field] = check.detail;
+      }
+    });
+    return errors;
+  };
+
   window.FridaAdminUiCommon = Object.freeze({
     renderCheckList,
     buildReadonlyInfoCard,
     renderReadonlyInfoEntries,
     renderReadonlyInfoCards,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
   });
 })();

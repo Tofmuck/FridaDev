@@ -13,6 +13,10 @@
     renderCheckList,
     renderReadonlyInfoCards,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -173,26 +177,24 @@
     };
 
     const clearServicesFieldErrors = () => {
-      servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
-      setServicesFieldError("crawl4ai_token", "");
-    };
-
-    const applyServicesLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setServicesFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: servicesFieldSpecs,
+        setFieldError: setServicesFieldError,
+        extraFields: ["crawl4ai_token"],
       });
     };
 
+    const applyServicesLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setServicesFieldError);
+    };
+
     const applyServicesBackendFieldError = (message) => {
-      if (!message) return;
-      if (message.includes("services.crawl4ai_token")) {
-        setServicesFieldError("crawl4ai_token", message);
-        return;
-      }
-      servicesFieldSpecs.forEach((spec) => {
-        if (message.includes(`services.${spec.key}`)) {
-          setServicesFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "services",
+        fieldSpecs: servicesFieldSpecs,
+        setFieldError: setServicesFieldError,
+        secretField: "crawl4ai_token",
       });
     };
 
@@ -210,15 +212,7 @@
     };
 
     const collectServicesFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        const field = servicesCheckFieldMap[check.name] || check.name;
-        if (!errors[field]) {
-          errors[field] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks, (checkName) => servicesCheckFieldMap[checkName] || checkName);
     };
 
     const buildServicesPatchPayload = () => {

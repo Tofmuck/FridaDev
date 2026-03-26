@@ -11,6 +11,10 @@
     renderCheckList,
     renderReadonlyInfoCards,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -149,21 +153,22 @@
     };
 
     const clearArbiterFieldErrors = () => {
-      arbiterModelFieldSpecs.forEach((spec) => setArbiterFieldError(spec.key, ""));
-    };
-
-    const applyArbiterLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setArbiterFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: arbiterModelFieldSpecs,
+        setFieldError: setArbiterFieldError,
       });
     };
 
+    const applyArbiterLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setArbiterFieldError);
+    };
+
     const applyArbiterBackendFieldError = (message) => {
-      if (!message) return;
-      arbiterModelFieldSpecs.forEach((spec) => {
-        if (message.includes(`arbiter_model.${spec.key}`)) {
-          setArbiterFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "arbiter_model",
+        fieldSpecs: arbiterModelFieldSpecs,
+        setFieldError: setArbiterFieldError,
       });
     };
 
@@ -180,14 +185,7 @@
     };
 
     const collectArbiterFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        if (!errors[check.name]) {
-          errors[check.name] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks);
     };
 
     const buildArbiterPatchPayload = () => {

@@ -10,6 +10,10 @@
     toDraftString,
     renderCheckList,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -144,21 +148,22 @@
     };
 
     const clearResourcesFieldErrors = () => {
-      resourcesFieldSpecs.forEach((spec) => setResourcesFieldError(spec.key, ""));
-    };
-
-    const applyResourcesLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setResourcesFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: resourcesFieldSpecs,
+        setFieldError: setResourcesFieldError,
       });
     };
 
+    const applyResourcesLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setResourcesFieldError);
+    };
+
     const applyResourcesBackendFieldError = (message) => {
-      if (!message) return;
-      resourcesFieldSpecs.forEach((spec) => {
-        if (message.includes(`resources.${spec.key}`)) {
-          setResourcesFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "resources",
+        fieldSpecs: resourcesFieldSpecs,
+        setFieldError: setResourcesFieldError,
       });
     };
 
@@ -175,14 +180,7 @@
     };
 
     const collectResourcesFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        if (!errors[check.name]) {
-          errors[check.name] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks);
     };
 
     const buildResourcesPatchPayload = () => {

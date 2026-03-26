@@ -11,6 +11,10 @@
     renderCheckList,
     renderReadonlyInfoCards,
     applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
     setInlineStatus,
     setSectionControlsDisabled,
     buildSectionPatchPayload,
@@ -149,21 +153,22 @@
     };
 
     const clearSummaryFieldErrors = () => {
-      summaryModelFieldSpecs.forEach((spec) => setSummaryFieldError(spec.key, ""));
-    };
-
-    const applySummaryLocalFieldErrors = (errors) => {
-      Object.entries(errors).forEach(([field, message]) => {
-        setSummaryFieldError(field, message);
+      clearSectionFieldErrors({
+        fieldSpecs: summaryModelFieldSpecs,
+        setFieldError: setSummaryFieldError,
       });
     };
 
+    const applySummaryLocalFieldErrors = (errors) => {
+      applySectionLocalFieldErrors(errors, setSummaryFieldError);
+    };
+
     const applySummaryBackendFieldError = (message) => {
-      if (!message) return;
-      summaryModelFieldSpecs.forEach((spec) => {
-        if (message.includes(`summary_model.${spec.key}`)) {
-          setSummaryFieldError(spec.key, message);
-        }
+      applySectionBackendFieldError({
+        message,
+        sectionKey: "summary_model",
+        fieldSpecs: summaryModelFieldSpecs,
+        setFieldError: setSummaryFieldError,
       });
     };
 
@@ -180,14 +185,7 @@
     };
 
     const collectSummaryFailedChecks = (checks) => {
-      const errors = {};
-      checks.forEach((check) => {
-        if (check.ok) return;
-        if (!errors[check.name]) {
-          errors[check.name] = check.detail;
-        }
-      });
-      return errors;
+      return collectSectionFailedChecks(checks);
     };
 
     const buildSummaryPatchPayload = () => {
