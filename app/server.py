@@ -4,7 +4,6 @@
 import hashlib
 import json
 import logging
-import math
 import time
 from ipaddress import ip_address, ip_network
 from pathlib import Path
@@ -21,7 +20,7 @@ from core import prompt_loader
 from tools import web_search as ws
 from core import conv_store
 from core import conversations_service
-from admin import admin_logs, admin_settings_service
+from admin import admin_logs, admin_hermeneutics_service, admin_settings_service
 from admin import admin_actions
 from admin import runtime_settings
 from core import token_utils
@@ -116,49 +115,6 @@ def _log_stage_latency(conversation_id: str, stage: str, started_at: float) -> f
         duration_ms=round(duration_ms, 3),
     )
     return duration_ms
-
-
-def _percentile(values: List[float], p: float) -> float:
-    if not values:
-        return 0.0
-    vals = sorted(values)
-    rank = max(0.0, min(1.0, p)) * (len(vals) - 1)
-    lo = int(math.floor(rank))
-    hi = int(math.ceil(rank))
-    if lo == hi:
-        return float(vals[lo])
-    weight = rank - lo
-    return float(vals[lo] * (1.0 - weight) + vals[hi] * weight)
-
-
-def _compute_stage_latencies(log_entries: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
-    buckets: Dict[str, List[float]] = {
-        'retrieve': [],
-        'arbiter': [],
-        'identity_extractor': [],
-    }
-    for entry in log_entries:
-        if entry.get('event') != 'stage_latency':
-            continue
-        stage = str(entry.get('stage') or '').strip()
-        if stage not in buckets:
-            continue
-        try:
-            duration = float(entry.get('duration_ms') or 0.0)
-        except (TypeError, ValueError):
-            continue
-        if duration < 0:
-            continue
-        buckets[stage].append(duration)
-
-    out: Dict[str, Dict[str, float]] = {}
-    for stage, values in buckets.items():
-        out[stage] = {
-            'count': int(len(values)),
-            'p50_ms': round(_percentile(values, 0.50), 3),
-            'p95_ms': round(_percentile(values, 0.95), 3),
-        }
-    return out
 
 
 def _parse_admin_cidr_allowlist(raw_cidrs: str) -> List[Any]:
@@ -777,269 +733,75 @@ def api_admin_restart():
 
 @app.get('/api/admin/hermeneutics/identity-candidates')
 def api_admin_hermeneutics_identity_candidates():
-    raw_limit = request.args.get('limit', '200')
-    try:
-        limit = max(1, min(int(raw_limit), 1000))
-    except ValueError:
-        limit = 200
-
-    raw_subject = str(request.args.get('subject', 'all') or 'all').strip().lower()
-    if raw_subject in {'user', 'llm'}:
-        subjects = [raw_subject]
-    elif raw_subject in {'all', ''}:
-        subjects = ['user', 'llm']
-    else:
-        return jsonify({'ok': False, 'error': 'subject invalide'}), 400
-
-    raw_status = str(request.args.get('status', 'all') or 'all').strip().lower()
-    if raw_status in {'all', ''}:
-        status = None
-    elif raw_status in {'accepted', 'deferred', 'rejected'}:
-        status = raw_status
-    else:
-        return jsonify({'ok': False, 'error': 'status invalide'}), 400
-
-    entries = []
-    for subject in subjects:
-        entries.extend(memory_store.get_identities(subject, top_n=limit, status=status))
-
-    entries.sort(key=lambda e: float(e.get('weight') or 0.0), reverse=True)
-    entries = entries[:limit]
-    return jsonify({'ok': True, 'items': entries, 'count': len(entries)})
+    payload, status = admin_hermeneutics_service.identity_candidates_response(
+        request.args,
+        memory_store_module=memory_store,
+    )
+    return jsonify(payload), status
 
 
 @app.get('/api/admin/hermeneutics/arbiter-decisions')
 def api_admin_hermeneutics_arbiter_decisions():
-    raw_limit = request.args.get('limit', '200')
-    try:
-        limit = max(1, min(int(raw_limit), 1000))
-    except ValueError:
-        limit = 200
-
-    conversation_id = str(request.args.get('conversation_id', '') or '').strip() or None
-    decisions = memory_store.get_arbiter_decisions(limit=limit, conversation_id=conversation_id)
-    return jsonify({'ok': True, 'items': decisions, 'count': len(decisions)})
+    payload, status = admin_hermeneutics_service.arbiter_decisions_response(
+        request.args,
+        memory_store_module=memory_store,
+    )
+    return jsonify(payload), status
 
 
 @app.post('/api/admin/hermeneutics/identity/force-accept')
 def api_admin_hermeneutics_identity_force_accept():
     data = request.get_json(force=True, silent=True) or {}
-    identity_id = str(data.get('identity_id') or '').strip()
-    reason = str(data.get('reason') or '').strip()
-    actor = str(data.get('actor') or 'admin').strip() or 'admin'
-    if not identity_id:
-        return jsonify({'ok': False, 'error': 'identity_id manquant'}), 400
-
-    ok = memory_store.set_identity_override(
-        identity_id,
-        'force_accept',
-        reason=reason,
-        actor=actor,
+    payload, status = admin_hermeneutics_service.identity_force_accept_response(
+        data,
+        memory_store_module=memory_store,
+        admin_logs_module=admin_logs,
     )
-    if not ok:
-        return jsonify({'ok': False, 'error': 'identity introuvable'}), 404
-
-    admin_logs.log_event(
-        'identity_override',
-        action='force_accept',
-        identity_id=identity_id,
-        actor=actor,
-    )
-    return jsonify({'ok': True, 'identity_id': identity_id, 'override_state': 'force_accept'})
+    return jsonify(payload), status
 
 
 @app.post('/api/admin/hermeneutics/identity/force-reject')
 def api_admin_hermeneutics_identity_force_reject():
     data = request.get_json(force=True, silent=True) or {}
-    identity_id = str(data.get('identity_id') or '').strip()
-    reason = str(data.get('reason') or '').strip()
-    actor = str(data.get('actor') or 'admin').strip() or 'admin'
-    if not identity_id:
-        return jsonify({'ok': False, 'error': 'identity_id manquant'}), 400
-
-    ok = memory_store.set_identity_override(
-        identity_id,
-        'force_reject',
-        reason=reason,
-        actor=actor,
+    payload, status = admin_hermeneutics_service.identity_force_reject_response(
+        data,
+        memory_store_module=memory_store,
+        admin_logs_module=admin_logs,
     )
-    if not ok:
-        return jsonify({'ok': False, 'error': 'identity introuvable'}), 404
-
-    admin_logs.log_event(
-        'identity_override',
-        action='force_reject',
-        identity_id=identity_id,
-        actor=actor,
-    )
-    return jsonify({'ok': True, 'identity_id': identity_id, 'override_state': 'force_reject'})
+    return jsonify(payload), status
 
 
 @app.post('/api/admin/hermeneutics/identity/relabel')
 def api_admin_hermeneutics_identity_relabel():
     data = request.get_json(force=True, silent=True) or {}
-    identity_id = str(data.get('identity_id') or '').strip()
-    if not identity_id:
-        return jsonify({'ok': False, 'error': 'identity_id manquant'}), 400
-
-    stability = data.get('stability')
-    utterance_mode = data.get('utterance_mode')
-    scope = data.get('scope')
-    reason = str(data.get('reason') or '').strip()
-    actor = str(data.get('actor') or 'admin').strip() or 'admin'
-
-    allowed_stability = {'durable', 'episodic', 'unknown'}
-    allowed_utterance_mode = {
-        'self_description',
-        'projection',
-        'role_play',
-        'irony',
-        'speculation',
-        'unknown',
-    }
-    allowed_scope = {'user', 'llm', 'situation', 'mixed', 'unknown'}
-
-    if stability is not None and str(stability).strip() not in allowed_stability:
-        return jsonify({'ok': False, 'error': 'stability invalide'}), 400
-    if utterance_mode is not None and str(utterance_mode).strip() not in allowed_utterance_mode:
-        return jsonify({'ok': False, 'error': 'utterance_mode invalide'}), 400
-    if scope is not None and str(scope).strip() not in allowed_scope:
-        return jsonify({'ok': False, 'error': 'scope invalide'}), 400
-    if stability is None and utterance_mode is None and scope is None:
-        return jsonify({'ok': False, 'error': 'aucun champ a relabel'}), 400
-
-    ok = memory_store.relabel_identity(
-        identity_id,
-        stability=str(stability).strip() if stability is not None else None,
-        utterance_mode=str(utterance_mode).strip() if utterance_mode is not None else None,
-        scope=str(scope).strip() if scope is not None else None,
-        reason=reason,
-        actor=actor,
+    payload, status = admin_hermeneutics_service.identity_relabel_response(
+        data,
+        memory_store_module=memory_store,
+        admin_logs_module=admin_logs,
     )
-    if not ok:
-        return jsonify({'ok': False, 'error': 'identity introuvable'}), 404
-
-    admin_logs.log_event(
-        'identity_relabel',
-        identity_id=identity_id,
-        actor=actor,
-        stability=stability,
-        utterance_mode=utterance_mode,
-        scope=scope,
-    )
-    return jsonify({'ok': True, 'identity_id': identity_id})
+    return jsonify(payload), status
 
 
 
 @app.get('/api/admin/hermeneutics/dashboard')
 def api_admin_hermeneutics_dashboard():
-    raw_window_days = request.args.get('window_days', '7')
-    raw_log_limit = request.args.get('log_limit', '5000')
-
-    try:
-        window_days = max(1, min(int(raw_window_days), 365))
-    except ValueError:
-        window_days = 7
-
-    try:
-        log_limit = max(100, min(int(raw_log_limit), 10000))
-    except ValueError:
-        log_limit = 5000
-
-    kpis = memory_store.get_hermeneutic_kpis(window_days=window_days)
-    runtime_metrics = arbiter.get_runtime_metrics()
-
-    parse_error_count = int(runtime_metrics.get('arbiter_parse_error_count', 0)) + int(
-        runtime_metrics.get('identity_parse_error_count', 0)
+    payload, status = admin_hermeneutics_service.dashboard_response(
+        request.args,
+        memory_store_module=memory_store,
+        arbiter_module=arbiter,
+        admin_logs_module=admin_logs,
+        config_module=config,
     )
-    parse_denominator = int(runtime_metrics.get('arbiter_call_count', 0)) + int(
-        runtime_metrics.get('identity_extractor_call_count', 0)
-    )
-    parse_error_rate = (float(parse_error_count) / parse_denominator) if parse_denominator > 0 else 0.0
-
-    runtime_fallback_rate = (
-        float(runtime_metrics.get('arbiter_fallback_count', 0))
-        / int(runtime_metrics.get('arbiter_call_count', 1) or 1)
-    )
-
-    log_entries = admin_logs.read_logs(limit=log_limit)
-    stage_latencies = _compute_stage_latencies(log_entries)
-
-    fallback_rate = max(float(kpis.get('fallback_rate', 0.0)), runtime_fallback_rate)
-
-    alerts: List[str] = []
-    if parse_error_rate > 0.05:
-        alerts.append('parse_error_rate_gt_5pct')
-    if fallback_rate > 0.10:
-        alerts.append('fallback_rate_gt_10pct')
-
-    counters = {
-        'identity_accept_count': int(kpis.get('identity_accept_count', 0)),
-        'identity_defer_count': int(kpis.get('identity_defer_count', 0)),
-        'identity_reject_count': int(kpis.get('identity_reject_count', 0)),
-        'identity_override_count': int(kpis.get('identity_override_count', 0)),
-        'arbiter_fallback_count': int(kpis.get('arbiter_fallback_count', 0)),
-        'parse_error_count': parse_error_count,
-    }
-
-    return jsonify(
-        {
-            'ok': True,
-            'mode': config.HERMENEUTIC_MODE,
-            'window_days': window_days,
-            'counters': counters,
-            'rates': {
-                'parse_error_rate': round(parse_error_rate, 6),
-                'fallback_rate': round(fallback_rate, 6),
-                'runtime_fallback_rate': round(runtime_fallback_rate, 6),
-            },
-            'latency_ms': stage_latencies,
-            'runtime_metrics': runtime_metrics,
-            'alerts': alerts,
-        }
-    )
+    return jsonify(payload), status
 
 
 @app.get('/api/admin/hermeneutics/corrections-export')
 def api_admin_hermeneutics_corrections_export():
-    raw_window_days = request.args.get('window_days', '7')
-    raw_limit = request.args.get('limit', '5000')
-
-    try:
-        window_days = max(1, min(int(raw_window_days), 365))
-    except ValueError:
-        window_days = 7
-
-    try:
-        limit = max(100, min(int(raw_limit), 20000))
-    except ValueError:
-        limit = 5000
-
-    cutoff = datetime.now(timezone.utc).timestamp() - (window_days * 86400)
-    entries = []
-    for item in admin_logs.read_logs(limit=limit):
-        event = str(item.get('event') or '')
-        if event not in {'identity_override', 'identity_relabel'}:
-            continue
-
-        ts_raw = str(item.get('timestamp') or '').strip()
-        try:
-            ts_epoch = datetime.fromisoformat(ts_raw.replace('Z', '+00:00')).timestamp()
-        except ValueError:
-            continue
-        if ts_epoch < cutoff:
-            continue
-
-        entries.append(item)
-
-    return jsonify(
-        {
-            'ok': True,
-            'window_days': window_days,
-            'count': len(entries),
-            'items': entries,
-        }
+    payload, status = admin_hermeneutics_service.corrections_export_response(
+        request.args,
+        admin_logs_module=admin_logs,
     )
+    return jsonify(payload), status
 
 
 
