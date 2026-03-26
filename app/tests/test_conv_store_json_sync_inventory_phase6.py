@@ -10,6 +10,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = APP_DIR.parent
 CONV_STORE_PATH = APP_DIR / "core" / "conv_store.py"
 AUDIT_PATH = APP_DIR / "docs" / "fridadev_repo_audit.md"
+TODO_PATH = APP_DIR / "docs" / "fridadev_refactor_todo.md"
 SELF_PATH = Path(__file__).resolve()
 
 SYNC_HELPERS = (
@@ -58,6 +59,17 @@ class ConvStoreJsonSyncInventoryPhase6Tests(unittest.TestCase):
         for helper_name in SYNC_HELPERS:
             matches = _find_name_matches(docs_md_files, helper_name)
             self.assertIn(AUDIT_PATH, matches)
+
+    def test_sync_helper_status_is_explicitly_documented_as_conserved(self) -> None:
+        todo_source = TODO_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            "Statut final acté du sous-ensemble sync JSON: conservation documentée comme outillage opératoire explicite.",
+            todo_source,
+        )
+        self.assertIn(
+            "Arbitrage 2026-03-26: conserver le sous-ensemble sync JSON de `conv_store` comme outillage opératoire explicite (hors runtime principal), suppression non retenue à ce stade.",
+            todo_source,
+        )
 
     def test_load_json_helper_is_only_used_inside_sync_helpers(self) -> None:
         tree = ast.parse(CONV_STORE_PATH.read_text(encoding="utf-8"))

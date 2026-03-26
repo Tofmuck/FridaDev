@@ -46,6 +46,7 @@ class AppPhase8Tests(unittest.TestCase):
 
         self.assertIn("max_tokens: cfg.max_tokens,", source)
         self.assertNotIn("system: cfg.system,", source)
+        self.assertNotIn("MAX_CONTEXT_MESSAGES", source)
         self.assertNotIn("const SYSTEM_PROMPT =", source)
         self.assertNotIn("temperature: cfg.temperature,", source)
         self.assertNotIn("top_p: cfg.top_p,", source)
