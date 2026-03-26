@@ -225,12 +225,9 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             ),
         )
 
-    def test_get_section_readonly_info_main_model_exposes_context_budget_system_and_hermeneutical_prompt(self) -> None:
+    def test_get_section_readonly_info_main_model_exposes_context_budget_prompts_and_runtime_bricks(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('main_model')
 
-        self.assertEqual(readonly_info['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
-        self.assertEqual(readonly_info['context_max_tokens']['value'], config.MAX_TOKENS)
-        self.assertFalse(readonly_info['context_max_tokens']['is_editable'])
         self.assertEqual(readonly_info['system_prompt']['label'], 'SYSTEM_PROMPT')
         self.assertFalse(readonly_info['system_prompt']['is_editable'])
         self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
@@ -248,6 +245,19 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             "Contrat d'interpretation du prompt augmente",
             readonly_info['hermeneutical_prompt']['value'],
         )
+        self.assertEqual(
+            readonly_info['hermeneutical_runtime_bricks']['label'],
+            'HERMENEUTICAL_RUNTIME_BRICKS',
+        )
+        self.assertFalse(readonly_info['hermeneutical_runtime_bricks']['is_editable'])
+        self.assertEqual(readonly_info['hermeneutical_runtime_bricks']['source'], 'runtime_contract')
+        self.assertIn('[RÉFÉRENCE TEMPORELLE]', readonly_info['hermeneutical_runtime_bricks']['value'])
+        self.assertIn('[Résumé de la période ...]', readonly_info['hermeneutical_runtime_bricks']['value'])
+        self.assertIn('[Mémoire — souvenirs pertinents]', readonly_info['hermeneutical_runtime_bricks']['value'])
+        self.assertIn('[RECHERCHE WEB — ...]', readonly_info['hermeneutical_runtime_bricks']['value'])
+        self.assertEqual(readonly_info['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
+        self.assertEqual(readonly_info['context_max_tokens']['value'], config.MAX_TOKENS)
+        self.assertFalse(readonly_info['context_max_tokens']['is_editable'])
 
     def test_get_section_readonly_info_arbiter_model_exposes_budgets_paths_and_prompts(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')

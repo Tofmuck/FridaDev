@@ -29,6 +29,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminMainModelReadonlyInfo"', html)
         self.assertIn("System Prompt", html)
         self.assertIn("Hermeneutical Prompt", html)
+        self.assertIn("Briques encadrees et budgets de repere", html)
         self.assertIn('id="adminMainModelChecks"', html)
         self.assertIn('id="adminArbiterModelForm"', html)
         self.assertIn('id="adminArbiterModelValidate"', html)

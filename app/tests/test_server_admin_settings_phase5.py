@@ -110,6 +110,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             "Contrat d'interpretation du prompt augmente",
             data['sections']['main_model']['readonly_info']['hermeneutical_prompt']['value'],
         )
+        self.assertIn(
+            '[RÉFÉRENCE TEMPORELLE]',
+            data['sections']['main_model']['readonly_info']['hermeneutical_runtime_bricks']['value'],
+        )
+        self.assertIn(
+            '[Mémoire — souvenirs pertinents]',
+            data['sections']['main_model']['readonly_info']['hermeneutical_runtime_bricks']['value'],
+        )
         self.assertEqual(
             data['sections']['arbiter_model']['readonly_info']['decision_max_tokens']['value'],
             600,
@@ -238,6 +246,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertIn('[Indices contextuels recents]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_arbiter_model_returns_single_section(self) -> None:
@@ -639,6 +648,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
+        self.assertIn('[FIN DES RÉSULTATS WEB]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
 
     def test_patch_admin_settings_main_model_rejects_invalid_payload(self) -> None:

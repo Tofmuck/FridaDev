@@ -783,16 +783,28 @@ def get_runtime_section_for_api(
     )
 
 
+def _main_hermeneutical_runtime_bricks_text() -> str:
+    return "\n".join(
+        [
+            "Briques runtime encadrees par le Hermeneutical Prompt :",
+            "1. Repere temporel global : [RÉFÉRENCE TEMPORELLE] + \"Nous sommes le ...\"",
+            "2. Labels Delta-T : [il y a ...]",
+            "3. Marqueurs de silence : [— silence de X —]",
+            "4. Bloc identites : [IDENTITÉ DU MODÈLE], [IDENTITÉ DE L'UTILISATEUR], lignes - [stability=...; recurrence=...; confidence=...]",
+            "5. Resume actif : [Résumé de la période ...]",
+            "6. Indices contextuels recents : [Indices contextuels recents]",
+            "7. Contexte du souvenir : [Contexte du souvenir — résumé ...]",
+            "8. Souvenirs pertinents : [Mémoire — souvenirs pertinents]",
+            "9. Contexte web injecte : [RECHERCHE WEB — ...], [FIN DES RÉSULTATS WEB], \"Question :\"",
+            "10. Message utilisateur final : dernier message role=user, avec ou sans prefixe \"Question :\"",
+        ]
+    )
+
+
 def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
         return {
-            'context_max_tokens': {
-                'label': 'FRIDA_MAX_TOKENS',
-                'value': int(config.MAX_TOKENS),
-                'is_editable': False,
-                'source': 'config_py',
-            },
             'system_prompt': {
                 'label': 'SYSTEM_PROMPT',
                 'value': prompt_loader.get_main_system_prompt(),
@@ -804,6 +816,18 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
                 'value': prompt_loader.get_main_hermeneutical_prompt(),
                 'is_editable': False,
                 'source': 'prompt_file',
+            },
+            'hermeneutical_runtime_bricks': {
+                'label': 'HERMENEUTICAL_RUNTIME_BRICKS',
+                'value': _main_hermeneutical_runtime_bricks_text(),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'context_max_tokens': {
+                'label': 'FRIDA_MAX_TOKENS',
+                'value': int(config.MAX_TOKENS),
+                'is_editable': False,
+                'source': 'config_py',
             },
         }
     if section == 'arbiter_model':
