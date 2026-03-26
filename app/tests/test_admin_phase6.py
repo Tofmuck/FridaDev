@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -107,6 +108,74 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn(".admin-readonly-group", source)
         self.assertNotIn(".sidebar {", source)
         self.assertNotIn(".main {", source)
+
+    def test_admin_html_scripts_are_complete_and_loaded_in_dependency_order(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+        found_scripts = re.findall(r'<script\s+src="([^"]+)"></script>', html)
+        expected_scripts = [
+            "admin_api.js",
+            "admin_ui_common.js",
+            "admin_state.js",
+            "admin_section_main_model.js",
+            "admin_section_arbiter_model.js",
+            "admin_section_summary_model.js",
+            "admin_section_embedding.js",
+            "admin_section_database.js",
+            "admin_section_services.js",
+            "admin_section_resources.js",
+            "admin.js",
+        ]
+        self.assertEqual(found_scripts, expected_scripts)
+
+    def test_admin_front_consumes_exact_admin_settings_endpoints_and_dom_hooks(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+        admin_api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
+        admin_source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
+        arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
+        summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
+        database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
+        services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
+        resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
+        source_all = (
+            f"{admin_api_source}\n{admin_source}\n{main_model_source}\n{arbiter_source}\n{summary_source}\n"
+            f"{embedding_source}\n{database_source}\n{services_source}\n{resources_source}"
+        )
+
+        found_endpoints = set(re.findall(r"/api/admin/settings(?:/[a-z-]+(?:/validate)?)?", source_all))
+        self.assertEqual(
+            found_endpoints,
+            {
+                "/api/admin/settings",
+                "/api/admin/settings/status",
+                "/api/admin/settings/main-model",
+                "/api/admin/settings/main-model/validate",
+                "/api/admin/settings/arbiter-model",
+                "/api/admin/settings/arbiter-model/validate",
+                "/api/admin/settings/summary-model",
+                "/api/admin/settings/summary-model/validate",
+                "/api/admin/settings/embedding",
+                "/api/admin/settings/embedding/validate",
+                "/api/admin/settings/database",
+                "/api/admin/settings/database/validate",
+                "/api/admin/settings/services",
+                "/api/admin/settings/services/validate",
+                "/api/admin/settings/resources",
+                "/api/admin/settings/resources/validate",
+            },
+        )
+
+        self.assertIn('const TOKEN_KEY = "frida.adminToken";', admin_api_source)
+        self.assertIn('headers.set("X-Admin-Token", token);', admin_api_source)
+
+        dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
+        missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)
+        self.assertEqual(missing_dom_hook_ids, [])
+        self.assertIn('document.querySelector(".admin-secret-card")', main_model_source)
+        self.assertIn('document.getElementById("adminEmbeddingSecretCard")', embedding_source)
+        self.assertIn('document.getElementById("adminDatabaseSecretCard")', database_source)
+        self.assertIn('document.getElementById("adminServicesSecretCard")', services_source)
 
     def test_admin_js_uses_runtime_status_flow_without_legacy_logs_restart_logic(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")

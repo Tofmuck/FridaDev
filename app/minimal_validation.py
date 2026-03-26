@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -464,6 +465,65 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{admin_js}"
     )
 
+    admin_script_order = [
+        "admin_api.js",
+        "admin_ui_common.js",
+        "admin_state.js",
+        "admin_section_main_model.js",
+        "admin_section_arbiter_model.js",
+        "admin_section_summary_model.js",
+        "admin_section_embedding.js",
+        "admin_section_database.js",
+        "admin_section_services.js",
+        "admin_section_resources.js",
+        "admin.js",
+    ]
+    admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', admin_html)
+    if admin_script_srcs != admin_script_order:
+        raise RuntimeError(
+            "ordre scripts admin invalide: "
+            f"attendu={admin_script_order}, trouve={admin_script_srcs}"
+        )
+
+    expected_admin_settings_endpoints = {
+        "/api/admin/settings",
+        "/api/admin/settings/status",
+        "/api/admin/settings/main-model",
+        "/api/admin/settings/main-model/validate",
+        "/api/admin/settings/arbiter-model",
+        "/api/admin/settings/arbiter-model/validate",
+        "/api/admin/settings/summary-model",
+        "/api/admin/settings/summary-model/validate",
+        "/api/admin/settings/embedding",
+        "/api/admin/settings/embedding/validate",
+        "/api/admin/settings/database",
+        "/api/admin/settings/database/validate",
+        "/api/admin/settings/services",
+        "/api/admin/settings/services/validate",
+        "/api/admin/settings/resources",
+        "/api/admin/settings/resources/validate",
+    }
+    found_admin_settings_endpoints = set(
+        re.findall(r"/api/admin/settings(?:/[a-z-]+(?:/validate)?)?", admin_front_js)
+    )
+    if found_admin_settings_endpoints != expected_admin_settings_endpoints:
+        missing = sorted(expected_admin_settings_endpoints - found_admin_settings_endpoints)
+        extra = sorted(found_admin_settings_endpoints - expected_admin_settings_endpoints)
+        raise RuntimeError(
+            "endpoints admin settings invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    if 'const TOKEN_KEY = "frida.adminToken";' not in admin_api_js:
+        raise RuntimeError("contrat token admin manquant (frida.adminToken)")
+    if 'headers.set("X-Admin-Token", token);' not in admin_api_js:
+        raise RuntimeError("contrat header admin manquant (X-Admin-Token)")
+
+    dom_hook_ids = sorted(set(re.findall(r'document\.getElementById\("([^"]+)"\)', admin_front_js)))
+    missing_dom_hook_ids = [hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in admin_html]
+    if missing_dom_hook_ids:
+        raise RuntimeError(f"hooks DOM admin manquants dans admin.html: {missing_dom_hook_ids}")
+
     index_markers = [
         'src="./fridalogo.png"',
         'href="styles.css"',
@@ -616,6 +676,11 @@ def _check_ui_assets() -> Dict[str, Any]:
     return {
         "files": {name: str(path) for name, path in required_files.items()},
         "legacy_admin_assets_absent": {name: str(path) for name, path in forbidden_files.items()},
+        "admin_script_order": admin_script_order,
+        "admin_script_srcs": admin_script_srcs,
+        "admin_settings_endpoints_expected": sorted(expected_admin_settings_endpoints),
+        "admin_settings_endpoints_found": sorted(found_admin_settings_endpoints),
+        "admin_dom_hook_ids_checked": dom_hook_ids,
         "index_markers": index_markers,
         "admin_markers": admin_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,

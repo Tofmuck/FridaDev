@@ -81,6 +81,52 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("admin_section_services_js", details["files"])
         self.assertIn("admin_section_resources_js", details["files"])
         self.assertIn("admin_js", details["files"])
+        self.assertEqual(
+            details["admin_script_srcs"],
+            [
+                "admin_api.js",
+                "admin_ui_common.js",
+                "admin_state.js",
+                "admin_section_main_model.js",
+                "admin_section_arbiter_model.js",
+                "admin_section_summary_model.js",
+                "admin_section_embedding.js",
+                "admin_section_database.js",
+                "admin_section_services.js",
+                "admin_section_resources.js",
+                "admin.js",
+            ],
+        )
+        self.assertEqual(details["admin_script_srcs"], details["admin_script_order"])
+        self.assertEqual(
+            details["admin_settings_endpoints_found"],
+            [
+                "/api/admin/settings",
+                "/api/admin/settings/arbiter-model",
+                "/api/admin/settings/arbiter-model/validate",
+                "/api/admin/settings/database",
+                "/api/admin/settings/database/validate",
+                "/api/admin/settings/embedding",
+                "/api/admin/settings/embedding/validate",
+                "/api/admin/settings/main-model",
+                "/api/admin/settings/main-model/validate",
+                "/api/admin/settings/resources",
+                "/api/admin/settings/resources/validate",
+                "/api/admin/settings/services",
+                "/api/admin/settings/services/validate",
+                "/api/admin/settings/status",
+                "/api/admin/settings/summary-model",
+                "/api/admin/settings/summary-model/validate",
+            ],
+        )
+        self.assertEqual(
+            details["admin_settings_endpoints_found"],
+            details["admin_settings_endpoints_expected"],
+        )
+        self.assertIn("adminMainModelSave", details["admin_dom_hook_ids_checked"])
+        self.assertIn("adminEmbeddingSecretCard", details["admin_dom_hook_ids_checked"])
+        self.assertIn("adminDatabaseSecretCard", details["admin_dom_hook_ids_checked"])
+        self.assertIn("adminServicesSecretCard", details["admin_dom_hook_ids_checked"])
         self.assertIn("admin_old_html", details["legacy_admin_assets_absent"])
         self.assertIn("admin_old_js", details["legacy_admin_assets_absent"])
         self.assertIn('id="rows"', details["admin_html_forbidden_markers"])
