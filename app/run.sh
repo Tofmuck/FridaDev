@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# run.sh — lance FridaDev (Flask) depuis le dossier du projet.
+# run.sh — wrapper operatoire local pour lancer FridaDev depuis le repo.
+# Entree canonique runtime container: Dockerfile -> `python server.py`.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"

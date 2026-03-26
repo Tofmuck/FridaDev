@@ -281,11 +281,12 @@
 - [x] Supprimer les éléments `certain` sans valeur (`panel`, `MAX_CONTEXT_MESSAGES`, fonctions mortes confirmées).
 - [x] Traiter `history` après arbitrage Phase 1.
 - [x] Faire un inventaire d’usage réel des fonctions sync JSON avant suppression.
-- [ ] Si usage confirmé nul: déprécier puis supprimer sync JSON et helpers associés.
-- [ ] Décider le statut final de `run.sh` (conservé documenté ou retiré).
+- [x] Arbitrer le statut final du sous-ensemble sync JSON (conservation documentée ou suppression).
+- [x] Décider le statut final de `run.sh` (conservé comme wrapper opératoire documenté).
 - [ ] Ajouter tests/guardrails pour éviter réintroduction de reliquats.
 
 Arbitrage 2026-03-26: conserver le sous-ensemble sync JSON de `conv_store` comme outillage opératoire explicite (hors runtime principal), suppression non retenue à ce stade.
+Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explicite, avec `server.py` comme entrée canonique runtime container.
 
 **Definition of Done**
 - Reliquats confirmés supprimés ou explicitement justifiés/documentés.
