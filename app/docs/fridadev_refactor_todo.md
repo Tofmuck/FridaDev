@@ -204,8 +204,8 @@
 - tests chat/service dans `app/tests/`
 
 **Cases à cocher**
-- [ ] Cartographier explicitement les responsabilités internes de `chat_service.py`.
-- [ ] Extraire le flux conversation/session dans un sous-module ciblé.
+- [x] Cartographier explicitement les responsabilités internes de `chat_service.py`.
+- [x] Extraire le flux conversation/session dans un sous-module ciblé.
 - [ ] Extraire le flux contexte/prompt (system + hermeneutical + temporalité + identité).
 - [ ] Extraire le flux mémoire/arbitrage (retrieve/filter/record/hints).
 - [ ] Extraire le flux appel LLM sync/stream (payload, erreurs, persistance, headers).

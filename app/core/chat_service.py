@@ -6,11 +6,19 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping
 from zoneinfo import ZoneInfo
 
+from core import chat_session_flow
+
 
 _HERMENEUTIC_MODE_OFF = 'off'
 _HERMENEUTIC_MODE_SHADOW = 'shadow'
 _HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
 _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
+
+# Phase 4 bis - Cartographie locale des responsabilités de ce module:
+# 1) Session/conversation + headers HTTP: delegue a core.chat_session_flow
+# 2) Contexte prompt: system + hermeneutical + temporalite + identite
+# 3) Memoire/arbitrage: retrieve/filter/record/enrich/context hints
+# 4) Appel LLM: sync + stream, persistance conversation, gestion erreurs
 
 
 def _now_iso() -> str:
@@ -153,32 +161,23 @@ def chat_response(
     config_module: Any,
     logger: Any,
 ) -> Dict[str, Any]:
-    user_msg = (data.get('message') or '').strip()
     system_prompt = prompt_loader_module.get_main_system_prompt()
     hermeneutical_prompt = prompt_loader_module.get_main_hermeneutical_prompt()
-    conversation_id_raw = data.get('conversation_id')
-    stream_req = bool(data.get('stream'))
-    web_search_on = bool(data.get('web_search'))
+    session, session_error = chat_session_flow.resolve_chat_session(
+        data,
+        system_prompt=system_prompt,
+        conv_store_module=conv_store_module,
+        memory_store_module=memory_store_module,
+        logger=logger,
+    )
+    if session_error is not None:
+        payload, status = session_error
+        return _json_result(payload, status)
 
-    if not user_msg:
-        return _json_result({'ok': False, 'error': 'message vide'}, 400)
-
-    conversation_id = conv_store_module.normalize_conversation_id(conversation_id_raw)
-    if conversation_id:
-        conversation = conv_store_module.load_conversation(conversation_id, system_prompt)
-        if not conversation:
-            return _json_result({'ok': False, 'error': 'conversation introuvable'}, 404)
-    else:
-        if conversation_id_raw:
-            logger.info('conv_id_invalid raw=%s', conversation_id_raw)
-        conversation = conv_store_module.new_conversation(system_prompt)
-        conv_store_module.save_conversation(conversation)
-        logger.info(
-            'conv_created id=%s path=%s',
-            conversation['id'],
-            conv_store_module.conversation_path(conversation['id']),
-        )
-        memory_store_module.decay_identities()
+    user_msg = str(session['user_msg'])
+    conversation = session['conversation']
+    stream_req = bool(session['stream_req'])
+    web_search_on = bool(session['web_search_on'])
 
     runtime_main_view = runtime_settings_module.get_main_model_settings()
     runtime_main_payload = runtime_main_view.payload
@@ -404,11 +403,7 @@ def chat_response(
                     'updated_at': updated_at,
                 },
                 200,
-                {
-                    'X-Conversation-Id': conversation['id'],
-                    'X-Conversation-Created-At': conversation['created_at'],
-                    'X-Conversation-Updated-At': updated_at,
-                },
+                chat_session_flow.conversation_headers(conversation, updated_at),
             )
 
         response_updated_at = _now_iso()
@@ -493,11 +488,7 @@ def chat_response(
         )
         return _stream_result(
             event_stream(),
-            {
-                'X-Conversation-Id': conversation['id'],
-                'X-Conversation-Created-At': conversation['created_at'],
-                'X-Conversation-Updated-At': response_updated_at,
-            },
+            chat_session_flow.conversation_headers(conversation, response_updated_at),
         )
 
     except requests_module.exceptions.RequestException as exc:
