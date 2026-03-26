@@ -2,8 +2,8 @@
 
 This directory is migrated progressively.
 First migrated lot:
-- `integration/frontend_chat/test_app_phase8.py`
-- `integration/frontend_admin/test_admin_phase6.py`
+- `integration/frontend_chat/test_frontend_chat_contract.py`
+- `integration/frontend_admin/test_frontend_admin_contract.py`
 Second migrated lot:
 - `unit/chat/test_chat_session_flow.py`
 - `unit/chat/test_chat_prompt_context.py`
