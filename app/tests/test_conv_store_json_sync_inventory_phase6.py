@@ -31,6 +31,12 @@ def _find_name_matches(paths: list[Path], name: str) -> list[Path]:
 
 
 class ConvStoreJsonSyncInventoryPhase6Tests(unittest.TestCase):
+    def test_sync_helpers_are_still_defined_in_conv_store(self) -> None:
+        tree = ast.parse(CONV_STORE_PATH.read_text(encoding="utf-8"))
+        declared = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
+        for helper_name in SYNC_HELPERS:
+            self.assertIn(helper_name, declared)
+
     def test_sync_helpers_have_no_runtime_or_test_references_outside_conv_store(self) -> None:
         runtime_py_files = sorted(
             path

@@ -285,6 +285,8 @@
 - [ ] Décider le statut final de `run.sh` (conservé documenté ou retiré).
 - [ ] Ajouter tests/guardrails pour éviter réintroduction de reliquats.
 
+Arbitrage 2026-03-26: conserver le sous-ensemble sync JSON de `conv_store` comme outillage opératoire explicite (hors runtime principal), suppression non retenue à ce stade.
+
 **Definition of Done**
 - Reliquats confirmés supprimés ou explicitement justifiés/documentés.
 - Pas de suppression d’outils incertains sans preuve d’inutilité.

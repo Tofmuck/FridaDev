@@ -575,6 +575,8 @@ def upsert_conversation_catalog(
 
 
 def sync_catalog_from_json_files(max_files: int = 5000) -> Tuple[int, int]:
+    # Legacy sync subset kept intentionally as explicit operator tooling.
+    # Runtime chat/conversation flows are DB-only and do not call these helpers.
     ensure_conv_dir()
     synced = 0
     skipped = 0
