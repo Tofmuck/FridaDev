@@ -14,6 +14,13 @@
   ) {
     throw new Error("admin_section_arbiter_model.js must be loaded before admin.js");
   }
+  const summaryModelSectionModule = window.FridaAdminSummaryModelSection;
+  if (
+    !summaryModelSectionModule
+    || typeof summaryModelSectionModule.createSummaryModelSectionController !== "function"
+  ) {
+    throw new Error("admin_section_summary_model.js must be loaded before admin.js");
+  }
   const resourcesSectionModule = window.FridaAdminResourcesSection;
   if (
     !resourcesSectionModule
@@ -28,9 +35,11 @@
     applyFieldError,
   } = adminUiCommon;
   const { createArbiterModelSectionController } = arbiterModelSectionModule;
+  const { createSummaryModelSectionController } = summaryModelSectionModule;
   const { createResourcesSectionController } = resourcesSectionModule;
   const sectionRoutes = adminApi.sectionRoutes;
   let arbiterModelSection;
+  let summaryModelSection;
   let resourcesSection;
   const sections = [
     {
@@ -529,13 +538,6 @@
     draft.api_key = "";
     return draft;
   };
-  const emptySummaryModelDraft = () => {
-    const draft = {};
-    summaryModelFieldSpecs.forEach((spec) => {
-      draft[spec.key] = "";
-    });
-    return draft;
-  };
   const emptyEmbeddingDraft = () => {
     const draft = {};
     embeddingFieldSpecs.forEach((spec) => {
@@ -564,9 +566,6 @@
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
   const mainModelErrorElement = (field) => document.getElementById(`adminMainModelFieldError-${field}`);
-  const summaryModelFieldElement = (field) => document.querySelector(`[data-summary-field="${field}"]`);
-  const summaryModelFieldInput = (field) => document.getElementById(`adminSummaryModel-${field}`);
-  const summaryModelErrorElement = (field) => document.getElementById(`adminSummaryModelFieldError-${field}`);
   const embeddingFieldElement = (field) => document.querySelector(`[data-embedding-field="${field}"]`);
   const embeddingFieldInput = (field) => document.getElementById(`adminEmbedding-${field}`);
   const embeddingErrorElement = (field) => document.getElementById(`adminEmbeddingFieldError-${field}`);
@@ -753,12 +752,6 @@
     renderReadonlyInfoEntries(elements.mainModelHermeneuticalPromptInfo, hermeneuticalPromptEntries);
     renderReadonlyInfoCards(elements.mainModelReadonlyInfo, remainingReadonlyInfo);
   };
-  const renderSummaryModelChecks = (checks = []) => {
-    renderCheckList(elements.summaryModelChecks, checks);
-  };
-  const renderSummaryModelReadonlyInfo = () => {
-    renderReadonlyInfoCards(elements.summaryModelReadonlyInfo, state.summaryModel.view?.readonly_info || {});
-  };
   const renderEmbeddingChecks = (checks = []) => {
     renderCheckList(elements.embeddingChecks, checks);
   };
@@ -822,57 +815,6 @@
     });
 
     elements.mainModelFields.appendChild(fragment);
-  };
-  const ensureSummaryModelFieldSkeleton = () => {
-    if (!elements.summaryModelFields || elements.summaryModelFields.children.length > 0) return;
-
-    const fragment = document.createDocumentFragment();
-    summaryModelFieldSpecs.forEach((spec) => {
-      const field = document.createElement("label");
-      field.className = "admin-field";
-      field.dataset.summaryField = spec.key;
-      field.dataset.dirty = "false";
-      field.setAttribute("for", `adminSummaryModel-${spec.key}`);
-
-      const label = document.createElement("span");
-      label.textContent = spec.label;
-
-      const input = document.createElement("input");
-      input.id = `adminSummaryModel-${spec.key}`;
-      input.name = spec.key;
-      input.type = spec.inputType;
-      input.autocomplete = spec.autocomplete || "off";
-      if (spec.step) input.step = spec.step;
-      if (spec.min) input.min = spec.min;
-      if (spec.max) input.max = spec.max;
-
-      const meta = document.createElement("div");
-      meta.className = "admin-field-meta";
-
-      const hint = document.createElement("small");
-      hint.textContent = spec.hint;
-
-      const source = document.createElement("span");
-      source.id = `adminSummaryModelSource-${spec.key}`;
-      source.className = "admin-field-source";
-      source.textContent = "Source: chargement";
-
-      meta.appendChild(hint);
-      meta.appendChild(source);
-
-      const error = document.createElement("p");
-      error.id = `adminSummaryModelFieldError-${spec.key}`;
-      error.className = "admin-field-error";
-      error.hidden = true;
-
-      field.appendChild(label);
-      field.appendChild(input);
-      field.appendChild(meta);
-      field.appendChild(error);
-      fragment.appendChild(field);
-    });
-
-    elements.summaryModelFields.appendChild(fragment);
   };
   const ensureEmbeddingFieldSkeleton = () => {
     if (!elements.embeddingFields || elements.embeddingFields.children.length > 0) return;
@@ -1035,13 +977,6 @@
     draft.api_key = "";
     return draft;
   };
-  const buildSummaryModelDraftFromView = (view) => {
-    const draft = {};
-    summaryModelFieldSpecs.forEach((spec) => {
-      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
-    });
-    return draft;
-  };
   const buildEmbeddingDraftFromView = (view) => {
     const draft = {};
     embeddingFieldSpecs.forEach((spec) => {
@@ -1099,27 +1034,6 @@
 
     mainModelFieldSpecs.forEach((spec) => {
       const source = document.getElementById(`adminMainModelSource-${spec.key}`);
-      if (!source) return;
-      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
-    });
-  };
-  const renderSummaryModelMeta = () => {
-    const view = state.summaryModel.view;
-    if (!view) {
-      if (elements.summaryModelSource) elements.summaryModelSource.textContent = "Section: indisponible";
-      summaryModelFieldSpecs.forEach((spec) => {
-        const source = document.getElementById(`adminSummaryModelSource-${spec.key}`);
-        if (source) source.textContent = "Source: indisponible";
-      });
-      return;
-    }
-
-    if (elements.summaryModelSource) {
-      elements.summaryModelSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
-    }
-
-    summaryModelFieldSpecs.forEach((spec) => {
-      const source = document.getElementById(`adminSummaryModelSource-${spec.key}`);
       if (!source) return;
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
@@ -1257,16 +1171,6 @@
       secretKey: "api_key",
     });
   };
-  const updateSummaryDirtyChip = () => {
-    updateSectionDirtyChip({
-      baseline: state.summaryModel.baseline,
-      draft: state.summaryModel.draft,
-      emptyDraft: emptySummaryModelDraft,
-      fieldSpecs: summaryModelFieldSpecs,
-      fieldElement: summaryModelFieldElement,
-      dirtyChip: elements.summaryModelDirty,
-    });
-  };
   const updateEmbeddingDirtyChip = () => {
     updateSectionDirtyChip({
       baseline: state.embedding.baseline,
@@ -1309,15 +1213,6 @@
       secretInput: elements.mainModelApiKeyReplace,
       secretKey: "api_key",
       onDirtyUpdate: updateDirtyChip,
-    });
-  };
-  const applySummaryDraftToForm = () => {
-    applySectionDraftToForm({
-      draft: state.summaryModel.draft,
-      emptyDraft: emptySummaryModelDraft,
-      fieldSpecs: summaryModelFieldSpecs,
-      inputForField: summaryModelFieldInput,
-      onDirtyUpdate: updateSummaryDirtyChip,
     });
   };
   const applyEmbeddingDraftToForm = () => {
@@ -1369,22 +1264,6 @@
     applyMainModelDraftToForm();
     renderMainModelReadonlyInfo();
     renderMainModelChecks([]);
-  };
-  const applySummaryModelView = (responsePayload) => {
-    state.summaryModel.loaded = true;
-    state.summaryModel.view = {
-      payload: responsePayload.payload || {},
-      readonly_info: responsePayload.readonly_info || {},
-      source: responsePayload.source || "env",
-      source_reason: responsePayload.source_reason || "unknown",
-    };
-    state.summaryModel.baseline = buildSummaryModelDraftFromView(state.summaryModel.view);
-    state.summaryModel.draft = { ...state.summaryModel.baseline };
-    clearSummaryFieldErrors();
-    renderSummaryModelMeta();
-    applySummaryDraftToForm();
-    renderSummaryModelReadonlyInfo();
-    renderSummaryModelChecks([]);
   };
   const applyEmbeddingView = (responsePayload) => {
     state.embedding.loaded = true;
@@ -1446,19 +1325,6 @@
     setMainModelControlsDisabled(true);
     setInlineStatus(elements.mainModelStatus, message, stateName);
   };
-  const resetSummarySurface = (message, stateName = "error") => {
-    state.summaryModel.loaded = false;
-    state.summaryModel.view = null;
-    state.summaryModel.baseline = emptySummaryModelDraft();
-    state.summaryModel.draft = emptySummaryModelDraft();
-    clearSummaryFieldErrors();
-    renderSummaryModelMeta();
-    applySummaryDraftToForm();
-    renderSummaryModelReadonlyInfo();
-    renderSummaryModelChecks([]);
-    setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, message, stateName);
-  };
   const resetEmbeddingSurface = (message, stateName = "error") => {
     state.embedding.loaded = false;
     state.embedding.view = null;
@@ -1516,14 +1382,6 @@
       setFieldError(field, message);
     });
   };
-  const setSummaryFieldError = (field, message = "") => {
-    const host = summaryModelFieldElement(field);
-    const errorElement = summaryModelErrorElement(field);
-    applyFieldError(host, errorElement, message);
-  };
-  const clearSummaryFieldErrors = () => {
-    summaryModelFieldSpecs.forEach((spec) => setSummaryFieldError(spec.key, ""));
-  };
   const setEmbeddingFieldError = (field, message = "") => {
     const isSecretField = field === "token";
     const host = isSecretField ? document.getElementById("adminEmbeddingSecretCard") : embeddingFieldElement(field);
@@ -1554,11 +1412,6 @@
     servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
     setServicesFieldError("crawl4ai_token", "");
   };
-  const applySummaryLocalFieldErrors = (errors) => {
-    Object.entries(errors).forEach(([field, message]) => {
-      setSummaryFieldError(field, message);
-    });
-  };
   const applyEmbeddingLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setEmbeddingFieldError(field, message);
@@ -1572,14 +1425,6 @@
   const applyServicesLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setServicesFieldError(field, message);
-    });
-  };
-  const applySummaryBackendFieldError = (message) => {
-    if (!message) return;
-    summaryModelFieldSpecs.forEach((spec) => {
-      if (message.includes(`summary_model.${spec.key}`)) {
-        setSummaryFieldError(spec.key, message);
-      }
     });
   };
   const applyEmbeddingBackendFieldError = (message) => {
@@ -1618,17 +1463,6 @@
       }
     });
   };
-  const setSummaryControlsDisabled = (disabled) => {
-    setSectionControlsDisabled(
-      {
-        saveButton: elements.summaryModelSave,
-        validateButton: elements.summaryModelValidate,
-        fieldSpecs: summaryModelFieldSpecs,
-        inputForField: summaryModelFieldInput,
-      },
-      disabled,
-    );
-  };
   const setEmbeddingControlsDisabled = (disabled) => {
     setSectionControlsDisabled(
       {
@@ -1665,16 +1499,6 @@
       disabled,
     );
   };
-  const collectSummaryFailedChecks = (checks) => {
-    const errors = {};
-    checks.forEach((check) => {
-      if (check.ok) return;
-      if (!errors[check.name]) {
-        errors[check.name] = check.detail;
-      }
-    });
-    return errors;
-  };
   const collectEmbeddingFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -1708,14 +1532,6 @@
     });
     return errors;
   };
-  const buildSummaryPatchPayload = () => {
-    return buildSectionPatchPayload({
-      baseline: state.summaryModel.baseline,
-      draft: state.summaryModel.draft,
-      emptyDraft: emptySummaryModelDraft,
-      fieldSpecs: summaryModelFieldSpecs,
-    });
-  };
   const buildEmbeddingPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.embedding.baseline,
@@ -1744,46 +1560,6 @@
       integerFields: ["searxng_results", "crawl4ai_top_n", "crawl4ai_max_chars"],
       secretKey: "crawl4ai_token",
     });
-  };
-  const runSummaryValidation = async (payload) => {
-    clearSummaryFieldErrors();
-    renderSummaryModelChecks([]);
-    setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, "Validation technique en cours...", "info");
-
-    try {
-      const response = await adminApi.validateSection(sectionRoutes.summaryModel, payload);
-
-      if (adminApi.isUnauthorized(response)) {
-        setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour verifier la section.", "error");
-        return { ok: false };
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        applySummaryBackendFieldError(data.error || `Validation impossible (${response.status}).`);
-        setInlineStatus(elements.summaryModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
-        return { ok: false };
-      }
-
-      const checks = Array.isArray(data.checks) ? data.checks : [];
-      renderSummaryModelChecks(checks);
-      const failedChecks = collectSummaryFailedChecks(checks);
-      applySummaryLocalFieldErrors(failedChecks);
-
-      if (!data.valid) {
-        setInlineStatus(elements.summaryModelStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
-        return { ok: false };
-      }
-
-      setInlineStatus(elements.summaryModelStatus, "Validation technique OK.", "ok");
-      return { ok: true, data };
-    } catch (_error) {
-      setInlineStatus(elements.summaryModelStatus, "Validation impossible pour le moment.", "error");
-      return { ok: false };
-    } finally {
-      setSummaryControlsDisabled(!state.summaryModel.loaded);
-    }
   };
   const runEmbeddingValidation = async (payload) => {
     clearEmbeddingFieldErrors();
@@ -1905,19 +1681,6 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
-  const validateSummarySection = async () => {
-    const { payload, localErrors } = buildSummaryPatchPayload();
-    clearSummaryFieldErrors();
-
-    if (Object.keys(localErrors).length > 0) {
-      applySummaryLocalFieldErrors(localErrors);
-      renderSummaryModelChecks([]);
-      setInlineStatus(elements.summaryModelStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
-      return;
-    }
-
-    await runSummaryValidation(payload);
-  };
   const validateEmbeddingSection = async () => {
     const { payload, localErrors } = buildEmbeddingPatchPayload();
     clearEmbeddingFieldErrors();
@@ -1956,56 +1719,6 @@
     }
 
     await runServicesValidation(payload);
-  };
-  const saveSummarySection = async () => {
-    if (!state.summaryModel.loaded) return;
-
-    const { payload, localErrors, dirtyCount } = buildSummaryPatchPayload();
-    clearSummaryFieldErrors();
-
-    if (Object.keys(localErrors).length > 0) {
-      applySummaryLocalFieldErrors(localErrors);
-      renderSummaryModelChecks([]);
-      setInlineStatus(elements.summaryModelStatus, "Correction requise avant enregistrement.", "error");
-      return;
-    }
-
-    if (dirtyCount === 0) {
-      setInlineStatus(elements.summaryModelStatus, "Aucune modification a enregistrer.", "info");
-      return;
-    }
-
-    const validation = await runSummaryValidation(payload);
-    if (!validation.ok) return;
-
-    setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, "Enregistrement du modele resumeur...", "info");
-
-    try {
-      const response = await adminApi.patchSection(sectionRoutes.summaryModel, payload);
-
-      if (adminApi.isUnauthorized(response)) {
-        setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour enregistrer la section.", "error");
-        return;
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        applySummaryBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
-        setInlineStatus(elements.summaryModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
-        return;
-      }
-
-      applySummaryModelView(data);
-      setSummaryControlsDisabled(false);
-      setInlineStatus(elements.summaryModelStatus, "Modele resumeur enregistre.", "ok");
-      banner("Modele resumeur enregistre.", "ok");
-      void loadRuntimeStatus();
-    } catch (_error) {
-      setInlineStatus(elements.summaryModelStatus, "Enregistrement impossible pour le moment.", "error");
-    } finally {
-      setSummaryControlsDisabled(!state.summaryModel.loaded);
-    }
   };
   const saveEmbeddingSection = async () => {
     if (!state.embedding.loaded) return;
@@ -2155,32 +1868,6 @@
       setInlineStatus(elements.servicesStatus, "Enregistrement impossible pour le moment.", "error");
     } finally {
       setServicesControlsDisabled(!state.services.loaded);
-    }
-  };
-  const loadSummaryModelSection = async () => {
-    ensureSummaryModelFieldSkeleton();
-    clearSummaryFieldErrors();
-    setSummaryControlsDisabled(true);
-    setInlineStatus(elements.summaryModelStatus, "Chargement du modele resumeur...", "info");
-
-    try {
-      const response = await adminApi.fetchSection(sectionRoutes.summaryModel);
-      if (adminApi.isUnauthorized(response)) {
-        resetSummarySurface("Acces admin requis pour charger le modele resumeur.", "error");
-        return;
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        resetSummarySurface(data.error || `Lecture impossible (${response.status}).`, "error");
-        return;
-      }
-
-      applySummaryModelView(data);
-      setSummaryControlsDisabled(false);
-      setInlineStatus(elements.summaryModelStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
-    } catch (_error) {
-      resetSummarySurface("Lecture impossible du modele resumeur pour le moment.", "error");
     }
   };
   const loadEmbeddingSection = async () => {
@@ -2560,6 +2247,27 @@
     onSaved: () => void loadRuntimeStatus(),
   });
 
+  summaryModelSection = createSummaryModelSectionController({
+    adminApi,
+    sectionRoute: sectionRoutes.summaryModel,
+    summaryModelFieldSpecs,
+    state,
+    elements,
+    sourceLabel,
+    fieldOriginLabel,
+    toDraftString,
+    renderCheckList,
+    renderReadonlyInfoCards,
+    applyFieldError,
+    setInlineStatus,
+    setSectionControlsDisabled,
+    buildSectionPatchPayload,
+    updateSectionDirtyChip,
+    applySectionDraftToForm,
+    banner,
+    onSaved: () => void loadRuntimeStatus(),
+  });
+
   resourcesSection = createResourcesSectionController({
     adminApi,
     sectionRoute: sectionRoutes.resources,
@@ -2585,7 +2293,7 @@
       loadRuntimeStatus(),
       loadMainModelSection(),
       arbiterModelSection.loadArbiterModelSection(),
-      loadSummaryModelSection(),
+      summaryModelSection.loadSummaryModelSection(),
       loadEmbeddingSection(),
       loadDatabaseSection(),
       loadServicesSection(),
@@ -2636,22 +2344,7 @@
     void saveMainModelSection();
   });
   arbiterModelSection.bindArbiterModelSectionEvents();
-  elements.summaryModelForm?.addEventListener("input", (event) => {
-    if (!state.summaryModel.draft) return;
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    const fieldName = target.name;
-    if (!fieldName) return;
-    state.summaryModel.draft[fieldName] = target.value;
-    setSummaryFieldError(fieldName, "");
-    updateSummaryDirtyChip();
-  });
-  elements.summaryModelValidate?.addEventListener("click", () => {
-    void validateSummarySection();
-  });
-  elements.summaryModelSave?.addEventListener("click", () => {
-    void saveSummarySection();
-  });
+  summaryModelSection.bindSummaryModelSectionEvents();
   elements.embeddingForm?.addEventListener("input", (event) => {
     if (!state.embedding.draft) return;
     const target = event.target;
@@ -2728,7 +2421,7 @@
 
   ensureMainModelFieldSkeleton();
   arbiterModelSection.ensureArbiterModelFieldSkeleton();
-  ensureSummaryModelFieldSkeleton();
+  summaryModelSection.ensureSummaryModelFieldSkeleton();
   ensureEmbeddingFieldSkeleton();
   ensureDatabaseFieldSkeleton();
   ensureServicesFieldSkeleton();
@@ -2737,8 +2430,8 @@
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = arbiterModelSection.emptyArbiterModelDraft();
   state.arbiterModel.draft = arbiterModelSection.emptyArbiterModelDraft();
-  state.summaryModel.baseline = emptySummaryModelDraft();
-  state.summaryModel.draft = emptySummaryModelDraft();
+  state.summaryModel.baseline = summaryModelSection.emptySummaryModelDraft();
+  state.summaryModel.draft = summaryModelSection.emptySummaryModelDraft();
   state.embedding.baseline = emptyEmbeddingDraft();
   state.embedding.draft = emptyEmbeddingDraft();
   state.database.baseline = emptyDatabaseDraft();
@@ -2755,10 +2448,10 @@
   arbiterModelSection.applyArbiterDraftToForm();
   arbiterModelSection.renderArbiterModelReadonlyInfo();
   arbiterModelSection.renderArbiterModelChecks([]);
-  renderSummaryModelMeta();
-  applySummaryDraftToForm();
-  renderSummaryModelReadonlyInfo();
-  renderSummaryModelChecks([]);
+  summaryModelSection.renderSummaryModelMeta();
+  summaryModelSection.applySummaryDraftToForm();
+  summaryModelSection.renderSummaryModelReadonlyInfo();
+  summaryModelSection.renderSummaryModelChecks([]);
   renderEmbeddingMeta();
   applyEmbeddingDraftToForm();
   renderEmbeddingChecks([]);
@@ -2774,7 +2467,7 @@
   resourcesSection.renderResourcesChecks([]);
   setMainModelControlsDisabled(true);
   arbiterModelSection.setArbiterControlsDisabled(true);
-  setSummaryControlsDisabled(true);
+  summaryModelSection.setSummaryControlsDisabled(true);
   setEmbeddingControlsDisabled(true);
   setDatabaseControlsDisabled(true);
   setServicesControlsDisabled(true);
