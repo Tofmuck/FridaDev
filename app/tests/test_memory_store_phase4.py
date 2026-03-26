@@ -278,6 +278,152 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
         self.assertFalse(observed['called'])
 
+    def test_record_arbiter_decisions_uses_runtime_arbiter_model_from_db_when_present(self) -> None:
+        observed = {'models': [], 'committed': False}
+        original_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
+        original_conn = memory_store._conn
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'arbiter_model',
+                    {
+                        'model': {'value': 'openrouter/arbiter-runtime-db', 'origin': 'db'},
+                        'temperature': {'value': 0.0, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                        'timeout_s': {'value': 45, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['models'].append(params[11])
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+                return None
+
+        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        memory_store._conn = lambda: FakeConnection()
+        try:
+            memory_store.record_arbiter_decisions(
+                conversation_id='conv-phase4-arbiter-db',
+                traces=[
+                    {
+                        'role': 'assistant',
+                        'content': 'memoire candidate',
+                        'timestamp': '2026-03-26T00:00:00Z',
+                        'score': 0.9,
+                    }
+                ],
+                decisions=[
+                    {
+                        'candidate_id': '0',
+                        'keep': True,
+                        'semantic_relevance': 0.9,
+                        'contextual_gain': 0.7,
+                        'redundant_with_recent': False,
+                        'reason': 'kept',
+                        'decision_source': 'llm',
+                    }
+                ],
+            )
+        finally:
+            memory_store.runtime_settings.get_arbiter_model_settings = original_get_settings
+            memory_store._conn = original_conn
+
+        self.assertEqual(observed['models'], ['openrouter/arbiter-runtime-db'])
+        self.assertTrue(observed['committed'])
+
+    def test_record_arbiter_decisions_keeps_env_fallback_model_when_runtime_layer_returns_it(self) -> None:
+        observed = {'models': [], 'committed': False}
+        original_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
+        original_conn = memory_store._conn
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params):
+                observed['models'].append(params[11])
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+                return None
+
+        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        memory_store._conn = lambda: FakeConnection()
+        try:
+            memory_store.record_arbiter_decisions(
+                conversation_id='conv-phase4-arbiter-env',
+                traces=[
+                    {
+                        'role': 'assistant',
+                        'content': 'memoire candidate',
+                        'timestamp': '2026-03-26T00:00:00Z',
+                        'score': 0.6,
+                    }
+                ],
+                decisions=[
+                    {
+                        'candidate_id': '0',
+                        'keep': False,
+                        'semantic_relevance': 0.2,
+                        'contextual_gain': 0.1,
+                        'redundant_with_recent': False,
+                        'reason': 'fallback',
+                        'decision_source': 'fallback',
+                    }
+                ],
+            )
+        finally:
+            memory_store.runtime_settings.get_arbiter_model_settings = original_get_settings
+            memory_store._conn = original_conn
+
+        self.assertEqual(observed['models'], [config.ARBITER_MODEL])
+        self.assertTrue(observed['committed'])
+
 
 if __name__ == '__main__':
     unittest.main()

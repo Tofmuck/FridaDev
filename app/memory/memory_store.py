@@ -94,6 +94,11 @@ def _runtime_embedding_token() -> str:
     return str(secret.value)
 
 
+def _runtime_arbiter_model_name() -> str:
+    view = runtime_settings.get_arbiter_model_settings()
+    return str(view.payload['model']['value'])
+
+
 # Schema initialization
 
 def init_db() -> None:
@@ -1123,6 +1128,7 @@ def record_arbiter_decisions(
         return
 
     try:
+        arbiter_model = _runtime_arbiter_model_name()
         with _conn() as conn:
             with conn.cursor() as cur:
                 for decision in decisions:
@@ -1163,7 +1169,7 @@ def record_arbiter_decisions(
                             _trace_float(decision.get('contextual_gain')),
                             bool(decision.get('redundant_with_recent', False)),
                             str(decision.get('reason', ''))[:500],
-                            config.ARBITER_MODEL,
+                            arbiter_model,
                             str(decision.get('decision_source', 'llm'))[:32],
                         ),
                     )

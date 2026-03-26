@@ -51,8 +51,8 @@
 - [x] Aligner le runtime sur ce contrat (sans changer le comportement fonctionnel externe).
 - [x] Décider le contrat `history` de `/api/chat`: `supprimé` du frontend ou `consommé` côté backend.
 - [x] Implémenter l’alignement `history` et ajouter tests de non-régression API.
-- [ ] Aligner la persistance `arbiter_decisions.model` avec la source runtime effective.
-- [ ] Ajouter/adapter tests ciblés sur ces 3 contrats.
+- [x] Aligner la persistance `arbiter_decisions.model` avec la source runtime effective.
+- [x] Ajouter/adapter tests ciblés sur ces 3 contrats.
 
 **Definition of Done**
 - Contrats startup/chat/arbiter explicités et cohérents dans le code.
