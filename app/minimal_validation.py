@@ -524,6 +524,90 @@ def _check_ui_assets() -> Dict[str, Any]:
     if missing_dom_hook_ids:
         raise RuntimeError(f"hooks DOM admin manquants dans admin.html: {missing_dom_hook_ids}")
 
+    dynamic_getelement_templates = sorted(
+        set(re.findall(r'document\.getElementById\(`([^`]*\$\{[^`]+\}[^`]*)`\)', admin_front_js))
+    )
+    expected_dynamic_getelement_templates = {
+        "adminMainModel-${field}",
+        "adminMainModelFieldError-${field}",
+        "adminMainModelSource-${spec.key}",
+        "adminArbiterModel-${field}",
+        "adminArbiterModelFieldError-${field}",
+        "adminArbiterModelSource-${spec.key}",
+        "adminSummaryModel-${field}",
+        "adminSummaryModelFieldError-${field}",
+        "adminSummaryModelSource-${spec.key}",
+        "adminEmbedding-${field}",
+        "adminEmbeddingFieldError-${field}",
+        "adminEmbeddingSource-${spec.key}",
+        "adminDatabase-${field}",
+        "adminDatabaseFieldError-${field}",
+        "adminDatabaseSource-${spec.key}",
+        "adminServices-${field}",
+        "adminServicesFieldError-${field}",
+        "adminServicesSource-${spec.key}",
+        "adminResources-${field}",
+        "adminResourcesFieldError-${field}",
+        "adminResourcesSource-${spec.key}",
+    }
+    if set(dynamic_getelement_templates) != expected_dynamic_getelement_templates:
+        missing = sorted(expected_dynamic_getelement_templates - set(dynamic_getelement_templates))
+        extra = sorted(set(dynamic_getelement_templates) - expected_dynamic_getelement_templates)
+        raise RuntimeError(
+            "templates getElementById dynamiques invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    dynamic_id_assignment_templates = sorted(
+        set(re.findall(r'\.id\s*=\s*`([^`]*\$\{[^`]+\}[^`]*)`', admin_front_js))
+    )
+    expected_dynamic_id_assignment_templates = {
+        "adminMainModel-${spec.key}",
+        "adminMainModelFieldError-${spec.key}",
+        "adminMainModelSource-${spec.key}",
+        "adminArbiterModel-${spec.key}",
+        "adminArbiterModelFieldError-${spec.key}",
+        "adminArbiterModelSource-${spec.key}",
+        "adminSummaryModel-${spec.key}",
+        "adminSummaryModelFieldError-${spec.key}",
+        "adminSummaryModelSource-${spec.key}",
+        "adminEmbedding-${spec.key}",
+        "adminEmbeddingFieldError-${spec.key}",
+        "adminEmbeddingSource-${spec.key}",
+        "adminDatabase-${spec.key}",
+        "adminDatabaseFieldError-${spec.key}",
+        "adminDatabaseSource-${spec.key}",
+        "adminServices-${spec.key}",
+        "adminServicesFieldError-${spec.key}",
+        "adminServicesSource-${spec.key}",
+        "adminResources-${spec.key}",
+        "adminResourcesFieldError-${spec.key}",
+        "adminResourcesSource-${spec.key}",
+    }
+    if set(dynamic_id_assignment_templates) != expected_dynamic_id_assignment_templates:
+        missing = sorted(expected_dynamic_id_assignment_templates - set(dynamic_id_assignment_templates))
+        extra = sorted(set(dynamic_id_assignment_templates) - expected_dynamic_id_assignment_templates)
+        raise RuntimeError(
+            "templates id dynamiques generes invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    def _normalize_dynamic_id_template(raw: str) -> str:
+        return re.sub(r"\$\{[^}]+\}", "${*}", raw)
+
+    normalized_dynamic_getelement_templates = sorted(
+        {_normalize_dynamic_id_template(template) for template in dynamic_getelement_templates}
+    )
+    normalized_dynamic_id_assignment_templates = sorted(
+        {_normalize_dynamic_id_template(template) for template in dynamic_id_assignment_templates}
+    )
+    if normalized_dynamic_getelement_templates != normalized_dynamic_id_assignment_templates:
+        raise RuntimeError(
+            "coherence templates dynamiques getElementById/id assignee invalide: "
+            f"lookup={normalized_dynamic_getelement_templates}, "
+            f"generated={normalized_dynamic_id_assignment_templates}"
+        )
+
     query_selector_matches = re.findall(
         r'document\.querySelector\("([^"]+)"\)|document\.querySelector\(`([^`]+)`\)',
         admin_front_js,
@@ -753,6 +837,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_settings_endpoints_expected": sorted(expected_admin_settings_endpoints),
         "admin_settings_endpoints_found": sorted(found_admin_settings_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
+        "admin_dynamic_getelement_templates_expected": sorted(expected_dynamic_getelement_templates),
+        "admin_dynamic_getelement_templates_found": dynamic_getelement_templates,
+        "admin_dynamic_id_assignment_templates_expected": sorted(expected_dynamic_id_assignment_templates),
+        "admin_dynamic_id_assignment_templates_found": dynamic_id_assignment_templates,
+        "admin_dynamic_templates_lookup_families_checked": normalized_dynamic_getelement_templates,
+        "admin_dynamic_templates_generated_families_checked": normalized_dynamic_id_assignment_templates,
         "admin_query_selectors_expected": sorted(expected_query_selectors),
         "admin_query_selectors_found": query_selectors,
         "admin_data_selectors_checked": data_selectors,

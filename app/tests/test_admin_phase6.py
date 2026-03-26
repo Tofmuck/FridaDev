@@ -173,6 +173,72 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)
         self.assertEqual(missing_dom_hook_ids, [])
 
+        dynamic_getelement_templates = set(
+            re.findall(r'document\.getElementById\(`([^`]*\$\{[^`]+\}[^`]*)`\)', source_all)
+        )
+        self.assertEqual(
+            dynamic_getelement_templates,
+            {
+                "adminMainModel-${field}",
+                "adminMainModelFieldError-${field}",
+                "adminMainModelSource-${spec.key}",
+                "adminArbiterModel-${field}",
+                "adminArbiterModelFieldError-${field}",
+                "adminArbiterModelSource-${spec.key}",
+                "adminSummaryModel-${field}",
+                "adminSummaryModelFieldError-${field}",
+                "adminSummaryModelSource-${spec.key}",
+                "adminEmbedding-${field}",
+                "adminEmbeddingFieldError-${field}",
+                "adminEmbeddingSource-${spec.key}",
+                "adminDatabase-${field}",
+                "adminDatabaseFieldError-${field}",
+                "adminDatabaseSource-${spec.key}",
+                "adminServices-${field}",
+                "adminServicesFieldError-${field}",
+                "adminServicesSource-${spec.key}",
+                "adminResources-${field}",
+                "adminResourcesFieldError-${field}",
+                "adminResourcesSource-${spec.key}",
+            },
+        )
+
+        dynamic_id_assignment_templates = set(
+            re.findall(r'\.id\s*=\s*`([^`]*\$\{[^`]+\}[^`]*)`', source_all)
+        )
+        self.assertEqual(
+            dynamic_id_assignment_templates,
+            {
+                "adminMainModel-${spec.key}",
+                "adminMainModelFieldError-${spec.key}",
+                "adminMainModelSource-${spec.key}",
+                "adminArbiterModel-${spec.key}",
+                "adminArbiterModelFieldError-${spec.key}",
+                "adminArbiterModelSource-${spec.key}",
+                "adminSummaryModel-${spec.key}",
+                "adminSummaryModelFieldError-${spec.key}",
+                "adminSummaryModelSource-${spec.key}",
+                "adminEmbedding-${spec.key}",
+                "adminEmbeddingFieldError-${spec.key}",
+                "adminEmbeddingSource-${spec.key}",
+                "adminDatabase-${spec.key}",
+                "adminDatabaseFieldError-${spec.key}",
+                "adminDatabaseSource-${spec.key}",
+                "adminServices-${spec.key}",
+                "adminServicesFieldError-${spec.key}",
+                "adminServicesSource-${spec.key}",
+                "adminResources-${spec.key}",
+                "adminResourcesFieldError-${spec.key}",
+                "adminResourcesSource-${spec.key}",
+            },
+        )
+
+        normalize_template = lambda raw: re.sub(r"\$\{[^}]+\}", "${*}", raw)
+        self.assertEqual(
+            {normalize_template(template) for template in dynamic_getelement_templates},
+            {normalize_template(template) for template in dynamic_id_assignment_templates},
+        )
+
         query_selector_matches = re.findall(
             r'document\.querySelector\("([^"]+)"\)|document\.querySelector\(`([^`]+)`\)',
             source_all,
