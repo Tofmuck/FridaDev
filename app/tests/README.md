@@ -9,6 +9,10 @@ Second migrated lot:
 - `unit/chat/test_chat_prompt_context.py`
 - `unit/chat/test_chat_memory_flow.py`
 - `unit/chat/test_chat_llm_flow.py`
+Third migrated lot:
+- `unit/runtime_settings/test_runtime_settings.py`
+- `unit/runtime_settings/test_runtime_secrets.py`
+- `unit/runtime_settings/test_runtime_settings_sql.py`
 
 ## Target levels
 

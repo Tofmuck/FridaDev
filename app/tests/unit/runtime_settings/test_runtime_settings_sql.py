@@ -4,8 +4,15 @@ import unittest
 from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-SQL_PATH = ROOT_DIR / 'app' / 'admin' / 'sql' / 'runtime_settings_v1.sql'
+def _resolve_app_dir() -> Path:
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "web").exists() and (parent / "server.py").exists():
+            return parent
+    raise RuntimeError("Unable to resolve APP_DIR from test path")
+
+
+APP_DIR = _resolve_app_dir()
+SQL_PATH = APP_DIR / 'admin' / 'sql' / 'runtime_settings_v1.sql'
 
 
 class RuntimeSettingsSqlTests(unittest.TestCase):
