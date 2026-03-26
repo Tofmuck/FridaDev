@@ -20,6 +20,7 @@ from core import llm_client as llm
 from core import prompt_loader
 from tools import web_search as ws
 from core import conv_store
+from core import conversations_service
 from admin import admin_logs
 from admin import admin_actions
 from admin import runtime_settings
@@ -1075,115 +1076,51 @@ def api_admin_hermeneutics_corrections_export():
 
 @app.get('/api/conversations')
 def api_list_conversations():
-    raw_limit = str(request.args.get('limit', '100') or '100').strip()
-    raw_offset = str(request.args.get('offset', '0') or '0').strip()
-    raw_include_deleted = str(request.args.get('include_deleted', '') or '').strip().lower()
-
-    try:
-        limit = int(raw_limit)
-    except ValueError:
-        limit = 100
-
-    try:
-        offset = int(raw_offset)
-    except ValueError:
-        offset = 0
-
-    include_deleted = raw_include_deleted in {'1', 'true', 'yes', 'on'}
-
-    payload = conv_store.list_conversations(
-        limit=limit,
-        offset=offset,
-        include_deleted=include_deleted,
+    payload = conversations_service.list_conversations(
+        request.args,
+        conv_store_module=conv_store,
     )
-    return jsonify({'ok': True, **payload})
+    return jsonify(payload)
 
 
 @app.post('/api/conversations')
 def api_create_conversation():
     data = request.get_json(silent=True) or {}
-    title = str(data.get('title') or '').strip()
-    system_prompt = prompt_loader.get_main_system_prompt()
-
-    conversation = conv_store.new_conversation(system_prompt, title=title)
-    conv_store.save_conversation(conversation)
-
-    summary = conv_store.get_conversation_summary(conversation['id']) or {
-        'id': conversation['id'],
-        'title': conversation.get('title') or 'Nouvelle conversation',
-        'created_at': conversation.get('created_at'),
-        'updated_at': conversation.get('updated_at'),
-        'message_count': 0,
-        'last_message_preview': '',
-        'deleted_at': None,
-    }
-    return jsonify({'ok': True, 'conversation_id': conversation['id'], 'conversation': summary}), 201
+    payload, status = conversations_service.create_conversation(
+        data,
+        conv_store_module=conv_store,
+        get_main_system_prompt=prompt_loader.get_main_system_prompt,
+    )
+    return jsonify(payload), status
 
 
 @app.get('/api/conversations/<conversation_id>/messages')
 def api_get_conversation_messages(conversation_id: str):
-    conv_id = conv_store.normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return jsonify({'ok': False, 'error': 'conversation_id invalide'}), 400
-
-    conversation = conv_store.read_conversation(conv_id, '')
-    if not conversation:
-        return jsonify({'ok': False, 'error': 'conversation introuvable'}), 404
-
-    summary = conv_store.get_conversation_summary(conv_id, include_deleted=True)
-    if summary is None:
-        summary = {
-            'title': conversation.get('title') or 'Nouvelle conversation',
-            'created_at': conversation.get('created_at'),
-            'updated_at': conversation.get('updated_at'),
-            'message_count': sum(
-                1
-                for msg in conversation.get('messages', [])
-                if str(msg.get('role') or '').strip() in {'user', 'assistant'}
-            ),
-            'last_message_preview': '',
-            'deleted_at': None,
-        }
-
-    return jsonify(
-        {
-            'ok': True,
-            'conversation_id': conv_id,
-            'title': summary.get('title') or 'Nouvelle conversation',
-            'created_at': summary.get('created_at') or conversation.get('created_at'),
-            'updated_at': summary.get('updated_at') or conversation.get('updated_at'),
-            'deleted_at': summary.get('deleted_at'),
-            'messages': conversation.get('messages', []),
-        }
+    payload, status = conversations_service.get_conversation_messages(
+        conversation_id,
+        conv_store_module=conv_store,
     )
+    return jsonify(payload), status
 
 
 @app.patch('/api/conversations/<conversation_id>')
 def api_patch_conversation(conversation_id: str):
-    conv_id = conv_store.normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return jsonify({'ok': False, 'error': 'conversation_id invalide'}), 400
-
     data = request.get_json(silent=True) or {}
-    title = str(data.get('title') or '').strip()
-    if not title:
-        return jsonify({'ok': False, 'error': 'title requis'}), 400
-
-    summary = conv_store.rename_conversation(conv_id, title)
-    if summary is None:
-        return jsonify({'ok': False, 'error': 'conversation introuvable'}), 404
-    return jsonify({'ok': True, 'conversation': summary})
+    payload, status = conversations_service.patch_conversation(
+        conversation_id,
+        data,
+        conv_store_module=conv_store,
+    )
+    return jsonify(payload), status
 
 
 @app.delete('/api/conversations/<conversation_id>')
 def api_delete_conversation(conversation_id: str):
-    conv_id = conv_store.normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return jsonify({'ok': False, 'error': 'conversation_id invalide'}), 400
-
-    if not conv_store.soft_delete_conversation(conv_id):
-        return jsonify({'ok': False, 'error': 'conversation introuvable'}), 404
-    return jsonify({'ok': True, 'conversation_id': conv_id})
+    payload, status = conversations_service.delete_conversation(
+        conversation_id,
+        conv_store_module=conv_store,
+    )
+    return jsonify(payload), status
 
 
 # ── Statiques ─────────────────────────────────────────────────────────────────

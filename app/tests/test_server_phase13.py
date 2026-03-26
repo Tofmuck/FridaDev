@@ -71,6 +71,102 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertEqual(observed['system_prompt'], 'BACKEND SYSTEM PROMPT')
         self.assertEqual(observed['title'], 'Titre test')
 
+    def test_api_list_conversations_parses_query_params_with_contract_fallbacks(self) -> None:
+        observed = {}
+        original_list_conversations = self.server.conv_store.list_conversations
+
+        def fake_list_conversations(limit: int, offset: int, include_deleted: bool):
+            observed['limit'] = limit
+            observed['offset'] = offset
+            observed['include_deleted'] = include_deleted
+            return {
+                'items': [{'id': 'conv-phase4'}],
+                'count': 1,
+            }
+
+        self.server.conv_store.list_conversations = fake_list_conversations
+        try:
+            response = self.client.get('/api/conversations?limit=oops&offset=bad&include_deleted=YeS')
+        finally:
+            self.server.conv_store.list_conversations = original_list_conversations
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(observed['limit'], 100)
+        self.assertEqual(observed['offset'], 0)
+        self.assertTrue(observed['include_deleted'])
+        self.assertEqual(data['items'][0]['id'], 'conv-phase4')
+        self.assertEqual(data['count'], 1)
+
+    def test_api_get_conversation_messages_falls_back_to_runtime_summary_when_missing(self) -> None:
+        observed = {}
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_read = self.server.conv_store.read_conversation
+        original_get_summary = self.server.conv_store.get_conversation_summary
+
+        self.server.conv_store.normalize_conversation_id = lambda _raw: 'conv-phase4'
+        self.server.conv_store.read_conversation = lambda conv_id, _system_prompt: {
+            'id': conv_id,
+            'title': '',
+            'created_at': '2026-03-26T00:00:00Z',
+            'updated_at': '2026-03-26T00:05:00Z',
+            'messages': [
+                {'role': 'system', 'content': 'system'},
+                {'role': 'user', 'content': 'hello'},
+                {'role': 'assistant', 'content': 'world'},
+            ],
+        }
+
+        def fake_get_conversation_summary(conv_id: str, *, include_deleted: bool = False):
+            observed['conv_id'] = conv_id
+            observed['include_deleted'] = include_deleted
+            return None
+
+        self.server.conv_store.get_conversation_summary = fake_get_conversation_summary
+        try:
+            response = self.client.get('/api/conversations/conv-phase4/messages')
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.read_conversation = original_read
+            self.server.conv_store.get_conversation_summary = original_get_summary
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['conversation_id'], 'conv-phase4')
+        self.assertEqual(data['title'], 'Nouvelle conversation')
+        self.assertEqual(data['created_at'], '2026-03-26T00:00:00Z')
+        self.assertEqual(data['updated_at'], '2026-03-26T00:05:00Z')
+        self.assertIsNone(data['deleted_at'])
+        self.assertEqual(len(data['messages']), 3)
+        self.assertEqual(observed['conv_id'], 'conv-phase4')
+        self.assertTrue(observed['include_deleted'])
+
+    def test_api_patch_conversation_returns_400_on_empty_title(self) -> None:
+        observed = {'rename_called': False}
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_rename = self.server.conv_store.rename_conversation
+
+        self.server.conv_store.normalize_conversation_id = lambda _raw: 'conv-phase4'
+
+        def fake_rename_conversation(_conv_id: str, _title: str):
+            observed['rename_called'] = True
+            return {'id': 'conv-phase4', 'title': 'should-not-be-used'}
+
+        self.server.conv_store.rename_conversation = fake_rename_conversation
+        try:
+            response = self.client.patch('/api/conversations/conv-phase4', json={'title': '   '})
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.rename_conversation = original_rename
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'title requis')
+        self.assertFalse(observed['rename_called'])
+
     def test_api_chat_ignores_request_system_and_uses_backend_main_system_prompt(self) -> None:
         observed = {}
         original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt
