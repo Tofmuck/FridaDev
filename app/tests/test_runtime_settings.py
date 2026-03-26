@@ -694,6 +694,58 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertNotIn('admin_logs', imported_modules)
         self.assertNotIn('admin.admin_logs', imported_modules)
 
+    def test_runtime_settings_facade_keeps_public_transition_entrypoints(self) -> None:
+        expected_symbols = (
+            'list_sections',
+            'get_section_spec',
+            'build_env_seed_bundle',
+            'get_runtime_section',
+            'get_runtime_status',
+            'get_runtime_secret_value',
+            'init_runtime_settings_db',
+            'bootstrap_runtime_settings_from_env',
+            'backfill_runtime_secrets_from_env',
+            'update_runtime_section',
+            'validate_runtime_section',
+        )
+        for symbol in expected_symbols:
+            self.assertTrue(hasattr(runtime_settings, symbol), symbol)
+
+    def test_critical_app_callers_import_runtime_settings_via_admin_facade(self) -> None:
+        caller_paths = (
+            APP_DIR / 'server.py',
+            APP_DIR / 'minimal_validation.py',
+            APP_DIR / 'memory' / 'arbiter.py',
+            APP_DIR / 'memory' / 'memory_store.py',
+            APP_DIR / 'core' / 'llm_client.py',
+            APP_DIR / 'memory' / 'summarizer.py',
+            APP_DIR / 'identity' / 'identity.py',
+            APP_DIR / 'tools' / 'web_search.py',
+        )
+
+        forbidden_modules = {
+            'admin.runtime_settings_spec',
+            'admin.runtime_settings_repo',
+            'admin.runtime_settings_validation',
+            'admin.runtime_settings',
+        }
+
+        for path in caller_paths:
+            tree = ast.parse(path.read_text(encoding='utf-8'))
+            has_facade_import = False
+            imported_modules: set[str] = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    module_name = str(node.module or '')
+                    imported_modules.add(module_name)
+                    if module_name == 'admin':
+                        imported_names = {alias.name for alias in node.names}
+                        if 'runtime_settings' in imported_names:
+                            has_facade_import = True
+            self.assertTrue(has_facade_import, str(path))
+            for module_name in forbidden_modules:
+                self.assertNotIn(module_name, imported_modules, f'{path} imports {module_name}')
+
     def test_web_host_and_port_stay_out_of_runtime_settings_scope(self) -> None:
         env_vars = {
             field.env_var

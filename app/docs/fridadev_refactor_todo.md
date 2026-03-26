@@ -127,8 +127,8 @@
 - [x] Extraire les `dataclass` et `SectionSpec/FieldSpec` dans un module dédié.
 - [x] Extraire la couche accès DB/seed/backfill dans un module repository.
 - [x] Extraire la validation runtime sectionnelle dans un module dédié.
-- [ ] Garder un point d’entrée compatibilité (`runtime_settings`) pendant transition.
-- [ ] Adapter les imports appelants + tests de non-régression.
+- [x] Garder un point d’entrée compatibilité (`runtime_settings`) pendant transition.
+- [x] Adapter les imports appelants + tests de non-régression.
 
 **Definition of Done**
 - `runtime_settings` n’est plus un module monolithique.
