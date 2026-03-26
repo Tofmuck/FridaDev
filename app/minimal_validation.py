@@ -375,7 +375,44 @@ def _check_prompt_files() -> Dict[str, Any]:
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
     }
 
-    details: Dict[str, Any] = {}
+    app_js = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+    index_html = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+    summarizer_py = (APP_DIR / "memory" / "summarizer.py").read_text(encoding="utf-8")
+    web_search_py = (APP_DIR / "tools" / "web_search.py").read_text(encoding="utf-8")
+
+    forbidden_inline_markers = {
+        "app_js": [
+            "const SYSTEM_PROMPT =",
+            "system: cfg.system,",
+            "cfg.system",
+        ],
+        "index_html": [
+            'id="system"',
+        ],
+        "summarizer_py": [
+            "Tu es un assistant de synthèse. Résume le dialogue suivant en conservant",
+        ],
+        "web_search_py": [
+            "Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.",
+        ],
+    }
+
+    for marker in forbidden_inline_markers["app_js"]:
+        if marker in app_js:
+            raise RuntimeError(f"prompt inline legacy inattendu dans app.js: {marker}")
+    for marker in forbidden_inline_markers["index_html"]:
+        if marker in index_html:
+            raise RuntimeError(f"prompt inline legacy inattendu dans index.html: {marker}")
+    for marker in forbidden_inline_markers["summarizer_py"]:
+        if marker in summarizer_py:
+            raise RuntimeError(f"prompt inline legacy inattendu dans summarizer.py: {marker}")
+    for marker in forbidden_inline_markers["web_search_py"]:
+        if marker in web_search_py:
+            raise RuntimeError(f"prompt inline legacy inattendu dans web_search.py: {marker}")
+
+    details: Dict[str, Any] = {
+        "forbidden_inline_markers": forbidden_inline_markers,
+    }
     for name, path in required_files.items():
         if not path.exists():
             raise RuntimeError(f"fichier prompt/identity absent: {path}")

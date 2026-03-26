@@ -67,6 +67,17 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['web_reformulation_prompt']['path'],
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
+        self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
+        self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
+        self.assertIn('id="system"', details['forbidden_inline_markers']['index_html'])
+        self.assertIn(
+            'Tu es un assistant de synthèse. Résume le dialogue suivant en conservant',
+            details['forbidden_inline_markers']['summarizer_py'],
+        )
+        self.assertIn(
+            'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
+            details['forbidden_inline_markers']['web_search_py'],
+        )
 
     def test_check_prompt_files_keeps_env_fallback_when_db_row_is_missing(self) -> None:
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings
@@ -117,6 +128,8 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['web_reformulation_prompt']['path'],
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
+        self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
+        self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
 
 
 class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
