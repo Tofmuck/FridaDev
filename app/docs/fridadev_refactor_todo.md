@@ -317,7 +317,7 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 **Cases à cocher**
 - [x] Définir la taxonomie cible: `unit`, `integration`, `smoke` + domaines (`chat`, `admin_settings`, `memory`, etc.).
 - [x] Migrer les tests par lots (sans big-bang), en conservant la couverture.
-- [ ] Maintenir temporairement des wrappers/aliases si nécessaire pour compat exécution.
+- [x] Préserver la compat d’exécution pendant la migration, sans wrappers/aliases à ce stade.
 - [x] Revoir les noms de tests les plus critiques pour exprimer le comportement métier.
 - [x] Conserver `app/minimal_validation.py` comme couche smoke globale.
 
