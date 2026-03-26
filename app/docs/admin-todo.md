@@ -647,7 +647,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [ ] Exposer dans l'admin, a cote de ces deux blocs, la liste des briques que `hermeneutical_prompt` est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
 - [ ] Exposer dans l'admin les balises et marqueurs reels utilises en runtime pour ces briques (`[Resume de la periode ...]`, `[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
 - [ ] Exposer dans l'admin, a titre informationnel, les sources techniques et les chemins physiques qui alimentent `System Prompt` et `Hermeneutical Prompt`, sans imposer d'ouvrir le code.
-- [ ] Ajouter une surface backend read-only pour `system_prompt` et `hermeneutical_prompt` dans `main_model`, distincte des futurs logs runtime.
+- [x] Ajouter une surface backend read-only pour `system_prompt` et `hermeneutical_prompt` dans `main_model`, distincte des futurs logs runtime.
 - [ ] Ajouter des tests backend sur la centralisation physique des prompts et sur la separation stricte entre `System Prompt` et `Hermeneutical Prompt`.
 - [ ] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt`, sur la lisibilite des balises documentees, et sur l'absence de source de verite prompt cote frontend.
 - [ ] Ajouter un smoke check dans `minimal_validation.py` pour verifier la presence physique des prompts centralises et l'absence de prompt inline restant la ou il ne doit plus y en avoir.

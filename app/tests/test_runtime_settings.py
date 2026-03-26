@@ -225,7 +225,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             ),
         )
 
-    def test_get_section_readonly_info_main_model_exposes_context_budget_and_system_prompt(self) -> None:
+    def test_get_section_readonly_info_main_model_exposes_context_budget_system_and_hermeneutical_prompt(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('main_model')
 
         self.assertEqual(readonly_info['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
@@ -237,6 +237,17 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(readonly_info['system_prompt']['value'], prompt_loader.get_main_system_prompt())
         self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
         self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
+        self.assertEqual(readonly_info['hermeneutical_prompt']['label'], 'HERMENEUTICAL_PROMPT')
+        self.assertFalse(readonly_info['hermeneutical_prompt']['is_editable'])
+        self.assertEqual(readonly_info['hermeneutical_prompt']['source'], 'prompt_file')
+        self.assertEqual(
+            readonly_info['hermeneutical_prompt']['value'],
+            prompt_loader.get_main_hermeneutical_prompt(),
+        )
+        self.assertIn(
+            "Contrat d'interpretation du prompt augmente",
+            readonly_info['hermeneutical_prompt']['value'],
+        )
 
     def test_get_section_readonly_info_arbiter_model_exposes_budgets_paths_and_prompts(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')

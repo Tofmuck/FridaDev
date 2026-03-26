@@ -106,6 +106,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'Cadre de réponse',
             data['sections']['main_model']['readonly_info']['system_prompt']['value'],
         )
+        self.assertIn(
+            "Contrat d'interpretation du prompt augmente",
+            data['sections']['main_model']['readonly_info']['hermeneutical_prompt']['value'],
+        )
         self.assertEqual(
             data['sections']['arbiter_model']['readonly_info']['decision_max_tokens']['value'],
             600,
@@ -233,6 +237,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         )
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_get_admin_settings_arbiter_model_returns_single_section(self) -> None:
@@ -633,6 +638,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
 
     def test_patch_admin_settings_main_model_rejects_invalid_payload(self) -> None:
@@ -751,6 +757,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['response_max_tokens']['origin'], 'admin_ui')
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
+        self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
     def test_patch_admin_settings_main_model_accepts_secret_replace_value(self) -> None:

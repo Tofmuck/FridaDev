@@ -799,6 +799,12 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
                 'is_editable': False,
                 'source': 'prompt_file',
             },
+            'hermeneutical_prompt': {
+                'label': 'HERMENEUTICAL_PROMPT',
+                'value': prompt_loader.get_main_hermeneutical_prompt(),
+                'is_editable': False,
+                'source': 'prompt_file',
+            },
         }
     if section == 'arbiter_model':
         return {
