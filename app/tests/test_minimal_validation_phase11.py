@@ -97,16 +97,8 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
                 return FakeCursor()
 
         with mock.patch.object(
-            minimal_validation.runtime_settings,
-            "get_database_settings",
-            return_value=self._db_database_view(),
-        ), mock.patch.object(
             minimal_validation,
-            "_bootstrap_database_dsn",
-            return_value="postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db",
-        ), mock.patch.object(
-            minimal_validation.psycopg,
-            "connect",
+            "_db_conn",
             return_value=FakeConnection(),
         ):
             with self.assertRaisesRegex(RuntimeError, "table absente: runtime_settings"):

@@ -11,6 +11,7 @@ import requests
 
 import config
 from admin import runtime_settings
+from core import runtime_db_bootstrap
 from memory import hermeneutics_policy as policy
 
 logger = logging.getLogger('kiki.memory_store')
@@ -19,45 +20,19 @@ logger = logging.getLogger('kiki.memory_store')
 # Connection
 
 def _conn():
-    backend = _runtime_database_backend()
-    if backend != 'postgresql':
-        raise ValueError(f'unsupported runtime database backend: {backend}')
-    return psycopg.connect(_bootstrap_database_dsn())
+    return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
 
 
 def _runtime_database_view() -> runtime_settings.RuntimeSectionView:
-    return runtime_settings.get_database_settings()
+    return runtime_db_bootstrap.runtime_database_view(runtime_settings)
 
 
 def _runtime_database_backend() -> str:
-    view = _runtime_database_view()
-    payload = view.payload.get('backend') or {}
-    if 'value' in payload:
-        return str(payload['value'])
-
-    env_bundle = runtime_settings.build_env_seed_bundle('database')
-    fallback = env_bundle.payload.get('backend') or {}
-    if 'value' in fallback:
-        return str(fallback['value'])
-
-    raise KeyError('missing database runtime value: backend')
+    return runtime_db_bootstrap.runtime_database_backend(runtime_settings)
 
 
 def _bootstrap_database_dsn() -> str:
-    env_dsn = str(config.FRIDA_MEMORY_DB_DSN or '').strip()
-    if env_dsn:
-        return env_dsn
-
-    view = _runtime_database_view()
-    payload = view.payload.get('dsn') or {}
-    if bool(payload.get('is_set')):
-        raise runtime_settings.RuntimeSettingsSecretRequiredError(
-            'database.dsn is set in runtime settings but runtime secret decryption is not available; '
-            'FRIDA_MEMORY_DB_DSN env fallback is required during the transition'
-        )
-
-    runtime_settings.require_secret_configured(view, 'dsn')
-    raise AssertionError('unreachable')
+    return runtime_db_bootstrap.bootstrap_database_dsn(config, runtime_settings)
 
 
 def _normalize_identity_content(content: str) -> str:

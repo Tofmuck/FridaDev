@@ -87,11 +87,11 @@
 - tests unitaires de bootstrap
 
 **Cases à cocher**
-- [ ] Créer un module partagé de bootstrap runtime DB (API minimale et testable).
-- [ ] Migrer `conv_store` vers ce module sans changer son API publique.
-- [ ] Migrer `memory_store` vers ce module sans changer son API publique.
-- [ ] Migrer `minimal_validation` vers ce module.
-- [ ] Ajouter tests unitaires du module partagé + tests de non-régression des trois appelants.
+- [x] Créer un module partagé de bootstrap runtime DB (API minimale et testable).
+- [x] Migrer `conv_store` vers ce module sans changer son API publique.
+- [x] Migrer `memory_store` vers ce module sans changer son API publique.
+- [x] Migrer `minimal_validation` vers ce module.
+- [x] Ajouter tests unitaires du module partagé + tests de non-régression des trois appelants.
 
 **Definition of Done**
 - Une seule implémentation bootstrap runtime DB est utilisée par les 3 modules.

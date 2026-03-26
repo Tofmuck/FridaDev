@@ -152,7 +152,7 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
 
     def test_check_db_schema_uses_bootstrap_database_dsn_helper(self) -> None:
         source = (APP_DIR / 'minimal_validation.py').read_text(encoding='utf-8')
-        self.assertIn('with psycopg.connect(_bootstrap_database_dsn()) as conn:', source)
+        self.assertIn('with _db_conn() as conn:', source)
         self.assertNotIn('psycopg.connect(config.FRIDA_MEMORY_DB_DSN)', source)
         self.assertIn('"runtime_settings": {', source)
         self.assertIn('"runtime_settings_history": {', source)
