@@ -412,6 +412,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "app_js": web_dir / "app.js",
         "admin_api_js": web_dir / "admin_api.js",
         "admin_ui_common_js": web_dir / "admin_ui_common.js",
+        "admin_section_arbiter_model_js": web_dir / "admin_section_arbiter_model.js",
         "admin_section_resources_js": web_dir / "admin_section_resources.js",
         "admin_js": web_dir / "admin.js",
         "frida_logo_png": web_dir / "fridalogo.png",
@@ -434,9 +435,16 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
+    admin_section_arbiter_model_js = required_files["admin_section_arbiter_model_js"].read_text(encoding="utf-8")
     admin_section_resources_js = required_files["admin_section_resources_js"].read_text(encoding="utf-8")
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
-    admin_front_js = f"{admin_api_js}\n{admin_ui_common_js}\n{admin_section_resources_js}\n{admin_js}"
+    admin_front_js = (
+        f"{admin_api_js}\n"
+        f"{admin_ui_common_js}\n"
+        f"{admin_section_arbiter_model_js}\n"
+        f"{admin_section_resources_js}\n"
+        f"{admin_js}"
+    )
 
     index_markers = [
         'src="./fridalogo.png"',
@@ -455,6 +463,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="admin.css"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
+        'script src="admin_section_arbiter_model.js"',
         'script src="admin_section_resources.js"',
         'script src="admin.js"',
         'id="adminRefresh"',
@@ -541,6 +550,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "renderReadonlyInfoEntries",
         "renderReadonlyInfoCards",
         "applyFieldError",
+        "createArbiterModelSectionController",
         "createResourcesSectionController",
         "response_max_tokens",
         "adminArbiterModelSave",
