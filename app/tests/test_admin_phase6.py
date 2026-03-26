@@ -214,8 +214,13 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const buildSectionPatchPayload =", source)
         self.assertIn("const updateSectionDirtyChip =", source)
         self.assertIn("const applySectionDraftToForm =", source)
-        self.assertIn("const bindResourcesSectionEvents = () => resourcesSection.bindResourcesSectionEvents();", source)
-        self.assertIn("const loadResourcesSection = async () => resourcesSection.loadResourcesSection();", source)
+        self.assertIn("resourcesSection.bindResourcesSectionEvents();", source)
+        self.assertIn("resourcesSection.loadResourcesSection(),", source)
+        self.assertNotIn(
+            "const bindResourcesSectionEvents = () => resourcesSection.bindResourcesSectionEvents();",
+            source,
+        )
+        self.assertNotIn("const loadResourcesSection = async () => resourcesSection.loadResourcesSection();", source)
         self.assertIn('origin === "db_seed"', source)
 
     def test_admin_js_reserves_env_fallback_label_for_env_seed_only(self) -> None:

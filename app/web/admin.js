@@ -558,7 +558,6 @@
     draft.crawl4ai_token = "";
     return draft;
   };
-  const emptyResourcesDraft = () => resourcesSection.emptyResourcesDraft();
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -578,9 +577,6 @@
   const servicesFieldElement = (field) => document.querySelector(`[data-services-field="${field}"]`);
   const servicesFieldInput = (field) => document.getElementById(`adminServices-${field}`);
   const servicesErrorElement = (field) => document.getElementById(`adminServicesFieldError-${field}`);
-  const resourcesFieldElement = (field) => resourcesSection.resourcesFieldElement(field);
-  const resourcesFieldInput = (field) => resourcesSection.resourcesFieldInput(field);
-  const resourcesErrorElement = (field) => resourcesSection.resourcesErrorElement(field);
 
   const setSectionControlsDisabled = (
     {
@@ -782,7 +778,6 @@
   const renderServicesReadonlyInfo = () => {
     renderReadonlyInfoCards(elements.servicesReadonlyInfo, state.services.view?.readonly_info || {});
   };
-  const renderResourcesChecks = (checks = []) => resourcesSection.renderResourcesChecks(checks);
 
   const ensureMainModelFieldSkeleton = () => {
     if (!elements.mainModelFields || elements.mainModelFields.children.length > 0) return;
@@ -1090,8 +1085,6 @@
 
     elements.servicesFields.appendChild(fragment);
   };
-  const ensureResourcesFieldSkeleton = () => resourcesSection.ensureResourcesFieldSkeleton();
-
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
     mainModelFieldSpecs.forEach((spec) => {
@@ -1138,8 +1131,6 @@
     draft.crawl4ai_token = "";
     return draft;
   };
-  const buildResourcesDraftFromView = (view) => resourcesSection.buildResourcesDraftFromView(view);
-
   const renderMainModelMeta = () => {
     const view = state.mainModel.view;
     if (!view) {
@@ -1330,8 +1321,6 @@
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
   };
-  const renderResourcesMeta = () => resourcesSection.renderResourcesMeta();
-
   const buildMainModelPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.mainModel.baseline,
@@ -1407,8 +1396,6 @@
       secretKey: "crawl4ai_token",
     });
   };
-  const updateResourcesDirtyChip = () => resourcesSection.updateResourcesDirtyChip();
-
   const applyMainModelDraftToForm = () => {
     applySectionDraftToForm({
       draft: state.mainModel.draft,
@@ -1471,8 +1458,6 @@
       onDirtyUpdate: updateServicesDirtyChip,
     });
   };
-  const applyResourcesDraftToForm = () => resourcesSection.applyResourcesDraftToForm();
-
   const applyMainModelView = (responsePayload) => {
     state.mainModel.loaded = true;
     state.mainModel.view = {
@@ -1569,8 +1554,6 @@
     renderServicesReadonlyInfo();
     renderServicesChecks([]);
   };
-  const applyResourcesView = (responsePayload) => resourcesSection.applyResourcesView(responsePayload);
-
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
     state.mainModel.view = null;
@@ -1647,10 +1630,6 @@
     setServicesControlsDisabled(true);
     setInlineStatus(elements.servicesStatus, message, stateName);
   };
-  const resetResourcesSurface = (message, stateName = "error") => {
-    resourcesSection.resetResourcesSurface(message, stateName);
-  };
-
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
 
   const applyBackendFieldError = (message) => {
@@ -1717,8 +1696,6 @@
     servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
     setServicesFieldError("crawl4ai_token", "");
   };
-  const setResourcesFieldError = (field, message = "") => resourcesSection.setResourcesFieldError(field, message);
-  const clearResourcesFieldErrors = () => resourcesSection.clearResourcesFieldErrors();
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
@@ -1744,7 +1721,6 @@
       setServicesFieldError(field, message);
     });
   };
-  const applyResourcesLocalFieldErrors = (errors) => resourcesSection.applyResourcesLocalFieldErrors(errors);
   const applyArbiterBackendFieldError = (message) => {
     if (!message) return;
     arbiterModelFieldSpecs.forEach((spec) => {
@@ -1797,7 +1773,6 @@
       }
     });
   };
-  const applyResourcesBackendFieldError = (message) => resourcesSection.applyResourcesBackendFieldError(message);
   const setArbiterControlsDisabled = (disabled) => {
     setSectionControlsDisabled(
       {
@@ -1856,7 +1831,6 @@
       disabled,
     );
   };
-  const setResourcesControlsDisabled = (disabled) => resourcesSection.setResourcesControlsDisabled(disabled);
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -1910,7 +1884,6 @@
     });
     return errors;
   };
-  const collectResourcesFailedChecks = (checks) => resourcesSection.collectResourcesFailedChecks(checks);
   const buildArbiterPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.arbiterModel.baseline,
@@ -1957,7 +1930,6 @@
       secretKey: "crawl4ai_token",
     });
   };
-  const buildResourcesPatchPayload = () => resourcesSection.buildResourcesPatchPayload();
   const runArbiterValidation = async (payload) => {
     clearArbiterFieldErrors();
     renderArbiterModelChecks([]);
@@ -2158,7 +2130,6 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
-  const runResourcesValidation = async (payload) => resourcesSection.runResourcesValidation(payload);
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -2224,7 +2195,6 @@
 
     await runServicesValidation(payload);
   };
-  const validateResourcesSection = async () => resourcesSection.validateResourcesSection();
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
 
@@ -2475,7 +2445,6 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
-  const saveResourcesSection = async () => resourcesSection.saveResourcesSection();
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -2606,9 +2575,6 @@
       resetServicesSurface("Lecture impossible du bloc services externes pour le moment.", "error");
     }
   };
-  const loadResourcesSection = async () => resourcesSection.loadResourcesSection();
-  const bindResourcesSectionEvents = () => resourcesSection.bindResourcesSectionEvents();
-
   const collectFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -2916,7 +2882,7 @@
       loadEmbeddingSection(),
       loadDatabaseSection(),
       loadServicesSection(),
-      loadResourcesSection(),
+      resourcesSection.loadResourcesSection(),
     ]);
   };
 
@@ -3066,7 +3032,7 @@
   elements.servicesSave?.addEventListener("click", () => {
     void saveServicesSection();
   });
-  bindResourcesSectionEvents();
+  resourcesSection.bindResourcesSectionEvents();
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
@@ -3074,7 +3040,7 @@
   ensureEmbeddingFieldSkeleton();
   ensureDatabaseFieldSkeleton();
   ensureServicesFieldSkeleton();
-  ensureResourcesFieldSkeleton();
+  resourcesSection.ensureResourcesFieldSkeleton();
   state.mainModel.baseline = emptyMainModelDraft();
   state.mainModel.draft = emptyMainModelDraft();
   state.arbiterModel.baseline = emptyArbiterModelDraft();
@@ -3087,8 +3053,8 @@
   state.database.draft = emptyDatabaseDraft();
   state.services.baseline = emptyServicesDraft();
   state.services.draft = emptyServicesDraft();
-  state.resources.baseline = emptyResourcesDraft();
-  state.resources.draft = emptyResourcesDraft();
+  state.resources.baseline = resourcesSection.emptyResourcesDraft();
+  state.resources.draft = resourcesSection.emptyResourcesDraft();
   renderMainModelMeta();
   applyMainModelDraftToForm();
   renderMainModelReadonlyInfo();
@@ -3111,16 +3077,16 @@
   applyServicesDraftToForm();
   renderServicesReadonlyInfo();
   renderServicesChecks([]);
-  renderResourcesMeta();
-  applyResourcesDraftToForm();
-  renderResourcesChecks([]);
+  resourcesSection.renderResourcesMeta();
+  resourcesSection.applyResourcesDraftToForm();
+  resourcesSection.renderResourcesChecks([]);
   setMainModelControlsDisabled(true);
   setArbiterControlsDisabled(true);
   setSummaryControlsDisabled(true);
   setEmbeddingControlsDisabled(true);
   setDatabaseControlsDisabled(true);
   setServicesControlsDisabled(true);
-  setResourcesControlsDisabled(true);
+  resourcesSection.setResourcesControlsDisabled(true);
   updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),
