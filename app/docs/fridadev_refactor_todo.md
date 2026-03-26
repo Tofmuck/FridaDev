@@ -278,7 +278,7 @@
 - tests conv_store/chat/minimal validation
 
 **Cases à cocher**
-- [ ] Supprimer les éléments `certain` sans valeur (`panel`, `MAX_CONTEXT_MESSAGES`, fonctions mortes confirmées).
+- [x] Supprimer les éléments `certain` sans valeur (`panel`, `MAX_CONTEXT_MESSAGES`, fonctions mortes confirmées).
 - [ ] Traiter `history` après arbitrage Phase 1.
 - [ ] Faire un inventaire d’usage réel des fonctions sync JSON avant suppression.
 - [ ] Si usage confirmé nul: déprécier puis supprimer sync JSON et helpers associés.

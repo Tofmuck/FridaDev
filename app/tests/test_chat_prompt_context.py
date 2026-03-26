@@ -78,7 +78,7 @@ class ChatPromptContextTests(unittest.TestCase):
         observed_logs = []
 
         web_search_module = SimpleNamespace(
-            build_context=lambda _user_msg: ('WEB CONTEXT', 'query test', 3, True),
+            build_context=lambda _user_msg: ('WEB CONTEXT', 'query test', 3),
         )
         admin_logs_module = SimpleNamespace(
             log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)),
@@ -101,14 +101,14 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertEqual(payload['query'], 'query test')
         self.assertEqual(payload['original'], 'Bonjour')
         self.assertEqual(payload['results'], 3)
-        self.assertTrue(payload['ticketmaster'])
+        self.assertNotIn('ticketmaster', payload)
 
     def test_inject_web_context_skips_when_no_context(self) -> None:
         prompt_messages = [{'role': 'user', 'content': 'last user'}]
         observed_logs = []
 
         web_search_module = SimpleNamespace(
-            build_context=lambda _user_msg: ('', 'query ignored', 0, False),
+            build_context=lambda _user_msg: ('', 'query ignored', 0),
         )
         admin_logs_module = SimpleNamespace(
             log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)),

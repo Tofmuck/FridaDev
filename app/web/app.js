@@ -36,7 +36,6 @@
   }
 
   // Settings popover
-  const panel = $("#panel");
   const max_tokens = $("#max_tokens");
   // ---- Helpers
   const fmtDateFR = (d = new Date()) =>

@@ -18,3 +18,4 @@ class SummarizerPhase13Tests(unittest.TestCase):
 
         self.assertIn('prompt_loader.get_summary_system_prompt()', source)
         self.assertNotIn('Tu es un assistant de synthèse. Résume le dialogue suivant en conservant', source)
+        self.assertNotIn('def needs_summarization(', source)

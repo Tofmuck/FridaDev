@@ -49,7 +49,7 @@ def inject_web_context(
     web_search_module: Any,
     admin_logs_module: Any,
 ) -> None:
-    ctx, search_query, n_results, has_tm = web_search_module.build_context(user_msg)
+    ctx, search_query, n_results = web_search_module.build_context(user_msg)
     if not ctx:
         return
 
@@ -67,5 +67,4 @@ def inject_web_context(
         query=search_query,
         original=user_msg,
         results=n_results,
-        ticketmaster=has_tm,
     )

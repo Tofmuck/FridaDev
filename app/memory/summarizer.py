@@ -33,18 +33,6 @@ def _raw_dialogue(conversation: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def needs_summarization(conversation: Dict[str, Any], model: str) -> bool:
-    """Retourne True si les messages bruts non résumés dépassent SUMMARY_THRESHOLD_TOKENS."""
-    unsummarized = _raw_dialogue(conversation)
-    if not unsummarized:
-        return False
-    total = count_tokens(
-        [{"role": m["role"], "content": m["content"]} for m in unsummarized],
-        model,
-    )
-    return total > config.SUMMARY_THRESHOLD_TOKENS
-
-
 def summarize_conversation(turns: List[Dict[str, Any]], model: str) -> str:
     """Appelle un LLM cheap via OpenRouter pour résumer une liste de tours de dialogue."""
     parts = []

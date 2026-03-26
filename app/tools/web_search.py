@@ -142,10 +142,10 @@ def _format_context(query: str, results: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_context(user_msg: str) -> tuple[str, str, int, bool]:
+def build_context(user_msg: str) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
-    Retourne (contexte, query_reformulee, nb_resultats_web, False).
+    Retourne (contexte, query_reformulee, nb_resultats_web).
     """
     query = reformulate(user_msg)
     results = search(query)
@@ -153,4 +153,4 @@ def build_context(user_msg: str) -> tuple[str, str, int, bool]:
     if results:
         ctx_parts.append(_format_context(query, results))
     ctx = "\n\n".join(ctx_parts)
-    return ctx, query, len(results), False
+    return ctx, query, len(results)

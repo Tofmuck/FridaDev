@@ -49,6 +49,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("const SYSTEM_PROMPT =", source)
         self.assertNotIn("temperature: cfg.temperature,", source)
         self.assertNotIn("top_p: cfg.top_p,", source)
+        self.assertNotIn('const panel = $("#panel");', source)
 
     def test_frontend_keeps_backend_as_prompt_source_of_truth(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

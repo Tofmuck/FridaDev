@@ -102,6 +102,28 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(query, 'requete fallback')
         self.assertEqual(observed['model'], config.OR_MODEL)
 
+    def test_build_context_keeps_context_query_and_result_count_contract(self) -> None:
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_format_context = web_search._format_context
+
+        web_search.reformulate = lambda _user_msg: 'query reformulee'
+        web_search.search = lambda _query: [
+            {'title': 'A', 'url': 'https://a.example', 'content': 'a'},
+            {'title': 'B', 'url': 'https://b.example', 'content': 'b'},
+        ]
+        web_search._format_context = lambda query, results: f'CTX::{query}::{len(results)}'
+        try:
+            context, query, result_count = web_search.build_context('question initiale')
+        finally:
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._format_context = original_format_context
+
+        self.assertEqual(context, 'CTX::query reformulee::2')
+        self.assertEqual(query, 'query reformulee')
+        self.assertEqual(result_count, 2)
+
 
 if __name__ == '__main__':
     unittest.main()
