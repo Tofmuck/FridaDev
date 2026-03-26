@@ -45,7 +45,8 @@ class AppPhase8Tests(unittest.TestCase):
         source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn("max_tokens: cfg.max_tokens,", source)
-        self.assertIn("system: cfg.system,", source)
+        self.assertNotIn("system: cfg.system,", source)
+        self.assertNotIn("const SYSTEM_PROMPT =", source)
         self.assertNotIn("temperature: cfg.temperature,", source)
         self.assertNotIn("top_p: cfg.top_p,", source)
 
@@ -60,7 +61,8 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('id="top_p"', source)
         self.assertNotIn('id="toppVal"', source)
         self.assertIn('id="max_tokens"', source)
-        self.assertIn('id="system"', source)
+        self.assertNotIn('id="system"', source)
+        self.assertIn("Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.", source)
 
     def test_admin_ui_keeps_max_tokens_and_system_prompt_out_of_v1(self) -> None:
         source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")

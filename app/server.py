@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import config
 from core import llm_client as llm
+from core import prompt_loader
 from tools import web_search as ws
 from core import conv_store
 from admin import admin_logs
@@ -320,7 +321,7 @@ def _record_identity_entries_for_mode(
 def api_chat():
     data             = request.get_json(force=True, silent=True) or {}
     user_msg         = (data.get("message") or "").strip()
-    system_prompt    = (data.get("system")  or "").strip()
+    system_prompt    = prompt_loader.get_main_system_prompt()
     conversation_id_raw = data.get("conversation_id")
     stream_req       = bool(data.get("stream"))
     web_search_on    = bool(data.get("web_search"))
@@ -1122,10 +1123,7 @@ def api_list_conversations():
 def api_create_conversation():
     data = request.get_json(silent=True) or {}
     title = str(data.get('title') or '').strip()
-    requested_system = data.get('system')
-    system_prompt = str(requested_system).strip() if isinstance(requested_system, str) else ''
-    if not system_prompt:
-        system_prompt = ''
+    system_prompt = prompt_loader.get_main_system_prompt()
 
     conversation = conv_store.new_conversation(system_prompt, title=title)
     conv_store.save_conversation(conversation)

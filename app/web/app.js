@@ -38,20 +38,6 @@
   // Settings popover
   const panel = $("#panel");
   const max_tokens = $("#max_tokens");
-  const system = $("#system");
-
-  // ---- Prompt dialogique de base
-  const SYSTEM_PROMPT = `Cadre de réponse :
-- Tu adoptes un ton clair, calme, adulte et professionnel.
-- Tu aides à analyser, structurer, reformuler, documenter et faire avancer un travail intellectuel ou technique.
-- Tu privilégies la précision, la sobriété et l'utilité concrète.
-- Tu distingues toujours clairement les faits, les hypothèses, les interprétations et les incertitudes.
-- Si une information manque, tu le dis simplement au lieu d'inventer.
-- Tu peux proposer des pistes, des plans, des reformulations, des synthèses ou des méthodes de travail.
-- Tu évites le ton affectif excessif, les familiarités inutiles et les jeux de rôle implicites.
-- Tu n'infantilises jamais l'utilisateur et tu ne le psychologises pas sans demande explicite.
-- Tu réponds en priorisant la recherche, l'analyse, la rédaction, la compréhension et la prise de décision.
-- Quand c'est utile, tu structures la réponse de manière simple et lisible.`;
   const MAX_CONTEXT_TURNS = 35;
   // ---- Helpers
   const MAX_CONTEXT_MESSAGES = MAX_CONTEXT_TURNS * 2;
@@ -674,7 +660,6 @@
 
   const currentSettings = () => ({
     max_tokens: Number(max_tokens.value),
-    system: SYSTEM_PROMPT,
   });
 
   // ---- Endpoint réseau
@@ -686,7 +671,6 @@
       body: JSON.stringify({
         message: userText,
         max_tokens: cfg.max_tokens,
-        system: cfg.system,
         history: Array.isArray(history) ? history : [],
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
@@ -761,11 +745,6 @@
 
   // ---- Init
   loadSettings();
-
-  if (system) {
-    system.value = SYSTEM_PROMPT;
-    system.setAttribute("readonly", "readonly");
-  }
 
   const bootstrapApp = async () => {
     const loaded = await refreshThreadsFromServer({ keepSelection: false });

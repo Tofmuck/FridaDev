@@ -56,15 +56,14 @@
         `temperature` et `top_p` sont maintenant portes par la configuration globale des modeles dans l'admin.
       </p>
 
+      <p class="panel-note">
+        Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.
+      </p>
+
       <label>Max tokens
         <input type="number" id="max_tokens" min="64" max="4096" value="1500" />
         <span>Reglage de session local, hors admin V1.</span>
       </label>
-
-      <details>
-        <summary>Prompt système</summary>
-        <textarea id="system" placeholder="(optionnel)"></textarea>
-      </details>
     </div>
 
     <!-- Zone chat -->
