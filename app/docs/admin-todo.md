@@ -639,10 +639,24 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - les sorties brutes de l'identity extractor
   - les evenements internes de pipeline non injectes au prompt final
   - toute metadonnee interne non exposee textuellement au modele principal
-- [ ] Pour chaque point aujourd'hui flou, ambigu ou absent, documenter dans la phase 13 l'une des trois positions suivantes :
+- [x] Pour chaque point aujourd'hui flou, ambigu ou absent, documenter dans la phase 13 l'une des trois positions suivantes :
   - deja explicite et conserve en l'etat
   - insuffisant mais provisoirement acceptable
   - manquant et devant etre ajoute a `hermeneutical_prompt`
+  - deja explicite et conserve en l'etat :
+    - le repere temporel global, les labels Delta-T et les marqueurs de silence
+    - le statut du resume actif, des souvenirs pertinents et du contexte du souvenir
+    - le statut du contexte web injecte
+    - la priorite generale de la question utilisateur finale
+    - l'interdiction de supposer presentes des sorties internes non injectees
+  - insuffisant mais provisoirement acceptable :
+    - la relation exacte entre identite statique et identite dynamique reste cadree, mais encore un peu large
+    - la semantique de `stability`, `recurrence` et `confidence` est utile mais explicitement encore provisoire
+    - le statut des `Indices contextuels recents` comme memoire faible est pose, mais pourra etre affine
+  - manquant et devant etre ajoute a `hermeneutical_prompt` :
+    - une regle explicite en cas de contradiction directe entre identite statique et rappel dynamique
+    - une regle explicite en cas de contradiction entre plusieurs souvenirs pertinents
+    - une regle explicite sur la conduite a tenir quand une brique secondaire est presente mais trop faible pour etre retenue dans la reponse finale
 - [ ] Lorsqu'un element interpretatif manque completement, prevoir des maintenant une formulation candidate dans `hermeneutical_prompt`, meme si elle doit etre retravaillee ensuite.
 - [x] Exposer dans l'admin, a cote de ces deux blocs, la liste des briques que `hermeneutical_prompt` est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
 - [x] Exposer dans l'admin les balises et marqueurs reels utilises en runtime pour ces briques (`[Resume de la periode ...]`, `[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
