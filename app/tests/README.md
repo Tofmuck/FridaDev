@@ -13,6 +13,10 @@ Third migrated lot:
 - `unit/runtime_settings/test_runtime_settings.py`
 - `unit/runtime_settings/test_runtime_secrets.py`
 - `unit/runtime_settings/test_runtime_settings_sql.py`
+Fourth migrated lot:
+- `unit/web_search/test_web_search_phase4.py`
+- `unit/web_search/test_web_search_services_phase4.py`
+- `unit/web_search/test_web_search_phase13.py`
 
 ## Target levels
 
