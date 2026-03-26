@@ -565,17 +565,17 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 
 ### Phase 13 - Centralisation physique des prompts et prompt hermeneutique
 
-- [ ] Cadrer explicitement que cette phase ne traite pas des logs runtime, ni du deroule chronologique des injections effectives, ni d'un audit post-hoc requete par requete.
-- [ ] Cadrer explicitement que cette phase traite de deux choses solidaires :
+- [x] Cadrer explicitement que cette phase ne traite pas des logs runtime, ni du deroule chronologique des injections effectives, ni d'un audit post-hoc requete par requete.
+- [x] Cadrer explicitement que cette phase traite de deux choses solidaires :
   - la centralisation physique de tous les prompts dans `app/prompts/`
   - la formalisation d'un `hermeneutical_prompt` fixe place juste sous le `SYSTEM_PROMPT` du modele principal
-- [ ] Cadrer explicitement qu'aucun prompt ne doit plus avoir sa source de verite dans le frontend ou dans du texte inline Python/JS si ce prompt peut vivre physiquement dans `app/prompts/`.
-- [ ] Exiger que tous les prompts de l'application fonctionnent de la meme maniere :
+- [x] Cadrer explicitement qu'aucun prompt ne doit plus avoir sa source de verite dans le frontend ou dans du texte inline Python/JS si ce prompt peut vivre physiquement dans `app/prompts/`.
+- [x] Exiger que tous les prompts de l'application fonctionnent de la meme maniere :
   - fichier physique dans `app/prompts/`
   - chemin explicite en config
   - chargement par un loader backend unique
   - exposition read-only dans l'admin depuis cette meme source
-- [ ] Migrer vers cette architecture unifiee, au minimum :
+- [x] Migrer vers cette architecture unifiee, au minimum :
   - le `SYSTEM_PROMPT` principal
   - le futur `hermeneutical_prompt` principal
   - le prompt de l'arbitre
@@ -667,4 +667,4 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Ajouter des tests backend sur la centralisation physique des prompts et sur la separation stricte entre `System Prompt` et `Hermeneutical Prompt`.
 - [x] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt`, sur la lisibilite des balises documentees, et sur l'absence de source de verite prompt cote frontend.
 - [x] Ajouter un smoke check dans `minimal_validation.py` pour verifier la presence physique des prompts centralises et l'absence de prompt inline restant la ou il ne doit plus y en avoir.
-- [ ] Prevoir un commit isole pour cette phase de centralisation et de formalisation hermeneutique.
+- [x] Prevoir un commit isole pour cette phase de centralisation et de formalisation hermeneutique.
