@@ -1,7 +1,9 @@
 # Tests Taxonomy (Phase 7 Target)
 
-This directory remains flat during the transition.
-No test file move is done in this tranche.
+This directory is migrated progressively.
+First migrated lot:
+- `integration/frontend_chat/test_app_phase8.py`
+- `integration/frontend_admin/test_admin_phase6.py`
 
 ## Target levels
 
