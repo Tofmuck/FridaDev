@@ -20,6 +20,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_ui_common.js"', html)
         self.assertIn('script src="admin_section_arbiter_model.js"', html)
         self.assertIn('script src="admin_section_summary_model.js"', html)
+        self.assertIn('script src="admin_section_database.js"', html)
         self.assertIn('script src="admin_section_resources.js"', html)
         self.assertIn('script src="admin.js"', html)
         self.assertIn('id="adminRefresh"', html)
@@ -109,8 +110,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
-        source_all = f"{api_source}\n{ui_source}\n{arbiter_source}\n{summary_source}\n{resources_source}\n{source}"
+        source_all = (
+            f"{api_source}\n{ui_source}\n{arbiter_source}\n"
+            f"{summary_source}\n{database_source}\n{resources_source}\n{source}"
+        )
 
         self.assertIn("/api/admin/settings/status", source_all)
         self.assertIn("/api/admin/settings/main-model", source_all)
@@ -170,12 +175,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
 
         self.assertIn("window.FridaAdminApi", source)
         self.assertIn("window.FridaAdminUiCommon", source)
         self.assertIn("window.FridaAdminArbiterModelSection", source)
         self.assertIn("window.FridaAdminSummaryModelSection", source)
+        self.assertIn("window.FridaAdminDatabaseSection", source)
         self.assertIn("window.FridaAdminResourcesSection", source)
         self.assertIn("const sectionRoutes = adminApi.sectionRoutes;", source)
         self.assertIn("const {", source)
@@ -205,6 +212,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const runSummaryValidation = async (payload) => {", summary_source)
         self.assertIn("const saveSummarySection = async () => {", summary_source)
         self.assertIn("window.FridaAdminSummaryModelSection = Object.freeze({", summary_source)
+        self.assertIn("const createDatabaseSectionController = ({", database_source)
+        self.assertIn("const runDatabaseValidation = async (payload) => {", database_source)
+        self.assertIn("const saveDatabaseSection = async () => {", database_source)
+        self.assertIn("window.FridaAdminDatabaseSection = Object.freeze({", database_source)
         self.assertIn("const createResourcesSectionController = ({", resources_source)
         self.assertIn("const runResourcesValidation = async (payload) => {", resources_source)
         self.assertIn("const saveResourcesSection = async () => {", resources_source)
@@ -238,6 +249,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("summaryModelSection.loadSummaryModelSection(),", source)
         self.assertNotIn("const saveSummarySection = async () => {", source)
         self.assertNotIn("const runSummaryValidation = async (payload) => {", source)
+        self.assertIn("databaseSection.bindDatabaseSectionEvents();", source)
+        self.assertIn("databaseSection.loadDatabaseSection(),", source)
+        self.assertNotIn("const saveDatabaseSection = async () => {", source)
+        self.assertNotIn("const runDatabaseValidation = async (payload) => {", source)
         self.assertIn("resourcesSection.bindResourcesSectionEvents();", source)
         self.assertIn("resourcesSection.loadResourcesSection(),", source)
         self.assertNotIn(
@@ -324,6 +339,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_ui_common.js"', source)
         self.assertIn('script src="admin_section_arbiter_model.js"', source)
         self.assertIn('script src="admin_section_summary_model.js"', source)
+        self.assertIn('script src="admin_section_database.js"', source)
         self.assertIn('script src="admin_section_resources.js"', source)
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
