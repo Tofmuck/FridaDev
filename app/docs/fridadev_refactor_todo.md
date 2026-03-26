@@ -163,7 +163,7 @@
 - tests server phase/admin/chat
 
 **Cases à cocher**
-- [ ] Extraire un service `chat` (pipeline complet) appelé par route Flask.
+- [x] Extraire un service `chat` (pipeline complet) appelé par route Flask.
 - [x] Extraire un service `conversations` (list/create/read/rename/delete soft).
 - [x] Extraire un service `admin_settings` (GET/PATCH/VALIDATE).
 - [x] Extraire un service `admin_hermeneutics` (dashboard, candidates, decisions, overrides).

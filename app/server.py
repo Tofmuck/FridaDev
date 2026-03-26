@@ -19,6 +19,7 @@ from core import llm_client as llm
 from core import prompt_loader
 from tools import web_search as ws
 from core import conv_store
+from core import chat_service
 from core import conversations_service
 from admin import admin_logs, admin_hermeneutics_service, admin_settings_service
 from admin import admin_actions
@@ -276,276 +277,46 @@ def _record_identity_entries_for_mode(
 
 @app.post("/api/chat")
 def api_chat():
-    data             = request.get_json(force=True, silent=True) or {}
-    user_msg         = (data.get("message") or "").strip()
-    system_prompt    = prompt_loader.get_main_system_prompt()
-    hermeneutical_prompt = prompt_loader.get_main_hermeneutical_prompt()
-    conversation_id_raw = data.get("conversation_id")
-    stream_req       = bool(data.get("stream"))
-    web_search_on    = bool(data.get("web_search"))
-
-    if not user_msg:
-        return jsonify({"ok": False, "error": "message vide"}), 400
-
-    # ── Conversation
-    conversation_id = conv_store.normalize_conversation_id(conversation_id_raw)
-    if conversation_id:
-        conversation = conv_store.load_conversation(conversation_id, system_prompt)
-        if not conversation:
-            return jsonify({"ok": False, "error": "conversation introuvable"}), 404
-    else:
-        if conversation_id_raw:
-            logger.info("conv_id_invalid raw=%s", conversation_id_raw)
-        conversation = conv_store.new_conversation(system_prompt)
-        conv_store.save_conversation(conversation)
-        logger.info("conv_created id=%s path=%s",
-                    conversation["id"], conv_store.conversation_path(conversation["id"]))
-        memory_store.decay_identities()  # nouvelle session → décroissance des identités
-
-    runtime_main_view = runtime_settings.get_main_model_settings()
-    runtime_main_payload = runtime_main_view.payload
-    runtime_main_model = str(runtime_main_payload['model']['value'])
-    temperature = float(runtime_main_payload['temperature']['value'])
-    top_p = float(runtime_main_payload['top_p']['value'])
-    runtime_response_max_tokens = int(runtime_main_payload['response_max_tokens']['value'])
-    max_tokens = int(data.get("max_tokens") or runtime_response_max_tokens)
-
-    # ── Enregistrement message utilisateur
-    user_timestamp = _now_iso()
-    user_tokens = token_utils.count_tokens([{"content": user_msg}], runtime_main_model)
-    admin_logs.log_event("UserMessage", conversation_id=conversation["id"],
-                         user_tokens=user_tokens, message_timestamp=user_timestamp)
-    conv_store.append_message(conversation, "user", user_msg, timestamp=user_timestamp)
-
-    # ── Résumé périodique (si seuil dépassé)
-    if summarizer.maybe_summarize(conversation, runtime_main_model):
-        conv_store.save_conversation(conversation)
-        admin_logs.log_event("summary_generated", conversation_id=conversation["id"])
-
-    # ── System prompt augmenté : identités + référence temporelle
-    now_iso    = user_timestamp
-    _tz_paris  = ZoneInfo(config.FRIDA_TIMEZONE)
-    _now_paris = datetime.now(_tz_paris)
-    now_fmt    = _now_paris.strftime("%A %d %B %Y à %H:%M") + f" (heure de Paris, UTC{_now_paris.strftime('%z')[:3]})"
-    id_block, identity_ids = identity.build_identity_block()
-    delta_rule = (
-        f"[RÉFÉRENCE TEMPORELLE]\n"
-        f"Nous sommes le {now_fmt}. C'est ton \'maintenant\'.\n"
-        "Les messages ci-dessous sont horodatés relativement à ce maintenant (ex : \'il y a 2 jours\').\n"
-        "Les marqueurs [\u2014 silence de X \u2014] indiquent une interruption de la conversation. "
-        "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
-        "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
-        "sauf si on te le demande explicitement."
-    )
-    parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
-    augmented_system = "\n\n".join(parts)
-    if conversation["messages"] and conversation["messages"][0]["role"] == "system":
-        conversation["messages"][0]["content"] = augmented_system
-
-    # ── Récupération mémoire RAG + arbitrage
-    hermeneutic_mode = _hermeneutic_mode()
-    admin_logs.log_event(
-        'hermeneutic_mode',
-        conversation_id=conversation['id'],
-        mode=hermeneutic_mode,
+    data = request.get_json(force=True, silent=True) or {}
+    result = chat_service.chat_response(
+        data,
+        prompt_loader_module=prompt_loader,
+        conv_store_module=conv_store,
+        memory_store_module=memory_store,
+        runtime_settings_module=runtime_settings,
+        summarizer_module=summarizer,
+        identity_module=identity,
+        admin_logs_module=admin_logs,
+        llm_module=llm,
+        requests_module=requests,
+        token_utils_module=token_utils,
+        arbiter_module=arbiter,
+        web_search_module=ws,
+        config_module=config,
+        logger=logger,
+        now_iso=_now_iso,
+        log_stage_latency=_log_stage_latency,
+        hermeneutic_mode=_hermeneutic_mode,
+        mode_runs_arbiter=_mode_runs_arbiter,
+        mode_enforces_memory=_mode_enforces_memory,
+        mode_enforces_identity=_mode_enforces_identity,
+        record_identity_entries_for_mode=_record_identity_entries_for_mode,
     )
 
-    _retrieve_t0 = time.perf_counter()
-    raw_traces = memory_store.retrieve(user_msg)
-    _log_stage_latency(conversation['id'], 'retrieve', _retrieve_t0)
-
-    recent_turns = [
-        m for m in conversation.get("messages", [])
-        if m.get("role") in {"user", "assistant"}
-    ][-10:]
-
-    if raw_traces:
-        admin_logs.log_event("memory_retrieved", conversation_id=conversation["id"],
-                             count=len(raw_traces))
-
-        memory_traces = list(raw_traces)
-        filtered_traces: List[Dict[str, Any]] = []
-        arbiter_decisions: List[Dict[str, Any]] = []
-
-        if _mode_runs_arbiter(hermeneutic_mode):
-            _arbiter_t0 = time.perf_counter()
-            filtered_traces, arbiter_decisions = arbiter.filter_traces_with_diagnostics(raw_traces, recent_turns)
-            _log_stage_latency(conversation['id'], 'arbiter', _arbiter_t0)
-
-            memory_store.record_arbiter_decisions(conversation["id"], raw_traces, arbiter_decisions)
-            admin_logs.log_event("memory_arbitrated", conversation_id=conversation["id"],
-                                 raw=len(raw_traces), kept=len(filtered_traces), decisions=len(arbiter_decisions))
-
-            if _mode_enforces_memory(hermeneutic_mode):
-                memory_traces = filtered_traces
-                memory_source = 'arbiter_enforced'
-            else:
-                memory_source = 'raw_shadow_non_blocking'
-        else:
-            memory_source = 'raw_mode_off'
-
-        admin_logs.log_event(
-            'memory_mode_apply',
-            conversation_id=conversation['id'],
-            mode=hermeneutic_mode,
-            source=memory_source,
-            raw=len(raw_traces),
-            selected=len(memory_traces),
-            filtered=len(filtered_traces),
+    if result['kind'] == 'stream':
+        response = Response(
+            stream_with_context(result['stream']),
+            content_type='text/plain; charset=utf-8',
         )
+        for key, value in result['headers'].items():
+            response.headers[key] = value
+        return response
 
-        if memory_traces:
-            memory_traces = memory_store.enrich_traces_with_summaries(memory_traces)
-    else:
-        memory_traces = []
-
-    context_hints = memory_store.get_recent_context_hints(
-        max_items=config.CONTEXT_HINTS_MAX_ITEMS,
-        max_age_days=config.CONTEXT_HINTS_MAX_AGE_DAYS,
-        min_confidence=config.CONTEXT_HINTS_MIN_CONFIDENCE,
-    )
-    if context_hints:
-        admin_logs.log_event(
-            "context_hints_selected",
-            conversation_id=conversation["id"],
-            count=len(context_hints),
-        )
-
-    prompt_messages = conv_store.build_prompt_messages(
-        conversation,
-        runtime_main_model,
-        now=now_iso,
-        memory_traces=memory_traces or None,
-        context_hints=context_hints or None,
-    )
-
-    # ── Recherche web (optionnelle)
-    if web_search_on:
-        ctx, search_query, n_results, has_tm = ws.build_context(user_msg)
-        if ctx:
-            for i in range(len(prompt_messages) - 1, -1, -1):
-                if prompt_messages[i].get("role") == "user":
-                    prompt_messages[i] = {
-                        "role": "user",
-                        "content": ctx + "\n\nQuestion : " + prompt_messages[i]["content"],
-                    }
-                    break
-            admin_logs.log_event("web_search", conversation_id=conversation["id"],
-                                 query=search_query, original=user_msg,
-                                 results=n_results, ticketmaster=has_tm)
-
-    # ── Appel LLM
-    try:
-        runtime_settings.get_runtime_secret_value('main_model', 'api_key')
-    except (runtime_settings.RuntimeSettingsSecretRequiredError, runtime_settings.RuntimeSettingsSecretResolutionError) as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
-
-    headers = llm.or_headers(caller="llm")
-    payload = llm.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
-    call_model = str(payload["model"])
-    url     = f"{config.OR_BASE}/chat/completions"
-
-    admin_logs.log_event("llm_payload", conversation_id=conversation["id"], model=call_model,
-                         temperature=temperature, top_p=top_p, max_tokens=max_tokens,
-                         stream=stream_req, message_count=len(prompt_messages))
-
-    try:
-        # ── Mode synchrone
-        if not stream_req:
-            logger.info("llm_call id=%s model=%s messages=%s", conversation["id"], call_model, len(prompt_messages))
-            admin_logs.log_event("llm_call", conversation_id=conversation["id"],
-                                 model=call_model, message_count=len(prompt_messages), stream=False)
-            r = requests.post(url, json=payload, headers=headers, timeout=config.TIMEOUT_S)
-            r.raise_for_status()
-            obj  = r.json()
-            text = llm._sanitize_encoding(obj["choices"][0]["message"]["content"])
-            updated_at = _now_iso()
-            conv_store.append_message(conversation, "assistant", text, timestamp=updated_at)
-            assistant_tokens = token_utils.count_tokens([{"content": text}], runtime_main_model)
-            admin_logs.log_event("AssistantText", conversation_id=conversation["id"],
-                                 assistant_tokens=assistant_tokens, message_timestamp=updated_at)
-            memory_store.save_new_traces(conversation)
-            # Extraction identitaire sur les 2 derniers tours (user + assistant)
-            recent_2 = [m for m in conversation.get("messages", [])
-                        if m.get("role") in {"user", "assistant"}][-2:]
-            _record_identity_entries_for_mode(conversation["id"], recent_2, hermeneutic_mode)
-            # Réactivation des entrées identitaires injectées dans ce tour
-            if identity_ids and _mode_enforces_identity(hermeneutic_mode):
-                memory_store.reactivate_identities(identity_ids)
-            conv_store.save_conversation(conversation, updated_at=updated_at)
-            resp = jsonify({"ok": True, "text": text, "conversation_id": conversation["id"],
-                            "created_at": conversation["created_at"], "updated_at": updated_at})
-            resp.headers["X-Conversation-Id"]         = conversation["id"]
-            resp.headers["X-Conversation-Created-At"] = conversation["created_at"]
-            resp.headers["X-Conversation-Updated-At"] = updated_at
-            return resp
-
-        # ── Mode streaming
-        response_updated_at = _now_iso()
-        def event_stream():
-            assistant_chunks: list[str] = []
-            try:
-                with requests.post(url, json=payload, headers=headers,
-                                   timeout=config.TIMEOUT_S, stream=True) as resp:
-                    resp.raise_for_status()
-                    resp.encoding = resp.encoding or "utf-8"
-                    for line in resp.iter_lines(decode_unicode=True, delimiter="\n"):
-                        if not line or not line.startswith("data:"):
-                            continue
-                        data_str = line[5:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            continue
-                        delta   = chunk.get("choices", [{}])[0].get("delta", {})
-                        content = delta.get("content")
-                        if content:
-                            assistant_chunks.append(content)
-                            yield llm._sanitize_encoding(content)
-            except requests.exceptions.RequestException as exc:
-                logger.error("llm_stream_error id=%s err=%s", conversation["id"], exc)
-                admin_logs.log_event("llm_stream_error", level="ERROR",
-                                     conversation_id=conversation["id"], model=call_model, error=str(exc))
-            finally:
-                assistant_text = llm._sanitize_encoding("".join(assistant_chunks)).strip()
-                if assistant_text:
-                    conv_store.append_message(conversation, "assistant", assistant_text, timestamp=response_updated_at)
-                    assistant_tokens = token_utils.count_tokens([{"content": assistant_text}], runtime_main_model)
-                    admin_logs.log_event("AssistantText", conversation_id=conversation["id"],
-                                         assistant_tokens=assistant_tokens,
-                                         message_timestamp=response_updated_at)
-                memory_store.save_new_traces(conversation)
-                recent_2 = [m for m in conversation.get("messages", [])
-                            if m.get("role") in {"user", "assistant"}][-2:]
-                _record_identity_entries_for_mode(conversation["id"], recent_2, hermeneutic_mode)
-                # Réactivation des entrées identitaires injectées dans ce tour
-                if identity_ids and _mode_enforces_identity(hermeneutic_mode):
-                    memory_store.reactivate_identities(identity_ids)
-                conv_store.save_conversation(conversation, updated_at=response_updated_at)
-
-        logger.info("llm_call id=%s model=%s messages=%s stream=true",
-                    conversation["id"], call_model, len(prompt_messages))
-        admin_logs.log_event("llm_call", conversation_id=conversation["id"],
-                             model=call_model, message_count=len(prompt_messages), stream=True)
-        resp = Response(stream_with_context(event_stream()),
-                        content_type="text/plain; charset=utf-8")
-        resp.headers["X-Conversation-Id"]         = conversation["id"]
-        resp.headers["X-Conversation-Created-At"] = conversation["created_at"]
-        resp.headers["X-Conversation-Updated-At"] = response_updated_at
-        return resp
-
-    except requests.exceptions.RequestException as e:
-        conv_store.save_conversation(conversation)
-        admin_logs.log_event("llm_error", level="ERROR",
-                             conversation_id=conversation["id"], model=call_model, error=str(e))
-        return jsonify({"ok": False, "error": f"Connexion au LLM: {e}"}), 502
-    except Exception as e:
-        conv_store.save_conversation(conversation)
-        admin_logs.log_event("llm_error", level="ERROR",
-                             conversation_id=conversation["id"], model=call_model, error=str(e))
-        return jsonify({"ok": False, "error": f"Erreur: {e}"}), 500
+    response = jsonify(result['payload'])
+    response.status_code = int(result['status'])
+    for key, value in result['headers'].items():
+        response.headers[key] = value
+    return response
 
 
 # ── /api/admin/* ──────────────────────────────────────────────────────────────

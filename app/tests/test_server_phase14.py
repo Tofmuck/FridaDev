@@ -1,0 +1,259 @@
+from __future__ import annotations
+
+import importlib
+import sys
+import unittest
+from pathlib import Path
+
+
+APP_DIR = Path(__file__).resolve().parents[1]
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from admin import runtime_settings
+from core import conv_store
+from memory import memory_store
+
+
+class ServerPhase14ChatServiceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        original_init_db = memory_store.init_db
+        original_init_catalog_db = conv_store.init_catalog_db
+        original_init_messages_db = conv_store.init_messages_db
+        sys.modules.pop('server', None)
+        memory_store.init_db = lambda: None
+        conv_store.init_catalog_db = lambda: None
+        conv_store.init_messages_db = lambda: None
+        try:
+            cls.server = importlib.import_module('server')
+        finally:
+            memory_store.init_db = original_init_db
+            conv_store.init_catalog_db = original_init_catalog_db
+            conv_store.init_messages_db = original_init_messages_db
+
+    def setUp(self) -> None:
+        self.client = self.server.app.test_client()
+
+    def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
+        originals = []
+        observed = {'save_calls': []}
+
+        def patch_attr(obj, name, value):
+            originals.append((obj, name, getattr(obj, name)))
+            setattr(obj, name, value)
+
+        patch_attr(self.server.prompt_loader, 'get_main_system_prompt', lambda: 'BACKEND SYSTEM PROMPT')
+        patch_attr(
+            self.server.prompt_loader,
+            'get_main_hermeneutical_prompt',
+            lambda: 'BACKEND HERMENEUTICAL PROMPT',
+        )
+        patch_attr(
+            self.server.runtime_settings,
+            'get_main_model_settings',
+            lambda: runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload={
+                    'model': {'value': 'openrouter/runtime-main-model', 'origin': 'db'},
+                    'temperature': {'value': 0.4, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'origin': 'db'},
+                    'response_max_tokens': {'value': 2048, 'origin': 'db_seed'},
+                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            ),
+        )
+        patch_attr(
+            self.server.runtime_settings,
+            'get_runtime_secret_value',
+            lambda *args, **kwargs: runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-phase14',
+                source='db_encrypted',
+                source_reason='db_row',
+            ),
+        )
+        patch_attr(self.server.conv_store, 'normalize_conversation_id', lambda _raw: None)
+        patch_attr(self.server.conv_store, 'load_conversation', lambda *_args, **_kwargs: None)
+        patch_attr(self.server.conv_store, 'new_conversation', lambda _system: conversation)
+
+        def fake_save_conversation(*_args, **kwargs):
+            observed['save_calls'].append({'kwargs': dict(kwargs)})
+
+        patch_attr(self.server.conv_store, 'save_conversation', fake_save_conversation)
+        patch_attr(
+            self.server.conv_store,
+            'append_message',
+            lambda conv, role, content, timestamp=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp}
+            ),
+        )
+        patch_attr(self.server.conv_store, 'conversation_path', lambda _id: 'conv/conv-phase14.json')
+        patch_attr(
+            self.server.conv_store,
+            'build_prompt_messages',
+            lambda *_args, **_kwargs: [{'role': 'user', 'content': 'Bonjour'}],
+        )
+        patch_attr(self.server.memory_store, 'decay_identities', lambda: None)
+        patch_attr(self.server.summarizer, 'maybe_summarize', lambda *args, **kwargs: False)
+        patch_attr(self.server.identity, 'build_identity_block', lambda: ('', []))
+        patch_attr(self.server.memory_store, 'retrieve', lambda *_args, **_kwargs: [])
+        patch_attr(self.server.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
+        patch_attr(self.server.admin_logs, 'log_event', lambda *args, **kwargs: None)
+        patch_attr(self.server.llm, 'or_headers', lambda **_kwargs: {})
+        patch_attr(
+            self.server.llm,
+            'build_payload',
+            lambda _messages, _temperature, _top_p, max_tokens, stream=False: {
+                'model': 'openrouter/runtime-main-model',
+                'messages': [],
+                'max_tokens': max_tokens,
+                'stream': stream,
+            },
+        )
+        patch_attr(self.server.requests, 'post', requests_post)
+        patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
+        patch_attr(self.server.memory_store, 'save_new_traces', lambda *_args, **_kwargs: None)
+        patch_attr(self.server, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
+        patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
+
+        def restore():
+            while originals:
+                obj, name, value = originals.pop()
+                setattr(obj, name, value)
+
+        return observed, restore
+
+    def test_api_chat_stream_keeps_content_type_and_conversation_headers(self) -> None:
+        observed = {'stream_kw': None}
+        conversation = {
+            'id': 'conv-stream-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            observed['stream_kw'] = kwargs.get('stream')
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertEqual(response.headers.get('X-Conversation-Id'), 'conv-stream-phase14')
+        self.assertEqual(response.headers.get('X-Conversation-Created-At'), '2026-03-26T00:00:00Z')
+        self.assertTrue(response.headers.get('X-Conversation-Updated-At'))
+        self.assertEqual(response.get_data(as_text=True), 'Bonjour')
+        self.assertTrue(observed['stream_kw'])
+        self.assertEqual(
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            response.headers.get('X-Conversation-Updated-At'),
+        )
+
+    def test_api_chat_returns_502_on_llm_request_exception(self) -> None:
+        conversation = {
+            'id': 'conv-err-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        def fake_requests_post(*_args, **_kwargs):
+            raise self.server.requests.exceptions.RequestException('boom')
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.get_json(),
+            {'ok': False, 'error': 'Connexion au LLM: boom'},
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
+        observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
+        conversation = {
+            'id': 'conv-invalid-raw-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok phase14'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_normalize = self.server.conv_store.normalize_conversation_id
+        original_new_conversation = self.server.conv_store.new_conversation
+        original_load_conversation = self.server.conv_store.load_conversation
+        self.server.conv_store.normalize_conversation_id = lambda raw: observed.update({'normalized_raw': raw}) or None
+        self.server.conv_store.new_conversation = (
+            lambda _system: observed.update({'new_conversation_calls': observed['new_conversation_calls'] + 1}) or conversation
+        )
+
+        def fake_load_conversation(*_args, **_kwargs):
+            observed['load_called'] = True
+            return None
+
+        self.server.conv_store.load_conversation = fake_load_conversation
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'conversation_id': '@@bad@@'})
+        finally:
+            self.server.conv_store.normalize_conversation_id = original_normalize
+            self.server.conv_store.new_conversation = original_new_conversation
+            self.server.conv_store.load_conversation = original_load_conversation
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(response.get_json()['conversation_id'], 'conv-invalid-raw-phase14')
+        self.assertEqual(observed['normalized_raw'], '@@bad@@')
+        self.assertEqual(observed['new_conversation_calls'], 1)
+        self.assertFalse(observed['load_called'])
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+
+if __name__ == '__main__':
+    unittest.main()

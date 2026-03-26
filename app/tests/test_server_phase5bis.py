@@ -18,10 +18,12 @@ class ServerPhase5BisSecretRuntimeTests(unittest.TestCase):
         self.assertIn('runtime_settings.backfill_runtime_secrets_from_env()', source)
 
     def test_server_uses_runtime_main_model_secret_for_llm_call_flow(self) -> None:
-        source = (APP_DIR / 'server.py').read_text()
-        self.assertIn("runtime_settings.get_runtime_secret_value('main_model', 'api_key')", source)
-        self.assertNotIn('if not config.OR_KEY', source)
-        self.assertNotIn('OPENROUTER_API_KEY manquant', source)
+        source_server = (APP_DIR / 'server.py').read_text()
+        source_chat = (APP_DIR / 'core' / 'chat_service.py').read_text()
+        self.assertIn('chat_service.chat_response(', source_server)
+        self.assertIn("runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')", source_chat)
+        self.assertNotIn('if not config.OR_KEY', source_chat)
+        self.assertNotIn('OPENROUTER_API_KEY manquant', source_chat)
 
 
 if __name__ == '__main__':
