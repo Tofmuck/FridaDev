@@ -280,7 +280,7 @@
 **Cases à cocher**
 - [x] Supprimer les éléments `certain` sans valeur (`panel`, `MAX_CONTEXT_MESSAGES`, fonctions mortes confirmées).
 - [x] Traiter `history` après arbitrage Phase 1.
-- [ ] Faire un inventaire d’usage réel des fonctions sync JSON avant suppression.
+- [x] Faire un inventaire d’usage réel des fonctions sync JSON avant suppression.
 - [ ] Si usage confirmé nul: déprécier puis supprimer sync JSON et helpers associés.
 - [ ] Décider le statut final de `run.sh` (conservé documenté ou retiré).
 - [ ] Ajouter tests/guardrails pour éviter réintroduction de reliquats.
