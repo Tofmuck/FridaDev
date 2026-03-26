@@ -36,7 +36,7 @@ class ServerPhase12Tests(unittest.TestCase):
         self.client = self.server.app.test_client()
 
     def test_api_chat_uses_runtime_response_max_tokens_when_request_override_is_absent(self) -> None:
-        observed = {}
+        observed = {'prompt_message_contents': []}
         original_get_main = self.server.runtime_settings.get_main_model_settings
         original_get_secret = self.server.runtime_settings.get_runtime_secret_value
         original_new_conversation = self.server.conv_store.new_conversation
@@ -107,7 +107,13 @@ class ServerPhase12Tests(unittest.TestCase):
             )
         )
         self.server.conv_store.conversation_path = lambda _id: 'conv/conv-phase12.json'
-        self.server.conv_store.build_prompt_messages = lambda *args, **kwargs: [{"role": "user", "content": "Bonjour"}]
+        def fake_build_prompt_messages(conversation_arg, *_args, **_kwargs):
+            observed['prompt_message_contents'].append(
+                [str(m.get('content') or '') for m in conversation_arg.get('messages', [])]
+            )
+            return [{"role": "user", "content": "Bonjour"}]
+
+        self.server.conv_store.build_prompt_messages = fake_build_prompt_messages
         self.server.memory_store.decay_identities = lambda: None
         self.server.summarizer.maybe_summarize = lambda *args, **kwargs: False
         self.server.identity.build_identity_block = lambda: ("", [])
@@ -123,6 +129,13 @@ class ServerPhase12Tests(unittest.TestCase):
         self.server.memory_store.reactivate_identities = lambda *_args, **_kwargs: None
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+            legacy_response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'Bonjour legacy',
+                    'history': [{'role': 'user', 'content': 'LEGACY_HISTORY_SHOULD_BE_IGNORED'}],
+                },
+            )
         finally:
             self.server.runtime_settings.get_main_model_settings = original_get_main
             self.server.runtime_settings.get_runtime_secret_value = original_get_secret
@@ -146,8 +159,12 @@ class ServerPhase12Tests(unittest.TestCase):
             self.server.memory_store.reactivate_identities = original_reactivate
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(legacy_response.status_code, 200)
         self.assertEqual(observed['max_tokens'], 2048)
         self.assertFalse(observed['stream'])
+        self.assertTrue(observed['prompt_message_contents'])
+        for prompt_contents in observed['prompt_message_contents']:
+            self.assertNotIn('LEGACY_HISTORY_SHOULD_BE_IGNORED', '\n'.join(prompt_contents))
 
     def test_api_chat_keeps_request_max_tokens_override_over_runtime_default(self) -> None:
         observed = {}

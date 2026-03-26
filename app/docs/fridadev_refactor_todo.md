@@ -49,8 +49,8 @@
 **Cases à cocher**
 - [x] Valider et documenter le **contrat canonique de démarrage** (qui porte `host/port`, qui est source d’autorité).
 - [x] Aligner le runtime sur ce contrat (sans changer le comportement fonctionnel externe).
-- [ ] Décider le contrat `history` de `/api/chat`: `supprimé` du frontend ou `consommé` côté backend.
-- [ ] Implémenter l’alignement `history` et ajouter tests de non-régression API.
+- [x] Décider le contrat `history` de `/api/chat`: `supprimé` du frontend ou `consommé` côté backend.
+- [x] Implémenter l’alignement `history` et ajouter tests de non-régression API.
 - [ ] Aligner la persistance `arbiter_decisions.model` avec la source runtime effective.
 - [ ] Ajouter/adapter tests ciblés sur ces 3 contrats.
 

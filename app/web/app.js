@@ -38,9 +38,7 @@
   // Settings popover
   const panel = $("#panel");
   const max_tokens = $("#max_tokens");
-  const MAX_CONTEXT_TURNS = 35;
   // ---- Helpers
-  const MAX_CONTEXT_MESSAGES = MAX_CONTEXT_TURNS * 2;
   const fmtDateFR = (d = new Date()) =>
     d.toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -587,25 +585,6 @@
     saveThreads([...getThreads()]);
   };
 
-  const buildContextHistory = (maxTurns = MAX_CONTEXT_TURNS) => {
-    const id = getCurrentId();
-    if (!id) return [];
-
-    const thread = getThreadById(id);
-    if (!thread || !Array.isArray(thread.messages)) return [];
-
-    const filtered = thread.messages.filter((m) => {
-      if (!m) return false;
-      if (m.role !== 'user' && m.role !== 'assistant') return false;
-      return typeof m.content === 'string' && m.content.trim().length > 0;
-    });
-
-    return filtered.slice(-Math.max(1, maxTurns * 2)).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-  };
-
   [max_tokens].forEach(el => {
     el.addEventListener("input", () => {
       saveSettings();
@@ -630,8 +609,7 @@
 
     try {
       const cfg = currentSettings();
-      const history = buildContextHistory(MAX_CONTEXT_TURNS);
-      const reply = await sendToServer(text, cfg, history, (chunk) => {
+      const reply = await sendToServer(text, cfg, (chunk) => {
         if (!chunk) return;
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
@@ -663,7 +641,7 @@
   });
 
   // ---- Endpoint réseau
-  async function sendToServer(userText, cfg, history, onChunk, threadId){
+  async function sendToServer(userText, cfg, onChunk, threadId){
     const thread = threadId ? getThreadById(threadId) : null;
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -671,7 +649,6 @@
       body: JSON.stringify({
         message: userText,
         max_tokens: cfg.max_tokens,
-        history: Array.isArray(history) ? history : [],
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
         web_search: webSearchEnabled,

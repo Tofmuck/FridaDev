@@ -78,6 +78,14 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
         self.assertIn('- "8093:8089"', compose)
 
+    def test_frontend_chat_payload_contract_no_longer_serializes_history(self) -> None:
+        app_js = (APP_DIR / 'web' / 'app.js').read_text(encoding='utf-8')
+
+        self.assertNotIn('history: Array.isArray(history) ? history : [],', app_js)
+        self.assertNotIn('const history = buildContextHistory(MAX_CONTEXT_TURNS);', app_js)
+        self.assertIn('async function sendToServer(userText, cfg, onChunk, threadId){', app_js)
+        self.assertIn('const reply = await sendToServer(text, cfg, (chunk) => {', app_js)
+
 
 if __name__ == '__main__':
     unittest.main()
