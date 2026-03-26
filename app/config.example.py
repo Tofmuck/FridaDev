@@ -80,6 +80,18 @@ FRIDA_ADMIN_ALLOWED_CIDRS = os.environ.get(
 # LLM context window
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 
+# Prompt files
+MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')
+MAIN_HERMENEUTICAL_PROMPT_PATH = os.environ.get(
+    'MAIN_HERMENEUTICAL_PROMPT_PATH',
+    'prompts/main_hermeneutical.txt',
+)
+SUMMARY_SYSTEM_PROMPT_PATH = os.environ.get('SUMMARY_SYSTEM_PROMPT_PATH', 'prompts/summary_system.txt')
+WEB_REFORMULATION_PROMPT_PATH = os.environ.get(
+    'WEB_REFORMULATION_PROMPT_PATH',
+    'prompts/web_reformulation.txt',
+)
+
 # Local timezone
 FRIDA_TIMEZONE = os.environ.get('FRIDA_TIMEZONE', 'Europe/Paris')
 

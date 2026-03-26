@@ -582,15 +582,15 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
   - le prompt de l'identity extractor
   - le prompt systeme inline du resumieur
   - le prompt systeme inline de reformulation web
-- [ ] Ajouter dans `config.py` et `config.example.py` des chemins explicites pour tous ces prompts, selon une convention homogene.
-- [ ] Choisir et figer une convention de nommage physique dans `app/prompts/`, au minimum :
+- [x] Ajouter dans `config.py` et `config.example.py` des chemins explicites pour tous ces prompts, selon une convention homogene.
+- [x] Choisir et figer une convention de nommage physique dans `app/prompts/`, au minimum :
   - `main_system.txt`
   - `main_hermeneutical.txt`
   - `arbiter.txt`
   - `identity_extractor.txt`
   - `summary_system.txt`
   - `web_reformulation.txt`
-- [ ] Introduire un loader backend unique de prompts, reutilisable par :
+- [x] Introduire un loader backend unique de prompts, reutilisable par :
   - `server.py`
   - l'admin
   - les modules memoire/services qui consomment deja des prompts

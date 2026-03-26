@@ -15,6 +15,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 import config
+from core import prompt_loader
 
 
 class RuntimeSettingsSchemaTests(unittest.TestCase):
@@ -232,6 +233,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(readonly_info['context_max_tokens']['is_editable'])
         self.assertEqual(readonly_info['system_prompt']['label'], 'SYSTEM_PROMPT')
         self.assertFalse(readonly_info['system_prompt']['is_editable'])
+        self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
+        self.assertEqual(readonly_info['system_prompt']['value'], prompt_loader.get_main_system_prompt())
         self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
         self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
 

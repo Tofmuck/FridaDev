@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import ast
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +9,7 @@ from urllib.parse import urlparse
 
 import config
 from admin import runtime_secrets
+from core import prompt_loader
 
 
 SECTION_NAMES: Tuple[str, ...] = (
@@ -784,27 +784,6 @@ def get_runtime_section_for_api(
     )
 
 
-def _read_front_system_prompt() -> str:
-    app_js_path = Path(__file__).resolve().parents[1] / 'web' / 'app.js'
-    try:
-        source = app_js_path.read_text(encoding='utf-8')
-    except OSError:
-        return ''
-
-    match = re.search(r'const SYSTEM_PROMPT = `(.*?)`;', source, re.DOTALL)
-    if not match:
-        return ''
-    return str(match.group(1)).strip()
-
-
-def _read_app_text_file(path_str: str) -> str:
-    try:
-        source = (Path(__file__).resolve().parents[1] / path_str).read_text(encoding='utf-8')
-    except OSError:
-        return ''
-    return source.strip()
-
-
 def _ast_expr_to_string(expr: ast.AST) -> str:
     if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
         return expr.value
@@ -917,9 +896,9 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
             },
             'system_prompt': {
                 'label': 'SYSTEM_PROMPT',
-                'value': _read_front_system_prompt(),
+                'value': prompt_loader.get_main_system_prompt(),
                 'is_editable': False,
-                'source': 'web_app_js',
+                'source': 'prompt_file',
             },
         }
     if section == 'arbiter_model':
@@ -950,13 +929,13 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
             },
             'arbiter_prompt': {
                 'label': 'arbiter_prompt',
-                'value': _read_app_text_file(str(config.ARBITER_PROMPT_PATH)),
+                'value': prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
                 'is_editable': False,
                 'source': 'app_prompt_file',
             },
             'identity_extractor_prompt': {
                 'label': 'identity_extractor_prompt',
-                'value': _read_app_text_file(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
+                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
                 'is_editable': False,
                 'source': 'app_prompt_file',
             },

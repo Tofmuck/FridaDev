@@ -367,6 +367,8 @@ def _check_prompt_files() -> Dict[str, Any]:
     required_files = {
         "llm_identity": _runtime_resource_path('llm_identity_path'),
         "user_identity": _runtime_resource_path('user_identity_path'),
+        "main_system_prompt": _resolve_app_path(config.MAIN_SYSTEM_PROMPT_PATH),
+        "main_hermeneutical_prompt": _resolve_app_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
     }
@@ -380,17 +382,6 @@ def _check_prompt_files() -> Dict[str, Any]:
             raise RuntimeError(f"fichier trop court ou vide: {path}")
         details[name] = {"path": str(path), "chars": len(content)}
 
-    app_js = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
-    required_markers = [
-        "const SYSTEM_PROMPT =",
-        "travail intellectuel ou technique",
-        "Tu adoptes un ton clair, calme, adulte et professionnel.",
-    ]
-    for marker in required_markers:
-        if marker not in app_js:
-            raise RuntimeError(f"marker manquant dans web/app.js: {marker}")
-
-    details["web_system_prompt_markers"] = required_markers
     return details
 
 
