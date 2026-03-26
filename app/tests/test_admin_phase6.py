@@ -18,6 +18,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('href="admin.css"', html)
         self.assertIn('script src="admin_api.js"', html)
         self.assertIn('script src="admin_ui_common.js"', html)
+        self.assertIn('script src="admin_section_main_model.js"', html)
         self.assertIn('script src="admin_section_arbiter_model.js"', html)
         self.assertIn('script src="admin_section_summary_model.js"', html)
         self.assertIn('script src="admin_section_embedding.js"', html)
@@ -110,6 +111,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
@@ -117,7 +119,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
         source_all = (
-            f"{api_source}\n{ui_source}\n{arbiter_source}\n"
+            f"{api_source}\n{ui_source}\n{main_model_source}\n{arbiter_source}\n"
             f"{summary_source}\n{embedding_source}\n{database_source}\n{services_source}\n{resources_source}\n{source}"
         )
 
@@ -177,15 +179,21 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
+        source_all = (
+            f"{api_source}\n{ui_source}\n{main_model_source}\n{arbiter_source}\n"
+            f"{summary_source}\n{embedding_source}\n{database_source}\n{services_source}\n{resources_source}\n{source}"
+        )
 
         self.assertIn("window.FridaAdminApi", source)
         self.assertIn("window.FridaAdminUiCommon", source)
+        self.assertIn("window.FridaAdminMainModelSection", source)
         self.assertIn("window.FridaAdminArbiterModelSection", source)
         self.assertIn("window.FridaAdminSummaryModelSection", source)
         self.assertIn("window.FridaAdminEmbeddingSection", source)
@@ -197,9 +205,9 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("renderCheckList", source)
         self.assertIn("applyFieldError", source)
         self.assertIn("adminApi.fetchStatus()", source)
-        self.assertIn("adminApi.fetchSection(", source)
-        self.assertIn("adminApi.patchSection(", source)
-        self.assertIn("adminApi.validateSection(", source)
+        self.assertIn("adminApi.fetchSection(", source_all)
+        self.assertIn("adminApi.patchSection(", source_all)
+        self.assertIn("adminApi.validateSection(", source_all)
 
         self.assertIn("const TOKEN_KEY = \"frida.adminToken\";", api_source)
         self.assertIn('headers.set("X-Admin-Token", token);', api_source)
@@ -212,6 +220,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const renderCheckList =", ui_source)
         self.assertIn("const renderReadonlyInfoCards =", ui_source)
         self.assertIn("const applyFieldError =", ui_source)
+        self.assertIn("const createMainModelSectionController = ({", main_model_source)
+        self.assertIn("const runMainModelValidation = async (payload) => {", main_model_source)
+        self.assertIn("const saveMainModelSection = async () => {", main_model_source)
+        self.assertIn("window.FridaAdminMainModelSection = Object.freeze({", main_model_source)
         self.assertIn("const createArbiterModelSectionController = ({", arbiter_source)
         self.assertIn("const runArbiterValidation = async (payload) => {", arbiter_source)
         self.assertIn("const saveArbiterSection = async () => {", arbiter_source)
@@ -239,11 +251,13 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
     def test_admin_js_exposes_editable_main_model_response_max_tokens(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
+        source_all = f"{source}\n{main_model_source}"
 
         self.assertIn('key: "response_max_tokens"', source)
         self.assertIn('label: "Max tokens reponse"', source)
         self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', source)
-        self.assertIn('integerFields: ["response_max_tokens"]', source)
+        self.assertIn('integerFields: ["response_max_tokens"]', source_all)
 
     def test_admin_js_extracts_shared_section_helpers(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
@@ -257,6 +271,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const buildSectionPatchPayload =", source)
         self.assertIn("const updateSectionDirtyChip =", source)
         self.assertIn("const applySectionDraftToForm =", source)
+        self.assertIn("mainModelSection.bindMainModelSectionEvents();", source)
+        self.assertIn("mainModelSection.loadMainModelSection(),", source)
+        self.assertNotIn("const saveMainModelSection = async () => {", source)
+        self.assertNotIn("const runMainModelValidation = async (payload) => {", source)
         self.assertIn("arbiterModelSection.bindArbiterModelSectionEvents();", source)
         self.assertIn("arbiterModelSection.loadArbiterModelSection(),", source)
         self.assertNotIn("const saveArbiterSection = async () => {", source)
@@ -310,7 +328,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
     def test_admin_main_model_separates_system_and_hermeneutical_prompts(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
-        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
 
         self.assertIn('id="adminMainModelSystemPromptInfo"', html)
         self.assertIn('id="adminMainModelHermeneuticalPromptInfo"', html)
@@ -333,7 +351,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
     def test_admin_main_model_prompt_panels_stay_ordered_and_marker_friendly(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
-        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
         source_all = f"{ui_source}\n{source}"
 
@@ -361,6 +379,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("Admin de configuration", source)
         self.assertIn('href="admin.css"', source)
         self.assertIn('script src="admin_ui_common.js"', source)
+        self.assertIn('script src="admin_section_main_model.js"', source)
         self.assertIn('script src="admin_section_arbiter_model.js"', source)
         self.assertIn('script src="admin_section_summary_model.js"', source)
         self.assertIn('script src="admin_section_embedding.js"', source)

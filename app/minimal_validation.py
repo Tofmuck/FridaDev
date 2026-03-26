@@ -412,6 +412,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "app_js": web_dir / "app.js",
         "admin_api_js": web_dir / "admin_api.js",
         "admin_ui_common_js": web_dir / "admin_ui_common.js",
+        "admin_section_main_model_js": web_dir / "admin_section_main_model.js",
         "admin_section_arbiter_model_js": web_dir / "admin_section_arbiter_model.js",
         "admin_section_summary_model_js": web_dir / "admin_section_summary_model.js",
         "admin_section_embedding_js": web_dir / "admin_section_embedding.js",
@@ -439,6 +440,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
+    admin_section_main_model_js = required_files["admin_section_main_model_js"].read_text(encoding="utf-8")
     admin_section_arbiter_model_js = required_files["admin_section_arbiter_model_js"].read_text(encoding="utf-8")
     admin_section_summary_model_js = required_files["admin_section_summary_model_js"].read_text(encoding="utf-8")
     admin_section_embedding_js = required_files["admin_section_embedding_js"].read_text(encoding="utf-8")
@@ -449,6 +451,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
+        f"{admin_section_main_model_js}\n"
         f"{admin_section_arbiter_model_js}\n"
         f"{admin_section_summary_model_js}\n"
         f"{admin_section_embedding_js}\n"
@@ -475,6 +478,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="admin.css"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
+        'script src="admin_section_main_model.js"',
         'script src="admin_section_arbiter_model.js"',
         'script src="admin_section_summary_model.js"',
         'script src="admin_section_embedding.js"',
@@ -566,6 +570,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "renderReadonlyInfoEntries",
         "renderReadonlyInfoCards",
         "applyFieldError",
+        "createMainModelSectionController",
         "createArbiterModelSectionController",
         "createSummaryModelSectionController",
         "createEmbeddingSectionController",
