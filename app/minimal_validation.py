@@ -410,6 +410,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_css": web_dir / "admin.css",
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
+        "admin_api_js": web_dir / "admin_api.js",
         "admin_js": web_dir / "admin.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
@@ -429,7 +430,9 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     index_html = required_files["index_html"].read_text(encoding="utf-8")
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
+    admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
+    admin_front_js = f"{admin_api_js}\n{admin_js}"
 
     index_markers = [
         'src="./fridalogo.png"',
@@ -446,6 +449,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_markers = [
         "Admin de configuration",
         'href="admin.css"',
+        'script src="admin_api.js"',
         'script src="admin.js"',
         'id="adminRefresh"',
         'id="adminStatusBanner"',
@@ -546,8 +550,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminSectionGrid",
     ]
     for marker in admin_js_markers:
-        if marker not in admin_js:
-            raise RuntimeError(f"marker admin.js manquant: {marker}")
+        if marker not in admin_front_js:
+            raise RuntimeError(f"marker admin frontend manquant: {marker}")
     admin_js_forbidden_markers = [
         "/api/admin/logs",
         "/api/admin/restart",
@@ -556,8 +560,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin-old",
     ]
     for marker in admin_js_forbidden_markers:
-        if marker in admin_js:
-            raise RuntimeError(f"marker admin.js legacy inattendu: {marker}")
+        if marker in admin_front_js:
+            raise RuntimeError(f"marker admin frontend legacy inattendu: {marker}")
 
     return {
         "files": {name: str(path) for name, path in required_files.items()},

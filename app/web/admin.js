@@ -1,5 +1,9 @@
 (() => {
-  const TOKEN_KEY = "frida.adminToken";
+  const adminApi = window.FridaAdminApi;
+  if (!adminApi) {
+    throw new Error("admin_api.js must be loaded before admin.js");
+  }
+  const sectionRoutes = adminApi.sectionRoutes;
   const sections = [
     {
       key: "main_model",
@@ -433,18 +437,6 @@
     resourcesChecks: document.getElementById("adminResourcesChecks"),
   };
 
-  const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
-
-  const writeToken = (value) => {
-    const cleaned = String(value || "").trim();
-    if (!cleaned) {
-      window.sessionStorage.removeItem(TOKEN_KEY);
-      return "";
-    }
-    window.sessionStorage.setItem(TOKEN_KEY, cleaned);
-    return cleaned;
-  };
-
   const sourceLabel = (sectionStatus) => {
     if (!sectionStatus) return "indisponible";
     if (sectionStatus.source === "db") return "DB";
@@ -487,21 +479,14 @@
 
   const updateTokenState = () => {
     if (!elements.tokenState) return;
-    elements.tokenState.textContent = readToken() ? "Session active" : "Session vide";
-  };
-
-  const adminFetch = async (url, init = {}) => {
-    const headers = new Headers(init.headers || {});
-    const token = readToken();
-    if (token) headers.set("X-Admin-Token", token);
-    return fetch(url, { ...init, headers });
+    elements.tokenState.textContent = adminApi.readToken() ? "Session active" : "Session vide";
   };
 
   const promptToken = () => {
-    const current = readToken();
+    const current = adminApi.readToken();
     const next = window.prompt("Token admin", current);
     if (next === null) return false;
-    writeToken(next);
+    adminApi.writeToken(next);
     updateTokenState();
     return true;
   };
@@ -2286,19 +2271,14 @@
     setInlineStatus(elements.arbiterModelStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/arbiter-model/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.arbiterModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.arbiterModelStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyArbiterBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.arbiterModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2331,19 +2311,14 @@
     setInlineStatus(elements.summaryModelStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/summary-model/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.summaryModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applySummaryBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.summaryModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2376,19 +2351,14 @@
     setInlineStatus(elements.embeddingStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/embedding/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.embedding, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.embeddingStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyEmbeddingBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.embeddingStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2421,19 +2391,14 @@
     setInlineStatus(elements.databaseStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/database/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.database, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.databaseStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyDatabaseBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.databaseStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2466,19 +2431,14 @@
     setInlineStatus(elements.servicesStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/services/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.services, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.servicesStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyServicesBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.servicesStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2511,19 +2471,14 @@
     setInlineStatus(elements.resourcesStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/resources/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.resources, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.resourcesStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyResourcesBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.resourcesStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -2652,21 +2607,14 @@
     setInlineStatus(elements.arbiterModelStatus, "Enregistrement du modele arbitre...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/arbiter-model", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.arbiterModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.arbiterModelStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyArbiterBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.arbiterModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2709,21 +2657,14 @@
     setInlineStatus(elements.summaryModelStatus, "Enregistrement du modele resumeur...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/summary-model", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.summaryModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.summaryModelStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applySummaryBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.summaryModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2766,21 +2707,14 @@
     setInlineStatus(elements.embeddingStatus, "Enregistrement du bloc embeddings...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/embedding", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.embedding, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.embeddingStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyEmbeddingBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.embeddingStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2823,21 +2757,14 @@
     setInlineStatus(elements.databaseStatus, "Enregistrement du bloc base de donnees...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/database", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.database, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.databaseStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyDatabaseBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.databaseStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2880,21 +2807,14 @@
     setInlineStatus(elements.servicesStatus, "Enregistrement du bloc services externes...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/services", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.services, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.servicesStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyServicesBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.servicesStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2937,21 +2857,14 @@
     setInlineStatus(elements.resourcesStatus, "Enregistrement du bloc ressources...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/resources", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.resources, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.resourcesStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyResourcesBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.resourcesStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -2976,13 +2889,13 @@
     setInlineStatus(elements.arbiterModelStatus, "Chargement du modele arbitre...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/arbiter-model");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.arbiterModel);
+      if (adminApi.isUnauthorized(response)) {
         resetArbiterSurface("Acces admin requis pour charger le modele arbitre.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetArbiterSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3002,13 +2915,13 @@
     setInlineStatus(elements.summaryModelStatus, "Chargement du modele resumeur...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/summary-model");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.summaryModel);
+      if (adminApi.isUnauthorized(response)) {
         resetSummarySurface("Acces admin requis pour charger le modele resumeur.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetSummarySurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3028,13 +2941,13 @@
     setInlineStatus(elements.embeddingStatus, "Chargement du bloc embeddings...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/embedding");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.embedding);
+      if (adminApi.isUnauthorized(response)) {
         resetEmbeddingSurface("Acces admin requis pour charger le bloc embeddings.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetEmbeddingSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3054,13 +2967,13 @@
     setInlineStatus(elements.databaseStatus, "Chargement du bloc base de donnees...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/database");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.database);
+      if (adminApi.isUnauthorized(response)) {
         resetDatabaseSurface("Acces admin requis pour charger le bloc base de donnees.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetDatabaseSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3080,13 +2993,13 @@
     setInlineStatus(elements.servicesStatus, "Chargement du bloc services externes...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/services");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.services);
+      if (adminApi.isUnauthorized(response)) {
         resetServicesSurface("Acces admin requis pour charger le bloc services externes.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetServicesSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3106,13 +3019,13 @@
     setInlineStatus(elements.resourcesStatus, "Chargement du bloc ressources...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/resources");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.resources);
+      if (adminApi.isUnauthorized(response)) {
         resetResourcesSurface("Acces admin requis pour charger le bloc ressources.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetResourcesSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3145,19 +3058,14 @@
     setInlineStatus(elements.mainModelStatus, "Validation technique en cours...", "info");
 
     try {
-      const body = payload && Object.keys(payload).length ? { payload } : {};
-      const response = await adminFetch("/api/admin/settings/main-model/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const response = await adminApi.validateSection(sectionRoutes.mainModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.mainModelStatus, "Acces admin requis pour verifier la section.", "error");
         return { ok: false };
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyBackendFieldError(data.error || `Validation impossible (${response.status}).`);
         setInlineStatus(elements.mainModelStatus, data.error || `Validation impossible (${response.status}).`, "error");
@@ -3223,21 +3131,14 @@
     setInlineStatus(elements.mainModelStatus, "Enregistrement du modele principal...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/main-model", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          updated_by: "admin_ui",
-          payload,
-        }),
-      });
+      const response = await adminApi.patchSection(sectionRoutes.mainModel, payload);
 
-      if (response.status === 401) {
+      if (adminApi.isUnauthorized(response)) {
         setInlineStatus(elements.mainModelStatus, "Acces admin requis pour enregistrer la section.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         applyBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
         setInlineStatus(elements.mainModelStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
@@ -3263,13 +3164,13 @@
     setInlineStatus(elements.mainModelStatus, "Chargement du modele principal...", "info");
 
     try {
-      const response = await adminFetch("/api/admin/settings/main-model");
-      if (response.status === 401) {
+      const response = await adminApi.fetchSection(sectionRoutes.mainModel);
+      if (adminApi.isUnauthorized(response)) {
         resetMainModelSurface("Acces admin requis pour charger le modele principal.", "error");
         return;
       }
 
-      const data = await response.json();
+      const data = await adminApi.readJson(response);
       if (!response.ok || !data.ok) {
         resetMainModelSurface(data.error || `Lecture impossible (${response.status}).`, "error");
         return;
@@ -3393,8 +3294,8 @@
   const loadRuntimeStatus = async () => {
     banner("Chargement du statut runtime...", "info");
     try {
-      const response = await adminFetch("/api/admin/settings/status");
-      if (response.status === 401) {
+      const response = await adminApi.fetchStatus();
+      if (adminApi.isUnauthorized(response)) {
         banner("Acces admin requis. Definis le token pour charger l'etat runtime.", "error");
         return;
       }
@@ -3403,7 +3304,7 @@
         return;
       }
 
-      const payload = await response.json();
+      const payload = await adminApi.readJson(response);
       if (!payload.ok) {
         banner(payload.error || "Lecture admin invalide.", "error");
         return;
@@ -3458,7 +3359,7 @@
   });
 
   elements.clearToken?.addEventListener("click", () => {
-    writeToken("");
+    adminApi.clearToken();
     updateTokenState();
     banner("Token admin efface pour cette session.", "info");
     void loadAdminSurface();
