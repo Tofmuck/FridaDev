@@ -701,6 +701,38 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertFalse(data['ok'])
         self.assertEqual(data['error'], 'readonly_info is read-only and cannot be patched')
 
+    def test_patch_admin_settings_main_model_rejects_non_mapping_payload(self) -> None:
+        response = self.client.patch(
+            '/api/admin/settings/main-model',
+            data='[1]',
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'patch request must be a mapping')
+
+    def test_patch_admin_settings_main_model_returns_503_on_runtime_db_unavailable(self) -> None:
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(*_args, **_kwargs):
+            raise self.server.runtime_settings.RuntimeSettingsDbUnavailableError('db unavailable for patch')
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/main-model',
+                json={'payload': {'model': {'value': 'openrouter/test'}}},
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 503)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'db unavailable for patch')
+
     def test_patch_admin_settings_main_model_rejects_payload_readonly_info(self) -> None:
         response = self.client.patch(
             '/api/admin/settings/main-model',
@@ -1498,6 +1530,17 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertFalse(data['ok'])
         self.assertIn('ambiguous secret patch payload', data['error'])
+
+    def test_post_admin_settings_validate_rejects_non_mapping_payload(self) -> None:
+        response = self.client.post(
+            '/api/admin/settings/main-model/validate',
+            data='[]',
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['error'], 'validation payload must be a mapping')
 
     def test_post_admin_settings_validate_encrypt_error_does_not_echo_secret_value(self) -> None:
         class CaptureHandler(logging.Handler):

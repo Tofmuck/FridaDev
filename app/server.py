@@ -21,7 +21,7 @@ from core import prompt_loader
 from tools import web_search as ws
 from core import conv_store
 from core import conversations_service
-from admin import admin_logs
+from admin import admin_logs, admin_settings_service
 from admin import admin_actions
 from admin import runtime_settings
 from core import token_utils
@@ -596,85 +596,56 @@ def api_chat():
 
 
 def _admin_settings_section_response(section: str) -> Dict[str, Any]:
-    view = runtime_settings.get_runtime_section_for_api(section)
-    return {
-        'section': section,
-        'payload': view.payload,
-        'readonly_info': runtime_settings.get_section_readonly_info(section),
-        'secret_sources': runtime_settings.describe_secret_sources(section, view.payload),
-        'source': view.source,
-        'source_reason': view.source_reason,
-    }
+    return admin_settings_service.section_response(
+        section,
+        runtime_settings_module=runtime_settings,
+    )
 
 
 def _admin_settings_single_section_json(section: str):
-    return jsonify({'ok': True, **_admin_settings_section_response(section)})
+    return jsonify(
+        admin_settings_service.single_section_response(
+            section,
+            runtime_settings_module=runtime_settings,
+        )
+    )
 
 
 def _admin_settings_status_json():
-    status = runtime_settings.get_runtime_status()
-    return jsonify({'ok': True, **status})
+    return jsonify(
+        admin_settings_service.settings_status_response(
+            runtime_settings_module=runtime_settings,
+        )
+    )
 
 
 def _admin_settings_section_patch_response(section: str):
     data = request.get_json(force=True, silent=True) or {}
-    if not isinstance(data, dict):
-        return jsonify({'ok': False, 'error': 'patch request must be a mapping'}), 400
-    if 'readonly_info' in data:
-        return jsonify({'ok': False, 'error': 'readonly_info is read-only and cannot be patched'}), 400
-    patch_payload = data.get('payload')
-    if isinstance(patch_payload, dict) and 'readonly_info' in patch_payload:
-        return jsonify({'ok': False, 'error': 'readonly_info is read-only and cannot be patched'}), 400
-    updated_by = str(data.get('updated_by') or 'admin_api').strip() or 'admin_api'
-
-    try:
-        view = runtime_settings.update_runtime_section(
-            section,
-            patch_payload,
-            updated_by=updated_by,
-        )
-    except runtime_settings.RuntimeSettingsValidationError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
-    except runtime_settings.RuntimeSettingsDbUnavailableError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 503
-
-    return jsonify({
-        'ok': True,
-        'section': view.section,
-        'payload': view.payload,
-        'readonly_info': runtime_settings.get_section_readonly_info(section),
-        'secret_sources': runtime_settings.describe_secret_sources(section, view.payload),
-        'source': view.source,
-        'source_reason': view.source_reason,
-    })
+    payload, status = admin_settings_service.patch_section_response(
+        section,
+        data,
+        runtime_settings_module=runtime_settings,
+    )
+    return jsonify(payload), status
 
 
 def _admin_settings_section_validate_response(section: str):
     data = request.get_json(force=True, silent=True)
-    if data is None:
-        patch_payload = None
-    else:
-        if not isinstance(data, dict):
-            return jsonify({'ok': False, 'error': 'validation payload must be a mapping'}), 400
-        patch_payload = data.get('payload')
-        if patch_payload is not None and not isinstance(patch_payload, dict):
-            return jsonify({'ok': False, 'error': 'validation payload must be a mapping'}), 400
-
-    try:
-        result = runtime_settings.validate_runtime_section(section, patch_payload=patch_payload)
-    except runtime_settings.RuntimeSettingsValidationError as exc:
-        return jsonify({'ok': False, 'error': str(exc)}), 400
-
-    return jsonify({'ok': True, **result})
+    payload, status = admin_settings_service.validate_section_response(
+        section,
+        data,
+        runtime_settings_module=runtime_settings,
+    )
+    return jsonify(payload), status
 
 
 @app.get(_ADMIN_SETTINGS_PREFIX)
 def api_admin_settings():
-    sections = {
-        section: _admin_settings_section_response(section)
-        for section in runtime_settings.list_sections()
-    }
-    return jsonify({'ok': True, 'sections': sections})
+    return jsonify(
+        admin_settings_service.aggregated_settings_response(
+            runtime_settings_module=runtime_settings,
+        )
+    )
 
 
 @app.get(f'{_ADMIN_SETTINGS_PREFIX}/status')

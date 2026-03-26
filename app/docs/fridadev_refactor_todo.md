@@ -165,7 +165,7 @@
 **Cases à cocher**
 - [ ] Extraire un service `chat` (pipeline complet) appelé par route Flask.
 - [x] Extraire un service `conversations` (list/create/read/rename/delete soft).
-- [ ] Extraire un service `admin_settings` (GET/PATCH/VALIDATE).
+- [x] Extraire un service `admin_settings` (GET/PATCH/VALIDATE).
 - [ ] Extraire un service `admin_hermeneutics` (dashboard, candidates, decisions, overrides).
 - [ ] Réduire `server.py` aux routes + composition + garde admin.
 - [ ] Vérifier strictement la stabilité des payloads/headers/codes via tests.
