@@ -18,6 +18,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('href="admin.css"', html)
         self.assertIn('script src="admin_api.js"', html)
         self.assertIn('script src="admin_ui_common.js"', html)
+        self.assertIn('script src="admin_section_resources.js"', html)
         self.assertIn('script src="admin.js"', html)
         self.assertIn('id="adminRefresh"', html)
         self.assertIn('id="adminTokenButton"', html)
@@ -104,7 +105,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
-        source_all = f"{api_source}\n{ui_source}\n{source}"
+        resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
+        source_all = f"{api_source}\n{ui_source}\n{resources_source}\n{source}"
 
         self.assertIn("/api/admin/settings/status", source_all)
         self.assertIn("/api/admin/settings/main-model", source_all)
@@ -162,9 +164,11 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
         ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
 
         self.assertIn("window.FridaAdminApi", source)
         self.assertIn("window.FridaAdminUiCommon", source)
+        self.assertIn("window.FridaAdminResourcesSection", source)
         self.assertIn("const sectionRoutes = adminApi.sectionRoutes;", source)
         self.assertIn("const {", source)
         self.assertIn("renderCheckList", source)
@@ -185,6 +189,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const renderCheckList =", ui_source)
         self.assertIn("const renderReadonlyInfoCards =", ui_source)
         self.assertIn("const applyFieldError =", ui_source)
+        self.assertIn("const createResourcesSectionController = ({", resources_source)
+        self.assertIn("const runResourcesValidation = async (payload) => {", resources_source)
+        self.assertIn("const saveResourcesSection = async () => {", resources_source)
+        self.assertIn("window.FridaAdminResourcesSection = Object.freeze({", resources_source)
 
     def test_admin_js_exposes_editable_main_model_response_max_tokens(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
@@ -206,6 +214,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const buildSectionPatchPayload =", source)
         self.assertIn("const updateSectionDirtyChip =", source)
         self.assertIn("const applySectionDraftToForm =", source)
+        self.assertIn("const bindResourcesSectionEvents = () => resourcesSection.bindResourcesSectionEvents();", source)
+        self.assertIn("const loadResourcesSection = async () => resourcesSection.loadResourcesSection();", source)
         self.assertIn('origin === "db_seed"', source)
 
     def test_admin_js_reserves_env_fallback_label_for_env_seed_only(self) -> None:
@@ -283,6 +293,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("Admin de configuration", source)
         self.assertIn('href="admin.css"', source)
         self.assertIn('script src="admin_ui_common.js"', source)
+        self.assertIn('script src="admin_section_resources.js"', source)
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
         self.assertIn('id="adminMainModelSave"', source)

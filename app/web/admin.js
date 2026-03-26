@@ -7,13 +7,22 @@
   if (!adminUiCommon) {
     throw new Error("admin_ui_common.js must be loaded before admin.js");
   }
+  const resourcesSectionModule = window.FridaAdminResourcesSection;
+  if (
+    !resourcesSectionModule
+    || typeof resourcesSectionModule.createResourcesSectionController !== "function"
+  ) {
+    throw new Error("admin_section_resources.js must be loaded before admin.js");
+  }
   const {
     renderCheckList,
     renderReadonlyInfoEntries,
     renderReadonlyInfoCards,
     applyFieldError,
   } = adminUiCommon;
+  const { createResourcesSectionController } = resourcesSectionModule;
   const sectionRoutes = adminApi.sectionRoutes;
+  let resourcesSection;
   const sections = [
     {
       key: "main_model",
@@ -549,13 +558,7 @@
     draft.crawl4ai_token = "";
     return draft;
   };
-  const emptyResourcesDraft = () => {
-    const draft = {};
-    resourcesFieldSpecs.forEach((spec) => {
-      draft[spec.key] = "";
-    });
-    return draft;
-  };
+  const emptyResourcesDraft = () => resourcesSection.emptyResourcesDraft();
 
   const mainModelFieldElement = (field) => document.querySelector(`[data-field="${field}"]`);
   const mainModelFieldInput = (field) => document.getElementById(`adminMainModel-${field}`);
@@ -575,9 +578,9 @@
   const servicesFieldElement = (field) => document.querySelector(`[data-services-field="${field}"]`);
   const servicesFieldInput = (field) => document.getElementById(`adminServices-${field}`);
   const servicesErrorElement = (field) => document.getElementById(`adminServicesFieldError-${field}`);
-  const resourcesFieldElement = (field) => document.querySelector(`[data-resources-field="${field}"]`);
-  const resourcesFieldInput = (field) => document.getElementById(`adminResources-${field}`);
-  const resourcesErrorElement = (field) => document.getElementById(`adminResourcesFieldError-${field}`);
+  const resourcesFieldElement = (field) => resourcesSection.resourcesFieldElement(field);
+  const resourcesFieldInput = (field) => resourcesSection.resourcesFieldInput(field);
+  const resourcesErrorElement = (field) => resourcesSection.resourcesErrorElement(field);
 
   const setSectionControlsDisabled = (
     {
@@ -779,9 +782,7 @@
   const renderServicesReadonlyInfo = () => {
     renderReadonlyInfoCards(elements.servicesReadonlyInfo, state.services.view?.readonly_info || {});
   };
-  const renderResourcesChecks = (checks = []) => {
-    renderCheckList(elements.resourcesChecks, checks);
-  };
+  const renderResourcesChecks = (checks = []) => resourcesSection.renderResourcesChecks(checks);
 
   const ensureMainModelFieldSkeleton = () => {
     if (!elements.mainModelFields || elements.mainModelFields.children.length > 0) return;
@@ -1089,57 +1090,7 @@
 
     elements.servicesFields.appendChild(fragment);
   };
-  const ensureResourcesFieldSkeleton = () => {
-    if (!elements.resourcesFields || elements.resourcesFields.children.length > 0) return;
-
-    const fragment = document.createDocumentFragment();
-    resourcesFieldSpecs.forEach((spec) => {
-      const field = document.createElement("label");
-      field.className = "admin-field";
-      field.dataset.resourcesField = spec.key;
-      field.dataset.dirty = "false";
-      field.setAttribute("for", `adminResources-${spec.key}`);
-
-      const label = document.createElement("span");
-      label.textContent = spec.label;
-
-      const input = document.createElement("input");
-      input.id = `adminResources-${spec.key}`;
-      input.name = spec.key;
-      input.type = spec.inputType;
-      input.autocomplete = spec.autocomplete || "off";
-      if (spec.step) input.step = spec.step;
-      if (spec.min) input.min = spec.min;
-      if (spec.max) input.max = spec.max;
-
-      const meta = document.createElement("div");
-      meta.className = "admin-field-meta";
-
-      const hint = document.createElement("small");
-      hint.textContent = spec.hint;
-
-      const source = document.createElement("span");
-      source.id = `adminResourcesSource-${spec.key}`;
-      source.className = "admin-field-source";
-      source.textContent = "Source: chargement";
-
-      meta.appendChild(hint);
-      meta.appendChild(source);
-
-      const error = document.createElement("p");
-      error.id = `adminResourcesFieldError-${spec.key}`;
-      error.className = "admin-field-error";
-      error.hidden = true;
-
-      field.appendChild(label);
-      field.appendChild(input);
-      field.appendChild(meta);
-      field.appendChild(error);
-      fragment.appendChild(field);
-    });
-
-    elements.resourcesFields.appendChild(fragment);
-  };
+  const ensureResourcesFieldSkeleton = () => resourcesSection.ensureResourcesFieldSkeleton();
 
   const buildMainModelDraftFromView = (view) => {
     const draft = {};
@@ -1187,13 +1138,7 @@
     draft.crawl4ai_token = "";
     return draft;
   };
-  const buildResourcesDraftFromView = (view) => {
-    const draft = {};
-    resourcesFieldSpecs.forEach((spec) => {
-      draft[spec.key] = toDraftString(view.payload?.[spec.key]?.value);
-    });
-    return draft;
-  };
+  const buildResourcesDraftFromView = (view) => resourcesSection.buildResourcesDraftFromView(view);
 
   const renderMainModelMeta = () => {
     const view = state.mainModel.view;
@@ -1385,27 +1330,7 @@
       source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
     });
   };
-  const renderResourcesMeta = () => {
-    const view = state.resources.view;
-    if (!view) {
-      if (elements.resourcesSource) elements.resourcesSource.textContent = "Section: indisponible";
-      resourcesFieldSpecs.forEach((spec) => {
-        const source = document.getElementById(`adminResourcesSource-${spec.key}`);
-        if (source) source.textContent = "Source: indisponible";
-      });
-      return;
-    }
-
-    if (elements.resourcesSource) {
-      elements.resourcesSource.textContent = `Section: ${sourceLabel(view)} / ${view.source_reason}`;
-    }
-
-    resourcesFieldSpecs.forEach((spec) => {
-      const source = document.getElementById(`adminResourcesSource-${spec.key}`);
-      if (!source) return;
-      source.textContent = `Source: ${fieldOriginLabel(view.payload?.[spec.key]?.origin)}`;
-    });
-  };
+  const renderResourcesMeta = () => resourcesSection.renderResourcesMeta();
 
   const buildMainModelPatchPayload = () => {
     return buildSectionPatchPayload({
@@ -1482,16 +1407,7 @@
       secretKey: "crawl4ai_token",
     });
   };
-  const updateResourcesDirtyChip = () => {
-    updateSectionDirtyChip({
-      baseline: state.resources.baseline,
-      draft: state.resources.draft,
-      emptyDraft: emptyResourcesDraft,
-      fieldSpecs: resourcesFieldSpecs,
-      fieldElement: resourcesFieldElement,
-      dirtyChip: elements.resourcesDirty,
-    });
-  };
+  const updateResourcesDirtyChip = () => resourcesSection.updateResourcesDirtyChip();
 
   const applyMainModelDraftToForm = () => {
     applySectionDraftToForm({
@@ -1555,15 +1471,7 @@
       onDirtyUpdate: updateServicesDirtyChip,
     });
   };
-  const applyResourcesDraftToForm = () => {
-    applySectionDraftToForm({
-      draft: state.resources.draft,
-      emptyDraft: emptyResourcesDraft,
-      fieldSpecs: resourcesFieldSpecs,
-      inputForField: resourcesFieldInput,
-      onDirtyUpdate: updateResourcesDirtyChip,
-    });
-  };
+  const applyResourcesDraftToForm = () => resourcesSection.applyResourcesDraftToForm();
 
   const applyMainModelView = (responsePayload) => {
     state.mainModel.loaded = true;
@@ -1661,20 +1569,7 @@
     renderServicesReadonlyInfo();
     renderServicesChecks([]);
   };
-  const applyResourcesView = (responsePayload) => {
-    state.resources.loaded = true;
-    state.resources.view = {
-      payload: responsePayload.payload || {},
-      source: responsePayload.source || "env",
-      source_reason: responsePayload.source_reason || "unknown",
-    };
-    state.resources.baseline = buildResourcesDraftFromView(state.resources.view);
-    state.resources.draft = { ...state.resources.baseline };
-    clearResourcesFieldErrors();
-    renderResourcesMeta();
-    applyResourcesDraftToForm();
-    renderResourcesChecks([]);
-  };
+  const applyResourcesView = (responsePayload) => resourcesSection.applyResourcesView(responsePayload);
 
   const resetMainModelSurface = (message, stateName = "error") => {
     state.mainModel.loaded = false;
@@ -1753,16 +1648,7 @@
     setInlineStatus(elements.servicesStatus, message, stateName);
   };
   const resetResourcesSurface = (message, stateName = "error") => {
-    state.resources.loaded = false;
-    state.resources.view = null;
-    state.resources.baseline = emptyResourcesDraft();
-    state.resources.draft = emptyResourcesDraft();
-    clearResourcesFieldErrors();
-    renderResourcesMeta();
-    applyResourcesDraftToForm();
-    renderResourcesChecks([]);
-    setResourcesControlsDisabled(true);
-    setInlineStatus(elements.resourcesStatus, message, stateName);
+    resourcesSection.resetResourcesSurface(message, stateName);
   };
 
   const mapMainModelCheckField = (name) => mainModelCheckFieldMap[name] || name;
@@ -1831,14 +1717,8 @@
     servicesFieldSpecs.forEach((spec) => setServicesFieldError(spec.key, ""));
     setServicesFieldError("crawl4ai_token", "");
   };
-  const setResourcesFieldError = (field, message = "") => {
-    const host = resourcesFieldElement(field);
-    const errorElement = resourcesErrorElement(field);
-    applyFieldError(host, errorElement, message);
-  };
-  const clearResourcesFieldErrors = () => {
-    resourcesFieldSpecs.forEach((spec) => setResourcesFieldError(spec.key, ""));
-  };
+  const setResourcesFieldError = (field, message = "") => resourcesSection.setResourcesFieldError(field, message);
+  const clearResourcesFieldErrors = () => resourcesSection.clearResourcesFieldErrors();
   const applyArbiterLocalFieldErrors = (errors) => {
     Object.entries(errors).forEach(([field, message]) => {
       setArbiterFieldError(field, message);
@@ -1864,11 +1744,7 @@
       setServicesFieldError(field, message);
     });
   };
-  const applyResourcesLocalFieldErrors = (errors) => {
-    Object.entries(errors).forEach(([field, message]) => {
-      setResourcesFieldError(field, message);
-    });
-  };
+  const applyResourcesLocalFieldErrors = (errors) => resourcesSection.applyResourcesLocalFieldErrors(errors);
   const applyArbiterBackendFieldError = (message) => {
     if (!message) return;
     arbiterModelFieldSpecs.forEach((spec) => {
@@ -1921,14 +1797,7 @@
       }
     });
   };
-  const applyResourcesBackendFieldError = (message) => {
-    if (!message) return;
-    resourcesFieldSpecs.forEach((spec) => {
-      if (message.includes(`resources.${spec.key}`)) {
-        setResourcesFieldError(spec.key, message);
-      }
-    });
-  };
+  const applyResourcesBackendFieldError = (message) => resourcesSection.applyResourcesBackendFieldError(message);
   const setArbiterControlsDisabled = (disabled) => {
     setSectionControlsDisabled(
       {
@@ -1987,17 +1856,7 @@
       disabled,
     );
   };
-  const setResourcesControlsDisabled = (disabled) => {
-    setSectionControlsDisabled(
-      {
-        saveButton: elements.resourcesSave,
-        validateButton: elements.resourcesValidate,
-        fieldSpecs: resourcesFieldSpecs,
-        inputForField: resourcesFieldInput,
-      },
-      disabled,
-    );
-  };
+  const setResourcesControlsDisabled = (disabled) => resourcesSection.setResourcesControlsDisabled(disabled);
   const collectArbiterFailedChecks = (checks) => {
     const errors = {};
     checks.forEach((check) => {
@@ -2051,16 +1910,7 @@
     });
     return errors;
   };
-  const collectResourcesFailedChecks = (checks) => {
-    const errors = {};
-    checks.forEach((check) => {
-      if (check.ok) return;
-      if (!errors[check.name]) {
-        errors[check.name] = check.detail;
-      }
-    });
-    return errors;
-  };
+  const collectResourcesFailedChecks = (checks) => resourcesSection.collectResourcesFailedChecks(checks);
   const buildArbiterPatchPayload = () => {
     return buildSectionPatchPayload({
       baseline: state.arbiterModel.baseline,
@@ -2107,14 +1957,7 @@
       secretKey: "crawl4ai_token",
     });
   };
-  const buildResourcesPatchPayload = () => {
-    return buildSectionPatchPayload({
-      baseline: state.resources.baseline,
-      draft: state.resources.draft,
-      emptyDraft: emptyResourcesDraft,
-      fieldSpecs: resourcesFieldSpecs,
-    });
-  };
+  const buildResourcesPatchPayload = () => resourcesSection.buildResourcesPatchPayload();
   const runArbiterValidation = async (payload) => {
     clearArbiterFieldErrors();
     renderArbiterModelChecks([]);
@@ -2315,46 +2158,7 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
-  const runResourcesValidation = async (payload) => {
-    clearResourcesFieldErrors();
-    renderResourcesChecks([]);
-    setResourcesControlsDisabled(true);
-    setInlineStatus(elements.resourcesStatus, "Validation technique en cours...", "info");
-
-    try {
-      const response = await adminApi.validateSection(sectionRoutes.resources, payload);
-
-      if (adminApi.isUnauthorized(response)) {
-        setInlineStatus(elements.resourcesStatus, "Acces admin requis pour verifier la section.", "error");
-        return { ok: false };
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        applyResourcesBackendFieldError(data.error || `Validation impossible (${response.status}).`);
-        setInlineStatus(elements.resourcesStatus, data.error || `Validation impossible (${response.status}).`, "error");
-        return { ok: false };
-      }
-
-      const checks = Array.isArray(data.checks) ? data.checks : [];
-      renderResourcesChecks(checks);
-      const failedChecks = collectResourcesFailedChecks(checks);
-      applyResourcesLocalFieldErrors(failedChecks);
-
-      if (!data.valid) {
-        setInlineStatus(elements.resourcesStatus, "Validation technique incomplete. Corrige les champs marques.", "error");
-        return { ok: false };
-      }
-
-      setInlineStatus(elements.resourcesStatus, "Validation technique OK.", "ok");
-      return { ok: true, data };
-    } catch (_error) {
-      setInlineStatus(elements.resourcesStatus, "Validation impossible pour le moment.", "error");
-      return { ok: false };
-    } finally {
-      setResourcesControlsDisabled(!state.resources.loaded);
-    }
-  };
+  const runResourcesValidation = async (payload) => resourcesSection.runResourcesValidation(payload);
   const validateArbiterSection = async () => {
     const { payload, localErrors } = buildArbiterPatchPayload();
     clearArbiterFieldErrors();
@@ -2420,19 +2224,7 @@
 
     await runServicesValidation(payload);
   };
-  const validateResourcesSection = async () => {
-    const { payload, localErrors } = buildResourcesPatchPayload();
-    clearResourcesFieldErrors();
-
-    if (Object.keys(localErrors).length > 0) {
-      applyResourcesLocalFieldErrors(localErrors);
-      renderResourcesChecks([]);
-      setInlineStatus(elements.resourcesStatus, "Validation locale incomplete. Corrige les champs marques.", "error");
-      return;
-    }
-
-    await runResourcesValidation(payload);
-  };
+  const validateResourcesSection = async () => resourcesSection.validateResourcesSection();
   const saveArbiterSection = async () => {
     if (!state.arbiterModel.loaded) return;
 
@@ -2683,56 +2475,7 @@
       setServicesControlsDisabled(!state.services.loaded);
     }
   };
-  const saveResourcesSection = async () => {
-    if (!state.resources.loaded) return;
-
-    const { payload, localErrors, dirtyCount } = buildResourcesPatchPayload();
-    clearResourcesFieldErrors();
-
-    if (Object.keys(localErrors).length > 0) {
-      applyResourcesLocalFieldErrors(localErrors);
-      renderResourcesChecks([]);
-      setInlineStatus(elements.resourcesStatus, "Correction requise avant enregistrement.", "error");
-      return;
-    }
-
-    if (dirtyCount === 0) {
-      setInlineStatus(elements.resourcesStatus, "Aucune modification a enregistrer.", "info");
-      return;
-    }
-
-    const validation = await runResourcesValidation(payload);
-    if (!validation.ok) return;
-
-    setResourcesControlsDisabled(true);
-    setInlineStatus(elements.resourcesStatus, "Enregistrement du bloc ressources...", "info");
-
-    try {
-      const response = await adminApi.patchSection(sectionRoutes.resources, payload);
-
-      if (adminApi.isUnauthorized(response)) {
-        setInlineStatus(elements.resourcesStatus, "Acces admin requis pour enregistrer la section.", "error");
-        return;
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        applyResourcesBackendFieldError(data.error || `Enregistrement impossible (${response.status}).`);
-        setInlineStatus(elements.resourcesStatus, data.error || `Enregistrement impossible (${response.status}).`, "error");
-        return;
-      }
-
-      applyResourcesView(data);
-      setResourcesControlsDisabled(false);
-      setInlineStatus(elements.resourcesStatus, "Bloc ressources enregistre.", "ok");
-      banner("Bloc ressources enregistre.", "ok");
-      void loadRuntimeStatus();
-    } catch (_error) {
-      setInlineStatus(elements.resourcesStatus, "Enregistrement impossible pour le moment.", "error");
-    } finally {
-      setResourcesControlsDisabled(!state.resources.loaded);
-    }
-  };
+  const saveResourcesSection = async () => resourcesSection.saveResourcesSection();
   const loadArbiterModelSection = async () => {
     ensureArbiterModelFieldSkeleton();
     clearArbiterFieldErrors();
@@ -2863,32 +2606,8 @@
       resetServicesSurface("Lecture impossible du bloc services externes pour le moment.", "error");
     }
   };
-  const loadResourcesSection = async () => {
-    ensureResourcesFieldSkeleton();
-    clearResourcesFieldErrors();
-    setResourcesControlsDisabled(true);
-    setInlineStatus(elements.resourcesStatus, "Chargement du bloc ressources...", "info");
-
-    try {
-      const response = await adminApi.fetchSection(sectionRoutes.resources);
-      if (adminApi.isUnauthorized(response)) {
-        resetResourcesSurface("Acces admin requis pour charger le bloc ressources.", "error");
-        return;
-      }
-
-      const data = await adminApi.readJson(response);
-      if (!response.ok || !data.ok) {
-        resetResourcesSurface(data.error || `Lecture impossible (${response.status}).`, "error");
-        return;
-      }
-
-      applyResourcesView(data);
-      setResourcesControlsDisabled(false);
-      setInlineStatus(elements.resourcesStatus, "Section chargee. Verifie puis enregistre les changements utiles.", "ok");
-    } catch (_error) {
-      resetResourcesSurface("Lecture impossible du bloc ressources pour le moment.", "error");
-    }
-  };
+  const loadResourcesSection = async () => resourcesSection.loadResourcesSection();
+  const bindResourcesSectionEvents = () => resourcesSection.bindResourcesSectionEvents();
 
   const collectFailedChecks = (checks) => {
     const errors = {};
@@ -3168,6 +2887,26 @@
     }
   };
 
+  resourcesSection = createResourcesSectionController({
+    adminApi,
+    sectionRoute: sectionRoutes.resources,
+    resourcesFieldSpecs,
+    state,
+    elements,
+    sourceLabel,
+    fieldOriginLabel,
+    toDraftString,
+    renderCheckList,
+    applyFieldError,
+    setInlineStatus,
+    setSectionControlsDisabled,
+    buildSectionPatchPayload,
+    updateSectionDirtyChip,
+    applySectionDraftToForm,
+    banner,
+    onSaved: () => void loadRuntimeStatus(),
+  });
+
   const loadAdminSurface = async () => {
     await Promise.all([
       loadRuntimeStatus(),
@@ -3327,22 +3066,7 @@
   elements.servicesSave?.addEventListener("click", () => {
     void saveServicesSection();
   });
-  elements.resourcesForm?.addEventListener("input", (event) => {
-    if (!state.resources.draft) return;
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    const fieldName = target.name;
-    if (!fieldName) return;
-    state.resources.draft[fieldName] = target.value;
-    setResourcesFieldError(fieldName, "");
-    updateResourcesDirtyChip();
-  });
-  elements.resourcesValidate?.addEventListener("click", () => {
-    void validateResourcesSection();
-  });
-  elements.resourcesSave?.addEventListener("click", () => {
-    void saveResourcesSection();
-  });
+  bindResourcesSectionEvents();
 
   ensureMainModelFieldSkeleton();
   ensureArbiterModelFieldSkeleton();
