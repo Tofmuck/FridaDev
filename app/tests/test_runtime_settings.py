@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from admin import runtime_settings
+from admin import runtime_settings, runtime_settings_spec
 import config
 from core import prompt_loader
 
@@ -45,6 +45,17 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 ('services', 'crawl4ai_token'),
                 ('database', 'dsn'),
             ),
+        )
+
+    def test_runtime_settings_facade_reexports_runtime_settings_spec_symbols(self) -> None:
+        self.assertIs(runtime_settings.FieldSpec, runtime_settings_spec.FieldSpec)
+        self.assertIs(runtime_settings.SectionSpec, runtime_settings_spec.SectionSpec)
+        self.assertIs(runtime_settings.SECTION_NAMES, runtime_settings_spec.SECTION_NAMES)
+        self.assertIs(runtime_settings.SECRET_V1_FIELDS, runtime_settings_spec.SECRET_V1_FIELDS)
+        self.assertIs(runtime_settings.SECTION_SPECS, runtime_settings_spec.SECTION_SPECS)
+        self.assertIs(
+            runtime_settings.get_section_spec('services'),
+            runtime_settings_spec.get_section_spec('services'),
         )
 
     def test_main_model_includes_global_sampling_fields(self) -> None:
