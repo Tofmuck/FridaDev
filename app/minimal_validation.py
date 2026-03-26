@@ -524,6 +524,78 @@ def _check_ui_assets() -> Dict[str, Any]:
     if missing_dom_hook_ids:
         raise RuntimeError(f"hooks DOM admin manquants dans admin.html: {missing_dom_hook_ids}")
 
+    query_selector_matches = re.findall(
+        r'document\.querySelector\("([^"]+)"\)|document\.querySelector\(`([^`]+)`\)',
+        admin_front_js,
+    )
+    query_selectors = sorted(
+        {
+            selector
+            for quoted_selector, template_selector in query_selector_matches
+            for selector in [quoted_selector or template_selector]
+            if selector
+        }
+    )
+    expected_query_selectors = {
+        ".admin-secret-card",
+        '[data-field="${field}"]',
+        '[data-arbiter-field="${field}"]',
+        '[data-summary-field="${field}"]',
+        '[data-embedding-field="${field}"]',
+        '[data-database-field="${field}"]',
+        '[data-services-field="${field}"]',
+        '[data-resources-field="${field}"]',
+    }
+    if set(query_selectors) != expected_query_selectors:
+        missing = sorted(expected_query_selectors - set(query_selectors))
+        extra = sorted(set(query_selectors) - expected_query_selectors)
+        raise RuntimeError(
+            "query selectors admin invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    if 'class="admin-secret-card"' not in admin_html:
+        raise RuntimeError("class admin-secret-card absente de admin.html")
+
+    data_selectors = sorted(
+        {
+            match.group(1)
+            for selector in query_selectors
+            for match in [re.match(r'^\[(data-[a-z-]+)="\$\{field\}"\]$', selector)]
+            if match
+        }
+    )
+
+    def _camel_to_kebab(raw: str) -> str:
+        return re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", raw).lower()
+
+    dataset_attrs = sorted(
+        {
+            f"data-{_camel_to_kebab(dataset_key)}"
+            for dataset_key in re.findall(r"field\.dataset\.([a-zA-Z0-9_]+)\s*=\s*spec\.key", admin_front_js)
+        }
+    )
+    if set(data_selectors) != set(dataset_attrs):
+        missing = sorted(set(data_selectors) - set(dataset_attrs))
+        extra = sorted(set(dataset_attrs) - set(data_selectors))
+        raise RuntimeError(
+            "dataset attrs admin invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    field_container_ids = [
+        "adminMainModelFields",
+        "adminArbiterModelFields",
+        "adminSummaryModelFields",
+        "adminEmbeddingFields",
+        "adminDatabaseFields",
+        "adminServicesFields",
+        "adminResourcesFields",
+    ]
+    missing_field_containers = [field_id for field_id in field_container_ids if f'id="{field_id}"' not in admin_html]
+    if missing_field_containers:
+        raise RuntimeError(f"containers champs section manquants dans admin.html: {missing_field_containers}")
+
     index_markers = [
         'src="./fridalogo.png"',
         'href="styles.css"',
@@ -681,6 +753,11 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_settings_endpoints_expected": sorted(expected_admin_settings_endpoints),
         "admin_settings_endpoints_found": sorted(found_admin_settings_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
+        "admin_query_selectors_expected": sorted(expected_query_selectors),
+        "admin_query_selectors_found": query_selectors,
+        "admin_data_selectors_checked": data_selectors,
+        "admin_dataset_attrs_checked": dataset_attrs,
+        "admin_field_containers_checked": field_container_ids,
         "index_markers": index_markers,
         "admin_markers": admin_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,

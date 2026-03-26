@@ -172,6 +172,58 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
         missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)
         self.assertEqual(missing_dom_hook_ids, [])
+
+        query_selector_matches = re.findall(
+            r'document\.querySelector\("([^"]+)"\)|document\.querySelector\(`([^`]+)`\)',
+            source_all,
+        )
+        query_selectors = {
+            selector
+            for quoted_selector, template_selector in query_selector_matches
+            for selector in [quoted_selector or template_selector]
+            if selector
+        }
+        self.assertEqual(
+            query_selectors,
+            {
+                ".admin-secret-card",
+                '[data-field="${field}"]',
+                '[data-arbiter-field="${field}"]',
+                '[data-summary-field="${field}"]',
+                '[data-embedding-field="${field}"]',
+                '[data-database-field="${field}"]',
+                '[data-services-field="${field}"]',
+                '[data-resources-field="${field}"]',
+            },
+        )
+
+        data_selectors = {
+            match.group(1)
+            for selector in query_selectors
+            for match in [re.match(r'^\[(data-[a-z-]+)="\$\{field\}"\]$', selector)]
+            if match
+        }
+        self.assertEqual(
+            data_selectors,
+            {
+                "data-field",
+                "data-arbiter-field",
+                "data-summary-field",
+                "data-embedding-field",
+                "data-database-field",
+                "data-services-field",
+                "data-resources-field",
+            },
+        )
+
+        self.assertIn('field.dataset.field = spec.key;', main_model_source)
+        self.assertIn('field.dataset.arbiterField = spec.key;', arbiter_source)
+        self.assertIn('field.dataset.summaryField = spec.key;', summary_source)
+        self.assertIn('field.dataset.embeddingField = spec.key;', embedding_source)
+        self.assertIn('field.dataset.databaseField = spec.key;', database_source)
+        self.assertIn('field.dataset.servicesField = spec.key;', services_source)
+        self.assertIn('field.dataset.resourcesField = spec.key;', resources_source)
+
         self.assertIn('document.querySelector(".admin-secret-card")', main_model_source)
         self.assertIn('document.getElementById("adminEmbeddingSecretCard")', embedding_source)
         self.assertIn('document.getElementById("adminDatabaseSecretCard")', database_source)
