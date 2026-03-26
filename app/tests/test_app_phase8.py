@@ -50,6 +50,19 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("temperature: cfg.temperature,", source)
         self.assertNotIn("top_p: cfg.top_p,", source)
 
+    def test_frontend_keeps_backend_as_prompt_source_of_truth(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+
+        self.assertNotIn("const SYSTEM_PROMPT =", app_source)
+        self.assertNotIn("system: cfg.system,", app_source)
+        self.assertNotIn("cfg.system", app_source)
+        self.assertNotIn('id="system"', index_source)
+        self.assertIn(
+            "Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.",
+            index_source,
+        )
+
     def test_session_panel_requalifies_sampling_and_max_tokens(self) -> None:
         source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
 

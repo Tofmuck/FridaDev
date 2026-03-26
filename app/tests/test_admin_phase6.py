@@ -216,6 +216,18 @@ class AdminPhase7FoundationTests(unittest.TestCase):
             source,
         )
 
+    def test_admin_main_model_prompt_panels_stay_ordered_and_marker_friendly(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertLess(html.index("System Prompt"), html.index("Hermeneutical Prompt"))
+        self.assertLess(html.index("Hermeneutical Prompt"), html.index("Briques, sources et budgets de repere"))
+        self.assertIn('id="adminMainModelReadonlyInfo"', html)
+        self.assertIn("Briques, sources et budgets de repere", html)
+        self.assertIn("textarea.readOnly = true", source)
+        self.assertIn("textarea.value = value", source)
+        self.assertIn("target.replaceChildren(fragment);", source)
+
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
         self.assertFalse((APP_DIR / "web" / "admin-old.js").exists())

@@ -665,6 +665,6 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Exposer dans l'admin, a titre informationnel, les sources techniques et les chemins physiques qui alimentent `System Prompt` et `Hermeneutical Prompt`, sans imposer d'ouvrir le code.
 - [x] Ajouter une surface backend read-only pour `system_prompt` et `hermeneutical_prompt` dans `main_model`, distincte des futurs logs runtime.
 - [x] Ajouter des tests backend sur la centralisation physique des prompts et sur la separation stricte entre `System Prompt` et `Hermeneutical Prompt`.
-- [ ] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt`, sur la lisibilite des balises documentees, et sur l'absence de source de verite prompt cote frontend.
+- [x] Ajouter des tests frontend sur l'affichage distinct `System Prompt` / `Hermeneutical Prompt`, sur la lisibilite des balises documentees, et sur l'absence de source de verite prompt cote frontend.
 - [ ] Ajouter un smoke check dans `minimal_validation.py` pour verifier la presence physique des prompts centralises et l'absence de prompt inline restant la ou il ne doit plus y en avoir.
 - [ ] Prevoir un commit isole pour cette phase de centralisation et de formalisation hermeneutique.
