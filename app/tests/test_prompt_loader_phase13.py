@@ -45,6 +45,10 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         for snippet in [
             "Lis ce bloc comme un contrat d'interpretation stable.",
             "Priorite 1 : la question utilisateur finale",
+            "Regles candidates de resolution",
+            "Si l'utilisateur dit explicitement qu'une information B remplace A",
+            "Si plusieurs souvenirs pertinents se contredisent",
+            "Le tri fort des briques faibles releve surtout du pipeline amont.",
             "[REFERENCE TEMPORELLE]",
             "[il y a ...]",
             "[-- silence de X --]",

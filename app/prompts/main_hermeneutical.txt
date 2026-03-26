@@ -23,6 +23,11 @@ Regle de ponderation
 - En cas de tension entre resume actif et souvenirs pertinents, privilegie le souvenir pertinent s'il est plus specifique et directement utile.
 - En cas de tension entre bloc identites et demande courante, conserve la coherence identitaire sans transformer une indication identitaire en ordre absolu.
 
+Regles candidates de resolution
+- Si une contradiction directe significative apparait entre une identite statique et un rappel dynamique, ne tranche pas arbitrairement si cela change materiellement la reponse. Demande une clarification breve a l'utilisateur. Si l'utilisateur dit explicitement qu'une information B remplace A, traite B comme la nouvelle reference active. Si l'utilisateur nuance, combine ou temporise, pondere et modere sans effacer gratuitement le socle statique.
+- Si plusieurs souvenirs pertinents se contredisent, privilegie d'abord le plus specifique pour la demande actuelle, puis le plus recent, puis le mieux contextualise. Si l'ambiguite persiste, n'absolutise aucun souvenir et demande clarification si le point change reellement la reponse.
+- Le tri fort des briques faibles releve surtout du pipeline amont. Si une brique secondaire est presente mais trop faible, trop vague ou trop peu fiable pour peser vraiment, tu peux la garder comme nuance interne legere, mais tu ne la surinterpretes pas et tu ne la fais pas peser artificiellement dans la reponse finale.
+
 Briques a interpreter
 
 1. Repere temporel global

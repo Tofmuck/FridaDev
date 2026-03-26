@@ -653,11 +653,13 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
     - la relation exacte entre identite statique et identite dynamique reste cadree, mais encore un peu large
     - la semantique de `stability`, `recurrence` et `confidence` est utile mais explicitement encore provisoire
     - le statut des `Indices contextuels recents` comme memoire faible est pose, mais pourra etre affine
+    - des formulations candidates ont maintenant ete ajoutees pour :
+      - la contradiction entre identite statique et rappel dynamique
+      - la contradiction entre plusieurs souvenirs pertinents
+      - le cas d'une brique secondaire presente mais trop faible pour peser dans la reponse finale
   - manquant et devant etre ajoute a `hermeneutical_prompt` :
-    - une regle explicite en cas de contradiction directe entre identite statique et rappel dynamique
-    - une regle explicite en cas de contradiction entre plusieurs souvenirs pertinents
-    - une regle explicite sur la conduite a tenir quand une brique secondaire est presente mais trop faible pour etre retenue dans la reponse finale
-- [ ] Lorsqu'un element interpretatif manque completement, prevoir des maintenant une formulation candidate dans `hermeneutical_prompt`, meme si elle doit etre retravaillee ensuite.
+    - aucun manque completement nu n'est laisse sans formulation candidate dans le noyau actuel
+- [x] Lorsqu'un element interpretatif manque completement, prevoir des maintenant une formulation candidate dans `hermeneutical_prompt`, meme si elle doit etre retravaillee ensuite.
 - [x] Exposer dans l'admin, a cote de ces deux blocs, la liste des briques que `hermeneutical_prompt` est cense encadrer, avec leurs balises ou marqueurs reels quand ils existent.
 - [x] Exposer dans l'admin les balises et marqueurs reels utilises en runtime pour ces briques (`[Resume de la periode ...]`, `[Memoire — souvenirs pertinents]`, `[Contexte du souvenir — resume ...]`, `[Indices contextuels recents]`, etc.).
 - [x] Exposer dans l'admin, a titre informationnel, les sources techniques et les chemins physiques qui alimentent `System Prompt` et `Hermeneutical Prompt`, sans imposer d'ouvrir le code.
