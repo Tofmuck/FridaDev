@@ -364,6 +364,8 @@
     mainModelApiKeyState: document.getElementById("adminMainModelApiKeyState"),
     mainModelApiKeyMask: document.getElementById("adminMainModelApiKeyMask"),
     mainModelApiKeyReplace: document.getElementById("adminMainModelApiKeyReplace"),
+    mainModelSystemPromptInfo: document.getElementById("adminMainModelSystemPromptInfo"),
+    mainModelHermeneuticalPromptInfo: document.getElementById("adminMainModelHermeneuticalPromptInfo"),
     mainModelReadonlyInfo: document.getElementById("adminMainModelReadonlyInfo"),
     mainModelChecks: document.getElementById("adminMainModelChecks"),
     arbiterModelForm: document.getElementById("adminArbiterModelForm"),
@@ -609,9 +611,52 @@
     target.replaceChildren(fragment);
   };
 
-  const renderReadonlyInfoCards = (target, readonlyInfo = {}) => {
+  const buildReadonlyInfoCard = (key, item = {}) => {
+    const card = document.createElement("article");
+    card.className = "admin-readonly-card";
+    card.dataset.key = key;
+
+    const head = document.createElement("div");
+    head.className = "admin-readonly-card-head";
+
+    const titleBlock = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = item.label || key;
+
+    const label = document.createElement("p");
+    label.className = "admin-readonly-label";
+    label.textContent = key;
+
+    titleBlock.appendChild(title);
+    titleBlock.appendChild(label);
+
+    const source = document.createElement("span");
+    source.className = "admin-readonly-source";
+    source.textContent = item.source || "read_only";
+
+    head.appendChild(titleBlock);
+    head.appendChild(source);
+    card.appendChild(head);
+
+    const value = item.value;
+    if (typeof value === "string" && (value.includes("\n") || value.length > 180)) {
+      const textarea = document.createElement("textarea");
+      textarea.className = "admin-readonly-textarea";
+      textarea.readOnly = true;
+      textarea.value = value;
+      card.appendChild(textarea);
+      return card;
+    }
+
+    const body = document.createElement("div");
+    body.className = "admin-readonly-value";
+    body.textContent = value === undefined || value === null ? "" : String(value);
+    card.appendChild(body);
+    return card;
+  };
+
+  const renderReadonlyInfoEntries = (target, entries = []) => {
     if (!target) return;
-    const entries = Object.entries(readonlyInfo || {});
     if (!entries.length) {
       target.innerHTML = '<p class="admin-readonly-empty">Aucune information read-only disponible.</p>';
       return;
@@ -619,50 +664,13 @@
 
     const fragment = document.createDocumentFragment();
     entries.forEach(([key, item]) => {
-      const card = document.createElement("article");
-      card.className = "admin-readonly-card";
-      card.dataset.key = key;
-
-      const head = document.createElement("div");
-      head.className = "admin-readonly-card-head";
-
-      const titleBlock = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = item.label || key;
-
-      const label = document.createElement("p");
-      label.className = "admin-readonly-label";
-      label.textContent = key;
-
-      titleBlock.appendChild(title);
-      titleBlock.appendChild(label);
-
-      const source = document.createElement("span");
-      source.className = "admin-readonly-source";
-      source.textContent = item.source || "read_only";
-
-      head.appendChild(titleBlock);
-      head.appendChild(source);
-      card.appendChild(head);
-
-      const value = item.value;
-      if (typeof value === "string" && (value.includes("\n") || value.length > 180)) {
-        const textarea = document.createElement("textarea");
-        textarea.className = "admin-readonly-textarea";
-        textarea.readOnly = true;
-        textarea.value = value;
-        card.appendChild(textarea);
-      } else {
-        const body = document.createElement("div");
-        body.className = "admin-readonly-value";
-        body.textContent = value === undefined || value === null ? "" : String(value);
-        card.appendChild(body);
-      }
-
-      fragment.appendChild(card);
+      fragment.appendChild(buildReadonlyInfoCard(key, item));
     });
-
     target.replaceChildren(fragment);
+  };
+
+  const renderReadonlyInfoCards = (target, readonlyInfo = {}) => {
+    renderReadonlyInfoEntries(target, Object.entries(readonlyInfo || {}));
   };
 
   const setSectionControlsDisabled = (
@@ -833,7 +841,23 @@
     renderCheckList(elements.mainModelChecks, checks);
   };
   const renderMainModelReadonlyInfo = () => {
-    renderReadonlyInfoCards(elements.mainModelReadonlyInfo, state.mainModel.view?.readonly_info || {});
+    const readonlyInfo = state.mainModel.view?.readonly_info || {};
+    const systemPromptEntries = readonlyInfo.system_prompt
+      ? [["system_prompt", readonlyInfo.system_prompt]]
+      : [];
+    const hermeneuticalPromptEntries = readonlyInfo.hermeneutical_prompt
+      ? [["hermeneutical_prompt", readonlyInfo.hermeneutical_prompt]]
+      : [];
+    const remainingReadonlyInfo = {};
+
+    Object.entries(readonlyInfo).forEach(([key, item]) => {
+      if (key === "system_prompt" || key === "hermeneutical_prompt") return;
+      remainingReadonlyInfo[key] = item;
+    });
+
+    renderReadonlyInfoEntries(elements.mainModelSystemPromptInfo, systemPromptEntries);
+    renderReadonlyInfoEntries(elements.mainModelHermeneuticalPromptInfo, hermeneuticalPromptEntries);
+    renderReadonlyInfoCards(elements.mainModelReadonlyInfo, remainingReadonlyInfo);
   };
   const renderArbiterModelChecks = (checks = []) => {
     renderCheckList(elements.arbiterModelChecks, checks);

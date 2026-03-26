@@ -482,6 +482,31 @@ body.admin-page {
   background: rgba(255, 255, 255, 0.48);
 }
 
+.admin-readonly-stack {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-readonly-group {
+  padding: 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.admin-readonly-group-head {
+  margin-bottom: 10px;
+}
+
+.admin-readonly-group-head h4 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 .admin-readonly-head {
   display: flex;
   justify-content: space-between;
@@ -510,9 +535,12 @@ body.admin-page {
 }
 
 .admin-readonly-grid {
-  margin-top: 14px;
   display: grid;
   gap: 12px;
+}
+
+.admin-readonly-panel > .admin-readonly-grid {
+  margin-top: 14px;
 }
 
 .admin-readonly-card {

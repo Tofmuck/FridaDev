@@ -601,10 +601,10 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Faire du backend la source de verite du `SYSTEM_PROMPT` principal ; le frontend principal ne doit plus etre la source active de ce prompt.
 - [x] Realigner le frontend principal pour qu'il n'envoie plus un `system` source de verite a `/api/chat` quand ce prompt est desormais porte par le backend.
 - [x] Realigner la creation de conversation pour que le message systeme initial vienne de la meme source backend unique.
-- [ ] Exposer dans l'admin, pour `main_model`, deux blocs read-only distincts et ordonnes :
+- [x] Exposer dans l'admin, pour `main_model`, deux blocs read-only distincts et ordonnes :
   - `System Prompt`
   - `Hermeneutical Prompt`
-- [ ] Nommer explicitement `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
+- [x] Nommer explicitement `hermeneutical_prompt` dans le backend, dans l'API admin et dans le frontend admin.
 - [ ] Definir `hermeneutical_prompt` comme un bloc concatene, exhaustif et stable qui explique au modele principal comment interpreter toutes les briques susceptibles d'apparaitre ensuite dans le prompt augmente.
 - [ ] Exiger que `hermeneutical_prompt` soit lu comme un contrat d'interpretation et non comme un simple commentaire documentaire.
 - [ ] Exiger que `hermeneutical_prompt` explicite, pour chaque brique du prompt augmente, au minimum :

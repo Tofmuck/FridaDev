@@ -121,7 +121,28 @@
           </div>
           <span class="admin-readonly-badge">Hors edition</span>
         </div>
-        <div id="adminMainModelReadonlyInfo" class="admin-readonly-grid"></div>
+        <div class="admin-readonly-stack">
+          <section class="admin-readonly-group" aria-labelledby="admin-main-model-system-prompt-title">
+            <div class="admin-readonly-group-head">
+              <h4 id="admin-main-model-system-prompt-title">System Prompt</h4>
+            </div>
+            <div id="adminMainModelSystemPromptInfo" class="admin-readonly-grid"></div>
+          </section>
+
+          <section class="admin-readonly-group" aria-labelledby="admin-main-model-hermeneutical-prompt-title">
+            <div class="admin-readonly-group-head">
+              <h4 id="admin-main-model-hermeneutical-prompt-title">Hermeneutical Prompt</h4>
+            </div>
+            <div id="adminMainModelHermeneuticalPromptInfo" class="admin-readonly-grid"></div>
+          </section>
+
+          <section class="admin-readonly-group" aria-labelledby="admin-main-model-guidance-title">
+            <div class="admin-readonly-group-head">
+              <h4 id="admin-main-model-guidance-title">Budgets de repere</h4>
+            </div>
+            <div id="adminMainModelReadonlyInfo" class="admin-readonly-grid"></div>
+          </section>
+        </div>
       </section>
 
       <div id="adminMainModelChecks" class="admin-check-list" aria-live="polite"></div>

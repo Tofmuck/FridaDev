@@ -24,7 +24,11 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminMainModelValidate"', html)
         self.assertIn('id="adminMainModelSave"', html)
         self.assertIn('id="adminMainModelApiKeyReplace"', html)
+        self.assertIn('id="adminMainModelSystemPromptInfo"', html)
+        self.assertIn('id="adminMainModelHermeneuticalPromptInfo"', html)
         self.assertIn('id="adminMainModelReadonlyInfo"', html)
+        self.assertIn("System Prompt", html)
+        self.assertIn("Hermeneutical Prompt", html)
         self.assertIn('id="adminMainModelChecks"', html)
         self.assertIn('id="adminArbiterModelForm"', html)
         self.assertIn('id="adminArbiterModelValidate"', html)
@@ -88,6 +92,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn(".admin-secret-card", source)
         self.assertIn(".admin-check", source)
         self.assertIn(".admin-inline-actions", source)
+        self.assertIn(".admin-readonly-stack", source)
+        self.assertIn(".admin-readonly-group", source)
         self.assertNotIn(".sidebar {", source)
         self.assertNotIn(".main {", source)
 
@@ -113,8 +119,11 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("adminMainModelSave", source)
         self.assertIn("adminMainModelValidate", source)
         self.assertIn("adminMainModelApiKeyReplace", source)
+        self.assertIn("adminMainModelSystemPromptInfo", source)
+        self.assertIn("adminMainModelHermeneuticalPromptInfo", source)
         self.assertIn("adminMainModelReadonlyInfo", source)
         self.assertIn("renderReadonlyInfoCards", source)
+        self.assertIn("renderReadonlyInfoEntries", source)
         self.assertIn("textarea.readOnly = true", source)
         self.assertIn("adminArbiterModelSave", source)
         self.assertIn("adminArbiterModelValidate", source)
@@ -171,7 +180,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
 
-        readonly_block = source.split("const renderReadonlyInfoCards =", 1)[1].split(
+        readonly_block = source.split("const buildReadonlyInfoCard =", 1)[1].split(
             "const setSectionControlsDisabled =",
             1,
         )[0]
@@ -182,6 +191,29 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("textarea.readOnly = true", readonly_block)
         self.assertNotIn('createElement("input")', readonly_block)
         self.assertNotIn('createElement("button")', readonly_block)
+
+    def test_admin_main_model_separates_system_and_hermeneutical_prompts(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="adminMainModelSystemPromptInfo"', html)
+        self.assertIn('id="adminMainModelHermeneuticalPromptInfo"', html)
+        self.assertIn("System Prompt", html)
+        self.assertIn("Hermeneutical Prompt", html)
+        self.assertIn("const systemPromptEntries = readonlyInfo.system_prompt", source)
+        self.assertIn("const hermeneuticalPromptEntries = readonlyInfo.hermeneutical_prompt", source)
+        self.assertIn(
+            'if (key === "system_prompt" || key === "hermeneutical_prompt") return;',
+            source,
+        )
+        self.assertIn(
+            "renderReadonlyInfoEntries(elements.mainModelSystemPromptInfo, systemPromptEntries);",
+            source,
+        )
+        self.assertIn(
+            "renderReadonlyInfoEntries(elements.mainModelHermeneuticalPromptInfo, hermeneuticalPromptEntries);",
+            source,
+        )
 
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
@@ -201,6 +233,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
         self.assertIn('id="adminMainModelSave"', source)
+        self.assertIn('id="adminMainModelSystemPromptInfo"', source)
+        self.assertIn('id="adminMainModelHermeneuticalPromptInfo"', source)
         self.assertIn('id="adminMainModelReadonlyInfo"', source)
         self.assertIn("response_max_tokens", source)
         self.assertIn('id="adminArbiterModelForm"', source)
