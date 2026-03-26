@@ -281,7 +281,7 @@
 - [x] Supprimer les éléments `certain` sans valeur (`panel`, `MAX_CONTEXT_MESSAGES`, fonctions mortes confirmées).
 - [x] Traiter `history` après arbitrage Phase 1.
 - [x] Faire un inventaire d’usage réel des fonctions sync JSON avant suppression.
-- [x] Arbitrer le statut final du sous-ensemble sync JSON (conservation documentée ou suppression).
+- [x] Statut final acté du sous-ensemble sync JSON: conservation documentée comme outillage opératoire explicite.
 - [x] Décider le statut final de `run.sh` (conservé comme wrapper opératoire documenté).
 - [ ] Ajouter tests/guardrails pour éviter réintroduction de reliquats.
 
