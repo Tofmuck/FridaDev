@@ -61,7 +61,10 @@ CRAWL4AI_TOKEN = os.environ.get('CRAWL4AI_TOKEN', '')
 CRAWL4AI_TOP_N = _env_int('CRAWL4AI_TOP_N', 2)
 CRAWL4AI_MAX_CHARS = _env_int('CRAWL4AI_MAX_CHARS', 5000)
 
-# Server
+# Server runtime contract:
+# - server.py is the canonical runtime entrypoint.
+# - host/port authority comes from env-backed config.
+WEB_HOST = os.environ.get('FRIDA_WEB_HOST', '0.0.0.0').strip() or '0.0.0.0'
 WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)
 TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 

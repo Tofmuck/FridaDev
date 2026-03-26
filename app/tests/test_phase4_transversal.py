@@ -61,10 +61,16 @@ class Phase4TransversalTests(unittest.TestCase):
     def test_run_and_compose_runtime_binding_contract_is_unchanged(self) -> None:
         run_sh = (APP_DIR / 'run.sh').read_text(encoding='utf-8')
         compose = (APP_DIR.parent / 'docker-compose.yml').read_text(encoding='utf-8')
+        config_py = (APP_DIR / 'config.py').read_text(encoding='utf-8')
+        server_py = (APP_DIR / 'server.py').read_text(encoding='utf-8')
 
         self.assertIn('PORT="${FRIDA_WEB_PORT:-8089}"', run_sh)
         self.assertIn('HOST="${FRIDA_WEB_HOST:-0.0.0.0}"', run_sh)
         self.assertIn('exec python3 server.py', run_sh)
+
+        self.assertIn("WEB_HOST = os.environ.get('FRIDA_WEB_HOST', '0.0.0.0').strip() or '0.0.0.0'", config_py)
+        self.assertIn("WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)", config_py)
+        self.assertIn('app.run(host=config.WEB_HOST, port=config.WEB_PORT)', server_py)
 
         self.assertIn('env_file:', compose)
         self.assertIn('- ./app/.env', compose)

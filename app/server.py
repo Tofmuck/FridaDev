@@ -1198,4 +1198,4 @@ def admin_root():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=config.WEB_PORT)
+    app.run(host=config.WEB_HOST, port=config.WEB_PORT)
