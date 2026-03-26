@@ -17,6 +17,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("Admin de configuration", html)
         self.assertIn('href="admin.css"', html)
         self.assertIn('script src="admin_api.js"', html)
+        self.assertIn('script src="admin_ui_common.js"', html)
         self.assertIn('script src="admin.js"', html)
         self.assertIn('id="adminRefresh"', html)
         self.assertIn('id="adminTokenButton"', html)
@@ -102,7 +103,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
     def test_admin_js_uses_runtime_status_flow_without_legacy_logs_restart_logic(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
-        source_all = f"{api_source}\n{source}"
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        source_all = f"{api_source}\n{ui_source}\n{source}"
 
         self.assertIn("/api/admin/settings/status", source_all)
         self.assertIn("/api/admin/settings/main-model", source_all)
@@ -128,7 +130,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("adminMainModelReadonlyInfo", source)
         self.assertIn("renderReadonlyInfoCards", source)
         self.assertIn("renderReadonlyInfoEntries", source)
-        self.assertIn("textarea.readOnly = true", source)
+        self.assertIn("textarea.readOnly = true", source_all)
         self.assertIn("adminArbiterModelSave", source)
         self.assertIn("adminArbiterModelValidate", source)
         self.assertIn("adminArbiterModelReadonlyInfo", source)
@@ -159,9 +161,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
     def test_admin_api_module_isolated_from_render_layer(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "admin_api.js").read_text(encoding="utf-8")
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
 
         self.assertIn("window.FridaAdminApi", source)
+        self.assertIn("window.FridaAdminUiCommon", source)
         self.assertIn("const sectionRoutes = adminApi.sectionRoutes;", source)
+        self.assertIn("const {", source)
+        self.assertIn("renderCheckList", source)
+        self.assertIn("applyFieldError", source)
         self.assertIn("adminApi.fetchStatus()", source)
         self.assertIn("adminApi.fetchSection(", source)
         self.assertIn("adminApi.patchSection(", source)
@@ -174,6 +181,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const fetchSection =", api_source)
         self.assertIn("const patchSection =", api_source)
         self.assertIn("const validateSection =", api_source)
+        self.assertIn("window.FridaAdminUiCommon = Object.freeze({", ui_source)
+        self.assertIn("const renderCheckList =", ui_source)
+        self.assertIn("const renderReadonlyInfoCards =", ui_source)
+        self.assertIn("const applyFieldError =", ui_source)
 
     def test_admin_js_exposes_editable_main_model_response_max_tokens(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
@@ -185,8 +196,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
     def test_admin_js_extracts_shared_section_helpers(self) -> None:
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
 
-        self.assertIn("const renderCheckList =", source)
+        self.assertIn("const renderCheckList =", ui_source)
+        self.assertIn("const renderReadonlyInfoEntries =", ui_source)
+        self.assertIn("const renderReadonlyInfoCards =", ui_source)
+        self.assertIn("const applyFieldError =", ui_source)
         self.assertIn("const setSectionControlsDisabled =", source)
         self.assertIn("const buildSectionPatchPayload =", source)
         self.assertIn("const updateSectionDirtyChip =", source)
@@ -201,10 +216,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
     def test_admin_readonly_prompt_cards_stay_out_of_edit_mode(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
-        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
 
-        readonly_block = source.split("const buildReadonlyInfoCard =", 1)[1].split(
-            "const setSectionControlsDisabled =",
+        readonly_block = ui_source.split("const buildReadonlyInfoCard =", 1)[1].split(
+            "const renderReadonlyInfoEntries =",
             1,
         )[0]
 
@@ -241,14 +256,16 @@ class AdminPhase7FoundationTests(unittest.TestCase):
     def test_admin_main_model_prompt_panels_stay_ordered_and_marker_friendly(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
         source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        ui_source = (APP_DIR / "web" / "admin_ui_common.js").read_text(encoding="utf-8")
+        source_all = f"{ui_source}\n{source}"
 
         self.assertLess(html.index("System Prompt"), html.index("Hermeneutical Prompt"))
         self.assertLess(html.index("Hermeneutical Prompt"), html.index("Briques, sources et budgets de repere"))
         self.assertIn('id="adminMainModelReadonlyInfo"', html)
         self.assertIn("Briques, sources et budgets de repere", html)
-        self.assertIn("textarea.readOnly = true", source)
-        self.assertIn("textarea.value = value", source)
-        self.assertIn("target.replaceChildren(fragment);", source)
+        self.assertIn("textarea.readOnly = true", source_all)
+        self.assertIn("textarea.value = value", source_all)
+        self.assertIn("target.replaceChildren(fragment);", source_all)
 
     def test_admin_old_assets_are_not_present(self) -> None:
         self.assertFalse((APP_DIR / "web" / "admin-old.html").exists())
@@ -265,6 +282,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
         self.assertIn("Admin de configuration", source)
         self.assertIn('href="admin.css"', source)
+        self.assertIn('script src="admin_ui_common.js"', source)
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
         self.assertIn('id="adminMainModelSave"', source)

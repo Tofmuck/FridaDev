@@ -71,6 +71,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         details = minimal_validation._check_ui_assets()
 
         self.assertIn("admin_html", details["files"])
+        self.assertIn("admin_ui_common_js", details["files"])
         self.assertIn("admin_js", details["files"])
         self.assertIn("admin_old_html", details["legacy_admin_assets_absent"])
         self.assertIn("admin_old_js", details["legacy_admin_assets_absent"])
