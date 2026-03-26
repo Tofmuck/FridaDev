@@ -7,6 +7,14 @@
   if (!adminUiCommon) {
     throw new Error("admin_ui_common.js must be loaded before admin.js");
   }
+  const adminStateModule = window.FridaAdminState;
+  if (
+    !adminStateModule
+    || typeof adminStateModule.createAdminState !== "function"
+    || typeof adminStateModule.initializeAdminSectionDrafts !== "function"
+  ) {
+    throw new Error("admin_state.js must be loaded before admin.js");
+  }
   const mainModelSectionModule = window.FridaAdminMainModelSection;
   if (
     !mainModelSectionModule
@@ -62,6 +70,7 @@
     renderReadonlyInfoCards,
     applyFieldError,
   } = adminUiCommon;
+  const { createAdminState, initializeAdminSectionDrafts } = adminStateModule;
   const { createMainModelSectionController } = mainModelSectionModule;
   const { createArbiterModelSectionController } = arbiterModelSectionModule;
   const { createSummaryModelSectionController } = summaryModelSectionModule;
@@ -376,50 +385,7 @@
     },
   ];
 
-  const state = {
-    mainModel: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    arbiterModel: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    summaryModel: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    embedding: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    database: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    services: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-    resources: {
-      loaded: false,
-      view: null,
-      baseline: null,
-      draft: null,
-    },
-  };
+  const state = createAdminState();
 
   const elements = {
     refresh: document.getElementById("adminRefresh"),
@@ -1025,20 +991,15 @@
   databaseSection.ensureDatabaseFieldSkeleton();
   servicesSection.ensureServicesFieldSkeleton();
   resourcesSection.ensureResourcesFieldSkeleton();
-  state.mainModel.baseline = mainModelSection.emptyMainModelDraft();
-  state.mainModel.draft = mainModelSection.emptyMainModelDraft();
-  state.arbiterModel.baseline = arbiterModelSection.emptyArbiterModelDraft();
-  state.arbiterModel.draft = arbiterModelSection.emptyArbiterModelDraft();
-  state.summaryModel.baseline = summaryModelSection.emptySummaryModelDraft();
-  state.summaryModel.draft = summaryModelSection.emptySummaryModelDraft();
-  state.embedding.baseline = embeddingSection.emptyEmbeddingDraft();
-  state.embedding.draft = embeddingSection.emptyEmbeddingDraft();
-  state.database.baseline = databaseSection.emptyDatabaseDraft();
-  state.database.draft = databaseSection.emptyDatabaseDraft();
-  state.services.baseline = servicesSection.emptyServicesDraft();
-  state.services.draft = servicesSection.emptyServicesDraft();
-  state.resources.baseline = resourcesSection.emptyResourcesDraft();
-  state.resources.draft = resourcesSection.emptyResourcesDraft();
+  initializeAdminSectionDrafts(state, {
+    mainModel: mainModelSection.emptyMainModelDraft,
+    arbiterModel: arbiterModelSection.emptyArbiterModelDraft,
+    summaryModel: summaryModelSection.emptySummaryModelDraft,
+    embedding: embeddingSection.emptyEmbeddingDraft,
+    database: databaseSection.emptyDatabaseDraft,
+    services: servicesSection.emptyServicesDraft,
+    resources: resourcesSection.emptyResourcesDraft,
+  });
   mainModelSection.renderMainModelMeta();
   mainModelSection.applyMainModelDraftToForm();
   mainModelSection.renderMainModelReadonlyInfo();

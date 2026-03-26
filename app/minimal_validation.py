@@ -412,6 +412,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "app_js": web_dir / "app.js",
         "admin_api_js": web_dir / "admin_api.js",
         "admin_ui_common_js": web_dir / "admin_ui_common.js",
+        "admin_state_js": web_dir / "admin_state.js",
         "admin_section_main_model_js": web_dir / "admin_section_main_model.js",
         "admin_section_arbiter_model_js": web_dir / "admin_section_arbiter_model.js",
         "admin_section_summary_model_js": web_dir / "admin_section_summary_model.js",
@@ -440,6 +441,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
+    admin_state_js = required_files["admin_state_js"].read_text(encoding="utf-8")
     admin_section_main_model_js = required_files["admin_section_main_model_js"].read_text(encoding="utf-8")
     admin_section_arbiter_model_js = required_files["admin_section_arbiter_model_js"].read_text(encoding="utf-8")
     admin_section_summary_model_js = required_files["admin_section_summary_model_js"].read_text(encoding="utf-8")
@@ -451,6 +453,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
+        f"{admin_state_js}\n"
         f"{admin_section_main_model_js}\n"
         f"{admin_section_arbiter_model_js}\n"
         f"{admin_section_summary_model_js}\n"
@@ -478,6 +481,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="admin.css"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
+        'script src="admin_state.js"',
         'script src="admin_section_main_model.js"',
         'script src="admin_section_arbiter_model.js"',
         'script src="admin_section_summary_model.js"',
@@ -561,6 +565,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/settings/resources",
         "/api/admin/settings/resources/validate",
         "frida.adminToken",
+        "window.FridaAdminState",
+        "createAdminState",
+        "initializeAdminSectionDrafts",
         "adminMainModelSave",
         "adminMainModelApiKeyReplace",
         "adminMainModelSystemPromptInfo",

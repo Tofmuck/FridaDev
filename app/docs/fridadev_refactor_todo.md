@@ -241,7 +241,7 @@
 - tests UI assets/minimal validation
 
 **Cases à cocher**
-- [ ] Isoler un module `state` (draft/baseline/dirty/status).
+- [x] Isoler un module `state` (draft/baseline/dirty/status).
 - [x] Isoler un module `api` (fetch admin + token + gestion erreurs standard).
 - [x] Isoler un module `ui_common` (render checks, readonly cards, field errors).
 - [x] Isoler les formulaires de section (`main_model`, `arbiter`, `summary`, `embedding`, `database`, `services`, `resources`).
