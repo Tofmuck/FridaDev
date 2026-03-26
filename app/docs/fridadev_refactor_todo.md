@@ -407,6 +407,7 @@
 | Phase 2 | Phase 1 | Partiellement avec début Phase 5 | Ne pas lancer Phase 4 complète sans bootstrap partagé stable |
 | Phase 3 | Phases 1–2 | Non | Ne pas re-scinder `runtime_settings` avant stabilisation bootstrap |
 | Phase 4 | Phases 1–3 | Partiellement avec Phase 5 | Ne pas extraire massivement `server.py` avant contrats + runtime settings stables |
+| Phase 4 bis | Phase 4 | Partiellement avec Phase 5 (write scopes distincts) | Ne pas découper `chat_service.py` avant fermeture de l’extraction hors `server.py` |
 | Phase 5 | Phase 1 (minimum) | Oui avec Phase 4 (write scopes distincts) | Ne pas mélanger avec redesign UI |
 | Phase 6 | Phases 1–4 | Partiellement avec Phase 7 | Ne pas supprimer legacy incertain avant inventaire d’usage |
 | Phase 7 | Phases 1–6 (recommandé) | Oui avec fin Phase 8 | Ne pas déplacer massivement les tests avant stabilisation des modules |
@@ -418,11 +419,12 @@
 2. Extraire la brique bootstrap runtime partagée (Phase 2).
 3. Scinder `runtime_settings.py` sans changer le périmètre fonctionnel (Phase 3).
 4. Extraire les services applicatifs hors `server.py` (Phase 4).
-5. Découper `admin.js` en modules (Phase 5).
-6. Nettoyer les reliquats legacy/code mort confirmés (Phase 6).
-7. Reclasser les tests par domaine et niveau (Phase 7).
-8. Finaliser l’harmonisation minimale des conventions (Phase 8).
-9. Exécuter l’audit de clôture et publier le statut final de traitement de l’audit initial (Phase 9).
+5. Démonolithiser `chat_service.py` sans changer le contrat HTTP (Phase 4 bis).
+6. Découper `admin.js` en modules (Phase 5).
+7. Nettoyer les reliquats legacy/code mort confirmés (Phase 6).
+8. Reclasser les tests par domaine et niveau (Phase 7).
+9. Finaliser l’harmonisation minimale des conventions (Phase 8).
+10. Exécuter l’audit de clôture et publier le statut final de traitement de l’audit initial (Phase 9).
 
 ## 6. Points à arbitrer avant exécution
 - Décision startup canonique: `run.sh` vs démarrage direct Docker/Flask (source d’autorité unique).
