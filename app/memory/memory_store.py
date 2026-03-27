@@ -16,6 +16,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from logs import log_store
 from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
@@ -123,6 +124,7 @@ def init_db() -> None:
         runtime_embedding_value_fn=_runtime_embedding_value,
         logger=logger,
     )
+    log_store.init_log_storage(conn_factory=_conn)
 
 
 # Embedding

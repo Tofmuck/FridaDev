@@ -34,10 +34,10 @@ Contrat normatif de reference:
 - [x] Documenter la decision retenue et les options differees.
 
 ### 1) Stockage dedie logs (separe memoire metier)
-- [ ] Definir le support de stockage dedie logs (sans reemploi des tables memoire metier).
-- [ ] Definir le schema minimal par evenement (champs communs + metadata stage).
-- [ ] Ajouter les index minimaux pour lecture chrono, filtre conversation, filtre tour, filtre statut.
-- [ ] Verrouiller une regle de retention initiale simple (ou expliciter "pas de retention automatique" pour MVP).
+- [x] Definir le support de stockage dedie logs (sans reemploi des tables memoire metier).
+- [x] Definir le schema minimal par evenement (champs communs + metadata stage).
+- [x] Ajouter les index minimaux pour lecture chrono, filtre conversation, filtre tour, filtre statut.
+- [x] Verrouiller une regle de retention initiale simple (pas de retention automatique pour le MVP).
 
 ### 2) Instrumentation backend MVP (ecriture)
 - [ ] Instrumenter `turn_start` et `turn_end`.
