@@ -44,6 +44,15 @@
 | Migration DB-only vs reliquats JSON `conv_store` | Fermée (requalifiée/documentée) | Runtime principal DB-only (`app/server.py`: bootstrap DB + log `conv_json_bootstrap disabled for db_only_migration`), reliquats JSON confinés au sous-ensemble sync (`app/core/conv_store.py`), inventaire d’usage verrouillé (`test_conv_store_json_sync_inventory_phase6.py`) | Conservation du sous-ensemble sync reste un choix opératoire explicite |
 | Flux web search (flag mort et champ de log legacy) | Fermée (corrigée) | `app/tools/web_search.py` (`build_context` en 3-tuple), `app/core/chat_prompt_context.py` (log `web_search` sans champ legacy), test `test_web_search_phase13.py` | Aucune observée |
 
+## 3 ter) Monolithes identifiés (audit §§1,4,8) — statut de réduction/requalification
+
+| Monolithe signalé par l’audit | Statut actuel | Décision de clôture (cette tranche) | Preuve vérifiable | Réserve |
+| --- | --- | --- | --- | --- |
+| `app/server.py` | Réduit + requalifié | Contrat “routes + composition” atteint et stabilisé | `app/server.py` (~535 lignes), orchestration déplacée vers `app/core/chat_service.py`, `app/core/conversations_service.py`, `app/admin/admin_settings_service.py`, `app/admin/admin_hermeneutics_service.py`; test `test_server_phase14.py` | Module central HTTP conservé par design |
+| `app/admin/runtime_settings.py` | Partiellement réduit + requalifié | Requalification acceptée: façade compat + responsabilités majeures externalisées | Extraction vers `app/admin/runtime_settings_spec.py`, `app/admin/runtime_settings_repo.py`, `app/admin/runtime_settings_validation.py`; `runtime_settings.py` reste façade publique (~939 lignes); test `tests/unit/runtime_settings/test_runtime_settings.py` | Taille encore élevée, mais frontières internes explicites |
+| `app/web/admin.js` | Réduit + requalifié | Requalification acceptée: point d’entrée orchestrateur après extraction modulaire | `app/web/admin.js` (~1073 lignes, vs 3654 audit), modules `admin_api.js`, `admin_state.js`, `admin_ui_common.js`, `admin_section_*.js`; test `test_minimal_validation_phase9.py` | Point d’entrée encore dense (bootstrap DOM + wiring) |
+| `app/memory/memory_store.py` | Encore monolithique (non réduit) | Non fermé dans cette tranche | `app/memory/memory_store.py` (~1831 lignes, ~41 fonctions) couvre toujours init DB, embedding, traces, summaries, identities, arbitrage, conflicts, dynamics; test `test_memory_store_phase4.py` confirme le comportement mais pas une réduction structurelle | Point bloquant pour cocher honnêtement la case TODO “monolithes” |
+
 ## 4) Questions ouvertes de l’audit initial: décision explicite
 
 | Question ouverte (audit §12) | Décision explicite | Statut |
@@ -56,4 +65,4 @@
 
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés, avec un reliquat explicitement ouvert (`.gitignore` / `docs/states`).
-- La clôture globale du chantier n’est pas encore déclarée dans cette tranche: il reste à traiter les cases Phase 9 de convergence architecturelle complète (contradictions, monolithes, dépendances, “god module”, convergence cible, verdict final).
+- Les contradictions de contrat signalées dans l’audit sont fermées et documentées; la clôture globale reste néanmoins ouverte car la vérification “monolithes” n’est pas fermée (notamment `memory_store.py`), ainsi que les cases Phase 9 restantes (dépendances, “god module”, convergence cible, verdict final).
