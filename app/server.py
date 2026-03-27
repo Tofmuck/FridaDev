@@ -887,5 +887,10 @@ def admin_root():
     return send_from_directory(app.static_folder, "admin.html")
 
 
+@app.get("/log")
+def log_root():
+    return send_from_directory(app.static_folder, "log.html")
+
+
 if __name__ == "__main__":
     app.run(host=config.WEB_HOST, port=config.WEB_PORT)

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Logs applicatifs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Logs applicatifs</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
+        <button id="logTokenButton" class="admin-btn admin-btn-secondary" type="button">Token admin</button>
+        <button id="logClearToken" class="admin-btn admin-btn-secondary" type="button">Effacer</button>
+        <button id="logRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="admin-section-block" aria-labelledby="logs-filters-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Consultation</p>
+          <h2 id="logs-filters-title">Filtres</h2>
+        </div>
+      </div>
+
+      <form id="logFiltersForm" class="admin-form" novalidate>
+        <div class="admin-form-grid">
+          <label class="admin-field" for="logConversationId">
+            <span>Conversation</span>
+            <input id="logConversationId" name="conversation_id" type="text" autocomplete="off" placeholder="conv-..." />
+          </label>
+
+          <label class="admin-field" for="logTurnId">
+            <span>Tour</span>
+            <input id="logTurnId" name="turn_id" type="text" autocomplete="off" placeholder="turn-..." />
+          </label>
+
+          <label class="admin-field" for="logStage">
+            <span>Stage</span>
+            <input id="logStage" name="stage" type="text" autocomplete="off" placeholder="llm_call" />
+          </label>
+
+          <label class="admin-field" for="logStatus">
+            <span>Status</span>
+            <select id="logStatus" name="status">
+              <option value="">Tous</option>
+              <option value="ok">ok</option>
+              <option value="error">error</option>
+              <option value="skipped">skipped</option>
+            </select>
+          </label>
+
+          <label class="admin-field" for="logLimit">
+            <span>Limit</span>
+            <input id="logLimit" name="limit" type="number" min="1" max="500" value="100" />
+          </label>
+
+          <label class="admin-field" for="logOffset">
+            <span>Offset</span>
+            <input id="logOffset" name="offset" type="number" min="0" value="0" />
+          </label>
+        </div>
+
+        <div class="admin-inline-actions">
+          <button id="logApplyFilters" class="admin-btn admin-btn-primary" type="submit">Appliquer</button>
+          <button id="logResetFilters" class="admin-btn admin-btn-secondary" type="button">Reset</button>
+          <button id="logPrevPage" class="admin-btn admin-btn-secondary" type="button">Page precedente</button>
+          <button id="logNextPage" class="admin-btn admin-btn-secondary" type="button">Page suivante</button>
+        </div>
+      </form>
+    </section>
+
+    <p id="logStatusBanner" class="admin-status" role="status" aria-live="polite">Chargement des logs...</p>
+
+    <section class="admin-section-block" aria-labelledby="logs-actions-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Suppression</p>
+          <h2 id="logs-actions-title">Actions scopees</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Actions disponibles uniquement pour les scopes MVP supportes: conversation ou tour.
+      </p>
+
+      <div class="admin-inline-actions">
+        <button id="deleteConversationLogs" class="admin-btn admin-btn-secondary" type="button">
+          Supprimer logs conversation
+        </button>
+        <button id="deleteTurnLogs" class="admin-btn admin-btn-secondary" type="button">
+          Supprimer logs tour
+        </button>
+      </div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="logs-results-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Timeline</p>
+          <h2 id="logs-results-title">Evenements par tour</h2>
+        </div>
+        <div class="admin-inline-meta">
+          <span id="logCountChip" class="admin-chip">0 evenement</span>
+          <span id="logPageChip" class="admin-chip">offset 0</span>
+        </div>
+      </div>
+
+      <div id="logGroups" class="admin-readonly-stack"></div>
+    </section>
+  </main>
+
+  <script src="admin_api.js"></script>
+  <script src="log/log.js"></script>
+</body>
+</html>

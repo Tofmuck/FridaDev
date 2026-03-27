@@ -122,6 +122,12 @@ body.admin-page {
   transition: background 140ms ease, border-color 140ms ease, transform 140ms ease, opacity 140ms ease;
 }
 
+.admin-btn-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .admin-btn:hover {
   background: var(--bg-sidebar);
   border-color: var(--border-strong);
@@ -351,6 +357,24 @@ body.admin-page {
   color: var(--fg);
 }
 
+.admin-chip[data-status="ok"] {
+  background: var(--ok-bg);
+  border-color: rgba(62, 108, 78, 0.22);
+  color: var(--ok);
+}
+
+.admin-chip[data-status="error"] {
+  background: var(--error-bg);
+  border-color: rgba(159, 61, 41, 0.26);
+  color: var(--error);
+}
+
+.admin-chip[data-status="skipped"] {
+  background: var(--accent-bg);
+  border-color: rgba(90, 62, 27, 0.20);
+  color: var(--accent);
+}
+
 .admin-form {
   margin-top: 16px;
   display: grid;
@@ -394,6 +418,16 @@ body.admin-page {
 }
 
 .admin-field input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  color: var(--fg);
+  font: inherit;
+}
+
+.admin-field select {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--border);

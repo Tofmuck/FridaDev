@@ -68,12 +68,12 @@ Contrat normatif de reference:
 - [x] Verifier qu'aucune reconstruction opportuniste des logs n'apparait apres suppression.
 
 ### 5) UI minimale
-- [ ] Ajouter un bouton `Log` a cote de `Admin` dans l'UI principale.
-- [ ] Ajouter une page dediee logs avec reutilisation prioritaire du socle CSS/composants admin existant (pas de charte parallele).
-- [ ] Poser le JS futur sous `app/web/log/`.
-- [ ] Afficher la timeline chronologique par tour avec badges `ok/error/skipped`.
-- [ ] Afficher les metadonnees utiles (tokens, limites, truncation, compteurs) sans dump brut.
-- [ ] Exposer les actions de suppression strictement alignees sur le scope decide.
+- [x] Ajouter un bouton `Log` a cote de `Admin` dans l'UI principale.
+- [x] Ajouter une page dediee logs avec reutilisation prioritaire du socle CSS/composants admin existant (pas de charte parallele).
+- [x] Poser le JS futur sous `app/web/log/`.
+- [x] Afficher la timeline chronologique par tour avec badges `ok/error/skipped`.
+- [x] Afficher les metadonnees utiles (tokens, limites, truncation, compteurs) sans dump brut.
+- [x] Exposer les actions de suppression strictement alignees sur le scope decide.
 
 ### 6) Tests / preuves
 - [ ] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
