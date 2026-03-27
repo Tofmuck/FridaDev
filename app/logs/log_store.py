@@ -91,6 +91,22 @@ def insert_chat_log_event(
     if missing:
         raise ValueError(f'missing required chat log event fields: {", ".join(missing)}')
 
+    event_id = str(event.get('event_id') or '').strip()
+    if not event_id:
+        raise ValueError('chat log event event_id must not be empty')
+
+    conversation_id = str(event.get('conversation_id') or '').strip()
+    if not conversation_id:
+        raise ValueError('chat log event conversation_id must not be empty')
+
+    turn_id = str(event.get('turn_id') or '').strip()
+    if not turn_id:
+        raise ValueError('chat log event turn_id must not be empty')
+
+    stage = str(event.get('stage') or '').strip()
+    if not stage:
+        raise ValueError('chat log event stage must not be empty')
+
     status = str(event.get('status') or '').strip().lower()
     if status not in _STATUS_ALLOWED:
         raise ValueError(f'invalid chat log event status: {status}')
@@ -132,11 +148,11 @@ def insert_chat_log_event(
                     ON CONFLICT (event_id) DO NOTHING
                     ''',
                     (
-                        str(event.get('event_id') or '').strip(),
-                        str(event.get('conversation_id') or '').strip(),
-                        str(event.get('turn_id') or '').strip(),
+                        event_id,
+                        conversation_id,
+                        turn_id,
                         ts,
-                        str(event.get('stage') or '').strip(),
+                        stage,
                         status,
                         duration_ms,
                         json.dumps(payload_json_raw, ensure_ascii=False),

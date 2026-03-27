@@ -6,8 +6,10 @@ app/.env.*.local
 # Runtime state and generated data
 state/
 app/conv/
-app/logs/
 app/data/
+# Runtime log artifacts (keep app/logs source package trackable)
+app/logs/*.jsonl
+app/logs/*.log
 # Python caches and environments
 __pycache__/
 *.py[cod]

@@ -163,3 +163,24 @@ class LogStorePhase1Tests(unittest.TestCase):
                 conn_factory=lambda: None,
                 logger_instance=_NoopLogger(),
             )
+
+    def test_insert_chat_log_event_rejects_blank_required_text_fields(self) -> None:
+        base_event = {
+            'event_id': 'evt-valid',
+            'conversation_id': 'conv-valid',
+            'turn_id': 'turn-valid',
+            'ts': '2026-03-27T10:00:00Z',
+            'stage': 'turn_start',
+            'status': 'ok',
+        }
+
+        for field in ('event_id', 'conversation_id', 'turn_id', 'stage', 'ts'):
+            with self.subTest(field=field):
+                event = dict(base_event)
+                event[field] = '   '
+                with self.assertRaisesRegex(ValueError, f'{field} must not be empty'):
+                    log_store.insert_chat_log_event(
+                        event,
+                        conn_factory=lambda: None,
+                        logger_instance=_NoopLogger(),
+                    )
