@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
@@ -25,7 +25,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _raw_dialogue(conversation: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _raw_dialogue(conversation: dict[str, Any]) -> list[dict[str, Any]]:
     """Retourne uniquement les messages bruts non encore résumés (jamais un résumé)."""
     return [
         m for m in conversation.get("messages", [])
@@ -33,7 +33,7 @@ def _raw_dialogue(conversation: Dict[str, Any]) -> List[Dict[str, Any]]:
     ]
 
 
-def summarize_conversation(turns: List[Dict[str, Any]], model: str) -> str:
+def summarize_conversation(turns: list[dict[str, Any]], model: str) -> str:
     """Appelle un LLM cheap via OpenRouter pour résumer une liste de tours de dialogue."""
     parts = []
     for turn in turns:
@@ -65,7 +65,7 @@ def summarize_conversation(turns: List[Dict[str, Any]], model: str) -> str:
     return _sanitize_encoding(r.json()["choices"][0]["message"]["content"]).strip()
 
 
-def maybe_summarize(conversation: Dict[str, Any], model: str) -> bool:
+def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
     """
     Si les messages bruts dépassent SUMMARY_THRESHOLD_TOKENS, résume les tours anciens,
     les marque avec summarized_by, et stocke le résumé en base.

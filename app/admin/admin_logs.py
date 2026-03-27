@@ -6,7 +6,7 @@ import os
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 def _env_int(name: str, default: int) -> int:
@@ -56,7 +56,7 @@ def log_event(event: str, level: str = 'INFO', **fields: Any) -> None:
         logger.error('admin_log_write_error err=%s', exc)
 
 
-def read_logs(limit: int = 200) -> List[Dict[str, Any]]:
+def read_logs(limit: int = 200) -> list[dict[str, Any]]:
     _bootstrap_legacy_logs_if_needed()
     if limit < 1:
         return []
@@ -72,7 +72,7 @@ def read_logs(limit: int = 200) -> List[Dict[str, Any]]:
     except Exception as exc:
         logger.error('admin_log_read_error err=%s', exc)
         return []
-    entries: List[Dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
     for line in reversed(lines):
         try:
             entries.append(json.loads(line))

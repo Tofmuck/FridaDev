@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import config
 from admin import runtime_settings
@@ -53,7 +53,7 @@ def load_user_identity() -> str:
     return _load_file(_runtime_resource_path('user_identity_path'))
 
 
-def _get_identities(subject: str, top_n: int) -> List[Dict[str, Any]]:
+def _get_identities(subject: str, top_n: int) -> list[dict[str, Any]]:
     try:
         from memory import memory_store
 
@@ -115,7 +115,7 @@ def _recurrence_rank(value: str) -> int:
     }.get(str(value or 'unknown'), 4)
 
 
-def _should_exclude_unknown(entry: Dict[str, Any]) -> bool:
+def _should_exclude_unknown(entry: dict[str, Any]) -> bool:
     if str(entry.get('override_state') or 'none') == 'force_accept':
         return False
     stability = str(entry.get('stability') or 'unknown')
@@ -123,7 +123,7 @@ def _should_exclude_unknown(entry: Dict[str, Any]) -> bool:
     return stability == 'unknown' or recurrence == 'unknown'
 
 
-def _entry_sort_key(entry: Dict[str, Any]) -> Tuple[int, int, float, float]:
+def _entry_sort_key(entry: dict[str, Any]) -> tuple[int, int, float, float]:
     stability = _stability_rank(str(entry.get('stability') or 'unknown'))
     recurrence = _recurrence_rank(str(entry.get('recurrence') or 'unknown'))
     confidence = -float(entry.get('confidence') or 0.0)
@@ -132,7 +132,7 @@ def _entry_sort_key(entry: Dict[str, Any]) -> Tuple[int, int, float, float]:
     return stability, recurrence, confidence, recency
 
 
-def _format_identity_line(entry: Dict[str, Any]) -> str:
+def _format_identity_line(entry: dict[str, Any]) -> str:
     content = str(entry.get('content') or '').strip()
     if not content:
         return ''
@@ -145,7 +145,7 @@ def _format_identity_line(entry: Dict[str, Any]) -> str:
     )
 
 
-def _select_ranked_entries(subject: str) -> List[Dict[str, Any]]:
+def _select_ranked_entries(subject: str) -> list[dict[str, Any]]:
     pool_size = max(1, config.IDENTITY_TOP_N * 4)
     entries = _get_identities(subject, pool_size)
     eligible = [
@@ -157,12 +157,12 @@ def _select_ranked_entries(subject: str) -> List[Dict[str, Any]]:
     return eligible
 
 
-def _build_dynamic_lines(subject: str, max_tokens: int) -> Tuple[List[str], List[str]]:
+def _build_dynamic_lines(subject: str, max_tokens: int) -> tuple[list[str], list[str]]:
     if max_tokens <= 0:
         return [], []
 
-    lines: List[str] = []
-    ids: List[str] = []
+    lines: list[str] = []
+    ids: list[str] = []
     spent_tokens = 0
 
     for entry in _select_ranked_entries(subject):
@@ -182,7 +182,7 @@ def _build_dynamic_lines(subject: str, max_tokens: int) -> Tuple[List[str], List
     return lines, ids
 
 
-def _compose_section(title: str, static_text: str, dynamic_lines: List[str]) -> str:
+def _compose_section(title: str, static_text: str, dynamic_lines: list[str]) -> str:
     parts = []
     if static_text:
         parts.append(static_text)
@@ -193,7 +193,7 @@ def _compose_section(title: str, static_text: str, dynamic_lines: List[str]) -> 
     return f'[{title}]\n' + '\n\n'.join(parts)
 
 
-def build_identity_block() -> Tuple[str, List[str]]:
+def build_identity_block() -> tuple[str, list[str]]:
     """
     Build identity block injected at the top of system prompt.
     Returns (block_text, used_identity_ids).

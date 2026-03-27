@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import logging
-import requests
 from datetime import datetime, timezone
+from typing import Any
+
+import requests
 
 import config
 from admin import runtime_settings
@@ -19,7 +21,7 @@ def _runtime_services_view() -> runtime_settings.RuntimeSectionView:
     return runtime_settings.get_services_settings()
 
 
-def _runtime_services_value(field: str):
+def _runtime_services_value(field: str) -> Any:
     view = _runtime_services_view()
     payload = view.payload.get(field) or {}
     if 'value' in payload:
@@ -67,7 +69,7 @@ def reformulate(user_msg: str) -> str:
         return user_msg
 
 
-def search(query: str, max_results: int = None) -> list[dict]:
+def search(query: str, max_results: int | None = None) -> list[dict[str, str]]:
     """Interroge SearXNG et retourne les résultats."""
     if max_results is None:
         max_results = int(_runtime_services_value('searxng_results'))
@@ -105,7 +107,7 @@ def crawl(url: str) -> str:
         return ""
 
 
-def _format_context(query: str, results: list[dict]) -> str:
+def _format_context(query: str, results: list[dict[str, str]]) -> str:
     """Formate les résultats SearXNG + contenu crawlé pour le LLM."""
     if not results:
         return (
