@@ -1,165 +1,96 @@
 # Log Module TODO (Frida)
 
-## 1) Objectif
-- Definir un module de logs applicatifs consultables en UI pour suivre un tour de chat.
-- Garder un module simple, lisible, et strictement separe de la memoire metier.
-- Eviter deux extremes: logs trop verbeux (dump brut) ou logs trop pauvres (inexploitables).
+## Objectif
+Mettre en place un module de logs applicatifs consultables en UI pour suivre le pipeline chat par tour, sans melanger observabilite et memoire metier.
 
-## 2) Invariants non negociables
-- Le module de logs est un module d'observabilite, pas une source metier.
-- Effacer les logs ne doit jamais supprimer conversations, traces, summaries, identities, context hints.
-- La memoire metier doit continuer a fonctionner meme apres suppression totale des logs.
-- Les logs doivent etre stockes a part de la memoire metier.
-- Les logs sont chronologiques et relies a un tour (`conversation_id`, `turn_id`, `ts`).
+## Invariants
+- Le module logs est un module d'observabilite, pas une source metier.
+- `delete logs` ne supprime jamais conversations, traces, summaries, identities, context hints.
+- La memoire metier continue de fonctionner meme si tous les logs sont supprimes.
+- Les logs sont stockes a part de la memoire metier.
+- Les logs sont chronologiques et relies a un tour (`conversation_id`, `turn_id`, `event_id`, `ts`).
 - Statuts minimaux obligatoires: `ok`, `error`, `skipped`.
-- Pas de dump massif par defaut (prompt complet, contexte complet, etc.).
-- Pour le contexte: loguer metadonnees utiles (`tokens`, `limit`, `truncated`, compteurs), pas le contenu massif.
-- UI cible: bouton `Log` a cote de `Admin`, page dediee, meme langage visuel global que l'admin, JS futur sous `app/web/log/`.
-- Suppression reelle: si les logs sont supprimes, ils ne reapparaissent pas par reconstruction opportuniste depuis les conversations.
+- Pas de dump massif brut par defaut (prompt complet, contexte complet, payloads LLM complets).
+- Pour le contexte injecte, on logue les metadonnees utiles (`context_tokens`, `token_limit`, `truncated`, compteurs), pas le contenu integral.
+- Le module cible reste borne au pipeline chat par tour (pas de plateforme observabilite globale).
 
-## 3) Frontiere memoire vs logs
-- Memoire metier (source metier): conversations/messages, traces, summaries, identities, conflicts, arbiter_decisions.
-- Logs applicatifs (source observabilite): evenements de pipeline, compteurs, statuts, erreurs, branches sautees.
-- Interdiction: reutiliser les donnees metier pour "reconstruire" des logs effaces.
-- Interdiction: utiliser les logs comme mecanisme de reprise metier.
+## TODO (executable par tranches)
 
-## 4) MVP retenu (borne)
-- Perimetre: pipeline chat par tour uniquement.
-- Couverture MVP: creation de logs d'evenements, consultation simple en UI, suppression explicite des logs.
-- Non couvert au MVP: logs admin detailles, logs Docker/systeme, live tail complexe, export avance, payloads complets.
+### 0) Cadrage contractuel (avant code)
+- [ ] Valider la frontiere exacte memoire metier vs logs applicatifs (tables, routes, ownership).
+- [ ] Verrouiller la liste des champs communs obligatoires pour chaque evenement (`conversation_id`, `turn_id`, `event_id`, `ts`, `stage`, `status`).
+- [ ] Verrouiller le sous-contrat `status=skipped` avec des `reason_code` minimaux et stables.
+- [ ] Ajouter et verrouiller un champ explicite `prompt_kind` (ex: `system`, `hermeneutical`, `user_compiled`, a finaliser) dans les evenements concernes.
+- [ ] Verrouiller un evenement / sous-contrat explicite `web_search` (pas seulement un booleen dans `turn_start`).
+- [ ] Decider explicitement le scope de suppression MVP a supporter:
+- [ ] Option `all_logs` (purge complete logs)
+- [ ] Option `conversation_logs` (purge par conversation)
+- [ ] Option `turn_logs` (purge par tour)
+- [ ] Documenter la decision retenue et les options differees.
 
-## 5) Hors scope explicite
-- Aucun changement des routes chat metier.
-- Aucun changement du schema memoire metier.
-- Aucun changement de la persistance conversationnelle.
-- Aucune plateforme observabilite "globale" (ELK, OpenTelemetry complet, etc.) dans ce lot.
+### 1) Stockage dedie logs (separe memoire metier)
+- [ ] Definir le support de stockage dedie logs (sans reemploi des tables memoire metier).
+- [ ] Definir le schema minimal par evenement (champs communs + metadata stage).
+- [ ] Ajouter les index minimaux pour lecture chrono, filtre conversation, filtre tour, filtre statut.
+- [ ] Verrouiller une regle de retention initiale simple (ou expliciter "pas de retention automatique" pour MVP).
 
-## 6) Catalogue initial des evenements (MVP)
-Pour chaque evenement, le niveau de detail doit rester minimal utile.
+### 2) Instrumentation backend MVP (ecriture)
+- [ ] Instrumenter `turn_start` et `turn_end`.
+- [ ] Instrumenter `embedding`.
+- [ ] Instrumenter `memory_retrieve`.
+- [ ] Instrumenter `summaries`.
+- [ ] Instrumenter `identities_context_hints`.
+- [ ] Instrumenter `web_search` (activation, tentative, resultat ou `skipped`, erreurs).
+- [ ] Instrumenter `context_build`.
+- [ ] Instrumenter `prompt_prepared` avec `prompt_kind` et metriques non sensibles.
+- [ ] Instrumenter `llm_call`.
+- [ ] Instrumenter `arbiter`.
+- [ ] Instrumenter `persist_response`.
+- [ ] Instrumenter `error` explicite.
+- [ ] Instrumenter `branch_skipped` explicite.
 
-### 6.1 Evenements obligatoires
-- `turn_start`
-  - Statut: `ok`
-  - Champs mini: `conversation_id`, `turn_id`, `ts`, `user_msg_chars`, `web_search_enabled`
-  - Interdit: dump du message utilisateur complet par defaut
+### 3) Backend lecture logs (consultation)
+- [ ] Exposer une lecture chronologique paginee des logs.
+- [ ] Exposer les filtres minimaux (conversation, turn, stage, status, plage temporelle).
+- [ ] Verrouiller le format de reponse (stable, sans dump massif par defaut).
 
-- `embedding`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `mode` (`query|passage`), `provider`, `dimensions`, `duration_ms`, `error_code`
-  - Interdit: dump du vecteur
+### 4) Backend suppression logs (sans effet metier)
+- [ ] Implementer le scope de suppression retenu pour `all_logs` (si retenu).
+- [ ] Implementer le scope de suppression retenu pour `conversation_logs` (si retenu).
+- [ ] Implementer le scope de suppression retenu pour `turn_logs` (si retenu).
+- [ ] Verrouiller contractuellement qu'aucune suppression logs ne touche la memoire metier.
+- [ ] Verifier qu'aucune reconstruction opportuniste des logs n'apparait apres suppression.
 
-- `memory_retrieve`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `top_k_requested`, `top_k_returned`, `duration_ms`, `error_code`
-  - Interdit: dump complet des traces
+### 5) UI minimale
+- [ ] Ajouter un bouton `Log` a cote de `Admin` dans l'UI principale.
+- [ ] Ajouter une page dediee logs, avec langage visuel coherent avec l'admin.
+- [ ] Poser le JS futur sous `app/web/log/`.
+- [ ] Afficher la timeline chronologique par tour avec badges `ok/error/skipped`.
+- [ ] Afficher les metadonnees utiles (tokens, limites, truncation, compteurs) sans dump brut.
+- [ ] Exposer les actions de suppression strictement alignees sur le scope decide.
 
-- `summaries`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `active_summary_present`, `summary_count_used`, `duration_ms`, `error_code`
-  - Interdit: dump du contenu integral des summaries
+### 6) Tests / preuves
+- [ ] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
+- [ ] Test `prompt_kind`: presence et valeurs attendues sur les evenements concernes.
+- [ ] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
+- [ ] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
+- [ ] Test suppression logs `all_logs` (si retenu) sans impact memoire metier.
+- [ ] Test suppression logs `conversation_logs` (si retenu) sans impact memoire metier.
+- [ ] Test suppression logs `turn_logs` (si retenu) sans impact memoire metier.
+- [ ] Test non-reconstruction: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
+- [ ] Test pipeline non-regression memory/chat/admin (la memoire metier reste intacte).
 
-- `identities_context_hints`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `identities_used`, `context_hints_used`, `hints_truncated`, `duration_ms`, `error_code`
-  - Interdit: dump brut des blocs identite/hints
+## Hors scope (MVP)
+- Logs admin detailles hors pipeline chat.
+- Logs Docker/systeme/stdout.
+- Live tail complexe en temps reel.
+- Export avance.
+- Dump complet des prompts/requetes/reponses.
 
-- `context_build`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `context_tokens`, `token_limit`, `truncated`, `duration_ms`, `error_code`
-  - Interdit: dump du contexte complet (20k/35k tokens)
-
-- `prompt_prepared`
-  - Statut: `ok|error`
-  - Champs mini: `messages_count`, `estimated_prompt_tokens`, `memory_items_used`, `duration_ms`
-  - Interdit: payload complet prompt
-
-- `llm_call`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `model`, `mode` (`sync|stream`), `timeout_s`, `duration_ms`, `response_chars`, `error_code`
-  - Interdit: dump complet requete/reponse
-
-- `arbiter`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `raw_candidates`, `kept_candidates`, `mode` (`shadow|enforced|off`), `duration_ms`, `error_code`
-  - Interdit: dump integral des decisions texte
-
-- `persist_response`
-  - Statut: `ok|error|skipped`
-  - Champs mini: `conversation_saved`, `messages_written`, `duration_ms`, `error_code`
-  - Interdit: dump des messages persistes
-
-- `turn_end`
-  - Statut: `ok|error`
-  - Champs mini: `conversation_id`, `turn_id`, `total_duration_ms`, `final_status`
-
-- `error` (explicite)
-  - Statut: `error`
-  - Champs mini: `stage`, `error_code`, `error_class`, `message_short`
-  - Interdit: stacktrace complete brute en UI par defaut
-
-- `branch_skipped` (explicite)
-  - Statut: `skipped`
-  - Champs mini: `stage`, `reason_code`, `reason_short`
-
-### 6.2 Identifiants minimaux communs
-- `conversation_id`
-- `turn_id` (ID unique par tour)
-- `event_id`
-- `ts` (timestamp ISO UTC)
-- `stage` (nom evenement)
-- `status` (`ok|error|skipped`)
-
-## 7) Semantique de suppression
-- Action utilisateur "effacer logs": suppression physique des enregistrements du module logs cible.
-- La suppression n'impacte jamais les tables/fichiers metier.
-- Aucune reconstruction automatique depuis conversations/traces/summaries.
-- Verification explicite requise: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
-
-## 8) Decoupage d'implementation propose (petites tranches)
-- Tranche A (contrat)
-  - Definir schema d'evenements et enum statuts.
-  - Definir API interne d'ecriture de log (sans dump brut).
-  - Definir regles de redaction.
-
-- Tranche B (persistence logs MVP)
-  - Ajouter stockage dedie logs (separe memoire metier).
-  - Ecriture des evenements `turn_start` a `turn_end` + `error` + `branch_skipped`.
-
-- Tranche C (consultation backend)
-  - Route(s) dediee(s) lecture paginee des logs par conversation/turn/date.
-  - Route suppression logs (scope explicite, pas de side effect metier).
-
-- Tranche D (UI minimale)
-  - Bouton `Log` dans UI principale a cote de `Admin`.
-  - Page dediee de consultation simple (liste chronologique, filtres de base).
-  - Reutilisation du langage visuel admin; JS dans `app/web/log/`.
-
-- Tranche E (preuves de non confusion)
-  - Tests de non regression: suppression logs != suppression memoire.
-  - Tests de non reconstruction apres suppression.
-  - Tests `skipped` explicites.
-
-## 9) Strategie de test / preuve
-- Tests backend:
-  - ecriture d'evenements par tour (ordre chrono et statuts)
-  - suppression logs et verification qu'aucune donnee metier ne disparait
-  - verification qu'aucune reconstruction opportuniste n'a lieu
-- Tests UI:
-  - navigation bouton `Log`
-  - affichage des statuts `ok/error/skipped`
-  - absence de contenu massif dump par defaut
-- Garde-fous source:
-  - assertions sur champs autorises par evenement
-  - assertions d'absence de dump brut (prompt complet, contexte complet)
-
-## 10) Risques et vigilances
-- Risque de confusion logs vs memoire si noms de routes/tables ambigus.
-- Risque de bruit excessif si chaque etape logue du contenu brut.
-- Risque de logs trop pauvres si seuls des "ok" sans compteurs sont stockes.
-- Risque de couplage artificiel avec `admin_logs` existant (JSONL technique) au lieu d'un module logs produit cible.
-- Risque UX: suppression percue comme "cache vide" alors qu'elle doit etre reelle et irreversible pour les logs.
-- Risque performance si la volumetrie n'est pas bornee (pagination, retention, niveau detail).
-
-## 11) Decision documentaire
-- Emplacement retenu: `app/docs/todo-todo/admin/log-module-todo.md`.
-- Motif: chantier admin actif (UI + API de consultation), non archive, non spec stable finale.
+## Risques / vigilance
+- Confusion entre observabilite et persistance metier.
+- Logs trop verbeux (cout/perf/bruit) ou trop pauvres (inutilisables en debug).
+- Decoupage artificiel en cases trop grosses: chaque case doit rester cochable en une tranche fermee.
+- Ambiguite sur `prompt_kind` si la taxonomie n'est pas verrouillee avant instrumentation.
+- Oubli d'un vrai contrat `web_search` (avec `skipped`) si on reste sur un simple flag.
+- Suppression faussement "reelle" si les logs reapparaissent par reconstruction depuis la memoire.
