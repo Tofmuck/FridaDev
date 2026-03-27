@@ -352,8 +352,8 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 **Cases à cocher**
 - [x] Valider un mini-guide de conventions (1 page max) appliqué au repo.
 - [x] Harmoniser progressivement les namespaces logger (namespace canonique: `frida.*`).
-- [ ] Harmoniser le style de typage sur les modules touchés par les phases 1–7.
-- [ ] Appliquer uniquement lors de modifications utiles (pas de commit “format global”).
+- [x] Harmoniser progressivement les annotations de type sur les modules touchés par les phases 1–7.
+- [x] Préserver l’harmonisation par touches utiles, sans commit de format global.
 - [x] Ajouter une vérification légère (lint ou checklist PR) pour éviter la dérive.
 
 **Definition of Done**
