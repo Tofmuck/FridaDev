@@ -115,5 +115,13 @@ Verdict convergence cible (cette tranche): les ecarts residuels restants (notamm
 
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés; la décision sur `.gitignore` / `docs/states` est explicitement prise, avec implémentation volontairement différée à une tranche de nettoyage dédiée.
-- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches, le contrôle “nouveau god module” et la convergence vers la cible section 9 sont fermés/documentés; la clôture globale reste néanmoins ouverte sur la validation finale explicite du statut “traite” vs “traite partiellement”.
+- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches, le contrôle “nouveau god module” et la convergence vers la cible section 9 sont fermés/documentés.
 - Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.
+
+## 6) Verdict final de l’audit
+- Verdict retenu: `traité`.
+- Motif: chaque point important de l’audit initial est désormais soit corrigé, soit arbitré/documenté, sans point majeur restant non qualifié.
+- Résidus explicitement non bloquants pour ce verdict:
+  - `app/core/conv_store.py` reste dense, mais son statut est requalifié et borné (runtime DB stable + sous-ensemble sync JSON explicitement conservé).
+  - La whitelist `.gitignore` sur `app/docs/states/*` reste matériellement en place, mais la décision de cible est actée (zone pérenne versionnée) et l’implémentation concrète est documentée comme tranche de nettoyage différée post-Phase 9.
+  - Certaines façades/modules restent denses (`app/admin/runtime_settings.py`, `app/memory/memory_store.py`, `app/web/admin.js`), mais leur responsabilité est désormais bornée, explicitée et couverte par les preuves/tests des phases précédentes.
