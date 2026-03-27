@@ -77,6 +77,19 @@
 | `memory_store` façade ↔ blocs pipeline mémoire ↔ flows chat/admin | Réduit + requalifié | Pas de nouveau couplage transversal problématique créé par les wrappers: le couplage restant est borné au package `memory` et rendu explicite par blocs pipeline-first | `app/memory/memory_store.py` (façade + `__all__`), modules `memory_store_infra.py`, `memory_traces_summaries.py`, `memory_context_read.py`, `memory_arbiter_audit.py`, `memory_identity_write.py`, `memory_identity_dynamics.py`; appels consommateurs dans `core/chat_memory_flow.py` et `admin/admin_hermeneutics_service.py`; tests `tests/unit/memory/test_memory_store_blocks_phase8bis.py`, `tests/unit/chat/test_chat_memory_flow.py` | Le pipeline identité conserve un couplage interne (write path/dynamics) mais sans aggravation inter-couches |
 | `conv_store` ↔ reliquats JSON / services | Stable, non aggravé, mieux borné | Runtime principal DB inchangé; sous-ensemble JSON conservé comme outillage explicite hors runtime principal | `app/core/conv_store.py` (subset sync + `_load_json_conversation_file`), `app/core/conversations_service.py` (`soft_delete_conversation`), `app/server.py` (routes via service), test `test_conv_store_json_sync_inventory_phase6.py` | `conv_store` reste un module central et encore couplé à `admin.runtime_settings`/`admin_logs` |
 
+## 3 sexies) Vérification “nouveau god module” (Phase 9)
+
+| Candidat évalué | Qualification retenue | Statut | Preuve vérifiable | Réserve |
+| --- | --- | --- | --- | --- |
+| `app/server.py` | Orchestrateur central légitime (HTTP composition) | Pas un nouveau god module | ~535 lignes (vs ~1201 audit), délégations explicites vers `chat_service`, `conversations_service`, `admin_settings_service`, `admin_hermeneutics_service`; tests `test_server_phase14.py`, `test_minimal_validation_phase9.py` | Le fichier reste central par design de routeur Flask |
+| `app/admin/runtime_settings.py` | Façade de compatibilité dense mais bornée | Pas un nouveau god module | Split effectif vers `runtime_settings_spec.py`, `runtime_settings_repo.py`, `runtime_settings_validation.py`; test `tests/unit/runtime_settings/test_runtime_settings.py` | Façade encore volumineuse (~939 lignes), à surveiller |
+| `app/core/conv_store.py` | Module historique dense non aggravé | Pas un nouveau god module créé par le refacto | Module déjà massif dans l’audit; responsabilités DB+catalog/messages+legacy sync inchangées en nature; test `test_minimal_validation_phase9.py` + inventaire `test_conv_store_json_sync_inventory_phase6.py` | Reste un hotspot historique, mais non “nouveau” |
+| `app/memory/memory_store.py` | Façade de compatibilité lisible (pipeline-first) | Pas un nouveau god module | ~531 lignes avec `__all__` explicite et délégations vers `memory_store_infra.py`, `memory_traces_summaries.py`, `memory_context_read.py`, `memory_arbiter_audit.py`, `memory_identity_write.py`, `memory_identity_dynamics.py`; test direct `tests/unit/memory/test_memory_store_blocks_phase8bis.py` | Couplage pipeline mémoire encore présent mais borné et visible |
+| `app/web/admin.js` | Orchestrateur frontend légitime (wiring) | Pas un nouveau god module | ~1073 lignes (vs ~3654 audit), dépendances vérifiées vers `admin_api.js`, `admin_state.js`, `admin_ui_common.js`, `admin_section_*.js`; test `test_minimal_validation_phase9.py` | Toujours dense côté bootstrap DOM |
+| `app/memory/memory_identity_dynamics.py` (candidat additionnel) | Module dense mais borné à un sous-domaine métier unique | Pas un nouveau god module | ~550 lignes, imports limités (`math`, `typing`), API centrée sur conflicts/defer/preview/persist/decay/reactivate; couvert par `tests/unit/memory/test_memory_store_blocks_phase8bis.py` | Taille à surveiller si de nouvelles règles y sont ajoutées |
+
+Verdict de tranche: aucun module introduit pendant le refacto ne cumule de nouvelles responsabilités transversales opaques au point de constituer un nouveau “god module”.
+
 ## 4) Questions ouvertes de l’audit initial: décision explicite
 
 | Question ouverte (audit §12) | Décision explicite | Statut |
@@ -89,5 +102,5 @@
 
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés; la décision sur `.gitignore` / `docs/states` est explicitement prise, avec implémentation volontairement différée à une tranche de nettoyage dédiée.
-- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes et les dépendances inter-couches signalés dans l’audit sont fermés/documentés; la clôture globale reste néanmoins ouverte sur les cases Phase 9 restantes (“god module”, convergence cible, verdict final).
+- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches et le contrôle “nouveau god module” signalés dans l’audit sont fermés/documentés; la clôture globale reste néanmoins ouverte sur les cases Phase 9 restantes (convergence cible + verdict final explicite).
 - Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.
