@@ -1,15 +1,19 @@
-# Docs Cleanup Plan (analyse only, no moves yet)
+# Docs Cleanup Plan (plan + execution status)
 
 Date: 2026-03-27
 Scope: cartographie complete de `app/docs` + plan de rangement/nettoyage.
 
+Execution status:
+- Lot 1 (rangement structurel faible risque): execute
+- Lot suivant (archivage legacy evident + suppression faible valeur, sans fusion des roadmaps ouvertes): execute
+- Restant: fusion controlee des roadmaps ouvertes + ajustement futur de `.gitignore` dans une tranche dediee
+
 ## 1) Methode et preuves de lecture
 
-Cette tranche est strictement documentaire:
-- aucun deplacement de fichier
-- aucune suppression
-- aucun renommage
+Contraintes maintenues sur les lots deja executes:
+- pas de modification de contenu metier des documents
 - aucune modification de `.gitignore`
+- pas de fusion de roadmaps ouvertes a ce stade
 
 Inventaire lu (31 fichiers):
 - racine `app/docs/*.md`
@@ -23,7 +27,7 @@ Points legacy explicitement verifies dans le contenu:
 
 ## 2) Regles de classement retenues
 
-Actions autorisees dans le plan (pas executees ici):
+Actions du plan:
 - `garder ici`
 - `deplacer`
 - `fusionner`
@@ -83,6 +87,8 @@ Pourquoi conserver les docs canoniques a la racine:
 - les deplacer maintenant augmenterait le risque de casse de process sans gain immediate
 
 ## 4) Matrice fichier par fichier
+
+Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 
 | Chemin actuel | Qualification | Lecteur principal | Action proposee | Destination cible (si move/fusion) | Justification courte | Risque / reserve |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -166,28 +172,38 @@ Pourquoi conserver les docs canoniques a la racine:
 
 ## 7) Strategie de migration proposee (3 petits lots)
 
-### Lot 1 (faible risque) — Rangement structurel sans suppression
+### Lot 1 (faible risque) — Rangement structurel sans suppression [FAIT]
 - Creer les sous-dossiers cibles dans `states/`, `todo-done/`, `todo-todo/`
 - Deplacer les documents clairement classes (audits/validations/policies/specs/baselines)
 - Mettre a jour `app/docs/README.md` avec la nouvelle arborescence
 - Ne supprimer aucun fichier dans ce lot
 
-### Lot 2 (risque moyen) — Consolidation des roadmaps ouvertes
+### Lot 2 (risque controle) — Archivage legacy + suppression faible valeur, sans fusion [FAIT]
+- Archiver les documents legacy evidents dans `states/legacy/`:
+  - `PROJET.md`
+  - `sanity-frida-mini.md`
+- Supprimer les documents a tres faible valeur:
+  - `todo-done/patch_done.md`
+  - `todo-todo/smart-todo.md`
+- Laisser volontairement en place pour lot ulterieur:
+  - `todo-todo/Migration_FridaDev-todo.md`
+  - `todo-todo/memory-todo.md`
+
+### Lot 3 (risque moyen) — Consolidation des roadmaps ouvertes [RESTE]
 - Fusionner les doublons de roadmap:
   - `Migration_FridaDev-todo.md` -> residuels dans `fridadev_refactor_todo.md`
   - `memory-todo.md` -> residuels utiles dans `hermeneutical-add-todo.md`
 - Archiver les versions historiques utiles en `todo-done/migrations/` si besoin
 - Verifier qu'aucun item ouvert n'est perdu
 
-### Lot 3 (risque controle) — Nettoyage obsolescence + de-ignorisation `states`
-- Supprimer les fichiers valides comme obsoletes/faible valeur (`smart-todo.md`, `patch_done.md`, possiblement `PROJET.md` apres validation externe)
+### Lot 4 (risque controle) — De-ignorisation `states` + hygiene finale [RESTE]
 - Finaliser la politique de versionning de `app/docs/states/`:
   - retirer l'ignore global
   - ne garder que des ignores cibles pour artefacts generes/temporaires
 - Revalidation documentaire (contre-audit externe) avant merge final
 
-## 8) Reserves a traiter avant execution
+## 8) Reserves restantes
 
 - Plusieurs chemins de docs canoniques sont appeles explicitement dans les routines de travail; les deplacer sans mise a jour coordonnee casserait les workflows.
-- Les docs legacy dans `states/` doivent etre soit archives explicitement (`states/legacy/`), soit supprimes; les laisser au meme niveau que les references actives entretient l'ambiguite.
+- Les roadmaps ouvertes `Migration_FridaDev-todo.md` et `memory-todo.md` doivent etre fusionnees sans perdre les reliquats encore utiles.
 - La suppression de l'ignore `app/docs/states/*` doit etre faite uniquement apres rangement effectif pour eviter de versionner du bruit brut.
