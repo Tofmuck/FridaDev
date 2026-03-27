@@ -165,6 +165,20 @@ def prepare_memory_context(
         if memory_traces:
             memory_traces = memory_store_module.enrich_traces_with_summaries(memory_traces)
     else:
+        chat_turn_logger.emit(
+            'arbiter',
+            status='skipped',
+            reason_code='no_data',
+            payload={
+                'raw_candidates': 0,
+                'kept_candidates': 0,
+                'mode': current_mode,
+            },
+        )
+        chat_turn_logger.emit_branch_skipped(
+            reason_code='no_data',
+            reason_short='arbiter_no_traces',
+        )
         memory_traces = []
 
     context_hints = memory_store_module.get_recent_context_hints(

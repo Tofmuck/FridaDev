@@ -50,6 +50,68 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(observed[-1]['stage'], 'turn_end')
         self.assertEqual(observed[-1]['payload_json']['final_status'], 'ok')
 
+    def test_end_turn_uses_error_status_when_final_status_is_error(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-error',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.end_turn(token, final_status='error')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        turn_end_event = observed[-1]
+        self.assertEqual(turn_end_event['stage'], 'turn_end')
+        self.assertEqual(turn_end_event['status'], 'error')
+        self.assertEqual(turn_end_event['payload_json']['final_status'], 'error')
+
+    def test_pending_conversation_buffers_until_real_conversation_id(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id=None,
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'web_search',
+                status='skipped',
+                reason_code='feature_disabled',
+                payload={
+                    'enabled': False,
+                    'query_preview': '',
+                    'results_count': 0,
+                    'context_injected': False,
+                    'truncated': False,
+                },
+            )
+            self.assertEqual(observed, [])
+            chat_turn_logger.update_conversation_id('conv-real')
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        self.assertEqual(observed[0]['stage'], 'turn_start')
+        self.assertEqual(observed[1]['stage'], 'web_search')
+        self.assertTrue(all(event['conversation_id'] == 'conv-real' for event in observed))
+        self.assertNotIn('__pending__', {event['conversation_id'] for event in observed})
+
     def test_emit_is_best_effort_when_store_insert_raises(self) -> None:
         original_insert = log_store.insert_chat_log_event
 

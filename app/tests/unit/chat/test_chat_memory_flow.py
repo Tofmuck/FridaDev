@@ -218,6 +218,64 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(returned_hints, context_hints)
         self.assertEqual(_event_payloads(events, 'context_hints_selected')[0]['count'], 2)
 
+    def test_prepare_memory_context_emits_arbiter_skipped_when_no_raw_traces(self) -> None:
+        events = []
+        chat_events: list[tuple[str, dict[str, object]]] = []
+        branch_events: list[tuple[str, str]] = []
+
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE='shadow',
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            'id': 'conv-memory-empty',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve=lambda _msg: [],
+            enrich_traces_with_summaries=lambda traces: traces,
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+        arbiter_module = SimpleNamespace(
+            filter_traces_with_diagnostics=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError('arbiter should not run with empty traces')
+            ),
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        original_emit = chat_memory_flow.chat_turn_logger.emit
+        original_branch = chat_memory_flow.chat_turn_logger.emit_branch_skipped
+        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
+        chat_memory_flow.chat_turn_logger.emit_branch_skipped = (
+            lambda *, reason_code, reason_short: branch_events.append((reason_code, reason_short)) or True
+        )
+        try:
+            _mode, memory_traces, context_hints = chat_memory_flow.prepare_memory_context(
+                conversation=conversation,
+                user_msg='bonjour',
+                config_module=config_module,
+                memory_store_module=memory_store_module,
+                arbiter_module=arbiter_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.chat_turn_logger.emit = original_emit
+            chat_memory_flow.chat_turn_logger.emit_branch_skipped = original_branch
+
+        self.assertEqual(memory_traces, [])
+        self.assertEqual(context_hints, [])
+        self.assertTrue(chat_events)
+        stage, kwargs = chat_events[0]
+        self.assertEqual(stage, 'arbiter')
+        self.assertEqual(kwargs['status'], 'skipped')
+        self.assertEqual(kwargs['reason_code'], 'no_data')
+        self.assertEqual(kwargs['payload']['raw_candidates'], 0)
+        self.assertEqual(kwargs['payload']['kept_candidates'], 0)
+        self.assertEqual(kwargs['payload']['mode'], 'shadow')
+        self.assertEqual(branch_events, [('no_data', 'arbiter_no_traces')])
+
     def test_record_identity_entries_for_mode_handles_off_and_enforced(self) -> None:
         events = []
         observed = {
