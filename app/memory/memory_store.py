@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Public memory facade.
+
+This module stays the stable import surface for callers (`from memory import memory_store`)
+while implementation blocks live in dedicated pipeline-first modules.
+"""
+
 import logging
 import re
 from typing import Any, Optional, Sequence
@@ -20,11 +26,33 @@ from memory import memory_traces_summaries
 
 logger = logging.getLogger('frida.memory_store')
 
+__all__ = [
+    'init_db',
+    'embed',
+    'save_new_traces',
+    'retrieve',
+    'save_summary',
+    'update_traces_summary_id',
+    'get_summary_for_trace',
+    'enrich_traces_with_summaries',
+    'get_identities',
+    'get_recent_context_hints',
+    'get_hermeneutic_kpis',
+    'get_arbiter_decisions',
+    'record_arbiter_decisions',
+    'set_identity_override',
+    'relabel_identity',
+    'record_identity_evidence',
+    'add_identity',
+    'detect_and_record_conflicts',
+    'preview_identity_entries',
+    'persist_identity_entries',
+    'decay_identities',
+    'reactivate_identities',
+]
 
-# Connection
-# Phase 8 bis: facade publique de transition.
-# Les appelants continuent d'importer `memory_store`; le bloc infra vit dans
-# `memory_store_infra` et reste delegue via les wrappers ci-dessous.
+
+# Infra + private compatibility hooks used by legacy tests/monkeypatches.
 
 def _conn():
     return memory_store_infra.connect_runtime_database(
