@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import math
 import re
-from datetime import datetime
 from typing import Any, Optional, Sequence
 
 import psycopg
@@ -13,6 +12,7 @@ import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
 from memory import hermeneutics_policy as policy
+from memory import memory_context_read
 from memory import memory_store_infra
 from memory import memory_traces_summaries
 
@@ -193,74 +193,14 @@ def get_identities(
     top_n: Optional[int] = None,
     status: Optional[str] = 'accepted',
 ) -> list[dict[str, Any]]:
-    """
-    Return top-N identities for a subject, sorted by weight.
-    By default, only accepted identities are returned.
-    """
-    if top_n is None:
-        top_n = config.IDENTITY_TOP_N
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                if status is None:
-                    cur.execute(
-                        '''
-                        SELECT id, subject, content, weight, created_ts, last_seen_ts, source_trace_id,
-                               stability, utterance_mode, recurrence, scope, evidence_kind, confidence,
-                               status, content_norm, last_reason, conversation_id, override_state,
-                               override_reason, override_actor, override_ts
-                        FROM   identities
-                        WHERE  subject = %s
-                        ORDER  BY weight DESC
-                        LIMIT  %s
-                        ''',
-                        (subject, top_n),
-                    )
-                else:
-                    cur.execute(
-                        '''
-                        SELECT id, subject, content, weight, created_ts, last_seen_ts, source_trace_id,
-                               stability, utterance_mode, recurrence, scope, evidence_kind, confidence,
-                               status, content_norm, last_reason, conversation_id, override_state,
-                               override_reason, override_actor, override_ts
-                        FROM   identities
-                        WHERE  subject = %s
-                          AND  status = %s
-                        ORDER  BY weight DESC
-                        LIMIT  %s
-                        ''',
-                        (subject, status, top_n),
-                    )
-                rows = cur.fetchall()
-        return [
-            {
-                'id': str(r[0]),
-                'subject': r[1],
-                'content': r[2],
-                'weight': float(r[3]),
-                'created_ts': str(r[4]) if r[4] else None,
-                'last_seen_ts': str(r[5]) if r[5] else None,
-                'source_trace_id': str(r[6]) if r[6] else None,
-                'stability': r[7],
-                'utterance_mode': r[8],
-                'recurrence': r[9],
-                'scope': r[10],
-                'evidence_kind': r[11],
-                'confidence': float(r[12] or 0.0),
-                'status': r[13],
-                'content_norm': r[14],
-                'last_reason': r[15],
-                'conversation_id': r[16],
-                'override_state': r[17],
-                'override_reason': r[18],
-                'override_actor': r[19],
-                'override_ts': str(r[20]) if r[20] else None,
-            }
-            for r in rows
-        ]
-    except Exception as exc:
-        logger.error('get_identities_error subject=%s err=%s', subject, exc)
-        return []
+    return memory_context_read.get_identities(
+        subject,
+        top_n=top_n,
+        status=status,
+        conn_factory=_conn,
+        default_top_n=config.IDENTITY_TOP_N,
+        logger=logger,
+    )
 
 
 def get_recent_context_hints(
@@ -268,100 +208,16 @@ def get_recent_context_hints(
     max_age_days: Optional[int] = None,
     min_confidence: Optional[float] = None,
 ) -> list[dict[str, Any]]:
-    """
-    Return non-durable context hints from recent episodic/situation evidence.
-    This reads evidence only and never promotes content into durable identity.
-    """
-    if max_items is None:
-        max_items = config.CONTEXT_HINTS_MAX_ITEMS
-    if max_age_days is None:
-        max_age_days = config.CONTEXT_HINTS_MAX_AGE_DAYS
-    if min_confidence is None:
-        min_confidence = config.CONTEXT_HINTS_MIN_CONFIDENCE
-
-    max_items = max(0, int(max_items))
-    if max_items == 0:
-        return []
-
-    fetch_limit = max(5, max_items * 8)
-
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT
-                        conversation_id,
-                        content,
-                        content_norm,
-                        created_ts,
-                        confidence,
-                        scope,
-                        stability,
-                        utterance_mode,
-                        (
-                            COALESCE(confidence, 0.0)
-                            * (1.0 / (1.0 + GREATEST(EXTRACT(EPOCH FROM (now() - created_ts)) / 3600.0, 0.0)))
-                        ) AS score
-                    FROM identity_evidence
-                    WHERE subject = %s
-                      AND created_ts >= (now() - make_interval(days => %s))
-                      AND (stability = %s OR scope = %s)
-                      AND COALESCE(confidence, 0.0) >= %s
-                      AND COALESCE(utterance_mode, %s) NOT IN (%s, %s, %s)
-                      AND COALESCE(status, %s) IN (%s, %s)
-                    ORDER BY score DESC, created_ts DESC
-                    LIMIT %s
-                    """,
-                    (
-                        "user",
-                        max(1, int(max_age_days)),
-                        "episodic",
-                        "situation",
-                        float(min_confidence),
-                        "unknown",
-                        "irony",
-                        "role_play",
-                        "unknown",
-                        "accepted",
-                        "accepted",
-                        "deferred",
-                        fetch_limit,
-                    ),
-                )
-                rows = cur.fetchall()
-
-        hints: list[dict[str, Any]] = []
-        seen_norm: set[str] = set()
-        for row in rows:
-            content = str(row[1] or "").strip()
-            if not content:
-                continue
-            norm = str(row[2] or "").strip()
-            if norm and norm in seen_norm:
-                continue
-            if norm:
-                seen_norm.add(norm)
-
-            hints.append(
-                {
-                    "conversation_id": str(row[0] or ""),
-                    "content": content,
-                    "timestamp": row[3].isoformat() if isinstance(row[3], datetime) else "",
-                    "confidence": float(row[4] or 0.0),
-                    "scope": str(row[5] or "user"),
-                    "stability": str(row[6] or "unknown"),
-                    "utterance_mode": str(row[7] or "unknown"),
-                    "score": float(row[8] or 0.0),
-                }
-            )
-            if len(hints) >= max_items:
-                break
-
-        return hints
-    except Exception as exc:
-        logger.error("get_recent_context_hints_error err=%s", exc)
-        return []
+    return memory_context_read.get_recent_context_hints(
+        max_items=max_items,
+        max_age_days=max_age_days,
+        min_confidence=min_confidence,
+        conn_factory=_conn,
+        default_max_items=config.CONTEXT_HINTS_MAX_ITEMS,
+        default_max_age_days=config.CONTEXT_HINTS_MAX_AGE_DAYS,
+        default_min_confidence=config.CONTEXT_HINTS_MIN_CONFIDENCE,
+        logger=logger,
+    )
 
 
 
