@@ -1,15 +1,15 @@
 # FridaDev Refactor Closure (Phase 9 — Tranche 1)
 
 ## 1) Scope de cette tranche
-- Objectif: produire une preuve de clôture croisée entre `app/docs/fridadev_repo_audit.md` et l’état réel du repo.
+- Objectif: produire une preuve de clôture croisée entre `app/docs/todo-done/audits/fridadev_repo_audit.md` et l’état réel du repo.
 - Nature: documentaire uniquement (pas de nouveau refacto structurel).
 - Résultat attendu ici: statut explicite des points majeurs de l’audit + décision explicite des questions ouvertes.
 
 ## 2) Méthode de vérification
 - Sources de référence:
-  - `app/docs/fridadev_repo_audit.md`
-  - `app/docs/fridadev_refactor_todo.md`
-  - `app/docs/fridadev_conventions.md`
+  - `app/docs/todo-done/audits/fridadev_repo_audit.md`
+  - `app/docs/todo-done/refactors/fridadev_refactor_todo.md`
+  - `app/docs/states/architecture/fridadev_conventions.md`
 - Vérifications repo (lecture croisée):
   - contrats startup/chat/arbiter dans `app/Dockerfile`, `app/run.sh`, `app/config.py`, `app/server.py`, `app/web/app.js`, `app/tools/web_search.py`, `app/core/chat_prompt_context.py`, `app/memory/memory_store.py`
   - extraction/modularisation dans `app/core/*`, `app/admin/*`, `app/web/*`, `app/tests/*`
@@ -31,8 +31,8 @@
 | Monolithe `server.py` | Requalifié (fortement réduit) | Routes + composition + garde admin; orchestration déplacée en services | `app/server.py` (~535 lignes), `app/core/chat_service.py`, `app/core/conversations_service.py`, `app/admin/admin_settings_service.py`, `app/admin/admin_hermeneutics_service.py`; tests server phases 4/5bis/8/12/13/14 | Des couplages inter-modules persistent (niveau normal de composition) |
 | Monolithe `admin.js` | Requalifié (fortement réduit) | Modules `api`, `state`, `ui_common`, sections extraits; contrat DOM/endpoints verrouillé | `app/web/admin_*.js`, `app/web/admin.html`, tests `test_minimal_validation_phase9.py` + `tests/integration/frontend_admin/test_frontend_admin_contract.py` | `admin.js` reste un point d’entrée orchestrateur |
 | Reliquats certain/probable (panel, MAX_CONTEXT_MESSAGES, `needs_summarization`, flag web_search) | Corrigé + documenté | Reliquats “certain” supprimés; flag `ticketmaster` supprimé; sync JSON conservée explicitement comme outillage | `app/web/app.js`, `app/memory/summarizer.py`, `app/tools/web_search.py` (`build_context` 3-tuple), `app/core/chat_prompt_context.py`; tests `test_phase4_transversal.py`, `test_web_search_phase13.py` | Sync JSON non supprimée (décision assumée) |
-| Statut sync JSON `conv_store` | Documenté / arbitré | Conservation explicite comme outillage opératoire hors runtime principal | `app/core/conv_store.py` (commentaire “Legacy sync subset…”), `app/docs/fridadev_refactor_todo.md` (arbitrage 2026-03-26), test `test_conv_store_json_sync_inventory_phase6.py` | À réévaluer seulement si politique produit change |
-| Conventions minimales (`frida.*`, typage progressif, garde-fou) | Documenté + appliqué | Namespace logger canonique `frida.*`; harmonisation typage par tranches utiles; garde-fou anti-dérive | `app/docs/fridadev_conventions.md`, `app/tests/test_logging_conventions_phase8.py`, absence du token legacy logger dans les fichiers trackés (vérification `rg` sur `git ls-files`) | Harmonisation typage volontairement progressive, non “uniformité absolue” |
+| Statut sync JSON `conv_store` | Documenté / arbitré | Conservation explicite comme outillage opératoire hors runtime principal | `app/core/conv_store.py` (commentaire “Legacy sync subset…”), `app/docs/todo-done/refactors/fridadev_refactor_todo.md` (arbitrage 2026-03-26), test `test_conv_store_json_sync_inventory_phase6.py` | À réévaluer seulement si politique produit change |
+| Conventions minimales (`frida.*`, typage progressif, garde-fou) | Documenté + appliqué | Namespace logger canonique `frida.*`; harmonisation typage par tranches utiles; garde-fou anti-dérive | `app/docs/states/architecture/fridadev_conventions.md`, `app/tests/test_logging_conventions_phase8.py`, absence du token legacy logger dans les fichiers trackés (vérification `rg` sur `git ls-files`) | Harmonisation typage volontairement progressive, non “uniformité absolue” |
 
 ## 3 bis) Contradictions de contrat (audit §5) — statut de fermeture
 
@@ -116,7 +116,7 @@ Verdict convergence cible (cette tranche): les ecarts residuels restants (notamm
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés; la décision sur `.gitignore` / `docs/states` est explicitement prise, avec implémentation volontairement différée à une tranche de nettoyage dédiée.
 - Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches, le contrôle “nouveau god module” et la convergence vers la cible section 9 sont fermés/documentés.
-- Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.
+- Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/todo-done/refactors/fridadev_memory_store_refactor_plan.md`.
 
 ## 6) Verdict final de l’audit
 - Verdict retenu: `traité`.

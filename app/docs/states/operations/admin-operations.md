@@ -6,9 +6,9 @@ Ce document fige l'etat d'exploitation et de migration du nouvel admin V1 de Fri
 
 Il complete :
 
-- `app/docs/admin-implementation-spec.md` pour les decisions de design
-- `app/docs/admin-runtime-settings-schema.md` pour le schema runtime
-- `app/docs/admin-todo.md` pour l'historique de realisation
+- `app/docs/states/specs/admin-implementation-spec.md` pour les decisions de design
+- `app/docs/states/specs/admin-runtime-settings-schema.md` pour le schema runtime
+- `app/docs/todo-done/refactors/admin-todo.md` pour l'historique de realisation
 
 ## Entree canonique
 

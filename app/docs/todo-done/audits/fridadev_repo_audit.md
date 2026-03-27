@@ -8,7 +8,7 @@
 
 ## 2. Exclusions
 - [Constaté] Les contenus suivants sont exclus de l’analyse de fond (non utilisés comme source de vérité):
-  - `app/docs/admin-todo.md`
+  - `app/docs/todo-done/refactors/admin-todo.md`
   - `app/docs/todo-done/**`
   - `app/docs/todo-todo/**`
   - plus généralement: tout artefact `todo`, `TODO`, `to-do`, checklist, note d’avancement équivalente.

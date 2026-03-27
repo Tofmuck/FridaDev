@@ -4,7 +4,7 @@
 
 Ce document fige le schema cible des settings runtime pour l'admin V1.
 
-Il complete `app/docs/admin-implementation-spec.md` et ferme la partie modele de donnees de la Phase 1 de `app/docs/admin-todo.md`, sans encore creer de migration SQL ni de module backend.
+Il complete `app/docs/states/specs/admin-implementation-spec.md` et ferme la partie modele de donnees de la Phase 1 de `app/docs/todo-done/refactors/admin-todo.md`, sans encore creer de migration SQL ni de module backend.
 
 ## Principes
 

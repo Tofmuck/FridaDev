@@ -7,13 +7,14 @@ Execution status:
 - Lot 1 (rangement structurel faible risque): execute
 - Lot suivant (archivage legacy evident + suppression faible valeur, sans fusion des roadmaps ouvertes): execute
 - Lot 3 (fusion controlee des roadmaps ouvertes): execute
-- Restant: ajustement futur de `.gitignore` dans une tranche dediee
+- Lot 4 (sortie des docs de racine + references vivantes + de-ignorisation `states`): execute
+- Restant: aucun lot structurel bloque.
 
 ## 1) Methode et preuves de lecture
 
 Contraintes maintenues sur les lots deja executes:
 - pas de modification de contenu metier des documents
-- aucune modification de `.gitignore`
+- `.gitignore` nettoye pour ne plus ignorer `app/docs/states/`
 - fusion des roadmaps limitee aux reliquats ouverts utiles (pas de fusion massive de contenu obsolete)
 
 Inventaire lu (31 fichiers):
@@ -48,18 +49,6 @@ Objectif: garder la logique actuelle (`states/`, `todo-done/`, `todo-todo/`) mai
 ```text
 app/docs/
   README.md
-  docs_cleanup_plan.md
-
-  # Canoniques actifs conserves a la racine (liens deja references dans le repo)
-  admin-todo.md
-  admin-implementation-spec.md
-  admin-runtime-settings-schema.md
-  admin-operations.md
-  fridadev_repo_audit.md
-  fridadev_refactor_todo.md
-  fridadev_refactor_closure.md
-  fridadev_conventions.md
-  fridadev_memory_store_refactor_plan.md
 
   states/
     architecture/
@@ -73,6 +62,7 @@ app/docs/
   todo-done/
     audits/
     validations/
+    refactors/
     migrations/
     notes/
 
@@ -84,8 +74,8 @@ app/docs/
 ```
 
 Pourquoi conserver les docs canoniques a la racine:
-- ces chemins sont deja references explicitement dans les routines de travail (`AGENTS.md`, prompts de pilotage, scripts de verification)
-- les deplacer maintenant augmenterait le risque de casse de process sans gain immediate
+- etape initiale du nettoyage: limiter le risque de casse pendant les premiers lots
+- etape finale executee: references vivantes migrees et docs canoniques sorties de la racine
 
 ## 4) Matrice fichier par fichier
 
@@ -94,15 +84,15 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 | Chemin actuel | Qualification | Lecteur principal | Action proposee | Destination cible (si move/fusion) | Justification courte | Risque / reserve |
 | --- | --- | --- | --- | --- | --- | --- |
 | `app/docs/README.md` | canonique | tout contributeur | garder ici | n/a | point d'entree clair sur la logique `states/todo-done/todo-todo` | faible |
-| `app/docs/admin-todo.md` | canonique | backend/admin maintainer | garder ici | n/a | feuille de route autoritative admin deja referencee | deplacement casserait des references de process |
-| `app/docs/admin-implementation-spec.md` | canonique | backend/admin maintainer | garder ici | n/a | spec d'implementation active et reliee a `admin-todo.md` | faible |
-| `app/docs/admin-runtime-settings-schema.md` | canonique | backend/admin maintainer | garder ici | n/a | schema de reference runtime settings | faible |
-| `app/docs/admin-operations.md` | canonique | operateur/admin maintainer | garder ici | n/a | guide operationnel V1 du nouvel admin | faible |
-| `app/docs/fridadev_repo_audit.md` | canonique | maintainer/reviewer | garder ici | n/a | source d'audit initiale citee partout | faible |
-| `app/docs/fridadev_refactor_todo.md` | canonique | maintainer/reviewer | garder ici | n/a | pilotage actif des phases | faible |
-| `app/docs/fridadev_refactor_closure.md` | canonique | maintainer/reviewer | garder ici | n/a | preuve de cloture croisee | faible |
-| `app/docs/fridadev_conventions.md` | canonique | tous devs | garder ici | n/a | conventions minimales transverses | faible |
-| `app/docs/fridadev_memory_store_refactor_plan.md` | historique utile | maintainer memory | garder ici | n/a | plan de refacto memory_store finalise et encore utile en reference | a requalifier en archive si plus consulte |
+| `app/docs/todo-done/refactors/admin-todo.md` | canonique | backend/admin maintainer | garder ici | n/a | feuille de route autoritative admin deja referencee | deplacement casserait des references de process |
+| `app/docs/states/specs/admin-implementation-spec.md` | canonique | backend/admin maintainer | garder ici | n/a | spec d'implementation active et reliee a `admin-todo.md` | faible |
+| `app/docs/states/specs/admin-runtime-settings-schema.md` | canonique | backend/admin maintainer | garder ici | n/a | schema de reference runtime settings | faible |
+| `app/docs/states/operations/admin-operations.md` | canonique | operateur/admin maintainer | garder ici | n/a | guide operationnel V1 du nouvel admin | faible |
+| `app/docs/todo-done/audits/fridadev_repo_audit.md` | canonique | maintainer/reviewer | garder ici | n/a | source d'audit initiale citee partout | faible |
+| `app/docs/todo-done/refactors/fridadev_refactor_todo.md` | canonique | maintainer/reviewer | garder ici | n/a | pilotage actif des phases | faible |
+| `app/docs/todo-done/refactors/fridadev_refactor_closure.md` | canonique | maintainer/reviewer | garder ici | n/a | preuve de cloture croisee | faible |
+| `app/docs/states/architecture/fridadev_conventions.md` | canonique | tous devs | garder ici | n/a | conventions minimales transverses | faible |
+| `app/docs/todo-done/refactors/fridadev_memory_store_refactor_plan.md` | historique utile | maintainer memory | garder ici | n/a | plan de refacto memory_store finalise et encore utile en reference | a requalifier en archive si plus consulte |
 | `app/docs/states/Frida-State-french-23-03-26.md` | historique utile | maintainer produit/fr | deplacer | `app/docs/states/project/Frida-State-french-23-03-26.md` | snapshot de reference daté, utile mais a ranger comme etat projete | faible |
 | `app/docs/states/Frida-State-english-23-03-26.md` | historique utile | maintainer produit/en | deplacer | `app/docs/states/project/Frida-State-english-23-03-26.md` | meme role que la version FR, audience differente | faible |
 | `app/docs/states/Migration_FridaDev-baseline.md` | historique utile | maintainer migration | deplacer | `app/docs/states/baselines/Migration_FridaDev-baseline.md` | baseline pre-migration importante pour comparaison | faible |
@@ -120,7 +110,7 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 | `app/docs/todo-done/Frida-identities-governance-policy.md` | canonique | maintainer memory | deplacer | `app/docs/states/policies/Frida-identities-governance-policy.md` | gouvernance identitaire durable | faible |
 | `app/docs/todo-done/patch_done.md` | doublon / faible valeur | maintainer historique | supprimer | n/a | log ponctuel ancien, contenu partiellement obsolete et redondant avec git history | risque faible (perte de contexte mineur seulement) |
 | `app/docs/todo-todo/Frida-installation-config.md` | chantier ouvert | maintainer product/ops | deplacer | `app/docs/todo-todo/product/Frida-installation-config.md` | vrai chantier ouvert infra/config produit | faible |
-| `app/docs/todo-todo/Migration_FridaDev-todo.md` | doublon / faible valeur | maintainer migration | fusionner | `app/docs/fridadev_refactor_todo.md` (open items) + archive `app/docs/todo-done/migrations/` | roadmap quasi closee, overlap fort avec pilotage refactor actuel | risque de perdre un reliquat ouvert si fusion baclee |
+| `app/docs/todo-todo/Migration_FridaDev-todo.md` | doublon / faible valeur | maintainer migration | fusionner | `app/docs/todo-done/refactors/fridadev_refactor_todo.md` (open items) + archive `app/docs/todo-done/migrations/` | roadmap quasi closee, overlap fort avec pilotage refactor actuel | risque de perdre un reliquat ouvert si fusion baclee |
 | `app/docs/todo-todo/hermeneutical-add-todo.md` | chantier ouvert | maintainer memory | deplacer | `app/docs/todo-todo/memory/hermeneutical-add-todo.md` | roadmap encore exploitable, a ranger par domaine | faible |
 | `app/docs/todo-todo/memory-todo.md` | doublon / faible valeur | maintainer memory | fusionner | `app/docs/todo-todo/memory/hermeneutical-add-todo.md` (extraire seulement residuels utiles) | overlap massif + architecture obsolete dans le bas du doc | risque de perdre un detail residuel si extraction non rigoureuse |
 | `app/docs/todo-todo/smart-todo.md` | obsolete / legacy | personne (historique) | supprimer | n/a | references directes `kiki-mini`, `Olive`, chemins legacy non cibles | risque faible (interet historique tres limite) |
@@ -150,15 +140,15 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 ## 6) Fichiers a conserver comme references fortes
 
 - Pilotage canonique:
-  - `app/docs/fridadev_repo_audit.md`
-  - `app/docs/fridadev_refactor_todo.md`
-  - `app/docs/fridadev_refactor_closure.md`
-  - `app/docs/fridadev_conventions.md`
+  - `app/docs/todo-done/audits/fridadev_repo_audit.md`
+  - `app/docs/todo-done/refactors/fridadev_refactor_todo.md`
+  - `app/docs/todo-done/refactors/fridadev_refactor_closure.md`
+  - `app/docs/states/architecture/fridadev_conventions.md`
 - Admin canonique:
-  - `app/docs/admin-todo.md`
-  - `app/docs/admin-implementation-spec.md`
-  - `app/docs/admin-runtime-settings-schema.md`
-  - `app/docs/admin-operations.md`
+  - `app/docs/todo-done/refactors/admin-todo.md`
+  - `app/docs/states/specs/admin-implementation-spec.md`
+  - `app/docs/states/specs/admin-runtime-settings-schema.md`
+  - `app/docs/states/operations/admin-operations.md`
 - Specs/baselines etats a conserver (apres rangement):
   - `app/docs/states/hermeneutic-judgment-spec.md`
   - `app/docs/states/Migration_FridaDev-baseline.md`
@@ -171,7 +161,7 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
   - `Frida-traces-summaries-retention-policy.md`
   - `Frida-identities-governance-policy.md`
 
-## 7) Strategie de migration proposee (4 petits lots)
+## 7) Strategie de migration (execution)
 
 ### Lot 1 (faible risque) — Rangement structurel sans suppression [FAIT]
 - Creer les sous-dossiers cibles dans `states/`, `todo-done/`, `todo-todo/`
@@ -197,14 +187,13 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 - Archiver les versions historiques utiles en `todo-done/migrations/`
 - Verifier qu'aucun item ouvert n'est perdu
 
-### Lot 4 (risque controle) — De-ignorisation `states` + hygiene finale [RESTE]
-- Finaliser la politique de versionning de `app/docs/states/`:
-  - retirer l'ignore global
-  - ne garder que des ignores cibles pour artefacts generes/temporaires
-- Revalidation documentaire (contre-audit externe) avant merge final
+### Lot 4 (execute) — Sortie de la racine + references + de-ignorisation [FAIT]
+- Deplacer les docs canoniques restantes de la racine vers `states/*` et `todo-done/*`
+- Mettre a jour les references vivantes (`AGENTS.md`, docs de pilotage, docs admin)
+- Laisser `app/docs/README.md` seul fichier de la racine
+- Verifier qu'aucune regle `.gitignore` ne bloque `app/docs/states/`
 
 ## 8) Reserves restantes
 
-- Plusieurs chemins de docs canoniques sont appeles explicitement dans les routines de travail; les deplacer sans mise a jour coordonnee casserait les workflows.
 - Les archives de migration conservent des checklists historiques; elles ne doivent plus etre traitees comme roadmap ouverte de pilotage.
-- La suppression de l'ignore `app/docs/states/*` doit etre faite uniquement apres rangement effectif pour eviter de versionner du bruit brut.
+- Maintenir les references vivantes sur les chemins `states/*` et `todo-done/*` dans les futurs patches docs.

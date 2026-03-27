@@ -8,7 +8,7 @@ These instructions apply to the whole `FridaDev` repository.
 
 - Work one minimal, closed, reversible step at a time.
 - Do not implement multiple unrelated changes in the same patch.
-- Do not reopen decisions already fixed in `app/docs/admin-todo.md`.
+- Do not reopen decisions already fixed in `app/docs/todo-done/refactors/admin-todo.md`.
 - Do not perform opportunistic refactors outside the requested scope.
 - Prefer small, testable increments over large rewrites.
 - After each completed step: validate, then commit, then push.
@@ -41,9 +41,9 @@ Meaning:
 
 ## Admin migration rules
 
-For the admin migration tracked in `app/docs/admin-todo.md`:
+For the admin migration tracked in `app/docs/todo-done/refactors/admin-todo.md`:
 
-- Treat `app/docs/admin-todo.md` as the authoritative roadmap.
+- Treat `app/docs/todo-done/refactors/admin-todo.md` as the authoritative roadmap.
 - The roadmap covers the full chantier A -> Z.
 - Execution must still happen one minimal tranche at a time.
 - `admin-old.*` must be preserved when the roadmap says so.
@@ -62,6 +62,6 @@ For the admin migration tracked in `app/docs/admin-todo.md`:
 
 ## When uncertain
 
-- Prefer asking whether a point is already decided in `app/docs/admin-todo.md` before inventing a new direction.
+- Prefer asking whether a point is already decided in `app/docs/todo-done/refactors/admin-todo.md` before inventing a new direction.
 - If the roadmap already decides something, follow it.
 - If a real technical ambiguity remains, state it explicitly in RISKS instead of silently improvising. - Do not create a large patch when a smaller validated patch is possible.

@@ -1,9 +1,9 @@
 # Docs
 
-Organisation retenue:
+Organisation finale retenue:
 
 - `states/`: references stables (specs, baselines, policies, etats projet) + archive `legacy/`
-- `todo-done/`: preuves de chantiers termines (audits, validations, notes, migrations)
+- `todo-done/`: preuves de chantiers termines (audits, validations, refactors, notes, migrations)
 - `todo-todo/`: chantiers ouverts organises par domaine
 
 Regle simple:
@@ -19,18 +19,21 @@ Sous-structure en place:
 - `states/project/`: etats de reference projet (FR/EN)
 - `states/policies/`: politiques de retention/gouvernance
 - `states/legacy/`: archives legacy explicites (`PROJET.md`, `sanity-frida-mini.md`)
-- `states/architecture/`, `states/operations/`: reserves pour lots suivants
+- `states/architecture/`: conventions et cadrage architectural
+- `states/operations/`: guides operatoires
 
 - `todo-done/audits/`: audits finalises
 - `todo-done/validations/`: rapports de validation
-- `todo-done/migrations/`, `todo-done/notes/`: reserves pour lots suivants
+- `todo-done/refactors/`: roadmaps de refacto cloturees
+- `todo-done/migrations/`: roadmaps de migration archivees
+- `todo-done/notes/`: notes de nettoyage et cadrage documentaire
 
 - `todo-todo/memory/`: roadmaps memoire/hermeneutique ouvertes
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
-- `todo-todo/admin/`, `todo-todo/migration/`: reserves pour lots suivants
+- `todo-todo/admin/`, `todo-todo/migration/`: reserves pour futurs chantiers ouverts
 
 Notes:
-- les documents canoniques de pilotage (`admin-*`, `fridadev_*`) restent a la racine `app/docs/`
+- la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
 - les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`

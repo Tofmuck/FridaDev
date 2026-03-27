@@ -4,7 +4,7 @@
 
 Ce document fixe la spec technique d'implementation immediate du chantier admin V1.
 
-Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne sur `app/docs/admin-todo.md`, qui reste la feuille de route autoritative du chantier complet.
+Il sert d'appui d'execution pour les prochaines tranches minimales et s'aligne sur `app/docs/todo-done/refactors/admin-todo.md`, qui reste la feuille de route autoritative du chantier complet.
 
 ## Decisions deja actees
 
@@ -57,7 +57,7 @@ Sont exclus de V1 :
 
 ## Regle d'execution
 
-- `app/docs/admin-todo.md` couvre le chantier complet A -> Z.
+- `app/docs/todo-done/refactors/admin-todo.md` couvre le chantier complet A -> Z.
 - Une seule tranche minimale a la fois.
 - Une tranche minimale = un changement cible, sa validation, son commit, puis son push.
 - Validation obligatoire avant cloture de tranche.

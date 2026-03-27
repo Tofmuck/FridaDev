@@ -1,8 +1,8 @@
 # FridaDev Refactor TODO
 
 ## 1. Principes de pilotage
-- Les sources historiques de type `todo` sont **explicitement exclues** du fond du plan: `app/docs/admin-todo.md`, `app/docs/todo-done/**`, `app/docs/todo-todo/**`.
-- Source de vérité principale de ce plan: `app/docs/fridadev_repo_audit.md`.
+- Les sources historiques de type `todo` sont **explicitement exclues** du fond du plan: `app/docs/todo-done/refactors/admin-todo.md`, `app/docs/todo-done/**`, `app/docs/todo-todo/**`.
+- Source de vérité principale de ce plan: `app/docs/todo-done/audits/fridadev_repo_audit.md`.
 - Chaque changement devra être **minimal, vérifiable, réversible** (pas de big-bang transversal).
 - On traite d’abord les **contradictions de contrat** (interfaces et comportements), puis les refactos structurels.
 - Un chantier = un objectif clair, une phase = un périmètre fermé.
@@ -433,9 +433,9 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - Conclure sur une cible théorique au lieu de l’état réel du repo.
 
 **Fichiers / zones concernés**
-- `app/docs/fridadev_repo_audit.md`
-- `app/docs/fridadev_refactor_todo.md`
-- éventuellement nouveau document de clôture: `app/docs/fridadev_refactor_closure.md`
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/todo-done/refactors/fridadev_refactor_todo.md`
+- éventuellement nouveau document de clôture: `app/docs/todo-done/refactors/fridadev_refactor_closure.md`
 
 **Cases à cocher**
 - [x] Vérifier que chaque point important de `fridadev_repo_audit.md` est soit corrigé, soit documenté, soit explicitement rejeté.
@@ -445,8 +445,8 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - [x] Vérifier que les reliquats legacy / code mort signalés ont été traités ou justifiés.
 - [x] Vérifier que les dépendances inter-couches ont diminué et n’ont pas empiré.
 - [x] Vérifier qu’aucun nouveau “god module” n’a été créé pendant le refacto.
-- [x] Vérifier que l’architecture réelle converge suffisamment vers la cible annoncée en section 9 de `app/docs/fridadev_repo_audit.md`.
-- [x] Produire un document de clôture `app/docs/fridadev_refactor_closure.md` résumant les points soldés, les points arbitrés, les points restant ouverts et les écarts résiduels.
+- [x] Vérifier que l’architecture réelle converge suffisamment vers la cible annoncée en section 9 de `app/docs/todo-done/audits/fridadev_repo_audit.md`.
+- [x] Produire un document de clôture `app/docs/todo-done/refactors/fridadev_refactor_closure.md` résumant les points soldés, les points arbitrés, les points restant ouverts et les écarts résiduels.
 - [x] Valider explicitement si l’audit initial peut être considéré comme “traité” ou seulement “traité partiellement”.
 
 **Definition of Done**
