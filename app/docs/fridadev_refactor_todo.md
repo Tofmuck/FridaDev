@@ -401,7 +401,7 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - [x] Extraire le bloc infra mémoire (connexion DB runtime, bootstrap schéma, adapter embedding).
 - [x] Extraire le bloc traces + summaries.
 - [x] Extraire le bloc lecture contexte (identities read + context hints).
-- [ ] Extraire le bloc audit arbitre (décisions + KPI).
+- [x] Extraire le bloc audit arbitre (décisions + KPI).
 - [ ] Extraire le bloc identities write path (evidence + add/relabel/override).
 - [ ] Extraire le bloc identity dynamics (preview/conflicts/defer/promote/reject/decay/reactivation).
 - [ ] Ajouter/adapter les tests unitaires par bloc + non-régression pipeline memory/chat/admin.
