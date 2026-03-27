@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
+from typing import Any, Callable, Iterable, Mapping
 
 
 def init_runtime_settings_db(
@@ -10,7 +10,7 @@ def init_runtime_settings_db(
     dsn: str,
     sql_path: Path,
     db_unavailable_error_cls: type[RuntimeError],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         migration_sql = sql_path.read_text(encoding='utf-8')
     except OSError as exc:
@@ -38,9 +38,9 @@ def init_runtime_settings_db(
 def fetch_all_sections(
     *,
     dsn: str,
-    normalize_stored_payload: Callable[..., Dict[str, Dict[str, Any]]],
+    normalize_stored_payload: Callable[..., dict[str, dict[str, Any]]],
     db_unavailable_error_cls: type[RuntimeError],
-) -> Dict[str, Dict[str, Dict[str, Any]]]:
+) -> dict[str, dict[str, dict[str, Any]]]:
     try:
         import psycopg
         from psycopg import errors as psycopg_errors
@@ -63,7 +63,7 @@ def fetch_all_sections(
     except Exception as exc:
         raise db_unavailable_error_cls(str(exc)) from exc
 
-    out: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    out: dict[str, dict[str, dict[str, Any]]] = {}
     for section, payload in rows:
         out[str(section)] = normalize_stored_payload(str(section), payload, default_origin='db')
     return out
@@ -73,12 +73,15 @@ def bootstrap_runtime_settings_from_env(
     *,
     dsn: str,
     updated_by: str,
-    build_db_seed_plan: Callable[[Iterable[str]], Tuple[Any, ...]],
-    normalize_stored_payload: Callable[..., Dict[str, Dict[str, Any]]],
-    merge_missing_db_seed_fields: Callable[[str, Mapping[str, Any]], Tuple[Dict[str, Dict[str, Any]], Tuple[str, ...]]],
+    build_db_seed_plan: Callable[[Iterable[str]], tuple[Any, ...]],
+    normalize_stored_payload: Callable[..., dict[str, dict[str, Any]]],
+    merge_missing_db_seed_fields: Callable[
+        [str, Mapping[str, Any]],
+        tuple[dict[str, dict[str, Any]], tuple[str, ...]],
+    ],
     invalidate_runtime_settings_cache: Callable[[], None],
     db_unavailable_error_cls: type[RuntimeError],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     actor = str(updated_by or '').strip() or 'runtime_settings_bootstrap'
 
     try:
@@ -179,15 +182,15 @@ def backfill_runtime_secrets_from_env(
     *,
     dsn: str,
     updated_by: str,
-    secret_v1_fields: Tuple[Tuple[str, str], ...],
-    normalize_stored_payload: Callable[..., Dict[str, Dict[str, Any]]],
+    secret_v1_fields: tuple[tuple[str, str], ...],
+    normalize_stored_payload: Callable[..., dict[str, dict[str, Any]]],
     build_env_seed_bundle: Callable[[str], Any],
     backfill_env_secret_value: Callable[[str, str], str],
     should_backfill_secret_field: Callable[[Mapping[str, Any]], bool],
     encrypt_runtime_secret_value: Callable[[str], str],
     invalidate_runtime_settings_cache: Callable[[], None],
     db_unavailable_error_cls: type[RuntimeError],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     actor = str(updated_by or '').strip() or 'runtime_secret_backfill'
 
     try:
@@ -226,7 +229,7 @@ def backfill_runtime_secrets_from_env(
                             build_env_seed_bundle(section).payload,
                             default_origin='env_seed',
                         )
-                        before_payload: Dict[str, Dict[str, Any]] = {}
+                        before_payload: dict[str, dict[str, Any]] = {}
                     else:
                         next_payload = normalize_stored_payload(section, current_payload, default_origin='db')
                         before_payload = normalize_stored_payload(section, current_payload, default_origin='db')
