@@ -4,7 +4,7 @@ import logging
 import math
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence
 
 import psycopg
 import requests
@@ -300,7 +300,7 @@ def init_db() -> None:
 
 # Embedding
 
-def embed(text: str, mode: str = 'passage') -> List[float]:
+def embed(text: str, mode: str = 'passage') -> list[float]:
     """
     Call OVH embedding service.
     mode='passage' for stored docs, mode='query' for retrieval requests.
@@ -326,7 +326,7 @@ def embed(text: str, mode: str = 'passage') -> List[float]:
 
 # Trace persistence
 
-def _trace_exists_for_message(conversation_id: str, message: Dict[str, Any]) -> bool:
+def _trace_exists_for_message(conversation_id: str, message: dict[str, Any]) -> bool:
     role = str(message.get('role') or '').strip()
     content = str(message.get('content') or '')
     timestamp = message.get('timestamp')
@@ -367,7 +367,7 @@ def _trace_exists_for_message(conversation_id: str, message: Dict[str, Any]) -> 
         logger.warning('trace_exists_check_failed conv=%s err=%s', conversation_id, exc)
         return False
 
-def save_new_traces(conversation: Dict[str, Any]) -> None:
+def save_new_traces(conversation: dict[str, Any]) -> None:
     """
     Embed and persist user/assistant messages not yet marked as embedded.
     Never raises: conversation save must not depend on this.
@@ -424,7 +424,7 @@ def save_new_traces(conversation: Dict[str, Any]) -> None:
 
 # Retrieval
 
-def retrieve(query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+def retrieve(query: str, top_k: Optional[int] = None) -> list[dict[str, Any]]:
     """
     Embed query and return top_k nearest traces (cosine similarity).
     Return [] on error to avoid blocking response pipeline.
@@ -471,7 +471,7 @@ def retrieve(query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
 
 # Summary persistence
 
-def save_summary(conversation_id: str, summary: Dict[str, Any]) -> None:
+def save_summary(conversation_id: str, summary: dict[str, Any]) -> None:
     """
     Persist a summary into `summaries`.
     Embedding failure does not prevent text persistence.
@@ -543,7 +543,7 @@ def update_traces_summary_id(
 
 # Parent summary for a trace
 
-def get_summary_for_trace(trace: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def get_summary_for_trace(trace: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
     Return parent summary for a trace:
     - by summary_id when available,
@@ -595,11 +595,11 @@ def get_summary_for_trace(trace: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return None
 
 
-def enrich_traces_with_summaries(traces: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def enrich_traces_with_summaries(traces: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Add trace['parent_summary'] for each trace with internal cache to avoid redundant DB calls.
     """
-    cache: Dict[str, Optional[Dict[str, Any]]] = {}
+    cache: dict[str, Optional[dict[str, Any]]] = {}
     for trace in traces:
         summary_id = trace.get('summary_id')
         cache_key = summary_id or f"{trace.get('conversation_id')}@{trace.get('timestamp')}"
@@ -615,7 +615,7 @@ def get_identities(
     subject: str,
     top_n: Optional[int] = None,
     status: Optional[str] = 'accepted',
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Return top-N identities for a subject, sorted by weight.
     By default, only accepted identities are returned.
@@ -690,7 +690,7 @@ def get_recent_context_hints(
     max_items: Optional[int] = None,
     max_age_days: Optional[int] = None,
     min_confidence: Optional[float] = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Return non-durable context hints from recent episodic/situation evidence.
     This reads evidence only and never promotes content into durable identity.
@@ -754,7 +754,7 @@ def get_recent_context_hints(
                 )
                 rows = cur.fetchall()
 
-        hints: List[Dict[str, Any]] = []
+        hints: list[dict[str, Any]] = []
         seen_norm: set[str] = set()
         for row in rows:
             content = str(row[1] or "").strip()
@@ -788,9 +788,9 @@ def get_recent_context_hints(
 
 
 
-def get_hermeneutic_kpis(window_days: int = 7) -> Dict[str, Any]:
+def get_hermeneutic_kpis(window_days: int = 7) -> dict[str, Any]:
     window_days = max(1, min(int(window_days), 365))
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         'window_days': window_days,
         'identity_accept_count': 0,
         'identity_defer_count': 0,
@@ -859,7 +859,7 @@ def get_hermeneutic_kpis(window_days: int = 7) -> Dict[str, Any]:
 def get_arbiter_decisions(
     limit: int = 200,
     conversation_id: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     limit = max(1, min(int(limit), 1000))
     try:
         with _conn() as conn:
@@ -1032,8 +1032,8 @@ def relabel_identity(
     }
     allowed_scope = {'user', 'llm', 'situation', 'mixed', 'unknown'}
 
-    fields: List[str] = []
-    values: List[Any] = []
+    fields: list[str] = []
+    values: list[Any] = []
 
     if stability is not None:
         stability = str(stability).strip()
@@ -1091,8 +1091,8 @@ def relabel_identity(
 
 def record_arbiter_decisions(
     conversation_id: str,
-    traces: List[Dict[str, Any]],
-    decisions: List[Dict[str, Any]],
+    traces: list[dict[str, Any]],
+    decisions: list[dict[str, Any]],
     *,
     effective_model: str | None = None,
 ) -> None:
@@ -1158,7 +1158,7 @@ def record_arbiter_decisions(
 
 def record_identity_evidence(
     conversation_id: str,
-    entries: List[Dict[str, Any]],
+    entries: list[dict[str, Any]],
     source_trace_id: Optional[str] = None,
 ) -> None:
     if not entries:
@@ -1377,7 +1377,7 @@ def _embedding_similarity_safe(text_a: str, text_b: str) -> Optional[float]:
         return None
 
 
-def _ordered_pair(id_a: str, id_b: str) -> Tuple[str, str]:
+def _ordered_pair(id_a: str, id_b: str) -> tuple[str, str]:
     return (id_a, id_b) if id_a <= id_b else (id_b, id_a)
 
 
@@ -1568,7 +1568,7 @@ def detect_and_record_conflicts(identity_id: str) -> None:
 
 # Defer policy
 
-def _list_recent_evidence(subject: str, content_norm: str, window_days: int) -> List[Dict[str, Any]]:
+def _list_recent_evidence(subject: str, content_norm: str, window_days: int) -> list[dict[str, Any]]:
     try:
         with _conn() as conn:
             with conn.cursor() as cur:
@@ -1711,12 +1711,12 @@ def _expire_stale_deferred_global() -> None:
         logger.warning('expire_stale_deferred_global_error err=%s', exc)
 
 
-def preview_identity_entries(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def preview_identity_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Evaluate extractor outputs with hermeneutic policy without writing identities."""
     if not entries:
         return []
 
-    processed: List[Dict[str, Any]] = []
+    processed: list[dict[str, Any]] = []
     for entry in entries:
         subject = str(entry.get('subject', '')).strip()
         content = str(entry.get('content', '')).strip()
@@ -1754,7 +1754,7 @@ def preview_identity_entries(entries: List[Dict[str, Any]]) -> List[Dict[str, An
 
 def persist_identity_entries(
     conversation_id: str,
-    entries: List[Dict[str, Any]],
+    entries: list[dict[str, Any]],
     source_trace_id: Optional[str] = None,
 ) -> None:
     """Persist extractor outputs into evidence + identities with defer/promote/reject policy."""
@@ -1764,7 +1764,7 @@ def persist_identity_entries(
 
     record_identity_evidence(conversation_id, processed, source_trace_id=source_trace_id)
 
-    impacted_keys: set[Tuple[str, str]] = set()
+    impacted_keys: set[tuple[str, str]] = set()
 
     for entry in processed:
         identity_id = add_identity(
@@ -1809,7 +1809,7 @@ def decay_identities() -> None:
         logger.error('decay_identities_error err=%s', exc)
 
 
-def reactivate_identities(identity_ids: List[str]) -> None:
+def reactivate_identities(identity_ids: list[str]) -> None:
     """Boost weights for identity entries actually injected in prompt."""
     if not identity_ids:
         return
