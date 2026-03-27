@@ -386,8 +386,8 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - éventuellement nouveau document de clôture: `app/docs/fridadev_refactor_closure.md`
 
 **Cases à cocher**
-- [ ] Vérifier que chaque point important de `fridadev_repo_audit.md` est soit corrigé, soit documenté, soit explicitement rejeté.
-- [ ] Vérifier que toutes les questions ouvertes / points incertains ont reçu une décision explicite.
+- [x] Vérifier que chaque point important de `fridadev_repo_audit.md` est soit corrigé, soit documenté, soit explicitement rejeté.
+- [x] Vérifier que toutes les questions ouvertes / points incertains ont reçu une décision explicite.
 - [ ] Vérifier que les contradictions de contrat signalées dans l’audit sont fermées.
 - [ ] Vérifier que les monolithes identifiés ont été réellement réduits ou requalifiés.
 - [ ] Vérifier que les reliquats legacy / code mort signalés ont été traités ou justifiés.
