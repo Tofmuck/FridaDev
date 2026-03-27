@@ -403,7 +403,7 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - [x] Extraire le bloc lecture contexte (identities read + context hints).
 - [x] Extraire le bloc audit arbitre (décisions + KPI).
 - [x] Extraire le bloc identities write path (evidence + add/relabel/override).
-- [ ] Extraire le bloc identity dynamics (preview/conflicts/defer/promote/reject/decay/reactivation).
+- [x] Extraire le bloc identity dynamics (preview/conflicts/defer/promote/reject/decay/reactivation).
 - [ ] Ajouter/adapter les tests unitaires par bloc + non-régression pipeline memory/chat/admin.
 - [ ] Ramener `memory_store.py` à une façade lisible (composition + exports stables).
 

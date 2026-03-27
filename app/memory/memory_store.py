@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import math
 import re
 from typing import Any, Optional, Sequence
 
@@ -14,6 +13,7 @@ from core import runtime_db_bootstrap
 from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
+from memory import memory_identity_dynamics
 from memory import memory_identity_write
 from memory import memory_store_infra
 from memory import memory_traces_summaries
@@ -360,399 +360,110 @@ def add_identity(
 # Contradictions and conflicts
 
 def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
-    if not vec_a or not vec_b or len(vec_a) != len(vec_b):
-        return 0.0
-    dot = sum(a * b for a, b in zip(vec_a, vec_b))
-    norm_a = math.sqrt(sum(a * a for a in vec_a))
-    norm_b = math.sqrt(sum(b * b for b in vec_b))
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return max(0.0, min(1.0, dot / (norm_a * norm_b)))
+    return memory_identity_dynamics._cosine_similarity(vec_a, vec_b)
 
 
 def _embedding_similarity_safe(text_a: str, text_b: str) -> Optional[float]:
-    try:
-        vec_a = embed(text_a, mode='passage')
-        vec_b = embed(text_b, mode='passage')
-        return _cosine_similarity(vec_a, vec_b)
-    except Exception as exc:
-        logger.warning('conflict_embedding_similarity_error err=%s', exc)
-        return None
+    return memory_identity_dynamics._embedding_similarity_safe(
+        text_a,
+        text_b,
+        embed_fn=embed,
+        cosine_similarity_fn=_cosine_similarity,
+        logger=logger,
+    )
 
 
 def _ordered_pair(id_a: str, id_b: str) -> tuple[str, str]:
-    return (id_a, id_b) if id_a <= id_b else (id_b, id_a)
+    return memory_identity_dynamics._ordered_pair(id_a, id_b)
 
 
-def _conflict_already_open(cur: psycopg.Cursor, id_a: str, id_b: str) -> bool:
-    id_left, id_right = _ordered_pair(id_a, id_b)
-    cur.execute(
-        '''
-        SELECT 1
-        FROM identity_conflicts
-        WHERE identity_id_a = %s
-          AND identity_id_b = %s
-          AND resolved_state = 'open'
-        LIMIT 1
-        ''',
-        (id_left, id_right),
+def _conflict_already_open(cur: Any, id_a: str, id_b: str) -> bool:
+    return memory_identity_dynamics._conflict_already_open(
+        cur,
+        id_a,
+        id_b,
+        ordered_pair_fn=_ordered_pair,
     )
-    return cur.fetchone() is not None
 
 
 def _insert_conflict(
-    cur: psycopg.Cursor,
+    cur: Any,
     id_a: str,
     id_b: str,
     confidence_conflict: float,
     reason: str,
 ) -> None:
-    id_left, id_right = _ordered_pair(id_a, id_b)
-    cur.execute(
-        '''
-        INSERT INTO identity_conflicts (
-            identity_id_a,
-            identity_id_b,
-            confidence_conflict,
-            reason,
-            resolved_state
-        )
-        VALUES (%s, %s, %s, %s, 'open')
-        ''',
-        (id_left, id_right, confidence_conflict, reason[:500]),
+    memory_identity_dynamics._insert_conflict(
+        cur,
+        id_a,
+        id_b,
+        confidence_conflict,
+        reason,
+        ordered_pair_fn=_ordered_pair,
     )
 
 
 def _has_open_strong_conflict(subject: str, content_norm: str) -> bool:
-    if not subject or not content_norm:
-        return False
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT 1
-                    FROM identity_conflicts ic
-                    JOIN identities ia ON ia.id = ic.identity_id_a
-                    JOIN identities ib ON ib.id = ic.identity_id_b
-                    WHERE ic.resolved_state = 'open'
-                      AND ic.confidence_conflict >= 0.8
-                      AND (
-                          (ia.subject = %s AND ia.content_norm = %s AND ia.status IN ('accepted', 'deferred'))
-                          OR
-                          (ib.subject = %s AND ib.content_norm = %s AND ib.status IN ('accepted', 'deferred'))
-                      )
-                    LIMIT 1
-                    ''',
-                    (subject, content_norm, subject, content_norm),
-                )
-                return cur.fetchone() is not None
-    except Exception as exc:
-        logger.warning('has_open_strong_conflict_error subject=%s err=%s', subject, exc)
-        return False
+    return memory_identity_dynamics._has_open_strong_conflict(
+        subject,
+        content_norm,
+        conn_factory=_conn,
+        logger=logger,
+    )
 
 
 def detect_and_record_conflicts(identity_id: str) -> None:
-    if not identity_id:
-        return
-
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT id, subject, content, content_norm, status, created_ts, COALESCE(override_state, 'none')
-                    FROM identities
-                    WHERE id = %s
-                    ''',
-                    (identity_id,),
-                )
-                me = cur.fetchone()
-                if not me:
-                    return
-
-                me_id = str(me[0])
-                me_subject = str(me[1] or '')
-                me_content = str(me[2] or '')
-                me_content_norm = str(me[3] or '')
-                me_status = str(me[4] or 'accepted')
-                me_created = me[5]
-                me_override = str(me[6] or 'none')
-
-                if me_status == 'rejected' or not me_subject or not me_content_norm:
-                    return
-
-                cur.execute(
-                    '''
-                    SELECT id, content, content_norm, status, created_ts, COALESCE(override_state, 'none')
-                    FROM identities
-                    WHERE subject = %s
-                      AND id <> %s::uuid
-                      AND status IN ('accepted', 'deferred')
-                    ORDER BY created_ts DESC
-                    LIMIT 50
-                    ''',
-                    (me_subject, me_id),
-                )
-                others = cur.fetchall()
-
-                for other in others:
-                    other_id = str(other[0])
-                    other_content = str(other[1] or '')
-                    other_content_norm = str(other[2] or '')
-                    other_status = str(other[3] or 'accepted')
-                    other_created = other[4]
-                    other_override = str(other[5] or 'none')
-
-                    if not other_content_norm or other_content_norm == me_content_norm:
-                        continue
-
-                    if _conflict_already_open(cur, me_id, other_id):
-                        continue
-
-                    semantic_similarity = _embedding_similarity_safe(me_content, other_content)
-                    contradictory, confidence_conflict, reason = policy.is_contradictory(
-                        me_content,
-                        other_content,
-                        semantic_similarity=semantic_similarity,
-                    )
-                    if not contradictory:
-                        continue
-
-                    _insert_conflict(cur, me_id, other_id, confidence_conflict, reason)
-
-                    action = policy.conflict_resolution_action(confidence_conflict)
-                    if action == 'defer_older':
-                        # strong conflict: defer older statement by default (unless force_accept)
-                        target_id = None
-                        if other_created <= me_created and other_override != 'force_accept':
-                            target_id = other_id
-                        elif me_override != 'force_accept':
-                            target_id = me_id
-                        elif other_override != 'force_accept':
-                            target_id = other_id
-
-                        if target_id:
-                            cur.execute(
-                                '''
-                                UPDATE identities
-                                SET
-                                    status = 'deferred',
-                                    weight = weight * 0.9,
-                                    last_reason = %s
-                                WHERE id = %s::uuid
-                                  AND COALESCE(override_state, 'none') <> 'force_accept'
-                                ''',
-                                (f'policy:strong_conflict:{reason}'[:500], target_id),
-                            )
-                    elif action == 'downweight_both':
-                        # weak conflict: slight down-weight + flag reason
-                        for candidate_id, candidate_override in (
-                            (me_id, me_override),
-                            (other_id, other_override),
-                        ):
-                            if candidate_override == 'force_accept':
-                                continue
-                            cur.execute(
-                                '''
-                                UPDATE identities
-                                SET
-                                    weight = weight * 0.9,
-                                    last_reason = %s
-                                WHERE id = %s::uuid
-                                ''',
-                                (f'policy:weak_conflict:{reason}'[:500], candidate_id),
-                            )
-
-            conn.commit()
-    except Exception as exc:
-        logger.error('detect_and_record_conflicts_error id=%s err=%s', identity_id, exc)
+    memory_identity_dynamics.detect_and_record_conflicts(
+        identity_id,
+        conn_factory=_conn,
+        policy_module=policy,
+        logger=logger,
+        conflict_already_open_fn=_conflict_already_open,
+        embedding_similarity_safe_fn=_embedding_similarity_safe,
+        insert_conflict_fn=_insert_conflict,
+    )
 
 
 # Defer policy
 
 def _list_recent_evidence(subject: str, content_norm: str, window_days: int) -> list[dict[str, Any]]:
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT conversation_id, created_ts, confidence, utterance_mode, status
-                    FROM identity_evidence
-                    WHERE subject = %s
-                      AND content_norm = %s
-                      AND created_ts >= (now() - make_interval(days => %s))
-                    ORDER BY created_ts ASC
-                    ''',
-                    (subject, content_norm, max(1, window_days)),
-                )
-                rows = cur.fetchall()
-        return [
-            {
-                'conversation_id': r[0],
-                'created_ts': r[1],
-                'confidence': float(r[2] or 0.0),
-                'utterance_mode': r[3] or 'unknown',
-                'status': r[4] or 'accepted',
-            }
-            for r in rows
-        ]
-    except Exception as exc:
-        logger.warning('list_recent_evidence_error subject=%s err=%s', subject, exc)
-        return []
+    return memory_identity_dynamics._list_recent_evidence(
+        subject,
+        content_norm,
+        window_days,
+        conn_factory=_conn,
+        logger=logger,
+    )
 
 
 def _apply_defer_policy_for_content(subject: str, content_norm: str) -> None:
-    if not subject or not content_norm:
-        return
-
-    events_rows = _list_recent_evidence(subject, content_norm, config.IDENTITY_RECURRENCE_WINDOW_DAYS)
-    events = policy.build_evidence_events(events_rows)
-
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT id
-                    FROM identities
-                    WHERE subject = %s
-                      AND content_norm = %s
-                      AND status = 'deferred'
-                    ''',
-                    (subject, content_norm),
-                )
-                deferred_ids = [str(r[0]) for r in cur.fetchall()]
-                if not deferred_ids:
-                    return
-
-                if policy.should_reject_deferred_from_evidence(events):
-                    cur.execute(
-                        '''
-                        UPDATE identities
-                        SET status = 'rejected',
-                            last_reason = 'policy:defer_reject_irony_or_roleplay'
-                        WHERE subject = %s
-                          AND content_norm = %s
-                          AND status = 'deferred'
-                          AND COALESCE(override_state, 'none') <> 'force_accept'
-                        ''',
-                        (subject, content_norm),
-                    )
-                    conn.commit()
-                    return
-
-                stats = policy.compute_recurrence_stats(
-                    events,
-                    min_time_gap_hours=config.IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS,
-                )
-                has_strong_conflict = _has_open_strong_conflict(subject, content_norm)
-                can_promote = policy.should_promote_deferred(
-                    stats=stats,
-                    min_recurrence_for_durable=config.IDENTITY_MIN_RECURRENCE_FOR_DURABLE,
-                    min_distinct_conversations=config.IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS,
-                    min_confidence=config.IDENTITY_MIN_CONFIDENCE,
-                    has_strong_conflict=has_strong_conflict,
-                )
-
-                if can_promote:
-                    cur.execute(
-                        '''
-                        UPDATE identities
-                        SET status = 'accepted',
-                            last_reason = 'policy:defer_promoted'
-                        WHERE subject = %s
-                          AND content_norm = %s
-                          AND status = 'deferred'
-                          AND COALESCE(override_state, 'none') <> 'force_reject'
-                        ''',
-                        (subject, content_norm),
-                    )
-                    conn.commit()
-                    return
-
-                # Expire deferred when the window elapsed without enough recurrence.
-                cur.execute(
-                    '''
-                    UPDATE identities
-                    SET status = 'rejected',
-                        last_reason = 'policy:defer_expired_without_recurrence'
-                    WHERE subject = %s
-                      AND content_norm = %s
-                      AND status = 'deferred'
-                      AND created_ts < (now() - make_interval(days => %s))
-                      AND COALESCE(override_state, 'none') NOT IN ('force_accept', 'force_reject')
-                    ''',
-                    (
-                        subject,
-                        content_norm,
-                        max(1, config.IDENTITY_RECURRENCE_WINDOW_DAYS),
-                    ),
-                )
-            conn.commit()
-    except Exception as exc:
-        logger.error('apply_defer_policy_error subject=%s err=%s', subject, exc)
+    memory_identity_dynamics._apply_defer_policy_for_content(
+        subject,
+        content_norm,
+        conn_factory=_conn,
+        policy_module=policy,
+        config_module=config,
+        logger=logger,
+        list_recent_evidence_fn=_list_recent_evidence,
+        has_open_strong_conflict_fn=_has_open_strong_conflict,
+    )
 
 
 def _expire_stale_deferred_global() -> None:
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE identities
-                    SET status = 'rejected',
-                        last_reason = 'policy:defer_expired_global'
-                    WHERE status = 'deferred'
-                      AND created_ts < (now() - make_interval(days => %s))
-                      AND COALESCE(override_state, 'none') NOT IN ('force_accept', 'force_reject')
-                    ''',
-                    (max(1, config.IDENTITY_RECURRENCE_WINDOW_DAYS),),
-                )
-            conn.commit()
-    except Exception as exc:
-        logger.warning('expire_stale_deferred_global_error err=%s', exc)
+    memory_identity_dynamics._expire_stale_deferred_global(
+        conn_factory=_conn,
+        config_module=config,
+        logger=logger,
+    )
 
 
 def preview_identity_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Evaluate extractor outputs with hermeneutic policy without writing identities."""
-    if not entries:
-        return []
-
-    processed: list[dict[str, Any]] = []
-    for entry in entries:
-        subject = str(entry.get('subject', '')).strip()
-        content = str(entry.get('content', '')).strip()
-        if subject not in {'user', 'llm'} or not content:
-            continue
-
-        decision = policy.should_accept_identity(
-            entry,
-            min_confidence=config.IDENTITY_MIN_CONFIDENCE,
-            defer_min_confidence=config.IDENTITY_DEFER_MIN_CONFIDENCE,
-        )
-        status = decision['status']
-        policy_reason = decision['reason']
-
-        llm_reason = str(entry.get('reason', '')).strip()
-        merged_reason = f'llm:{llm_reason} | policy:{policy_reason}' if llm_reason else f'policy:{policy_reason}'
-
-        processed.append(
-            {
-                'subject': subject,
-                'content': content,
-                'stability': str(entry.get('stability', 'unknown')),
-                'utterance_mode': str(entry.get('utterance_mode', 'unknown')),
-                'recurrence': str(entry.get('recurrence', 'unknown')),
-                'scope': str(entry.get('scope', 'unknown')),
-                'evidence_kind': str(entry.get('evidence_kind', 'weak')),
-                'confidence': _trace_float(entry.get('confidence')),
-                'status': status,
-                'reason': merged_reason,
-            }
-        )
-
-    return processed
+    return memory_identity_dynamics.preview_identity_entries(
+        entries,
+        policy_module=policy,
+        config_module=config,
+        trace_float_fn=_trace_float,
+    )
 
 
 def persist_identity_entries(
@@ -760,75 +471,33 @@ def persist_identity_entries(
     entries: list[dict[str, Any]],
     source_trace_id: Optional[str] = None,
 ) -> None:
-    """Persist extractor outputs into evidence + identities with defer/promote/reject policy."""
-    processed = preview_identity_entries(entries)
-    if not processed:
-        return
-
-    record_identity_evidence(conversation_id, processed, source_trace_id=source_trace_id)
-
-    impacted_keys: set[tuple[str, str]] = set()
-
-    for entry in processed:
-        identity_id = add_identity(
-            entry['subject'],
-            entry['content'],
-            source_trace_id=source_trace_id,
-            conversation_id=conversation_id,
-            stability=entry['stability'],
-            utterance_mode=entry['utterance_mode'],
-            recurrence=entry['recurrence'],
-            scope=entry['scope'],
-            evidence_kind=entry['evidence_kind'],
-            confidence=entry['confidence'],
-            status=entry['status'],
-            reason=entry['reason'],
-        )
-        if identity_id:
-            detect_and_record_conflicts(identity_id)
-
-        impacted_keys.add((entry['subject'], _normalize_identity_content(entry['content'])))
-
-    for subject, content_norm in impacted_keys:
-        _apply_defer_policy_for_content(subject, content_norm)
-
-    _expire_stale_deferred_global()
+    memory_identity_dynamics.persist_identity_entries(
+        conversation_id,
+        entries,
+        source_trace_id=source_trace_id,
+        preview_identity_entries_fn=preview_identity_entries,
+        record_identity_evidence_fn=record_identity_evidence,
+        add_identity_fn=add_identity,
+        detect_and_record_conflicts_fn=detect_and_record_conflicts,
+        normalize_identity_content_fn=_normalize_identity_content,
+        apply_defer_policy_for_content_fn=_apply_defer_policy_for_content,
+        expire_stale_deferred_global_fn=_expire_stale_deferred_global,
+    )
 
 
 # Identity dynamics
 
 def decay_identities() -> None:
-    """Apply decay factor to all identity entries."""
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    'UPDATE identities SET weight = weight * %s WHERE weight > 0.01',
-                    (config.IDENTITY_DECAY_FACTOR,),
-                )
-            conn.commit()
-        logger.debug('identity_decay_applied factor=%s', config.IDENTITY_DECAY_FACTOR)
-    except Exception as exc:
-        logger.error('decay_identities_error err=%s', exc)
+    memory_identity_dynamics.decay_identities(
+        conn_factory=_conn,
+        decay_factor=config.IDENTITY_DECAY_FACTOR,
+        logger=logger,
+    )
 
 
 def reactivate_identities(identity_ids: list[str]) -> None:
-    """Boost weights for identity entries actually injected in prompt."""
-    if not identity_ids:
-        return
-    try:
-        with _conn() as conn:
-            with conn.cursor() as cur:
-                for iid in identity_ids:
-                    cur.execute(
-                        '''
-                        UPDATE identities
-                        SET    weight       = LEAST(weight * 1.1, 2.0),
-                               last_seen_ts = now()
-                        WHERE  id = %s
-                        ''',
-                        (iid,),
-                    )
-            conn.commit()
-    except Exception as exc:
-        logger.error('reactivate_identities_error err=%s', exc)
+    memory_identity_dynamics.reactivate_identities(
+        identity_ids,
+        conn_factory=_conn,
+        logger=logger,
+    )
