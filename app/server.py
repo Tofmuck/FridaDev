@@ -721,6 +721,29 @@ def api_admin_chat_logs():
     )
 
 
+@app.delete('/api/admin/logs/chat')
+def api_admin_chat_logs_delete():
+    try:
+        deletion = log_store.delete_chat_log_events(
+            conversation_id=request.args.get('conversation_id'),
+            turn_id=request.args.get('turn_id'),
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    return jsonify(
+        {
+            'ok': True,
+            'scope': deletion['scope'],
+            'conversation_id': deletion['conversation_id'],
+            'turn_id': deletion['turn_id'],
+            'deleted_count': deletion['deleted_count'],
+        }
+    )
+
+
 @app.post("/api/admin/restart")
 def api_admin_restart():
     admin_actions.restart_runtime_async("FridaDev")

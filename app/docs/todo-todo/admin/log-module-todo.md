@@ -28,9 +28,9 @@ Contrat normatif de reference:
 - [x] Ajouter et verrouiller un champ explicite `prompt_kind` (taxonomie initiale fixee dans le contrat).
 - [x] Verrouiller un evenement / sous-contrat explicite `web_search` (pas seulement un booleen dans `turn_start`).
 - [x] Decider explicitement le scope de suppression MVP a supporter.
-- [ ] Option `all_logs` (purge complete logs, differee hors MVP initial)
+- [ ] Option `all_logs` (purge complete logs, non retenue MVP)
 - [x] Option `conversation_logs` (purge par conversation, retenue pour MVP)
-- [ ] Option `turn_logs` (purge par tour, differee hors MVP initial)
+- [x] Option `turn_logs` (purge par tour, retenue pour MVP)
 - [x] Documenter la decision retenue et les options differees.
 
 ### 1) Stockage dedie logs (separe memoire metier)
@@ -61,10 +61,10 @@ Contrat normatif de reference:
 - [x] Verrouiller le format de reponse (stable, sans dump massif par defaut).
 
 ### 4) Backend suppression logs (sans effet metier)
-- [ ] Implementer le scope de suppression retenu pour `all_logs` (si retenu).
-- [ ] Implementer le scope de suppression retenu pour `conversation_logs` (si retenu).
-- [ ] Implementer le scope de suppression retenu pour `turn_logs` (si retenu).
-- [ ] Verrouiller contractuellement qu'aucune suppression logs ne touche la memoire metier.
+- [x] Verrouiller que `all_logs` est non retenu MVP et explicitement non implemente.
+- [x] Implementer la suppression `conversation_logs` (par `conversation_id`).
+- [x] Implementer la suppression `turn_logs` (par `conversation_id` + `turn_id`).
+- [x] Verrouiller contractuellement qu'aucune suppression logs ne touche la memoire metier.
 - [ ] Verifier qu'aucune reconstruction opportuniste des logs n'apparait apres suppression.
 
 ### 5) UI minimale
@@ -82,9 +82,9 @@ Contrat normatif de reference:
 - [ ] Test `identity_write`: `target_side` obligatoire (`frida|user`) + visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
 - [ ] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
 - [ ] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
-- [ ] Test suppression logs `all_logs` (si retenu) sans impact memoire metier.
-- [ ] Test suppression logs `conversation_logs` (si retenu) sans impact memoire metier.
-- [ ] Test suppression logs `turn_logs` (si retenu) sans impact memoire metier.
+- [x] Test refus explicite `all_logs` (MVP non retenu) sans impact memoire metier.
+- [x] Test suppression logs `conversation_logs` sans impact memoire metier.
+- [x] Test suppression logs `turn_logs` sans impact memoire metier.
 - [ ] Test non-reconstruction: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
 - [ ] Test pipeline non-regression memory/chat/admin (la memoire metier reste intacte).
 

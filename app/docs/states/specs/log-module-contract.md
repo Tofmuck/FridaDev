@@ -168,15 +168,15 @@ Forbidden by default:
 ## 8) MVP deletion scope decision
 MVP retained scope:
 - `conversation_logs` (delete logs for one conversation)
+- `turn_logs` (delete logs for one turn inside one conversation)
 
 Deferred scopes (not in MVP phase):
 - `all_logs`
-- `turn_logs`
 
 Why:
-- `conversation_logs` is the smallest useful operator scope with low ambiguity.
-- `turn_logs` requires tighter turn-id handling end-to-end.
-- `all_logs` is intentionally deferred to avoid broad destructive action in first slice.
+- `conversation_logs` is the base operator scope with low ambiguity.
+- `turn_logs` is retained for focused cleanup when a single turn must be removed.
+- `all_logs` is intentionally not retained for MVP to avoid broad destructive action.
 
 ## 9) Non-regression rule
 `delete logs` is never allowed to affect business-memory continuity.

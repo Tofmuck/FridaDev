@@ -325,3 +325,58 @@ def read_chat_log_events(
             'ts_to': ts_to_s,
         },
     }
+
+
+def delete_chat_log_events(
+    *,
+    conversation_id: str | None = None,
+    turn_id: str | None = None,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    conversation_id_s = str(conversation_id or '').strip() or None
+    turn_id_s = str(turn_id or '').strip() or None
+
+    if conversation_id_s is None and turn_id_s is None:
+        raise ValueError('all_logs deletion is not supported in MVP')
+    if conversation_id_s is None and turn_id_s is not None:
+        raise ValueError('turn_logs deletion requires conversation_id')
+
+    where_clauses = ['conversation_id = %s']
+    where_params: list[Any] = [conversation_id_s]
+    scope = 'conversation_logs'
+    if turn_id_s:
+        where_clauses.append('turn_id = %s')
+        where_params.append(turn_id_s)
+        scope = 'turn_logs'
+
+    where_sql = ' AND '.join(where_clauses)
+    deleted_count = 0
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    DELETE FROM observability.chat_log_events
+                    WHERE {where_sql}
+                    ''',
+                    tuple(where_params),
+                )
+                deleted_count = int(cur.rowcount or 0)
+            conn.commit()
+    except Exception as exc:
+        logger_instance.error(
+            'chat_log_events_delete_failed scope=%s conversation_id=%s turn_id=%s err=%s',
+            scope,
+            conversation_id_s,
+            turn_id_s,
+            exc,
+        )
+        raise RuntimeError('chat log deletion failed') from exc
+
+    return {
+        'scope': scope,
+        'conversation_id': conversation_id_s,
+        'turn_id': turn_id_s,
+        'deleted_count': deleted_count,
+    }
