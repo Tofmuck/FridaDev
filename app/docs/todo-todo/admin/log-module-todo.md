@@ -56,9 +56,9 @@ Contrat normatif de reference:
 - [x] Instrumenter `branch_skipped` explicite.
 
 ### 3) Backend lecture logs (consultation)
-- [ ] Exposer une lecture chronologique paginee des logs.
-- [ ] Exposer les filtres minimaux (conversation, turn, stage, status, plage temporelle).
-- [ ] Verrouiller le format de reponse (stable, sans dump massif par defaut).
+- [x] Exposer une lecture chronologique paginee des logs.
+- [x] Exposer les filtres minimaux (conversation, turn, stage, status, plage temporelle).
+- [x] Verrouiller le format de reponse (stable, sans dump massif par defaut).
 
 ### 4) Backend suppression logs (sans effet metier)
 - [ ] Implementer le scope de suppression retenu pour `all_logs` (si retenu).

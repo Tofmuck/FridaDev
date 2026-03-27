@@ -27,6 +27,7 @@ from memory import summarizer
 from memory import memory_store
 from memory import arbiter
 from logs import chat_turn_logger
+from logs import log_store
 
 
 def _sha256_file(path: Path) -> str:
@@ -677,6 +678,47 @@ def api_admin_logs():
     except ValueError:
         limit = 200
     return jsonify({"ok": True, "logs": admin_logs.read_logs(limit=limit)})
+
+
+@app.get('/api/admin/logs/chat')
+def api_admin_chat_logs():
+    raw_limit = request.args.get('limit', '100')
+    raw_offset = request.args.get('offset', '0')
+    try:
+        limit = int(raw_limit)
+        offset = int(raw_offset)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid pagination parameters'}), 400
+
+    if limit <= 0 or offset < 0:
+        return jsonify({'ok': False, 'error': 'invalid pagination parameters'}), 400
+
+    try:
+        listing = log_store.read_chat_log_events(
+            limit=limit,
+            offset=offset,
+            conversation_id=request.args.get('conversation_id'),
+            turn_id=request.args.get('turn_id'),
+            stage=request.args.get('stage'),
+            status=request.args.get('status'),
+            ts_from=request.args.get('ts_from'),
+            ts_to=request.args.get('ts_to'),
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    return jsonify(
+        {
+            'ok': True,
+            'items': listing['items'],
+            'count': listing['count'],
+            'total': listing['total'],
+            'limit': listing['limit'],
+            'offset': listing['offset'],
+            'next_offset': listing['next_offset'],
+            'filters': listing['filters'],
+        }
+    )
 
 
 @app.post("/api/admin/restart")

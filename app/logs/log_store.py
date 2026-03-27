@@ -168,3 +168,148 @@ def insert_chat_log_event(
         logger_instance.info('chat_log_event_duplicate event_id=%s', event.get('event_id'))
         return False
     return True
+
+
+def read_chat_log_events(
+    *,
+    limit: int = 100,
+    offset: int = 0,
+    conversation_id: str | None = None,
+    turn_id: str | None = None,
+    stage: str | None = None,
+    status: str | None = None,
+    ts_from: str | None = None,
+    ts_to: str | None = None,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    """Read chat log events with simple offset pagination and optional filters."""
+    limit_i = max(1, min(int(limit), 500))
+    offset_i = max(0, int(offset))
+
+    conversation_id_s = str(conversation_id or '').strip() or None
+    turn_id_s = str(turn_id or '').strip() or None
+    stage_s = str(stage or '').strip() or None
+
+    status_s = str(status or '').strip().lower() or None
+    if status_s and status_s not in _STATUS_ALLOWED:
+        raise ValueError(f'invalid chat log status filter: {status_s}')
+
+    ts_from_s = str(ts_from or '').strip() or None
+    ts_to_s = str(ts_to or '').strip() or None
+
+    where_clauses: list[str] = []
+    where_params: list[Any] = []
+
+    if conversation_id_s:
+        where_clauses.append('conversation_id = %s')
+        where_params.append(conversation_id_s)
+    if turn_id_s:
+        where_clauses.append('turn_id = %s')
+        where_params.append(turn_id_s)
+    if stage_s:
+        where_clauses.append('stage = %s')
+        where_params.append(stage_s)
+    if status_s:
+        where_clauses.append('status = %s')
+        where_params.append(status_s)
+    if ts_from_s:
+        where_clauses.append('ts >= %s::timestamptz')
+        where_params.append(ts_from_s)
+    if ts_to_s:
+        where_clauses.append('ts <= %s::timestamptz')
+        where_params.append(ts_to_s)
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+
+    items: list[dict[str, Any]] = []
+    total = 0
+
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    SELECT COUNT(*)
+                    FROM observability.chat_log_events
+                    {where_sql}
+                    ''',
+                    tuple(where_params),
+                )
+                total = int((cur.fetchone() or [0])[0] or 0)
+
+                cur.execute(
+                    f'''
+                    SELECT
+                        event_id,
+                        conversation_id,
+                        turn_id,
+                        ts,
+                        stage,
+                        status,
+                        duration_ms,
+                        payload_json
+                    FROM observability.chat_log_events
+                    {where_sql}
+                    ORDER BY ts DESC, event_id DESC
+                    LIMIT %s OFFSET %s
+                    ''',
+                    tuple(where_params + [limit_i, offset_i]),
+                )
+                rows = cur.fetchall()
+
+        for row in rows:
+            payload_json = row[7]
+            if not isinstance(payload_json, dict):
+                payload_json = {}
+            items.append(
+                {
+                    'event_id': str(row[0] or ''),
+                    'conversation_id': str(row[1] or ''),
+                    'turn_id': str(row[2] or ''),
+                    'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
+                    'stage': str(row[4] or ''),
+                    'status': str(row[5] or ''),
+                    'duration_ms': int(row[6]) if row[6] is not None else None,
+                    'payload': payload_json,
+                }
+            )
+    except Exception as exc:
+        logger_instance.error('chat_log_events_read_failed err=%s', exc)
+        return {
+            'items': [],
+            'count': 0,
+            'total': 0,
+            'limit': limit_i,
+            'offset': offset_i,
+            'next_offset': None,
+            'filters': {
+                'conversation_id': conversation_id_s,
+                'turn_id': turn_id_s,
+                'stage': stage_s,
+                'status': status_s,
+                'ts_from': ts_from_s,
+                'ts_to': ts_to_s,
+            },
+        }
+
+    next_offset = offset_i + len(items)
+    if next_offset >= total:
+        next_offset = None
+
+    return {
+        'items': items,
+        'count': len(items),
+        'total': total,
+        'limit': limit_i,
+        'offset': offset_i,
+        'next_offset': next_offset,
+        'filters': {
+            'conversation_id': conversation_id_s,
+            'turn_id': turn_id_s,
+            'stage': stage_s,
+            'status': status_s,
+            'ts_from': ts_from_s,
+            'ts_to': ts_to_s,
+        },
+    }
