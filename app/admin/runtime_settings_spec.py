@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any
 
 
-SECTION_NAMES: Tuple[str, ...] = (
+SECTION_NAMES: tuple[str, ...] = (
     'main_model',
     'arbiter_model',
     'summary_model',
@@ -24,8 +24,8 @@ class FieldSpec:
     seed_from_env: bool = True
     seed_default: Any = None
 
-    def public_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {
+    def public_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
             'key': self.key,
             'value_type': self.value_type,
             'is_secret': self.is_secret,
@@ -41,22 +41,22 @@ class FieldSpec:
 @dataclass(frozen=True)
 class SectionSpec:
     name: str
-    fields: Tuple[FieldSpec, ...]
+    fields: tuple[FieldSpec, ...]
 
-    def field_names(self) -> Tuple[str, ...]:
+    def field_names(self) -> tuple[str, ...]:
         return tuple(field.key for field in self.fields)
 
-    def field_map(self) -> Dict[str, FieldSpec]:
+    def field_map(self) -> dict[str, FieldSpec]:
         return {field.key: field for field in self.fields}
 
-    def public_dict(self) -> Dict[str, Any]:
+    def public_dict(self) -> dict[str, Any]:
         return {
             'name': self.name,
             'fields': [field.public_dict() for field in self.fields],
         }
 
 
-SECRET_V1_FIELDS: Tuple[Tuple[str, str], ...] = (
+SECRET_V1_FIELDS: tuple[tuple[str, str], ...] = (
     ('main_model', 'api_key'),
     ('embedding', 'token'),
     ('services', 'crawl4ai_token'),
@@ -64,7 +64,7 @@ SECRET_V1_FIELDS: Tuple[Tuple[str, str], ...] = (
 )
 
 
-SECTION_SPECS: Dict[str, SectionSpec] = {
+SECTION_SPECS: dict[str, SectionSpec] = {
     'main_model': SectionSpec(
         name='main_model',
         fields=(
@@ -136,11 +136,11 @@ SECTION_SPECS: Dict[str, SectionSpec] = {
 }
 
 
-def list_sections() -> Tuple[str, ...]:
+def list_sections() -> tuple[str, ...]:
     return SECTION_NAMES
 
 
-def list_secret_v1_fields() -> Tuple[Tuple[str, str], ...]:
+def list_secret_v1_fields() -> tuple[tuple[str, str], ...]:
     return SECRET_V1_FIELDS
 
 
@@ -159,5 +159,5 @@ def get_field_spec(section: str, field: str) -> FieldSpec:
         raise KeyError(f'unknown runtime settings field: {section}.{field}') from exc
 
 
-def describe_section(section: str) -> Dict[str, Any]:
+def describe_section(section: str) -> dict[str, Any]:
     return get_section_spec(section).public_dict()

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping
+from typing import Any, Callable, Mapping
 from urllib.parse import urlparse
 
 
-def _validation_check(name: str, ok: bool, detail: str) -> Dict[str, Any]:
+def _validation_check(name: str, ok: bool, detail: str) -> dict[str, Any]:
     return {
         'name': name,
         'ok': bool(ok),
@@ -56,15 +56,15 @@ def validate_runtime_section(
     section: str,
     patch_payload: Mapping[str, Any] | None = None,
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
     candidate_runtime_section: Callable[..., Any],
     resolve_runtime_secret_from_view: Callable[[Any, str], Any],
     secret_required_error_cls: type[Exception],
     secret_resolution_error_cls: type[Exception],
     config_module: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     view = candidate_runtime_section(section, patch_payload=patch_payload, fetcher=fetcher)
-    checks: list[Dict[str, Any]] = []
+    checks: list[dict[str, Any]] = []
 
     if section == 'main_model':
         base_url = _runtime_text_value(view, 'base_url')
