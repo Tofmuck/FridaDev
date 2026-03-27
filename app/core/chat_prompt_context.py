@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Mapping, Tuple
+from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
 
-def resolve_backend_prompts(prompt_loader_module: Any) -> Tuple[str, str]:
+def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
     return (
         prompt_loader_module.get_main_system_prompt(),
         prompt_loader_module.get_main_hermeneutical_prompt(),
@@ -18,7 +18,7 @@ def build_augmented_system(
     hermeneutical_prompt: str,
     config_module: Any,
     identity_module: Any,
-) -> Tuple[str, List[str]]:
+) -> tuple[str, list[str]]:
     tz_paris = ZoneInfo(config_module.FRIDA_TIMEZONE)
     now_paris = datetime.now(tz_paris)
     now_fmt = now_paris.strftime('%A %d %B %Y à %H:%M') + f" (heure de Paris, UTC{now_paris.strftime('%z')[:3]})"
@@ -36,13 +36,13 @@ def build_augmented_system(
     return '\n\n'.join(parts), identity_ids
 
 
-def apply_augmented_system(conversation: Dict[str, Any], augmented_system: str) -> None:
+def apply_augmented_system(conversation: dict[str, Any], augmented_system: str) -> None:
     if conversation['messages'] and conversation['messages'][0]['role'] == 'system':
         conversation['messages'][0]['content'] = augmented_system
 
 
 def inject_web_context(
-    prompt_messages: List[Dict[str, Any]],
+    prompt_messages: list[dict[str, Any]],
     *,
     user_msg: str,
     conversation_id: str,

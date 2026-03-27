@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Mapping
 
 
-ChatError = Tuple[Dict[str, Any], int]
+ChatError = tuple[dict[str, Any], int]
 
 
 def resolve_chat_session(
@@ -13,7 +13,7 @@ def resolve_chat_session(
     conv_store_module: Any,
     memory_store_module: Any,
     logger: Any,
-) -> Tuple[Dict[str, Any] | None, ChatError | None]:
+) -> tuple[dict[str, Any] | None, ChatError | None]:
     user_msg = (data.get('message') or '').strip()
     conversation_id_raw = data.get('conversation_id')
     stream_req = bool(data.get('stream'))
@@ -50,7 +50,7 @@ def resolve_chat_session(
     )
 
 
-def conversation_headers(conversation: Mapping[str, Any], updated_at: str) -> Dict[str, str]:
+def conversation_headers(conversation: Mapping[str, Any], updated_at: str) -> dict[str, str]:
     return {
         'X-Conversation-Id': str(conversation['id']),
         'X-Conversation-Created-At': str(conversation['created_at']),

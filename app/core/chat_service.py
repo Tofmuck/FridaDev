@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping
+from typing import Any, Mapping
 
 from core import chat_llm_flow
 from core import chat_memory_flow
@@ -20,7 +20,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def _json_result(payload: Dict[str, Any], status: int, headers: Dict[str, str] | None = None) -> Dict[str, Any]:
+def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] | None = None) -> dict[str, Any]:
     return {
         'kind': 'json',
         'payload': payload,
@@ -31,7 +31,7 @@ def _json_result(payload: Dict[str, Any], status: int, headers: Dict[str, str] |
 
 def _record_identity_entries_for_mode(
     conversation_id: str,
-    recent_turns: List[Dict[str, Any]],
+    recent_turns: list[dict[str, Any]],
     mode: str,
     *,
     arbiter_module: Any,
@@ -65,7 +65,7 @@ def chat_response(
     web_search_module: Any,
     config_module: Any,
     logger: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader_module)
     session, session_error = chat_session_flow.resolve_chat_session(
         data,
