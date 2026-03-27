@@ -5,7 +5,7 @@ import hashlib
 import logging
 from ipaddress import ip_address, ip_network
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
@@ -34,7 +34,7 @@ def _sha256_file(path: Path) -> str:
         return 'missing'
 
 
-def _runtime_fingerprint() -> Dict[str, str]:
+def _runtime_fingerprint() -> dict[str, str]:
     app_dir = Path(__file__).resolve().parent
     config_path = app_dir / 'config.py'
     conv_dir = Path(getattr(conv_store, 'CONV_DIR', app_dir / 'conv'))
@@ -98,8 +98,8 @@ logger.info(
     _RUNTIME_FINGERPRINT['logs_path'],
 )
 
-def _parse_admin_cidr_allowlist(raw_cidrs: str) -> List[Any]:
-    allowlist: List[Any] = []
+def _parse_admin_cidr_allowlist(raw_cidrs: str) -> list[Any]:
+    allowlist: list[Any] = []
     for raw in str(raw_cidrs or '').split(','):
         cidr = raw.strip()
         if not cidr:
@@ -215,7 +215,7 @@ def api_chat():
 # ── /api/admin/* ──────────────────────────────────────────────────────────────
 
 
-def _admin_settings_section_response(section: str) -> Dict[str, Any]:
+def _admin_settings_section_response(section: str) -> dict[str, Any]:
     return admin_settings_service.section_response(
         section,
         runtime_settings_module=runtime_settings,
