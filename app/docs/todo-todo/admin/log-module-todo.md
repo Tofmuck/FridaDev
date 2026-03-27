@@ -28,7 +28,7 @@ Contrat normatif de reference:
 - [x] Ajouter et verrouiller un champ explicite `prompt_kind` (taxonomie initiale fixee dans le contrat).
 - [x] Verrouiller un evenement / sous-contrat explicite `web_search` (pas seulement un booleen dans `turn_start`).
 - [x] Decider explicitement le scope de suppression MVP a supporter.
-- [ ] Option `all_logs` (purge complete logs, non retenue MVP)
+- [x] Decider explicitement que l'option `all_logs` n'est pas retenue pour le MVP.
 - [x] Option `conversation_logs` (purge par conversation, retenue pour MVP)
 - [x] Option `turn_logs` (purge par tour, retenue pour MVP)
 - [x] Documenter la decision retenue et les options differees.
@@ -65,7 +65,7 @@ Contrat normatif de reference:
 - [x] Implementer la suppression `conversation_logs` (par `conversation_id`).
 - [x] Implementer la suppression `turn_logs` (par `conversation_id` + `turn_id`).
 - [x] Verrouiller contractuellement qu'aucune suppression logs ne touche la memoire metier.
-- [ ] Verifier qu'aucune reconstruction opportuniste des logs n'apparait apres suppression.
+- [x] Verifier qu'aucune reconstruction opportuniste des logs n'apparait apres suppression.
 
 ### 5) UI minimale
 - [ ] Ajouter un bouton `Log` a cote de `Admin` dans l'UI principale.
@@ -85,7 +85,7 @@ Contrat normatif de reference:
 - [x] Test refus explicite `all_logs` (MVP non retenu) sans impact memoire metier.
 - [x] Test suppression logs `conversation_logs` sans impact memoire metier.
 - [x] Test suppression logs `turn_logs` sans impact memoire metier.
-- [ ] Test non-reconstruction: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
+- [x] Test non-reconstruction: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
 - [ ] Test pipeline non-regression memory/chat/admin (la memoire metier reste intacte).
 
 ## Hors scope (MVP)
