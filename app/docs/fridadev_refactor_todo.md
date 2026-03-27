@@ -17,6 +17,7 @@
 - **Phase 6 — Traiter les reliquats JSON / legacy / code mort**: purger les reliquats confirmés et gérer les zones incertaines.
 - **Phase 7 — Reclasser les tests**: passer d’une nomenclature “phase historique” à une nomenclature métier.
 - **Phase 8 — Harmoniser les conventions minimales**: converger sur des conventions légères et stables.
+- **Phase 8 bis — Démonolithiser `memory_store.py`**: découper le pipeline mémoire en sous-modules cohérents sans changer les contrats métier.
 - **Phase 9 — Audit de clôture**: vérifier que chaque point majeur de l’audit initial est soldé, arbitré ou explicitement reporté.
 
 ## 3. Phases détaillées
@@ -362,12 +363,63 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 
 ---
 
+### Phase 8 bis — Démonolithiser `memory_store.py`
+**Why**
+- Fermer le principal résidu monolithique identifié dans l’audit (`app/memory/memory_store.py`) avant la clôture finale.
+- Rétablir des frontières lisibles alignées sur le pipeline mémoire réel (chat + herméneutique admin).
+
+**Scope**
+- Découpage progressif de `app/memory/memory_store.py` selon les responsabilités pipeline-first:
+  - infra mémoire (DB runtime, bootstrap schéma, adapter embedding),
+  - traces + summaries,
+  - lecture contexte (identities read + context hints),
+  - audit arbitre (décisions + KPI),
+  - identities write path (evidence + add/relabel/override),
+  - identity dynamics (preview/conflicts/defer/promote/reject/decay/reactivation).
+- `memory_store.py` conservé comme façade/orchestrateur stable pendant la transition.
+
+**Out of scope**
+- Changement des contrats HTTP/chat/admin.
+- Changement des règles métier arbiter/summarizer.
+- Création de module fourre-tout (`utils.py`/`helpers.py`) ou de framework interne.
+- Passe de formatage globale.
+
+**Risks**
+- Déplacement de complexité sans réduction de couplage réel.
+- Régression subtile sur transactions SQL et dynamique d’identités.
+- Mauvais découpage si les dépendances entre write path et dynamics sont sous-estimées.
+
+**Fichiers / zones concernés**
+- `app/memory/memory_store.py`
+- nouveaux sous-modules ciblés sous `app/memory/` (noms à figer par tranche)
+- `app/core/chat_memory_flow.py` (ajustements d’import/composition si nécessaire)
+- `app/admin/admin_hermeneutics_service.py` (ajustements d’import/composition si nécessaire)
+- tests memory/chat/admin herméneutiques associés
+
+**Cases à cocher**
+- [ ] Cartographier explicitement les blocs internes de `memory_store.py` et figer la façade publique de transition.
+- [ ] Extraire le bloc infra mémoire (connexion DB runtime, bootstrap schéma, adapter embedding).
+- [ ] Extraire le bloc traces + summaries.
+- [ ] Extraire le bloc lecture contexte (identities read + context hints).
+- [ ] Extraire le bloc audit arbitre (décisions + KPI).
+- [ ] Extraire le bloc identities write path (evidence + add/relabel/override).
+- [ ] Extraire le bloc identity dynamics (preview/conflicts/defer/promote/reject/decay/reactivation).
+- [ ] Ajouter/adapter les tests unitaires par bloc + non-régression pipeline memory/chat/admin.
+- [ ] Ramener `memory_store.py` à une façade lisible (composition + exports stables).
+
+**Definition of Done**
+- `memory_store.py` n’est plus un god module, tout en gardant un point d’entrée stable.
+- Le pipeline mémoire reste strictement inchangé côté comportement (preuves tests).
+- Les conventions Phase 8 sont respectées (logger `frida.*`, typage cohérent, pas de format global).
+
+---
+
 ### Phase 9 — Audit de clôture
 **Why**
 - Vérifier que les problèmes identifiés dans l’audit initial sont réellement soldés ou explicitement arbitrés.
 
 **Scope**
-- Relecture croisée entre le document d’audit initial et l’état final du repo après exécution des phases 1–8.
+- Relecture croisée entre le document d’audit initial et l’état final du repo après exécution des phases 1–8 bis.
 - Vérification de convergence entre architecture réelle et architecture cible annoncée.
 - Vérification qu’aucun nouveau monolithe critique ou couplage majeur n’a été introduit pendant le refacto.
 
@@ -415,7 +467,8 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 | Phase 6 | Phases 1–4 | Partiellement avec Phase 7 | Ne pas supprimer legacy incertain avant inventaire d’usage |
 | Phase 7 | Phases 1–6 (recommandé) | Oui avec fin Phase 8 | Ne pas déplacer massivement les tests avant stabilisation des modules |
 | Phase 8 | Phase 1 (minimum) | Oui en continu, par petites touches | Ne pas faire une passe cosmétique globale en amont |
-| Phase 9 | Phases 1–8 | Non (phase terminale) | Ne pas déclarer la convergence avant arbitrage explicite des points ouverts |
+| Phase 8 bis | Phases 1–8 | Non (pré-clôture) | Ne pas déclarer la clôture finale tant que `memory_store.py` reste monolithique |
+| Phase 9 | Phases 1–8 bis | Non (phase terminale) | Ne pas déclarer la convergence avant arbitrage explicite des points ouverts |
 
 ## 5. Ordre d’exécution recommandé
 1. Stabiliser les contrats contradictoires (Phase 1).
@@ -427,7 +480,8 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 7. Nettoyer les reliquats legacy/code mort confirmés (Phase 6).
 8. Reclasser les tests par domaine et niveau (Phase 7).
 9. Finaliser l’harmonisation minimale des conventions (Phase 8).
-10. Exécuter l’audit de clôture et publier le statut final de traitement de l’audit initial (Phase 9).
+10. Démonolithiser `memory_store.py` par tranches pipeline-first (Phase 8 bis).
+11. Exécuter l’audit de clôture et publier le statut final de traitement de l’audit initial (Phase 9).
 
 ## 6. Points à arbitrer avant exécution
 - Décision startup canonique: `run.sh` vs démarrage direct Docker/Flask (source d’autorité unique).
