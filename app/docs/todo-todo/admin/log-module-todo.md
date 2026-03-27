@@ -11,7 +11,9 @@ Mettre en place un module de logs applicatifs consultables en UI pour suivre le 
 - Les logs sont chronologiques et relies a un tour (`conversation_id`, `turn_id`, `event_id`, `ts`).
 - Statuts minimaux obligatoires: `ok`, `error`, `skipped`.
 - Pas de dump massif brut par defaut (prompt complet, contexte complet, payloads LLM complets).
+- Pas de dump massif des blocs identitaires (lecture ou ecriture): uniquement metadonnees sobres.
 - Pour le contexte injecte, on logue les metadonnees utiles (`context_tokens`, `token_limit`, `truncated`, compteurs), pas le contenu integral.
+- UI logs: reutilisation prioritaire du CSS admin (`app/web/admin.css`) et du langage de composants admin existant.
 - Le module cible reste borne au pipeline chat par tour (pas de plateforme observabilite globale).
 
 ## TODO (executable par tranches)
@@ -39,7 +41,8 @@ Mettre en place un module de logs applicatifs consultables en UI pour suivre le 
 - [ ] Instrumenter `embedding`.
 - [ ] Instrumenter `memory_retrieve`.
 - [ ] Instrumenter `summaries`.
-- [ ] Instrumenter `identities_context_hints`.
+- [ ] Instrumenter `identities_read` (sources `frida` vs `user`, compteurs, `keys`/`preview` sobres, hints utilises, `truncated`).
+- [ ] Instrumenter `identity_write` (ce que l'arbitre retient pour inscription: actions `add|update|override|reject|defer`, compteurs, `keys`/`preview` sobres, sans dump brut).
 - [ ] Instrumenter `web_search` (activation, tentative, resultat ou `skipped`, erreurs).
 - [ ] Instrumenter `context_build`.
 - [ ] Instrumenter `prompt_prepared` avec `prompt_kind` et metriques non sensibles.
@@ -63,7 +66,7 @@ Mettre en place un module de logs applicatifs consultables en UI pour suivre le 
 
 ### 5) UI minimale
 - [ ] Ajouter un bouton `Log` a cote de `Admin` dans l'UI principale.
-- [ ] Ajouter une page dediee logs, avec langage visuel coherent avec l'admin.
+- [ ] Ajouter une page dediee logs avec reutilisation prioritaire du socle CSS/composants admin existant (pas de charte parallele).
 - [ ] Poser le JS futur sous `app/web/log/`.
 - [ ] Afficher la timeline chronologique par tour avec badges `ok/error/skipped`.
 - [ ] Afficher les metadonnees utiles (tokens, limites, truncation, compteurs) sans dump brut.
@@ -72,6 +75,8 @@ Mettre en place un module de logs applicatifs consultables en UI pour suivre le 
 ### 6) Tests / preuves
 - [ ] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
 - [ ] Test `prompt_kind`: presence et valeurs attendues sur les evenements concernes.
+- [ ] Test `identities_read`: visibilite `frida` vs `user` + forme sobre (`keys`/`preview`/`count`) sans dump massif.
+- [ ] Test `identity_write`: visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
 - [ ] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
 - [ ] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
 - [ ] Test suppression logs `all_logs` (si retenu) sans impact memoire metier.
