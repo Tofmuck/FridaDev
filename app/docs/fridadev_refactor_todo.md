@@ -441,7 +441,7 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - [x] Vérifier que chaque point important de `fridadev_repo_audit.md` est soit corrigé, soit documenté, soit explicitement rejeté.
 - [x] Vérifier que toutes les questions ouvertes / points incertains ont reçu une décision explicite.
 - [x] Vérifier que les contradictions de contrat signalées dans l’audit sont fermées.
-- [ ] Vérifier que les monolithes identifiés ont été réellement réduits ou requalifiés.
+- [x] Vérifier que les monolithes identifiés ont été réellement réduits ou requalifiés.
 - [x] Vérifier que les reliquats legacy / code mort signalés ont été traités ou justifiés.
 - [ ] Vérifier que les dépendances inter-couches ont diminué et n’ont pas empiré.
 - [ ] Vérifier qu’aucun nouveau “god module” n’a été créé pendant le refacto.
