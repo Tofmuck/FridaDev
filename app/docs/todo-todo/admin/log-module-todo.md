@@ -3,6 +3,9 @@
 ## Objectif
 Mettre en place un module de logs applicatifs consultables en UI pour suivre le pipeline chat par tour, sans melanger observabilite et memoire metier.
 
+Contrat normatif de reference:
+- `app/docs/states/specs/log-module-contract.md`
+
 ## Invariants
 - Le module logs est un module d'observabilite, pas une source metier.
 - `delete logs` ne supprime jamais conversations, traces, summaries, identities, context hints.
@@ -19,16 +22,16 @@ Mettre en place un module de logs applicatifs consultables en UI pour suivre le 
 ## TODO (executable par tranches)
 
 ### 0) Cadrage contractuel (avant code)
-- [ ] Valider la frontiere exacte memoire metier vs logs applicatifs (tables, routes, ownership).
-- [ ] Verrouiller la liste des champs communs obligatoires pour chaque evenement (`conversation_id`, `turn_id`, `event_id`, `ts`, `stage`, `status`).
-- [ ] Verrouiller le sous-contrat `status=skipped` avec des `reason_code` minimaux et stables.
-- [ ] Ajouter et verrouiller un champ explicite `prompt_kind` (ex: `system`, `hermeneutical`, `user_compiled`, a finaliser) dans les evenements concernes.
-- [ ] Verrouiller un evenement / sous-contrat explicite `web_search` (pas seulement un booleen dans `turn_start`).
-- [ ] Decider explicitement le scope de suppression MVP a supporter:
-- [ ] Option `all_logs` (purge complete logs)
-- [ ] Option `conversation_logs` (purge par conversation)
-- [ ] Option `turn_logs` (purge par tour)
-- [ ] Documenter la decision retenue et les options differees.
+- [x] Valider la frontiere exacte memoire metier vs logs applicatifs (tables, routes, ownership).
+- [x] Verrouiller la liste des champs communs obligatoires pour chaque evenement (`conversation_id`, `turn_id`, `event_id`, `ts`, `stage`, `status`).
+- [x] Verrouiller le sous-contrat `status=skipped` avec des `reason_code` minimaux et stables.
+- [x] Ajouter et verrouiller un champ explicite `prompt_kind` (taxonomie initiale fixee dans le contrat).
+- [x] Verrouiller un evenement / sous-contrat explicite `web_search` (pas seulement un booleen dans `turn_start`).
+- [x] Decider explicitement le scope de suppression MVP a supporter.
+- [ ] Option `all_logs` (purge complete logs, differee hors MVP initial)
+- [x] Option `conversation_logs` (purge par conversation, retenue pour MVP)
+- [ ] Option `turn_logs` (purge par tour, differee hors MVP initial)
+- [x] Documenter la decision retenue et les options differees.
 
 ### 1) Stockage dedie logs (separe memoire metier)
 - [ ] Definir le support de stockage dedie logs (sans reemploi des tables memoire metier).
