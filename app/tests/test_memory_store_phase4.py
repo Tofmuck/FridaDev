@@ -279,26 +279,9 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
         self.assertFalse(observed['called'])
 
-    def test_record_arbiter_decisions_uses_runtime_arbiter_model_from_db_when_present(self) -> None:
+    def test_record_arbiter_decisions_uses_explicit_effective_model_when_decisions_omit_it(self) -> None:
         observed = {'models': [], 'committed': False}
-        original_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
         original_conn = memory_store._conn
-
-        def fake_get_arbiter_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.normalize_stored_payload(
-                    'arbiter_model',
-                    {
-                        'model': {'value': 'openrouter/arbiter-runtime-db', 'origin': 'db'},
-                        'temperature': {'value': 0.0, 'origin': 'db'},
-                        'top_p': {'value': 1.0, 'origin': 'db'},
-                        'timeout_s': {'value': 45, 'origin': 'db'},
-                    },
-                ),
-                source='db',
-                source_reason='db_row',
-            )
 
         class FakeCursor:
             def __enter__(self):
@@ -324,7 +307,6 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                 observed['committed'] = True
                 return None
 
-        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         memory_store._conn = lambda: FakeConnection()
         try:
             memory_store.record_arbiter_decisions(
@@ -348,26 +330,17 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                         'decision_source': 'llm',
                     }
                 ],
+                effective_model='openrouter/arbiter-runtime-db',
             )
         finally:
-            memory_store.runtime_settings.get_arbiter_model_settings = original_get_settings
             memory_store._conn = original_conn
 
         self.assertEqual(observed['models'], ['openrouter/arbiter-runtime-db'])
         self.assertTrue(observed['committed'])
 
-    def test_record_arbiter_decisions_keeps_env_fallback_model_when_runtime_layer_returns_it(self) -> None:
+    def test_record_arbiter_decisions_keeps_explicit_env_fallback_model_when_decisions_omit_it(self) -> None:
         observed = {'models': [], 'committed': False}
-        original_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
         original_conn = memory_store._conn
-
-        def fake_get_arbiter_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
-                source='env',
-                source_reason='empty_table',
-            )
 
         class FakeCursor:
             def __enter__(self):
@@ -393,7 +366,6 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                 observed['committed'] = True
                 return None
 
-        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         memory_store._conn = lambda: FakeConnection()
         try:
             memory_store.record_arbiter_decisions(
@@ -417,9 +389,9 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                         'decision_source': 'fallback',
                     }
                 ],
+                effective_model=config.ARBITER_MODEL,
             )
         finally:
-            memory_store.runtime_settings.get_arbiter_model_settings = original_get_settings
             memory_store._conn = original_conn
 
         self.assertEqual(observed['models'], [config.ARBITER_MODEL])
@@ -428,7 +400,6 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
     def test_record_arbiter_decisions_persists_effective_model_even_if_runtime_changes_before_insert(self) -> None:
         observed = {'persisted_models': [], 'request_models': []}
         original_arbiter_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
-        original_memory_get_settings = memory_store.runtime_settings.get_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_conn = memory_store._conn
@@ -514,16 +485,21 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         recent_turns = [{'role': 'user', 'content': 'question recente'}]
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
-        memory_store.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter._load_prompt = lambda _path, _label: 'prompt'
         arbiter.requests.post = fake_post
         memory_store._conn = lambda: FakeConnection()
         try:
             _kept, decisions = arbiter.filter_traces_with_diagnostics(traces, recent_turns)
-            memory_store.record_arbiter_decisions('conv-phase4-arbiter-race', traces, decisions)
+            effective_model = observed['request_models'][0]
+            decisions_without_model = [{k: v for k, v in d.items() if k != 'model'} for d in decisions]
+            memory_store.record_arbiter_decisions(
+                'conv-phase4-arbiter-race',
+                traces,
+                decisions_without_model,
+                effective_model=effective_model,
+            )
         finally:
             arbiter.runtime_settings.get_arbiter_model_settings = original_arbiter_get_settings
-            memory_store.runtime_settings.get_arbiter_model_settings = original_memory_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             memory_store._conn = original_conn

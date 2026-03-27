@@ -69,11 +69,6 @@ def _runtime_embedding_token() -> str:
     return str(secret.value)
 
 
-def _runtime_arbiter_model_name() -> str:
-    view = runtime_settings.get_arbiter_model_settings()
-    return str(view.payload['model']['value'])
-
-
 # Schema initialization
 
 def init_db() -> None:
@@ -1098,12 +1093,14 @@ def record_arbiter_decisions(
     conversation_id: str,
     traces: List[Dict[str, Any]],
     decisions: List[Dict[str, Any]],
+    *,
+    effective_model: str | None = None,
 ) -> None:
     if not conversation_id or not decisions:
         return
 
     try:
-        fallback_arbiter_model: str | None = None
+        fallback_arbiter_model = str(effective_model or '').strip() or None
         with _conn() as conn:
             with conn.cursor() as cur:
                 for decision in decisions:
@@ -1113,9 +1110,7 @@ def record_arbiter_decisions(
                     idx = int(candidate_id)
                     trace = traces[idx] if 0 <= idx < len(traces) else {}
                     decision_model = str(decision.get('model') or '').strip()
-                    if not decision_model:
-                        if fallback_arbiter_model is None:
-                            fallback_arbiter_model = _runtime_arbiter_model_name()
+                    if not decision_model and fallback_arbiter_model:
                         decision_model = fallback_arbiter_model
 
                     cur.execute(
