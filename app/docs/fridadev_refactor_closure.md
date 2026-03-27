@@ -34,6 +34,16 @@
 | Statut sync JSON `conv_store` | Documenté / arbitré | Conservation explicite comme outillage opératoire hors runtime principal | `app/core/conv_store.py` (commentaire “Legacy sync subset…”), `app/docs/fridadev_refactor_todo.md` (arbitrage 2026-03-26), test `test_conv_store_json_sync_inventory_phase6.py` | À réévaluer seulement si politique produit change |
 | Conventions minimales (`frida.*`, typage progressif, garde-fou) | Documenté + appliqué | Namespace logger canonique `frida.*`; harmonisation typage par tranches utiles; garde-fou anti-dérive | `app/docs/fridadev_conventions.md`, `app/tests/test_logging_conventions_phase8.py`, absence du token legacy logger dans les fichiers trackés (vérification `rg` sur `git ls-files`) | Harmonisation typage volontairement progressive, non “uniformité absolue” |
 
+## 3 bis) Contradictions de contrat (audit §5) — statut de fermeture
+
+| Contradiction signalée dans l’audit | Statut actuel | Preuve vérifiable | Réserve |
+| --- | --- | --- | --- |
+| Startup (`Dockerfile` vs `run.sh` vs `server.py`/env) | Fermée (corrigée + documentée) | `app/Dockerfile` (`CMD ["python", "server.py"]`), `app/config.py` (`WEB_HOST/WEB_PORT` depuis env), `app/server.py` (`app.run(host=config.WEB_HOST, port=config.WEB_PORT)`), `app/run.sh` (wrapper local explicite), test `test_phase4_transversal.py` | `run.sh` reste non canonique pour le runtime container (décision assumée) |
+| `/api/chat` (`history` envoyé frontend mais ignoré backend) | Fermée (corrigée) | `app/web/app.js` (payload chat sans `history`), backend tolérant via `request.get_json(... )` sans dépendance à `history`; test `test_phase4_transversal.py` | Tolérance backend maintenue volontairement (pas de rupture API) |
+| `arbiter_decisions.model` (modèle potentiellement re-résolu au save) | Fermée (corrigée) | `app/memory/memory_store.py` (`record_arbiter_decisions(..., effective_model=...)`), `app/memory/arbiter.py` (décisions portant le modèle runtime effectif), test `test_memory_store_phase4.py` (cas “runtime change before insert”) | Aucune observée |
+| Migration DB-only vs reliquats JSON `conv_store` | Fermée (requalifiée/documentée) | Runtime principal DB-only (`app/server.py`: bootstrap DB + log `conv_json_bootstrap disabled for db_only_migration`), reliquats JSON confinés au sous-ensemble sync (`app/core/conv_store.py`), inventaire d’usage verrouillé (`test_conv_store_json_sync_inventory_phase6.py`) | Conservation du sous-ensemble sync reste un choix opératoire explicite |
+| Flux web search (flag mort et champ de log legacy) | Fermée (corrigée) | `app/tools/web_search.py` (`build_context` en 3-tuple), `app/core/chat_prompt_context.py` (log `web_search` sans champ legacy), test `test_web_search_phase13.py` | Aucune observée |
+
 ## 4) Questions ouvertes de l’audit initial: décision explicite
 
 | Question ouverte (audit §12) | Décision explicite | Statut |
