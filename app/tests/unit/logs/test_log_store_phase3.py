@@ -130,6 +130,22 @@ class LogStorePhase3Tests(unittest.TestCase):
                 logger_instance=_NoopLogger(),
             )
 
+    def test_read_chat_log_events_rejects_invalid_ts_from(self) -> None:
+        with self.assertRaisesRegex(ValueError, 'invalid ts_from timestamp'):
+            log_store.read_chat_log_events(
+                ts_from='not-a-date',
+                conn_factory=lambda: None,
+                logger_instance=_NoopLogger(),
+            )
+
+    def test_read_chat_log_events_rejects_invalid_ts_to(self) -> None:
+        with self.assertRaisesRegex(ValueError, 'invalid ts_to timestamp'):
+            log_store.read_chat_log_events(
+                ts_to='still-not-a-date',
+                conn_factory=lambda: None,
+                logger_instance=_NoopLogger(),
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -25,6 +25,18 @@ def _conn() -> Any:
     )
 
 
+def _validate_iso8601_filter(value: str | None, *, field_name: str) -> str | None:
+    raw = str(value or '').strip()
+    if not raw:
+        return None
+    normalized = raw[:-1] + '+00:00' if raw.endswith('Z') else raw
+    try:
+        datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError(f'invalid {field_name} timestamp: {raw}') from exc
+    return raw
+
+
 def init_log_storage(
     *,
     conn_factory: Callable[[], Any] = _conn,
@@ -195,8 +207,8 @@ def read_chat_log_events(
     if status_s and status_s not in _STATUS_ALLOWED:
         raise ValueError(f'invalid chat log status filter: {status_s}')
 
-    ts_from_s = str(ts_from or '').strip() or None
-    ts_to_s = str(ts_to or '').strip() or None
+    ts_from_s = _validate_iso8601_filter(ts_from, field_name='ts_from')
+    ts_to_s = _validate_iso8601_filter(ts_to, field_name='ts_to')
 
     where_clauses: list[str] = []
     where_params: list[Any] = []

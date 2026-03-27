@@ -121,6 +121,16 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid chat log status filter: broken'})
 
+    def test_admin_chat_logs_route_rejects_invalid_ts_from(self) -> None:
+        response = self.client.get('/api/admin/logs/chat?ts_from=not-a-date')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid ts_from timestamp: not-a-date'})
+
+    def test_admin_chat_logs_route_rejects_invalid_ts_to(self) -> None:
+        response = self.client.get('/api/admin/logs/chat?ts_to=not-a-date')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid ts_to timestamp: not-a-date'})
+
     def test_admin_chat_logs_route_respects_admin_token_guard(self) -> None:
         self.server.config.FRIDA_ADMIN_LAN_ONLY = False
         self.server.config.FRIDA_ADMIN_TOKEN = 'phase3-token'
