@@ -72,6 +72,7 @@ Contrat normatif de reference:
 - [x] Ajouter une page dediee logs avec reutilisation prioritaire du socle CSS/composants admin existant (pas de charte parallele).
 - [x] Poser le JS futur sous `app/web/log/`.
 - [x] Afficher la timeline chronologique par tour avec badges `ok/error/skipped`.
+- [x] UI logs: afficher les evenements d'un tour en ordre chronologique croissant (TURN_START -> TURN_END) tout en gardant les tours les plus recents en premier.
 - [x] Afficher les metadonnees utiles (tokens, limites, truncation, compteurs) sans dump brut.
 - [x] Exposer les actions de suppression strictement alignees sur le scope decide.
 

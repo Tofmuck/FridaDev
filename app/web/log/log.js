@@ -79,6 +79,17 @@
       .map((key) => `${key}=${compactValue(payload[key])}`);
   };
 
+  const compareEventsChronoAsc = (left, right) => {
+    const leftTs = Date.parse(toText(left?.ts));
+    const rightTs = Date.parse(toText(right?.ts));
+    if (Number.isFinite(leftTs) && Number.isFinite(rightTs) && leftTs !== rightTs) {
+      return leftTs - rightTs;
+    }
+    const leftId = toText(left?.event_id);
+    const rightId = toText(right?.event_id);
+    return leftId.localeCompare(rightId);
+  };
+
   const readFilters = () => {
     const limit = toBoundedInt(elements.limit.value, 100, 1, 500);
     const offset = toBoundedInt(elements.offset.value, 0, 0, 1000000);
@@ -142,6 +153,9 @@
     }
 
     for (const group of groups.values()) {
+      // Keep groups ordered by newest turns first, but display events in natural turn order.
+      group.events.sort(compareEventsChronoAsc);
+
       const groupSection = document.createElement("section");
       groupSection.className = "admin-readonly-group";
 

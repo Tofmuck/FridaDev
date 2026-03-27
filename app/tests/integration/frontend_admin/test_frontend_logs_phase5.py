@@ -51,6 +51,14 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertNotIn("all_logs", source)
         self.assertNotIn("/api/admin/logs/chat", admin_source)
 
+    def test_log_js_sorts_events_inside_turn_in_chronological_order(self) -> None:
+        source = (APP_DIR / "web" / "log" / "log.js").read_text(encoding="utf-8")
+
+        self.assertIn("const compareEventsChronoAsc", source)
+        self.assertIn("Date.parse(toText(left?.ts))", source)
+        self.assertIn("Date.parse(toText(right?.ts))", source)
+        self.assertIn("group.events.sort(compareEventsChronoAsc)", source)
+
     def test_server_exposes_log_static_route(self) -> None:
         source = (APP_DIR / "server.py").read_text(encoding="utf-8")
 
