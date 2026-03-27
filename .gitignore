@@ -8,12 +8,6 @@ state/
 app/conv/
 app/logs/
 app/data/
-app/docs/states/*
-!app/docs/states/Frida-State-french-23-03-26.md
-!app/docs/states/Frida-State-english-23-03-26.md
-app/docs/todo-done/
-app/docs/todo-todo/
-
 # Python caches and environments
 __pycache__/
 *.py[cod]
