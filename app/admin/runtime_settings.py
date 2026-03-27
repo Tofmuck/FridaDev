@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
+from typing import Any, Callable, Iterable, Mapping
 
 import config
 from admin import runtime_secrets, runtime_settings_repo, runtime_settings_validation
@@ -33,20 +33,20 @@ from core import prompt_loader
 @dataclass(frozen=True)
 class SectionSeedBundle:
     section: str
-    payload: Dict[str, Dict[str, Any]]
-    secret_values: Dict[str, str]
+    payload: dict[str, dict[str, Any]]
+    secret_values: dict[str, str]
 
 
 @dataclass(frozen=True)
 class RuntimeSettingsSnapshot:
-    rows: Dict[str, Dict[str, Dict[str, Any]]]
+    rows: dict[str, dict[str, dict[str, Any]]]
     db_state: str
 
 
 @dataclass(frozen=True)
 class RuntimeSectionView:
     section: str
-    payload: Dict[str, Dict[str, Any]]
+    payload: dict[str, dict[str, Any]]
     source: str
     source_reason: str
 
@@ -85,11 +85,11 @@ def normalize_stored_payload(
     payload: Mapping[str, Any],
     *,
     default_origin: str = 'manual_sql',
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     if not isinstance(payload, Mapping):
         raise TypeError('payload must be a mapping')
 
-    normalized: Dict[str, Dict[str, Any]] = {}
+    normalized: dict[str, dict[str, Any]] = {}
     for field_name, raw_value in payload.items():
         spec = get_field_spec(section, field_name)
         if not isinstance(raw_value, Mapping):
@@ -103,7 +103,7 @@ def normalize_stored_payload(
 
             encrypted_value = raw_value.get('value_encrypted')
             is_set = bool(raw_value.get('is_set') or encrypted_value)
-            field_payload: Dict[str, Any] = {
+            field_payload: dict[str, Any] = {
                 'is_secret': True,
                 'is_set': is_set,
                 'origin': origin,
@@ -126,8 +126,8 @@ def normalize_stored_payload(
     return normalized
 
 
-def redact_payload_for_api(section: str, payload: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
-    redacted: Dict[str, Dict[str, Any]] = {}
+def redact_payload_for_api(section: str, payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    redacted: dict[str, dict[str, Any]] = {}
     for field_name, field_payload in normalize_stored_payload(section, payload).items():
         spec = get_field_spec(section, field_name)
         if spec.is_secret:
@@ -161,9 +161,9 @@ def _secret_effective_source(section: str, field: str, payload: Mapping[str, Any
     return 'db_encrypted'
 
 
-def describe_secret_sources(section: str, payload: Mapping[str, Any]) -> Dict[str, str]:
+def describe_secret_sources(section: str, payload: Mapping[str, Any]) -> dict[str, str]:
     normalized = normalize_stored_payload(section, payload)
-    secret_sources: Dict[str, str] = {}
+    secret_sources: dict[str, str] = {}
     for field in get_section_spec(section).fields:
         if not field.is_secret:
             continue
@@ -176,7 +176,7 @@ def describe_secret_sources(section: str, payload: Mapping[str, Any]) -> Dict[st
 
 
 def _seed_value(section: str, field: str) -> Any:
-    values: Dict[tuple[str, str], Any] = {
+    values: dict[tuple[str, str], Any] = {
         ('main_model', 'base_url'): config.OR_BASE,
         ('main_model', 'model'): config.OR_MODEL,
         ('main_model', 'api_key'): config.OR_KEY,
@@ -216,8 +216,8 @@ def _seed_value(section: str, field: str) -> Any:
 
 def build_env_seed_bundle(section: str) -> SectionSeedBundle:
     spec = get_section_spec(section)
-    payload: Dict[str, Dict[str, Any]] = {}
-    secret_values: Dict[str, str] = {}
+    payload: dict[str, dict[str, Any]] = {}
+    secret_values: dict[str, str] = {}
 
     for field in spec.fields:
         value = _seed_value(section, field.key)
@@ -247,7 +247,7 @@ def build_env_seed_bundle(section: str) -> SectionSeedBundle:
 def build_db_seed_bundle(section: str) -> SectionSeedBundle:
     env_bundle = build_env_seed_bundle(section)
     payload = normalize_stored_payload(section, env_bundle.payload, default_origin='env_seed')
-    seeded_payload: Dict[str, Dict[str, Any]] = {}
+    seeded_payload: dict[str, dict[str, Any]] = {}
 
     for field_name, field_payload in payload.items():
         spec = get_field_spec(section, field_name)
@@ -263,23 +263,23 @@ def build_db_seed_bundle(section: str) -> SectionSeedBundle:
     )
 
 
-def get_unseeded_sections(existing_sections: Iterable[str]) -> Tuple[str, ...]:
+def get_unseeded_sections(existing_sections: Iterable[str]) -> tuple[str, ...]:
     existing = {str(section) for section in existing_sections}
     return tuple(section for section in SECTION_NAMES if section not in existing)
 
 
-def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
+def build_env_seed_plan(existing_sections: Iterable[str] = ()) -> tuple[SectionSeedBundle, ...]:
     return tuple(build_env_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
 
 
-def build_db_seed_plan(existing_sections: Iterable[str] = ()) -> Tuple[SectionSeedBundle, ...]:
+def build_db_seed_plan(existing_sections: Iterable[str] = ()) -> tuple[SectionSeedBundle, ...]:
     return tuple(build_db_seed_bundle(section) for section in get_unseeded_sections(existing_sections))
 
 
 def _merge_missing_db_seed_fields(
     section: str,
     current_payload: Mapping[str, Any],
-) -> Tuple[Dict[str, Dict[str, Any]], Tuple[str, ...]]:
+) -> tuple[dict[str, dict[str, Any]], tuple[str, ...]]:
     normalized_current = normalize_stored_payload(section, current_payload, default_origin='db')
     seeded_payload = build_db_seed_bundle(section).payload
     merged_payload = dict(normalized_current)
@@ -318,7 +318,7 @@ def _should_backfill_secret_field(field_payload: Mapping[str, Any]) -> bool:
     return True
 
 
-def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backfill') -> Dict[str, Any]:
+def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backfill') -> dict[str, Any]:
     return runtime_settings_repo.backfill_runtime_secrets_from_env(
         dsn=config.FRIDA_MEMORY_DB_DSN,
         updated_by=updated_by,
@@ -333,7 +333,7 @@ def backfill_runtime_secrets_from_env(*, updated_by: str = 'runtime_secret_backf
     )
 
 
-def init_runtime_settings_db() -> Dict[str, Any]:
+def init_runtime_settings_db() -> dict[str, Any]:
     return runtime_settings_repo.init_runtime_settings_db(
         dsn=config.FRIDA_MEMORY_DB_DSN,
         sql_path=RUNTIME_SETTINGS_SQL_PATH,
@@ -341,7 +341,7 @@ def init_runtime_settings_db() -> Dict[str, Any]:
     )
 
 
-def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_bootstrap') -> Dict[str, Any]:
+def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_bootstrap') -> dict[str, Any]:
     return runtime_settings_repo.bootstrap_runtime_settings_from_env(
         dsn=config.FRIDA_MEMORY_DB_DSN,
         updated_by=updated_by,
@@ -358,7 +358,7 @@ def invalidate_runtime_settings_cache() -> None:
     _SNAPSHOT_CACHE = None
 
 
-def _default_db_fetch_all_sections() -> Dict[str, Dict[str, Dict[str, Any]]]:
+def _default_db_fetch_all_sections() -> dict[str, dict[str, dict[str, Any]]]:
     return runtime_settings_repo.fetch_all_sections(
         dsn=config.FRIDA_MEMORY_DB_DSN,
         normalize_stored_payload=normalize_stored_payload,
@@ -367,7 +367,7 @@ def _default_db_fetch_all_sections() -> Dict[str, Dict[str, Dict[str, Any]]]:
 
 
 def _load_snapshot(
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSettingsSnapshot:
     global _SNAPSHOT_CACHE
 
@@ -391,14 +391,14 @@ def _load_snapshot(
     return snapshot
 
 
-def _env_payload_for_runtime(section: str) -> Dict[str, Dict[str, Any]]:
+def _env_payload_for_runtime(section: str) -> dict[str, dict[str, Any]]:
     return build_env_seed_bundle(section).payload
 
 
 def get_runtime_section(
     section: str,
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
     get_section_spec(section)
     snapshot = _load_snapshot(fetcher=fetcher)
@@ -424,7 +424,7 @@ def get_runtime_section(
 def get_runtime_section_for_api(
     section: str,
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
     view = get_runtime_section(section, fetcher=fetcher)
     return RuntimeSectionView(
@@ -453,7 +453,7 @@ def _main_hermeneutical_runtime_bricks_text() -> str:
     )
 
 
-def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
+def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
         return {
@@ -590,40 +590,40 @@ def get_section_readonly_info(section: str) -> Dict[str, Dict[str, Any]]:
     return {}
 
 
-def get_main_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_main_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('main_model', fetcher=fetcher)
 
 
-def get_arbiter_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_arbiter_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('arbiter_model', fetcher=fetcher)
 
 
-def get_summary_model_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_summary_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('summary_model', fetcher=fetcher)
 
 
-def get_embedding_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_embedding_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('embedding', fetcher=fetcher)
 
 
-def get_database_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_database_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('database', fetcher=fetcher)
 
 
-def get_services_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_services_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('services', fetcher=fetcher)
 
 
-def get_resources_settings(*, fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+def get_resources_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('resources', fetcher=fetcher)
 
 
 def get_runtime_status(
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
-) -> Dict[str, Any]:
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> dict[str, Any]:
     snapshot = _load_snapshot(fetcher=fetcher)
-    sections: Dict[str, Dict[str, str]] = {}
+    sections: dict[str, dict[str, str]] = {}
     for section in SECTION_NAMES:
         if section in snapshot.rows:
             sections[section] = {
@@ -721,7 +721,7 @@ def get_runtime_secret_value(
     section: str,
     field: str,
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSecretValue:
     view = get_runtime_section(section, fetcher=fetcher)
     return _resolve_runtime_secret_from_view(view, field)
@@ -749,12 +749,12 @@ def _coerce_field_value(section: str, field: str, value: Any) -> Any:
     raise RuntimeSettingsValidationError(f'unsupported value type for {field_ref}: {spec.value_type}')
 
 
-def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
+def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     get_section_spec(section)
     if not isinstance(payload, Mapping) or not payload:
         raise RuntimeSettingsValidationError(f'patch payload must be a non-empty mapping for {section}')
 
-    normalized: Dict[str, Dict[str, Any]] = {}
+    normalized: dict[str, dict[str, Any]] = {}
     for field_name, raw_value in payload.items():
         try:
             spec = get_field_spec(section, str(field_name))
@@ -812,7 +812,7 @@ def update_runtime_section(
     patch_payload: Mapping[str, Any],
     *,
     updated_by: str = 'admin_api',
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
     actor = str(updated_by or '').strip() or 'admin_api'
     normalized_patch = normalize_admin_patch_payload(section, patch_payload)
@@ -886,7 +886,7 @@ def update_runtime_section(
 def _effective_runtime_payload(
     section: str,
     payload: Mapping[str, Any],
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     effective = normalize_stored_payload(
         section,
         build_env_seed_bundle(section).payload,
@@ -900,7 +900,7 @@ def _candidate_runtime_section(
     section: str,
     *,
     patch_payload: Mapping[str, Any] | None = None,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
     current_view = get_runtime_section(section, fetcher=fetcher)
     candidate_payload = _effective_runtime_payload(section, current_view.payload)
@@ -925,8 +925,8 @@ def validate_runtime_section(
     section: str,
     patch_payload: Mapping[str, Any] | None = None,
     *,
-    fetcher: Callable[[], Dict[str, Dict[str, Dict[str, Any]]]] | None = None,
-) -> Dict[str, Any]:
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> dict[str, Any]:
     return runtime_settings_validation.validate_runtime_section(
         section=section,
         patch_payload=patch_payload,
