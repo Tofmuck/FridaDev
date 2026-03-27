@@ -397,9 +397,9 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - tests memory/chat/admin herméneutiques associés
 
 **Cases à cocher**
-- [ ] Cartographier explicitement les blocs internes de `memory_store.py` et figer la façade publique de transition.
-- [ ] Extraire le bloc infra mémoire (connexion DB runtime, bootstrap schéma, adapter embedding).
-- [ ] Extraire le bloc traces + summaries.
+- [x] Cartographier explicitement les blocs internes de `memory_store.py` et figer la façade publique de transition.
+- [x] Extraire le bloc infra mémoire (connexion DB runtime, bootstrap schéma, adapter embedding).
+- [x] Extraire le bloc traces + summaries.
 - [ ] Extraire le bloc lecture contexte (identities read + context hints).
 - [ ] Extraire le bloc audit arbitre (décisions + KPI).
 - [ ] Extraire le bloc identities write path (evidence + add/relabel/override).
