@@ -53,6 +53,20 @@
 | `app/web/admin.js` | Réduit + requalifié | Requalification acceptée: point d’entrée orchestrateur après extraction modulaire | `app/web/admin.js` (~1073 lignes, vs 3654 audit), modules `admin_api.js`, `admin_state.js`, `admin_ui_common.js`, `admin_section_*.js`; test `test_minimal_validation_phase9.py` | Point d’entrée encore dense (bootstrap DOM + wiring) |
 | `app/memory/memory_store.py` | Encore monolithique (non réduit) | Non fermé dans cette tranche | `app/memory/memory_store.py` (~1831 lignes, ~41 fonctions) couvre toujours init DB, embedding, traces, summaries, identities, arbitrage, conflicts, dynamics; test `test_memory_store_phase4.py` confirme le comportement mais pas une réduction structurelle | Point bloquant pour cocher honnêtement la case TODO “monolithes”; cadrage dédié ouvert en `app/docs/fridadev_memory_store_refactor_plan.md` |
 
+## 3 quater) Reliquats legacy / code mort (audit §6) — statut de traitement/justification
+
+| Reliquat signalé (audit §6) | Statut actuel | Décision finale | Preuve vérifiable | Réserve |
+| --- | --- | --- | --- | --- |
+| `needs_summarization()` dans `app/memory/summarizer.py` | Supprimé / traité | Suppression conservée | `app/memory/summarizer.py` (aucune définition), test `test_phase4_transversal.py` | Aucune |
+| `const panel = $("#panel")` dans `app/web/app.js` | Supprimé / traité | Suppression conservée | `app/web/app.js` (plus de variable `panel`), test `test_phase4_transversal.py` | Aucune |
+| `MAX_CONTEXT_MESSAGES` dans `app/web/app.js` | Supprimé / traité | Suppression conservée | `app/web/app.js` (constante absente), test `test_phase4_transversal.py` | Aucune |
+| Payload `history` envoyé/ignoré (`app/web/app.js` + `app/server.py`) | Supprimé / traité | Contrat frontend aligné (sans `history`), backend tolérant | `app/web/app.js` (payload `/api/chat` sans champ `history`), `app/server.py` (`request.get_json(...)` tolérant), test `test_phase4_transversal.py` | Tolérance backend volontaire |
+| `build_context(...)->(..., False)` flag mort (`app/tools/web_search.py`) | Supprimé / traité | Signature stabilisée en 3-tuple | `app/tools/web_search.py` (`def build_context(user_msg: str) -> tuple[str, str, int]`), `app/core/chat_prompt_context.py` (unpack 3 valeurs), test `test_web_search_phase13.py` | Aucune |
+| Fonctions sync JSON `conv_store` (`sync_catalog_from_json_files`, `sync_messages_from_json_files`, `get_storage_counts`) | Conservé mais justifié | Conservation explicite comme outillage opératoire hors runtime principal | `app/core/conv_store.py` (commentaire “Legacy sync subset kept intentionally…”), test `test_conv_store_json_sync_inventory_phase6.py` | Réévaluation seulement si politique produit change |
+| `_load_json_conversation_file` (`app/core/conv_store.py`) | Conservé mais justifié | Conservation limitée au sous-ensemble sync JSON | `app/core/conv_store.py` (appelée depuis les helpers sync), test `test_conv_store_json_sync_inventory_phase6.py` (usage borné) | Aucune |
+| `delete_conversation` (purge forte) dans `app/core/conv_store.py` | Conservé mais justifié | Helper technique conservé, non exposé au flux produit standard | `app/core/conversations_service.py` (`DELETE /api/conversations` branche `soft_delete_conversation`), `app/server.py` route delete, test `test_server_phase13.py` | Purge forte non branchée API par défaut; reste outil technique |
+| `app/run.sh` à vérifier | Conservé mais justifié | Wrapper opératoire local documenté; runtime container canonique inchangé | `app/run.sh` (commentaire explicite wrapper local), `app/Dockerfile` (`CMD ["python", "server.py"]`), test `test_phase4_transversal.py` | Script non canonique pour runtime container (décision assumée) |
+
 ## 4) Questions ouvertes de l’audit initial: décision explicite
 
 | Question ouverte (audit §12) | Décision explicite | Statut |
@@ -65,5 +79,5 @@
 
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés, avec un reliquat explicitement ouvert (`.gitignore` / `docs/states`).
-- Les contradictions de contrat signalées dans l’audit sont fermées et documentées; la clôture globale reste néanmoins ouverte car la vérification “monolithes” n’est pas fermée (notamment `memory_store.py`), ainsi que les cases Phase 9 restantes (dépendances, “god module”, convergence cible, verdict final).
+- Les contradictions de contrat et les reliquats legacy/code mort signalés dans l’audit sont fermés/documentés; la clôture globale reste néanmoins ouverte car la vérification “monolithes” n’est pas fermée (notamment `memory_store.py`), ainsi que les cases Phase 9 restantes (dépendances, “god module”, convergence cible, verdict final).
 - Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.
