@@ -76,17 +76,17 @@ Contrat normatif de reference:
 - [x] Exposer les actions de suppression strictement alignees sur le scope decide.
 
 ### 6) Tests / preuves
-- [ ] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
-- [ ] Test `prompt_kind`: presence et valeurs attendues sur les evenements concernes.
-- [ ] Test `identities_read`: visibilite `frida` vs `user` + forme sobre (`keys`/`preview`/`count`) sans dump massif.
-- [ ] Test `identity_write`: `target_side` obligatoire (`frida|user`) + visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
-- [ ] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
-- [ ] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
+- [x] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
+- [x] Test `prompt_kind`: presence et valeurs attendues sur les evenements concernes.
+- [x] Test `identities_read`: visibilite `frida` vs `user` + forme sobre (`keys`/`preview`/`count`) sans dump massif.
+- [x] Test `identity_write`: `target_side` obligatoire (`frida|user`) + visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
+- [x] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
+- [x] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
 - [x] Test refus explicite `all_logs` (MVP non retenu) sans impact memoire metier.
 - [x] Test suppression logs `conversation_logs` sans impact memoire metier.
 - [x] Test suppression logs `turn_logs` sans impact memoire metier.
 - [x] Test non-reconstruction: apres suppression, le viewer reste vide jusqu'a nouveaux tours.
-- [ ] Test pipeline non-regression memory/chat/admin (la memoire metier reste intacte).
+- [x] Test pipeline non-regression memory/chat/admin (la memoire metier reste intacte).
 
 ## Hors scope (MVP)
 - Logs admin detailles hors pipeline chat.

@@ -4,6 +4,7 @@ import importlib
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -164,6 +165,57 @@ class ServerLogsPhase3Tests(unittest.TestCase):
 
         self.assertEqual(response_ok.status_code, 200)
         self.assertTrue(response_ok.get_json()['ok'])
+
+    def test_llm_proxy_emits_prompt_prepared_with_expected_prompt_kind(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-prompt-kind',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._LlmChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                        'model': 'openrouter/runtime-main-model',
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'max_tokens': max_tokens,
+                        'stream': stream,
+                    }
+                ),
+                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 321),
+            )
+            payload = proxy.build_payload(
+                [{'role': 'user', 'content': 'bonjour'}],
+                0.7,
+                0.9,
+                400,
+                stream=False,
+            )
+            self.assertEqual(payload['model'], 'openrouter/runtime-main-model')
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        prompt_events = [event for event in observed if event.get('stage') == 'prompt_prepared']
+        self.assertEqual(len(prompt_events), 1)
+        prompt_payload = prompt_events[0]['payload_json']
+        self.assertEqual(prompt_payload.get('prompt_kind'), 'chat_system_augmented')
+        self.assertIn(prompt_payload.get('prompt_kind'), {'chat_system_augmented', 'chat_web_reformulation'})
+        self.assertEqual(prompt_payload.get('messages_count'), 1)
+        self.assertEqual(prompt_payload.get('estimated_prompt_tokens'), 321)
+        self.assertNotIn('messages', prompt_payload)
+        self.assertNotIn('prompt', prompt_payload)
+        self.assertNotIn('content', prompt_payload)
 
 
 if __name__ == '__main__':

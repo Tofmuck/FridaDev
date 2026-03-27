@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -167,6 +168,43 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
         self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
 
+    def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-contract',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit('context_build', status='ok', payload={'context_tokens': 42, 'token_limit': 4000})
+            chat_turn_logger.emit_branch_skipped(reason_code='no_data', reason_short='no_optional_branch')
+            chat_turn_logger.emit_error(
+                error_code='upstream_error',
+                error_class='RuntimeError',
+                message_short='boom',
+            )
+            chat_turn_logger.end_turn(token, final_status='error')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        self.assertTrue(observed)
+        required = {'event_id', 'conversation_id', 'turn_id', 'ts', 'stage', 'status'}
+        statuses: set[str] = set()
+        for event in observed:
+            self.assertTrue(required.issubset(set(event.keys())))
+            for field in required:
+                self.assertTrue(str(event[field] or '').strip(), msg=f'empty field {field} in {event}')
+            statuses.add(str(event['status']))
+
+        self.assertTrue({'ok', 'error', 'skipped'}.issubset(statuses))
+
 
 class ChatInstrumentationPhase2Tests(unittest.TestCase):
     def test_get_identities_emits_identities_read_with_frida_side(self) -> None:
@@ -273,7 +311,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
                 preview_identity_entries_fn=lambda _entries: [
                     {
                         'subject': 'llm',
-                        'content': 'Frida keeps this',
+                        'content': 'Frida keeps this ' + ('x' * 220),
                         'status': 'accepted',
                         'stability': 'durable',
                         'utterance_mode': 'self_description',
@@ -285,7 +323,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
                     },
                     {
                         'subject': 'user',
-                        'content': 'User preference',
+                        'content': 'User preference ' + ('y' * 220),
                         'status': 'deferred',
                         'stability': 'episodic',
                         'utterance_mode': 'self_description',
@@ -297,7 +335,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
                     },
                     {
                         'subject': 'user',
-                        'content': 'Rejected noise',
+                        'content': 'Rejected noise ' + ('z' * 220),
                         'status': 'rejected',
                         'stability': 'unknown',
                         'utterance_mode': 'irony',
@@ -306,6 +344,18 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
                         'evidence_kind': 'weak',
                         'confidence': 0.2,
                         'reason': 'policy:reject',
+                    },
+                    {
+                        'subject': 'user',
+                        'content': 'Another retained user identity ' + ('k' * 220),
+                        'status': 'accepted',
+                        'stability': 'durable',
+                        'utterance_mode': 'self_description',
+                        'recurrence': 'repeated',
+                        'scope': 'user',
+                        'evidence_kind': 'strong',
+                        'confidence': 0.85,
+                        'reason': 'policy:accepted',
                     },
                 ],
                 record_identity_evidence_fn=lambda *_args, **_kwargs: None,
@@ -321,9 +371,88 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         identity_write_events = [event for event in observed if event['stage'] == 'identity_write']
         self.assertEqual({event['payload_json']['target_side'] for event in identity_write_events}, {'frida', 'user'})
+        user_payload = next(event['payload_json'] for event in identity_write_events if event['payload_json']['target_side'] == 'user')
+        self.assertTrue(user_payload['truncated'])
         for event in identity_write_events:
-            self.assertIn('actions_count', event['payload_json'])
-            self.assertIn('retained_count', event['payload_json'])
+            payload = event['payload_json']
+            self.assertIn('actions_count', payload)
+            self.assertIn('retained_count', payload)
+            self.assertSetEqual(set(payload['actions_count'].keys()), {'add', 'update', 'override', 'reject', 'defer'})
+            self.assertLessEqual(len(payload.get('preview', [])), 3)
+            self.assertTrue(all(len(item) <= 120 for item in payload.get('preview', [])))
+            self.assertNotIn('entries', payload)
+            self.assertNotIn('raw_identities', payload)
+
+    def test_get_recent_context_hints_emits_identities_read_for_user_side(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        class FakeCursor:
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...]) -> None:
+                return None
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                now = datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc)
+                return [
+                    ('conv-u1', 'User context hint alpha ' + ('a' * 200), 'norm-alpha', now, 0.9, 'user', 'episodic', 'self_description', 1.2),
+                    ('conv-u2', 'User context hint beta ' + ('b' * 200), 'norm-beta', now, 0.8, 'user', 'episodic', 'self_description', 1.1),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-hints',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            hints = memory_context_read.get_recent_context_hints(
+                max_items=2,
+                max_age_days=7,
+                min_confidence=0.6,
+                conn_factory=lambda: FakeConn(),
+                default_max_items=2,
+                default_max_age_days=7,
+                default_min_confidence=0.6,
+                logger=SimpleNamespace(error=lambda *_a, **_k: None),
+            )
+            self.assertEqual(len(hints), 2)
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        identities_events = [event for event in observed if event['stage'] == 'identities_read']
+        self.assertTrue(identities_events)
+        payload = identities_events[0]['payload_json']
+        self.assertEqual(payload['target_side'], 'user')
+        self.assertEqual(payload['frida_count'], 0)
+        self.assertEqual(payload['user_count'], 2)
+        self.assertEqual(payload['selected_count'], 2)
+        self.assertLessEqual(len(payload['keys']), 3)
+        self.assertLessEqual(len(payload['preview']), 3)
+        self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
+        self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
+        self.assertNotIn('content', payload)
+        self.assertNotIn('raw_identities', payload)
 
     def test_web_search_build_context_emits_ok_and_skipped(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -380,7 +509,56 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertIn('ok', statuses)
         self.assertIn('skipped', statuses)
         for event in web_search_events:
-            self.assertEqual(event['payload_json'].get('prompt_kind'), 'chat_web_reformulation')
+            payload = event['payload_json']
+            self.assertEqual(payload.get('prompt_kind'), 'chat_web_reformulation')
+            self.assertIn('enabled', payload)
+            self.assertIn('query_preview', payload)
+            self.assertIn('results_count', payload)
+            self.assertIn('context_injected', payload)
+            self.assertIn('truncated', payload)
+            self.assertLessEqual(len(str(payload.get('query_preview') or '')), 120)
+            self.assertNotIn('context', payload)
+            self.assertNotIn('results', payload)
+
+        skipped_events = [event for event in web_search_events if event['status'] == 'skipped']
+        self.assertTrue(skipped_events)
+        self.assertTrue(all(event['payload_json'].get('reason_code') == 'no_data' for event in skipped_events))
+
+    def test_web_search_build_context_emits_error_event(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+        original_reformulate = web_search.reformulate
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(RuntimeError('reformulation boom'))
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-web-error',
+            user_msg='message source',
+            web_search_enabled=True,
+        )
+        try:
+            context, query, count = web_search.build_context('message source')
+            self.assertEqual((context, query, count), ('', 'message source', 0))
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            web_search.reformulate = original_reformulate
+            log_store.insert_chat_log_event = original_insert
+
+        error_event = next(event for event in observed if event['stage'] == 'web_search' and event['status'] == 'error')
+        payload = error_event['payload_json']
+        self.assertEqual(payload.get('prompt_kind'), 'chat_web_reformulation')
+        self.assertTrue(payload.get('enabled'))
+        self.assertEqual(payload.get('results_count'), 0)
+        self.assertFalse(payload.get('context_injected'))
+        self.assertIn('error_class', payload)
+        self.assertEqual(payload.get('query_preview'), 'message source')
+        self.assertNotIn('context', payload)
+        self.assertNotIn('results', payload)
+        self.assertTrue(any(event['stage'] == 'error' and event['status'] == 'error' for event in observed))
 
 
 if __name__ == '__main__':
