@@ -75,9 +75,9 @@
 | Fonctions sync JSON `conv_store` à supprimer ? | Conservation explicite comme outillage opératoire (suppression non retenue) | Clos (arbitré) |
 | Namespace logger canonique `frida.*` ? | Oui, `frida.*` retenu et verrouillé par test ciblé | Clos (arbitré) |
 | Champ `history` frontend chat ? | Retiré du contrat frontend; backend reste tolérant si présent | Clos (corrigé) |
-| Exclusion `docs/states/*` par `.gitignore` à long terme ? | Point maintenu en l’état (whitelist stricte actuelle). Décision long terme non tranchée dans cette tranche | Reste ouvert (documenté) |
+| Exclusion `docs/states/*` par `.gitignore` à long terme ? | Décision explicite actée: `states/` est une zone pérenne versionnée; la whitelist stricte actuelle est transitoire; implémentation matérielle (`.gitignore` + nettoyage `states/`/`todo-*`) différée à une tranche de nettoyage post-Phase 9 | Clos (décision explicite, implémentation différée) |
 
 ## 5) Conclusion de tranche
-- La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés, avec un reliquat explicitement ouvert (`.gitignore` / `docs/states`).
+- La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés; la décision sur `.gitignore` / `docs/states` est explicitement prise, avec implémentation volontairement différée à une tranche de nettoyage dédiée.
 - Les contradictions de contrat et les reliquats legacy/code mort signalés dans l’audit sont fermés/documentés; la clôture globale reste néanmoins ouverte car la vérification “monolithes” n’est pas fermée (notamment `memory_store.py`), ainsi que les cases Phase 9 restantes (dépendances, “god module”, convergence cible, verdict final).
 - Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.
