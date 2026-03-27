@@ -110,6 +110,8 @@ Minimum event-specific details:
   - side mapping is explicit: `frida` side includes assistant/LLM identity material, `user` side includes user identity material
 
 - `identity_write`
+  - `target_side` (mandatory): `frida` | `user`
+  - one event is emitted per side; if both sides are written in one turn, emit two `identity_write` events
   - `retained_count`
   - `actions_count` map with stable action keys:
     - `add`, `update`, `override`, `reject`, `defer`

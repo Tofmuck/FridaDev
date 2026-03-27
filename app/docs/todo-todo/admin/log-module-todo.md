@@ -45,7 +45,7 @@ Contrat normatif de reference:
 - [ ] Instrumenter `memory_retrieve`.
 - [ ] Instrumenter `summaries`.
 - [ ] Instrumenter `identities_read` (sources `frida` vs `user`, compteurs, `keys`/`preview` sobres, hints utilises, `truncated`).
-- [ ] Instrumenter `identity_write` (ce que l'arbitre retient pour inscription: actions `add|update|override|reject|defer`, compteurs, `keys`/`preview` sobres, sans dump brut).
+- [ ] Instrumenter `identity_write` (avec `target_side=frida|user`; ce que l'arbitre retient pour inscription: actions `add|update|override|reject|defer`, compteurs, `keys`/`preview` sobres, sans dump brut).
 - [ ] Instrumenter `web_search` (activation, tentative, resultat ou `skipped`, erreurs).
 - [ ] Instrumenter `context_build`.
 - [ ] Instrumenter `prompt_prepared` avec `prompt_kind` et metriques non sensibles.
@@ -79,7 +79,7 @@ Contrat normatif de reference:
 - [ ] Test contrat evenement: champs obligatoires et statuts `ok/error/skipped`.
 - [ ] Test `prompt_kind`: presence et valeurs attendues sur les evenements concernes.
 - [ ] Test `identities_read`: visibilite `frida` vs `user` + forme sobre (`keys`/`preview`/`count`) sans dump massif.
-- [ ] Test `identity_write`: visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
+- [ ] Test `identity_write`: `target_side` obligatoire (`frida|user`) + visibilite de la retention arbitre (`add|update|override|reject|defer`) + forme sobre (`keys`/`preview`/`count`).
 - [ ] Test `web_search`: couverture `ok/error/skipped` et metadonnees minimales.
 - [ ] Test redaction: absence de dump brut (contexte integral, prompt integral, payloads complets).
 - [ ] Test suppression logs `all_logs` (si retenu) sans impact memoire metier.
