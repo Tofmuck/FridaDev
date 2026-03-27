@@ -5,7 +5,7 @@ import logging
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, Optional
 
 import psycopg
 from psycopg.rows import dict_row
@@ -87,8 +87,8 @@ def _coerce_bool(value: Any) -> bool:
     return False
 
 
-def _normalize_messages_for_storage(messages: Any) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+def _normalize_messages_for_storage(messages: Any) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     if not isinstance(messages, list):
         return out
 
@@ -121,7 +121,7 @@ def _load_json_conversation_file(
     system_prompt: str,
     *,
     backup_on_error: bool = False,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     try:
         with path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
@@ -171,7 +171,7 @@ def new_conversation(
     system_prompt: str,
     conversation_id: Optional[str] = None,
     title: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     conv_id = conversation_id or str(uuid.uuid4())
     now = _now_iso()
     conversation = {
@@ -190,7 +190,7 @@ def conversation_path(conversation_id: str) -> Path:
     return CONV_DIR / f"{conversation_id}.json"
 
 
-def load_conversation(conversation_id: str, system_prompt: str) -> Optional[Dict[str, Any]]:
+def load_conversation(conversation_id: str, system_prompt: str) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id(conversation_id) or conversation_id
 
     summary = get_conversation_summary(conv_id, include_deleted=True)
@@ -216,7 +216,7 @@ def load_conversation(conversation_id: str, system_prompt: str) -> Optional[Dict
 
 
 def save_conversation(
-    conversation: Dict[str, Any],
+    conversation: dict[str, Any],
     updated_at: Optional[str] = None,
     *,
     preserve_deleted: bool = False,
@@ -242,11 +242,11 @@ def save_conversation(
 
 
 def append_message(
-    conversation: Dict[str, Any],
+    conversation: dict[str, Any],
     role: str,
     content: str,
     *,
-    meta: Optional[Dict[str, Any]] = None,
+    meta: Optional[dict[str, Any]] = None,
     timestamp: Optional[str] = None,
 ) -> None:
     conversation.setdefault("messages", [])
@@ -257,7 +257,7 @@ def append_message(
 
 
 
-def _infer_title_from_messages(messages: List[Dict[str, Any]]) -> str:
+def _infer_title_from_messages(messages: list[dict[str, Any]]) -> str:
     for msg in messages:
         if msg.get("role") != "user":
             continue
@@ -267,7 +267,7 @@ def _infer_title_from_messages(messages: List[Dict[str, Any]]) -> str:
     return ""
 
 
-def _last_message_preview(messages: List[Dict[str, Any]]) -> str:
+def _last_message_preview(messages: list[dict[str, Any]]) -> str:
     for msg in reversed(messages):
         if msg.get("role") not in {"user", "assistant"}:
             continue
@@ -280,7 +280,7 @@ def _last_message_preview(messages: List[Dict[str, Any]]) -> str:
     return ""
 
 
-def _conversation_metadata(conversation: Dict[str, Any]) -> Dict[str, Any]:
+def _conversation_metadata(conversation: dict[str, Any]) -> dict[str, Any]:
     messages = conversation.get("messages", [])
     if not isinstance(messages, list):
         messages = []
@@ -305,7 +305,7 @@ def _conversation_metadata(conversation: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _serialize_catalog_row(row: Dict[str, Any]) -> Dict[str, Any]:
+def _serialize_catalog_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(row.get("id")),
         "title": _safe_title(str(row.get("title") or ""), fallback=DEFAULT_TITLE),
@@ -395,7 +395,7 @@ def init_messages_db() -> None:
         logger.error("conv_messages_init_failed err=%s", exc)
 
 
-def _upsert_conversation_messages(conversation: Dict[str, Any]) -> bool:
+def _upsert_conversation_messages(conversation: dict[str, Any]) -> bool:
     conv_id = normalize_conversation_id(conversation.get("id"))
     if not conv_id:
         return False
@@ -467,7 +467,7 @@ def _conversation_message_row_count(conversation_id: str) -> Optional[int]:
         return None
 
 
-def _load_messages_from_db(conversation_id: str) -> Optional[List[Dict[str, Any]]]:
+def _load_messages_from_db(conversation_id: str) -> Optional[list[dict[str, Any]]]:
     conv_id = normalize_conversation_id(conversation_id)
     if not conv_id:
         return None
@@ -489,9 +489,9 @@ def _load_messages_from_db(conversation_id: str) -> Optional[List[Dict[str, Any]
         logger.warning("conv_messages_read_failed id=%s err=%s", conv_id, exc)
         return None
 
-    messages: List[Dict[str, Any]] = []
+    messages: list[dict[str, Any]] = []
     for row in rows:
-        msg: Dict[str, Any] = {
+        msg: dict[str, Any] = {
             "role": str(row.get("role") or "assistant"),
             "content": str(row.get("content") or ""),
             "timestamp": _ts_to_iso(row.get("timestamp")),
@@ -507,10 +507,10 @@ def _load_messages_from_db(conversation_id: str) -> Optional[List[Dict[str, Any]
 
 
 def _build_conversation_from_catalog(
-    summary: Dict[str, Any],
-    messages: List[Dict[str, Any]],
+    summary: dict[str, Any],
+    messages: list[dict[str, Any]],
     system_prompt: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     data = {
         "id": summary.get("id"),
         "title": summary.get("title") or DEFAULT_TITLE,
@@ -522,10 +522,10 @@ def _build_conversation_from_catalog(
 
 
 def upsert_conversation_catalog(
-    conversation: Dict[str, Any],
+    conversation: dict[str, Any],
     *,
     preserve_deleted: bool = False,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     meta = _conversation_metadata(conversation)
     conv_id = normalize_conversation_id(meta.get("id"))
     if not conv_id:
@@ -574,7 +574,7 @@ def upsert_conversation_catalog(
         return None
 
 
-def sync_catalog_from_json_files(max_files: int = 5000) -> Tuple[int, int]:
+def sync_catalog_from_json_files(max_files: int = 5000) -> tuple[int, int]:
     # Legacy sync subset kept intentionally as explicit operator tooling.
     # Runtime chat/conversation flows are DB-only and do not call these helpers.
     ensure_conv_dir()
@@ -613,7 +613,7 @@ def sync_messages_from_json_files(
     max_files: int = 5000,
     *,
     force: bool = False,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     ensure_conv_dir()
     stats = {
         "processed": 0,
@@ -681,7 +681,7 @@ def sync_messages_from_json_files(
     return stats
 
 
-def get_storage_counts(max_files: int = 0) -> Dict[str, int]:
+def get_storage_counts(max_files: int = 0) -> dict[str, int]:
     ensure_conv_dir()
 
     files = sorted(CONV_DIR.glob("*.json"), key=lambda p: p.name)
@@ -725,7 +725,7 @@ def list_conversations(
     offset: int = 0,
     *,
     include_deleted: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     limit = max(1, min(int(limit), 500))
     offset = max(0, int(offset))
 
@@ -766,7 +766,7 @@ def list_conversations(
         }
 
 
-def get_conversation_summary(conversation_id: str, *, include_deleted: bool = False) -> Optional[Dict[str, Any]]:
+def get_conversation_summary(conversation_id: str, *, include_deleted: bool = False) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id(conversation_id)
     if not conv_id:
         return None
@@ -791,7 +791,7 @@ def get_conversation_summary(conversation_id: str, *, include_deleted: bool = Fa
         return None
 
 
-def read_conversation(conversation_id: str, system_prompt: str) -> Optional[Dict[str, Any]]:
+def read_conversation(conversation_id: str, system_prompt: str) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id(conversation_id) or conversation_id
 
     summary = get_conversation_summary(conv_id, include_deleted=True)
@@ -803,7 +803,7 @@ def read_conversation(conversation_id: str, system_prompt: str) -> Optional[Dict
     return None
 
 
-def rename_conversation(conversation_id: str, title: str) -> Optional[Dict[str, Any]]:
+def rename_conversation(conversation_id: str, title: str) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id(conversation_id)
     if not conv_id:
         return None
@@ -923,7 +923,7 @@ def _silence_label(ts_before: str, ts_after: str) -> str:
     except Exception:
         return ""
 
-def _make_summary_message(summary: Dict[str, Any]) -> Dict[str, str]:
+def _make_summary_message(summary: dict[str, Any]) -> dict[str, str]:
     start = (summary.get("start_ts") or "")[:10]
     end   = (summary.get("end_ts")   or "")[:10]
     if start and end and start != end:
@@ -936,7 +936,7 @@ def _make_summary_message(summary: Dict[str, Any]) -> Dict[str, str]:
     return {"role": "system", "content": f"{header}\n{summary['content']}"}
 
 
-def _get_active_summary(conversation_id: Optional[str]) -> Optional[Dict[str, Any]]:
+def _get_active_summary(conversation_id: Optional[str]) -> Optional[dict[str, Any]]:
     conv_id = normalize_conversation_id(conversation_id)
     if not conv_id:
         return None
@@ -974,7 +974,7 @@ def _get_active_summary(conversation_id: Optional[str]) -> Optional[Dict[str, An
     }
 
 
-def _make_memory_context_message(summaries: List[Dict[str, Any]]) -> Optional[Dict[str, str]]:
+def _make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dict[str, str]]:
     """Formate les résumés parents des traces mémoire en un slot contexte."""
     if not summaries:
         return None
@@ -993,7 +993,7 @@ def _make_memory_context_message(summaries: List[Dict[str, Any]]) -> Optional[Di
     return {"role": "system", "content": "\n\n".join(lines)}
 
 
-def _summary_cutoff_iso(summary: Optional[Dict[str, Any]]) -> Optional[str]:
+def _summary_cutoff_iso(summary: Optional[dict[str, Any]]) -> Optional[str]:
     if not summary:
         return None
     cutoff = summary.get("end_ts") or summary.get("start_ts")
@@ -1005,7 +1005,7 @@ def _summary_cutoff_iso(summary: Optional[Dict[str, Any]]) -> Optional[str]:
         return None
 
 
-def _message_is_after_summary(msg: Dict[str, Any], cutoff_iso: Optional[str]) -> bool:
+def _message_is_after_summary(msg: dict[str, Any], cutoff_iso: Optional[str]) -> bool:
     if not cutoff_iso:
         return True
     ts = msg.get("timestamp")
@@ -1017,7 +1017,7 @@ def _message_is_after_summary(msg: Dict[str, Any], cutoff_iso: Optional[str]) ->
         return True
 
 
-def _make_memory_message(traces: List[Dict[str, Any]], ts_now: str) -> Optional[Dict[str, str]]:
+def _make_memory_message(traces: list[dict[str, Any]], ts_now: str) -> Optional[dict[str, str]]:
     """Formate les traces mémoire en un slot système avec Delta-T."""
     if not traces:
         return None
@@ -1032,10 +1032,10 @@ def _make_memory_message(traces: List[Dict[str, Any]], ts_now: str) -> Optional[
 
 
 def _make_context_hints_message(
-    hints: List[Dict[str, Any]],
+    hints: list[dict[str, Any]],
     ts_now: str,
     model: str,
-) -> Optional[Dict[str, str]]:
+) -> Optional[dict[str, str]]:
     """Format non-durable context hints with dedicated token budget."""
     if not hints:
         return None
@@ -1069,12 +1069,12 @@ def _make_context_hints_message(
     return {"role": "system", "content": "\n".join(lines)}
 
 def build_prompt_messages(
-    conversation: Dict[str, Any],
+    conversation: dict[str, Any],
     model: str,
     now: Optional[str] = None,
-    memory_traces: Optional[List[Dict[str, Any]]] = None,
-    context_hints: Optional[List[Dict[str, Any]]] = None,
-) -> List[Dict[str, str]]:
+    memory_traces: Optional[list[dict[str, Any]]] = None,
+    context_hints: Optional[list[dict[str, Any]]] = None,
+) -> list[dict[str, str]]:
     messages = conversation.get("messages", [])
     system_msg = _ensure_system_message(messages)
 
@@ -1095,7 +1095,7 @@ def build_prompt_messages(
 
     # Préfixe fixe : system → résumé actif → mémoire RAG
     ts_now = now or _now_iso()
-    prefix: List[Dict[str, Any]] = [system_msg]
+    prefix: list[dict[str, Any]] = [system_msg]
     if active_summary:
         prefix.append(_make_summary_message(active_summary))
     if context_hints:
@@ -1106,7 +1106,7 @@ def build_prompt_messages(
     if memory_traces:
         # Résumés parents distincts (dédupliqués par id)
         seen_ids: set = set()
-        parent_summaries: List[Dict[str, Any]] = []
+        parent_summaries: list[dict[str, Any]] = []
         for t in memory_traces:
             ps = t.get("parent_summary")
             if ps and ps.get("id") not in seen_ids:
@@ -1120,7 +1120,7 @@ def build_prompt_messages(
             prefix.append(mem_msg)
 
     # Fenêtre glissante sur les candidats
-    selected_reversed: List[Dict[str, Any]] = []
+    selected_reversed: list[dict[str, Any]] = []
     for msg in reversed(candidates):
         trial = prefix + list(reversed(selected_reversed + [msg]))
         tokens = count_tokens(trial, model)
@@ -1170,7 +1170,7 @@ def delete_conversation(conversation_id: str) -> bool:
     if not conv_id:
         return False
 
-    deleted: Dict[str, int] = {
+    deleted: dict[str, int] = {
         "identity_conflicts": 0,
         "identities": 0,
         "identity_evidence": 0,
@@ -1265,7 +1265,7 @@ def delete_conversation(conversation_id: str) -> bool:
 
 def _normalize_conversation(
     data: Any, conversation_id: str, system_prompt: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
     data.setdefault("id", conversation_id)
@@ -1289,14 +1289,14 @@ def _normalize_conversation(
     return data
 
 
-def _find_system_message(messages: Iterable[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _find_system_message(messages: Iterable[dict[str, Any]]) -> Optional[dict[str, Any]]:
     for msg in messages:
         if msg.get("role") == "system":
             return msg
     return None
 
 
-def _ensure_system_message(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _ensure_system_message(messages: list[dict[str, Any]]) -> dict[str, Any]:
     system_msg = _find_system_message(messages)
     if system_msg is None:
         system_msg = {"role": "system", "content": "", "timestamp": _now_iso()}
