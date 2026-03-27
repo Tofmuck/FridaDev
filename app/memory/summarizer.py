@@ -13,7 +13,7 @@ from core import prompt_loader
 from core.llm_client import or_headers, _sanitize_encoding
 from core.token_utils import count_tokens
 
-logger = logging.getLogger("kiki.summarizer")
+logger = logging.getLogger("frida.summarizer")
 
 
 def _runtime_summary_model_name() -> str:

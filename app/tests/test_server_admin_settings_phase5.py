@@ -1306,7 +1306,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         target_loggers = (
             logging.getLogger(),
             logging.getLogger('frida.server'),
-            logging.getLogger('kiki.adminlog'),
+            logging.getLogger('frida.adminlog'),
         )
         for logger in target_loggers:
             logger.addHandler(capture)
@@ -1349,7 +1349,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         target_loggers = (
             logging.getLogger(),
             logging.getLogger('frida.server'),
-            logging.getLogger('kiki.adminlog'),
+            logging.getLogger('frida.adminlog'),
         )
         for logger in target_loggers:
             logger.addHandler(capture)
@@ -1557,7 +1557,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         target_loggers = (
             logging.getLogger(),
             logging.getLogger('frida.server'),
-            logging.getLogger('kiki.adminlog'),
+            logging.getLogger('frida.adminlog'),
         )
         for logger in target_loggers:
             logger.addHandler(capture)

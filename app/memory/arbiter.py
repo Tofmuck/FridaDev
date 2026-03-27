@@ -12,7 +12,7 @@ import config
 from admin import runtime_settings
 from core.llm_client import _sanitize_encoding, or_headers
 
-logger = logging.getLogger('kiki.arbiter')
+logger = logging.getLogger('frida.arbiter')
 
 
 def _runtime_arbiter_model_name() -> str:

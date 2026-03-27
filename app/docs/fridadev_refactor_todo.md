@@ -350,11 +350,11 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - tests impactés par renommage de conventions
 
 **Cases à cocher**
-- [ ] Valider un mini-guide de conventions (1 page max) appliqué au repo.
-- [ ] Harmoniser progressivement les namespaces logger (`frida.*` vs `kiki.*`) selon décision d’arbitrage.
+- [x] Valider un mini-guide de conventions (1 page max) appliqué au repo.
+- [x] Harmoniser progressivement les namespaces logger (namespace canonique: `frida.*`).
 - [ ] Harmoniser le style de typage sur les modules touchés par les phases 1–7.
 - [ ] Appliquer uniquement lors de modifications utiles (pas de commit “format global”).
-- [ ] Ajouter une vérification légère (lint ou checklist PR) pour éviter la dérive.
+- [x] Ajouter une vérification légère (lint ou checklist PR) pour éviter la dérive.
 
 **Definition of Done**
 - Conventions minimales explicitement définies et appliquées sur les zones refactorées.
@@ -434,5 +434,5 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - Statut du champ `history` sur `/api/chat`: suppression ou consommation backend.
 - Source canonique du modèle arbitre persisté (runtime DB vs config env).
 - Sort des fonctions sync JSON dans `conv_store`: retrait complet vs maintien en outillage opératoire explicite.
-- Politique cible de namespace logging (`frida.*` vs `kiki.*`).
+- Politique cible de namespace logging (`frida.*`) et compatibilité des consommateurs externes éventuels.
 - Politique `.gitignore` sur `app/docs/states/*` (conserver whitelist stricte ou ouvrir les états pérennes).

@@ -377,7 +377,7 @@ The solution is simple, robust, and well adapted to the project’s current stat
 
 ### 10.3 Watchpoint
 
-Legacy logger names `kiki.*` still remain in several modules:
+Legacy logger names were still present in several modules:
 
 - `core/conv_store.py`
 - `memory/memory_store.py`
@@ -476,7 +476,7 @@ Hard deletion still exists according to a logic that is too destructive compared
 
 ### 14.4 Legacy names
 
-`kiki.*` remnants remain in logger names and in some documentary leftovers.
+Legacy logger namespace remnants remained in logger names and in some documentary leftovers.
 
 ### 14.5 Repository documentation
 

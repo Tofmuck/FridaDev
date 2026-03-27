@@ -377,7 +377,7 @@ La solution est simple, robuste et adaptée à l'état actuel du projet.
 
 ### 10.3 Point de vigilance
 
-Des noms de logger legacy `kiki.*` subsistent encore dans plusieurs modules :
+Des noms de logger legacy subsistaient encore dans plusieurs modules :
 
 - `core/conv_store.py`
 - `memory/memory_store.py`
@@ -476,7 +476,7 @@ La suppression forte existe encore selon une logique trop destructrice par rappo
 
 ### 14.4 Noms legacy
 
-Il reste des reliquats `kiki.*` dans les loggers et dans certains résidus documentaires.
+Il restait des reliquats de namespace logger legacy dans les logs et dans certains résidus documentaires.
 
 ### 14.5 Documentation de dépôt
 

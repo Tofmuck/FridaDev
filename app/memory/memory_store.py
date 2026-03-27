@@ -14,7 +14,7 @@ from admin import runtime_settings
 from core import runtime_db_bootstrap
 from memory import hermeneutics_policy as policy
 
-logger = logging.getLogger('kiki.memory_store')
+logger = logging.getLogger('frida.memory_store')
 
 
 # Connection

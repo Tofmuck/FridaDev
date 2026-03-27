@@ -10,7 +10,7 @@ import config
 from admin import runtime_settings
 from core import token_utils
 
-logger = logging.getLogger('kiki.identity')
+logger = logging.getLogger('frida.identity')
 
 
 def _runtime_main_model_name() -> str:

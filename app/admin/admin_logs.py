@@ -24,7 +24,7 @@ MAX_LOG_BYTES = _env_int('FRIDA_ADMIN_LOG_MAX_BYTES', 5 * 1024 * 1024)
 MAX_ROTATED_FILES = _env_int('FRIDA_ADMIN_LOG_MAX_FILES', 14)
 
 LEGACY_LOG_PATH = Path(__file__).resolve().parent / 'logs' / 'admin.log.jsonl'
-logger = logging.getLogger('kiki.adminlog')
+logger = logging.getLogger('frida.adminlog')
 _BOOTSTRAP_DONE = False
 
 _REDACT_KEYS = {

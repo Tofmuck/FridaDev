@@ -75,7 +75,7 @@
 | `app/run.sh` | Script de lancement potentiellement non utilisé en exécution container | `à vérifier` | Docker démarre via `CMD ["python", "server.py"]` |
 
 ## 7. Problèmes de syntaxe / style / conventions
-- [Constaté] Convention de nommage de logs incohérente: mix `frida.*` et `kiki.*` (ex: `app/server.py`, `app/core/conv_store.py`, `app/admin/admin_logs.py`).
+- [Constaté] Convention de nommage de logs historiquement incohérente: mix `frida.*` et namespace legacy (ex: `app/server.py`, `app/core/conv_store.py`, `app/admin/admin_logs.py`).
 - [Constaté] Convention de nommage tests orientée historique de phase (`test_*_phase4.py`, `phase8`, `phase13`) plutôt que domaine fonctionnel.
 - [Constaté] Codebase mixte FR/EN dans messages, labels, variables et contenus prompts.
 - [Constaté] Styles de typage hétérogènes (`List[Dict[str, Any]]` vs `list[dict]`) et organisation procédurale répétitive côté UI admin.
@@ -165,7 +165,6 @@ app/
 ## 12. Questions ouvertes / points incertains
 - [À clarifier] `app/run.sh` est-il encore utilisé en dehors du flux Docker actuel ?
 - [À clarifier] Les fonctions de sync JSON dans `app/core/conv_store.py` doivent-elles rester comme outils opératoires officiels ?
-- [À clarifier] Le namespace logger `kiki.*` est-il un héritage à conserver (compat logs) ou une dette de renommage ?
+- [À clarifier] Le namespace logger canonique `frida.*` doit-il être imposé partout avec un plan explicite de compatibilité pour les consommateurs externes de logs ?
 - [À clarifier] Le champ `history` envoyé par `app/web/app.js` est-il conservé pour rétrocompatibilité d’anciens backends ?
 - [À clarifier] L’exclusion quasi totale de `app/docs/states/*` par `.gitignore` est-elle intentionnelle à long terme ?
-

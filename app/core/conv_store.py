@@ -18,7 +18,7 @@ from admin import admin_logs, runtime_settings
 
 CONV_DIR = Path(__file__).resolve().parent.parent / "conv"
 
-logger = logging.getLogger("kiki.conv")
+logger = logging.getLogger("frida.conv")
 
 TITLE_MAX_CHARS = 120
 PREVIEW_MAX_CHARS = 180

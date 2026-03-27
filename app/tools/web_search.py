@@ -7,7 +7,7 @@ import config
 from admin import runtime_settings
 from core import prompt_loader
 
-logger = logging.getLogger("kiki.web_search")
+logger = logging.getLogger("frida.web_search")
 
 
 def _runtime_main_model_name() -> str:
