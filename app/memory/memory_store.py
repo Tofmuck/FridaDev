@@ -8,7 +8,9 @@ while implementation blocks live in dedicated pipeline-first modules.
 
 import logging
 import re
+import time
 from typing import Any, Optional, Sequence
+from urllib.parse import urlparse
 
 import psycopg
 import requests
@@ -16,6 +18,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from logs import chat_turn_logger
 from logs import log_store
 from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
@@ -130,13 +133,46 @@ def init_db() -> None:
 # Embedding
 
 def embed(text: str, mode: str = 'passage') -> list[float]:
-    return memory_store_infra.embed(
-        text,
-        mode=mode,
-        runtime_embedding_value_fn=_runtime_embedding_value,
-        runtime_embedding_token_fn=_runtime_embedding_token,
-        requests_module=requests,
+    started_at = time.perf_counter()
+    provider = 'unknown'
+    dimensions = 0
+    try:
+        endpoint = str(_runtime_embedding_value('endpoint') or '')
+        provider = urlparse(endpoint).netloc or endpoint
+        dimensions = int(_runtime_embedding_value('dimensions'))
+        vector = memory_store_infra.embed(
+            text,
+            mode=mode,
+            runtime_embedding_value_fn=_runtime_embedding_value,
+            runtime_embedding_token_fn=_runtime_embedding_token,
+            requests_module=requests,
+        )
+    except Exception as exc:
+        chat_turn_logger.emit(
+            'embedding',
+            status='error',
+            duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            error_code='upstream_error',
+            payload={
+                'mode': mode,
+                'provider': provider,
+                'dimensions': dimensions,
+                'error_class': exc.__class__.__name__,
+            },
+        )
+        raise
+
+    chat_turn_logger.emit(
+        'embedding',
+        status='ok',
+        duration_ms=(time.perf_counter() - started_at) * 1000.0,
+        payload={
+            'mode': mode,
+            'provider': provider,
+            'dimensions': dimensions,
+        },
     )
+    return vector
 
 
 # Trace persistence
@@ -320,12 +356,14 @@ def record_arbiter_decisions(
     decisions: list[dict[str, Any]],
     *,
     effective_model: str | None = None,
+    mode: str | None = None,
 ) -> None:
     memory_arbiter_audit.record_arbiter_decisions(
         conversation_id,
         traces,
         decisions,
         effective_model=effective_model,
+        mode=mode,
         conn_factory=_conn,
         trace_float_fn=_trace_float,
         logger=logger,

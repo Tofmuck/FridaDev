@@ -3,6 +3,18 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
+from logs import chat_turn_logger
+
+
+def _preview_items(values: list[str], *, max_items: int = 3, max_chars: int = 120) -> tuple[list[str], bool]:
+    preview: list[str] = []
+    for value in values[:max_items]:
+        text = str(value or '').strip().replace('\n', ' ')
+        if len(text) > max_chars:
+            text = text[: max_chars - 1].rstrip() + '…'
+        preview.append(text)
+    return preview, len(values) > max_items
+
 
 def get_identities(
     subject: str,
@@ -52,7 +64,7 @@ def get_identities(
                         (subject, status, top_n),
                     )
                 rows = cur.fetchall()
-        return [
+        out = [
             {
                 'id': str(r[0]),
                 'subject': r[1],
@@ -78,7 +90,43 @@ def get_identities(
             }
             for r in rows
         ]
+        if chat_turn_logger.is_active():
+            side = 'frida' if str(subject) == 'llm' else 'user'
+            keys, keys_truncated = _preview_items([entry['id'] for entry in out], max_chars=64)
+            previews, previews_truncated = _preview_items([entry['content'] for entry in out])
+            selected_count = len(out)
+            requested_top_n = max(0, int(top_n))
+            chat_turn_logger.emit(
+                'identities_read',
+                status='ok',
+                payload={
+                    'target_side': side,
+                    'frida_count': selected_count if side == 'frida' else 0,
+                    'user_count': selected_count if side == 'user' else 0,
+                    'selected_count': selected_count,
+                    'truncated': bool(
+                        selected_count >= requested_top_n
+                        or keys_truncated
+                        or previews_truncated
+                    ),
+                    'keys': keys,
+                    'preview': previews,
+                },
+            )
+        return out
     except Exception as exc:
+        chat_turn_logger.emit(
+            'identities_read',
+            status='error',
+            error_code='upstream_error',
+            payload={
+                'target_side': 'frida' if str(subject) == 'llm' else 'user',
+                'frida_count': 0,
+                'user_count': 0,
+                'selected_count': 0,
+                'error_class': exc.__class__.__name__,
+            },
+        )
         logger.error('get_identities_error subject=%s err=%s', subject, exc)
         return []
 
@@ -184,7 +232,39 @@ def get_recent_context_hints(
             if len(hints) >= max_items:
                 break
 
+        if chat_turn_logger.is_active():
+            previews, previews_truncated = _preview_items([hint['content'] for hint in hints])
+            keys, keys_truncated = _preview_items([hint['conversation_id'] for hint in hints], max_chars=64)
+            chat_turn_logger.emit(
+                'identities_read',
+                status='ok',
+                payload={
+                    'target_side': 'user',
+                    'frida_count': 0,
+                    'user_count': len(hints),
+                    'selected_count': len(hints),
+                    'truncated': bool(
+                        len(hints) >= max_items
+                        or previews_truncated
+                        or keys_truncated
+                    ),
+                    'keys': keys,
+                    'preview': previews,
+                },
+            )
         return hints
     except Exception as exc:
+        chat_turn_logger.emit(
+            'identities_read',
+            status='error',
+            error_code='upstream_error',
+            payload={
+                'target_side': 'user',
+                'frida_count': 0,
+                'user_count': 0,
+                'selected_count': 0,
+                'error_class': exc.__class__.__name__,
+            },
+        )
         logger.error("get_recent_context_hints_error err=%s", exc)
         return []

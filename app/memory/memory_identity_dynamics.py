@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any, Callable, Sequence
 
+from logs import chat_turn_logger
+
 
 def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
     if not vec_a or not vec_b or len(vec_a) != len(vec_b):
@@ -471,13 +473,32 @@ def persist_identity_entries(
     """Persist extractor outputs into evidence + identities with defer/promote/reject policy."""
     processed = preview_identity_entries_fn(entries)
     if not processed:
+        chat_turn_logger.emit(
+            'identity_write',
+            status='skipped',
+            reason_code='no_data',
+            payload={
+                'target_side': 'frida',
+                'retained_count': 0,
+                'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
+            },
+        )
+        chat_turn_logger.emit_branch_skipped(
+            reason_code='no_data',
+            reason_short='identity_write_no_entries',
+        )
         return
 
     record_identity_evidence_fn(conversation_id, processed, source_trace_id)
 
     impacted_keys: set[tuple[str, str]] = set()
+    side_counters: dict[str, dict[str, Any]] = {
+        'frida': {'retained_count': 0, 'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}, 'preview': []},
+        'user': {'retained_count': 0, 'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}, 'preview': []},
+    }
 
     for entry in processed:
+        side = 'frida' if str(entry.get('subject') or '') == 'llm' else 'user'
         identity_id = add_identity_fn(
             entry['subject'],
             entry['content'],
@@ -497,10 +518,42 @@ def persist_identity_entries(
 
         impacted_keys.add((entry['subject'], normalize_identity_content_fn(entry['content'])))
 
+        status = str(entry.get('status') or 'accepted')
+        if status == 'accepted':
+            side_counters[side]['actions_count']['add'] += 1
+            side_counters[side]['retained_count'] += 1
+        elif status == 'deferred':
+            side_counters[side]['actions_count']['defer'] += 1
+            side_counters[side]['retained_count'] += 1
+        elif status == 'rejected':
+            side_counters[side]['actions_count']['reject'] += 1
+        else:
+            side_counters[side]['actions_count']['update'] += 1
+            side_counters[side]['retained_count'] += 1
+
+        if len(side_counters[side]['preview']) < 3:
+            side_counters[side]['preview'].append(str(entry.get('content') or ''))
+
     for subject, content_norm in impacted_keys:
         apply_defer_policy_for_content_fn(subject, content_norm)
 
     expire_stale_deferred_global_fn()
+
+    for side, summary in side_counters.items():
+        has_activity = summary['retained_count'] > 0 or any(int(count) > 0 for count in summary['actions_count'].values())
+        if not has_activity:
+            continue
+        chat_turn_logger.emit(
+            'identity_write',
+            status='ok',
+            payload={
+                'target_side': side,
+                'retained_count': int(summary['retained_count']),
+                'actions_count': dict(summary['actions_count']),
+                'preview': list(summary['preview']),
+                'truncated': len(summary['preview']) >= 3 and len(processed) > 3,
+            },
+        )
 
 
 def decay_identities(

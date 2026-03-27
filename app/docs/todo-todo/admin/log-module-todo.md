@@ -40,20 +40,20 @@ Contrat normatif de reference:
 - [x] Verrouiller une regle de retention initiale simple (pas de retention automatique pour le MVP).
 
 ### 2) Instrumentation backend MVP (ecriture)
-- [ ] Instrumenter `turn_start` et `turn_end`.
-- [ ] Instrumenter `embedding`.
-- [ ] Instrumenter `memory_retrieve`.
-- [ ] Instrumenter `summaries`.
-- [ ] Instrumenter `identities_read` (sources `frida` vs `user`, compteurs, `keys`/`preview` sobres, hints utilises, `truncated`).
-- [ ] Instrumenter `identity_write` (avec `target_side=frida|user`; ce que l'arbitre retient pour inscription: actions `add|update|override|reject|defer`, compteurs, `keys`/`preview` sobres, sans dump brut).
-- [ ] Instrumenter `web_search` (activation, tentative, resultat ou `skipped`, erreurs).
-- [ ] Instrumenter `context_build`.
-- [ ] Instrumenter `prompt_prepared` avec `prompt_kind` et metriques non sensibles.
-- [ ] Instrumenter `llm_call`.
-- [ ] Instrumenter `arbiter`.
-- [ ] Instrumenter `persist_response`.
-- [ ] Instrumenter `error` explicite.
-- [ ] Instrumenter `branch_skipped` explicite.
+- [x] Instrumenter `turn_start` et `turn_end`.
+- [x] Instrumenter `embedding`.
+- [x] Instrumenter `memory_retrieve`.
+- [x] Instrumenter `summaries`.
+- [x] Instrumenter `identities_read` (sources `frida` vs `user`, compteurs, `keys`/`preview` sobres, hints utilises, `truncated`).
+- [x] Instrumenter `identity_write` (avec `target_side=frida|user`; ce que l'arbitre retient pour inscription: actions `add|update|override|reject|defer`, compteurs, `keys`/`preview` sobres, sans dump brut).
+- [x] Instrumenter `web_search` (activation, tentative, resultat ou `skipped`, erreurs).
+- [x] Instrumenter `context_build`.
+- [x] Instrumenter `prompt_prepared` avec `prompt_kind` et metriques non sensibles.
+- [x] Instrumenter `llm_call`.
+- [x] Instrumenter `arbiter`.
+- [x] Instrumenter `persist_response`.
+- [x] Instrumenter `error` explicite.
+- [x] Instrumenter `branch_skipped` explicite.
 
 ### 3) Backend lecture logs (consultation)
 - [ ] Exposer une lecture chronologique paginee des logs.

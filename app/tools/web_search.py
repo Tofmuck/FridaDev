@@ -8,6 +8,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import prompt_loader
+from logs import chat_turn_logger
 
 logger = logging.getLogger("frida.web_search")
 
@@ -149,10 +150,51 @@ def build_context(user_msg: str) -> tuple[str, str, int]:
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
     Retourne (contexte, query_reformulee, nb_resultats_web).
     """
-    query = reformulate(user_msg)
-    results = search(query)
-    ctx_parts = []
-    if results:
-        ctx_parts.append(_format_context(query, results))
-    ctx = "\n\n".join(ctx_parts)
-    return ctx, query, len(results)
+    try:
+        query = reformulate(user_msg)
+        results = search(query)
+        ctx_parts = []
+        if results:
+            ctx_parts.append(_format_context(query, results))
+        ctx = "\n\n".join(ctx_parts)
+        has_results = len(results) > 0
+        chat_turn_logger.emit(
+            'web_search',
+            status='ok' if has_results else 'skipped',
+            reason_code=None if has_results else 'no_data',
+            prompt_kind='chat_web_reformulation',
+            payload={
+                'enabled': True,
+                'query_preview': str(query)[:120],
+                'results_count': len(results),
+                'context_injected': bool(ctx),
+                'truncated': '[...contenu tronqué]' in ctx,
+            },
+        )
+        if not has_results:
+            chat_turn_logger.emit_branch_skipped(
+                reason_code='no_data',
+                reason_short='web_search_no_results',
+            )
+        return ctx, query, len(results)
+    except Exception as exc:
+        chat_turn_logger.emit(
+            'web_search',
+            status='error',
+            error_code='upstream_error',
+            prompt_kind='chat_web_reformulation',
+            payload={
+                'enabled': True,
+                'query_preview': str(user_msg)[:120],
+                'results_count': 0,
+                'context_injected': False,
+                'truncated': False,
+                'error_class': exc.__class__.__name__,
+            },
+        )
+        chat_turn_logger.emit_error(
+            error_code='upstream_error',
+            error_class=exc.__class__.__name__,
+            message_short=str(exc),
+        )
+        return '', str(user_msg or ''), 0

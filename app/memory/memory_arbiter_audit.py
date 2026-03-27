@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from logs import chat_turn_logger
+
 
 def get_hermeneutic_kpis(
     window_days: int = 7,
@@ -171,6 +173,7 @@ def record_arbiter_decisions(
     decisions: list[dict[str, Any]],
     *,
     effective_model: str | None = None,
+    mode: str | None = None,
     conn_factory: Callable[[], Any],
     trace_float_fn: Callable[[Any], float],
     logger: Any,
@@ -228,6 +231,27 @@ def record_arbiter_decisions(
                         ),
                     )
             conn.commit()
+        kept_candidates = sum(1 for decision in decisions if bool(decision.get('keep', False)))
+        chat_turn_logger.emit(
+            'arbiter',
+            status='ok',
+            payload={
+                'raw_candidates': len(traces),
+                'kept_candidates': kept_candidates,
+                'mode': str(mode or 'unknown'),
+            },
+        )
         logger.info('arbiter_decisions_saved conv=%s count=%s', conversation_id, len(decisions))
     except Exception as exc:
+        chat_turn_logger.emit(
+            'arbiter',
+            status='error',
+            error_code='upstream_error',
+            payload={
+                'raw_candidates': len(traces),
+                'kept_candidates': 0,
+                'mode': str(mode or 'unknown'),
+                'error_class': exc.__class__.__name__,
+            },
+        )
         logger.error('record_arbiter_decisions_error conv=%s err=%s', conversation_id, exc)

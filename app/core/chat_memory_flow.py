@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 from typing import Any, Mapping, Sequence
 
+from logs import chat_turn_logger
+
 
 _HERMENEUTIC_MODE_OFF = 'off'
 _HERMENEUTIC_MODE_SHADOW = 'shadow'
@@ -110,7 +112,16 @@ def prepare_memory_context(
                 admin_logs_module=admin_logs_module,
             )
 
-            memory_store_module.record_arbiter_decisions(conversation_id, raw_traces, arbiter_decisions)
+            try:
+                memory_store_module.record_arbiter_decisions(
+                    conversation_id,
+                    raw_traces,
+                    arbiter_decisions,
+                    mode=current_mode,
+                )
+            except TypeError:
+                # Compatibility with legacy test doubles that still expose the old signature.
+                memory_store_module.record_arbiter_decisions(conversation_id, raw_traces, arbiter_decisions)
             admin_logs_module.log_event(
                 'memory_arbitrated',
                 conversation_id=conversation_id,
@@ -126,6 +137,20 @@ def prepare_memory_context(
                 memory_source = 'raw_shadow_non_blocking'
         else:
             memory_source = 'raw_mode_off'
+            chat_turn_logger.emit(
+                'arbiter',
+                status='skipped',
+                reason_code='mode_off',
+                payload={
+                    'raw_candidates': len(raw_traces),
+                    'kept_candidates': len(raw_traces),
+                    'mode': current_mode,
+                },
+            )
+            chat_turn_logger.emit_branch_skipped(
+                reason_code='mode_off',
+                reason_short='arbiter_disabled_for_mode',
+            )
 
         admin_logs_module.log_event(
             'memory_mode_apply',
@@ -167,6 +192,21 @@ def record_identity_entries_for_mode(
     admin_logs_module: Any,
 ) -> None:
     if not _mode_runs_identity(mode):
+        chat_turn_logger.emit(
+            'identity_write',
+            status='skipped',
+            reason_code='mode_off',
+            payload={
+                'target_side': 'frida',
+                'retained_count': 0,
+                'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
+                'mode': mode,
+            },
+        )
+        chat_turn_logger.emit_branch_skipped(
+            reason_code='mode_off',
+            reason_short='identity_write_disabled_for_mode',
+        )
         admin_logs_module.log_event(
             'identity_mode_apply',
             conversation_id=conversation_id,
@@ -198,6 +238,21 @@ def record_identity_entries_for_mode(
 
     preview_entries = memory_store_module.preview_identity_entries(id_entries)
     memory_store_module.record_identity_evidence(conversation_id, preview_entries)
+    chat_turn_logger.emit(
+        'identity_write',
+        status='skipped',
+        reason_code='not_applicable',
+        payload={
+            'target_side': 'frida',
+            'retained_count': 0,
+            'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
+            'mode': mode,
+        },
+    )
+    chat_turn_logger.emit_branch_skipped(
+        reason_code='not_applicable',
+        reason_short='identity_write_shadow_mode',
+    )
     admin_logs_module.log_event(
         'identity_mode_apply',
         conversation_id=conversation_id,

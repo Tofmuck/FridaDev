@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
+
+from logs import chat_turn_logger
 
 
 def _trace_exists_for_message(
@@ -130,12 +133,24 @@ def retrieve(
     Embed query and return top_k nearest traces (cosine similarity).
     Return [] on error to avoid blocking response pipeline.
     """
+    started_at = time.perf_counter()
     if top_k is None:
         top_k = int(runtime_embedding_value_fn('top_k'))
 
     try:
         q_vec = embed_fn(query, mode='query')
     except Exception as exc:
+        chat_turn_logger.emit(
+            'memory_retrieve',
+            status='error',
+            duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            error_code='upstream_error',
+            payload={
+                'top_k_requested': int(top_k),
+                'top_k_returned': 0,
+                'error_class': exc.__class__.__name__,
+            },
+        )
         logger.warning('retrieve_embed_failed err=%s', exc)
         return []
 
@@ -154,7 +169,7 @@ def retrieve(
                     (str(q_vec), str(q_vec), top_k),
                 )
                 rows = cur.fetchall()
-        return [
+        out = [
             {
                 'conversation_id': r[0],
                 'role': r[1],
@@ -165,7 +180,28 @@ def retrieve(
             }
             for r in rows
         ]
+        chat_turn_logger.emit(
+            'memory_retrieve',
+            status='ok',
+            duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            payload={
+                'top_k_requested': int(top_k),
+                'top_k_returned': len(out),
+            },
+        )
+        return out
     except Exception as exc:
+        chat_turn_logger.emit(
+            'memory_retrieve',
+            status='error',
+            duration_ms=(time.perf_counter() - started_at) * 1000.0,
+            error_code='upstream_error',
+            payload={
+                'top_k_requested': int(top_k),
+                'top_k_returned': 0,
+                'error_class': exc.__class__.__name__,
+            },
+        )
         logger.error('retrieve_error err=%s', exc)
         return []
 

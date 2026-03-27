@@ -3,6 +3,7 @@
 
 import hashlib
 import logging
+import time
 from ipaddress import ip_address, ip_network
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from identity import identity
 from memory import summarizer
 from memory import memory_store
 from memory import arbiter
+from logs import chat_turn_logger
 
 
 def _sha256_file(path: Path) -> str:
@@ -173,42 +175,331 @@ _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'resources': 'resources',
 }
 
+
+def _assistant_message_count(conversation: dict[str, Any]) -> int:
+    messages = conversation.get('messages', [])
+    if not isinstance(messages, list):
+        return 0
+    return sum(1 for message in messages if str(message.get('role') or '') == 'assistant')
+
+
+class _ConvStoreChatLogProxy:
+    def __init__(self, base_module: Any, token_utils_module: Any) -> None:
+        self._base = base_module
+        self._token_utils = token_utils_module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._base, name)
+
+    def load_conversation(self, conversation_id: str, system_prompt: str):
+        conversation = self._base.load_conversation(conversation_id, system_prompt)
+        if isinstance(conversation, dict):
+            chat_turn_logger.update_conversation_id(str(conversation.get('id') or ''))
+        return conversation
+
+    def new_conversation(self, system_prompt: str, conversation_id: str | None = None, title: str = ''):
+        if conversation_id is None and not title:
+            conversation = self._base.new_conversation(system_prompt)
+        else:
+            try:
+                conversation = self._base.new_conversation(
+                    system_prompt,
+                    conversation_id=conversation_id,
+                    title=title,
+                )
+            except TypeError:
+                # Compatibility with legacy test doubles exposing `new_conversation(system_prompt)` only.
+                conversation = self._base.new_conversation(system_prompt)
+        if isinstance(conversation, dict):
+            chat_turn_logger.update_conversation_id(str(conversation.get('id') or ''))
+        return conversation
+
+    def build_prompt_messages(self, conversation: dict[str, Any], model: str, **kwargs: Any):
+        prompt_messages = self._base.build_prompt_messages(conversation, model, **kwargs)
+        try:
+            context_tokens = int(self._token_utils.count_tokens(prompt_messages, model))
+        except Exception:
+            context_tokens = 0
+
+        memory_traces = kwargs.get('memory_traces') or []
+        memory_items_used = len(memory_traces) if isinstance(memory_traces, list) else 0
+        chat_turn_logger.set_state('memory_items_used', memory_items_used)
+
+        token_limit = int(config.MAX_TOKENS)
+        chat_turn_logger.emit(
+            'context_build',
+            status='ok',
+            payload={
+                'context_tokens': context_tokens,
+                'token_limit': token_limit,
+                'truncated': bool(context_tokens >= token_limit),
+            },
+        )
+
+        summary_count_used = sum(
+            1
+            for message in prompt_messages
+            if str(message.get('role') or '') == 'system'
+            and str(message.get('content') or '').startswith('[Résumé actif')
+        )
+        if summary_count_used > 0:
+            chat_turn_logger.emit(
+                'summaries',
+                status='ok',
+                payload={
+                    'active_summary_present': True,
+                    'summary_count_used': summary_count_used,
+                },
+            )
+        else:
+            chat_turn_logger.emit(
+                'summaries',
+                status='skipped',
+                reason_code='no_data',
+                payload={
+                    'active_summary_present': False,
+                    'summary_count_used': 0,
+                },
+            )
+            chat_turn_logger.emit_branch_skipped(
+                reason_code='no_data',
+                reason_short='no_active_summary_in_prompt',
+            )
+
+        return prompt_messages
+
+    def save_conversation(self, conversation: dict[str, Any], *args: Any, **kwargs: Any):
+        result = self._base.save_conversation(conversation, *args, **kwargs)
+        chat_turn_logger.emit(
+            'persist_response',
+            status='ok',
+            payload={
+                'conversation_saved': True,
+                'messages_written': _assistant_message_count(conversation),
+            },
+        )
+        return result
+
+
+class _LlmChatLogProxy:
+    def __init__(self, base_module: Any, token_utils_module: Any) -> None:
+        self._base = base_module
+        self._token_utils = token_utils_module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._base, name)
+
+    def build_payload(
+        self,
+        messages: list[dict[str, Any]],
+        temperature: float,
+        top_p: float,
+        max_tokens: int,
+        *,
+        stream: bool = False,
+    ) -> dict[str, Any]:
+        payload = self._base.build_payload(messages, temperature, top_p, max_tokens, stream=stream)
+        model = str(payload.get('model') or '')
+        try:
+            estimated_prompt_tokens = int(self._token_utils.count_tokens(messages, model))
+        except Exception:
+            estimated_prompt_tokens = 0
+        chat_turn_logger.emit(
+            'prompt_prepared',
+            status='ok',
+            model=model,
+            prompt_kind='chat_system_augmented',
+            payload={
+                'messages_count': len(messages),
+                'estimated_prompt_tokens': estimated_prompt_tokens,
+                'memory_items_used': int(chat_turn_logger.get_state('memory_items_used', 0) or 0),
+            },
+        )
+        return payload
+
+
+class _RequestsChatLogProxy:
+    def __init__(self, base_module: Any) -> None:
+        self._base = base_module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._base, name)
+
+    def post(self, url: str, *args: Any, **kwargs: Any):
+        is_llm_call = '/chat/completions' in str(url)
+        started_at = time.perf_counter()
+        payload = kwargs.get('json') or {}
+        model = str(payload.get('model') or '')
+        stream_mode = bool(kwargs.get('stream'))
+        timeout_s = kwargs.get('timeout')
+
+        try:
+            response = self._base.post(url, *args, **kwargs)
+        except Exception as exc:
+            if is_llm_call:
+                chat_turn_logger.emit(
+                    'llm_call',
+                    status='error',
+                    model=model,
+                    duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                    error_code='upstream_error',
+                    payload={
+                        'mode': 'stream' if stream_mode else 'json',
+                        'timeout_s': timeout_s,
+                        'response_chars': 0,
+                        'error_class': exc.__class__.__name__,
+                    },
+                )
+                chat_turn_logger.emit_error(
+                    error_code='upstream_error',
+                    error_class=exc.__class__.__name__,
+                    message_short=str(exc),
+                )
+            raise
+
+        if is_llm_call:
+            response_chars = 0
+            if not stream_mode:
+                try:
+                    llm_json = response.json()
+                    response_chars = len(str(llm_json['choices'][0]['message']['content'] or ''))
+                except Exception:
+                    response_chars = 0
+
+            chat_turn_logger.emit(
+                'llm_call',
+                status='ok',
+                model=model,
+                duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                payload={
+                    'mode': 'stream' if stream_mode else 'json',
+                    'timeout_s': timeout_s,
+                    'response_chars': response_chars,
+                },
+            )
+        return response
+
+
+class _AdminLogsChatLogProxy:
+    def __init__(self, base_module: Any) -> None:
+        self._base = base_module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._base, name)
+
+    def log_event(self, event: str, level: str = 'INFO', **fields: Any) -> None:
+        self._base.log_event(event, level=level, **fields)
+        if event in {'llm_error', 'llm_stream_error'}:
+            chat_turn_logger.emit_error(
+                error_code='upstream_error',
+                error_class=event,
+                message_short=str(fields.get('error') or 'llm error'),
+            )
+
+
 # ── /api/chat ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/chat")
 def api_chat():
     data = request.get_json(force=True, silent=True) or {}
-    result = chat_service.chat_response(
-        data,
-        prompt_loader_module=prompt_loader,
-        conv_store_module=conv_store,
-        memory_store_module=memory_store,
-        runtime_settings_module=runtime_settings,
-        summarizer_module=summarizer,
-        identity_module=identity,
-        admin_logs_module=admin_logs,
-        llm_module=llm,
-        requests_module=requests,
-        token_utils_module=token_utils,
-        arbiter_module=arbiter,
-        web_search_module=ws,
-        config_module=config,
-        logger=logger,
+    user_msg = str(data.get('message') or '')
+    web_search_on = bool(data.get('web_search'))
+    conversation_id_hint = conv_store.normalize_conversation_id(data.get('conversation_id'))
+    turn_token = chat_turn_logger.begin_turn(
+        conversation_id=conversation_id_hint,
+        user_msg=user_msg,
+        web_search_enabled=web_search_on,
     )
+    if not web_search_on:
+        chat_turn_logger.emit(
+            'web_search',
+            status='skipped',
+            reason_code='feature_disabled',
+            payload={
+                'enabled': False,
+                'query_preview': '',
+                'results_count': 0,
+                'context_injected': False,
+                'truncated': False,
+            },
+        )
+        chat_turn_logger.emit_branch_skipped(
+            reason_code='feature_disabled',
+            reason_short='web_search_disabled',
+        )
+
+    conv_proxy = _ConvStoreChatLogProxy(conv_store, token_utils)
+    llm_proxy = _LlmChatLogProxy(llm, token_utils)
+    requests_proxy = _RequestsChatLogProxy(requests)
+    admin_logs_proxy = _AdminLogsChatLogProxy(admin_logs)
+
+    try:
+        result = chat_service.chat_response(
+            data,
+            prompt_loader_module=prompt_loader,
+            conv_store_module=conv_proxy,
+            memory_store_module=memory_store,
+            runtime_settings_module=runtime_settings,
+            summarizer_module=summarizer,
+            identity_module=identity,
+            admin_logs_module=admin_logs_proxy,
+            llm_module=llm_proxy,
+            requests_module=requests_proxy,
+            token_utils_module=token_utils,
+            arbiter_module=arbiter,
+            web_search_module=ws,
+            config_module=config,
+            logger=logger,
+        )
+    except Exception as exc:
+        chat_turn_logger.emit_error(
+            error_code='upstream_error',
+            error_class=exc.__class__.__name__,
+            message_short=str(exc),
+        )
+        chat_turn_logger.end_turn(turn_token, final_status='error')
+        raise
 
     if result['kind'] == 'stream':
+        def _stream_with_turn_finalize():
+            final_status = 'ok'
+            try:
+                for chunk in result['stream']:
+                    yield chunk
+            except Exception as exc:
+                final_status = 'error'
+                chat_turn_logger.emit_error(
+                    error_code='upstream_error',
+                    error_class=exc.__class__.__name__,
+                    message_short=str(exc),
+                )
+                raise
+            finally:
+                chat_turn_logger.end_turn(turn_token, final_status=final_status)
+
         response = Response(
-            stream_with_context(result['stream']),
+            stream_with_context(_stream_with_turn_finalize()),
             content_type='text/plain; charset=utf-8',
         )
         for key, value in result['headers'].items():
             response.headers[key] = value
         return response
 
+    status_code = int(result['status'])
+    final_status = 'ok' if status_code < 400 else 'error'
+    if final_status == 'error':
+        error_payload = result['payload'] if isinstance(result.get('payload'), dict) else {}
+        chat_turn_logger.emit_error(
+            error_code='upstream_error' if status_code >= 500 else 'not_applicable',
+            error_class='chat_response_error',
+            message_short=str(error_payload.get('error') or f'chat status {status_code}'),
+        )
+
     response = jsonify(result['payload'])
-    response.status_code = int(result['status'])
+    response.status_code = status_code
     for key, value in result['headers'].items():
         response.headers[key] = value
+    chat_turn_logger.end_turn(turn_token, final_status=final_status)
     return response
 
 
