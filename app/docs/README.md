@@ -31,5 +31,7 @@ Sous-structure en place:
 
 Notes:
 - les documents canoniques de pilotage (`admin-*`, `fridadev_*`) restent a la racine `app/docs/`
-- les roadmaps `todo-todo/Migration_FridaDev-todo.md` et `todo-todo/memory-todo.md` sont volontairement laissees en place pour un lot de fusion controle
+- roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
+- roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
+- les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
 - nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes

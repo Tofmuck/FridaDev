@@ -270,6 +270,11 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [ ] Chaque souvenir/trait injecte est explicable via logs admin.
 - [ ] Overrides humains pris en compte au tour suivant (pas seulement journalises).
 
+## Reliquats fusionnes depuis `memory-todo.md`
+- [ ] Verifier en conditions reelles que le bloc `[Contexte du souvenir]` est effectivement exploite dans la reponse et n'ajoute pas de bruit.
+- [ ] Monitorer le surcout tokens + latence du pipeline memoire complet (resume actif + contexte + RAG + arbitre), en complement des KPIs arbitre/extracteur deja suivis.
+- Note: la comparaison qualite avec/sans arbitre et la latence arbitre sont deja couvertes par la Phase 13 (Step 2) et les criteres d'acceptation.
+
 ## Notes de pilotage
 - [ ] Toujours preferer une erreur explicable a une heuristique opaque.
 - [ ] Ne jamais bloquer la reponse utilisateur sur erreur hermeneutique.

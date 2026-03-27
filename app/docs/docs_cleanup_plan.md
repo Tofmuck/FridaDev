@@ -6,14 +6,15 @@ Scope: cartographie complete de `app/docs` + plan de rangement/nettoyage.
 Execution status:
 - Lot 1 (rangement structurel faible risque): execute
 - Lot suivant (archivage legacy evident + suppression faible valeur, sans fusion des roadmaps ouvertes): execute
-- Restant: fusion controlee des roadmaps ouvertes + ajustement futur de `.gitignore` dans une tranche dediee
+- Lot 3 (fusion controlee des roadmaps ouvertes): execute
+- Restant: ajustement futur de `.gitignore` dans une tranche dediee
 
 ## 1) Methode et preuves de lecture
 
 Contraintes maintenues sur les lots deja executes:
 - pas de modification de contenu metier des documents
 - aucune modification de `.gitignore`
-- pas de fusion de roadmaps ouvertes a ce stade
+- fusion des roadmaps limitee aux reliquats ouverts utiles (pas de fusion massive de contenu obsolete)
 
 Inventaire lu (31 fichiers):
 - racine `app/docs/*.md`
@@ -170,7 +171,7 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
   - `Frida-traces-summaries-retention-policy.md`
   - `Frida-identities-governance-policy.md`
 
-## 7) Strategie de migration proposee (3 petits lots)
+## 7) Strategie de migration proposee (4 petits lots)
 
 ### Lot 1 (faible risque) — Rangement structurel sans suppression [FAIT]
 - Creer les sous-dossiers cibles dans `states/`, `todo-done/`, `todo-todo/`
@@ -189,11 +190,11 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
   - `todo-todo/Migration_FridaDev-todo.md`
   - `todo-todo/memory-todo.md`
 
-### Lot 3 (risque moyen) — Consolidation des roadmaps ouvertes [RESTE]
+### Lot 3 (risque moyen) — Consolidation des roadmaps ouvertes [FAIT]
 - Fusionner les doublons de roadmap:
-  - `Migration_FridaDev-todo.md` -> residuels dans `fridadev_refactor_todo.md`
-  - `memory-todo.md` -> residuels utiles dans `hermeneutical-add-todo.md`
-- Archiver les versions historiques utiles en `todo-done/migrations/` si besoin
+  - `Migration_FridaDev-todo.md` -> archive en `todo-done/migrations/` (aucun reliquat vivant transfere vers `fridadev_refactor_todo.md`)
+  - `memory-todo.md` -> reliquats ouverts utiles fusionnes dans `todo-todo/memory/hermeneutical-add-todo.md`, puis archive en `todo-done/migrations/`
+- Archiver les versions historiques utiles en `todo-done/migrations/`
 - Verifier qu'aucun item ouvert n'est perdu
 
 ### Lot 4 (risque controle) — De-ignorisation `states` + hygiene finale [RESTE]
@@ -205,5 +206,5 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 ## 8) Reserves restantes
 
 - Plusieurs chemins de docs canoniques sont appeles explicitement dans les routines de travail; les deplacer sans mise a jour coordonnee casserait les workflows.
-- Les roadmaps ouvertes `Migration_FridaDev-todo.md` et `memory-todo.md` doivent etre fusionnees sans perdre les reliquats encore utiles.
+- Les archives de migration conservent des checklists historiques; elles ne doivent plus etre traitees comme roadmap ouverte de pilotage.
 - La suppression de l'ignore `app/docs/states/*` doit etre faite uniquement apres rangement effectif pour eviter de versionner du bruit brut.
