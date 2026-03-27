@@ -2,7 +2,7 @@
 
 ## 1) Scope and goal
 This contract defines the phase-0 baseline for application logs linked to the chat turn pipeline.
-It is normative for implementation slices that follow `app/docs/todo-todo/admin/log-module-todo.md`.
+It is normative for implementation slices documented in `app/docs/todo-done/refactors/log-module-todo.md`.
 
 Goal:
 - provide usable observability for one chat turn,
