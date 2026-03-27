@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, List, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
-def _json_result(payload: Dict[str, Any], status: int, headers: Dict[str, str] | None = None) -> Dict[str, Any]:
+def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] | None = None) -> dict[str, Any]:
     return {
         'kind': 'json',
         'payload': payload,
@@ -13,7 +13,7 @@ def _json_result(payload: Dict[str, Any], status: int, headers: Dict[str, str] |
     }
 
 
-def _stream_result(stream: Any, headers: Dict[str, str]) -> Dict[str, Any]:
+def _stream_result(stream: Any, headers: dict[str, str]) -> dict[str, Any]:
     return {
         'kind': 'stream',
         'stream': stream,
@@ -23,8 +23,8 @@ def _stream_result(stream: Any, headers: Dict[str, str]) -> Dict[str, Any]:
 
 def run_llm_exchange(
     *,
-    conversation: Dict[str, Any],
-    prompt_messages: List[Dict[str, Any]],
+    conversation: dict[str, Any],
+    prompt_messages: list[dict[str, Any]],
     runtime_main_model: str,
     temperature: float,
     top_p: float,
@@ -45,8 +45,8 @@ def run_llm_exchange(
     now_iso_func: Callable[[], str],
     record_identity_entries_for_mode: Callable[..., None],
     mode_enforces_identity: Callable[[str], bool],
-    conversation_headers_func: Callable[[Mapping[str, Any], str], Dict[str, str]],
-) -> Dict[str, Any]:
+    conversation_headers_func: Callable[[Mapping[str, Any], str], dict[str, str]],
+) -> dict[str, Any]:
     try:
         runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
     except (

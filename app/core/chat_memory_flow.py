@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Mapping, Sequence
 
 
 _HERMENEUTIC_MODE_OFF = 'off'
@@ -69,7 +69,7 @@ def prepare_memory_context(
     memory_store_module: Any,
     arbiter_module: Any,
     admin_logs_module: Any,
-) -> Tuple[str, List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     conversation_id = str(conversation['id'])
     current_mode = resolve_hermeneutic_mode(config_module)
     admin_logs_module.log_event(
@@ -97,8 +97,8 @@ def prepare_memory_context(
         admin_logs_module.log_event('memory_retrieved', conversation_id=conversation_id, count=len(raw_traces))
 
         memory_traces = list(raw_traces)
-        filtered_traces: List[Dict[str, Any]] = []
-        arbiter_decisions: List[Dict[str, Any]] = []
+        filtered_traces: list[dict[str, Any]] = []
+        arbiter_decisions: list[dict[str, Any]] = []
 
         if _mode_runs_arbiter(current_mode):
             arbiter_t0 = time.perf_counter()
