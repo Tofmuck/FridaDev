@@ -30,11 +30,13 @@ Sous-structure en place:
 
 - `todo-todo/memory/`: roadmaps memoire/hermeneutique ouvertes
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
-- `todo-todo/admin/`, `todo-todo/migration/`: reserves pour futurs chantiers ouverts
+- `todo-todo/admin/`: roadmaps admin ouvertes
+- `todo-todo/migration/`: reserve pour futurs chantiers ouverts
 
 Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
+- roadmap ouverte admin/logs applicatifs: `todo-todo/admin/log-module-todo.md`
 - les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
 - nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes
