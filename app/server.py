@@ -26,8 +26,8 @@ from identity import identity
 from memory import summarizer
 from memory import memory_store
 from memory import arbiter
-from logs import chat_turn_logger
-from logs import log_store
+from observability import chat_turn_logger
+from observability import log_store
 
 
 def _sha256_file(path: Path) -> str:

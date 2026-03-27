@@ -19,8 +19,8 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from logs import chat_turn_logger
-from logs import log_store
+from observability import chat_turn_logger
+from observability import log_store
 from memory import memory_context_read
 from memory import memory_identity_dynamics
 from tools import web_search

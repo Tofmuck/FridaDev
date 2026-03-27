@@ -18,7 +18,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from logs import log_store
+from observability import log_store
 
 
 class _NoopLogger:

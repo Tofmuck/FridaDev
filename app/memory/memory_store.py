@@ -18,8 +18,8 @@ import requests
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
-from logs import chat_turn_logger
-from logs import log_store
+from observability import chat_turn_logger
+from observability import log_store
 from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read

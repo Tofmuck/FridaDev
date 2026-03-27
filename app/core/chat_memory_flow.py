@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Mapping, Sequence
 
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 
 _HERMENEUTIC_MODE_OFF = 'off'

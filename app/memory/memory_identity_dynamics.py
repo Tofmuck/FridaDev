@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any, Callable, Sequence
 
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 
 def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:

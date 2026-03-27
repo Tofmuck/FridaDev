@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 
 def get_hermeneutic_kpis(

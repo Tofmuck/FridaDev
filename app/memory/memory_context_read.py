@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable
 
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 
 def _preview_items(values: list[str], *, max_items: int = 3, max_chars: int = 120) -> tuple[list[str], bool]:

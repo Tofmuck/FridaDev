@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from logs import log_store
+from observability import log_store
 
 logger = logging.getLogger('frida.chat_turn_logger')
 

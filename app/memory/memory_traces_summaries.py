@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 
 def _trace_exists_for_message(

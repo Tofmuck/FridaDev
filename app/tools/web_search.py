@@ -8,7 +8,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import prompt_loader
-from logs import chat_turn_logger
+from observability import chat_turn_logger
 
 logger = logging.getLogger("frida.web_search")
 
