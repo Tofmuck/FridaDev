@@ -90,6 +90,19 @@
 
 Verdict de tranche: aucun module introduit pendant le refacto ne cumule de nouvelles responsabilités transversales opaques au point de constituer un nouveau “god module”.
 
+## 3 septies) Convergence vers la cible architecture (audit §9)
+
+| Axe comparé | Cible annoncée (audit §9) | Etat réel du repo | Verdict | Preuve vérifiable | Réserve |
+| --- | --- | --- | --- | --- | --- |
+| Entrée HTTP et orchestration | `interfaces/http` minces + services applicatifs dédiés | `app/server.py` reste routeur principal mais délègue les flux métier | Cible approchée / requalifiée | `app/server.py` + `app/core/chat_service.py` + `app/core/conversations_service.py` + `app/admin/admin_settings_service.py` + `app/admin/admin_hermeneutics_service.py`; test `test_server_phase14.py` | Pas de `app_factory.py` dédié, routes encore concentrées dans `server.py` |
+| Split services métier (`chat`, `conversations`, admin) | Couche `application/` explicite | Services extraits et testés, mais localisés dans `core/` et `admin/` | Cible approchée / requalifiée | `app/core/chat_service.py`, `app/core/conversations_service.py`, `app/admin/admin_settings_service.py`, `app/admin/admin_hermeneutics_service.py`; tests `test_server_phase14.py`, `test_chat_memory_flow.py` | Nommage/rangement encore pragmatique, pas calqué mot a mot sur l’arborescence cible |
+| Split `runtime_settings` | Séparation spec/repo/validation/runtime service | Split effectif en 4 modules avec façade de compatibilité stable | Cible approchée / requalifiée | `app/admin/runtime_settings_spec.py`, `app/admin/runtime_settings_repo.py`, `app/admin/runtime_settings_validation.py`, `app/admin/runtime_settings.py`; test `tests/unit/runtime_settings/test_runtime_settings.py` | `runtime_settings.py` reste dense (~939 lignes) |
+| Split `memory_store` (Phase 8 bis) | Frontières mémoire explicites (`domain`/`infra`) | Découpage pipeline-first effectif + façade stable | Cible approchée / requalifiée | `app/memory/memory_store.py` + `memory_store_infra.py` + `memory_traces_summaries.py` + `memory_context_read.py` + `memory_arbiter_audit.py` + `memory_identity_write.py` + `memory_identity_dynamics.py`; test `tests/unit/memory/test_memory_store_blocks_phase8bis.py` | Pas de séparation stricte package `domain` vs `infrastructure` |
+| Frontend admin modulaire | `interfaces/web/admin`: `state.js`, `api.js`, `forms.js`, `readonly.js` | Modules `admin_api`, `admin_state`, `admin_ui_common`, `admin_section_*`; `admin.js` réduit en orchestrateur | Cible atteinte sur l’intention (modularité) | `app/web/admin.html` (scripts modulaires), `app/web/admin_api.js`, `app/web/admin_state.js`, `app/web/admin_ui_common.js`, `app/web/admin_section_*.js`; tests `test_minimal_validation_phase9.py`, `tests/integration/frontend_admin/test_frontend_admin_contract.py` | Le découpage “forms/readonly” est réalisé via `ui_common` + sections, pas via noms de fichiers identiques au schéma cible |
+| Statut `conv_store` | Tendance vers `infrastructure/db` découplée | Module historique encore massif, mais stabilisé (runtime DB, soft-delete API, sync JSON bornée) | Ecart residuel acceptable (non bloquant pour convergence suffisante) | `app/core/conv_store.py`, `app/core/conversations_service.py`, `app/server.py`, test `test_conv_store_json_sync_inventory_phase6.py` | `conv_store.py` reste un hotspot et n’est pas encore scindé en repository dédié |
+
+Verdict convergence cible (cette tranche): les ecarts residuels restants (notamment `conv_store.py` dense, absence d’arborescence `domain/application/interfaces` stricte) sont requalifies et documentes, sans contradiction de contrat ouverte; la convergence vers la cible section 9 est jugee suffisante a ce stade.
+
 ## 4) Questions ouvertes de l’audit initial: décision explicite
 
 | Question ouverte (audit §12) | Décision explicite | Statut |
@@ -102,5 +115,5 @@ Verdict de tranche: aucun module introduit pendant le refacto ne cumule de nouve
 
 ## 5) Conclusion de tranche
 - La preuve croisée est suffisante pour acter que les points majeurs de l’audit sont désormais soit corrigés, soit documentés/arbitrés; la décision sur `.gitignore` / `docs/states` est explicitement prise, avec implémentation volontairement différée à une tranche de nettoyage dédiée.
-- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches et le contrôle “nouveau god module” signalés dans l’audit sont fermés/documentés; la clôture globale reste néanmoins ouverte sur les cases Phase 9 restantes (convergence cible + verdict final explicite).
+- Les contradictions de contrat, les reliquats legacy/code mort, les monolithes, les dépendances inter-couches, le contrôle “nouveau god module” et la convergence vers la cible section 9 sont fermés/documentés; la clôture globale reste néanmoins ouverte sur la validation finale explicite du statut “traite” vs “traite partiellement”.
 - Une phase dédiée `memory_store.py` est désormais intercalée avant la clôture finale (Phase 8 bis), avec plan pipeline-first documenté dans `app/docs/fridadev_memory_store_refactor_plan.md`.

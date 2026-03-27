@@ -445,7 +445,7 @@ Arbitrage 2026-03-26: conserver `run.sh` comme wrapper opératoire local explici
 - [x] Vérifier que les reliquats legacy / code mort signalés ont été traités ou justifiés.
 - [x] Vérifier que les dépendances inter-couches ont diminué et n’ont pas empiré.
 - [x] Vérifier qu’aucun nouveau “god module” n’a été créé pendant le refacto.
-- [ ] Vérifier que l’architecture réelle converge suffisamment vers la cible annoncée en section 9 de `app/docs/fridadev_repo_audit.md`.
+- [x] Vérifier que l’architecture réelle converge suffisamment vers la cible annoncée en section 9 de `app/docs/fridadev_repo_audit.md`.
 - [ ] Produire un document de clôture `app/docs/fridadev_refactor_closure.md` résumant les points soldés, les points arbitrés, les points restant ouverts et les écarts résiduels.
 - [ ] Valider explicitement si l’audit initial peut être considéré comme “traité” ou seulement “traité partiellement”.
 
