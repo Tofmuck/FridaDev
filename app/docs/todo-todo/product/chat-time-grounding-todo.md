@@ -9,6 +9,7 @@ Reference stable:
 ## TODO
 
 ### Lot 1 - Cadrage et preuve de lecture du reel
+- [ ] Premier livrable concret: unifier la source canonique de `NOW` de tour entre la prose `[RÉFÉRENCE TEMPORELLE]` et le `now` utilise par `delta_t_label`.
 - [ ] Cartographier les points d'injection temporelle reels (`chat_prompt_context`, `chat_service`, `conv_store`) et confirmer leur role exact.
 - [ ] Lister les zones ou la temporalite reste surtout narrative/prose et pas encore assez contractuelle.
 - [ ] Verifier l'alignement des prompts statiques avec le contrat de grounding temporel.

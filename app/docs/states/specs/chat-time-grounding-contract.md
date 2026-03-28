@@ -10,6 +10,10 @@ Ce qui existe deja dans le code:
 - `app/core/conv_store.py` porte deja des labels relatifs (`delta_t_label`) et des marqueurs de silence (`_silence_label`) injectes dans les messages de prompt.
 - `app/prompts/main_hermeneutical.txt` formalise deja l'interpretation du repere temporel, des deltas et des silences.
 - resume actif, souvenirs et indices contextuels sont deja situes en partie relativement au temps de tour.
+- Contradiction principale actuelle (double source `NOW`):
+  - `chat_prompt_context.build_augmented_system()` recalcule un `datetime.now(...)` local pour la prose `[RÉFÉRENCE TEMPORELLE]`;
+  - `chat_service.chat_response()` fixe deja `user_timestamp` / `now_iso_value` pour le tour;
+  - ce `NOW` n'est pas encore la source unique de verite pour toute la temporalite du tour.
 
 Ce que cela permet deja:
 - situer une partie du dialogue dans une temporalite relative lisible;
