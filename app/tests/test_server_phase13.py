@@ -34,6 +34,18 @@ class ServerPhase13Tests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
 
+    def test_backend_hermeneutical_prompt_applies_lot4_time_behavior_contract(self) -> None:
+        prompt = self.server.prompt_loader.get_main_hermeneutical_prompt()
+
+        self.assertIn("Discipline temporelle d'application", prompt)
+        self.assertIn("ne dis jamais que tu n'as pas acces au temps de reference du tour", prompt)
+        self.assertIn("ce matin`, `cet apres-midi`, `ce soir` ou `cette nuit`", prompt)
+        self.assertIn("quand est-ce qu'on a parle la derniere fois ?", prompt)
+        self.assertIn("`relatif` prioritaire", prompt)
+        self.assertIn("`absolu court`", prompt)
+        self.assertIn("NOW: ...", prompt)
+        self.assertIn("TIMEZONE: ...", prompt)
+
     def test_api_create_conversation_uses_backend_main_system_prompt_not_request_payload(self) -> None:
         observed = {}
         original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt

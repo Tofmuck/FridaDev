@@ -67,6 +67,9 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertIn("TIMEZONE: Europe/Paris", augmented_system)
         self.assertIn("09:15", augmented_system)
         self.assertNotIn("heure de Paris", augmented_system)
+        self.assertIn("n'affirme jamais que tu n'y as pas acces", augmented_system)
+        self.assertIn("ce matin, cet apres-midi, ce soir, cette nuit", augmented_system)
+        self.assertIn("privilegie le relatif puis ajoute un absolu court", augmented_system)
 
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {

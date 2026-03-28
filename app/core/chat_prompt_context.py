@@ -37,7 +37,12 @@ def build_augmented_system(
         'Les marqueurs [— silence de X —] indiquent une interruption de la conversation. '
         "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
         "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
-        'sauf si on te le demande explicitement.'
+        "sauf si on te le demande explicitement.\n"
+        "Le NOW de reference du tour est deja fourni ci-dessus: n'affirme jamais que tu n'y as pas acces.\n"
+        "N'utilise les formulations de journee (ce matin, cet apres-midi, ce soir, cette nuit) "
+        "que si l'ancrage dans NOW et les timestamps est robuste; sinon reste neutre.\n"
+        "Si on te demande quand on a parle la derniere fois, privilegie le relatif puis ajoute "
+        "un absolu court seulement si utile."
     )
     parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
     return '\n\n'.join(parts), identity_ids

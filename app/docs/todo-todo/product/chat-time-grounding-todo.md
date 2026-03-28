@@ -24,10 +24,10 @@ Reference stable:
 - [x] Verrouiller ce qui doit rester lisible humainement dans les labels relatifs.
 - [x] Verrouiller ce qui doit devenir plus stable/contractuel pour eviter les ambiguitees.
 
-### Lot 4 - Comportements attendus et interdits
-- [ ] Interdire explicitement les formulations du type "je n'ai pas acces a l'heure reelle" lorsque `NOW` est fourni.
-- [ ] Interdire les regimes temporels improvises ("ce matin", "ce soir", etc.) sans ancrage robuste.
-- [ ] Definir le comportement attendu pour "derniere fois qu'on a parle" (restitution temporellement situee).
+### Lot 4 - Implementation comportementale et alignement prompt/runtime
+- [x] Implementer l'interdiction des formulations niant l'acces au temps de reference du tour quand `NOW` est fourni.
+- [x] Aligner et faire respecter l'usage ancre des regimes de journee (`ce matin`, `cet apres-midi`, `ce soir`, `cette nuit`) entre prompt statique et runtime.
+- [x] Aligner et faire respecter l'application de la regle lot 2 pour "quand est-ce qu'on a parle la derniere fois ?" (`relatif` prioritaire, `absolu` court si utile).
 
 ### Lot 5 - Plan de tests a implementer ensuite
 - [ ] Lister les tests produit/comportement a ajouter pour valider le grounding temporel.
