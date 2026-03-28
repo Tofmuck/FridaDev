@@ -17,7 +17,7 @@ Reference stable:
 ### Lot 2 - Forme canonique de NOW
 - [x] Verrouiller la forme canonique de `NOW` de tour (champ attendu, precision, timezone explicite).
 - [x] Decider si la forme actuelle est suffisante ou si un format plus contractuel est requis.
-- [ ] Definir les regles d'affichage absolu vs relatif attendues pour les reponses temporelles.
+- [x] Definir les regles d'affichage absolu vs relatif attendues pour les reponses temporelles.
 
 ### Lot 3 - Forme canonique de DELTA-NOW
 - [ ] Auditer la forme actuelle des labels relatifs (`delta_t_label`) et des marqueurs de silence.

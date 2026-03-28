@@ -84,6 +84,32 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Le modele ne doit pas declarer qu'il n'a pas acces au temps de reference quand ce temps est fourni.
 - Le temps regle aussi la reprise, la re-situation et la continuite du discours.
 
+## 3 bis) Regles d'affichage des reponses temporelles (absolu vs relatif)
+Regle generale:
+- par defaut, privilegier la forme la plus utile a la question posee;
+- la forme relative sert la reprise conversationnelle;
+- la forme absolue sert la precision factuelle;
+- combiner les deux seulement si cela augmente la clarte utile.
+
+Cas cibles et forme attendue:
+- question de reprise (`quand est-ce qu'on a parle la derniere fois ?`): `relatif + absolu court`.
+  - exemple: `vendredi en fin de journee, vers 17h05`.
+- question de precision explicite (`a quelle heure exactement ?`): `absolu` en premier, `relatif` optionnel.
+  - exemple: `vendredi 27 mars 2026 a 17h05`.
+- question floue (`ca fait combien de temps ?`): `relatif` en premier, `absolu` optionnel si utile.
+  - exemple: `il y a environ une heure`.
+- reprise ordinaire d'echange recent: `relatif` seul par defaut.
+  - exemple: `vendredi en fin de journee`.
+
+Regles de sobriete:
+- ne pas afficher l'absolu complet systematiquement par lourdeur;
+- ne pas rester en relatif seul quand la precision explicite est demandee;
+- ne pas forcer une granularite excessive (secondes/offset) sans besoin explicite.
+
+Lien avec les lots suivants:
+- lot 3 stabilise la forme contractuelle de `DELTA-NOW`;
+- lot 4 interdit les formulations temporelles improvisees sans ancrage.
+
 ## 4) Pre-architecture (reservee, non implementee ici)
 Distinctions a garder explicites:
 - arbitrage memoire: selection/ponderation des traces memorisees;
