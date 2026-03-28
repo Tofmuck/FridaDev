@@ -43,7 +43,7 @@ Cadrage follow-up de reference:
 - [x] Clarifier la frontiere `identity_write`: preview/evidence en mode shadow vs vraie ecriture durable en memoire identitaire.
 - [x] Clarifier `summaries`: distinguer explicitement "resume actif injecte au prompt" vs "resume genere dans ce tour".
 - [x] Clarifier `llm_call` en mode stream pour exposer une metrique finale exploitable (sans dump de reponse).
-- [ ] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
+- [x] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
 
 ### Cadrage a clarifier avant implementation
 - [x] Verrouiller la source de donnees pour alimenter les listes `conversation` et `turn` (support backend dedie; la lecture paginee timeline n'est pas source canonique).
