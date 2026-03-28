@@ -366,6 +366,9 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertIn('NOW:', observed['augmented_system'])
         self.assertIn('TIMEZONE: Europe/Paris', observed['augmented_system'])
         self.assertNotIn('heure de Paris', observed['augmented_system'])
+        self.assertIn("n'affirme jamais que tu n'y as pas acces", observed['augmented_system'])
+        self.assertIn("ce matin, cet apres-midi, ce soir, cette nuit", observed['augmented_system'])
+        self.assertIn("privilegie le relatif puis ajoute un absolu court", observed['augmented_system'])
         self.assertLess(
             observed['augmented_system'].index('BACKEND SYSTEM PROMPT'),
             observed['augmented_system'].index('BACKEND HERMENEUTICAL PROMPT'),

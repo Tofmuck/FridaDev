@@ -29,10 +29,11 @@ Reference stable:
 - [x] Aligner et faire respecter l'usage ancre des regimes de journee (`ce matin`, `cet apres-midi`, `ce soir`, `cette nuit`) entre prompt statique et runtime.
 - [x] Aligner et faire respecter l'application de la regle lot 2 pour "quand est-ce qu'on a parle la derniere fois ?" (`relatif` prioritaire, `absolu` court si utile).
 
-### Lot 5 - Plan de tests a implementer ensuite
-- [ ] Lister les tests produit/comportement a ajouter pour valider le grounding temporel.
-- [ ] Lister les tests de structure prompt a ajouter pour verifier la presence/forme des briques temporelles.
-- [ ] Lister les tests de non-regression sur les cas temporels evidents (reprise, silence, delta relatif).
+### Lot 5 - Preuves automatiques et non-regressions
+- [x] Implementer les tests de structure du prompt statique hermeneutique (brique `[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`, formes Delta-T et silence, garde-fous lot 4).
+- [x] Verifier par tests d'assemblage runtime la presence de la brique temporelle, du `NOW` canonique, de `TIMEZONE`, des rappels comportementaux et de l'ordre des briques.
+- [x] Ajouter des tests unitaires cibles de non-regression sur `delta_t_label`, `_silence_label` et l'insertion effective des marqueurs via `build_prompt_messages(...)`.
+- [ ] Ajouter une preuve comportementale deterministe de sortie finale sur "quand est-ce qu'on a parle la derniere fois ?" (ouverte tant qu'aucun harness LLM deterministe n'est disponible).
 
 ## Risques / vigilance
 - Ne pas brouiller memoire et discours temporel.
