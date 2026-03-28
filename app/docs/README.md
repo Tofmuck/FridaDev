@@ -38,5 +38,6 @@ Notes:
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
+- roadmap ouverte follow-up logs (post-MVP): `todo-todo/admin/log-followups-todo.md`
 - les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
 - nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes
