@@ -43,6 +43,7 @@ class ChatPromptContextTests(unittest.TestCase):
             hermeneutical_prompt='BACKEND HERMENEUTICAL PROMPT',
             config_module=config_module,
             identity_module=identity_module,
+            now_iso='2026-01-15T08:15:00Z',
         )
 
         self.assertEqual(identity_ids, ['id-a', 'id-b'])
@@ -62,6 +63,8 @@ class ChatPromptContextTests(unittest.TestCase):
             augmented_system.index('[RÉFÉRENCE TEMPORELLE]'),
             augmented_system.index('[IDENTITY BLOCK]'),
         )
+        self.assertIn("09:15", augmented_system)
+        self.assertIn("UTC+01", augmented_system)
 
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {

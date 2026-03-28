@@ -225,6 +225,7 @@ class ServerPhase13Tests(unittest.TestCase):
         original_save_new_traces = self.server.memory_store.save_new_traces
         original_record_identity = self.server.chat_service._record_identity_entries_for_mode
         original_reactivate = self.server.memory_store.reactivate_identities
+        original_build_augmented_system = self.server.chat_service.chat_prompt_context.build_augmented_system
 
         class FakeResponse:
             def raise_for_status(self):
@@ -261,8 +262,19 @@ class ServerPhase13Tests(unittest.TestCase):
                 ],
             }
 
+        def fake_build_augmented_system(*, system_prompt, hermeneutical_prompt, config_module, identity_module, now_iso):
+            observed['turn_now_reference'] = now_iso
+            return original_build_augmented_system(
+                system_prompt=system_prompt,
+                hermeneutical_prompt=hermeneutical_prompt,
+                config_module=config_module,
+                identity_module=identity_module,
+                now_iso=now_iso,
+            )
+
         def fake_build_prompt_messages(conversation_arg, *_args, **_kwargs):
             observed['augmented_system'] = conversation_arg["messages"][0]["content"]
+            observed['turn_now_delta'] = _kwargs.get('now')
             return [{"role": "user", "content": "Bonjour"}]
 
         self.server.prompt_loader.get_main_system_prompt = lambda: 'BACKEND SYSTEM PROMPT'
@@ -282,6 +294,7 @@ class ServerPhase13Tests(unittest.TestCase):
                 {"role": role, "content": content, "timestamp": timestamp}
             )
         )
+        self.server.chat_service.chat_prompt_context.build_augmented_system = fake_build_augmented_system
         self.server.conv_store.conversation_path = lambda _id: 'conv/conv-phase13.json'
         self.server.conv_store.build_prompt_messages = fake_build_prompt_messages
         self.server.memory_store.decay_identities = lambda: None
@@ -315,6 +328,7 @@ class ServerPhase13Tests(unittest.TestCase):
             self.server.conv_store.new_conversation = original_new_conversation
             self.server.conv_store.save_conversation = original_save_conversation
             self.server.conv_store.append_message = original_append_message
+            self.server.chat_service.chat_prompt_context.build_augmented_system = original_build_augmented_system
             self.server.conv_store.conversation_path = original_conversation_path
             self.server.conv_store.build_prompt_messages = original_build_prompt_messages
             self.server.memory_store.decay_identities = original_decay_identities
@@ -345,3 +359,4 @@ class ServerPhase13Tests(unittest.TestCase):
             observed['augmented_system'].index('BACKEND HERMENEUTICAL PROMPT'),
             observed['augmented_system'].index('[RÉFÉRENCE TEMPORELLE]'),
         )
+        self.assertEqual(observed['turn_now_reference'], observed['turn_now_delta'])

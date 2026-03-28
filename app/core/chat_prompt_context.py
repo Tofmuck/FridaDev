@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
@@ -18,9 +18,13 @@ def build_augmented_system(
     hermeneutical_prompt: str,
     config_module: Any,
     identity_module: Any,
+    now_iso: str,
 ) -> tuple[str, list[str]]:
     tz_paris = ZoneInfo(config_module.FRIDA_TIMEZONE)
-    now_paris = datetime.now(tz_paris)
+    now_raw = datetime.fromisoformat(str(now_iso).replace("Z", "+00:00"))
+    if now_raw.tzinfo is None:
+        now_raw = now_raw.replace(tzinfo=timezone.utc)
+    now_paris = now_raw.astimezone(tz_paris)
     now_fmt = now_paris.strftime('%A %d %B %Y à %H:%M') + f" (heure de Paris, UTC{now_paris.strftime('%z')[:3]})"
     id_block, identity_ids = identity_module.build_identity_block()
     delta_rule = (

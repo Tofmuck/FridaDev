@@ -111,6 +111,7 @@ def chat_response(
         hermeneutical_prompt=hermeneutical_prompt,
         config_module=config_module,
         identity_module=identity_module,
+        now_iso=now_iso_value,
     )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
