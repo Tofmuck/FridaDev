@@ -22,12 +22,12 @@ Cadrage follow-up de reference:
 - [x] Ajouter un test d'integration frontend qui prouve le flux: selection conversation -> liste tours -> suppression scopee.
 
 ### Lot 2 - Export Markdown structure
-- [ ] Implementer le support backend dedie de generation/export Markdown structure pour les scopes `conversation` et `turn`.
-- [ ] Ajouter un export Markdown structure scope `conversation` (lisible humainement, pas un dump brut).
-- [ ] Ajouter un export Markdown structure scope `turn` (lisible humainement, pas un dump brut).
-- [ ] Verrouiller le format Markdown minimal (entete de scope, table/sections d'evenements, metadonnees sobres).
+- [x] Implementer le support backend dedie de generation/export Markdown structure pour les scopes `conversation` et `turn`.
+- [x] Ajouter un export Markdown structure scope `conversation` (lisible humainement, pas un dump brut).
+- [x] Ajouter un export Markdown structure scope `turn` (lisible humainement, pas un dump brut).
+- [x] Verrouiller le format Markdown minimal (entete de scope, table/sections d'evenements, metadonnees sobres).
 - [x] Granularite `par message` non retenue a ce stade; point differe hors lot follow-up courant.
-- [ ] Ajouter un test de preuve sur le format exporte (structure attendue + absence de dump massif).
+- [x] Ajouter un test de preuve sur le format exporte (structure attendue + absence de dump massif).
 
 ### Lot 3 - Clarification semantique des evenements
 - [x] Prioriser l'amelioration `arbiter` cote logs (redevabilite des decisions) avant tout chantier de re-ecriture du prompt arbitre.

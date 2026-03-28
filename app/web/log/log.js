@@ -21,6 +21,8 @@
     nextPage: document.getElementById("logNextPage"),
     deleteConversation: document.getElementById("deleteConversationLogs"),
     deleteTurn: document.getElementById("deleteTurnLogs"),
+    exportConversation: document.getElementById("exportConversationLogs"),
+    exportTurn: document.getElementById("exportTurnLogs"),
     groups: document.getElementById("logGroups"),
     countChip: document.getElementById("logCountChip"),
     pageChip: document.getElementById("logPageChip"),
@@ -34,6 +36,7 @@
     nextOffset: null,
   };
   const LOG_METADATA_ENDPOINT = "/api/admin/logs/chat/metadata";
+  const LOG_EXPORT_MARKDOWN_ENDPOINT = "/api/admin/logs/chat/export.md";
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -141,11 +144,13 @@
     }
   };
 
-  const syncDeleteButtons = () => {
+  const syncScopeButtons = () => {
     const conversationId = toText(elements.conversationId.value);
     const turnId = toText(elements.turnId.value);
     elements.deleteConversation.disabled = !conversationId;
     elements.deleteTurn.disabled = !(conversationId && turnId);
+    elements.exportConversation.disabled = !conversationId;
+    elements.exportTurn.disabled = !(conversationId && turnId);
   };
 
   const renderConversationOptions = (conversations, selectedConversationId) => {
@@ -314,7 +319,7 @@
         setStatusBanner(adminApi.errorMessage(data, `Echec metadata logs (${response.status}).`), "error");
         renderConversationOptions([], "");
         renderTurnOptions([], "", "");
-        syncDeleteButtons();
+        syncScopeButtons();
         return;
       }
 
@@ -323,12 +328,12 @@
       const selectedConversation = toText(data.selected_conversation_id || requestedConversationId);
       renderConversationOptions(conversations, selectedConversation);
       renderTurnOptions(turns, requestedTurnId, elements.conversationId.value);
-      syncDeleteButtons();
+      syncScopeButtons();
     } catch (error) {
       setStatusBanner(`Erreur metadata logs: ${error?.message || error}`, "error");
       renderConversationOptions([], "");
       renderTurnOptions([], "", "");
-      syncDeleteButtons();
+      syncScopeButtons();
     }
   };
 
@@ -412,6 +417,64 @@
     }
   };
 
+  const downloadMarkdown = async (response, fallbackFilename) => {
+    const rawDisposition = toText(response.headers.get("Content-Disposition"));
+    const match = /filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i.exec(rawDisposition);
+    const rawFilename = decodeURIComponent(toText((match && (match[1] || match[2])) || ""));
+    const safeFilename = (rawFilename || fallbackFilename)
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || fallbackFilename;
+    const markdown = await response.text();
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = Object.assign(document.createElement("a"), { href: blobUrl, download: safeFilename });
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  };
+
+  const exportLogsMarkdown = async (scope) => {
+    const conversationId = toText(elements.conversationId.value);
+    const turnId = toText(elements.turnId.value);
+
+    if (scope === "conversation" && !conversationId) {
+      setStatusBanner("Export conversation: selectionner une conversation.", "error");
+      return;
+    }
+    if (scope === "turn" && (!conversationId || !turnId)) {
+      setStatusBanner("Export tour: selectionner une conversation et un tour.", "error");
+      return;
+    }
+
+    const query = new URLSearchParams();
+    query.set("conversation_id", conversationId);
+    if (scope === "turn") query.set("turn_id", turnId);
+    const conv = conversationId.replace(/[^a-zA-Z0-9._-]+/g, "-") || "conversation";
+    const turn = turnId.replace(/[^a-zA-Z0-9._-]+/g, "-") || "turn";
+    const fallbackFilename = scope === "turn" ? `chat-logs-${conv}-${turn}.md` : `chat-logs-${conv}.md`;
+
+    try {
+      const response = await adminApi.fetchAdmin(`${LOG_EXPORT_MARKDOWN_ENDPOINT}?${query.toString()}`);
+      if (!response.ok) {
+        const contentType = toText(response.headers.get("Content-Type")).toLowerCase();
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+          setStatusBanner(adminApi.errorMessage(data, `Echec export logs (${response.status}).`), "error");
+        } else {
+          const message = toText(await response.text()) || `Echec export logs (${response.status}).`;
+          setStatusBanner(message, "error");
+        }
+        return;
+      }
+
+      await downloadMarkdown(response, fallbackFilename);
+      setStatusBanner(`Export Markdown ok (${scope}).`, "ok");
+    } catch (error) {
+      setStatusBanner(`Erreur export logs: ${error?.message || error}`, "error");
+    }
+  };
+
   elements.filtersForm.addEventListener("submit", (event) => {
     event.preventDefault();
     elements.offset.value = "0";
@@ -434,7 +497,7 @@
   });
 
   elements.turnId.addEventListener("change", () => {
-    syncDeleteButtons();
+    syncScopeButtons();
   });
 
   elements.resetFilters.addEventListener("click", async () => {
@@ -484,8 +547,16 @@
     void deleteLogs("turn");
   });
 
+  elements.exportConversation.addEventListener("click", () => {
+    void exportLogsMarkdown("conversation");
+  });
+
+  elements.exportTurn.addEventListener("click", () => {
+    void exportLogsMarkdown("turn");
+  });
+
   updateMeta();
-  syncDeleteButtons();
+  syncScopeButtons();
   void (async () => {
     await loadMetadata({ conversationId: "", preserveTurnSelection: false });
     await loadLogs();

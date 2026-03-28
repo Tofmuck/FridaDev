@@ -74,20 +74,25 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn('<option value="turn_end">turn_end</option>', source)
         self.assertIn('id="deleteConversationLogs"', source)
         self.assertIn('id="deleteTurnLogs"', source)
+        self.assertIn('id="exportConversationLogs"', source)
+        self.assertIn('id="exportTurnLogs"', source)
         self.assertNotIn('placeholder="conv-..."', source)
         self.assertNotIn('placeholder="turn-..."', source)
         self.assertNotIn("all_logs", source)
         self.assertNotIn("delete all logs", source.lower())
 
-    def test_log_js_uses_admin_logs_chat_read_and_delete_only(self) -> None:
+    def test_log_js_uses_admin_logs_chat_read_delete_and_export_routes(self) -> None:
         source = (APP_DIR / "web" / "log" / "log.js").read_text(encoding="utf-8")
         admin_source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
 
         self.assertIn("/api/admin/logs/chat", source)
         self.assertIn("/api/admin/logs/chat/metadata", source)
+        self.assertIn("/api/admin/logs/chat/export.md", source)
         self.assertIn('method: "DELETE"', source)
         self.assertIn('deleteLogs("conversation")', source)
         self.assertIn('deleteLogs("turn")', source)
+        self.assertIn('exportLogsMarkdown("conversation")', source)
+        self.assertIn('exportLogsMarkdown("turn")', source)
         self.assertIn("elements.conversationId.addEventListener(\"change\"", source)
         self.assertIn("renderTurnOptions", source)
         self.assertIn("elements.turnId.disabled = true", source)
@@ -102,10 +107,12 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
             "metadata_calls": [],
             "read_calls": [],
             "delete_calls": [],
+            "export_calls": [],
         }
         original_read_metadata = self.server.log_store.read_chat_log_metadata
         original_read_events = self.server.log_store.read_chat_log_events
         original_delete = self.server.log_store.delete_chat_log_events
+        original_export = self.server.log_markdown_export.export_chat_logs_markdown
 
         def fake_read_chat_log_metadata(*, conversation_id=None, **_kwargs: Any) -> dict[str, Any]:
             normalized = str(conversation_id or "").strip() or None
@@ -173,9 +180,28 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
                 "deleted_count": 1,
             }
 
+        def fake_export_chat_logs_markdown(**kwargs: Any) -> dict[str, Any]:
+            observed["export_calls"].append(
+                {
+                    "conversation_id": kwargs.get("conversation_id"),
+                    "turn_id": kwargs.get("turn_id"),
+                }
+            )
+            conversation_id = str(kwargs.get("conversation_id") or "").strip()
+            turn_id = str(kwargs.get("turn_id") or "").strip() or None
+            scope = "turn" if turn_id else "conversation"
+            return {
+                "scope": scope,
+                "conversation_id": conversation_id,
+                "turn_id": turn_id,
+                "events_count": 1,
+                "markdown": "# Frida Chat Logs Export\n",
+            }
+
         self.server.log_store.read_chat_log_metadata = fake_read_chat_log_metadata
         self.server.log_store.read_chat_log_events = fake_read_chat_log_events
         self.server.log_store.delete_chat_log_events = fake_delete_chat_log_events
+        self.server.log_markdown_export.export_chat_logs_markdown = fake_export_chat_logs_markdown
         try:
             page = self.client.get("/log")
             self.assertEqual(page.status_code, 200)
@@ -224,10 +250,25 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
             )
             self.assertEqual(delete_turn.status_code, 200)
             self.assertEqual(delete_turn.get_json()["scope"], "turn_logs")
+
+            export_conversation = self.client.get(
+                "/api/admin/logs/chat/export.md?conversation_id=conv-1",
+                headers={"X-Admin-Token": "phase5-token"},
+            )
+            self.assertEqual(export_conversation.status_code, 200)
+            self.assertIn("text/markdown", export_conversation.content_type)
+
+            export_turn = self.client.get(
+                "/api/admin/logs/chat/export.md?conversation_id=conv-1&turn_id=turn-2",
+                headers={"X-Admin-Token": "phase5-token"},
+            )
+            self.assertEqual(export_turn.status_code, 200)
+            self.assertIn("text/markdown", export_turn.content_type)
         finally:
             self.server.log_store.read_chat_log_metadata = original_read_metadata
             self.server.log_store.read_chat_log_events = original_read_events
             self.server.log_store.delete_chat_log_events = original_delete
+            self.server.log_markdown_export.export_chat_logs_markdown = original_export
 
         self.assertEqual(observed["metadata_calls"], [None, "conv-1"])
         self.assertEqual(
@@ -236,6 +277,13 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         )
         self.assertEqual(
             observed["delete_calls"],
+            [
+                {"conversation_id": "conv-1", "turn_id": None},
+                {"conversation_id": "conv-1", "turn_id": "turn-2"},
+            ],
+        )
+        self.assertEqual(
+            observed["export_calls"],
             [
                 {"conversation_id": "conv-1", "turn_id": None},
                 {"conversation_id": "conv-1", "turn_id": "turn-2"},

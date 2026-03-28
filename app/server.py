@@ -3,6 +3,7 @@
 
 import hashlib
 import logging
+import re
 import time
 from ipaddress import ip_address, ip_network
 from pathlib import Path
@@ -28,6 +29,7 @@ from memory import memory_store
 from memory import arbiter
 from observability import chat_turn_logger
 from observability import log_store
+from observability import log_markdown_export
 
 
 def _sha256_file(path: Path) -> str:
@@ -763,6 +765,40 @@ def api_admin_chat_logs_delete():
             'deleted_count': deletion['deleted_count'],
         }
     )
+
+
+def _safe_export_filename_token(value: str | None, fallback: str) -> str:
+    token = str(value or '').strip()
+    if not token:
+        return fallback
+    normalized = re.sub(r'[^a-zA-Z0-9._-]+', '-', token).strip('-')
+    return normalized or fallback
+
+
+@app.get('/api/admin/logs/chat/export.md')
+def api_admin_chat_logs_export_markdown():
+    conversation_id = request.args.get('conversation_id')
+    turn_id = request.args.get('turn_id')
+    try:
+        exported = log_markdown_export.export_chat_logs_markdown(
+            conversation_id=conversation_id,
+            turn_id=turn_id,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    conversation_slug = _safe_export_filename_token(exported['conversation_id'], 'conversation')
+    if exported['scope'] == 'turn':
+        turn_slug = _safe_export_filename_token(exported['turn_id'], 'turn')
+        filename = f'chat-logs-{conversation_slug}-{turn_slug}.md'
+    else:
+        filename = f'chat-logs-{conversation_slug}.md'
+
+    response = Response(exported['markdown'], content_type='text/markdown; charset=utf-8')
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @app.post("/api/admin/restart")
