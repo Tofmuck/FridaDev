@@ -22,6 +22,7 @@ Agents must optimize for:
 - Do not perform opportunistic refactors outside the requested scope.
 - Prefer small, testable increments over large rewrites.
 - Do not silently reopen decisions already archived in `app/docs/todo-done/` unless the user explicitly asks to revisit them.
+- When users paste `Review findings`, re-verify each finding against current repository state; mark already-fixed items as `stale` and do not re-apply them.
 - After each completed step: validate, then commit, then push.
 
 ## Architecture discipline

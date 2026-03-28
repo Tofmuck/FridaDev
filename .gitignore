@@ -35,3 +35,6 @@ htmlcov/
 *.tmp
 *.tmpcodex
 *.corrupt-*.json
+
+# Local Codex CLI residue
+.codex
