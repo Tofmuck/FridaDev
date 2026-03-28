@@ -346,6 +346,7 @@ class _RequestsChatLogProxy:
             response = self._base.post(url, *args, **kwargs)
         except Exception as exc:
             if is_llm_call:
+                chat_turn_logger.set_state('llm_stream_call_meta', None)
                 chat_turn_logger.emit(
                     'llm_call',
                     status='error',
@@ -367,25 +368,34 @@ class _RequestsChatLogProxy:
             raise
 
         if is_llm_call:
-            response_chars = 0
-            if not stream_mode:
+            if stream_mode:
+                chat_turn_logger.set_state(
+                    'llm_stream_call_meta',
+                    {
+                        'model': model,
+                        'timeout_s': timeout_s,
+                        'started_at': started_at,
+                    },
+                )
+            else:
+                response_chars = 0
                 try:
                     llm_json = response.json()
                     response_chars = len(str(llm_json['choices'][0]['message']['content'] or ''))
                 except Exception:
                     response_chars = 0
 
-            chat_turn_logger.emit(
-                'llm_call',
-                status='ok',
-                model=model,
-                duration_ms=(time.perf_counter() - started_at) * 1000.0,
-                payload={
-                    'mode': 'stream' if stream_mode else 'json',
-                    'timeout_s': timeout_s,
-                    'response_chars': response_chars,
-                },
-            )
+                chat_turn_logger.emit(
+                    'llm_call',
+                    status='ok',
+                    model=model,
+                    duration_ms=(time.perf_counter() - started_at) * 1000.0,
+                    payload={
+                        'mode': 'json',
+                        'timeout_s': timeout_s,
+                        'response_chars': response_chars,
+                    },
+                )
         return response
 
 
@@ -472,11 +482,20 @@ def api_chat():
     if result['kind'] == 'stream':
         def _stream_with_turn_finalize():
             final_status = 'ok'
+            stream_response_chars = 0
+            stream_chunk_count = 0
+            llm_call_error_class: str | None = None
             try:
                 for chunk in result['stream']:
+                    if isinstance(chunk, (bytes, bytearray)):
+                        stream_response_chars += len(chunk.decode('utf-8', errors='ignore'))
+                    else:
+                        stream_response_chars += len(str(chunk or ''))
+                    stream_chunk_count += 1
                     yield chunk
             except Exception as exc:
                 final_status = 'error'
+                llm_call_error_class = exc.__class__.__name__
                 chat_turn_logger.emit_error(
                     error_code='upstream_error',
                     error_class=exc.__class__.__name__,
@@ -484,6 +503,31 @@ def api_chat():
                 )
                 raise
             finally:
+                stream_meta = chat_turn_logger.get_state('llm_stream_call_meta', {}) or {}
+                stream_started_at = stream_meta.get('started_at')
+                if isinstance(stream_started_at, (int, float)):
+                    llm_call_duration_ms = max(0.0, (time.perf_counter() - float(stream_started_at)) * 1000.0)
+                else:
+                    llm_call_duration_ms = None
+
+                llm_payload = {
+                    'mode': 'stream',
+                    'timeout_s': stream_meta.get('timeout_s'),
+                    'response_chars': stream_response_chars,
+                    'stream_chunks': stream_chunk_count,
+                }
+                llm_status = 'error' if llm_call_error_class else 'ok'
+                if llm_call_error_class:
+                    llm_payload['error_class'] = llm_call_error_class
+                chat_turn_logger.emit(
+                    'llm_call',
+                    status=llm_status,
+                    model=str(stream_meta.get('model') or ''),
+                    duration_ms=llm_call_duration_ms,
+                    error_code='upstream_error' if llm_call_error_class else None,
+                    payload=llm_payload,
+                )
+                chat_turn_logger.set_state('llm_stream_call_meta', None)
                 chat_turn_logger.end_turn(turn_token, final_status=final_status)
 
         response = Response(

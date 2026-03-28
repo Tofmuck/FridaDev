@@ -42,7 +42,7 @@ Cadrage follow-up de reference:
 - [x] Clarifier la visibilite `identity_write` par cote (`frida` / `user`) et traiter le cas ou un seul cote apparait alors qu'une vision humaine attendrait plus de contexte.
 - [x] Clarifier la frontiere `identity_write`: preview/evidence en mode shadow vs vraie ecriture durable en memoire identitaire.
 - [x] Clarifier `summaries`: distinguer explicitement "resume actif injecte au prompt" vs "resume genere dans ce tour".
-- [ ] Clarifier `llm_call` en mode stream pour exposer une metrique finale exploitable (sans dump de reponse).
+- [x] Clarifier `llm_call` en mode stream pour exposer une metrique finale exploitable (sans dump de reponse).
 - [ ] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
 
 ### Cadrage a clarifier avant implementation

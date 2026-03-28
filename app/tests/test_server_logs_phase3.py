@@ -287,6 +287,111 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)
 
+    def test_requests_proxy_non_stream_llm_call_keeps_response_chars(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        class FakeJsonResponse:
+            def json(self) -> dict[str, object]:
+                return {
+                    'choices': [
+                        {'message': {'content': 'reponse finale'}},
+                    ]
+                }
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-llm-json',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._RequestsChatLogProxy(
+                base_module=SimpleNamespace(post=lambda *_args, **_kwargs: FakeJsonResponse()),
+            )
+            proxy.post(
+                'https://openrouter.example/chat/completions',
+                json={'model': 'openrouter/runtime-main-model'},
+                timeout=30,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        llm_events = [event for event in observed if event.get('stage') == 'llm_call']
+        self.assertEqual(len(llm_events), 1)
+        payload = llm_events[0]['payload_json']
+        self.assertEqual(payload.get('mode'), 'json')
+        self.assertEqual(payload.get('response_chars'), len('reponse finale'))
+        self.assertEqual(payload.get('model'), 'openrouter/runtime-main-model')
+        self.assertNotIn('content', payload)
+        self.assertNotIn('response_text', payload)
+
+    def test_api_chat_stream_emits_llm_call_with_final_response_chars(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+        original_chat_response = self.server.chat_service.chat_response
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        def fake_chat_response(*_args: object, **_kwargs: object) -> dict[str, object]:
+            self.server.chat_turn_logger.set_state(
+                'llm_stream_call_meta',
+                {
+                    'model': 'openrouter/runtime-main-model',
+                    'timeout_s': 45,
+                    'started_at': self.server.time.perf_counter() - 0.01,
+                },
+            )
+
+            def fake_stream():
+                yield 'ab'
+                yield 'cdef'
+
+            return {
+                'kind': 'stream',
+                'stream': fake_stream(),
+                'headers': {},
+            }
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        self.server.chat_service.chat_response = fake_chat_response
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'bonjour',
+                    'stream': True,
+                    'conversation_id': 'conv-llm-stream',
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_data(as_text=True), 'abcdef')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+            self.server.chat_service.chat_response = original_chat_response
+
+        stream_llm_events = [
+            event
+            for event in observed
+            if event.get('stage') == 'llm_call' and event['payload_json'].get('mode') == 'stream'
+        ]
+        self.assertEqual(len(stream_llm_events), 1)
+        payload = stream_llm_events[0]['payload_json']
+        self.assertEqual(payload.get('model'), 'openrouter/runtime-main-model')
+        self.assertEqual(payload.get('timeout_s'), 45)
+        self.assertEqual(payload.get('response_chars'), 6)
+        self.assertEqual(payload.get('stream_chunks'), 2)
+        self.assertNotIn('content', payload)
+        self.assertNotIn('response_text', payload)
+
     def test_build_prompt_messages_logs_summaries_as_prompt_injection_usage(self) -> None:
         observed: list[dict[str, object]] = []
         original_insert = self.server.log_store.insert_chat_log_event
