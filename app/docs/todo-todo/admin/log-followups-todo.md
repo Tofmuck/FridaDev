@@ -45,6 +45,7 @@ Reference archivee (ne pas rouvrir):
 - [ ] Verifier l'impact UX si la pagination ne contient pas toutes les conversations/tours disponibles.
 - [ ] Verrouiller la strategie pour l'export Markdown (transformation frontend sur reponse existante vs support backend dedie).
 - [ ] Verrouiller la frontiere "observabilite vs lecture metier" pour ces clarifications, afin d'eviter un glissement vers des payloads explicatifs trop lourds.
+- [ ] Garder `app/web/log/log.js` monofichier tant que le follow-up UI reste borne; si le lot grossit nettement, decouper par responsabilite (API/backend, etat/filtres, rendu, actions suppression/export).
 
 ## Risques / vigilance
 - Ne pas transformer ce follow-up en chantier tentaculaire.
