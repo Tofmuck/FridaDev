@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+import codecs
 import logging
 import re
 import time
@@ -485,10 +486,11 @@ def api_chat():
             stream_response_chars = 0
             stream_chunk_count = 0
             llm_call_error_class: str | None = None
+            utf8_decoder = codecs.getincrementaldecoder('utf-8')('ignore')
             try:
                 for chunk in result['stream']:
                     if isinstance(chunk, (bytes, bytearray)):
-                        stream_response_chars += len(chunk.decode('utf-8', errors='ignore'))
+                        stream_response_chars += len(utf8_decoder.decode(bytes(chunk), final=False))
                     else:
                         stream_response_chars += len(str(chunk or ''))
                     stream_chunk_count += 1
@@ -509,6 +511,10 @@ def api_chat():
                     llm_call_duration_ms = max(0.0, (time.perf_counter() - float(stream_started_at)) * 1000.0)
                 else:
                     llm_call_duration_ms = None
+
+                # Flush pending UTF-8 continuation bytes to keep response_chars accurate
+                # when a multi-byte character spans two streamed byte chunks.
+                stream_response_chars += len(utf8_decoder.decode(b'', final=True))
 
                 llm_payload = {
                     'mode': 'stream',
