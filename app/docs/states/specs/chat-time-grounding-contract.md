@@ -110,6 +110,54 @@ Lien avec les lots suivants:
 - lot 3 stabilise la forme contractuelle de `DELTA-NOW`;
 - lot 4 interdit les formulations temporelles improvisees sans ancrage.
 
+## 3 ter) Contrat DELTA-NOW et marqueurs de silence (lot 3)
+Audit bref de l'existant (`app/core/conv_store.py`):
+- `delta_t_label` rend aujourd'hui les classes suivantes:
+  - `a l'instant`
+  - `il y a X minute(s)`
+  - `aujourd'hui a HhMM`
+  - `hier a HhMM`
+  - `il y a X jour(s)`
+  - `il y a X semaine(s)`
+  - `il y a X mois`
+  - `il y a X an(s)`
+- `_silence_label` rend aujourd'hui:
+  - `[— silence de quelques secondes —]`
+  - `[— silence de X minute(s) —]`
+  - `[— silence de X heure(s) —]`
+  - `[— silence d'un jour —]`
+  - `[— silence de X jours —]`
+  - `[— silence de X semaine(s) —]`
+  - `[— silence de X mois —]`
+
+Decision normative:
+- `DELTA-NOW` reste lisible humainement dans le prompt.
+- `DELTA-NOW` doit aussi porter une categorie stable testable (contrat), distincte du wording humain.
+- Le contrat cible est donc a deux niveaux:
+  - `delta_class` (stable): `instant`, `minutes`, `today_clock`, `yesterday_clock`, `days`, `weeks`, `months`, `years`
+  - `delta_human` (lisible): rendu naturel derive de la classe et de la valeur
+- Seuils contractuels attendus (coherents avec l'existant):
+  - `instant`: < 60 s
+  - `minutes`: [60 s, 3600 s[
+  - `today_clock`: meme date locale que `NOW` et >= 3600 s
+  - `yesterday_clock`: date locale = veille de `NOW`
+  - `days`: < 7 jours (hors today/yesterday)
+  - `weeks`: < 30 jours
+  - `months`: < 365 jours
+  - `years`: >= 365 jours
+
+Contrat des silences:
+- Les marqueurs de silence ne restent pas purement narratifs.
+- Ils suivent la meme logique a deux niveaux:
+  - `silence_class` (stable): `silence_seconds`, `silence_minutes`, `silence_hours`, `silence_day`, `silence_days`, `silence_weeks`, `silence_months`
+  - `silence_human` (lisible): forme `[— silence de ... —]`
+- La classe stable sert de base de test/non-regression; le rendu humain conserve la lisibilite conversationnelle.
+
+Frontiere lot 3 vs lot 4:
+- lot 3 stabilise la categorisation contractuelle des deltas et silences;
+- lot 4 definira les comportements de reponse interdits/attendus du modele;
+- lot 3 ne redefinit pas ces comportements.
+
 ## 4) Pre-architecture (reservee, non implementee ici)
 Distinctions a garder explicites:
 - arbitrage memoire: selection/ponderation des traces memorisees;

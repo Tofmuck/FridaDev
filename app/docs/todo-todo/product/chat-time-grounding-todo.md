@@ -20,9 +20,9 @@ Reference stable:
 - [x] Definir les regles d'affichage absolu vs relatif attendues pour les reponses temporelles.
 
 ### Lot 3 - Forme canonique de DELTA-NOW
-- [ ] Auditer la forme actuelle des labels relatifs (`delta_t_label`) et des marqueurs de silence.
-- [ ] Verrouiller ce qui doit rester lisible humainement dans les labels relatifs.
-- [ ] Verrouiller ce qui doit devenir plus stable/contractuel pour eviter les ambiguitees.
+- [x] Auditer la forme actuelle des labels relatifs (`delta_t_label`) et des marqueurs de silence.
+- [x] Verrouiller ce qui doit rester lisible humainement dans les labels relatifs.
+- [x] Verrouiller ce qui doit devenir plus stable/contractuel pour eviter les ambiguitees.
 
 ### Lot 4 - Comportements attendus et interdits
 - [ ] Interdire explicitement les formulations du type "je n'ai pas acces a l'heure reelle" lorsque `NOW` est fourni.
