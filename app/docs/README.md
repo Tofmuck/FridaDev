@@ -37,8 +37,10 @@ Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
-- roadmap ouverte produit (grounding temporel chat): `todo-todo/product/chat-time-grounding-todo.md`
+- TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
 - TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
+- etat projet FR 28/03/2026: `states/project/Frida-State-french-28-03-26.md`
+- etat projet EN 28/03/2026: `states/project/Frida-State-english-28-03-26.md`
 - les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
 - nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes
