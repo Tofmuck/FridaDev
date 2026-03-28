@@ -41,17 +41,38 @@
         <div class="admin-form-grid">
           <label class="admin-field" for="logConversationId">
             <span>Conversation</span>
-            <input id="logConversationId" name="conversation_id" type="text" autocomplete="off" placeholder="conv-..." />
+            <select id="logConversationId" name="conversation_id">
+              <option value="">Toutes</option>
+            </select>
           </label>
 
           <label class="admin-field" for="logTurnId">
             <span>Tour</span>
-            <input id="logTurnId" name="turn_id" type="text" autocomplete="off" placeholder="turn-..." />
+            <select id="logTurnId" name="turn_id" disabled>
+              <option value="">Selectionner une conversation</option>
+            </select>
           </label>
 
           <label class="admin-field" for="logStage">
             <span>Stage</span>
-            <input id="logStage" name="stage" type="text" autocomplete="off" placeholder="llm_call" />
+            <select id="logStage" name="stage">
+              <option value="">Tous</option>
+              <option value="turn_start">turn_start</option>
+              <option value="embedding">embedding</option>
+              <option value="memory_retrieve">memory_retrieve</option>
+              <option value="summaries">summaries</option>
+              <option value="identities_read">identities_read</option>
+              <option value="identity_write">identity_write</option>
+              <option value="web_search">web_search</option>
+              <option value="context_build">context_build</option>
+              <option value="prompt_prepared">prompt_prepared</option>
+              <option value="llm_call">llm_call</option>
+              <option value="arbiter">arbiter</option>
+              <option value="persist_response">persist_response</option>
+              <option value="error">error</option>
+              <option value="branch_skipped">branch_skipped</option>
+              <option value="turn_end">turn_end</option>
+            </select>
           </label>
 
           <label class="admin-field" for="logStatus">

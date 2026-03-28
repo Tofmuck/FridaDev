@@ -327,6 +327,94 @@ def read_chat_log_events(
     }
 
 
+def read_chat_log_metadata(
+    *,
+    conversation_id: str | None = None,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    """Read dedicated metadata for selector lists (conversation and turn)."""
+    conversation_id_s = str(conversation_id or '').strip() or None
+    conversations: list[dict[str, Any]] = []
+    turns: list[dict[str, Any]] = []
+
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT
+                        conversation_id,
+                        MAX(ts) AS last_ts,
+                        COUNT(*)::int AS events_count
+                    FROM observability.chat_log_events
+                    GROUP BY conversation_id
+                    ORDER BY MAX(ts) DESC, conversation_id DESC
+                    ''',
+                    (),
+                )
+                for row in cur.fetchall():
+                    conv_id = str(row[0] or '').strip()
+                    if not conv_id:
+                        continue
+                    last_ts = row[1]
+                    conversations.append(
+                        {
+                            'conversation_id': conv_id,
+                            'last_ts': (
+                                last_ts.astimezone(timezone.utc).isoformat()
+                                if isinstance(last_ts, datetime)
+                                else str(last_ts or '')
+                            ),
+                            'events_count': int(row[2] or 0),
+                        }
+                    )
+
+                if conversation_id_s:
+                    cur.execute(
+                        '''
+                        SELECT
+                            turn_id,
+                            MAX(ts) AS last_ts,
+                            COUNT(*)::int AS events_count
+                        FROM observability.chat_log_events
+                        WHERE conversation_id = %s
+                        GROUP BY turn_id
+                        ORDER BY MAX(ts) DESC, turn_id DESC
+                        ''',
+                        (conversation_id_s,),
+                    )
+                    for row in cur.fetchall():
+                        turn_id_value = str(row[0] or '').strip()
+                        if not turn_id_value:
+                            continue
+                        last_ts = row[1]
+                        turns.append(
+                            {
+                                'turn_id': turn_id_value,
+                                'last_ts': (
+                                    last_ts.astimezone(timezone.utc).isoformat()
+                                    if isinstance(last_ts, datetime)
+                                    else str(last_ts or '')
+                                ),
+                                'events_count': int(row[2] or 0),
+                            }
+                        )
+    except Exception as exc:
+        logger_instance.error(
+            'chat_log_metadata_read_failed conversation_id=%s err=%s',
+            conversation_id_s,
+            exc,
+        )
+        raise RuntimeError('chat log metadata read failed') from exc
+
+    return {
+        'selected_conversation_id': conversation_id_s,
+        'conversations': conversations,
+        'turns': turns,
+    }
+
+
 def delete_chat_log_events(
     *,
     conversation_id: str | None = None,

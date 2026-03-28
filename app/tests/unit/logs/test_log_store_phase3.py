@@ -30,6 +30,104 @@ class _NoopLogger:
 
 
 class LogStorePhase3Tests(unittest.TestCase):
+    def test_read_chat_log_metadata_returns_conversations_and_turns_for_selected_conversation(self) -> None:
+        observed: dict[str, Any] = {'queries': []}
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self._step = 0
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                observed['queries'].append((query, params))
+                self._step += 1
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                if self._step == 1:
+                    return [
+                        ('conv-2', datetime(2026, 3, 27, 12, 5, tzinfo=timezone.utc), 5),
+                        ('conv-1', datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc), 2),
+                    ]
+                if self._step == 2:
+                    return [
+                        ('turn-2', datetime(2026, 3, 27, 12, 5, tzinfo=timezone.utc), 3),
+                        ('turn-1', datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc), 2),
+                    ]
+                return []
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        result = log_store.read_chat_log_metadata(
+            conversation_id='conv-1',
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(result['selected_conversation_id'], 'conv-1')
+        self.assertEqual(len(result['conversations']), 2)
+        self.assertEqual(result['conversations'][0]['conversation_id'], 'conv-2')
+        self.assertEqual(result['conversations'][0]['events_count'], 5)
+        self.assertEqual(len(result['turns']), 2)
+        self.assertEqual(result['turns'][0]['turn_id'], 'turn-2')
+        self.assertEqual(result['turns'][0]['events_count'], 3)
+
+        self.assertEqual(observed['queries'][0][1], ())
+        self.assertEqual(observed['queries'][1][1], ('conv-1',))
+        joined_queries = '\n'.join(str(query) for query, _params in observed['queries'])
+        self.assertIn('GROUP BY conversation_id', joined_queries)
+        self.assertIn('WHERE conversation_id = %s', joined_queries)
+        self.assertIn('GROUP BY turn_id', joined_queries)
+
+    def test_read_chat_log_metadata_without_conversation_returns_empty_turn_list(self) -> None:
+        observed: dict[str, Any] = {'queries': []}
+
+        class FakeCursor:
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                observed['queries'].append((query, params))
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [('conv-1', datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc), 2)]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        result = log_store.read_chat_log_metadata(
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertIsNone(result['selected_conversation_id'])
+        self.assertEqual(len(result['conversations']), 1)
+        self.assertEqual(result['conversations'][0]['conversation_id'], 'conv-1')
+        self.assertEqual(result['turns'], [])
+        self.assertEqual(len(observed['queries']), 1)
+
     def test_read_chat_log_events_supports_filters_and_pagination(self) -> None:
         observed: dict[str, Any] = {'queries': []}
 

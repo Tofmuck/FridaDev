@@ -12,14 +12,14 @@ Cadrage follow-up de reference:
 ## TODO
 
 ### Lot 1 - Filtres et suppression UI plus robustes
-- [ ] Implementer le support backend dedie de metadonnees logs pour alimenter les selecteurs `conversation` et `turn`.
-- [ ] Remplacer le champ libre `conversation` par une liste des conversations presentes dans les logs.
-- [ ] Rendre la liste `turn` dependante de la conversation selectionnee.
-- [ ] Garder la liste `turn` vide ou desactivee tant qu'aucune conversation n'est selectionnee.
-- [ ] Remplacer le champ libre `stage` par une liste deroulante alignee sur les stages reellement supportes par le module logs.
-- [ ] Aligner `Supprimer logs conversation` sur la conversation actuellement selectionnee (sans ressaisie manuelle d'id).
-- [ ] Aligner `Supprimer logs tour` sur le tour actuellement selectionne (sans ressaisie manuelle d'id).
-- [ ] Ajouter un test d'integration frontend qui prouve le flux: selection conversation -> liste tours -> suppression scopee.
+- [x] Implementer le support backend dedie de metadonnees logs pour alimenter les selecteurs `conversation` et `turn`.
+- [x] Remplacer le champ libre `conversation` par une liste des conversations presentes dans les logs.
+- [x] Rendre la liste `turn` dependante de la conversation selectionnee.
+- [x] Garder la liste `turn` vide ou desactivee tant qu'aucune conversation n'est selectionnee.
+- [x] Remplacer le champ libre `stage` par une liste deroulante alignee sur les stages reellement supportes par le module logs.
+- [x] Aligner `Supprimer logs conversation` sur la conversation actuellement selectionnee (sans ressaisie manuelle d'id).
+- [x] Aligner `Supprimer logs tour` sur le tour actuellement selectionne (sans ressaisie manuelle d'id).
+- [x] Ajouter un test d'integration frontend qui prouve le flux: selection conversation -> liste tours -> suppression scopee.
 
 ### Lot 2 - Export Markdown structure
 - [ ] Implementer le support backend dedie de generation/export Markdown structure pour les scopes `conversation` et `turn`.

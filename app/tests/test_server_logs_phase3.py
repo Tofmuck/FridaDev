@@ -104,6 +104,76 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(observed['kwargs']['ts_from'], '2026-03-27T11:00:00Z')
         self.assertEqual(observed['kwargs']['ts_to'], '2026-03-27T13:00:00Z')
 
+    def test_admin_chat_logs_metadata_route_returns_selector_payload(self) -> None:
+        observed = {'kwargs': None}
+        original_read_metadata = self.server.log_store.read_chat_log_metadata
+
+        def fake_read_chat_log_metadata(**kwargs):
+            observed['kwargs'] = kwargs
+            return {
+                'selected_conversation_id': 'conv-1',
+                'conversations': [
+                    {
+                        'conversation_id': 'conv-1',
+                        'last_ts': '2026-03-27T12:01:00+00:00',
+                        'events_count': 2,
+                    },
+                    {
+                        'conversation_id': 'conv-2',
+                        'last_ts': '2026-03-27T11:58:00+00:00',
+                        'events_count': 1,
+                    },
+                ],
+                'turns': [
+                    {
+                        'turn_id': 'turn-1',
+                        'last_ts': '2026-03-27T12:01:00+00:00',
+                        'events_count': 2,
+                    }
+                ],
+            }
+
+        self.server.log_store.read_chat_log_metadata = fake_read_chat_log_metadata
+        try:
+            response = self.client.get('/api/admin/logs/chat/metadata?conversation_id=conv-1')
+        finally:
+            self.server.log_store.read_chat_log_metadata = original_read_metadata
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['selected_conversation_id'], 'conv-1')
+        self.assertEqual(len(data['conversations']), 2)
+        self.assertEqual(data['conversations'][0]['conversation_id'], 'conv-1')
+        self.assertEqual(data['turns'][0]['turn_id'], 'turn-1')
+        self.assertEqual(observed['kwargs'], {'conversation_id': 'conv-1'})
+
+    def test_admin_chat_logs_metadata_route_respects_admin_token_guard(self) -> None:
+        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
+        self.server.config.FRIDA_ADMIN_TOKEN = 'phase3-token'
+
+        response_missing = self.client.get('/api/admin/logs/chat/metadata')
+        self.assertEqual(response_missing.status_code, 401)
+
+        original_read_metadata = self.server.log_store.read_chat_log_metadata
+        self.server.log_store.read_chat_log_metadata = (
+            lambda **_kwargs: {
+                'selected_conversation_id': None,
+                'conversations': [],
+                'turns': [],
+            }
+        )
+        try:
+            response_ok = self.client.get(
+                '/api/admin/logs/chat/metadata',
+                headers={'X-Admin-Token': 'phase3-token'},
+            )
+        finally:
+            self.server.log_store.read_chat_log_metadata = original_read_metadata
+
+        self.assertEqual(response_ok.status_code, 200)
+        self.assertTrue(response_ok.get_json()['ok'])
+
     def test_admin_chat_logs_route_rejects_invalid_pagination(self) -> None:
         response = self.client.get('/api/admin/logs/chat?limit=abc&offset=0')
         self.assertEqual(response.status_code, 400)

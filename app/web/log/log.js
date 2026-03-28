@@ -33,6 +33,7 @@
     count: 0,
     nextOffset: null,
   };
+  const LOG_METADATA_ENDPOINT = "/api/admin/logs/chat/metadata";
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -114,6 +115,76 @@
     if (filters.stage) query.set("stage", filters.stage);
     if (filters.status) query.set("status", filters.status);
     return query.toString();
+  };
+
+  const buildMetadataQuery = (conversationId) => {
+    const query = new URLSearchParams();
+    if (conversationId) query.set("conversation_id", conversationId);
+    return query.toString();
+  };
+
+  const replaceSelectOptions = (selectElement, options, selectedValue) => {
+    const normalizedSelected = toText(selectedValue);
+    selectElement.innerHTML = "";
+    for (const optionData of options) {
+      const option = document.createElement("option");
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      selectElement.appendChild(option);
+    }
+    if (options.some((option) => option.value === normalizedSelected)) {
+      selectElement.value = normalizedSelected;
+    } else if (options.length > 0) {
+      selectElement.value = options[0].value;
+    } else {
+      selectElement.value = "";
+    }
+  };
+
+  const syncDeleteButtons = () => {
+    const conversationId = toText(elements.conversationId.value);
+    const turnId = toText(elements.turnId.value);
+    elements.deleteConversation.disabled = !conversationId;
+    elements.deleteTurn.disabled = !(conversationId && turnId);
+  };
+
+  const renderConversationOptions = (conversations, selectedConversationId) => {
+    const options = [{ value: "", label: "Toutes" }];
+    for (const conversation of conversations) {
+      const conversationId = toText(conversation?.conversation_id);
+      if (!conversationId) continue;
+      const eventsCount = Number(conversation?.events_count);
+      const suffix = Number.isFinite(eventsCount) ? ` (${eventsCount})` : "";
+      options.push({ value: conversationId, label: `${conversationId}${suffix}` });
+    }
+    replaceSelectOptions(elements.conversationId, options, selectedConversationId);
+  };
+
+  const renderTurnOptions = (turns, selectedTurnId, conversationId) => {
+    const hasConversation = Boolean(toText(conversationId));
+    if (!hasConversation) {
+      replaceSelectOptions(elements.turnId, [{ value: "", label: "Selectionner une conversation" }], "");
+      elements.turnId.disabled = true;
+      return;
+    }
+
+    const options = [{ value: "", label: "Tous" }];
+    for (const turn of turns) {
+      const turnId = toText(turn?.turn_id);
+      if (!turnId) continue;
+      const eventsCount = Number(turn?.events_count);
+      const suffix = Number.isFinite(eventsCount) ? ` (${eventsCount})` : "";
+      options.push({ value: turnId, label: `${turnId}${suffix}` });
+    }
+
+    if (options.length === 1) {
+      replaceSelectOptions(elements.turnId, [{ value: "", label: "Aucun tour" }], "");
+      elements.turnId.disabled = true;
+      return;
+    }
+
+    replaceSelectOptions(elements.turnId, options, selectedTurnId);
+    elements.turnId.disabled = false;
   };
 
   const createChip = (text, options = {}) => {
@@ -228,6 +299,39 @@
     elements.nextPage.disabled = state.nextOffset == null;
   };
 
+  const loadMetadata = async ({ conversationId, preserveTurnSelection = false } = {}) => {
+    const requestedConversationId = toText(
+      conversationId == null ? elements.conversationId.value : conversationId
+    );
+    const requestedTurnId = preserveTurnSelection ? toText(elements.turnId.value) : "";
+    const query = buildMetadataQuery(requestedConversationId);
+    const suffix = query ? `?${query}` : "";
+
+    try {
+      const response = await adminApi.fetchAdmin(`${LOG_METADATA_ENDPOINT}${suffix}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setStatusBanner(adminApi.errorMessage(data, `Echec metadata logs (${response.status}).`), "error");
+        renderConversationOptions([], "");
+        renderTurnOptions([], "", "");
+        syncDeleteButtons();
+        return;
+      }
+
+      const conversations = Array.isArray(data.conversations) ? data.conversations : [];
+      const turns = Array.isArray(data.turns) ? data.turns : [];
+      const selectedConversation = toText(data.selected_conversation_id || requestedConversationId);
+      renderConversationOptions(conversations, selectedConversation);
+      renderTurnOptions(turns, requestedTurnId, elements.conversationId.value);
+      syncDeleteButtons();
+    } catch (error) {
+      setStatusBanner(`Erreur metadata logs: ${error?.message || error}`, "error");
+      renderConversationOptions([], "");
+      renderTurnOptions([], "", "");
+      syncDeleteButtons();
+    }
+  };
+
   const loadLogs = async () => {
     const filters = readFilters();
     state.limit = filters.limit;
@@ -273,11 +377,11 @@
     const turnId = toText(elements.turnId.value);
 
     if (scope === "conversation" && !conversationId) {
-      setStatusBanner("Suppression conversation: renseigner conversation_id.", "error");
+      setStatusBanner("Suppression conversation: selectionner une conversation.", "error");
       return;
     }
     if (scope === "turn" && (!conversationId || !turnId)) {
-      setStatusBanner("Suppression tour: renseigner conversation_id et turn_id.", "error");
+      setStatusBanner("Suppression tour: selectionner une conversation et un tour.", "error");
       return;
     }
 
@@ -301,6 +405,7 @@
       }
       elements.offset.value = "0";
       setStatusBanner(`Suppression ok (${data.deleted_count || 0} evenement(s) supprime(s)).`, "ok");
+      await loadMetadata({ conversationId, preserveTurnSelection: false });
       await loadLogs();
     } catch (error) {
       setStatusBanner(`Erreur suppression logs: ${error?.message || error}`, "error");
@@ -313,18 +418,34 @@
     void loadLogs();
   });
 
-  elements.refresh.addEventListener("click", () => {
-    void loadLogs();
+  elements.refresh.addEventListener("click", async () => {
+    await loadMetadata({ preserveTurnSelection: true });
+    await loadLogs();
   });
 
-  elements.resetFilters.addEventListener("click", () => {
+  elements.conversationId.addEventListener("change", async () => {
+    elements.turnId.value = "";
+    elements.offset.value = "0";
+    await loadMetadata({
+      conversationId: elements.conversationId.value,
+      preserveTurnSelection: false,
+    });
+    await loadLogs();
+  });
+
+  elements.turnId.addEventListener("change", () => {
+    syncDeleteButtons();
+  });
+
+  elements.resetFilters.addEventListener("click", async () => {
     elements.conversationId.value = "";
     elements.turnId.value = "";
     elements.stage.value = "";
     elements.status.value = "";
     elements.limit.value = "100";
     elements.offset.value = "0";
-    void loadLogs();
+    await loadMetadata({ conversationId: "", preserveTurnSelection: false });
+    await loadLogs();
   });
 
   elements.prevPage.addEventListener("click", () => {
@@ -340,17 +461,19 @@
     void loadLogs();
   });
 
-  elements.tokenButton.addEventListener("click", () => {
+  elements.tokenButton.addEventListener("click", async () => {
     const current = adminApi.readToken();
     const next = window.prompt("Token admin", current || "");
     if (next == null) return;
     adminApi.writeToken(next);
-    void loadLogs();
+    await loadMetadata({ preserveTurnSelection: true });
+    await loadLogs();
   });
 
-  elements.clearToken.addEventListener("click", () => {
+  elements.clearToken.addEventListener("click", async () => {
     adminApi.clearToken();
-    void loadLogs();
+    await loadMetadata({ preserveTurnSelection: true });
+    await loadLogs();
   });
 
   elements.deleteConversation.addEventListener("click", () => {
@@ -362,5 +485,9 @@
   });
 
   updateMeta();
-  void loadLogs();
+  syncDeleteButtons();
+  void (async () => {
+    await loadMetadata({ conversationId: "", preserveTurnSelection: false });
+    await loadLogs();
+  })();
 })();

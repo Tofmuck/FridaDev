@@ -721,6 +721,27 @@ def api_admin_chat_logs():
     )
 
 
+@app.get('/api/admin/logs/chat/metadata')
+def api_admin_chat_logs_metadata():
+    try:
+        metadata = log_store.read_chat_log_metadata(
+            conversation_id=request.args.get('conversation_id'),
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    return jsonify(
+        {
+            'ok': True,
+            'selected_conversation_id': metadata['selected_conversation_id'],
+            'conversations': metadata['conversations'],
+            'turns': metadata['turns'],
+        }
+    )
+
+
 @app.delete('/api/admin/logs/chat')
 def api_admin_chat_logs_delete():
     try:
