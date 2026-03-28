@@ -6,6 +6,9 @@ Traiter les irritants restants de l'UI logs apres cloture du MVP, sans rouvrir l
 Reference archivee (ne pas rouvrir):
 - `app/docs/todo-done/refactors/log-module-todo.md`
 
+Cadrage follow-up de reference:
+- `app/docs/states/specs/log-followups-contract.md`
+
 ## TODO
 
 ### Lot 1 - Filtres et suppression UI plus robustes
@@ -41,11 +44,11 @@ Reference archivee (ne pas rouvrir):
 - [ ] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
 
 ### Cadrage a clarifier avant implementation
-- [ ] Verrouiller la source de donnees pour alimenter les listes `conversation` et `turn` (reutilisation de la lecture paginee existante vs support backend dedie).
-- [ ] Verifier l'impact UX si la pagination ne contient pas toutes les conversations/tours disponibles.
-- [ ] Verrouiller la strategie pour l'export Markdown (transformation frontend sur reponse existante vs support backend dedie).
-- [ ] Verrouiller la frontiere "observabilite vs lecture metier" pour ces clarifications, afin d'eviter un glissement vers des payloads explicatifs trop lourds.
-- [ ] Garder `app/web/log/log.js` monofichier tant que le follow-up UI reste borne; si le lot grossit nettement, decouper par responsabilite (API/backend, etat/filtres, rendu, actions suppression/export).
+- [x] Verrouiller la source de donnees pour alimenter les listes `conversation` et `turn` (support backend dedie; la lecture paginee timeline n'est pas source canonique).
+- [x] Verifier l'impact UX de la pagination et fixer la garantie minimale (selecteurs complets par scope, pas de liste partielle trompeuse).
+- [x] Verrouiller la strategie pour l'export Markdown (support backend dedie pour `conversation` + `turn`; pas de construction depuis page paginee).
+- [x] Verrouiller la frontiere "observabilite vs lecture metier" (pas de reconstruction logs depuis memoire metier, pas de dump lourd).
+- [x] Verrouiller la strategie de croissance `log.js` (monofichier borne, puis decoupage par responsabilite si le lot grossit).
 
 ## Risques / vigilance
 - Ne pas transformer ce follow-up en chantier tentaculaire.
