@@ -351,6 +351,9 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertIn('BACKEND HERMENEUTICAL PROMPT', observed['augmented_system'])
         self.assertIn('[RÉFÉRENCE TEMPORELLE]', observed['augmented_system'])
         self.assertIn('[IDENTITÉ DU MODÈLE]', observed['augmented_system'])
+        self.assertIn('NOW:', observed['augmented_system'])
+        self.assertIn('TIMEZONE: Europe/Paris', observed['augmented_system'])
+        self.assertNotIn('heure de Paris', observed['augmented_system'])
         self.assertLess(
             observed['augmented_system'].index('BACKEND SYSTEM PROMPT'),
             observed['augmented_system'].index('BACKEND HERMENEUTICAL PROMPT'),

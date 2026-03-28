@@ -63,8 +63,10 @@ class ChatPromptContextTests(unittest.TestCase):
             augmented_system.index('[RÉFÉRENCE TEMPORELLE]'),
             augmented_system.index('[IDENTITY BLOCK]'),
         )
+        self.assertIn("NOW: 2026-01-15T09:15:00+01:00", augmented_system)
+        self.assertIn("TIMEZONE: Europe/Paris", augmented_system)
         self.assertIn("09:15", augmented_system)
-        self.assertIn("UTC+01", augmented_system)
+        self.assertNotIn("heure de Paris", augmented_system)
 
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {

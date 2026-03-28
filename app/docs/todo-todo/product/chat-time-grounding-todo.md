@@ -15,8 +15,8 @@ Reference stable:
 - [ ] Verifier l'alignement des prompts statiques avec le contrat de grounding temporel.
 
 ### Lot 2 - Forme canonique de NOW
-- [ ] Verrouiller la forme canonique de `NOW` de tour (champ attendu, precision, timezone explicite).
-- [ ] Decider si la forme actuelle est suffisante ou si un format plus contractuel est requis.
+- [x] Verrouiller la forme canonique de `NOW` de tour (champ attendu, precision, timezone explicite).
+- [x] Decider si la forme actuelle est suffisante ou si un format plus contractuel est requis.
 - [ ] Definir les regles d'affichage absolu vs relatif attendues pour les reponses temporelles.
 
 ### Lot 3 - Forme canonique de DELTA-NOW

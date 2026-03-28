@@ -25,11 +25,14 @@ def build_augmented_system(
     if now_raw.tzinfo is None:
         now_raw = now_raw.replace(tzinfo=timezone.utc)
     now_paris = now_raw.astimezone(tz_paris)
-    now_fmt = now_paris.strftime('%A %d %B %Y à %H:%M') + f" (heure de Paris, UTC{now_paris.strftime('%z')[:3]})"
+    now_human = now_paris.strftime('%A %d %B %Y à %H:%M')
+    now_canonical = now_paris.isoformat(timespec='seconds')
     id_block, identity_ids = identity_module.build_identity_block()
     delta_rule = (
         '[RÉFÉRENCE TEMPORELLE]\n'
-        f"Nous sommes le {now_fmt}. C'est ton 'maintenant'.\n"
+        f"NOW: {now_canonical}\n"
+        f"TIMEZONE: {config_module.FRIDA_TIMEZONE}\n\n"
+        f"Nous sommes le {now_human}. C'est ton 'maintenant'.\n"
         "Les messages ci-dessous sont horodatés relativement à ce maintenant (ex : 'il y a 2 jours').\n"
         'Les marqueurs [— silence de X —] indiquent une interruption de la conversation. '
         "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
