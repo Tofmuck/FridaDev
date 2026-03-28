@@ -505,12 +505,14 @@ def persist_identity_entries(
     side_counters: dict[str, dict[str, Any]] = {
         'frida': {
             'retained_count': 0,
+            'persisted_count': 0,
             'evidence_count': 0,
             'actions_count': _empty_identity_actions(),
             'preview': [],
         },
         'user': {
             'retained_count': 0,
+            'persisted_count': 0,
             'evidence_count': 0,
             'actions_count': _empty_identity_actions(),
             'preview': [],
@@ -535,6 +537,7 @@ def persist_identity_entries(
             reason=entry['reason'],
         )
         if identity_id:
+            side_counters[side]['persisted_count'] += 1
             detect_and_record_conflicts_fn(identity_id)
 
         impacted_keys.add((entry['subject'], normalize_identity_content_fn(entry['content'])))
@@ -571,8 +574,8 @@ def persist_identity_entries(
             payload={
                 'target_side': side,
                 'write_mode': 'durable',
-                'write_effect': 'durable_write' if has_activity else 'none',
-                'persisted_count': int(summary['retained_count']) if has_activity else 0,
+                'write_effect': 'durable_write' if int(summary['persisted_count']) > 0 else 'none',
+                'persisted_count': int(summary['persisted_count']),
                 'evidence_count': int(summary['evidence_count']),
                 'preview_count': len(summary['preview']),
                 'retained_count': int(summary['retained_count']),

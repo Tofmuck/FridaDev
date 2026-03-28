@@ -537,11 +537,13 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual({event['payload_json']['target_side'] for event in identity_write_events}, {'frida', 'user'})
         user_payload = next(event['payload_json'] for event in identity_write_events if event['payload_json']['target_side'] == 'user')
         self.assertTrue(user_payload['truncated'])
+        self.assertEqual(user_payload.get('persisted_count'), 3)
+        self.assertEqual(user_payload.get('retained_count'), 2)
         for event in identity_write_events:
             payload = event['payload_json']
             self.assertEqual(payload.get('write_mode'), 'durable')
             self.assertEqual(payload.get('write_effect'), 'durable_write')
-            self.assertEqual(payload.get('persisted_count'), payload.get('retained_count'))
+            self.assertGreaterEqual(int(payload.get('persisted_count') or 0), int(payload.get('retained_count') or 0))
             self.assertIn('evidence_count', payload)
             self.assertIn('preview_count', payload)
             self.assertIn('actions_count', payload)
@@ -624,6 +626,67 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             payload = event['payload_json']
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
+
+    def test_persist_identity_entries_tracks_persisted_count_for_rejected_entries(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-write-rejected-only',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            memory_identity_dynamics.persist_identity_entries(
+                'conv-write-rejected-only',
+                entries=[],
+                source_trace_id='trace-rj',
+                preview_identity_entries_fn=lambda _entries: [
+                    {
+                        'subject': 'llm',
+                        'content': 'Rejected Frida identity',
+                        'status': 'rejected',
+                        'stability': 'unknown',
+                        'utterance_mode': 'irony',
+                        'recurrence': 'single',
+                        'scope': 'llm',
+                        'evidence_kind': 'weak',
+                        'confidence': 0.2,
+                        'reason': 'policy:reject',
+                    }
+                ],
+                record_identity_evidence_fn=lambda *_args, **_kwargs: None,
+                add_identity_fn=lambda *_args, **_kwargs: 'identity-rejected-id',
+                detect_and_record_conflicts_fn=lambda *_args, **_kwargs: None,
+                normalize_identity_content_fn=lambda text: text.strip().lower(),
+                apply_defer_policy_for_content_fn=lambda *_args, **_kwargs: None,
+                expire_stale_deferred_global_fn=lambda: None,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        identity_write_events = [event for event in observed if event['stage'] == 'identity_write']
+        by_side = {event['payload_json']['target_side']: event for event in identity_write_events}
+        self.assertSetEqual(set(by_side.keys()), {'frida', 'user'})
+
+        frida_payload = by_side['frida']['payload_json']
+        self.assertEqual(by_side['frida']['status'], 'ok')
+        self.assertEqual(frida_payload.get('write_mode'), 'durable')
+        self.assertEqual(frida_payload.get('write_effect'), 'durable_write')
+        self.assertEqual(frida_payload.get('persisted_count'), 1)
+        self.assertEqual(frida_payload.get('retained_count'), 0)
+        self.assertEqual(frida_payload.get('actions_count', {}).get('reject'), 1)
+
+        user_payload = by_side['user']['payload_json']
+        self.assertEqual(by_side['user']['status'], 'skipped')
+        self.assertEqual(user_payload.get('persisted_count'), 0)
+        self.assertEqual(user_payload.get('retained_count'), 0)
 
     def test_get_recent_context_hints_emits_identities_read_for_user_side(self) -> None:
         observed: list[dict[str, Any]] = []
