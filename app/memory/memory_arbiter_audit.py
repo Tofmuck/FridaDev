@@ -242,6 +242,19 @@ def record_arbiter_decisions(
     decision_source = _resolve_decision_source(decision_source_counts)
     fallback_decisions = int(decision_source_counts.get('fallback', 0))
     rejection_reason_counts = _rejection_reason_counts(decisions)
+    arbiter_payload: dict[str, Any] = {
+        'raw_candidates': len(traces),
+        'kept_candidates': kept_candidates,
+        'rejected_candidates': rejected_candidates,
+        'mode': str(mode or 'unknown'),
+        'model': arbiter_model,
+        'decision_source': decision_source,
+        'fallback_used': bool(fallback_decisions > 0),
+    }
+    if rejection_reason_counts:
+        arbiter_payload['rejection_reason_counts'] = rejection_reason_counts
+    if fallback_decisions > 0:
+        arbiter_payload['fallback_decisions'] = fallback_decisions
 
     try:
         fallback_arbiter_model = arbiter_model if arbiter_model != 'unknown' else None
@@ -293,40 +306,20 @@ def record_arbiter_decisions(
                         ),
                     )
             conn.commit()
-        payload: dict[str, Any] = {
-            'raw_candidates': len(traces),
-            'kept_candidates': kept_candidates,
-            'rejected_candidates': rejected_candidates,
-            'mode': str(mode or 'unknown'),
-            'model': arbiter_model,
-            'decision_source': decision_source,
-            'fallback_used': bool(fallback_decisions > 0),
-        }
-        if rejection_reason_counts:
-            payload['rejection_reason_counts'] = rejection_reason_counts
-        if fallback_decisions > 0:
-            payload['fallback_decisions'] = fallback_decisions
 
         chat_turn_logger.emit(
             'arbiter',
             status='ok',
-            payload=payload,
+            payload=arbiter_payload,
         )
         logger.info('arbiter_decisions_saved conv=%s count=%s', conversation_id, len(decisions))
     except Exception as exc:
+        error_payload = dict(arbiter_payload)
+        error_payload['error_class'] = exc.__class__.__name__
         chat_turn_logger.emit(
             'arbiter',
             status='error',
             error_code='upstream_error',
-            payload={
-                'raw_candidates': len(traces),
-                'kept_candidates': 0,
-                'rejected_candidates': len(traces),
-                'mode': str(mode or 'unknown'),
-                'model': arbiter_model,
-                'decision_source': decision_source,
-                'fallback_used': bool(fallback_decisions > 0),
-                'error_class': exc.__class__.__name__,
-            },
+            payload=error_payload,
         )
         logger.error('record_arbiter_decisions_error conv=%s err=%s', conversation_id, exc)

@@ -558,6 +558,107 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertNotIn('candidate_content', payload)
         self.assertNotIn('candidates', payload)
 
+    def test_record_arbiter_decisions_keeps_true_counts_when_persistence_fails(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        class FailingCursor:
+            def __enter__(self) -> 'FailingCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...]) -> None:
+                raise RuntimeError('db insert failed')
+
+        class FailingConn:
+            def __enter__(self) -> 'FailingConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FailingCursor:
+                return FailingCursor()
+
+            def commit(self) -> None:
+                return None
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-arbiter-db-fail',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            memory_arbiter_audit.record_arbiter_decisions(
+                'conv-arbiter-db-fail',
+                traces=[
+                    {'role': 'assistant', 'content': 'trace kept', 'timestamp': '2026-03-27T10:00:00Z', 'score': 0.9},
+                    {'role': 'assistant', 'content': 'trace rejected 1', 'timestamp': '2026-03-27T10:01:00Z', 'score': 0.4},
+                    {'role': 'assistant', 'content': 'trace rejected 2', 'timestamp': '2026-03-27T10:02:00Z', 'score': 0.3},
+                ],
+                decisions=[
+                    {
+                        'candidate_id': '0',
+                        'keep': True,
+                        'semantic_relevance': 0.92,
+                        'contextual_gain': 0.88,
+                        'redundant_with_recent': False,
+                        'reason': 'kept',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-v1',
+                    },
+                    {
+                        'candidate_id': '1',
+                        'keep': False,
+                        'semantic_relevance': 0.40,
+                        'contextual_gain': 0.20,
+                        'redundant_with_recent': False,
+                        'reason': 'below_contextual_gain_threshold',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-v1',
+                    },
+                    {
+                        'candidate_id': '2',
+                        'keep': False,
+                        'semantic_relevance': 0.20,
+                        'contextual_gain': 0.10,
+                        'redundant_with_recent': False,
+                        'reason': 'fallback:parse_or_runtime_error',
+                        'decision_source': 'fallback',
+                        'model': 'openrouter/arbiter-v1',
+                    },
+                ],
+                effective_model='openrouter/arbiter-v1',
+                mode='shadow',
+                conn_factory=lambda: FailingConn(),
+                trace_float_fn=lambda value: float(value or 0.0),
+                logger=SimpleNamespace(error=lambda *_a, **_k: None, info=lambda *_a, **_k: None),
+            )
+            chat_turn_logger.end_turn(token, final_status='error')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        arbiter_events = [event for event in observed if event['stage'] == 'arbiter']
+        self.assertEqual(len(arbiter_events), 1)
+        self.assertEqual(arbiter_events[0]['status'], 'error')
+        payload = arbiter_events[0]['payload_json']
+        self.assertEqual(payload['raw_candidates'], 3)
+        self.assertEqual(payload['kept_candidates'], 1)
+        self.assertEqual(payload['rejected_candidates'], 2)
+        self.assertEqual(payload['decision_source'], 'mixed')
+        self.assertTrue(payload['fallback_used'])
+        self.assertEqual(payload['fallback_decisions'], 1)
+        self.assertEqual(payload['rejection_reason_counts']['below_contextual_gain_threshold'], 1)
+        self.assertEqual(payload['rejection_reason_counts']['fallback:parse_or_runtime_error'], 1)
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+
     def test_web_search_build_context_emits_ok_and_skipped(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
