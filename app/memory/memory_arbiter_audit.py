@@ -5,6 +5,60 @@ from typing import Any, Callable
 from observability import chat_turn_logger
 
 
+def _compact_reason_key(reason: Any, *, max_chars: int = 72) -> str:
+    text = str(reason or '').strip()
+    if not text:
+        return 'unspecified'
+    primary = text.split('|', 1)[0].strip()
+    normalized = ' '.join(primary.split())
+    if len(normalized) <= max_chars:
+        return normalized
+    return normalized[: max_chars - 3].rstrip() + '...'
+
+
+def _rejection_reason_counts(decisions: list[dict[str, Any]], *, limit: int = 5) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for decision in decisions:
+        if bool(decision.get('keep', False)):
+            continue
+        key = _compact_reason_key(decision.get('reason'))
+        counts[key] = counts.get(key, 0) + 1
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return {key: value for key, value in ordered[:limit]}
+
+
+def _decision_source_counts(decisions: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for decision in decisions:
+        source = str(decision.get('decision_source') or '').strip().lower() or 'unknown'
+        counts[source] = counts.get(source, 0) + 1
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return {key: value for key, value in ordered}
+
+
+def _resolve_arbiter_model(
+    decisions: list[dict[str, Any]],
+    *,
+    effective_model: str | None,
+) -> str:
+    fallback_model = str(effective_model or '').strip()
+    if fallback_model:
+        return fallback_model
+    for decision in decisions:
+        candidate_model = str(decision.get('model') or '').strip()
+        if candidate_model:
+            return candidate_model
+    return 'unknown'
+
+
+def _resolve_decision_source(decision_source_counts: dict[str, int]) -> str:
+    if not decision_source_counts:
+        return 'unknown'
+    if len(decision_source_counts) == 1:
+        return next(iter(decision_source_counts.keys()))
+    return 'mixed'
+
+
 def get_hermeneutic_kpis(
     window_days: int = 7,
     *,
@@ -181,8 +235,16 @@ def record_arbiter_decisions(
     if not conversation_id or not decisions:
         return
 
+    arbiter_model = _resolve_arbiter_model(decisions, effective_model=effective_model)
+    kept_candidates = sum(1 for decision in decisions if bool(decision.get('keep', False)))
+    rejected_candidates = max(0, len(traces) - kept_candidates)
+    decision_source_counts = _decision_source_counts(decisions)
+    decision_source = _resolve_decision_source(decision_source_counts)
+    fallback_decisions = int(decision_source_counts.get('fallback', 0))
+    rejection_reason_counts = _rejection_reason_counts(decisions)
+
     try:
-        fallback_arbiter_model = str(effective_model or '').strip() or None
+        fallback_arbiter_model = arbiter_model if arbiter_model != 'unknown' else None
         with conn_factory() as conn:
             with conn.cursor() as cur:
                 for decision in decisions:
@@ -231,15 +293,24 @@ def record_arbiter_decisions(
                         ),
                     )
             conn.commit()
-        kept_candidates = sum(1 for decision in decisions if bool(decision.get('keep', False)))
+        payload: dict[str, Any] = {
+            'raw_candidates': len(traces),
+            'kept_candidates': kept_candidates,
+            'rejected_candidates': rejected_candidates,
+            'mode': str(mode or 'unknown'),
+            'model': arbiter_model,
+            'decision_source': decision_source,
+            'fallback_used': bool(fallback_decisions > 0),
+        }
+        if rejection_reason_counts:
+            payload['rejection_reason_counts'] = rejection_reason_counts
+        if fallback_decisions > 0:
+            payload['fallback_decisions'] = fallback_decisions
+
         chat_turn_logger.emit(
             'arbiter',
             status='ok',
-            payload={
-                'raw_candidates': len(traces),
-                'kept_candidates': kept_candidates,
-                'mode': str(mode or 'unknown'),
-            },
+            payload=payload,
         )
         logger.info('arbiter_decisions_saved conv=%s count=%s', conversation_id, len(decisions))
     except Exception as exc:
@@ -250,7 +321,11 @@ def record_arbiter_decisions(
             payload={
                 'raw_candidates': len(traces),
                 'kept_candidates': 0,
+                'rejected_candidates': len(traces),
                 'mode': str(mode or 'unknown'),
+                'model': arbiter_model,
+                'decision_source': decision_source,
+                'fallback_used': bool(fallback_decisions > 0),
                 'error_class': exc.__class__.__name__,
             },
         )

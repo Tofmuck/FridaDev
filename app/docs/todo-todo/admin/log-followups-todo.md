@@ -30,9 +30,9 @@ Cadrage follow-up de reference:
 - [ ] Ajouter un test de preuve sur le format exporte (structure attendue + absence de dump massif).
 
 ### Lot 3 - Clarification semantique des evenements
-- [ ] Prioriser l'amelioration `arbiter` cote logs (redevabilite des decisions) avant tout chantier de re-ecriture du prompt arbitre.
-- [ ] Clarifier que le probleme principal `arbiter` est la visibilite logs des decisions deja prises (et non une re-ecriture immediate de la logique arbitre).
-- [ ] Enrichir `arbiter` pour exposer `rejected_candidates`, une synthese exploitable des motifs de rejet, `model` arbitre, et `decision_source`/fallback.
+- [x] Prioriser l'amelioration `arbiter` cote logs (redevabilite des decisions) avant tout chantier de re-ecriture du prompt arbitre.
+- [x] Clarifier que le probleme principal `arbiter` est la visibilite logs des decisions deja prises (et non une re-ecriture immediate de la logique arbitre).
+- [x] Enrichir `arbiter` pour exposer `rejected_candidates`, une synthese exploitable des motifs de rejet, `model` arbitre, et `decision_source`/fallback.
 - [ ] Clarifier `identities_read` en separant explicitement les natures de lecture: identite fixe/statique, identite durable memoire, identite fluctuante context hints/evidence.
 - [ ] Expliciter que le stage `identities_read` actuel melange plusieurs lectures de nature differente et n'est pas assez parlant sans taxonomie.
 - [ ] Choisir un contrat lisible pour `identities_read`: `source_kind` explicite ou stages distincts, sans dump massif.
