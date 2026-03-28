@@ -132,10 +132,20 @@ def init_db() -> None:
 
 # Embedding
 
-def embed(text: str, mode: str = 'passage') -> list[float]:
+def _normalize_embedding_source_kind(*, purpose: str | None, mode: str) -> str:
+    normalized = str(purpose or '').strip().lower()
+    if normalized in {'query', 'trace_user', 'trace_assistant', 'summary'}:
+        return normalized
+    if str(mode).strip().lower() == 'query':
+        return 'query'
+    return 'unknown'
+
+
+def embed(text: str, mode: str = 'passage', purpose: str | None = None) -> list[float]:
     started_at = time.perf_counter()
     provider = 'unknown'
     dimensions = 0
+    source_kind = _normalize_embedding_source_kind(purpose=purpose, mode=mode)
     try:
         endpoint = str(_runtime_embedding_value('endpoint') or '')
         provider = urlparse(endpoint).netloc or endpoint
@@ -155,6 +165,7 @@ def embed(text: str, mode: str = 'passage') -> list[float]:
             error_code='upstream_error',
             payload={
                 'mode': mode,
+                'source_kind': source_kind,
                 'provider': provider,
                 'dimensions': dimensions,
                 'error_class': exc.__class__.__name__,
@@ -168,6 +179,7 @@ def embed(text: str, mode: str = 'passage') -> list[float]:
         duration_ms=(time.perf_counter() - started_at) * 1000.0,
         payload={
             'mode': mode,
+            'source_kind': source_kind,
             'provider': provider,
             'dimensions': dimensions,
         },

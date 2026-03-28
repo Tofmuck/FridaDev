@@ -6,6 +6,22 @@ from typing import Any, Callable
 from observability import chat_turn_logger
 
 
+def _embed_with_purpose(
+    embed_fn: Callable[..., list[float]],
+    text: str,
+    *,
+    mode: str,
+    purpose: str,
+) -> list[float]:
+    try:
+        return embed_fn(text, mode=mode, purpose=purpose)
+    except TypeError as exc:
+        if 'purpose' not in str(exc):
+            raise
+        # Compatibility with legacy test doubles exposing embed(text, mode=...).
+        return embed_fn(text, mode=mode)
+
+
 def _trace_exists_for_message(
     conversation_id: str,
     message: dict[str, Any],
@@ -91,7 +107,13 @@ def save_new_traces(
             continue
 
         try:
-            vec = embed_fn(m['content'], mode='passage')
+            purpose = 'trace_user' if str(m.get('role')) == 'user' else 'trace_assistant'
+            vec = _embed_with_purpose(
+                embed_fn,
+                m['content'],
+                mode='passage',
+                purpose=purpose,
+            )
         except Exception as exc:
             logger.warning('embed_skip role=%s err=%s', m.get('role'), exc)
             vec = None
@@ -138,7 +160,12 @@ def retrieve(
         top_k = int(runtime_embedding_value_fn('top_k'))
 
     try:
-        q_vec = embed_fn(query, mode='query')
+        q_vec = _embed_with_purpose(
+            embed_fn,
+            query,
+            mode='query',
+            purpose='query',
+        )
     except Exception as exc:
         chat_turn_logger.emit(
             'memory_retrieve',
@@ -220,7 +247,12 @@ def save_summary(
     """
     content = summary.get('content', '')
     try:
-        vec = embed_fn(content, mode='passage')
+        vec = _embed_with_purpose(
+            embed_fn,
+            content,
+            mode='passage',
+            purpose='summary',
+        )
     except Exception as exc:
         logger.warning('summary_embed_skip err=%s', exc)
         vec = None
