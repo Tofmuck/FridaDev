@@ -170,7 +170,7 @@ Potential side effects:
 5. Align long-term retention/deletion documentary policy with effective hard-delete implementation.
 
 ## 9. Related references
-- previous FR state: `app/docs/states/project/Frida-State-french-23-03-26.md`
+- previous English state: `app/docs/states/project/Frida-State-english-23-03-26.md`
 - same-date FR counterpart: `app/docs/states/project/Frida-State-french-28-03-26.md`
 - time-grounding contract: `app/docs/states/specs/chat-time-grounding-contract.md`
 - logs contract: `app/docs/states/specs/log-module-contract.md`
