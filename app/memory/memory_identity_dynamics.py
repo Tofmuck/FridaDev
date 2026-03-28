@@ -6,6 +6,10 @@ from typing import Any, Callable, Sequence
 from observability import chat_turn_logger
 
 
+def _empty_identity_actions() -> dict[str, int]:
+    return {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}
+
+
 def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
     if not vec_a or not vec_b or len(vec_a) != len(vec_b):
         return 0.0
@@ -473,16 +477,22 @@ def persist_identity_entries(
     """Persist extractor outputs into evidence + identities with defer/promote/reject policy."""
     processed = preview_identity_entries_fn(entries)
     if not processed:
-        chat_turn_logger.emit(
-            'identity_write',
-            status='skipped',
-            reason_code='no_data',
-            payload={
-                'target_side': 'frida',
-                'retained_count': 0,
-                'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
-            },
-        )
+        for side in ('frida', 'user'):
+            chat_turn_logger.emit(
+                'identity_write',
+                status='skipped',
+                reason_code='no_data',
+                payload={
+                    'target_side': side,
+                    'write_mode': 'durable',
+                    'write_effect': 'none',
+                    'persisted_count': 0,
+                    'evidence_count': 0,
+                    'preview_count': 0,
+                    'retained_count': 0,
+                    'actions_count': _empty_identity_actions(),
+                },
+            )
         chat_turn_logger.emit_branch_skipped(
             reason_code='no_data',
             reason_short='identity_write_no_entries',
@@ -493,12 +503,23 @@ def persist_identity_entries(
 
     impacted_keys: set[tuple[str, str]] = set()
     side_counters: dict[str, dict[str, Any]] = {
-        'frida': {'retained_count': 0, 'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}, 'preview': []},
-        'user': {'retained_count': 0, 'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}, 'preview': []},
+        'frida': {
+            'retained_count': 0,
+            'evidence_count': 0,
+            'actions_count': _empty_identity_actions(),
+            'preview': [],
+        },
+        'user': {
+            'retained_count': 0,
+            'evidence_count': 0,
+            'actions_count': _empty_identity_actions(),
+            'preview': [],
+        },
     }
 
     for entry in processed:
         side = 'frida' if str(entry.get('subject') or '') == 'llm' else 'user'
+        side_counters[side]['evidence_count'] += 1
         identity_id = add_identity_fn(
             entry['subject'],
             entry['content'],
@@ -540,14 +561,20 @@ def persist_identity_entries(
     expire_stale_deferred_global_fn()
 
     for side, summary in side_counters.items():
-        has_activity = summary['retained_count'] > 0 or any(int(count) > 0 for count in summary['actions_count'].values())
-        if not has_activity:
-            continue
+        has_activity = summary['evidence_count'] > 0
+        status = 'ok' if has_activity else 'skipped'
+        reason_code = None if has_activity else 'no_data'
         chat_turn_logger.emit(
             'identity_write',
-            status='ok',
+            status=status,
+            reason_code=reason_code,
             payload={
                 'target_side': side,
+                'write_mode': 'durable',
+                'write_effect': 'durable_write' if has_activity else 'none',
+                'persisted_count': int(summary['retained_count']) if has_activity else 0,
+                'evidence_count': int(summary['evidence_count']),
+                'preview_count': len(summary['preview']),
                 'retained_count': int(summary['retained_count']),
                 'actions_count': dict(summary['actions_count']),
                 'preview': list(summary['preview']),

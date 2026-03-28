@@ -539,11 +539,89 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertTrue(user_payload['truncated'])
         for event in identity_write_events:
             payload = event['payload_json']
+            self.assertEqual(payload.get('write_mode'), 'durable')
+            self.assertEqual(payload.get('write_effect'), 'durable_write')
+            self.assertEqual(payload.get('persisted_count'), payload.get('retained_count'))
+            self.assertIn('evidence_count', payload)
+            self.assertIn('preview_count', payload)
             self.assertIn('actions_count', payload)
             self.assertIn('retained_count', payload)
             self.assertSetEqual(set(payload['actions_count'].keys()), {'add', 'update', 'override', 'reject', 'defer'})
             self.assertLessEqual(len(payload.get('preview', [])), 3)
             self.assertTrue(all(len(item) <= 120 for item in payload.get('preview', [])))
+            self.assertNotIn('entries', payload)
+            self.assertNotIn('raw_identities', payload)
+
+    def test_persist_identity_entries_emits_per_side_visibility_when_one_side_has_no_data(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-write-single-side',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            memory_identity_dynamics.persist_identity_entries(
+                'conv-write-single-side',
+                entries=[],
+                source_trace_id='trace-1',
+                preview_identity_entries_fn=lambda _entries: [
+                    {
+                        'subject': 'llm',
+                        'content': 'Frida durable identity',
+                        'status': 'accepted',
+                        'stability': 'durable',
+                        'utterance_mode': 'self_description',
+                        'recurrence': 'repeated',
+                        'scope': 'llm',
+                        'evidence_kind': 'strong',
+                        'confidence': 0.95,
+                        'reason': 'policy:accepted',
+                    }
+                ],
+                record_identity_evidence_fn=lambda *_args, **_kwargs: None,
+                add_identity_fn=lambda *_args, **_kwargs: 'identity-id',
+                detect_and_record_conflicts_fn=lambda *_args, **_kwargs: None,
+                normalize_identity_content_fn=lambda text: text.strip().lower(),
+                apply_defer_policy_for_content_fn=lambda *_args, **_kwargs: None,
+                expire_stale_deferred_global_fn=lambda: None,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        identity_write_events = [event for event in observed if event['stage'] == 'identity_write']
+        self.assertEqual(len(identity_write_events), 2)
+        by_side = {event['payload_json']['target_side']: event for event in identity_write_events}
+        self.assertSetEqual(set(by_side.keys()), {'frida', 'user'})
+
+        frida_event = by_side['frida']
+        self.assertEqual(frida_event['status'], 'ok')
+        self.assertEqual(frida_event['payload_json']['write_mode'], 'durable')
+        self.assertEqual(frida_event['payload_json']['write_effect'], 'durable_write')
+        self.assertEqual(frida_event['payload_json']['persisted_count'], 1)
+        self.assertEqual(frida_event['payload_json']['evidence_count'], 1)
+        self.assertEqual(frida_event['payload_json']['retained_count'], 1)
+
+        user_event = by_side['user']
+        self.assertEqual(user_event['status'], 'skipped')
+        self.assertEqual(user_event['payload_json']['reason_code'], 'no_data')
+        self.assertEqual(user_event['payload_json']['write_mode'], 'durable')
+        self.assertEqual(user_event['payload_json']['write_effect'], 'none')
+        self.assertEqual(user_event['payload_json']['persisted_count'], 0)
+        self.assertEqual(user_event['payload_json']['evidence_count'], 0)
+        self.assertEqual(user_event['payload_json']['preview_count'], 0)
+        self.assertEqual(user_event['payload_json']['retained_count'], 0)
+        self.assertEqual(user_event['payload_json']['preview'], [])
+
+        for event in identity_write_events:
+            payload = event['payload_json']
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 

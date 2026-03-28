@@ -379,6 +379,77 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'skip_mode_off')
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[1]['action'], 'persist_enforced')
 
+    def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self) -> None:
+        events = []
+        observed = {
+            'extract_called': 0,
+            'persist_called': 0,
+            'preview_called': 0,
+            'evidence_args': None,
+        }
+        preview_entries = [
+            {'subject': 'llm', 'content': 'Frida profile', 'status': 'accepted'},
+            {'subject': 'user', 'content': 'User preference one', 'status': 'deferred'},
+            {'subject': 'user', 'content': 'User preference two', 'status': 'accepted'},
+        ]
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda turns: observed.update({'extract_called': observed['extract_called'] + 1}) or list(turns),
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda *_args, **_kwargs: observed.update({'persist_called': observed['persist_called'] + 1}),
+            preview_identity_entries=lambda _entries: observed.update({'preview_called': observed['preview_called'] + 1}) or preview_entries,
+            record_identity_evidence=lambda conversation_id, entries: observed.update(
+                {'evidence_args': (conversation_id, list(entries))}
+            ),
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_events: list[tuple[str, dict[str, object]]] = []
+        branch_events: list[tuple[str, str]] = []
+        original_emit = chat_memory_flow.chat_turn_logger.emit
+        original_branch = chat_memory_flow.chat_turn_logger.emit_branch_skipped
+        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
+        chat_memory_flow.chat_turn_logger.emit_branch_skipped = (
+            lambda *, reason_code, reason_short: branch_events.append((reason_code, reason_short)) or True
+        )
+        try:
+            chat_memory_flow.record_identity_entries_for_mode(
+                'conv-identity-shadow',
+                [{'subject': 'user', 'content': 'hello'}],
+                mode='shadow',
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.chat_turn_logger.emit = original_emit
+            chat_memory_flow.chat_turn_logger.emit_branch_skipped = original_branch
+
+        self.assertEqual(observed['extract_called'], 1)
+        self.assertEqual(observed['persist_called'], 0)
+        self.assertEqual(observed['preview_called'], 1)
+        self.assertEqual(observed['evidence_args'], ('conv-identity-shadow', preview_entries))
+
+        identity_events = [kwargs for stage, kwargs in chat_events if stage == 'identity_write']
+        self.assertEqual(len(identity_events), 2)
+        by_side = {event['payload']['target_side']: event for event in identity_events}
+        self.assertSetEqual(set(by_side.keys()), {'frida', 'user'})
+        self.assertTrue(all(event['status'] == 'skipped' for event in identity_events))
+        self.assertTrue(all(event['reason_code'] == 'not_applicable' for event in identity_events))
+        self.assertEqual(by_side['frida']['payload']['write_mode'], 'shadow')
+        self.assertEqual(by_side['frida']['payload']['write_effect'], 'evidence_only')
+        self.assertEqual(by_side['frida']['payload']['evidence_count'], 1)
+        self.assertEqual(by_side['frida']['payload']['preview_count'], 1)
+        self.assertEqual(by_side['user']['payload']['evidence_count'], 2)
+        self.assertEqual(by_side['user']['payload']['preview_count'], 2)
+        self.assertTrue(all(event['payload']['persisted_count'] == 0 for event in identity_events))
+        self.assertTrue(all(event['payload']['retained_count'] == 0 for event in identity_events))
+        self.assertTrue(all('preview' not in event['payload'] for event in identity_events))
+        self.assertTrue(all('entries' not in event['payload'] for event in identity_events))
+        self.assertEqual(branch_events, [('not_applicable', 'identity_write_shadow_mode')])
+        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'record_evidence_shadow')
+
 
 if __name__ == '__main__':
     unittest.main()

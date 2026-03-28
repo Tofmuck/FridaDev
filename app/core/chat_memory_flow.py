@@ -46,6 +46,44 @@ def _mode_runs_identity(mode: str) -> bool:
     }
 
 
+def _empty_identity_actions() -> dict[str, int]:
+    return {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}
+
+
+def _emit_identity_write_skipped_by_side(
+    *,
+    reason_code: str,
+    reason_short: str,
+    mode: str,
+    write_mode: str,
+    write_effect: str,
+    side_entry_counts: dict[str, int] | None = None,
+) -> None:
+    side_counts = dict(side_entry_counts or {})
+    for side in ('frida', 'user'):
+        entry_count = int(side_counts.get(side, 0))
+        chat_turn_logger.emit(
+            'identity_write',
+            status='skipped',
+            reason_code=reason_code,
+            payload={
+                'target_side': side,
+                'mode': mode,
+                'write_mode': write_mode,
+                'write_effect': write_effect,
+                'persisted_count': 0,
+                'retained_count': 0,
+                'evidence_count': entry_count,
+                'preview_count': entry_count,
+                'actions_count': _empty_identity_actions(),
+            },
+        )
+    chat_turn_logger.emit_branch_skipped(
+        reason_code=reason_code,
+        reason_short=reason_short,
+    )
+
+
 def _log_stage_latency(
     conversation_id: str,
     stage: str,
@@ -206,20 +244,12 @@ def record_identity_entries_for_mode(
     admin_logs_module: Any,
 ) -> None:
     if not _mode_runs_identity(mode):
-        chat_turn_logger.emit(
-            'identity_write',
-            status='skipped',
-            reason_code='mode_off',
-            payload={
-                'target_side': 'frida',
-                'retained_count': 0,
-                'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
-                'mode': mode,
-            },
-        )
-        chat_turn_logger.emit_branch_skipped(
+        _emit_identity_write_skipped_by_side(
             reason_code='mode_off',
             reason_short='identity_write_disabled_for_mode',
+            mode=mode,
+            write_mode='disabled',
+            write_effect='none',
         )
         admin_logs_module.log_event(
             'identity_mode_apply',
@@ -252,20 +282,20 @@ def record_identity_entries_for_mode(
 
     preview_entries = memory_store_module.preview_identity_entries(id_entries)
     memory_store_module.record_identity_evidence(conversation_id, preview_entries)
-    chat_turn_logger.emit(
-        'identity_write',
-        status='skipped',
-        reason_code='not_applicable',
-        payload={
-            'target_side': 'frida',
-            'retained_count': 0,
-            'actions_count': {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0},
-            'mode': mode,
-        },
-    )
-    chat_turn_logger.emit_branch_skipped(
+    side_counts = {'frida': 0, 'user': 0}
+    for entry in preview_entries:
+        subject = str(entry.get('subject') or '').strip().lower()
+        if subject == 'llm':
+            side_counts['frida'] += 1
+        elif subject == 'user':
+            side_counts['user'] += 1
+    _emit_identity_write_skipped_by_side(
         reason_code='not_applicable',
         reason_short='identity_write_shadow_mode',
+        mode=mode,
+        write_mode='shadow',
+        write_effect='evidence_only',
+        side_entry_counts=side_counts,
     )
     admin_logs_module.log_event(
         'identity_mode_apply',

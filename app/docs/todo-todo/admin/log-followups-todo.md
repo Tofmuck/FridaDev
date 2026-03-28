@@ -38,9 +38,9 @@ Cadrage follow-up de reference:
 - [x] Choisir un contrat lisible pour `identities_read`: `source_kind` explicite ou stages distincts, sans dump massif.
 - [x] Clarifier `embedding` avec une taxonomie de finalite/source stable (`query`, `trace_user`, `trace_assistant`, `summary`, autres cas futurs) et une finalite fonctionnelle lisible.
 - [x] Verrouiller que les embeddings de resumes sont identifiables explicitement dans les logs.
-- [ ] Clarifier `identity_write` quand `status=skipped` (notamment mode shadow) pour eviter une lecture ambigue.
-- [ ] Clarifier la visibilite `identity_write` par cote (`frida` / `user`) et traiter le cas ou un seul cote apparait alors qu'une vision humaine attendrait plus de contexte.
-- [ ] Clarifier la frontiere `identity_write`: preview/evidence en mode shadow vs vraie ecriture durable en memoire identitaire.
+- [x] Clarifier `identity_write` quand `status=skipped` (notamment mode shadow) pour eviter une lecture ambigue.
+- [x] Clarifier la visibilite `identity_write` par cote (`frida` / `user`) et traiter le cas ou un seul cote apparait alors qu'une vision humaine attendrait plus de contexte.
+- [x] Clarifier la frontiere `identity_write`: preview/evidence en mode shadow vs vraie ecriture durable en memoire identitaire.
 - [ ] Clarifier `summaries`: distinguer explicitement "resume actif injecte au prompt" vs "resume genere dans ce tour".
 - [ ] Clarifier `llm_call` en mode stream pour exposer une metrique finale exploitable (sans dump de reponse).
 - [ ] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
