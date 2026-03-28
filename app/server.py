@@ -252,6 +252,9 @@ class _ConvStoreChatLogProxy:
                 payload={
                     'active_summary_present': True,
                     'summary_count_used': summary_count_used,
+                    'summary_usage': 'prompt_injection',
+                    'in_prompt': True,
+                    'summary_generation_observed': False,
                 },
             )
         else:
@@ -262,6 +265,9 @@ class _ConvStoreChatLogProxy:
                 payload={
                     'active_summary_present': False,
                     'summary_count_used': 0,
+                    'summary_usage': 'prompt_injection',
+                    'in_prompt': False,
+                    'summary_generation_observed': False,
                 },
             )
             chat_turn_logger.emit_branch_skipped(

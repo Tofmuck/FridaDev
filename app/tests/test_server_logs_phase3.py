@@ -287,6 +287,108 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)
 
+    def test_build_prompt_messages_logs_summaries_as_prompt_injection_usage(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-summaries-used',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._ConvStoreChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_prompt_messages=lambda conversation, model, **kwargs: [
+                        {'role': 'system', 'content': '[Résumé actif] Memoire courte utile'},
+                        {'role': 'user', 'content': 'bonjour'},
+                    ]
+                ),
+                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 42),
+            )
+            prompt_messages = proxy.build_prompt_messages(
+                {'id': 'conv-summaries-used', 'messages': []},
+                'openrouter/runtime-main-model',
+                memory_traces=[],
+            )
+            self.assertEqual(len(prompt_messages), 2)
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        summaries_events = [event for event in observed if event.get('stage') == 'summaries']
+        self.assertEqual(len(summaries_events), 1)
+        summary_event = summaries_events[0]
+        self.assertEqual(summary_event.get('status'), 'ok')
+        payload = summary_event['payload_json']
+        self.assertTrue(payload.get('active_summary_present'))
+        self.assertEqual(payload.get('summary_count_used'), 1)
+        self.assertEqual(payload.get('summary_usage'), 'prompt_injection')
+        self.assertTrue(payload.get('in_prompt'))
+        self.assertFalse(payload.get('summary_generation_observed'))
+        self.assertNotIn('summary', payload)
+        self.assertNotIn('summary_content', payload)
+        self.assertNotIn('content', payload)
+        self.assertNotIn('messages', payload)
+
+    def test_build_prompt_messages_logs_summaries_skipped_when_no_active_summary(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-summaries-none',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._ConvStoreChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_prompt_messages=lambda conversation, model, **kwargs: [
+                        {'role': 'system', 'content': '[Instruction] sans resume actif'},
+                        {'role': 'user', 'content': 'bonjour'},
+                    ]
+                ),
+                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 7),
+            )
+            proxy.build_prompt_messages(
+                {'id': 'conv-summaries-none', 'messages': []},
+                'openrouter/runtime-main-model',
+                memory_traces=[],
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        summaries_events = [event for event in observed if event.get('stage') == 'summaries']
+        self.assertEqual(len(summaries_events), 1)
+        summary_event = summaries_events[0]
+        self.assertEqual(summary_event.get('status'), 'skipped')
+        payload = summary_event['payload_json']
+        self.assertFalse(payload.get('active_summary_present'))
+        self.assertEqual(payload.get('summary_count_used'), 0)
+        self.assertEqual(payload.get('summary_usage'), 'prompt_injection')
+        self.assertFalse(payload.get('in_prompt'))
+        self.assertFalse(payload.get('summary_generation_observed'))
+        self.assertEqual(payload.get('reason_code'), 'no_data')
+
+        branch_skipped_events = [event for event in observed if event.get('stage') == 'branch_skipped']
+        self.assertEqual(len(branch_skipped_events), 1)
+        self.assertEqual(branch_skipped_events[0]['payload_json'].get('reason_code'), 'no_data')
+        self.assertEqual(
+            branch_skipped_events[0]['payload_json'].get('reason_short'),
+            'no_active_summary_in_prompt',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
