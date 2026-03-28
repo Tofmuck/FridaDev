@@ -25,13 +25,19 @@ Reference archivee (ne pas rouvrir):
 - [ ] Ajouter un test de preuve sur le format exporte (structure attendue + absence de dump massif).
 
 ### Lot 3 - Clarification semantique des evenements
+- [ ] Prioriser l'amelioration `arbiter` cote logs (redevabilite des decisions) avant tout chantier de re-ecriture du prompt arbitre.
+- [ ] Clarifier que le probleme principal `arbiter` est la visibilite logs des decisions deja prises (et non une re-ecriture immediate de la logique arbitre).
+- [ ] Enrichir `arbiter` pour exposer `rejected_candidates`, une synthese exploitable des motifs de rejet, `model` arbitre, et `decision_source`/fallback.
 - [ ] Clarifier `identities_read` en separant explicitement les natures de lecture: identite fixe/statique, identite durable memoire, identite fluctuante context hints/evidence.
+- [ ] Expliciter que le stage `identities_read` actuel melange plusieurs lectures de nature differente et n'est pas assez parlant sans taxonomie.
 - [ ] Choisir un contrat lisible pour `identities_read`: `source_kind` explicite ou stages distincts, sans dump massif.
-- [ ] Clarifier `embedding` avec une taxonomie de finalite/source stable (`query`, `trace_user`, `trace_assistant`, `summary`, autres cas futurs).
+- [ ] Clarifier `embedding` avec une taxonomie de finalite/source stable (`query`, `trace_user`, `trace_assistant`, `summary`, autres cas futurs) et une finalite fonctionnelle lisible.
 - [ ] Verrouiller que les embeddings de resumes sont identifiables explicitement dans les logs.
-- [ ] Clarifier `arbiter` pour rendre visibles des raisons de rejet exploitables, sans basculer en dump candidat par candidat.
 - [ ] Clarifier `identity_write` quand `status=skipped` (notamment mode shadow) pour eviter une lecture ambigue.
 - [ ] Clarifier la visibilite `identity_write` par cote (`frida` / `user`) et traiter le cas ou un seul cote apparait alors qu'une vision humaine attendrait plus de contexte.
+- [ ] Clarifier la frontiere `identity_write`: preview/evidence en mode shadow vs vraie ecriture durable en memoire identitaire.
+- [ ] Clarifier `summaries`: distinguer explicitement "resume actif injecte au prompt" vs "resume genere dans ce tour".
+- [ ] Clarifier `llm_call` en mode stream pour exposer une metrique finale exploitable (sans dump de reponse).
 - [ ] Ajouter des tests de preuve cibles pour ces clarifications semantiques (contrat lisible + sobriete preservee).
 
 ### Cadrage a clarifier avant implementation
@@ -49,4 +55,5 @@ Reference archivee (ne pas rouvrir):
 - Eviter de melanger identite statique, identite durable et hints fluctuants dans un seul signal illisible.
 - Eviter un `embedding` trop pauvre (incomprehensible) ou trop riche (quasi dump brut).
 - Eviter des clarifications `arbiter`/`identity_write` qui cassent la sobriete du contrat logs.
+- Eviter de confondre "mieux exposer les decisions d'arbitre" avec "re-ecrire tout de suite le prompt arbitre".
 - Garder le comportement coherent avec le contrat logs (`states/specs/log-module-contract.md`).
