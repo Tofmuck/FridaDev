@@ -33,9 +33,9 @@ Cadrage follow-up de reference:
 - [x] Prioriser l'amelioration `arbiter` cote logs (redevabilite des decisions) avant tout chantier de re-ecriture du prompt arbitre.
 - [x] Clarifier que le probleme principal `arbiter` est la visibilite logs des decisions deja prises (et non une re-ecriture immediate de la logique arbitre).
 - [x] Enrichir `arbiter` pour exposer `rejected_candidates`, une synthese exploitable des motifs de rejet, `model` arbitre, et `decision_source`/fallback.
-- [ ] Clarifier `identities_read` en separant explicitement les natures de lecture: identite fixe/statique, identite durable memoire, identite fluctuante context hints/evidence.
-- [ ] Expliciter que le stage `identities_read` actuel melange plusieurs lectures de nature differente et n'est pas assez parlant sans taxonomie.
-- [ ] Choisir un contrat lisible pour `identities_read`: `source_kind` explicite ou stages distincts, sans dump massif.
+- [x] Clarifier `identities_read` en separant explicitement les natures de lecture: identite fixe/statique, identite durable memoire, identite fluctuante context hints/evidence.
+- [x] Expliciter que le stage `identities_read` actuel melange plusieurs lectures de nature differente et n'est pas assez parlant sans taxonomie.
+- [x] Choisir un contrat lisible pour `identities_read`: `source_kind` explicite ou stages distincts, sans dump massif.
 - [ ] Clarifier `embedding` avec une taxonomie de finalite/source stable (`query`, `trace_user`, `trace_assistant`, `summary`, autres cas futurs) et une finalite fonctionnelle lisible.
 - [ ] Verrouiller que les embeddings de resumes sont identifiables explicitement dans les logs.
 - [ ] Clarifier `identity_write` quand `status=skipped` (notamment mode shadow) pour eviter une lecture ambigue.

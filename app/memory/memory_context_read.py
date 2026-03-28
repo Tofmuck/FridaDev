@@ -101,6 +101,7 @@ def get_identities(
                 status='ok',
                 payload={
                     'target_side': side,
+                    'source_kind': 'durable',
                     'frida_count': selected_count if side == 'frida' else 0,
                     'user_count': selected_count if side == 'user' else 0,
                     'selected_count': selected_count,
@@ -121,6 +122,7 @@ def get_identities(
             error_code='upstream_error',
             payload={
                 'target_side': 'frida' if str(subject) == 'llm' else 'user',
+                'source_kind': 'durable',
                 'frida_count': 0,
                 'user_count': 0,
                 'selected_count': 0,
@@ -240,6 +242,7 @@ def get_recent_context_hints(
                 status='ok',
                 payload={
                     'target_side': 'user',
+                    'source_kind': 'context_hint',
                     'frida_count': 0,
                     'user_count': len(hints),
                     'selected_count': len(hints),
@@ -260,6 +263,7 @@ def get_recent_context_hints(
             error_code='upstream_error',
             payload={
                 'target_side': 'user',
+                'source_kind': 'context_hint',
                 'frida_count': 0,
                 'user_count': 0,
                 'selected_count': 0,

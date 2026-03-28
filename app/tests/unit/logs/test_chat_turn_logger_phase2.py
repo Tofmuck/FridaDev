@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 from observability import chat_turn_logger
 from observability import log_store
+from identity import identity
 from memory import memory_arbiter_audit
 from memory import memory_context_read
 from memory import memory_identity_dynamics
@@ -287,8 +288,55 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertTrue(identities_events)
         payload = identities_events[0]['payload_json']
         self.assertEqual(payload['target_side'], 'frida')
+        self.assertEqual(payload['source_kind'], 'durable')
         self.assertEqual(payload['frida_count'], 1)
         self.assertEqual(payload['user_count'], 0)
+
+    def test_build_identity_block_emits_identities_read_for_static_sources(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+        original_load_llm_identity = identity.load_llm_identity
+        original_load_user_identity = identity.load_user_identity
+        original_count_tokens = identity._count_tokens
+        original_build_dynamic_lines = identity._build_dynamic_lines
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        identity.load_llm_identity = lambda: 'Frida static identity'
+        identity.load_user_identity = lambda: 'User static identity'
+        identity._count_tokens = lambda _text: 1
+        identity._build_dynamic_lines = lambda _subject, _max_tokens: ([], [])
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-static-identities',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            block, used_ids = identity.build_identity_block()
+            self.assertIn('DU MOD', block)
+            self.assertIn("L'UTILISATEUR", block)
+            self.assertEqual(used_ids, [])
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+            identity.load_llm_identity = original_load_llm_identity
+            identity.load_user_identity = original_load_user_identity
+            identity._count_tokens = original_count_tokens
+            identity._build_dynamic_lines = original_build_dynamic_lines
+
+        identities_events = [event for event in observed if event['stage'] == 'identities_read']
+        static_events = [event for event in identities_events if event['payload_json'].get('source_kind') == 'static']
+        self.assertEqual(len(static_events), 2)
+        sides = {event['payload_json'].get('target_side') for event in static_events}
+        self.assertSetEqual(sides, {'frida', 'user'})
+        for event in static_events:
+            payload = event['payload_json']
+            self.assertEqual(payload['selected_count'], 1)
+            self.assertEqual(len(payload.get('preview', [])), 1)
+            self.assertLessEqual(len(payload.get('preview', [''])[0]), 120)
 
     def test_persist_identity_entries_emits_identity_write_for_both_sides(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -445,6 +493,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertTrue(identities_events)
         payload = identities_events[0]['payload_json']
         self.assertEqual(payload['target_side'], 'user')
+        self.assertEqual(payload['source_kind'], 'context_hint')
         self.assertEqual(payload['frida_count'], 0)
         self.assertEqual(payload['user_count'], 2)
         self.assertEqual(payload['selected_count'], 2)
