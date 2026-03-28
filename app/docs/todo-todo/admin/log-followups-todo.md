@@ -12,6 +12,7 @@ Cadrage follow-up de reference:
 ## TODO
 
 ### Lot 1 - Filtres et suppression UI plus robustes
+- [ ] Implementer le support backend dedie de metadonnees logs pour alimenter les selecteurs `conversation` et `turn`.
 - [ ] Remplacer le champ libre `conversation` par une liste des conversations presentes dans les logs.
 - [ ] Rendre la liste `turn` dependante de la conversation selectionnee.
 - [ ] Garder la liste `turn` vide ou desactivee tant qu'aucune conversation n'est selectionnee.
@@ -21,10 +22,11 @@ Cadrage follow-up de reference:
 - [ ] Ajouter un test d'integration frontend qui prouve le flux: selection conversation -> liste tours -> suppression scopee.
 
 ### Lot 2 - Export Markdown structure
+- [ ] Implementer le support backend dedie de generation/export Markdown structure pour les scopes `conversation` et `turn`.
 - [ ] Ajouter un export Markdown structure scope `conversation` (lisible humainement, pas un dump brut).
 - [ ] Ajouter un export Markdown structure scope `turn` (lisible humainement, pas un dump brut).
 - [ ] Verrouiller le format Markdown minimal (entete de scope, table/sections d'evenements, metadonnees sobres).
-- [ ] Clarifier explicitement la granularite `par message`: distincte du tour dans le modele actuel, ou differee hors MVP follow-up.
+- [x] Granularite `par message` non retenue a ce stade; point differe hors lot follow-up courant.
 - [ ] Ajouter un test de preuve sur le format exporte (structure attendue + absence de dump massif).
 
 ### Lot 3 - Clarification semantique des evenements
