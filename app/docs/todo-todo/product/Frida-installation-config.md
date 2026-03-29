@@ -2,6 +2,18 @@
 
 Objectif: definir ce qui doit etre configurable a l'installation pour rendre `Frida` publiable, sans garder des dependances cachees ou trop liees a l'infra actuelle.
 
+## Etat apres tranche docs (2026-03-29)
+
+Livre maintenant:
+- guide operatoire d'installation/exploitation initiale publie:
+  - `app/docs/states/operations/frida-installation-operations.md`
+
+Reste ouvert dans ce TODO:
+- conception d'une vraie surface produit/admin pour l'installation;
+- scenarios de tests de connectivite orientee operateur (LLM, DB, embeddings, web/crawl);
+- simplification UX d'installation pour reduire la charge manuelle sur clone neuf;
+- decisions de perimetre entre bootstrap externe (`.env`) et configuration admin durable.
+
 ## 1. Ce qui sort du produit
 
 - Meteo: retiree completement. Ce n'est pas une brique centrale pour un assistant de travail et de recherche.

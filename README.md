@@ -8,6 +8,7 @@ This repository is a **working engineering state** of the Frida runtime and tool
 Primary references for this repository state:
 - `app/docs/states/project/Frida-State-english-28-03-26.md`
 - `app/docs/states/project/Frida-State-french-28-03-26.md`
+- `app/docs/states/operations/frida-installation-operations.md` (installation/exploitation initial guide)
 
 ### Website and contact
 - website: [https://frida-ai.fr](https://frida-ai.fr)
@@ -68,6 +69,7 @@ Ce depot correspond a un **etat d'ingenierie vivant** du runtime et des outils F
 References principales pour l'etat du depot:
 - `app/docs/states/project/Frida-State-french-28-03-26.md`
 - `app/docs/states/project/Frida-State-english-28-03-26.md`
+- `app/docs/states/operations/frida-installation-operations.md` (guide d'installation/exploitation initiale)
 
 ### Site et contact
 - site: [https://frida-ai.fr](https://frida-ai.fr)
