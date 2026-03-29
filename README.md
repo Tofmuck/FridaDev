@@ -49,6 +49,12 @@ In progress (not fully implemented yet):
 - Practical goal: better situated answers, clearer source hierarchy, stronger justification, fewer hallucinations, and explicit non-conclusion when needed.
 - Target structure for this work is a clearer split between `inputs/`, `doctrine/`, `runtime/`, and `validation/`.
 
+### Where Contributors Can Help
+- Memory retrieval and grounding: hybrid retrieval, reranking, clearer memory assembly, and dense retrieval vs BM25-like signals comparisons.
+- Observability and operator tooling: clearer diagnostics/log views, actionable exports, and better visibility on what the pipeline actually used.
+- Installation and runtime operations: lower fresh-clone friction with dependency checks, connectivity validation, and clearer operator setup.
+- Hermeneutic pipeline construction: source hierarchy, judgment posture, conflict handling, validation agent, and cleaner `inputs/` / `doctrine/` / `runtime/` / `validation/` structure.
+
 ### What is versioned vs runtime-local
 Versioned:
 - code, prompts, scripts, tests, docs.
@@ -135,6 +141,12 @@ En cours (pas completement implemente):
 - La validation est souveraine sur l'acceptation finale, mais pas sur les criteres: les criteres restent fixes par des contrats doctrinaux explicites.
 - Objectif pratique: mieux situer les reponses, mieux hierarchiser les sources, mieux justifier, moins halluciner et accepter explicitement de ne pas conclure quand il le faut.
 - La cible de structuration est une separation plus nette entre `inputs/`, `doctrine/`, `runtime/` et `validation/`.
+
+### Où contribuer utilement
+- Retrieval memoire et grounding: retrieval hybride, reranking, assemblage memoire plus lisible et comparaison dense retrieval vs signaux type BM25.
+- Observabilite et outillage operateur: diagnostics/logs plus lisibles, exports exploitables et meilleure visibilite sur ce que le pipeline a reellement utilise.
+- Installation et exploitation runtime: reduire la friction du clone neuf avec checks de dependances, validation de connectivite et setup operateur plus clair.
+- Construction du pipeline hermeneutique: hierarchie des sources, posture de jugement, gestion des conflits, agent de validation et structuration `inputs/` / `doctrine/` / `runtime/` / `validation/`.
 
 ### Ce qui est versionne vs local runtime
 Versionne:
