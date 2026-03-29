@@ -54,6 +54,7 @@ In progress (not fully implemented yet):
 - Observability and operator tooling: clearer diagnostics/log views, actionable exports, and better visibility on what the pipeline actually used.
 - Installation and runtime operations: lower fresh-clone friction with dependency checks, connectivity validation, and clearer operator setup.
 - Hermeneutic pipeline construction: source hierarchy, judgment posture, conflict handling, validation agent, and cleaner `inputs/` / `doctrine/` / `runtime/` / `validation/` structure.
+- Interface design and interaction clarity: improve the product's visual and interaction quality with a "less is more" discipline: clearer hierarchy, calmer screens, stronger readability, and fewer but better UI decisions.
 
 ### What is versioned vs runtime-local
 Versioned:
@@ -147,6 +148,7 @@ En cours (pas completement implemente):
 - Observabilite et outillage operateur: diagnostics/logs plus lisibles, exports exploitables et meilleure visibilite sur ce que le pipeline a reellement utilise.
 - Installation et exploitation runtime: reduire la friction du clone neuf avec checks de dependances, validation de connectivite et setup operateur plus clair.
 - Construction du pipeline hermeneutique: hierarchie des sources, posture de jugement, gestion des conflits, agent de validation et structuration `inputs/` / `doctrine/` / `runtime/` / `validation/`.
+- Design d’interface et clarté d’interaction: ameliorer la qualite visuelle et interactionnelle du produit avec une discipline "less is more" : hierarchie plus nette, ecrans plus calmes, meilleure lisibilite, et moins de decisions UI mais mieux tenues.
 
 ### Ce qui est versionne vs local runtime
 Versionne:
