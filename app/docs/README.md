@@ -37,6 +37,7 @@ Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
+- roadmap mere ouverte noeud de convergence hermeneutique: `todo-todo/memory/hermeneutic-convergence-node-todo.md`
 - TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
 - TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
