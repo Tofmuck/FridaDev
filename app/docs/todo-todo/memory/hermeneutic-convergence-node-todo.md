@@ -11,6 +11,13 @@ Regle de lecture:
 - les briques existantes continuent a alimenter le LLM principal pendant toute la construction du noeud;
 - la convergence vise un noeud central place clairement dans le pipeline, sans dependances laterales permanentes.
 
+Regle de structuration forte:
+- chaque lot est qualifie explicitement: `travail de structure` ou `travail de structure + pause normative`;
+- une pause normative est bloquante: pas d'implementation avant contrat ecrit;
+- pas de fichier monstre "par commodite" (pas de croissance vers 2000 lignes);
+- une responsabilite doctrinale ou fonctionnelle autonome doit converger vers un doc normatif dedie puis un module/fichier dedie, sauf justification explicite;
+- centraliser seulement ce qui doit l'etre, eviter les dependances laterales diffuses.
+
 ## Point d'insertion du noeud dans le pipeline reel
 Contrainte structurante du chantier:
 - dans `chat_service.chat_response(...)`, le noeud est place **apres** `prepare_memory_context(...)`;
@@ -44,6 +51,8 @@ Natures de travail:
 - creer from scratch: Lots 4 a 9.
 
 ## Lot 1 - Canonisation des entrees existantes + insertion pipeline
+Nature du lot: travail de structure.
+
 Objectif: figer l'insertion du noeud et canoniser les entrees deja presentes sans casser l'injection directe actuelle vers le LLM principal.
 
 Perimetre: insertion pipeline, temps, memoire recuperee, decision d'arbitrage memoire, resume, identite, contexte recent, web, observabilite minimale.
@@ -62,6 +71,8 @@ Dependances: docs d'architecture noeud + matrice.
 Hors scope: arbitrage global inter-sources et branchement aval complet.
 
 ## Lot 2 - Extraction fenetre recente + qualification minimale de la demande
+Nature du lot: travail de structure + pause normative.
+
 Objectif: isoler la matiere diffuse du tour en cours en separant clairement extraction mecanique et qualification semantique minimale.
 
 Perimetre: `fenetre_recente`, `demande_utilisateur`, signaux d'ambiguite/sous-determination.
@@ -75,12 +86,22 @@ Sous-bloc B - Qualification semantique minimale:
 - [ ] Definir les signaux minimaux d'ambiguite/sous-determination.
 - [ ] Definir la frontiere explicite entre qualification minimale et interpretation metier avancee.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-user-demand-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
+- Module code cible: `core.hermeneutic_node.user_demand`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `user_demand.py`
+- Raison: la qualification de demande et les signaux d'ambiguite sont doctrinaux; le contrat doit preceder le code.
+
 Sortie attendue du lot: deux objets distincts et lisibles (`fenetre_recente`, `demande_utilisateur`) + signaux d'ambiguite.
 Validation minimale: contrat de sortie qui distingue explicitement extraction mecanique et qualification semantique minimale.
 Dependances: Lot 1.
 Hors scope: posture de jugement finale et resolution de conflits inter-sources.
 
 ## Lot 3 - Integration de Stimmung / M6 comme determinant
+Nature du lot: travail de structure + pause normative.
+
 Objectif: integrer M6 comme determinant structurel du noeud sans double souverainete de directives.
 
 Perimetre: interface `stimmung`, compatibilite FridaDev, articulation des directives.
@@ -91,12 +112,22 @@ Perimetre: interface `stimmung`, compatibilite FridaDev, articulation des direct
 - [ ] Trancher noir sur blanc: les `pipeline_directives` finales sont emises par le noeud de convergence.
 - [ ] Definir la compatibilite minimale avec l'existant `FridaDev` sans import brutal de `Frida_V4`.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-stimmung-governance-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-governance-contract.md`
+- Module code cible: `core.hermeneutic_node.stimmung_governance`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `stimmung_governance.py`
+- Raison: fixer une gouvernance unique `M6 -> noeud -> directives aval` avant implementation pour eviter les souverainetes concurrentes.
+
 Sortie attendue du lot: contrat `stimmung` + gouvernance explicite `M6 -> noeud -> directives aval`.
 Validation minimale: schema d'entree `stimmung` et regle anti-double-pilotage formalisee et testable.
 Dependances: Lots 1 et 2.
 Hors scope: implementation runtime complete de M6.
 
 ## Lot 4 - Arbitrage epistemique
+Nature du lot: travail de structure + pause normative.
+
 Objectif: produire un statut epistemique explicite par tour et un regime de preuve associe.
 
 Perimetre: `epistemic_regime`, `proof_regime`, `uncertainty_posture`.
@@ -106,12 +137,22 @@ Perimetre: `epistemic_regime`, `proof_regime`, `uncertainty_posture`.
 - [ ] Definir un `proof_regime` compact coherent avec l'etat epistemique.
 - [ ] Definir une `uncertainty_posture` explicite et non cosmetique.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-epistemic-regime-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-epistemic-regime-contract.md`
+- Module code cible: `core.hermeneutic_node.epistemic_regime`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `epistemic_regime.py`
+- Raison: les classes epistemiques et leur regime de preuve sont doctrinaux et doivent etre stabilises avant code.
+
 Sortie attendue du lot: composant d'arbitrage epistemique stable et lisible.
 Validation minimale: table de decision compacte qui produit toujours une classe epistemique + un regime de preuve.
 Dependances: Lots 1 a 3.
 Hors scope: formulation finale de la reponse utilisateur.
 
 ## Lot 5 - Posture de jugement
+Nature du lot: travail de structure + pause normative.
+
 Objectif: operationaliser la sortie `answer | clarify | suspend` avec les signaux du Lot 2 et l'etat du Lot 4.
 
 Perimetre: `judgment_posture`, criteres de decision, effets minimaux.
@@ -121,12 +162,22 @@ Perimetre: `judgment_posture`, criteres de decision, effets minimaux.
 - [ ] Definir les criteres minimaux pour `suspend`.
 - [ ] Definir le lien explicite entre `judgment_posture`, signaux d'ambiguite (Lot 2) et `epistemic_regime` (Lot 4).
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-judgment-posture-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-judgment-posture-contract.md`
+- Module code cible: `core.hermeneutic_node.judgment_posture`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `judgment_posture.py`
+- Raison: la posture de jugement engage la doctrine de sortie et ne doit pas etre codee avant regle explicite.
+
 Sortie attendue du lot: sortie `judgment_posture` explicite et auditable.
 Validation minimale: regles de decision qui couvrent les 3 postures sans zone implicite.
 Dependances: Lots 2 et 4.
 Hors scope: UX detaillee des messages de clarification.
 
 ## Lot 6 - Hierarchie des sources
+Nature du lot: travail de structure + pause normative.
+
 Objectif: rendre explicite quelle source prime selon la demande et le contexte du tour.
 
 Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, demande utilisateur.
@@ -136,12 +187,22 @@ Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, dem
 - [ ] Definir le format compact de `source_priority`.
 - [ ] Definir les cas de cohabitation de sources sans fusion abusive.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-source-priority-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-source-priority-contract.md`
+- Module code cible: `core.hermeneutic_node.source_priority`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `source_priority.py`
+- Raison: la hierarchie des sources est une regle doctrinale centrale, a trancher avant implementation.
+
 Sortie attendue du lot: hierarchie des sources stable et exploitable.
 Validation minimale: chaque tour produit un ordre explicite de sources ou une regle explicite d'egalite.
 Dependances: Lots 4 et 5.
 Hors scope: moteur complet de resolution des conflits.
 
 ## Lot 7 - Conflits inter-sources
+Nature du lot: travail de structure + pause normative.
+
 Objectif: detecter et traiter les conflits explicites entre sources sans les masquer.
 
 Perimetre: detection, explicitation, issue minimale de conflit.
@@ -151,12 +212,22 @@ Perimetre: detection, explicitation, issue minimale de conflit.
 - [ ] Definir les regles minimales d'issue (`prioriser | clarify | suspend`).
 - [ ] Definir le lien entre conflit, `epistemic_regime` et `judgment_posture`.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-source-conflict-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-source-conflict-contract.md`
+- Module code cible: `core.hermeneutic_node.source_conflicts`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `source_conflicts.py`
+- Raison: les regles de conflit inter-sources doivent etre explicites et stables avant implementation.
+
 Sortie attendue du lot: mecanisme minimal de conflit inter-sources compatible avec l'auditabilite.
 Validation minimale: un conflit detecte declenche obligatoirement une issue explicite et tracable.
 Dependances: Lot 6.
 Hors scope: explication longue source par source dans la reponse finale.
 
 ## Lot 8 - Etat persistant + sortie unique du noeud
+Nature du lot: travail de structure + pause normative.
+
 Objectif: stabiliser le noeud dans le temps et formaliser la sortie canonique complete.
 
 Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, payload unique.
@@ -168,12 +239,30 @@ Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, pa
 - [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives`).
 - [ ] Definir les champs minimaux d'auditabilite de ce payload.
 
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-output-regime-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
+- Module code cible: `core.hermeneutic_node.output_regime`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python cible: `output_regime.py`
+- Raison: `discursive_regime` et `resituation_level` exigent une doctrine de sortie stable avant implementation.
+
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-state-persistence-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-state-persistence-contract.md`
+- Module code cible: `core.hermeneutic_node.node_state`
+- Repertoire code cible: `app/core/hermeneutic_node/`
+- Fichier Python candidat: `node_state.py` (a confirmer)
+- Raison: la persistance d'etat du noeud doit etre fixee contractuellement avant choix technique final.
+
 Sortie attendue du lot: snapshot persistant + payload unique complet, compact et versionne.
 Validation minimale: le payload de sortie couvre explicitement `discursive_regime` et `resituation_level` sans champ implicite critique.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 
 ## Lot 9 - Branchement aval + observabilite du noeud + preconditions shadow globale
+Nature du lot: travail de structure.
+
 Objectif: brancher les directives du noeud vers l'aval, finaliser son observabilite, et fixer les preconditions d'une future shadow globale.
 
 Perimetre: branchement des directives, observabilite du noeud, preconditions shadow.
