@@ -101,7 +101,7 @@ Les endpoints externes dans `app/.env` doivent etre resolvables depuis le conten
 ## 5.1 Initialiser le fichier local
 
 ```bash
-cd /home/tof/docker-stacks/fridadev
+cd /path/to/fridadev
 cp app/.env.example app/.env
 ```
 
@@ -127,7 +127,7 @@ Option identites statiques (sinon bloc identite vide):
 ## 5.3 Bootstrap state local recommande
 
 ```bash
-cd /home/tof/docker-stacks/fridadev
+cd /path/to/fridadev
 mkdir -p state/conv state/logs state/data/identity
 touch state/data/identity/llm_identity.txt state/data/identity/user_identity.txt
 ```
@@ -137,7 +137,7 @@ touch state/data/identity/llm_identity.txt state/data/identity/user_identity.txt
 Sequence minimale:
 
 ```bash
-cd /home/tof/docker-stacks/fridadev
+cd /path/to/fridadev
 ./stack.sh up
 ./stack.sh ps
 ./stack.sh health
