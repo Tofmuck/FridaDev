@@ -60,6 +60,9 @@ Consequence pour un clone neuf:
 
 ## 4. Dependances de service a prevoir
 
+Schema global de base a date (lecture rapide):
+- `app/docs/states/baselines/database-schema-baseline.md`
+
 ## 4.1 Obligatoires pour un fonctionnement utile
 
 1. PostgreSQL (bootstrap runtime + persistance)

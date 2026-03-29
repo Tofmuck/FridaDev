@@ -84,6 +84,12 @@ If asked to create a new TODO document, choose the correct `todo-todo/` subdirec
 If asked to create a new spec, policy, baseline, or operations note, place it directly under the corresponding `states/` subdirectory.
 When moving docs, update live references in `AGENTS.md`, `README.md`, `app/docs/README.md`, and any still-active roadmap or closure document that points to them.
 
+## Database baseline discipline
+
+- `app/docs/states/baselines/database-schema-baseline.md` is the repository snapshot reference for the physical DB schema.
+- Any patch that adds/removes/renames/changes a durable DB table, column, index, schema, or relation must update `app/docs/states/baselines/database-schema-baseline.md` in the same patch.
+- Do not leave durable DB schema changes implicit in Python/SQL sources only.
+
 ## Current authoritative documents
 
 Use these documents as living anchors unless the user explicitly changes the strategy:
