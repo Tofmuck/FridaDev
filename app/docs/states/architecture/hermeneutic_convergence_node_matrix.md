@@ -29,6 +29,7 @@ Cette matrice fige la lecture suivante :
 | Demande utilisateur / intention de tour | Pas encore la comme module | texte user brut seulement | Oui, en brut | Entree manquante | Creer un module de qualification de la demande du tour |
 | `Stimmung` / M6 | Pas encore la dans `FridaDev` | existe conceptuellement et techniquement dans `Frida_V4`, pas dans `FridaDev` | Non dans `FridaDev` actuel | Entree manquante | Integrer un equivalent fonctionnel de M6 comme determinant du noeud |
 | Regime epistemique | Pas encore la | aucune sortie canonique `certain / probable / incertain / suspendu` | Non | Entree/sortie manquante | Creer from scratch un module ou sous-noeud d'arbitrage epistemique |
+| Suspension du jugement / epoke | Pas encore la | pas de sortie canonique `answer | clarify | suspend` | Non | Sortie manquante | Creer une fonction explicite permettant `je ne sais pas` ou `peux-tu preciser ?` quand le cadre ne permet pas de conclure proprement |
 | Hierarchie des sources | Pas encore la | seulement des priorites implicites et locales | Non | Fonction centrale manquante | Creer from scratch la logique d'arbitrage inter-sources |
 | Conflits inter-sources | Pas encore la | seuls les conflits identitaires existent aujourd'hui | Non | Fonction manquante | Creer un module de conflit entre web/memoire/identite/resume/contexte |
 | Preuves typees / `evidence_ref` | Pas encore la | motifs et journaux existent, mais pas de references typees resolubles | Non | Entree manquante | Creer from scratch une couche de preuves typees et resolubles |
@@ -45,7 +46,7 @@ Cette matrice fige la lecture suivante :
 | A canoniser depuis l'existant | Memoire RAG, arbitrage memoire, identite dynamique, contexte recent, web | La logique existe deja mais la sortie n'est pas encore un objet d'entree stable du noeud | Produire pour chaque brique un contrat d'entree court, stable, lisible |
 | A extraire depuis des fichiers existants | Fenetre recente conversationnelle, demande utilisateur brute, autorite relative implicite des sources | La matiere est deja dans le code, mais diffusee dans plusieurs fichiers ou usages | Isoler des modules ou objets d'entree autonomes pour le noeud |
 | A integrer depuis l'autre systeme | `Stimmung` / M6 | Le cadrage existe dans `Frida_V4`, pas dans `FridaDev` | Faire de M6 un determinant du noeud, sans confondre M6 et le noeud |
-| A creer from scratch | Regime epistemique, hierarchie des sources, conflits inter-sources, preuves typees, etat persistant du noeud, sortie regime global, directives aval unifiees | Rien de vraiment canonique aujourd'hui dans `FridaDev` | Construire les briques centrales qui transforment l'assemblage actuel en pipeline complet |
+| A creer from scratch | Regime epistemique, suspension du jugement, hierarchie des sources, conflits inter-sources, preuves typees, etat persistant du noeud, sortie regime global, directives aval unifiees | Rien de vraiment canonique aujourd'hui dans `FridaDev` | Construire les briques centrales qui transforment l'assemblage actuel en pipeline complet |
 | A brancher seulement apres creation du noeud | Observabilite globale du noeud, shadow globale du pipeline complet | Les sous-pipelines sont bien loggues, mais pas le noeud global | Instrumenter et mesurer seulement quand le noeud existe vraiment |
 
 ## 4. Tableau "ce qui est deja la" vs "ce qui est a venir"
@@ -55,26 +56,29 @@ Cette matrice fige la lecture suivante :
 | Temps / grounding temporel | `Stimmung` / M6 dans `FridaDev` |
 | Memoire RAG | Qualification de la demande utilisateur |
 | Arbitrage memoire | Regime epistemique explicite |
-| Resume actif | Hierarchie des sources |
-| Identite statique | Conflits inter-sources |
-| Identite dynamique | Preuves typees / `evidence_ref` |
-| Contexte recent | Etat persistant du noeud |
-| Web | Sortie regime discursif globale |
-| Fenetre recente conversationnelle (matiere deja la, forme non canonique) | Sortie unifiee de directives aval |
+| Resume actif | Suspension du jugement / epoke explicite |
+| Identite statique | Hierarchie des sources |
+| Identite dynamique | Conflits inter-sources |
+| Contexte recent | Preuves typees / `evidence_ref` |
+| Web | Etat persistant du noeud |
+| Fenetre recente conversationnelle (matiere deja la, forme non canonique) | Sortie regime discursif globale |
+| Demande utilisateur / intention de tour | Sortie `answer | clarify | suspend` |
+| Autorite relative des sources (aujourd'hui implicite) | Sortie unifiee de directives aval |
 
 ## 5. Tableau "a extraire" vs "a creer from scratch"
 
 | A extraire / canoniser depuis l'existant | A creer from scratch |
 | --- | --- |
 | Objet d'entree `temps` a partir du grounding actuel | Module d'arbitrage epistemique |
+| Objet d'entree `demande_utilisateur` a partir du tour brut | Sortie canonique `judgment_posture` (`answer | clarify | suspend`) |
 | Objet d'entree `memoire` a partir du retrieval + arbiter | Module de hierarchie des sources |
 | Objet d'entree `resume` a partir du resume actif actuel | Module de conflit inter-sources |
 | Objet d'entree `identite` a partir du bloc identitaire actuel | Systeme de preuves typees resolubles |
 | Objet d'entree `contexte_recent` a partir des context hints | Store persistant du noeud |
 | Objet d'entree `web` a partir de la recherche actuelle | Sortie canonique `discursive_regime` |
 | Objet `fenetre_recente` a extraire du flux actuel | Sortie canonique `epistemic_regime` |
-| Objet `demande_utilisateur` a extraire du tour brut | Sortie canonique `proof_regime` |
-| Statut d'autorite implicite des sources | Payload unique de `pipeline_directives` |
+| Statut d'autorite implicite des sources | Sortie canonique `proof_regime` |
+| Signaux d'ambiguite et de sous-determination de la demande | Payload unique de `pipeline_directives` |
 
 ## 6. Consequence architecturale immediate
 
@@ -93,9 +97,10 @@ Ordre recommande a ce stade :
 2. Extraire la fenetre recente conversationnelle et la qualification de la demande.
 3. Integrer `Stimmung` comme determinant.
 4. Creer l'arbitrage epistemique.
-5. Creer la hierarchie des sources.
-6. Creer les conflits inter-sources.
-7. Creer l'etat persistant du noeud.
-8. Creer la sortie unique du noeud.
-9. Brancher les directives aval.
-10. Seulement ensuite envisager une shadow globale du pipeline complet.
+5. Creer la sortie `answer | clarify | suspend`.
+6. Creer la hierarchie des sources.
+7. Creer les conflits inter-sources.
+8. Creer l'etat persistant du noeud.
+9. Creer la sortie unique du noeud.
+10. Brancher les directives aval.
+11. Seulement ensuite envisager une shadow globale du pipeline complet.

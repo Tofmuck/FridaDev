@@ -34,6 +34,7 @@ Sa finalite est de produire, pour chaque tour, un regime de reponse qui dise :
 - au nom de quelles sources parler ;
 - avec quel niveau de certitude parler ;
 - avec quel niveau de preuve parler ;
+- s'il faut repondre, demander une precision, ou suspendre le jugement ;
 - avec quel degre de reprise ou de re-situation parler.
 
 ## 2. Pourquoi ce noeud est necessaire
@@ -204,6 +205,7 @@ Cette sortie doit au minimum contenir :
 - un `discursive_regime` ;
 - un `epistemic_regime` ;
 - un `proof_regime` ;
+- un `judgment_posture` ;
 - un `resituation_level` ;
 - un `time_reference_mode` ;
 - une `source_priority` ou hierarchie effective des sources ;
@@ -247,7 +249,28 @@ Le regime de preuve dit si la reponse peut se contenter :
 - d'une explicitation de source ;
 - d'une suspension avec demande de verification.
 
-### 5.4 Niveau de re-situation
+### 5.4 Posture de jugement / epoke
+
+Le noeud doit rendre explicite la posture de jugement adoptee sur le tour.
+
+La cible minimale retenue est :
+- `answer`
+- `clarify`
+- `suspend`
+
+Sens :
+- `answer` : le cadre est assez stable pour produire une reponse substantive ;
+- `clarify` : la demande est sous-determinee, trop floue, ou demande une precision avant de conclure ;
+- `suspend` : les sources sont insuffisantes, contradictoires, ou non assez solides pour trancher proprement.
+
+Effets attendus :
+- `clarify` doit permettre des formes du type `Peux-tu preciser ?`
+- `suspend` doit permettre des formes du type `Je ne sais pas`, `Je ne peux pas trancher proprement`, ou une suspension equivalente.
+
+Cette posture n'est pas un simple style de sortie.
+Elle est la forme operationnelle de la suspension du jugement dans le pipeline.
+
+### 5.5 Niveau de re-situation
 
 Le noeud doit determiner :
 - si la reponse doit reprendre directement ;
@@ -255,7 +278,7 @@ Le noeud doit determiner :
 - si elle doit resituer temporellement ou discursivement ;
 - si elle doit clarifier un conflit de cadre.
 
-### 5.5 Hierarchie des sources
+### 5.6 Hierarchie des sources
 
 La sortie doit dire quelle source prime ici, ou quel ordre de lecture doit etre applique :
 - web avant memoire ;
@@ -293,19 +316,24 @@ Le noeud doit etre explicitement charge de trancher les questions suivantes :
 - avec reprise resituee ;
 - avec suspension ou verification.
 
-4. A quel degre faut-il se resituer ?
+4. Faut-il repondre, demander une precision, ou suspendre le jugement ?
+- `answer`
+- `clarify`
+- `suspend`
+
+5. A quel degre faut-il se resituer ?
 - pas du tout ;
 - legerement ;
 - explicitement ;
 - fortement.
 
-5. Quel niveau de preuve faut-il mobiliser ?
+6. Quel niveau de preuve faut-il mobiliser ?
 - minimal ;
 - moyen ;
 - explicite ;
 - obligatoire.
 
-6. Que faire en cas de conflit ?
+7. Que faire en cas de conflit ?
 - suspendre ;
 - expliciter le conflit ;
 - privilegier une source ;
@@ -430,6 +458,16 @@ Il dit combien de preuve doit etre explicitee :
 - justification obligatoire ;
 - impossibilite de conclure proprement.
 
+### 8.4 Posture de jugement
+
+Le noeud doit aussi produire une posture de jugement explicite :
+- repondre ;
+- demander une precision ;
+- suspendre.
+
+La suspension du jugement n'est pas un echec du systeme.
+Elle est une sortie legitime lorsque le cadre ne permet pas une conclusion propre.
+
 ## 9. Place de M6
 
 M6 doit etre traite comme un module contributeur du noeud, pas comme le noeud lui-meme.
@@ -553,6 +591,7 @@ Cette section fixe les taches reelles pour converger vers le noeud cible.
 - documenter le futur statut de `M6` comme contributeur ;
 - formaliser la hierarchie des sources ;
 - formaliser le regime epistemique cible ;
+- formaliser la suspension du jugement comme sortie legitime du noeud ;
 - formaliser la sortie minimale du noeud.
 
 ### 12.2 Taches de structuration
@@ -572,6 +611,7 @@ Cette section fixe les taches reelles pour converger vers le noeud cible.
 
 - faire consommer au retrieval / arbitrage / generation des directives communes ;
 - brancher M6 comme determinant et non comme souverain ;
+- brancher la posture `answer | clarify | suspend` sur les modules aval ;
 - introduire un point de sortie unique du regime.
 
 ### 12.5 Taches de preuve
@@ -601,4 +641,5 @@ La decision architecturale retenue est la suivante :
 - `M6 Stimmung` n'est pas le noeud de convergence ;
 - `M6 Stimmung` est un determinant du futur noeud ;
 - le futur noeud devra arbitrer entre temps, memoire, web, identite, resume, contexte et `Stimmung` ;
+- le futur noeud devra aussi savoir suspendre le jugement ou demander une precision quand le cadre ne permet pas de conclure proprement ;
 - tant que ce noeud n'existe pas, toute validation globale du pipeline reste necessairement partielle.
