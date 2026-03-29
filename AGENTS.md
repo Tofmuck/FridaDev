@@ -84,6 +84,9 @@ If asked to create a new TODO document, choose the correct `todo-todo/` subdirec
 If asked to create a new spec, policy, baseline, or operations note, place it directly under the corresponding `states/` subdirectory.
 When moving docs, update live references in `AGENTS.md`, `README.md`, `app/docs/README.md`, and any still-active roadmap or closure document that points to them.
 
+For entry/surface documents (repo root `README.md`, `app/docs/README.md`, and key operational entry guides), enforce higher readability: immediate clarity, compact structure, precise wording.
+When FR/EN sections coexist in the same entry document, keep semantic parity and update both sections in the same patch.
+
 ## Database baseline discipline
 
 - `app/docs/states/baselines/database-schema-baseline.md` is the repository snapshot reference for the physical DB schema.

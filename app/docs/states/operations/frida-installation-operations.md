@@ -49,14 +49,17 @@ Versionne:
 
 Non versionne (cf `.gitignore`):
 - `app/.env` et variantes locales;
-- `state/` (etat runtime monte dans le conteneur);
-- `app/conv/` et `app/data/`;
-- logs runtime `app/logs/*.jsonl` et `app/logs/*.log`.
+- `state/conv`, `state/logs`, `state/data` (etat runtime cote hote);
+- artefacts runtime locaux (`app/conv/`, `app/data/`, `app/logs/*.jsonl`, `app/logs/*.log`) hors suivi git.
+
+Repere important:
+- en mode Docker, les chemins operateur a manipuler sont `state/...` cote hote;
+- `/app/conv`, `/app/logs`, `/app/data` sont les chemins internes du conteneur (cibles de montage).
 
 Consequence pour un clone neuf:
 - aucun secret n'est present;
 - aucun state local n'est present;
-- aucune identite locale (`data/identity/*`) n'est presente.
+- aucune identite locale (`state/data/identity/*` cote hote) n'est presente.
 
 ## 4. Dependances de service a prevoir
 
@@ -119,6 +122,7 @@ Selon usages actives:
 Option identites statiques (sinon bloc identite vide):
 - `FRIDA_LLM_IDENTITY_PATH` (defaut: `data/identity/llm_identity.txt`);
 - `FRIDA_USER_IDENTITY_PATH` (defaut: `data/identity/user_identity.txt`).
+- en exploitation Docker standard, ces fichiers sont alimentes via `state/data/identity/*` cote hote.
 
 ## 5.3 Bootstrap state local recommande
 
