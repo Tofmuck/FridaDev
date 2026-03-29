@@ -34,6 +34,7 @@ Contrainte structurante du chantier:
 - La posture de jugement explicite doit exister: `answer | clarify | suspend`.
 - Le noeud ne doit pas devenir un modele souverain opaque.
 - Le noeud primaire emet un verdict premier et des directives provisoires.
+- Le noeud primaire doit avoir un comportement fail-open explicite et auditable.
 - L'agent hermeneutique de validation est juge de revision (`confirm|challenge|clarify|suspend`) et souverain sur la validation finale.
 - L'agent de validation n'est pas souverain sur les criteres; les criteres restent fixes par les contrats normatifs.
 - La sortie du noeud reste compacte, testable, auditable.
@@ -120,9 +121,18 @@ Perimetre: interface `stimmung`, compatibilite FridaDev, articulation des direct
 
 - [ ] Definir l'interface canonique d'entree `stimmung` pour le noeud.
 - [ ] Definir les champs minimaux utiles (etat, stabilite, regime derive, signaux de preuve).
+- [ ] Distinguer explicitement les 2 artefacts `stimmung`: contrat d'entree (`inputs`) vs gouvernance doctrinale (`doctrine`).
 - [ ] Trancher noir sur blanc: M6 fournit des signaux/determinants d'entree, pas la sortie finale aval.
-- [ ] Trancher noir sur blanc: le noeud emet des `pipeline_directives_provisional`, la validation emet la version finale.
+- [ ] Trancher noir sur blanc: le noeud emet des `pipeline_directives_provisional`, la validation emet `pipeline_directives_final`.
 - [ ] Definir la compatibilite minimale avec l'existant `FridaDev` sans import brutal de `Frida_V4`.
+
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-stimmung-input-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-input-contract.md`
+- Module code cible: `core.hermeneutic_node.inputs.stimmung`
+- Repertoire code cible: `app/core/hermeneutic_node/inputs/`
+- Fichier Python cible: `stimmung.py`
+- Raison: fixer le contrat d'entree `stimmung` avant la gouvernance doctrinale.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-stimmung-governance-contract.md`
@@ -133,7 +143,7 @@ Pause normative obligatoire:
 - Raison: fixer une gouvernance unique `M6 -> noeud -> directives aval` avant implementation pour eviter les souverainetes concurrentes.
 
 Sortie attendue du lot: contrat `stimmung` + gouvernance explicite `M6 -> noeud -> directives aval`.
-Validation minimale: schema d'entree `stimmung` et regle anti-double-pilotage formalisee et testable.
+Validation minimale: distinction explicite entre contrat d'entree `stimmung` et gouvernance doctrinale, avec regle anti-double-pilotage testable.
 Dependances: Lots 1 et 2.
 Hors scope: implementation runtime complete de M6.
 
@@ -248,7 +258,9 @@ Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, pa
 - [ ] Definir les regles d'inertie (quand conserver ou changer un regime).
 - [ ] Definir la sortie canonique `discursive_regime`.
 - [ ] Definir la sortie canonique `resituation_level`.
+- [ ] Definir la taxonomie canonique de `time_reference_mode` et son articulation avec `discursive_regime` / `resituation_level`.
 - [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives_provisional`).
+- [ ] Definir le fail-open du noeud primaire (fallback minimal + auditabilite) sans effondrement du pipeline.
 - [ ] Definir les champs minimaux d'auditabilite de ce payload.
 
 Pause normative obligatoire:
@@ -268,7 +280,7 @@ Pause normative obligatoire:
 - Raison: la persistance d'etat du noeud doit etre fixee contractuellement avant choix technique final.
 
 Sortie attendue du lot: snapshot persistant + payload unique complet, compact et versionne.
-Validation minimale: le payload de sortie couvre explicitement `discursive_regime` et `resituation_level` sans champ implicite critique.
+Validation minimale: le payload de sortie couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`, avec fail-open primaire defini.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 
@@ -281,7 +293,10 @@ Perimetre: validation agent, verdict final valide, branchement aval, observabili
 
 - [ ] Definir le contrat de revision: entree = verdict primaire + justifications + directives provisoires + entrees canoniques.
 - [ ] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
+- [ ] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
+- [ ] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.
 - [ ] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire).
+- [ ] Definir le cadre operationnel du validation agent: budget token, timeout, fail-open, circuit breaker, cout/latence cible.
 - [ ] Definir les signaux d'observabilite du dispositif final (noeud primaire + validation), sans inflation de logs.
 - [ ] Definir les KPI minimaux de stabilite pour ce branchement.
 - [ ] Definir les preconditions strictes d'une future shadow globale.
@@ -293,9 +308,9 @@ Pause normative obligatoire:
 - Module code cible: `core.hermeneutic_node.validation.validation_agent`
 - Repertoire code cible: `app/core/hermeneutic_node/validation/`
 - Fichier Python cible: `validation_agent.py`
-- Raison: la revision finale est souveraine sur la validation du verdict et doit etre encadree normativement avant code.
+- Raison: la revision finale est souveraine sur la validation du verdict, la table de combinaison normative et le cadre operationnel; ce contrat doit preceder le code.
 
 Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + observabilite complete + check-list pre-shadow.
-Validation minimale: l'aval consomme explicitement une sortie revisee (`confirm|challenge|clarify|suspend`) et jamais un verdict primaire brut.
-Dependances: Lots 1 et 8.
+Validation minimale: l'aval consomme explicitement une sortie revisee (`confirm|challenge|clarify|suspend`) et des `pipeline_directives_final`, jamais un verdict primaire brut.
+Dependances: Lots 1, 5 et 8.
 Hors scope: lancement operationnel de la shadow globale.

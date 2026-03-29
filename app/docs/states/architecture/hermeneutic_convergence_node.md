@@ -172,6 +172,7 @@ Role :
 ### 3.7 Stimmung / M6
 
 Entrees attendues :
+- un contrat d'entree `stimmung` canonique (famille `inputs/`) ;
 - etat dialogique local ;
 - regime derive par M6 ;
 - stabilite de regime ;
@@ -183,6 +184,7 @@ Role :
 - fournir un determinant de coherence dialogique ;
 - moduler l'acceptabilite des transitions de regime ;
 - contribuer au choix du regime discursif et epistemique ;
+- rester distinct de la gouvernance doctrinale `stimmung_governance` (famille `doctrine/`) ;
 - ne pas decider seul de la hierarchie de toutes les sources.
 
 ### 3.8 Demande utilisateur
@@ -320,10 +322,34 @@ Il agit comme juge de revision et produit une decision de validation:
 - `clarify`
 - `suspend`
 
+La validation produit une sortie finale explicite:
+- `validation_decision` ;
+- `pipeline_directives_final`.
+
+Le contrat du validation agent doit inclure une table de combinaison normative
+entre:
+- le verdict primaire (`epistemic_regime`, `judgment_posture`, `proof_regime`) ;
+- la decision de validation (`confirm|challenge|clarify|suspend`) ;
+et la sortie finale consommee par l'aval.
+
 Il est souverain sur la validation finale du verdict.
 Il n'est pas souverain sur les criteres: les criteres restent fixes dans les contrats normatifs.
 
+Le contrat doit aussi fixer le cadre operationnel minimal de la validation:
+- budget token;
+- timeout;
+- fail-open;
+- circuit breaker;
+- cout/latence operationnels acceptables.
+
 L'aval consomme uniquement une sortie validee par cet agent.
+
+### 5.8 Fail-open du noeud primaire
+
+Le noeud primaire doit aussi avoir un comportement fail-open explicite:
+- en cas d'echec primaire, le pipeline ne doit pas s'effondrer;
+- un fallback minimal audit-able doit etre produit;
+- ce fallback reste soumis a la validation avant consommation aval.
 
 ## 6. Questions que le dispositif doit trancher
 
@@ -624,13 +650,20 @@ L'agent hermeneutique de validation revise ce verdict, puis produit:
 - `challenge`
 - `clarify`
 - `suspend`
+- `pipeline_directives_final` (issues d'une table de combinaison normative).
 
 Modele cible de reference pour cette etape: `GPT-5.4`.
+
+Cette etape inclut aussi le cadre operationnel de validation:
+- budget token;
+- timeout;
+- fail-open;
+- circuit breaker.
 
 ### 11.5 Etape 5 - Wiring aval
 
 Les modules aval ne doivent plus deduire chacun leur politique dans leur coin.
-Ils doivent consommer les directives validees.
+Ils doivent consommer `pipeline_directives_final` uniquement.
 
 ### 11.6 Etape 6 - Shadow globale
 
@@ -669,6 +702,7 @@ Cette section fixe les taches reelles pour converger vers le noeud cible.
 - faire consommer au retrieval / arbitrage / generation des directives communes ;
 - brancher M6 comme determinant et non comme souverain ;
 - introduire un verdict primaire explicite du noeud ;
+- definir le fail-open du noeud primaire ;
 - introduire l'agent hermeneutique de validation avant l'aval ;
 - brancher la posture `answer | clarify | suspend` sur la sortie validee ;
 - introduire un point de sortie unique revise.
