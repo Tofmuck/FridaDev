@@ -27,13 +27,16 @@ Primary references for this repository state:
 - Structured docs under `app/docs/`.
 
 ### What Frida Does Today
-- Receives a user message through `/api/chat`.
-- Resolves or creates the conversation session.
-- Summarizes older turns when thresholds are met.
-- Builds augmented system context (prompts + canonical time reference + identity block).
-- Retrieves memory/context hints and optionally injects web context.
-- Calls the main LLM (JSON or stream mode).
-- Persists conversation/memory/identity traces and exposes admin + observability surfaces.
+- Receives a user message through `/api/chat` and resolves an existing conversation or creates a new one.
+- Sets the turn generation present (`user_timestamp`) and appends the user turn with that timestamp.
+- Optionally summarizes older unsummarized turns when thresholds are exceeded, stores the summary in DB, and links covered traces.
+- Builds the augmented system message from backend prompts + identity block + canonical temporal reference (`[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`).
+- Runs memory retrieval from embeddings, then applies hermeneutic arbitration depending runtime mode.
+- Enriches selected memory traces with parent summaries and also fetches recent context hints.
+- Rebuilds the prompt window from the current conversation with: active summary, context hints, memory-context summaries, memory traces, and recent turns.
+- Anchors temporal reading to the same turn `NOW` (relative delta labels + silence markers between turns).
+- Optionally reformulates/searches/crawls web sources and injects web context into the last user prompt.
+- Calls the main LLM (JSON or stream), then persists the assistant turn, new traces, identity writes/evidence by mode, and structured admin/observability logs.
 
 ### What Frida Is Building
 In progress (not fully implemented yet):
@@ -108,13 +111,16 @@ References principales pour l'etat du depot:
 - Documentation structuree dans `app/docs/`.
 
 ### Ce que Frida fait aujourd'hui
-- Recoit un message utilisateur via `/api/chat`.
-- Resout ou cree la session de conversation.
-- Resume les anciens tours quand les seuils sont atteints.
-- Construit un contexte systeme augmente (prompts + reference temporelle canonique + bloc identite).
-- Recupere memoire/indices contextuels et peut injecter un contexte web.
-- Appelle le LLM principal (mode JSON ou stream).
-- Persiste conversations/traces memoire/identite et expose les surfaces admin + observabilite.
+- Recoit un message utilisateur via `/api/chat` et resout une conversation existante ou en cree une nouvelle.
+- Fixe le present de generation du tour (`user_timestamp`) et ajoute le tour utilisateur avec ce timestamp.
+- Peut resumer les anciens tours non resumes si les seuils sont depasses, persiste le resume en DB et rattache les traces couvertes.
+- Construit le systeme augmente depuis les prompts backend + bloc identite + reference temporelle canonique (`[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`).
+- Lance la recuperation memoire par embeddings puis l'arbitrage hermeneutique selon le mode runtime.
+- Enrichit les traces memoire retenues avec leurs resumes parents et recupere aussi des indices contextuels recents.
+- Reconstruit la fenetre de prompt depuis la conversation courante avec: resume actif, indices contextuels, contexte de souvenirs, traces memoire et tours recents.
+- Relit la temporalite depuis le meme `NOW` de tour (labels relatifs Delta-T + marqueurs de silence entre tours).
+- Peut reformuler/rechercher/crawler le web et injecter ce contexte dans le dernier message utilisateur.
+- Appelle le LLM principal (JSON ou stream), puis persiste la reponse, les nouvelles traces, l'identite (ecriture ou evidence selon le mode) et les logs admin/observabilite.
 
 ### Ce que Frida est en train de construire
 En cours (pas completement implemente):
