@@ -9,7 +9,8 @@ Regle de lecture:
 - ce document est la roadmap mere unique du chantier;
 - les docs d'architecture restent la norme, ce TODO est leur plan d'execution;
 - les briques existantes continuent a alimenter le LLM principal pendant toute la construction du noeud;
-- la convergence vise un noeud central place clairement dans le pipeline, sans dependances laterales permanentes.
+- la convergence vise un dispositif en 2 etages: `noeud primaire -> validation agent`;
+- le branchement aval consomme uniquement le verdict valide.
 
 Regle de structuration forte:
 - chaque lot est qualifie explicitement: `travail de structure` ou `travail de structure + pause normative`;
@@ -17,6 +18,9 @@ Regle de structuration forte:
 - pas de fichier monstre "par commodite" (pas de croissance vers 2000 lignes);
 - une responsabilite doctrinale ou fonctionnelle autonome doit converger vers un doc normatif dedie puis un module/fichier dedie, sauf justification explicite;
 - centraliser seulement ce qui doit l'etre, eviter les dependances laterales diffuses.
+
+Modele cible de reference (hypothese architecturale actuelle):
+- `GPT-5.4` pour l'agent hermeneutique de validation.
 
 ## Point d'insertion du noeud dans le pipeline reel
 Contrainte structurante du chantier:
@@ -29,9 +33,17 @@ Contrainte structurante du chantier:
 - Tant que le noeud n'existe pas, la shadow globale du pipeline complet est hors de portee.
 - La posture de jugement explicite doit exister: `answer | clarify | suspend`.
 - Le noeud ne doit pas devenir un modele souverain opaque.
-- Le noeud arbitre et emet la sortie finale aval; les determinants n'emettent pas des directives aval concurrentes.
+- Le noeud primaire emet un verdict premier et des directives provisoires.
+- L'agent hermeneutique de validation est juge de revision (`confirm|challenge|clarify|suspend`) et souverain sur la validation finale.
+- L'agent de validation n'est pas souverain sur les criteres; les criteres restent fixes par les contrats normatifs.
 - La sortie du noeud reste compacte, testable, auditable.
 - Le chantier n'avance pas "dans le noir": observabilite minimale incrementale des le Lot 1.
+
+## Structure code cible (documentaire)
+- `app/core/hermeneutic_node/inputs/`: contrats d'entree canoniques et traduction runtime.
+- `app/core/hermeneutic_node/doctrine/`: modules doctrinaux issus des docs normatifs.
+- `app/core/hermeneutic_node/runtime/`: noeud primaire, etat, wiring technique, persistance.
+- `app/core/hermeneutic_node/validation/`: agent hermeneutique de validation et sorties de revision.
 
 ## Vue d'ensemble en un coup d'oeil
 Ce qui est deja la:
@@ -89,8 +101,8 @@ Sous-bloc B - Qualification semantique minimale:
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-user-demand-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
-- Module code cible: `core.hermeneutic_node.user_demand`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.inputs.user_demand`
+- Repertoire code cible: `app/core/hermeneutic_node/inputs/`
 - Fichier Python cible: `user_demand.py`
 - Raison: la qualification de demande et les signaux d'ambiguite sont doctrinaux; le contrat doit preceder le code.
 
@@ -109,14 +121,14 @@ Perimetre: interface `stimmung`, compatibilite FridaDev, articulation des direct
 - [ ] Definir l'interface canonique d'entree `stimmung` pour le noeud.
 - [ ] Definir les champs minimaux utiles (etat, stabilite, regime derive, signaux de preuve).
 - [ ] Trancher noir sur blanc: M6 fournit des signaux/determinants d'entree, pas la sortie finale aval.
-- [ ] Trancher noir sur blanc: les `pipeline_directives` finales sont emises par le noeud de convergence.
+- [ ] Trancher noir sur blanc: le noeud emet des `pipeline_directives_provisional`, la validation emet la version finale.
 - [ ] Definir la compatibilite minimale avec l'existant `FridaDev` sans import brutal de `Frida_V4`.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-stimmung-governance-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-governance-contract.md`
-- Module code cible: `core.hermeneutic_node.stimmung_governance`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.stimmung_governance`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `stimmung_governance.py`
 - Raison: fixer une gouvernance unique `M6 -> noeud -> directives aval` avant implementation pour eviter les souverainetes concurrentes.
 
@@ -140,8 +152,8 @@ Perimetre: `epistemic_regime`, `proof_regime`, `uncertainty_posture`.
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-epistemic-regime-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-epistemic-regime-contract.md`
-- Module code cible: `core.hermeneutic_node.epistemic_regime`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.epistemic_regime`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `epistemic_regime.py`
 - Raison: les classes epistemiques et leur regime de preuve sont doctrinaux et doivent etre stabilises avant code.
 
@@ -165,8 +177,8 @@ Perimetre: `judgment_posture`, criteres de decision, effets minimaux.
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-judgment-posture-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-judgment-posture-contract.md`
-- Module code cible: `core.hermeneutic_node.judgment_posture`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.judgment_posture`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `judgment_posture.py`
 - Raison: la posture de jugement engage la doctrine de sortie et ne doit pas etre codee avant regle explicite.
 
@@ -190,8 +202,8 @@ Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, dem
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-source-priority-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-source-priority-contract.md`
-- Module code cible: `core.hermeneutic_node.source_priority`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.source_priority`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `source_priority.py`
 - Raison: la hierarchie des sources est une regle doctrinale centrale, a trancher avant implementation.
 
@@ -215,8 +227,8 @@ Perimetre: detection, explicitation, issue minimale de conflit.
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-source-conflict-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-source-conflict-contract.md`
-- Module code cible: `core.hermeneutic_node.source_conflicts`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.source_conflicts`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `source_conflicts.py`
 - Raison: les regles de conflit inter-sources doivent etre explicites et stables avant implementation.
 
@@ -236,22 +248,22 @@ Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, pa
 - [ ] Definir les regles d'inertie (quand conserver ou changer un regime).
 - [ ] Definir la sortie canonique `discursive_regime`.
 - [ ] Definir la sortie canonique `resituation_level`.
-- [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives`).
+- [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives_provisional`).
 - [ ] Definir les champs minimaux d'auditabilite de ce payload.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-output-regime-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
-- Module code cible: `core.hermeneutic_node.output_regime`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.doctrine.output_regime`
+- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `output_regime.py`
 - Raison: `discursive_regime` et `resituation_level` exigent une doctrine de sortie stable avant implementation.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-state-persistence-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-state-persistence-contract.md`
-- Module code cible: `core.hermeneutic_node.node_state`
-- Repertoire code cible: `app/core/hermeneutic_node/`
+- Module code cible: `core.hermeneutic_node.runtime.node_state`
+- Repertoire code cible: `app/core/hermeneutic_node/runtime/`
 - Fichier Python candidat: `node_state.py` (a confirmer)
 - Raison: la persistance d'etat du noeud doit etre fixee contractuellement avant choix technique final.
 
@@ -260,20 +272,30 @@ Validation minimale: le payload de sortie couvre explicitement `discursive_regim
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 
-## Lot 9 - Branchement aval + observabilite du noeud + preconditions shadow globale
-Nature du lot: travail de structure.
+## Lot 9 - Validation hermeneutique finale + branchement aval + observabilite + preconditions shadow globale
+Nature du lot: travail de structure + pause normative.
 
-Objectif: brancher les directives du noeud vers l'aval, finaliser son observabilite, et fixer les preconditions d'une future shadow globale.
+Objectif: placer un agent hermeneutique de validation apres le noeud primaire et avant l'aval, puis brancher l'aval uniquement sur la sortie revisee.
 
-Perimetre: branchement des directives, observabilite du noeud, preconditions shadow.
+Perimetre: validation agent, verdict final valide, branchement aval, observabilite du dispositif final, preconditions shadow.
 
-- [ ] Definir le contrat de branchement des `pipeline_directives` vers les modules aval.
-- [ ] Definir les signaux d'observabilite du noeud (decisions, transitions, conflits, charge), sans inflation de logs.
+- [ ] Definir le contrat de revision: entree = verdict primaire + justifications + directives provisoires + entrees canoniques.
+- [ ] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
+- [ ] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire).
+- [ ] Definir les signaux d'observabilite du dispositif final (noeud primaire + validation), sans inflation de logs.
 - [ ] Definir les KPI minimaux de stabilite pour ce branchement.
 - [ ] Definir les preconditions strictes d'une future shadow globale.
 - [ ] Verifier que la shadow globale reste hors scope tant que ces preconditions ne sont pas remplies.
 
-Sortie attendue du lot: integration aval preparee + observabilite du noeud complete + check-list pre-shadow.
-Validation minimale: checklist de preconditions shadow fermee et explicitement dependante de la stabilite du noeud branche.
+Pause normative obligatoire:
+- Doc normatif a ouvrir: `hermeneutic-node-validation-agent-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-validation-agent-contract.md`
+- Module code cible: `core.hermeneutic_node.validation.validation_agent`
+- Repertoire code cible: `app/core/hermeneutic_node/validation/`
+- Fichier Python cible: `validation_agent.py`
+- Raison: la revision finale est souveraine sur la validation du verdict et doit etre encadree normativement avant code.
+
+Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + observabilite complete + check-list pre-shadow.
+Validation minimale: l'aval consomme explicitement une sortie revisee (`confirm|challenge|clarify|suspend`) et jamais un verdict primaire brut.
 Dependances: Lots 1 et 8.
 Hors scope: lancement operationnel de la shadow globale.

@@ -5,9 +5,14 @@ Statut: cadrage architectural de reference
 
 ## 1. Objet
 
-Ce document definit le noeud de convergence hermeneutique cible de `FridaDev`.
+Ce document definit le dispositif de convergence hermeneutique cible de `FridaDev`.
 
-Ce noeud est l'instance qui recoit plusieurs determinants heterogenes deja produits par le systeme ou par de futurs modules, puis qui derive un cadre de reponse unique, explicable et testable.
+Le dispositif cible est constitue de deux etages:
+- un noeud primaire de convergence;
+- un agent hermeneutique de validation (juge de revision), place apres le noeud primaire et avant le branchement aval.
+
+Le noeud primaire recoit plusieurs determinants heterogenes deja produits par le systeme ou par de futurs modules, puis derive un premier cadre de reponse explicable et testable.
+L'agent de validation relit ce premier verdict, puis decide sa validation finale.
 
 Le noeud ne se confond pas avec :
 - la memoire ;
@@ -19,7 +24,7 @@ Le noeud ne se confond pas avec :
 
 `M6 Stimmung` est un determinant important du futur noeud, mais il n'est pas le noeud lui-meme.
 
-Le noeud est l'instance de synthese qui arbitre entre :
+Le noeud primaire est l'instance de synthese qui arbitre entre :
 - memoire ;
 - web ;
 - identite ;
@@ -29,13 +34,21 @@ Le noeud est l'instance de synthese qui arbitre entre :
 - `Stimmung` ;
 - demande utilisateur.
 
-Sa finalite est de produire, pour chaque tour, un regime de reponse qui dise :
+Sa finalite est de produire, pour chaque tour, un verdict premier qui dise :
 - comment parler ;
 - au nom de quelles sources parler ;
 - avec quel niveau de certitude parler ;
 - avec quel niveau de preuve parler ;
 - s'il faut repondre, demander une precision, ou suspendre le jugement ;
 - avec quel degre de reprise ou de re-situation parler.
+
+L'agent hermeneutique de validation revise ensuite ce verdict premier avec quatre sorties possibles:
+- `confirm`
+- `challenge`
+- `clarify`
+- `suspend`
+
+Modele cible de reference pour cet agent de validation: `GPT-5.4`.
 
 ## 2. Pourquoi ce noeud est necessaire
 
@@ -197,11 +210,17 @@ Pour rester lisible et auditable, le noeud ne doit pas recevoir :
 
 Le noeud doit recevoir des determinants structures, pas des resultats deja cuits.
 
-## 5. Sorties du noeud
+## 5. Sorties du dispositif
 
-Le noeud doit produire une sortie compacte, structuree, stable et testable.
+Le dispositif produit deux niveaux de sortie:
+- une sortie primaire (noeud primaire);
+- une sortie finale revisee (agent de validation), seule consommable par l'aval.
 
-Cette sortie doit au minimum contenir :
+### 5.0 Sortie primaire du noeud
+
+La sortie primaire du noeud doit rester compacte, structuree, stable et testable.
+
+Cette sortie primaire doit au minimum contenir:
 - un `discursive_regime` ;
 - un `epistemic_regime` ;
 - un `proof_regime` ;
@@ -210,7 +229,7 @@ Cette sortie doit au minimum contenir :
 - un `time_reference_mode` ;
 - une `source_priority` ou hierarchie effective des sources ;
 - un `uncertainty_posture` ;
-- des `pipeline_directives` pour les modules aval.
+- des `pipeline_directives_provisional`.
 
 ### 5.1 Regime discursif
 
@@ -288,9 +307,27 @@ La sortie doit dire quelle source prime ici, ou quel ordre de lecture doit etre 
 - contexte recent fort ou faible ;
 - M6 contributif mais non souverain.
 
-## 6. Questions que le noeud doit trancher
+### 5.7 Validation finale du verdict primaire
 
-Le noeud doit etre explicitement charge de trancher les questions suivantes :
+L'agent hermeneutique de validation recoit:
+- les entrees canoniques;
+- le verdict primaire du noeud;
+- les justifications et directives provisoires.
+
+Il agit comme juge de revision et produit une decision de validation:
+- `confirm`
+- `challenge`
+- `clarify`
+- `suspend`
+
+Il est souverain sur la validation finale du verdict.
+Il n'est pas souverain sur les criteres: les criteres restent fixes dans les contrats normatifs.
+
+L'aval consomme uniquement une sortie validee par cet agent.
+
+## 6. Questions que le dispositif doit trancher
+
+Le dispositif (noeud primaire + validation) doit etre explicitement charge de trancher les questions suivantes:
 
 1. De quel type de reponse s'agit-il ?
 - reprise conversationnelle ;
@@ -339,6 +376,12 @@ Le noeud doit etre explicitement charge de trancher les questions suivantes :
 - privilegier une source ;
 - demander verification ;
 - reduire l'assertivite.
+
+8. Le verdict primaire est-il valide en revision ?
+- `confirm`
+- `challenge`
+- `clarify`
+- `suspend`
 
 ## 7. Hierarchie des sources
 
@@ -485,9 +528,10 @@ M6 n'apporte pas, a lui seul :
 - la lecture complete de la demande ;
 - l'arbitrage global entre resume, contexte, identite et temps.
 
-En consequence :
-- le noeud doit prendre M6 en consideration ;
-- mais ne doit jamais se reduire a M6.
+En consequence:
+- le noeud primaire doit prendre M6 en consideration;
+- l'agent de validation peut challenger un verdict primaire qui surexpose M6;
+- M6 ne doit jamais devenir un souverain concurrent de la validation finale.
 
 ## 10. Place des briques deja existantes dans FridaDev
 
@@ -524,7 +568,8 @@ Il manque encore :
 - une sortie compacte unique pour le regime de reponse ;
 - une hierarchie explicite et centralisee des sources ;
 - un arbitrage explicite certain/probable/incertain ;
-- un wiring aval piloté par cette sortie.
+- un agent hermeneutique de validation place avant l'aval ;
+- un wiring aval pilote par une sortie revisee.
 
 ## 11. Ordre de construction recommande
 
@@ -532,15 +577,16 @@ L'ordre cible n'est pas :
 - mesurer d'abord ;
 - theoriser ensuite.
 
-L'ordre cible est :
+L'ordre cible est:
 
 1. Nommer le noeud.
 2. Lister ses entrees.
 3. Canoniser chaque entree.
 4. Definir les sorties minimales.
-5. Definir la hierarchie des sources.
-6. Brancher le noeud sur les modules aval.
-7. Seulement ensuite lancer une vraie shadow globale.
+5. Definir l'agent de validation de revision.
+6. Definir la hierarchie des sources.
+7. Brancher l'aval sur la sortie validee.
+8. Seulement ensuite lancer une vraie shadow globale.
 
 ### 11.1 Etape 1 - Cartographie canonique des determinants
 
@@ -567,15 +613,26 @@ V1 recommandee :
 - `resituation_level`
 - `time_reference_mode`
 - `source_priority`
-- `pipeline_directives`
+- `pipeline_directives_provisional`
 
-### 11.4 Etape 4 - Wiring aval
+### 11.4 Etape 4 - Validation avant aval
+
+Le verdict primaire ne doit pas etre consomme directement par l'aval.
+
+L'agent hermeneutique de validation revise ce verdict, puis produit:
+- `confirm`
+- `challenge`
+- `clarify`
+- `suspend`
+
+Modele cible de reference pour cette etape: `GPT-5.4`.
+
+### 11.5 Etape 5 - Wiring aval
 
 Les modules aval ne doivent plus deduire chacun leur politique dans leur coin.
+Ils doivent consommer les directives validees.
 
-Ils doivent consommer les directives du noeud.
-
-### 11.5 Etape 5 - Shadow globale
+### 11.6 Etape 6 - Shadow globale
 
 La shadow globale n'a de sens qu'une fois la structure posee.
 
@@ -611,8 +668,10 @@ Cette section fixe les taches reelles pour converger vers le noeud cible.
 
 - faire consommer au retrieval / arbitrage / generation des directives communes ;
 - brancher M6 comme determinant et non comme souverain ;
-- brancher la posture `answer | clarify | suspend` sur les modules aval ;
-- introduire un point de sortie unique du regime.
+- introduire un verdict primaire explicite du noeud ;
+- introduire l'agent hermeneutique de validation avant l'aval ;
+- brancher la posture `answer | clarify | suspend` sur la sortie validee ;
+- introduire un point de sortie unique revise.
 
 ### 12.5 Taches de preuve
 
@@ -629,17 +688,34 @@ Pour rester propre, ce chantier doit respecter les frontieres suivantes :
 - ne pas confondre memoire et noeud ;
 - ne pas confondre grounding temporel et noeud ;
 - ne pas confondre M6 et noeud ;
+- ne pas confondre criteres doctrinaux et pouvoir de revision de l'agent de validation ;
 - ne pas transformer le noeud en modele tout-puissant opaque ;
+- ne pas transformer l'agent de validation en auto-legislateur des criteres ;
 - ne pas faire du noeud un simple prompt bavard ;
 - ne pas lancer une shadow globale avant que la structure existe reellement.
 
 ## 14. Decision de fond retenue
 
-La decision architecturale retenue est la suivante :
+La decision architecturale retenue est la suivante:
 
 - le pipeline actuel de `FridaDev` n'est pas encore le pipeline hermeneutique complet ;
 - `M6 Stimmung` n'est pas le noeud de convergence ;
 - `M6 Stimmung` est un determinant du futur noeud ;
-- le futur noeud devra arbitrer entre temps, memoire, web, identite, resume, contexte et `Stimmung` ;
-- le futur noeud devra aussi savoir suspendre le jugement ou demander une precision quand le cadre ne permet pas de conclure proprement ;
+- le futur noeud primaire devra arbitrer entre temps, memoire, web, identite, resume, contexte et `Stimmung` ;
+- le verdict primaire devra etre revise par un agent hermeneutique de validation, modele cible `GPT-5.4` ;
+- cet agent sera souverain sur la validation finale (`confirm|challenge|clarify|suspend`) mais non souverain sur les criteres ;
+- l'aval consommera uniquement la sortie validee ;
 - tant que ce noeud n'existe pas, toute validation globale du pipeline reste necessairement partielle.
+
+## 15. Structure code cible (documentaire)
+
+Structure cible de lisibilite (sans creation dans cette tranche):
+
+- `app/core/hermeneutic_node/inputs/`
+  - contrats d'entree canoniques et traduction runtime.
+- `app/core/hermeneutic_node/doctrine/`
+  - modules doctrinaux issus des specs normatives.
+- `app/core/hermeneutic_node/runtime/`
+  - noeud primaire, etat persistant, wiring technique.
+- `app/core/hermeneutic_node/validation/`
+  - agent hermeneutique de validation et sorties de revision.
