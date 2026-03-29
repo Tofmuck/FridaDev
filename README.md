@@ -40,11 +40,14 @@ Primary references for this repository state:
 
 ### What Frida Is Building
 In progress (not fully implemented yet):
-- a primary hermeneutic convergence node in the chat pipeline;
-- a validation agent acting as a revision judge on node outputs;
-- clearer source hierarchy and conflict handling between memory/web/identity/context/time;
-- explicit judgment postures (`answer`, `clarify`, `suspend`) with better suspension behavior;
-- stronger modular separation across `inputs/`, `doctrine/`, `runtime/`, and `validation/`.
+- Frida is building a decision layer between context assembly and final answer generation, so source arbitration is explicit instead of implicit.
+- This layer is designed to ingest canonical inputs from: time, memory, web, identity, active summary, recent context, Stimmung, and the user request.
+- A primary convergence node will produce a first verdict: how to answer, with what certainty level, with which source priority, and with what proof posture.
+- That first verdict can lead to `answer`, `clarify`, or `suspend` when evidence is weak, ambiguous, or contradictory.
+- A second-stage validation agent (revision judge) then re-reads the verdict before downstream use and can `confirm`, `challenge`, `clarify`, or `suspend`.
+- Validation is sovereign on final acceptance, but not on criteria: criteria stay fixed by explicit doctrine contracts.
+- Practical goal: better situated answers, clearer source hierarchy, stronger justification, fewer hallucinations, and explicit non-conclusion when needed.
+- Target structure for this work is a clearer split between `inputs/`, `doctrine/`, `runtime/`, and `validation/`.
 
 ### What is versioned vs runtime-local
 Versioned:
@@ -124,11 +127,14 @@ References principales pour l'etat du depot:
 
 ### Ce que Frida est en train de construire
 En cours (pas completement implemente):
-- un noeud primaire de convergence hermeneutique dans le pipeline chat;
-- un agent de validation jouant le role de juge de revision des sorties du noeud;
-- une hierarchie de sources plus explicite et une meilleure gestion des conflits memoire/web/identite/contexte/temps;
-- des postures de jugement explicites (`answer`, `clarify`, `suspend`) avec une suspension mieux cadree;
-- une separation modulaire plus nette entre `inputs/`, `doctrine/`, `runtime/` et `validation/`.
+- Frida construit une couche de decision entre l'assemblage du contexte et la generation finale, pour arbitrer les sources explicitement plutot que de les empiler.
+- Cette couche est concue pour recevoir des entrees canoniques: temps, memoire, web, identite, resume actif, contexte recent, Stimmung et demande utilisateur.
+- Un noeud primaire de convergence doit produire un premier verdict: comment repondre, avec quel niveau de certitude, avec quelle priorite de sources et avec quel regime de preuve.
+- Ce premier verdict peut conduire a `answer`, `clarify` ou `suspend` quand les elements sont insuffisants, ambigus ou contradictoires.
+- Un agent de validation en second niveau (juge de revision) relit ensuite ce verdict avant consommation aval et peut `confirm`, `challenge`, `clarify` ou `suspend`.
+- La validation est souveraine sur l'acceptation finale, mais pas sur les criteres: les criteres restent fixes par des contrats doctrinaux explicites.
+- Objectif pratique: mieux situer les reponses, mieux hierarchiser les sources, mieux justifier, moins halluciner et accepter explicitement de ne pas conclure quand il le faut.
+- La cible de structuration est une separation plus nette entre `inputs/`, `doctrine/`, `runtime/` et `validation/`.
 
 ### Ce qui est versionne vs local runtime
 Versionne:
