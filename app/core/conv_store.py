@@ -63,14 +63,6 @@ def _db_conn():
     return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
 
 
-def _runtime_database_view() -> runtime_settings.RuntimeSectionView:
-    return runtime_db_bootstrap.runtime_database_view(runtime_settings)
-
-
-def _runtime_database_backend() -> str:
-    return runtime_db_bootstrap.runtime_database_backend(runtime_settings)
-
-
 def _bootstrap_database_dsn() -> str:
     # Transition compatibility: phase4 DB tests patch this helper directly.
     return runtime_db_bootstrap.bootstrap_database_dsn(config, runtime_settings)

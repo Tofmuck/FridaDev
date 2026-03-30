@@ -109,8 +109,8 @@ Ce qui reste ailleurs:
 1. Figer la facade de transition dans `conv_store.py` (surface publique explicite + sections metier lisibles, sans extraction).
 2. Extraire fichier B (`conversations_prompt_window.py`) avec wrappers de compatibilite dans `conv_store.py`. *(realisee)*
 3. Extraire fichier A (`conversations_store.py`) en gardant les symboles publics actuels exposes via `conv_store.py`. *(realisee)*
-4. Extraire fichier C (`conversations_maintenance.py`) et isoler les operations destructives/legacy.
-5. Nettoyer `conv_store.py` en facade explicite de delegation (imports + forwarding), sans rupture d'API.
+4. Extraire fichier C (`conversations_maintenance.py`) et isoler les operations destructives/legacy. *(realisee)*
+5. Nettoyer `conv_store.py` en facade explicite de delegation (imports + forwarding), sans rupture d'API. *(realisee)*
 
 ## 6) Garde-fous (runtime et regression)
 - Aucun changement de contrat public `conv_store` au premier passage.
@@ -143,6 +143,6 @@ Couverture minimale a verifier a chaque etape:
 - [x] Re-router `delta_t_label` et `_silence_label` via la nouvelle unite sans changer les chaines.
 - [x] Extraire `conversations_store.py` et garder les routes/chat flows inchanges.
 - [x] Extraire `conversations_maintenance.py` avec `init_*`, `sync_*`, `get_storage_counts`, `delete_conversation`.
-- [ ] Conserver `conv_store.py` comme facade de delegation (imports explicites, pas de logique remelangee).
-- [ ] Executer la batterie minimale de tests a chaque etape d'extraction.
-- [ ] Finaliser un patch neutre doctrinalement et sans changement comportemental observable.
+- [x] Conserver `conv_store.py` comme facade de delegation (imports explicites, pas de logique remelangee).
+- [x] Executer la batterie minimale de tests a chaque etape d'extraction.
+- [x] Finaliser un patch neutre doctrinalement et sans changement comportemental observable.

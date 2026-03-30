@@ -9,8 +9,8 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = APP_DIR.parent
 CONV_STORE_PATH = APP_DIR / "core" / "conv_store.py"
-AUDIT_PATH = APP_DIR / "docs" / "fridadev_repo_audit.md"
-TODO_PATH = APP_DIR / "docs" / "fridadev_refactor_todo.md"
+AUDIT_PATH = APP_DIR / "docs" / "todo-done" / "audits" / "fridadev_repo_audit.md"
+TODO_PATH = APP_DIR / "docs" / "todo-done" / "refactors" / "fridadev_refactor_todo.md"
 SELF_PATH = Path(__file__).resolve()
 
 SYNC_HELPERS = (

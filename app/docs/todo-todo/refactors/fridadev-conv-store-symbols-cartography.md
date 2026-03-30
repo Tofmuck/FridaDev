@@ -124,6 +124,11 @@ Etat code (etape 4 realisee):
 - `conv_store.py` conserve les memes symboles publics et delegue `ensure_conv_dir` / `conversation_path` / `init_catalog_db` / `init_messages_db` / `sync_catalog_from_json_files` / `sync_messages_from_json_files` / `get_storage_counts` / `delete_conversation`;
 - les tests couples a la presence des helpers sync dans `conv_store.py` restent compatibles via facade de transition explicite.
 
+Etat code (etape 5 realisee):
+- `conv_store.py` est reduit a une facade explicite (delegation store / prompt window / maintenance + points de compatibilite testes);
+- les helpers de compatibilite conserves sont explicites: `_db_conn`, `_bootstrap_database_dsn`, `_load_json_conversation_file`, `_silence_label`, `_get_active_summary`;
+- le test `phase6` est realigne sur les chemins docs archives actuels (`todo-done/audits` et `todo-done/refactors`) sans recreer de faux fichiers legacy.
+
 A ne pas casser en premier passage:
 - contrats utilises par `chat_session_flow`, `chat_service`, `chat_llm_flow`, `conversations_service`;
 - monkeypatching tests `self.server.conv_store.*`;
@@ -142,7 +147,7 @@ A ne pas casser en premier passage:
 3. **Etape 2 (realisee):** extraire `conversations_prompt_window.py` (plus sensible comportementalement).
 4. **Etape 3 (realisee):** extraire `conversations_store.py` (coeur persistence).
 5. **Etape 4 (realisee):** extraire `conversations_maintenance.py` (legacy/sync/delete fort).
-6. **Etape 5:** nettoyage final de facade + verification non-regression complete.
+6. **Etape 5 (realisee):** nettoyage final de facade + verification non-regression complete.
 
 Regle:
 - aucune extraction ne commence sans etape 0 validee.
