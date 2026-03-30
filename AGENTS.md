@@ -134,6 +134,9 @@ After a commit, also report:
 - If a change affects routes, persistence, runtime config, memory flow, or admin behavior, add or update tests for that behavior.
 - Run the relevant tests before commit.
 - If tests fail, fix the failure before moving to the next step.
+- On this host/repo, the reference Python interpreter for repo test execution is `/home/tof/docker-stacks/fridadev/.venv/bin/python`.
+- Do not use `/usr/bin/python3` to judge repository test health or missing Python dependencies.
+- If a script or document points to another environment or interpreter, flag the mismatch explicitly instead of improvising.
 
 For docs-only patches, replace executable behavior tests with concrete proof checks such as:
 

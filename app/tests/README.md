@@ -1,5 +1,18 @@
 # Tests Taxonomy (Phase 7 Target)
 
+## Reference interpreter
+
+For Python tests on this host/repo, use the project interpreter from the repo root:
+- `./.venv/bin/python`
+- absolute equivalent: `/home/tof/docker-stacks/fridadev/.venv/bin/python`
+
+Do not use `/usr/bin/python3` to judge test state or missing dependencies.
+If another script or doc points to a different venv/interpreter, signal that mismatch explicitly instead of guessing.
+
+Repo-root examples:
+- `./.venv/bin/python -m unittest app.tests.unit.chat.test_chat_session_flow`
+- `./.venv/bin/python -m unittest app.tests.test_server_phase13 app.tests.test_server_phase14`
+
 This directory is migrated progressively.
 First migrated lot:
 - `integration/frontend_chat/test_frontend_chat_contract.py`
@@ -56,4 +69,4 @@ Fifth migrated lot:
 
 - no big-bang moves
 - migrate by small batches
-- keep `python3 -m unittest discover -s tests -p 'test_*.py'` working during transition
+- keep `python -m unittest discover -s tests -p 'test_*.py'` working during transition when run inside `app/` with the reference project interpreter
