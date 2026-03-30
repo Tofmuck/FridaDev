@@ -7,18 +7,15 @@ structural refactor. Public symbols listed in ``__all__`` must remain stable
 until extractions are completed.
 """
 
-import json
 import logging
-import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import psycopg
-from psycopg.rows import dict_row
-from psycopg.types.json import Json
 
 from . import conversations_prompt_window
+from . import conversations_store
 from . import runtime_db_bootstrap
 from .token_utils import count_tokens
 import config
@@ -79,77 +76,31 @@ def _bootstrap_database_dsn() -> str:
 
 
 def _collapse_ws(value: str) -> str:
-    return " ".join(str(value or "").strip().split())
+    return conversations_store.collapse_ws(value)
 
 
 def _safe_title(raw: str, fallback: str = "") -> str:
-    title = _collapse_ws(raw)
-    if not title:
-        title = fallback
-    if len(title) > TITLE_MAX_CHARS:
-        title = title[:TITLE_MAX_CHARS].rstrip()
-    return title
+    return conversations_store.safe_title(raw, fallback, title_max_chars=TITLE_MAX_CHARS)
 
 
 def _parse_iso_to_dt(raw: str) -> datetime:
-    try:
-        dt = datetime.fromisoformat(str(raw or "").replace("Z", "+00:00"))
-    except ValueError:
-        dt = datetime.now(timezone.utc)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    return conversations_store.parse_iso_to_dt(raw)
 
 
 def _ts_to_iso(value: Any) -> str:
-    if isinstance(value, datetime):
-        dt = value
-    else:
-        try:
-            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        except Exception:
-            return _now_iso()
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return conversations_store.ts_to_iso(value, now_iso_func=_now_iso)
 
 
 def _coerce_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return bool(value)
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on"}
-    return False
+    return conversations_store.coerce_bool(value)
 
 
 def _normalize_messages_for_storage(messages: Any) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    if not isinstance(messages, list):
-        return out
-
-    for raw in messages:
-        if not isinstance(raw, dict):
-            continue
-        role = _collapse_ws(str(raw.get("role") or "")).lower()
-        if not role:
-            continue
-
-        content = str(raw.get("content") or "")
-        msg = {
-            "role": role,
-            "content": content,
-            "timestamp": _ts_to_iso(raw.get("timestamp") or _now_iso()),
-            "embedded": _coerce_bool(raw.get("embedded")),
-        }
-        summarized_by = str(raw.get("summarized_by") or "").strip()
-        if summarized_by:
-            msg["summarized_by"] = summarized_by
-        if "meta" in raw and raw.get("meta") is not None:
-            msg["meta"] = raw.get("meta")
-        out.append(msg)
-    return out
+    return conversations_store.normalize_messages_for_storage(
+        messages,
+        ts_to_iso_func=_ts_to_iso,
+        coerce_bool_func=_coerce_bool,
+    )
 
 
 def _load_json_conversation_file(
@@ -159,36 +110,16 @@ def _load_json_conversation_file(
     *,
     backup_on_error: bool = False,
 ) -> Optional[dict[str, Any]]:
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            data = json.load(handle)
-    except Exception as exc:
-        backup = None
-        if backup_on_error and path.exists():
-            backup = path.with_suffix(f".corrupt-{_now_compact()}.json")
-            try:
-                path.rename(backup)
-            except OSError:
-                backup = None
-
-        logger.error(
-            "conv_read_error id=%s path=%s backup=%s err=%s",
-            conversation_id,
-            path,
-            backup,
-            exc,
-        )
-        admin_logs.log_event(
-            "conv_read_error",
-            level="ERROR",
-            conversation_id=conversation_id,
-            path=str(path),
-            backup=str(backup) if backup else None,
-            error=str(exc),
-        )
-        return None
-
-    return _normalize_conversation(data, conversation_id, system_prompt)
+    return conversations_store.load_json_conversation_file(
+        path,
+        conversation_id,
+        system_prompt,
+        backup_on_error=backup_on_error,
+        now_compact_func=_now_compact,
+        normalize_conversation_func=_normalize_conversation,
+        logger=logger,
+        admin_log_event_func=admin_logs.log_event,
+    )
 
 
 # --- Conversation store facade (public contracts kept stable) ---
@@ -198,12 +129,7 @@ def ensure_conv_dir() -> None:
 
 
 def normalize_conversation_id(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    try:
-        return str(uuid.UUID(str(value)))
-    except (ValueError, TypeError):
-        return None
+    return conversations_store.normalize_conversation_id(value)
 
 
 def new_conversation(
@@ -211,18 +137,13 @@ def new_conversation(
     conversation_id: Optional[str] = None,
     title: str = "",
 ) -> dict[str, Any]:
-    conv_id = conversation_id or str(uuid.uuid4())
-    now = _now_iso()
-    conversation = {
-        "id": conv_id,
-        "title": _safe_title(title, fallback=""),
-        "created_at": now,
-        "updated_at": now,
-        "messages": [
-            {"role": "system", "content": system_prompt or "", "timestamp": now},
-        ],
-    }
-    return conversation
+    return conversations_store.new_conversation(
+        system_prompt,
+        conversation_id=conversation_id,
+        title=title,
+        now_iso_func=_now_iso,
+        safe_title_func=_safe_title,
+    )
 
 
 def conversation_path(conversation_id: str) -> Path:
@@ -230,28 +151,16 @@ def conversation_path(conversation_id: str) -> Path:
 
 
 def load_conversation(conversation_id: str, system_prompt: str) -> Optional[dict[str, Any]]:
-    conv_id = normalize_conversation_id(conversation_id) or conversation_id
-
-    summary = get_conversation_summary(conv_id, include_deleted=True)
-    if summary:
-        db_messages = _load_messages_from_db(conv_id)
-        if db_messages is not None:
-            conversation = _build_conversation_from_catalog(summary, db_messages, system_prompt)
-            logger.info("conv_read_db id=%s messages=%s", conv_id, len(conversation.get("messages", [])))
-            admin_logs.log_event(
-                "conv_read_db",
-                conversation_id=conv_id,
-                message_count=len(conversation.get("messages", [])),
-            )
-            return conversation
-
-    logger.info("conv_read_missing_db id=%s", conv_id)
-    admin_logs.log_event(
-        "conv_read_missing_db",
-        conversation_id=conv_id,
-        message_count=0,
+    return conversations_store.load_conversation(
+        conversation_id,
+        system_prompt,
+        normalize_conversation_id_func=normalize_conversation_id,
+        get_conversation_summary_func=lambda conv_id: get_conversation_summary(conv_id, include_deleted=True),
+        load_messages_from_db_func=_load_messages_from_db,
+        build_conversation_from_catalog_func=_build_conversation_from_catalog,
+        logger=logger,
+        admin_log_event_func=admin_logs.log_event,
     )
-    return None
 
 
 def save_conversation(
@@ -260,24 +169,20 @@ def save_conversation(
     *,
     preserve_deleted: bool = False,
 ) -> None:
-    conversation["updated_at"] = updated_at or _now_iso()
-    conversation["messages"] = _normalize_messages_for_storage(conversation.get("messages", []))
-
-    logger.info(
-        "conv_write_db id=%s messages=%s",
-        conversation["id"],
-        len(conversation.get("messages", [])),
+    conversations_store.save_conversation(
+        conversation,
+        updated_at,
+        preserve_deleted=preserve_deleted,
+        now_iso_func=_now_iso,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        logger=logger,
+        admin_log_event_func=admin_logs.log_event,
+        upsert_conversation_catalog_func=lambda conv, preserve: upsert_conversation_catalog(
+            conv,
+            preserve_deleted=preserve,
+        ),
+        upsert_conversation_messages_func=_upsert_conversation_messages,
     )
-    admin_logs.log_event(
-        "conv_write",
-        conversation_id=conversation["id"],
-        message_count=len(conversation.get("messages", [])),
-        storage="db_only",
-    )
-
-    upsert_conversation_catalog(conversation, preserve_deleted=preserve_deleted)
-    if not _upsert_conversation_messages(conversation):
-        logger.warning("conv_messages_write_failed id=%s", conversation.get("id"))
 
 
 def append_message(
@@ -288,72 +193,52 @@ def append_message(
     meta: Optional[dict[str, Any]] = None,
     timestamp: Optional[str] = None,
 ) -> None:
-    conversation.setdefault("messages", [])
-    message = {"role": role, "content": content, "timestamp": timestamp or _now_iso()}
-    if meta is not None:
-        message["meta"] = meta
-    conversation["messages"].append(message)
+    conversations_store.append_message(
+        conversation,
+        role,
+        content,
+        meta=meta,
+        timestamp=timestamp,
+        now_iso_func=_now_iso,
+    )
 
 
 
 def _infer_title_from_messages(messages: list[dict[str, Any]]) -> str:
-    for msg in messages:
-        if msg.get("role") != "user":
-            continue
-        content = _collapse_ws(str(msg.get("content") or ""))
-        if content:
-            return _safe_title(content, fallback="")
-    return ""
+    return conversations_store.infer_title_from_messages(
+        messages,
+        collapse_ws_func=_collapse_ws,
+        safe_title_func=_safe_title,
+    )
 
 
 def _last_message_preview(messages: list[dict[str, Any]]) -> str:
-    for msg in reversed(messages):
-        if msg.get("role") not in {"user", "assistant"}:
-            continue
-        content = _collapse_ws(str(msg.get("content") or ""))
-        if not content:
-            continue
-        if len(content) > PREVIEW_MAX_CHARS:
-            return content[:PREVIEW_MAX_CHARS].rstrip() + "…"
-        return content
-    return ""
+    return conversations_store.last_message_preview(
+        messages,
+        collapse_ws_func=_collapse_ws,
+        preview_max_chars=PREVIEW_MAX_CHARS,
+    )
 
 
 def _conversation_metadata(conversation: dict[str, Any]) -> dict[str, Any]:
-    messages = conversation.get("messages", [])
-    if not isinstance(messages, list):
-        messages = []
-
-    explicit_title = _safe_title(str(conversation.get("title") or ""), fallback="")
-    inferred_title = _infer_title_from_messages(messages)
-    title = explicit_title or inferred_title or DEFAULT_TITLE
-
-    message_count = sum(1 for msg in messages if msg.get("role") in {"user", "assistant"})
-    last_preview = _last_message_preview(messages)
-
-    created_at = _ts_to_iso(conversation.get("created_at") or _now_iso())
-    updated_at = _ts_to_iso(conversation.get("updated_at") or created_at)
-
-    return {
-        "id": conversation.get("id"),
-        "title": title,
-        "created_at": created_at,
-        "updated_at": updated_at,
-        "message_count": int(message_count),
-        "last_message_preview": last_preview,
-    }
+    return conversations_store.conversation_metadata(
+        conversation,
+        safe_title_func=_safe_title,
+        ts_to_iso_func=_ts_to_iso,
+        now_iso_func=_now_iso,
+        default_title=DEFAULT_TITLE,
+        infer_title_from_messages_func=_infer_title_from_messages,
+        last_message_preview_func=_last_message_preview,
+    )
 
 
 def _serialize_catalog_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": str(row.get("id")),
-        "title": _safe_title(str(row.get("title") or ""), fallback=DEFAULT_TITLE),
-        "created_at": _ts_to_iso(row.get("created_at")),
-        "updated_at": _ts_to_iso(row.get("updated_at")),
-        "message_count": int(row.get("message_count") or 0),
-        "last_message_preview": str(row.get("last_message_preview") or ""),
-        "deleted_at": _ts_to_iso(row.get("deleted_at")) if row.get("deleted_at") else None,
-    }
+    return conversations_store.serialize_catalog_row(
+        row,
+        safe_title_func=_safe_title,
+        ts_to_iso_func=_ts_to_iso,
+        default_title=DEFAULT_TITLE,
+    )
 
 
 # --- Conversation catalog and message storage (DB-first path) ---
@@ -437,114 +322,33 @@ def init_messages_db() -> None:
 
 
 def _upsert_conversation_messages(conversation: dict[str, Any]) -> bool:
-    conv_id = normalize_conversation_id(conversation.get("id"))
-    if not conv_id:
-        return False
-
-    messages = _normalize_messages_for_storage(conversation.get("messages", []))
-    conversation["messages"] = messages
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM conversation_messages WHERE conversation_id = %s::uuid",
-                    (conv_id,),
-                )
-                if messages:
-                    rows = []
-                    for idx, msg in enumerate(messages):
-                        meta = Json(msg["meta"]) if "meta" in msg else None
-                        rows.append(
-                            (
-                                conv_id,
-                                idx,
-                                msg["role"],
-                                msg["content"],
-                                _parse_iso_to_dt(msg["timestamp"]),
-                                msg.get("summarized_by"),
-                                bool(msg.get("embedded")),
-                                meta,
-                            )
-                        )
-                    cur.executemany(
-                        """
-                        INSERT INTO conversation_messages (
-                            conversation_id,
-                            seq,
-                            role,
-                            content,
-                            timestamp,
-                            summarized_by,
-                            embedded,
-                            meta
-                        )
-                        VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        rows,
-                    )
-            conn.commit()
-        return True
-    except Exception as exc:
-        logger.warning("conv_messages_upsert_failed id=%s err=%s", conv_id, exc)
-        return False
+    return conversations_store.upsert_conversation_messages(
+        conversation,
+        normalize_conversation_id_func=normalize_conversation_id,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        db_conn_func=_db_conn,
+        parse_iso_to_dt_func=_parse_iso_to_dt,
+        logger=logger,
+    )
 
 
 def _conversation_message_row_count(conversation_id: str) -> Optional[int]:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return None
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) FROM conversation_messages WHERE conversation_id = %s::uuid",
-                    (conv_id,),
-                )
-                row = cur.fetchone()
-        return int((row or [0])[0] or 0)
-    except Exception as exc:
-        logger.warning("conv_messages_count_failed id=%s err=%s", conv_id, exc)
-        return None
+    return conversations_store.conversation_message_row_count(
+        conversation_id,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 def _load_messages_from_db(conversation_id: str) -> Optional[list[dict[str, Any]]]:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return None
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT role, content, timestamp, summarized_by, embedded, meta
-                    FROM conversation_messages
-                    WHERE conversation_id = %s::uuid
-                    ORDER BY seq ASC
-                    """,
-                    (conv_id,),
-                )
-                rows = cur.fetchall()
-    except Exception as exc:
-        logger.warning("conv_messages_read_failed id=%s err=%s", conv_id, exc)
-        return None
-
-    messages: list[dict[str, Any]] = []
-    for row in rows:
-        msg: dict[str, Any] = {
-            "role": str(row.get("role") or "assistant"),
-            "content": str(row.get("content") or ""),
-            "timestamp": _ts_to_iso(row.get("timestamp")),
-            "embedded": bool(row.get("embedded")),
-        }
-        summarized_by = str(row.get("summarized_by") or "").strip()
-        if summarized_by:
-            msg["summarized_by"] = summarized_by
-        if row.get("meta") is not None:
-            msg["meta"] = row.get("meta")
-        messages.append(msg)
-    return messages
+    return conversations_store.load_messages_from_db(
+        conversation_id,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        ts_to_iso_func=_ts_to_iso,
+        logger=logger,
+    )
 
 
 def _build_conversation_from_catalog(
@@ -552,14 +356,14 @@ def _build_conversation_from_catalog(
     messages: list[dict[str, Any]],
     system_prompt: str,
 ) -> dict[str, Any]:
-    data = {
-        "id": summary.get("id"),
-        "title": summary.get("title") or DEFAULT_TITLE,
-        "created_at": summary.get("created_at") or _now_iso(),
-        "updated_at": summary.get("updated_at") or summary.get("created_at") or _now_iso(),
-        "messages": messages,
-    }
-    return _normalize_conversation(data, str(summary.get("id") or ""), system_prompt)
+    return conversations_store.build_conversation_from_catalog(
+        summary,
+        messages,
+        system_prompt,
+        default_title=DEFAULT_TITLE,
+        now_iso_func=_now_iso,
+        normalize_conversation_func=_normalize_conversation,
+    )
 
 
 def upsert_conversation_catalog(
@@ -567,52 +371,16 @@ def upsert_conversation_catalog(
     *,
     preserve_deleted: bool = False,
 ) -> Optional[dict[str, Any]]:
-    meta = _conversation_metadata(conversation)
-    conv_id = normalize_conversation_id(meta.get("id"))
-    if not conv_id:
-        return None
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    """
-                    INSERT INTO conversations (
-                        id,
-                        title,
-                        created_at,
-                        updated_at,
-                        message_count,
-                        last_message_preview,
-                        deleted_at
-                    )
-                    VALUES (%s::uuid, %s, %s, %s, %s, %s, NULL)
-                    ON CONFLICT (id) DO UPDATE
-                    SET
-                        title = EXCLUDED.title,
-                        created_at = LEAST(conversations.created_at, EXCLUDED.created_at),
-                        updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
-                        message_count = EXCLUDED.message_count,
-                        last_message_preview = EXCLUDED.last_message_preview,
-                        deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
-                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
-                    """,
-                    (
-                        conv_id,
-                        meta["title"],
-                        _parse_iso_to_dt(meta["created_at"]),
-                        _parse_iso_to_dt(meta["updated_at"]),
-                        meta["message_count"],
-                        meta["last_message_preview"],
-                        bool(preserve_deleted),
-                    ),
-                )
-                row = cur.fetchone()
-            conn.commit()
-        return _serialize_catalog_row(row) if row else None
-    except Exception as exc:
-        logger.warning("conv_catalog_upsert_failed id=%s err=%s", conv_id, exc)
-        return None
+    return conversations_store.upsert_conversation_catalog(
+        conversation,
+        preserve_deleted=preserve_deleted,
+        conversation_metadata_func=_conversation_metadata,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        parse_iso_to_dt_func=_parse_iso_to_dt,
+        serialize_catalog_row_func=_serialize_catalog_row,
+        logger=logger,
+    )
 
 
 def sync_catalog_from_json_files(max_files: int = 5000) -> tuple[int, int]:
@@ -767,149 +535,71 @@ def list_conversations(
     *,
     include_deleted: bool = False,
 ) -> dict[str, Any]:
-    limit = max(1, min(int(limit), 500))
-    offset = max(0, int(offset))
-
-    where = "" if include_deleted else "WHERE deleted_at IS NULL"
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT COUNT(*) FROM conversations {where}")
-                total = int(cur.fetchone()[0] or 0)
-
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    f"""
-                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
-                    FROM conversations
-                    {where}
-                    ORDER BY updated_at DESC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (limit, offset),
-                )
-                rows = cur.fetchall()
-
-        items = [_serialize_catalog_row(row) for row in rows]
-        return {
-            "items": items,
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-        }
-    except Exception as exc:
-        logger.error("conv_catalog_list_failed err=%s", exc)
-        return {
-            "items": [],
-            "total": 0,
-            "limit": limit,
-            "offset": offset,
-        }
+    return conversations_store.list_conversations(
+        limit=limit,
+        offset=offset,
+        include_deleted=include_deleted,
+        db_conn_func=_db_conn,
+        serialize_catalog_row_func=_serialize_catalog_row,
+        logger=logger,
+    )
 
 
 def get_conversation_summary(conversation_id: str, *, include_deleted: bool = False) -> Optional[dict[str, Any]]:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return None
-
-    where = "" if include_deleted else "AND deleted_at IS NULL"
-    try:
-        with _db_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    f"""
-                    SELECT id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
-                    FROM conversations
-                    WHERE id = %s::uuid {where}
-                    LIMIT 1
-                    """,
-                    (conv_id,),
-                )
-                row = cur.fetchone()
-        return _serialize_catalog_row(row) if row else None
-    except Exception as exc:
-        logger.warning("conv_catalog_get_failed id=%s err=%s", conv_id, exc)
-        return None
+    return conversations_store.get_conversation_summary(
+        conversation_id,
+        include_deleted=include_deleted,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        serialize_catalog_row_func=_serialize_catalog_row,
+        logger=logger,
+    )
 
 
 def read_conversation(conversation_id: str, system_prompt: str) -> Optional[dict[str, Any]]:
-    conv_id = normalize_conversation_id(conversation_id) or conversation_id
-
-    summary = get_conversation_summary(conv_id, include_deleted=True)
-    if summary:
-        db_messages = _load_messages_from_db(conv_id)
-        if db_messages is not None:
-            return _build_conversation_from_catalog(summary, db_messages, system_prompt)
-
-    return None
+    return conversations_store.read_conversation(
+        conversation_id,
+        system_prompt,
+        normalize_conversation_id_func=normalize_conversation_id,
+        get_conversation_summary_func=lambda conv_id: get_conversation_summary(conv_id, include_deleted=True),
+        load_messages_from_db_func=_load_messages_from_db,
+        build_conversation_from_catalog_func=_build_conversation_from_catalog,
+    )
 
 
 def rename_conversation(conversation_id: str, title: str) -> Optional[dict[str, Any]]:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return None
-
-    safe_title = _safe_title(title, fallback="")
-    if not safe_title:
-        return None
-
-    existing = get_conversation_summary(conv_id, include_deleted=True)
-    preserve_deleted = bool(existing and existing.get("deleted_at"))
-
-    conversation = read_conversation(conv_id, "")
-    if conversation:
-        conversation["title"] = safe_title
-        save_conversation(conversation, updated_at=_now_iso(), preserve_deleted=preserve_deleted)
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    """
-                    UPDATE conversations
-                    SET title = %s,
-                        updated_at = GREATEST(updated_at, now())
-                    WHERE id = %s::uuid
-                    RETURNING id, title, created_at, updated_at, message_count, last_message_preview, deleted_at
-                    """,
-                    (safe_title, conv_id),
-                )
-                row = cur.fetchone()
-            conn.commit()
-        return _serialize_catalog_row(row) if row else None
-    except Exception as exc:
-        logger.warning("conv_catalog_rename_failed id=%s err=%s", conv_id, exc)
-        return None
+    return conversations_store.rename_conversation(
+        conversation_id,
+        title,
+        normalize_conversation_id_func=normalize_conversation_id,
+        safe_title_func=_safe_title,
+        get_conversation_summary_func=lambda conv_id: get_conversation_summary(conv_id, include_deleted=True),
+        read_conversation_func=read_conversation,
+        save_conversation_func=lambda conversation, updated_at, preserve_deleted: save_conversation(
+            conversation,
+            updated_at=updated_at,
+            preserve_deleted=preserve_deleted,
+        ),
+        now_iso_func=_now_iso,
+        db_conn_func=_db_conn,
+        serialize_catalog_row_func=_serialize_catalog_row,
+        logger=logger,
+    )
 
 
 def soft_delete_conversation(conversation_id: str) -> bool:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return False
-
-    if get_conversation_summary(conv_id, include_deleted=True) is None:
-        conversation = read_conversation(conv_id, "")
-        if conversation:
-            upsert_conversation_catalog(conversation, preserve_deleted=True)
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE conversations
-                    SET deleted_at = COALESCE(deleted_at, now()),
-                        updated_at = GREATEST(updated_at, now())
-                    WHERE id = %s::uuid
-                    """,
-                    (conv_id,),
-                )
-                affected = cur.rowcount
-            conn.commit()
-        return bool(affected)
-    except Exception as exc:
-        logger.warning("conv_catalog_soft_delete_failed id=%s err=%s", conv_id, exc)
-        return False
+    return conversations_store.soft_delete_conversation(
+        conversation_id,
+        normalize_conversation_id_func=normalize_conversation_id,
+        get_conversation_summary_func=lambda conv_id: get_conversation_summary(conv_id, include_deleted=True),
+        read_conversation_func=read_conversation,
+        upsert_conversation_catalog_func=lambda conversation, preserve_deleted: upsert_conversation_catalog(
+            conversation,
+            preserve_deleted=preserve_deleted,
+        ),
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 # --- Prompt window and temporal labels (delegated to conversations_prompt_window) ---
@@ -1121,47 +811,31 @@ def delete_conversation(conversation_id: str) -> bool:
 def _normalize_conversation(
     data: Any, conversation_id: str, system_prompt: str
 ) -> dict[str, Any]:
-    if not isinstance(data, dict):
-        data = {}
-    data.setdefault("id", conversation_id)
-    data.setdefault("created_at", _now_iso())
-    data.setdefault("updated_at", _now_iso())
-    if "title" not in data:
-        data["title"] = ""
-    else:
-        data["title"] = _safe_title(str(data.get("title") or ""), fallback="")
-    messages = data.get("messages")
-    if not isinstance(messages, list):
-        messages = []
-    data["messages"] = messages
-    system_msg = _find_system_message(messages)
-    if system_msg is None:
-        messages.insert(
-            0, {"role": "system", "content": system_prompt or "", "timestamp": _now_iso()}
-        )
-    elif not system_msg.get("content") and system_prompt:
-        system_msg["content"] = system_prompt
-    return data
+    return conversations_store.normalize_conversation(
+        data,
+        conversation_id,
+        system_prompt,
+        now_iso_func=_now_iso,
+        safe_title_func=_safe_title,
+        find_system_message_func=_find_system_message,
+    )
 
 
 def _find_system_message(messages: Iterable[dict[str, Any]]) -> Optional[dict[str, Any]]:
-    for msg in messages:
-        if msg.get("role") == "system":
-            return msg
-    return None
+    return conversations_store.find_system_message(messages)
 
 
 def _ensure_system_message(messages: list[dict[str, Any]]) -> dict[str, Any]:
-    system_msg = _find_system_message(messages)
-    if system_msg is None:
-        system_msg = {"role": "system", "content": "", "timestamp": _now_iso()}
-        messages.insert(0, system_msg)
-    return system_msg
+    return conversations_store.ensure_system_message(
+        messages,
+        find_system_message_func=_find_system_message,
+        now_iso_func=_now_iso,
+    )
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return conversations_store.now_iso()
 
 
 def _now_compact() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return conversations_store.now_compact()

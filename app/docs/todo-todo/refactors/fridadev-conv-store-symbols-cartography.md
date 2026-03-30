@@ -14,23 +14,23 @@ Regle:
 |---|---|---|---|---|
 | `CONV_DIR` | constante module | chemin legacy JSON conversations | maintenance / compat legacy | reste facade |
 | `ensure_conv_dir` | fonction publique | garantit dossier legacy `conv/` | maintenance / bootstrap | reste facade |
-| `normalize_conversation_id` | fonction publique | validation UUID conversation | conversation store | reste facade |
-| `new_conversation` | fonction publique | cree objet conversation initial | conversation store | reste facade |
+| `normalize_conversation_id` | fonction publique | validation UUID conversation | conversation store | migre (facade deleguee) |
+| `new_conversation` | fonction publique | cree objet conversation initial | conversation store | migre (facade deleguee) |
 | `conversation_path` | fonction publique | chemin JSON legacy d'une conversation | maintenance / compat legacy | reste facade |
-| `load_conversation` | fonction publique | lecture conversation DB-first | conversation store | reste facade |
-| `save_conversation` | fonction publique | ecriture conversation + catalogue + messages | conversation store | reste facade |
-| `append_message` | fonction publique | ajout message en memoire avant persistance | conversation store | reste facade |
+| `load_conversation` | fonction publique | lecture conversation DB-first | conversation store | migre (facade deleguee) |
+| `save_conversation` | fonction publique | ecriture conversation + catalogue + messages | conversation store | migre (facade deleguee) |
+| `append_message` | fonction publique | ajout message en memoire avant persistance | conversation store | migre (facade deleguee) |
 | `init_catalog_db` | fonction publique | init table/index conversations | maintenance / bootstrap DB | migre (facade conservee) |
 | `init_messages_db` | fonction publique | init table/index conversation_messages | maintenance / bootstrap DB | migre (facade conservee) |
-| `upsert_conversation_catalog` | fonction publique | upsert metadonnees catalogue conversation | conversation store | migre (facade conservee) |
+| `upsert_conversation_catalog` | fonction publique | upsert metadonnees catalogue conversation | conversation store | migre (facade deleguee) |
 | `sync_catalog_from_json_files` | fonction publique | sync legacy JSON -> conversations | maintenance / migration legacy | migre (facade conservee) |
 | `sync_messages_from_json_files` | fonction publique | sync legacy JSON -> conversation_messages | maintenance / migration legacy | migre (facade conservee) |
 | `get_storage_counts` | fonction publique | inventaire JSON vs DB | maintenance / inventaire | migre (facade conservee) |
-| `list_conversations` | fonction publique | pagination catalogue | conversation store | reste facade |
-| `get_conversation_summary` | fonction publique | lecture metadonnees conversation | conversation store | reste facade |
-| `read_conversation` | fonction publique | lecture conversation pour API messages | conversation store | reste facade |
-| `rename_conversation` | fonction publique | rename conversation | conversation store | reste facade |
-| `soft_delete_conversation` | fonction publique | suppression logique conversation | conversation lifecycle | reste facade |
+| `list_conversations` | fonction publique | pagination catalogue | conversation store | migre (facade deleguee) |
+| `get_conversation_summary` | fonction publique | lecture metadonnees conversation | conversation store | migre (facade deleguee) |
+| `read_conversation` | fonction publique | lecture conversation pour API messages | conversation store | migre (facade deleguee) |
+| `rename_conversation` | fonction publique | rename conversation | conversation store | migre (facade deleguee) |
+| `soft_delete_conversation` | fonction publique | suppression logique conversation | conversation lifecycle | migre (facade deleguee) |
 | `delta_t_label` | fonction publique | format relatif Delta-T | temporalite / prompt window | migre (facade deleguee) |
 | `build_prompt_messages` | fonction publique | reconstruction fenetre prompt + injections memoire/summary/hints | prompt window | migre (facade deleguee) |
 | `delete_conversation` | fonction publique | purge forte conversation + tables associees | maintenance destructive | migre (facade conservee) |
@@ -115,6 +115,11 @@ Etat code (etape 2 realisee):
 - `conv_store.py` conserve les memes symboles publics et delegue `build_prompt_messages` / `delta_t_label` / `_silence_label`;
 - compatibilite des patchs de tests maintenue via wrappers `conv_store`.
 
+Etat code (etape 3 realisee):
+- extraction effective du bloc conversation store/catalog/messages vers `app/core/conversations_store.py`;
+- `conv_store.py` conserve les memes symboles publics et delegue `normalize_conversation_id` / `new_conversation` / `load_conversation` / `save_conversation` / `append_message` / `upsert_conversation_catalog` / `list_conversations` / `get_conversation_summary` / `read_conversation` / `rename_conversation` / `soft_delete_conversation`;
+- la maintenance/lifecycle (`init_*`, `sync_*`, `get_storage_counts`, `delete_conversation`) reste dans `conv_store.py` pour la tranche suivante.
+
 A ne pas casser en premier passage:
 - contrats utilises par `chat_session_flow`, `chat_service`, `chat_llm_flow`, `conversations_service`;
 - monkeypatching tests `self.server.conv_store.*`;
@@ -131,7 +136,7 @@ A ne pas casser en premier passage:
 1. **Etape 0 (bloquante):** cartographie symboles/appelants/facade (ce document).
 2. **Etape 1 (realisee):** figer la facade de transition (`conv_store.py` surface publique explicite, contrats stables).
 3. **Etape 2 (realisee):** extraire `conversations_prompt_window.py` (plus sensible comportementalement).
-4. **Etape 3:** extraire `conversations_store.py` (coeur persistence).
+4. **Etape 3 (realisee):** extraire `conversations_store.py` (coeur persistence).
 5. **Etape 4:** extraire `conversations_maintenance.py` (legacy/sync/delete fort).
 6. **Etape 5:** nettoyage final de facade + verification non-regression complete.
 
