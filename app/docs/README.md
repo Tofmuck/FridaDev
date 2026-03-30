@@ -32,6 +32,7 @@ Sous-structure en place:
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
 - `todo-todo/admin/`: roadmaps admin ouvertes
 - `todo-todo/migration/`: reserve pour futurs chantiers ouverts
+- `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes (cas ponctuels)
 
 Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
@@ -40,6 +41,7 @@ Notes:
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
 - roadmap mere ouverte noeud de convergence hermeneutique: `todo-todo/memory/hermeneutic-convergence-node-todo.md`
+- roadmap ouverte refactor structurel `conv_store`: `todo-todo/refactors/fridadev-conv-store-structural-refactor-todo.md`
 - TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
 - TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
