@@ -106,10 +106,11 @@ Ce qui reste ailleurs:
 
 ## 5) Ordre d'extraction recommande
 0. Valider la cartographie bloquante (`fridadev-conv-store-symbols-cartography.md`).
-1. Extraire fichier B (`conversations_prompt_window.py`) avec wrappers de compatibilite dans `conv_store.py`.
-2. Extraire fichier A (`conversations_store.py`) en gardant les symboles publics actuels exposes via `conv_store.py`.
-3. Extraire fichier C (`conversations_maintenance.py`) et isoler les operations destructives/legacy.
-4. Nettoyer `conv_store.py` en facade explicite (delegation + imports), sans rupture d'API.
+1. Figer la facade de transition dans `conv_store.py` (surface publique explicite + sections metier lisibles, sans extraction).
+2. Extraire fichier B (`conversations_prompt_window.py`) avec wrappers de compatibilite dans `conv_store.py`.
+3. Extraire fichier A (`conversations_store.py`) en gardant les symboles publics actuels exposes via `conv_store.py`.
+4. Extraire fichier C (`conversations_maintenance.py`) et isoler les operations destructives/legacy.
+5. Nettoyer `conv_store.py` en facade explicite de delegation (imports + forwarding), sans rupture d'API.
 
 ## 6) Garde-fous (runtime et regression)
 - Aucun changement de contrat public `conv_store` au premier passage.
@@ -137,6 +138,7 @@ Couverture minimale a verifier a chaque etape:
 
 ## 8) Checklist executable du chantier
 - [x] Etape 0 bloquante: cartographier les symbols publics `conv_store`, les appelants reels et la facade de transition (`todo-todo/refactors/fridadev-conv-store-symbols-cartography.md`).
+- [x] Etape 1: figer la facade de transition dans `conv_store.py` (surface publique explicite + sections metier; pas d'extraction).
 - [ ] Extraire `conversations_prompt_window.py` sans changer les sorties de `build_prompt_messages`.
 - [ ] Re-router `delta_t_label` et `_silence_label` via la nouvelle unite sans changer les chaines.
 - [ ] Extraire `conversations_store.py` et garder les routes/chat flows inchanges.

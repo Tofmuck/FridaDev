@@ -105,6 +105,11 @@ Pendant tout le refactor:
 - `conv_store.py` delegue progressivement vers les nouveaux fichiers;
 - aucun appelant runtime ne doit changer d'import dans le premier passage.
 
+Etat code (etape 1 realisee):
+- facade de transition explicitement gelee dans `conv_store.py`;
+- surface publique explicite via `__all__` alignee sur cette cartographie;
+- sections metier explicites ajoutees sans extraction vers de nouveaux fichiers.
+
 A ne pas casser en premier passage:
 - contrats utilises par `chat_session_flow`, `chat_service`, `chat_llm_flow`, `conversations_service`;
 - monkeypatching tests `self.server.conv_store.*`;
@@ -119,7 +124,7 @@ A ne pas casser en premier passage:
 
 ## 7) Ordre minimal sur
 1. **Etape 0 (bloquante):** cartographie symboles/appelants/facade (ce document).
-2. **Etape 1:** figer la facade de transition (`conv_store.py` delegataire explicite, contrats stables).
+2. **Etape 1 (realisee):** figer la facade de transition (`conv_store.py` surface publique explicite, contrats stables).
 3. **Etape 2:** extraire `conversations_prompt_window.py` (plus sensible comportementalement).
 4. **Etape 3:** extraire `conversations_store.py` (coeur persistence).
 5. **Etape 4:** extraire `conversations_maintenance.py` (legacy/sync/delete fort).

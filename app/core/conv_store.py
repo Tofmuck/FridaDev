@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Conversation store transition facade.
+
+This module is intentionally kept as the single import surface during the
+structural refactor. Public symbols listed in ``__all__`` must remain stable
+until extractions are completed.
+"""
+
 import json
 import logging
 import uuid
@@ -24,8 +31,36 @@ TITLE_MAX_CHARS = 120
 PREVIEW_MAX_CHARS = 180
 DEFAULT_TITLE = "Nouvelle conversation"
 
+__all__ = (
+    "CONV_DIR",
+    "ensure_conv_dir",
+    "normalize_conversation_id",
+    "new_conversation",
+    "conversation_path",
+    "load_conversation",
+    "save_conversation",
+    "append_message",
+    "init_catalog_db",
+    "init_messages_db",
+    "upsert_conversation_catalog",
+    "sync_catalog_from_json_files",
+    "sync_messages_from_json_files",
+    "get_storage_counts",
+    "list_conversations",
+    "get_conversation_summary",
+    "read_conversation",
+    "rename_conversation",
+    "soft_delete_conversation",
+    "delta_t_label",
+    "build_prompt_messages",
+    "delete_conversation",
+)
+
+# --- Infra and helpers (includes test-coupled compatibility points) ---
+
 
 def _db_conn():
+    # Transition compatibility: tests patch this helper directly.
     return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
 
 
@@ -38,6 +73,7 @@ def _runtime_database_backend() -> str:
 
 
 def _bootstrap_database_dsn() -> str:
+    # Transition compatibility: phase4 DB tests patch this helper directly.
     return runtime_db_bootstrap.bootstrap_database_dsn(config, runtime_settings)
 
 
@@ -153,6 +189,8 @@ def _load_json_conversation_file(
 
     return _normalize_conversation(data, conversation_id, system_prompt)
 
+
+# --- Conversation store facade (public contracts kept stable) ---
 
 def ensure_conv_dir() -> None:
     CONV_DIR.mkdir(parents=True, exist_ok=True)
@@ -316,6 +354,8 @@ def _serialize_catalog_row(row: dict[str, Any]) -> dict[str, Any]:
         "deleted_at": _ts_to_iso(row.get("deleted_at")) if row.get("deleted_at") else None,
     }
 
+
+# --- Conversation catalog and message storage (DB-first path) ---
 
 def init_catalog_db() -> None:
     try:
@@ -871,6 +911,8 @@ def soft_delete_conversation(conversation_id: str) -> bool:
         return False
 
 
+# --- Prompt window and temporal labels (no extraction yet) ---
+
 def delta_t_label(ts_msg: str, ts_now: str) -> str:
     """Retourne un label Delta-T lisible entre deux timestamps ISO."""
     try:
@@ -908,7 +950,10 @@ def delta_t_label(ts_msg: str, ts_now: str) -> str:
 
 
 def _silence_label(ts_before: str, ts_after: str) -> str:
-    """Retourne un marqueur de silence entre deux messages consécutifs."""
+    """Retourne un marqueur de silence entre deux messages consecutifs.
+
+    Transition compatibility: unit tests assert exact rendered strings.
+    """
     try:
         dt_before = datetime.fromisoformat(ts_before.replace("Z", "+00:00"))
         dt_after  = datetime.fromisoformat(ts_after.replace("Z", "+00:00"))
@@ -1164,6 +1209,8 @@ def build_prompt_messages(
         result.append({"role": role, "content": content})
     return result
 
+
+# --- Maintenance and lifecycle (destructive path) ---
 
 def delete_conversation(conversation_id: str) -> bool:
     conv_id = normalize_conversation_id(conversation_id)
