@@ -10,7 +10,7 @@ until extractions are completed.
 import json
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -18,6 +18,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
 
+from . import conversations_prompt_window
 from . import runtime_db_bootstrap
 from .token_utils import count_tokens
 import config
@@ -911,41 +912,15 @@ def soft_delete_conversation(conversation_id: str) -> bool:
         return False
 
 
-# --- Prompt window and temporal labels (no extraction yet) ---
+# --- Prompt window and temporal labels (delegated to conversations_prompt_window) ---
 
 def delta_t_label(ts_msg: str, ts_now: str) -> str:
     """Retourne un label Delta-T lisible entre deux timestamps ISO."""
-    try:
-        from zoneinfo import ZoneInfo
-        dt_msg = datetime.fromisoformat(ts_msg.replace("Z", "+00:00"))
-        dt_now = datetime.fromisoformat(ts_now.replace("Z", "+00:00"))
-        secs   = int((dt_now - dt_msg).total_seconds())
-
-        if secs < 60:  return "à l'instant"
-        if secs < 3600:
-            m = secs // 60
-            return f"il y a {m} minute{'s' if m > 1 else ''}"
-
-        # Comparaison calendaire en heure locale
-        try:
-            tz = ZoneInfo(config.FRIDA_TIMEZONE)
-        except Exception:
-            tz = timezone.utc
-        local_msg = dt_msg.astimezone(tz)
-        local_now = dt_now.astimezone(tz)
-        heure = f"{local_msg.hour}h" + (f"{local_msg.minute:02d}" if local_msg.minute else "")
-
-        if local_msg.date() == local_now.date():
-            return f"aujourd'hui à {heure}"
-        if local_msg.date() == (local_now - timedelta(days=1)).date():
-            return f"hier à {heure}"
-
-        if secs < 86400 * 7:  d  = secs // 86400;       return f"il y a {d} jour{'s' if d > 1 else ''}"
-        if secs < 86400 * 30: w  = secs // (86400 * 7); return f"il y a {w} semaine{'s' if w > 1 else ''}"
-        if secs < 86400 * 365: mo = secs // (86400*30); return f"il y a {mo} mois"
-        yr = secs // (86400 * 365); return f"il y a {yr} an{'s' if yr > 1 else ''}"
-    except Exception:
-        return ""
+    return conversations_prompt_window.delta_t_label(
+        ts_msg,
+        ts_now,
+        timezone_name=config.FRIDA_TIMEZONE,
+    )
 
 
 
@@ -954,126 +929,47 @@ def _silence_label(ts_before: str, ts_after: str) -> str:
 
     Transition compatibility: unit tests assert exact rendered strings.
     """
-    try:
-        dt_before = datetime.fromisoformat(ts_before.replace("Z", "+00:00"))
-        dt_after  = datetime.fromisoformat(ts_after.replace("Z", "+00:00"))
-        secs = int((dt_after - dt_before).total_seconds())
-        if secs <    60: return "[— silence de quelques secondes —]"
-        if secs <  3600: m = secs // 60;              return f"[— silence de {m} minute{'s' if m > 1 else ''} —]"
-        if secs < 86400: h = secs // 3600;            return f"[— silence de {h} heure{'s' if h > 1 else ''} —]"
-        if secs < 86400 * 2: return "[— silence d'un jour —]"
-        if secs < 86400 * 7: d = secs // 86400;      return f"[— silence de {d} jours —]"
-        if secs < 86400 * 30: w = secs // (86400*7); return f"[— silence de {w} semaine{'s' if w > 1 else ''} —]"
-        mo = secs // (86400 * 30); return f"[— silence de {mo} mois —]"
-    except Exception:
-        return ""
+    return conversations_prompt_window.silence_label(ts_before, ts_after)
 
 def _make_summary_message(summary: dict[str, Any]) -> dict[str, str]:
-    start = (summary.get("start_ts") or "")[:10]
-    end   = (summary.get("end_ts")   or "")[:10]
-    if start and end and start != end:
-        period = f"du {start} au {end}"
-    elif start:
-        period = f"du {start}"
-    else:
-        period = ""
-    header = f"[Résumé de la période {period}]" if period else "[Résumé]"
-    return {"role": "system", "content": f"{header}\n{summary['content']}"}
+    return conversations_prompt_window.make_summary_message(summary)
 
 
 def _get_active_summary(conversation_id: Optional[str]) -> Optional[dict[str, Any]]:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return None
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT id, start_ts, end_ts, content
-                    FROM summaries
-                    WHERE conversation_id = %s
-                    ORDER BY
-                        COALESCE(end_ts, start_ts) DESC NULLS LAST,
-                        end_ts DESC NULLS LAST,
-                        start_ts DESC NULLS LAST,
-                        id DESC
-                    LIMIT 1
-                    """,
-                    (conv_id,),
-                )
-                row = cur.fetchone()
-    except Exception as exc:
-        logger.warning("conv_active_summary_read_failed id=%s err=%s", conv_id, exc)
-        return None
-
-    if not row:
-        return None
-
-    return {
-        "id": str(row.get("id") or ""),
-        "start_ts": _ts_to_iso(row.get("start_ts")) if row.get("start_ts") else None,
-        "end_ts": _ts_to_iso(row.get("end_ts")) if row.get("end_ts") else None,
-        "content": str(row.get("content") or ""),
-    }
+    return conversations_prompt_window.get_active_summary(
+        conversation_id,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        ts_to_iso_func=_ts_to_iso,
+        logger=logger,
+    )
 
 
 def _make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dict[str, str]]:
-    """Formate les résumés parents des traces mémoire en un slot contexte."""
-    if not summaries:
-        return None
-    lines = []
-    for s in summaries:
-        start = (s.get("start_ts") or "")[:10]
-        end   = (s.get("end_ts")   or "")[:10]
-        if start and end and start != end:
-            period = f"du {start} au {end}"
-        elif start:
-            period = f"du {start}"
-        else:
-            period = ""
-        header = f"[Contexte du souvenir — résumé {period}]" if period else "[Contexte du souvenir]"
-        lines.append(f"{header}\n{s['content']}")
-    return {"role": "system", "content": "\n\n".join(lines)}
+    return conversations_prompt_window.make_memory_context_message(summaries)
 
 
 def _summary_cutoff_iso(summary: Optional[dict[str, Any]]) -> Optional[str]:
-    if not summary:
-        return None
-    cutoff = summary.get("end_ts") or summary.get("start_ts")
-    if not cutoff:
-        return None
-    try:
-        return _ts_to_iso(cutoff)
-    except Exception:
-        return None
+    return conversations_prompt_window.summary_cutoff_iso(
+        summary,
+        ts_to_iso_func=_ts_to_iso,
+    )
 
 
 def _message_is_after_summary(msg: dict[str, Any], cutoff_iso: Optional[str]) -> bool:
-    if not cutoff_iso:
-        return True
-    ts = msg.get("timestamp")
-    if not ts:
-        return True
-    try:
-        return _parse_iso_to_dt(ts) > _parse_iso_to_dt(cutoff_iso)
-    except Exception:
-        return True
+    return conversations_prompt_window.message_is_after_summary(
+        msg,
+        cutoff_iso,
+        parse_iso_to_dt_func=_parse_iso_to_dt,
+    )
 
 
 def _make_memory_message(traces: list[dict[str, Any]], ts_now: str) -> Optional[dict[str, str]]:
-    """Formate les traces mémoire en un slot système avec Delta-T."""
-    if not traces:
-        return None
-    lines = ["[Mémoire — souvenirs pertinents]"]
-    for t in traces:
-        role  = "Utilisateur" if t.get("role") == "user" else "Assistant"
-        ts    = t.get("timestamp") or ""
-        label = delta_t_label(ts, ts_now) if ts else ""
-        prefix = f"[{label}] " if label else ""
-        lines.append(f"{prefix}{role} : {t['content']}")
-    return {"role": "system", "content": "\n".join(lines)}
+    return conversations_prompt_window.make_memory_message(
+        traces,
+        ts_now,
+        delta_t_label_func=delta_t_label,
+    )
 
 
 def _make_context_hints_message(
@@ -1081,37 +977,15 @@ def _make_context_hints_message(
     ts_now: str,
     model: str,
 ) -> Optional[dict[str, str]]:
-    """Format non-durable context hints with dedicated token budget."""
-    if not hints:
-        return None
-
-    lines = ["[Indices contextuels recents]"]
-    kept = 0
-    for hint in hints:
-        content = str(hint.get("content") or "").strip()
-        if not content:
-            continue
-        ts_hint = str(hint.get("timestamp") or "")
-        label = delta_t_label(ts_hint, ts_now) if ts_hint else ""
-        scope = str(hint.get("scope") or "user")
-        kind = "Situation" if scope == "situation" else "Utilisateur"
-        confidence = float(hint.get("confidence") or 0.0)
-        prefix = f"[{label}] " if label else ""
-        line = f"- {prefix}{kind}: {content} (confidence: {confidence:.2f})"
-
-        trial = "\n".join(lines + [line])
-        trial_tokens = count_tokens([{"role": "system", "content": trial}], model)
-        if trial_tokens > config.CONTEXT_HINTS_MAX_TOKENS:
-            continue
-
-        lines.append(line)
-        kept += 1
-        if kept >= config.CONTEXT_HINTS_MAX_ITEMS:
-            break
-
-    if kept == 0:
-        return None
-    return {"role": "system", "content": "\n".join(lines)}
+    return conversations_prompt_window.make_context_hints_message(
+        hints,
+        ts_now,
+        model,
+        delta_t_label_func=delta_t_label,
+        count_tokens_func=count_tokens,
+        context_hints_max_tokens=config.CONTEXT_HINTS_MAX_TOKENS,
+        context_hints_max_items=config.CONTEXT_HINTS_MAX_ITEMS,
+    )
 
 def build_prompt_messages(
     conversation: dict[str, Any],
@@ -1120,94 +994,28 @@ def build_prompt_messages(
     memory_traces: Optional[list[dict[str, Any]]] = None,
     context_hints: Optional[list[dict[str, Any]]] = None,
 ) -> list[dict[str, str]]:
-    messages = conversation.get("messages", [])
-    system_msg = _ensure_system_message(messages)
-
-    # Le resume actif est desormais relu depuis SQL.
-    active_summary = _get_active_summary(conversation.get("id"))
-    active_summary_cutoff = _summary_cutoff_iso(active_summary)
-
-    # Les candidats sont reconstruits depuis les timestamps persists.
-    # Si un resume actif existe, on ne garde que les tours strictement posterieurs
-    # a la fin de ce resume.
-    if active_summary:
-        candidates = [
-            m for m in messages
-            if m.get("role") in {"user", "assistant"} and _message_is_after_summary(m, active_summary_cutoff)
-        ]
-    else:
-        candidates = [m for m in messages if m.get("role") in {"user", "assistant"}]
-
-    # Préfixe fixe : system → résumé actif → mémoire RAG
-    ts_now = now or _now_iso()
-    prefix: list[dict[str, Any]] = [system_msg]
-    if active_summary:
-        prefix.append(_make_summary_message(active_summary))
-    if context_hints:
-        # Place context hints after active summary and before RAG memory.
-        ctx_hints_msg = _make_context_hints_message(context_hints, ts_now, model)
-        if ctx_hints_msg:
-            prefix.append(ctx_hints_msg)
-    if memory_traces:
-        # Résumés parents distincts (dédupliqués par id)
-        seen_ids: set = set()
-        parent_summaries: list[dict[str, Any]] = []
-        for t in memory_traces:
-            ps = t.get("parent_summary")
-            if ps and ps.get("id") not in seen_ids:
-                seen_ids.add(ps["id"])
-                parent_summaries.append(ps)
-        ctx_msg = _make_memory_context_message(parent_summaries)
-        if ctx_msg:
-            prefix.append(ctx_msg)
-        mem_msg = _make_memory_message(memory_traces, ts_now)
-        if mem_msg:
-            prefix.append(mem_msg)
-
-    # Fenêtre glissante sur les candidats
-    selected_reversed: list[dict[str, Any]] = []
-    for msg in reversed(candidates):
-        trial = prefix + list(reversed(selected_reversed + [msg]))
-        tokens = count_tokens(trial, model)
-        if tokens > config.MAX_TOKENS:
-            break
-        selected_reversed.append(msg)
-    selected = list(reversed(selected_reversed))
-
-    prompt_messages = prefix + selected
-    total_tokens = count_tokens(prompt_messages, model)
-    logger.info(
-        "token_window id=%s tokens=%s messages=%s summary=%s",
-        conversation.get("id"),
-        total_tokens,
-        len(prompt_messages),
-        active_summary["id"][:8] if active_summary else "none",
+    return conversations_prompt_window.build_prompt_messages(
+        conversation,
+        model,
+        now=now,
+        memory_traces=memory_traces,
+        context_hints=context_hints,
+        ensure_system_message_func=_ensure_system_message,
+        get_active_summary_func=_get_active_summary,
+        summary_cutoff_iso_func=_summary_cutoff_iso,
+        message_is_after_summary_func=_message_is_after_summary,
+        make_summary_message_func=_make_summary_message,
+        make_context_hints_message_func=_make_context_hints_message,
+        make_memory_context_message_func=_make_memory_context_message,
+        make_memory_message_func=_make_memory_message,
+        count_tokens_func=count_tokens,
+        max_tokens=config.MAX_TOKENS,
+        now_iso_func=_now_iso,
+        logger=logger,
+        admin_log_event_func=admin_logs.log_event,
+        silence_label_func=_silence_label,
+        delta_t_label_func=delta_t_label,
     )
-    admin_logs.log_event(
-        "token_window",
-        conversation_id=conversation.get("id"),
-        tokens=total_tokens,
-        message_count=len(prompt_messages),
-        summary_id=active_summary["id"] if active_summary else None,
-    )
-
-    result = []
-    prev_ts: Optional[str] = None
-    for msg in prompt_messages:
-        role    = msg["role"]
-        content = msg["content"]
-        ts_msg  = msg.get("timestamp", "")
-        if role in {"user", "assistant"}:
-            if prev_ts and ts_msg:
-                silence = _silence_label(prev_ts, ts_msg)
-                if silence:
-                    result.append({"role": "system", "content": silence})
-            label = delta_t_label(ts_msg, ts_now) if ts_msg else ""
-            if label:
-                content = f"[{label}] {content}"
-            prev_ts = ts_msg
-        result.append({"role": role, "content": content})
-    return result
 
 
 # --- Maintenance and lifecycle (destructive path) ---
