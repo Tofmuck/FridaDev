@@ -43,7 +43,7 @@ Impact:
 - Pas de reouverture doctrinale (noeud, regimes, directives): refactor purement structurel.
 - Pas d'eclatement excessif: cible 3 fichiers extraits.
 - Etape 0 bloquante: cartographier symboles publics, appelants reels et facade de transition avant toute extraction.
-- Reference Etape 0: `app/docs/todo-todo/refactors/fridadev-conv-store-symbols-cartography.md`.
+- Reference Etape 0: `app/docs/todo-done/refactors/fridadev-conv-store-symbols-cartography.md`.
 
 ## 4) Decoupage cible propose (3 fichiers)
 ### A. `app/core/conversations_store.py`
@@ -137,7 +137,7 @@ Couverture minimale a verifier a chaque etape:
 - Il rend simplement les surfaces plus lisibles pour brancher la suite proprement.
 
 ## 8) Checklist executable du chantier
-- [x] Etape 0 bloquante: cartographier les symbols publics `conv_store`, les appelants reels et la facade de transition (`todo-todo/refactors/fridadev-conv-store-symbols-cartography.md`).
+- [x] Etape 0 bloquante: cartographier les symbols publics `conv_store`, les appelants reels et la facade de transition (`todo-done/refactors/fridadev-conv-store-symbols-cartography.md`).
 - [x] Etape 1: figer la facade de transition dans `conv_store.py` (surface publique explicite + sections metier; pas d'extraction).
 - [x] Extraire `conversations_prompt_window.py` sans changer les sorties de `build_prompt_messages`.
 - [x] Re-router `delta_t_label` et `_silence_label` via la nouvelle unite sans changer les chaines.

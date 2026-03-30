@@ -41,7 +41,7 @@ Notes:
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
 - roadmap mere ouverte noeud de convergence hermeneutique: `todo-todo/memory/hermeneutic-convergence-node-todo.md`
-- roadmap ouverte refactor structurel `conv_store`: `todo-todo/refactors/fridadev-conv-store-structural-refactor-todo.md`
+- roadmap archivee refactor structurel `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`
 - TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
 - TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
