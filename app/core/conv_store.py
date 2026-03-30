@@ -15,6 +15,7 @@ from typing import Any, Iterable, Optional
 import psycopg
 
 from . import conversations_prompt_window
+from . import conversations_maintenance
 from . import conversations_store
 from . import runtime_db_bootstrap
 from .token_utils import count_tokens
@@ -125,7 +126,7 @@ def _load_json_conversation_file(
 # --- Conversation store facade (public contracts kept stable) ---
 
 def ensure_conv_dir() -> None:
-    CONV_DIR.mkdir(parents=True, exist_ok=True)
+    conversations_maintenance.ensure_conv_dir(conv_dir=CONV_DIR)
 
 
 def normalize_conversation_id(value: Optional[str]) -> Optional[str]:
@@ -147,7 +148,7 @@ def new_conversation(
 
 
 def conversation_path(conversation_id: str) -> Path:
-    return CONV_DIR / f"{conversation_id}.json"
+    return conversations_maintenance.conversation_path(conversation_id, conv_dir=CONV_DIR)
 
 
 def load_conversation(conversation_id: str, system_prompt: str) -> Optional[dict[str, Any]]:
@@ -244,81 +245,17 @@ def _serialize_catalog_row(row: dict[str, Any]) -> dict[str, Any]:
 # --- Conversation catalog and message storage (DB-first path) ---
 
 def init_catalog_db() -> None:
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS conversations (
-                        id                   UUID PRIMARY KEY,
-                        title                TEXT        NOT NULL DEFAULT 'Nouvelle conversation',
-                        created_at           TIMESTAMPTZ NOT NULL,
-                        updated_at           TIMESTAMPTZ NOT NULL,
-                        message_count        INTEGER     NOT NULL DEFAULT 0,
-                        last_message_preview TEXT        NOT NULL DEFAULT '',
-                        deleted_at           TIMESTAMPTZ
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS conversations_updated_idx
-                    ON conversations (updated_at DESC);
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS conversations_deleted_idx
-                    ON conversations (deleted_at);
-                    """
-                )
-            conn.commit()
-        logger.info("conv_catalog_init_ok")
-    except Exception as exc:
-        logger.error("conv_catalog_init_failed err=%s", exc)
+    conversations_maintenance.init_catalog_db(
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 def init_messages_db() -> None:
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS conversation_messages (
-                        conversation_id UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-                        seq             INTEGER     NOT NULL,
-                        role            TEXT        NOT NULL,
-                        content         TEXT        NOT NULL,
-                        timestamp       TIMESTAMPTZ NOT NULL,
-                        summarized_by   TEXT,
-                        embedded        BOOLEAN     NOT NULL DEFAULT FALSE,
-                        meta            JSONB,
-                        PRIMARY KEY (conversation_id, seq)
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    ALTER TABLE conversation_messages
-                    ADD COLUMN IF NOT EXISTS summarized_by TEXT;
-                    """
-                )
-                cur.execute(
-                    """
-                    ALTER TABLE conversation_messages
-                    ADD COLUMN IF NOT EXISTS embedded BOOLEAN NOT NULL DEFAULT FALSE;
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS conversation_messages_conv_ts_idx
-                    ON conversation_messages (conversation_id, timestamp DESC);
-                    """
-                )
-            conn.commit()
-        logger.info("conv_messages_init_ok")
-    except Exception as exc:
-        logger.error("conv_messages_init_failed err=%s", exc)
+    conversations_maintenance.init_messages_db(
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 def _upsert_conversation_messages(conversation: dict[str, Any]) -> bool:
@@ -384,38 +321,18 @@ def upsert_conversation_catalog(
 
 
 def sync_catalog_from_json_files(max_files: int = 5000) -> tuple[int, int]:
-    # Legacy sync subset kept intentionally as explicit operator tooling.
-    # Runtime chat/conversation flows are DB-only and do not call these helpers.
-    ensure_conv_dir()
-    synced = 0
-    skipped = 0
-
-    files = sorted(
-        CONV_DIR.glob("*.json"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
+    load_json_for_sync = lambda path, conv_id: _load_json_conversation_file(path, conv_id, "")
+    return conversations_maintenance.sync_catalog_json_inventory(
+        max_files=max_files,
+        conv_dir=CONV_DIR,
+        normalize_conversation_id_func=normalize_conversation_id,
+        load_json_conversation_file_func=load_json_for_sync,
+        upsert_conversation_catalog_func=lambda conversation, preserve_deleted: upsert_conversation_catalog(
+            conversation,
+            preserve_deleted=preserve_deleted,
+        ),
+        logger=logger,
     )
-    if max_files > 0:
-        files = files[:max_files]
-
-    for path in files:
-        conv_id = normalize_conversation_id(path.stem)
-        if not conv_id:
-            skipped += 1
-            continue
-
-        conversation = _load_json_conversation_file(path, conv_id, "")
-        if not conversation:
-            skipped += 1
-            continue
-
-        if upsert_conversation_catalog(conversation, preserve_deleted=True):
-            synced += 1
-        else:
-            skipped += 1
-
-    logger.info("conv_catalog_sync done synced=%s skipped=%s", synced, skipped)
-    return synced, skipped
 
 
 def sync_messages_from_json_files(
@@ -423,110 +340,39 @@ def sync_messages_from_json_files(
     *,
     force: bool = False,
 ) -> dict[str, int]:
-    ensure_conv_dir()
-    stats = {
-        "processed": 0,
-        "migrated": 0,
-        "skipped": 0,
-        "failed": 0,
-        "json_messages": 0,
-        "db_messages_after": 0,
-    }
-
-    files = sorted(
-        CONV_DIR.glob("*.json"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
+    load_json_for_sync = lambda path, conv_id: _load_json_conversation_file(path, conv_id, "")
+    return conversations_maintenance.sync_messages_json_inventory(
+        max_files=max_files,
+        force=force,
+        conv_dir=CONV_DIR,
+        normalize_conversation_id_func=normalize_conversation_id,
+        load_json_conversation_file_func=load_json_for_sync,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        conversation_message_row_count_func=_conversation_message_row_count,
+        get_conversation_summary_func=lambda conversation_id, include_deleted: get_conversation_summary(
+            conversation_id,
+            include_deleted=include_deleted,
+        ),
+        upsert_conversation_catalog_func=lambda conversation, preserve_deleted: upsert_conversation_catalog(
+            conversation,
+            preserve_deleted=preserve_deleted,
+        ),
+        upsert_conversation_messages_func=_upsert_conversation_messages,
+        logger=logger,
     )
-    if max_files > 0:
-        files = files[:max_files]
-
-    for path in files:
-        conv_id = normalize_conversation_id(path.stem)
-        if not conv_id:
-            stats["skipped"] += 1
-            continue
-
-        conversation = _load_json_conversation_file(path, conv_id, "")
-        if not conversation:
-            stats["failed"] += 1
-            continue
-
-        stats["processed"] += 1
-        messages = _normalize_messages_for_storage(conversation.get("messages", []))
-        conversation["messages"] = messages
-        stats["json_messages"] += len(messages)
-
-        existing_count = _conversation_message_row_count(conv_id)
-        if not force and existing_count and existing_count > 0:
-            stats["skipped"] += 1
-            stats["db_messages_after"] += existing_count
-            continue
-
-        existing_summary = get_conversation_summary(conv_id, include_deleted=True)
-        preserve_deleted = bool(existing_summary and existing_summary.get("deleted_at"))
-        if upsert_conversation_catalog(conversation, preserve_deleted=preserve_deleted) is None:
-            stats["failed"] += 1
-            continue
-
-        if _upsert_conversation_messages(conversation):
-            stats["migrated"] += 1
-            after_count = _conversation_message_row_count(conv_id)
-            if after_count is not None:
-                stats["db_messages_after"] += after_count
-        else:
-            stats["failed"] += 1
-
-    logger.info(
-        "conv_messages_sync done processed=%s migrated=%s skipped=%s failed=%s json_messages=%s db_messages_after=%s force=%s",
-        stats["processed"],
-        stats["migrated"],
-        stats["skipped"],
-        stats["failed"],
-        stats["json_messages"],
-        stats["db_messages_after"],
-        force,
-    )
-    return stats
 
 
 def get_storage_counts(max_files: int = 0) -> dict[str, int]:
-    ensure_conv_dir()
-
-    files = sorted(CONV_DIR.glob("*.json"), key=lambda p: p.name)
-    if max_files > 0:
-        files = files[:max_files]
-
-    json_conversations = 0
-    json_messages = 0
-    for path in files:
-        conv_id = normalize_conversation_id(path.stem)
-        if not conv_id:
-            continue
-        conversation = _load_json_conversation_file(path, conv_id, "")
-        if not conversation:
-            continue
-        json_conversations += 1
-        json_messages += len(_normalize_messages_for_storage(conversation.get("messages", [])))
-
-    db_conversations = -1
-    db_message_rows = -1
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM conversations")
-                db_conversations = int(cur.fetchone()[0] or 0)
-                cur.execute("SELECT COUNT(*) FROM conversation_messages")
-                db_message_rows = int(cur.fetchone()[0] or 0)
-    except Exception as exc:
-        logger.warning("conv_storage_counts_db_failed err=%s", exc)
-
-    return {
-        "json_conversations": json_conversations,
-        "json_messages": json_messages,
-        "db_conversations": db_conversations,
-        "db_message_rows": db_message_rows,
-    }
+    load_json_for_sync = lambda path, conv_id: _load_json_conversation_file(path, conv_id, "")
+    return conversations_maintenance.compute_storage_counts(
+        max_files=max_files,
+        conv_dir=CONV_DIR,
+        normalize_conversation_id_func=normalize_conversation_id,
+        load_json_conversation_file_func=load_json_for_sync,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        db_conn_func=_db_conn,
+        logger=logger,
+    )
 
 
 def list_conversations(
@@ -711,101 +557,13 @@ def build_prompt_messages(
 # --- Maintenance and lifecycle (destructive path) ---
 
 def delete_conversation(conversation_id: str) -> bool:
-    conv_id = normalize_conversation_id(conversation_id)
-    if not conv_id:
-        return False
-
-    deleted: dict[str, int] = {
-        "identity_conflicts": 0,
-        "identities": 0,
-        "identity_evidence": 0,
-        "arbiter_decisions": 0,
-        "traces": 0,
-        "summaries": 0,
-        "conversations": 0,
-    }
-
-    try:
-        with _db_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id::text
-                    FROM identities
-                    WHERE conversation_id = %s
-                    """,
-                    (conv_id,),
-                )
-                identity_ids = [str(row[0]) for row in cur.fetchall()]
-
-                if identity_ids:
-                    cur.execute(
-                        """
-                        DELETE FROM identity_conflicts
-                        WHERE identity_id_a = ANY(%s::uuid[])
-                           OR identity_id_b = ANY(%s::uuid[])
-                        """,
-                        (identity_ids, identity_ids),
-                    )
-                    deleted["identity_conflicts"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM identity_evidence WHERE conversation_id = %s",
-                    (conv_id,),
-                )
-                deleted["identity_evidence"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM arbiter_decisions WHERE conversation_id = %s",
-                    (conv_id,),
-                )
-                deleted["arbiter_decisions"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM traces WHERE conversation_id = %s",
-                    (conv_id,),
-                )
-                deleted["traces"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM summaries WHERE conversation_id = %s",
-                    (conv_id,),
-                )
-                deleted["summaries"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM identities WHERE conversation_id = %s",
-                    (conv_id,),
-                )
-                deleted["identities"] = cur.rowcount
-
-                cur.execute(
-                    "DELETE FROM conversations WHERE id = %s::uuid",
-                    (conv_id,),
-                )
-                deleted["conversations"] = cur.rowcount
-
-            conn.commit()
-    except Exception as exc:
-        logger.error("conv_delete_db_failed id=%s err=%s", conv_id, exc)
-        admin_logs.log_event(
-            "conv_delete_db_failed",
-            level="ERROR",
-            conversation_id=conv_id,
-            error=str(exc),
-        )
-        return False
-
-    total_deleted = sum(int(v or 0) for v in deleted.values())
-    ok = total_deleted > 0
-    logger.info("conv_delete_db id=%s deleted=%s ok=%s", conv_id, deleted, ok)
-    admin_logs.log_event(
-        "conv_delete_db",
-        conversation_id=conv_id,
-        deleted=deleted,
-        ok=ok,
+    return conversations_maintenance.delete_conversation(
+        conversation_id,
+        normalize_conversation_id_func=normalize_conversation_id,
+        db_conn_func=_db_conn,
+        logger=logger,
+        admin_log_event_func=admin_logs.log_event,
     )
-    return ok
 
 
 def _normalize_conversation(

@@ -142,7 +142,7 @@ Couverture minimale a verifier a chaque etape:
 - [x] Extraire `conversations_prompt_window.py` sans changer les sorties de `build_prompt_messages`.
 - [x] Re-router `delta_t_label` et `_silence_label` via la nouvelle unite sans changer les chaines.
 - [x] Extraire `conversations_store.py` et garder les routes/chat flows inchanges.
-- [ ] Extraire `conversations_maintenance.py` avec `init_*`, `sync_*`, `get_storage_counts`, `delete_conversation`.
+- [x] Extraire `conversations_maintenance.py` avec `init_*`, `sync_*`, `get_storage_counts`, `delete_conversation`.
 - [ ] Conserver `conv_store.py` comme facade de delegation (imports explicites, pas de logique remelangee).
 - [ ] Executer la batterie minimale de tests a chaque etape d'extraction.
 - [ ] Finaliser un patch neutre doctrinalement et sans changement comportemental observable.

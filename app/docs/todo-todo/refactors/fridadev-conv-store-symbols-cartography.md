@@ -118,7 +118,11 @@ Etat code (etape 2 realisee):
 Etat code (etape 3 realisee):
 - extraction effective du bloc conversation store/catalog/messages vers `app/core/conversations_store.py`;
 - `conv_store.py` conserve les memes symboles publics et delegue `normalize_conversation_id` / `new_conversation` / `load_conversation` / `save_conversation` / `append_message` / `upsert_conversation_catalog` / `list_conversations` / `get_conversation_summary` / `read_conversation` / `rename_conversation` / `soft_delete_conversation`;
-- la maintenance/lifecycle (`init_*`, `sync_*`, `get_storage_counts`, `delete_conversation`) reste dans `conv_store.py` pour la tranche suivante.
+
+Etat code (etape 4 realisee):
+- extraction effective du bloc maintenance/lifecycle vers `app/core/conversations_maintenance.py`;
+- `conv_store.py` conserve les memes symboles publics et delegue `ensure_conv_dir` / `conversation_path` / `init_catalog_db` / `init_messages_db` / `sync_catalog_from_json_files` / `sync_messages_from_json_files` / `get_storage_counts` / `delete_conversation`;
+- les tests couples a la presence des helpers sync dans `conv_store.py` restent compatibles via facade de transition explicite.
 
 A ne pas casser en premier passage:
 - contrats utilises par `chat_session_flow`, `chat_service`, `chat_llm_flow`, `conversations_service`;
@@ -137,7 +141,7 @@ A ne pas casser en premier passage:
 2. **Etape 1 (realisee):** figer la facade de transition (`conv_store.py` surface publique explicite, contrats stables).
 3. **Etape 2 (realisee):** extraire `conversations_prompt_window.py` (plus sensible comportementalement).
 4. **Etape 3 (realisee):** extraire `conversations_store.py` (coeur persistence).
-5. **Etape 4:** extraire `conversations_maintenance.py` (legacy/sync/delete fort).
+5. **Etape 4 (realisee):** extraire `conversations_maintenance.py` (legacy/sync/delete fort).
 6. **Etape 5:** nettoyage final de facade + verification non-regression complete.
 
 Regle:
