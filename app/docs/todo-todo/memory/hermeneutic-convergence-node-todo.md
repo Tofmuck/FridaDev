@@ -107,9 +107,9 @@ Pause normative obligatoire:
 - Module code cible: `core.hermeneutic_node.inputs.user_demand`
 - Repertoire code cible: `app/core/hermeneutic_node/inputs/`
 - Fichier Python cible: `user_demand.py`
-- Raison: la qualification de demande et les signaux d'ambiguite sont doctrinaux; le contrat doit preceder le code.
+- Raison: la qualification du tour utilisateur et les signaux d'ambiguite sont doctrinaux; le contrat doit preceder le code.
 
-Sortie attendue du lot: deux objets distincts et lisibles (`fenetre_recente`, `demande_utilisateur`) + signaux d'ambiguite.
+Sortie attendue du lot: deux objets distincts et lisibles (`fenetre_recente`, `tour_utilisateur`) + signaux d'ambiguite.
 Validation minimale: contrat de sortie qui distingue explicitement extraction mecanique et qualification semantique minimale.
 Dependances: Lot 1.
 Hors scope: posture de jugement finale et resolution de conflits inter-sources.
