@@ -190,11 +190,11 @@ Role :
 ### 3.8 Demande utilisateur
 
 Entrees attendues :
-- type de demande ;
+- geste dialogique dominant du tour ;
 - formulation explicite ;
-- demande de precision, de preuve, de rappel, de speculation ou de clarification ;
-- demande d'information instable ou stable ;
-- tonalite pragmatique de la demande.
+- qualificateurs secondaires a expliciter ensuite (besoin de preuve, portee temporelle, ambiguite / sous-determination) ;
+- marqueurs de precision, de rappel, de speculation ou de clarification ;
+- rapport du tour a une information stable ou instable.
 
 Role :
 - orienter la fonction de reponse ;
