@@ -72,7 +72,7 @@ Perimetre: insertion pipeline, temps, memoire recuperee, decision d'arbitrage me
 
 - [x] Figer explicitement le point d'insertion: apres `prepare_memory_context(...)`, avant `build_prompt_messages(...)`.
 - [x] Definir l'objet canonique `temps` (NOW/TIMEZONE + derivees utiles).
-- [ ] Definir l'objet canonique `memoire_retrieved` (traces recuperees, metadonnees utiles).
+- [x] Definir l'objet canonique `memoire_retrieved` (traces recuperees, metadonnees utiles).
 - [ ] Definir l'objet canonique `memory_arbitration` (decisions/statuts) distinct de `memoire_retrieved`.
 - [ ] Definir les objets canoniques `resume`, `identite`, `contexte_recent`, `web`.
 - [ ] Definir le contrat "double alimentation" (continue vers LLM principal + entree du noeud).

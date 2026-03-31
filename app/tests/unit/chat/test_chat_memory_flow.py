@@ -73,6 +73,110 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['filtered'], 0)
         self.assertEqual(_event_payloads(events, 'memory_arbitrated'), [])
 
+    def test_prepare_memory_context_exposes_canonical_memory_retrieved_without_arbiter_fields(self) -> None:
+        events = []
+        raw_traces = [
+            {
+                'conversation_id': 'conv-source-a',
+                'role': 'user',
+                'content': 'Je cours le matin',
+                'timestamp': '2026-03-01T08:00:00Z',
+                'summary_id': 'sum-1',
+                'score': 0.91,
+            },
+            {
+                'conversation_id': 'conv-source-b',
+                'role': 'assistant',
+                'content': 'Tu avais parle de natation',
+                'timestamp': '2026-03-02T09:15:00Z',
+                'summary_id': None,
+                'score': 0.73,
+            },
+        ]
+
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE='shadow',
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            'id': 'conv-memory-canonical',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve=lambda _msg: raw_traces,
+            _runtime_embedding_value=lambda field: 9 if field == 'top_k' else None,
+            record_arbiter_decisions=lambda *_args, **_kwargs: None,
+            enrich_traces_with_summaries=lambda traces: [
+                {
+                    **trace,
+                    'parent_summary': (
+                        {
+                            'id': 'sum-1',
+                            'conversation_id': 'conv-source-a',
+                            'start_ts': '2026-03-01T07:00:00Z',
+                            'end_ts': '2026-03-01T08:30:00Z',
+                            'content': 'Routine sportive du matin',
+                        }
+                        if trace.get('summary_id') == 'sum-1'
+                        else None
+                    ),
+                }
+                for trace in traces
+            ],
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+        arbiter_module = SimpleNamespace(
+            filter_traces_with_diagnostics=lambda _traces, _recent_turns: (
+                [raw_traces[0]],
+                [{'candidate_id': '0', 'keep': True, 'reason': 'best_match'}],
+            ),
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        prepared = chat_memory_flow.prepare_memory_context(
+            conversation=conversation,
+            user_msg='bonjour',
+            config_module=config_module,
+            memory_store_module=memory_store_module,
+            arbiter_module=arbiter_module,
+            admin_logs_module=admin_logs_module,
+        )
+        mode, memory_traces, context_hints = prepared
+
+        self.assertEqual(mode, 'shadow')
+        self.assertEqual(len(memory_traces), 2)
+        self.assertEqual(context_hints, [])
+
+        memory_retrieved = prepared.memory_retrieved
+        self.assertEqual(memory_retrieved['schema_version'], 'v1')
+        self.assertEqual(memory_retrieved['retrieval_query'], 'bonjour')
+        self.assertEqual(memory_retrieved['top_k_requested'], 9)
+        self.assertEqual(memory_retrieved['retrieved_count'], 2)
+        self.assertEqual(len(memory_retrieved['traces']), 2)
+
+        candidate_ids = [trace['candidate_id'] for trace in memory_retrieved['traces']]
+        self.assertEqual(len(candidate_ids), len(set(candidate_ids)))
+
+        first_trace = memory_retrieved['traces'][0]
+        second_trace = memory_retrieved['traces'][1]
+        self.assertEqual(first_trace['conversation_id'], 'conv-source-a')
+        self.assertEqual(first_trace['role'], 'user')
+        self.assertEqual(first_trace['content'], 'Je cours le matin')
+        self.assertEqual(first_trace['timestamp_iso'], '2026-03-01T08:00:00Z')
+        self.assertEqual(first_trace['retrieval_score'], 0.91)
+        self.assertEqual(first_trace['summary_id'], 'sum-1')
+        self.assertEqual(first_trace['parent_summary']['id'], 'sum-1')
+        self.assertEqual(first_trace['parent_summary']['content'], 'Routine sportive du matin')
+        self.assertNotIn('keep', first_trace)
+        self.assertNotIn('reason', first_trace)
+
+        self.assertEqual(second_trace['conversation_id'], 'conv-source-b')
+        self.assertIsNone(second_trace['parent_summary'])
+        self.assertNotIn('semantic_relevance', second_trace)
+        self.assertNotIn('decision_source', second_trace)
+
     def test_prepare_memory_context_mode_shadow_calls_arbiter_but_keeps_raw_source(self) -> None:
         events = []
         observed = {

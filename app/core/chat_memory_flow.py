@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import time
 from typing import Any, Mapping, Sequence
 
+from core.hermeneutic_node.inputs import memory_retrieved_input
 from observability import chat_turn_logger
 
 
@@ -101,6 +103,45 @@ def _log_stage_latency(
     return duration_ms
 
 
+def _safe_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_retrieval_top_k_requested(*, memory_store_module: Any, config_module: Any) -> int | None:
+    runtime_embedding_value = getattr(memory_store_module, '_runtime_embedding_value', None)
+    if callable(runtime_embedding_value):
+        resolved = _safe_int(runtime_embedding_value('top_k'))
+        if resolved is not None:
+            return resolved
+    return _safe_int(getattr(config_module, 'MEMORY_TOP_K', None))
+
+
+def _enrich_retrieved_candidates(
+    *,
+    memory_store_module: Any,
+    traces: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    if not traces:
+        return []
+    return memory_store_module.enrich_traces_with_summaries([dict(trace) for trace in traces])
+
+
+@dataclass
+class PreparedMemoryContext:
+    current_mode: str
+    memory_traces: list[dict[str, Any]]
+    context_hints: list[dict[str, Any]]
+    memory_retrieved: dict[str, Any]
+
+    def __iter__(self):
+        yield self.current_mode
+        yield self.memory_traces
+        yield self.context_hints
+
+
 def prepare_memory_context(
     *,
     conversation: Mapping[str, Any],
@@ -109,7 +150,7 @@ def prepare_memory_context(
     memory_store_module: Any,
     arbiter_module: Any,
     admin_logs_module: Any,
-) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
+) -> PreparedMemoryContext:
     conversation_id = str(conversation['id'])
     current_mode = resolve_hermeneutic_mode(config_module)
     admin_logs_module.log_event(
@@ -118,6 +159,10 @@ def prepare_memory_context(
         mode=current_mode,
     )
 
+    top_k_requested = _resolve_retrieval_top_k_requested(
+        memory_store_module=memory_store_module,
+        config_module=config_module,
+    )
     retrieve_t0 = time.perf_counter()
     raw_traces = memory_store_module.retrieve(user_msg)
     _log_stage_latency(
@@ -136,7 +181,16 @@ def prepare_memory_context(
     if raw_traces:
         admin_logs_module.log_event('memory_retrieved', conversation_id=conversation_id, count=len(raw_traces))
 
-        memory_traces = list(raw_traces)
+        retrieved_candidates = _enrich_retrieved_candidates(
+            memory_store_module=memory_store_module,
+            traces=raw_traces,
+        )
+        memory_retrieved = memory_retrieved_input.build_memory_retrieved_input(
+            retrieval_query=user_msg,
+            top_k_requested=top_k_requested,
+            traces=retrieved_candidates,
+        )
+        memory_traces = list(retrieved_candidates)
         filtered_traces: list[dict[str, Any]] = []
         arbiter_decisions: list[dict[str, Any]] = []
 
@@ -169,7 +223,10 @@ def prepare_memory_context(
             )
 
             if _mode_enforces_memory(current_mode):
-                memory_traces = filtered_traces
+                memory_traces = _enrich_retrieved_candidates(
+                    memory_store_module=memory_store_module,
+                    traces=filtered_traces,
+                )
                 memory_source = 'arbiter_enforced'
             else:
                 memory_source = 'raw_shadow_non_blocking'
@@ -199,9 +256,6 @@ def prepare_memory_context(
             selected=len(memory_traces),
             filtered=len(filtered_traces),
         )
-
-        if memory_traces:
-            memory_traces = memory_store_module.enrich_traces_with_summaries(memory_traces)
     else:
         chat_turn_logger.emit(
             'arbiter',
@@ -218,6 +272,11 @@ def prepare_memory_context(
             reason_short='arbiter_no_traces',
         )
         memory_traces = []
+        memory_retrieved = memory_retrieved_input.build_memory_retrieved_input(
+            retrieval_query=user_msg,
+            top_k_requested=top_k_requested,
+            traces=[],
+        )
 
     context_hints = memory_store_module.get_recent_context_hints(
         max_items=config_module.CONTEXT_HINTS_MAX_ITEMS,
@@ -231,7 +290,12 @@ def prepare_memory_context(
             count=len(context_hints),
         )
 
-    return current_mode, memory_traces, list(context_hints or [])
+    return PreparedMemoryContext(
+        current_mode=current_mode,
+        memory_traces=memory_traces,
+        context_hints=list(context_hints or []),
+        memory_retrieved=memory_retrieved,
+    )
 
 
 def record_identity_entries_for_mode(

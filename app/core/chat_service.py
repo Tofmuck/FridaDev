@@ -56,6 +56,7 @@ def _run_hermeneutic_node_insertion_point(
     current_mode: str,
     memory_traces: list[dict[str, Any]],
     context_hints: list[dict[str, Any]],
+    memory_retrieved: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
     return None
@@ -128,7 +129,7 @@ def chat_response(
     )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
-    current_mode, memory_traces, context_hints = chat_memory_flow.prepare_memory_context(
+    prepared_memory_context = chat_memory_flow.prepare_memory_context(
         conversation=conversation,
         user_msg=user_msg,
         config_module=config_module,
@@ -136,6 +137,7 @@ def chat_response(
         arbiter_module=arbiter_module,
         admin_logs_module=admin_logs_module,
     )
+    current_mode, memory_traces, context_hints = prepared_memory_context
 
     _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -144,6 +146,7 @@ def chat_response(
         current_mode=current_mode,
         memory_traces=memory_traces,
         context_hints=context_hints,
+        memory_retrieved=getattr(prepared_memory_context, 'memory_retrieved', None),
     )
 
     prompt_messages = conv_store_module.build_prompt_messages(
