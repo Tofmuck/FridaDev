@@ -191,6 +191,7 @@ def _run_hermeneutic_node_insertion_point(
         summary_input=summary_input,
         identity_input=identity_input,
         recent_context_input=recent_context_input,
+        recent_window_input=recent_window_input,
         web_input=web_input,
     )
     return None

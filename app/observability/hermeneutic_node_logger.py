@@ -83,6 +83,16 @@ def _summarize_recent_context(payload: Mapping[str, Any] | None) -> dict[str, An
     }
 
 
+def _summarize_recent_window(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = _mapping(payload)
+    return {
+        'present': bool(data),
+        'turn_count': int(data.get('turn_count') or 0),
+        'has_in_progress_turn': bool(data.get('has_in_progress_turn', False)),
+        'max_recent_turns': int(data.get('max_recent_turns') or 0),
+    }
+
+
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     return {
@@ -102,6 +112,7 @@ def build_hermeneutic_node_insertion_payload(
     summary_input: Mapping[str, Any] | None = None,
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
+    recent_window_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -114,6 +125,7 @@ def build_hermeneutic_node_insertion_payload(
             'summary': _summarize_summary(summary_input),
             'identity': _summarize_identity(identity_input),
             'recent_context': _summarize_recent_context(recent_context_input),
+            'recent_window': _summarize_recent_window(recent_window_input),
             'web': _summarize_web(web_input),
         },
     }
@@ -128,6 +140,7 @@ def emit_hermeneutic_node_insertion(
     summary_input: Mapping[str, Any] | None = None,
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
+    recent_window_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> bool:
     return chat_turn_logger.emit(
@@ -141,6 +154,7 @@ def emit_hermeneutic_node_insertion(
             summary_input=summary_input,
             identity_input=identity_input,
             recent_context_input=recent_context_input,
+            recent_window_input=recent_window_input,
             web_input=web_input,
         ),
     )

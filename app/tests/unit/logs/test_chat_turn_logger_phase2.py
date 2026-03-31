@@ -257,6 +257,11 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                 recent_context_input={
                     'messages': [{'role': 'user'}, {'role': 'assistant'}],
                 },
+                recent_window_input={
+                    'turn_count': 1,
+                    'has_in_progress_turn': False,
+                    'max_recent_turns': 5,
+                },
                 web_input={
                     'enabled': True,
                     'status': 'ok',
@@ -286,6 +291,9 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['identity']['frida']['dynamic_count'], 1)
         self.assertEqual(payload['inputs']['identity']['user']['dynamic_count'], 2)
         self.assertEqual(payload['inputs']['recent_context']['messages_count'], 2)
+        self.assertEqual(payload['inputs']['recent_window']['turn_count'], 1)
+        self.assertFalse(payload['inputs']['recent_window']['has_in_progress_turn'])
+        self.assertEqual(payload['inputs']['recent_window']['max_recent_turns'], 5)
         self.assertTrue(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)

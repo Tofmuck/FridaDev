@@ -93,11 +93,13 @@ Perimetre: `fenetre_recente`, `demande_utilisateur`, signaux d'ambiguite/sous-de
 Sous-bloc A - Extraction simple:
 - [x] Definir l'extraction canonique de `fenetre_recente` (selection, profondeur, horodatage, format).
 - [x] Definir l'objet de sortie `fenetre_recente` exploitable sans interpretation metier forte.
+- [x] Definir l'observabilite minimale de `fenetre_recente` au seam (presence/qualite minimale).
 
 Sous-bloc B - Qualification semantique minimale:
 - [ ] Definir l'objet canonique `demande_utilisateur` (type de demande, besoin de preuve, portee temporelle).
 - [ ] Definir les signaux minimaux d'ambiguite/sous-determination.
 - [ ] Definir la frontiere explicite entre qualification minimale et interpretation metier avancee.
+- [ ] Definir l'observabilite minimale des objets canoniques / signaux du sous-bloc B des leur exposition au seam.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-user-demand-contract.md`
