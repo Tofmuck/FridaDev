@@ -2,7 +2,7 @@
 
 Date: 2026-03-31
 Statut: spec normative active
-Scope: extraction canonique de `fenetre_recente` pour le Lot 2, sans implementation runtime
+Scope: extraction canonique de `fenetre_recente` pour le Lot 2, avec implementation runtime minimale deja posee au seam
 
 ## Purpose
 
@@ -107,7 +107,7 @@ Et pour chaque message:
 - `content`
 - `timestamp`
 
-Cette spec fixe l'extraction canonique et la forme attendue, pas encore le module runtime final.
+Cette spec fixe l'extraction canonique, la forme attendue, et le socle runtime deja pose au seam, pas encore les usages aval plus riches.
 
 ## Repo Grounding
 
@@ -115,10 +115,10 @@ Cette spec est grounded dans l'etat actuel du repo:
 
 - `app/core/hermeneutic_node/inputs/recent_context_input.py` expose deja la matiere recente brute apres cutoff du resume actif;
 - `app/core/hermeneutic_node/inputs/summary_input.py` et `app/core/conversations_prompt_window.py` etablissent deja la logique de cutoff du resume actif;
-- `app/core/chat_service.py` expose deja `recent_context_input` au seam hermeneutique;
-- aucun module runtime ne porte encore `fenetre_recente` comme extraction canonique distincte.
+- `app/core/chat_service.py` expose deja `recent_context_input` et `recent_window_input` au seam hermeneutique;
+- `app/core/hermeneutic_node/inputs/recent_window_input.py` porte deja une premiere implementation runtime de `fenetre_recente` comme extraction canonique distincte.
 
-Le contrat formalise donc la prochaine extraction a construire, sans pretendre qu'elle existe deja dans le runtime.
+Le contrat formalise donc une extraction deja posee minimalement dans le runtime, sans pretendre que ses usages aval sont deja complets.
 
 ## Non-goals / Out of Scope
 
@@ -129,7 +129,7 @@ Cette spec ne tranche pas:
 - une profondeur calculee par budget tokens;
 - une logique d'arret hermeneutique dynamique;
 - la priorisation doctrinale des sources;
-- l'implementation runtime de `fenetre_recente`.
+- l'extension observabilite / consommation aval de `fenetre_recente`.
 
 ## Invariants
 
