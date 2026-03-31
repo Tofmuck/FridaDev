@@ -593,6 +593,108 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
+        observed = {'web_input': None, 'prompt_messages': None, 'legacy_build_context_called': False}
+        conversation = {
+            'id': 'conv-web-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok web'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_payload = self.server.llm.build_payload
+        self.server.ws.build_context_payload = lambda _user_msg: {
+            'enabled': True,
+            'status': 'ok',
+            'reason_code': None,
+            'original_user_message': 'Bonjour',
+            'query': 'query test',
+            'results_count': 1,
+            'runtime': {
+                'searxng_results': 5,
+                'crawl4ai_top_n': 2,
+                'crawl4ai_max_chars': 1500,
+            },
+            'sources': [
+                {
+                    'rank': 1,
+                    'title': 'Titre source',
+                    'url': 'https://example.com/article',
+                    'source_domain': 'example.com',
+                    'search_snippet': 'Snippet source',
+                    'used_in_prompt': True,
+                    'used_content_kind': 'search_snippet',
+                    'content_used': 'Snippet source',
+                    'truncated': False,
+                }
+            ],
+            'context_block': 'WEB CONTEXT',
+        }
+
+        def legacy_build_context_should_not_run(_user_msg):
+            observed['legacy_build_context_called'] = True
+            raise AssertionError('legacy build_context should not be called')
+
+        def fake_insertion(**kwargs):
+            observed['web_input'] = kwargs.get('web_input')
+            return None
+
+        def fake_build_payload(messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['prompt_messages'] = messages
+            return {
+                'model': 'openrouter/runtime-main-model',
+                'messages': messages,
+                'max_tokens': max_tokens,
+                'stream': stream,
+            }
+
+        self.server.ws.build_context = legacy_build_context_should_not_run
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.llm.build_payload = fake_build_payload
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'web_search': True})
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.llm.build_payload = original_build_payload
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertFalse(observed['legacy_build_context_called'])
+        self.assertEqual(observed['web_input']['schema_version'], 'v1')
+        self.assertTrue(observed['web_input']['enabled'])
+        self.assertEqual(observed['web_input']['status'], 'ok')
+        self.assertEqual(observed['web_input']['query'], 'query test')
+        self.assertEqual(observed['web_input']['results_count'], 1)
+        self.assertEqual(observed['web_input']['runtime']['searxng_results'], 5)
+        self.assertEqual(observed['web_input']['sources'][0]['source_domain'], 'example.com')
+        self.assertTrue(observed['web_input']['sources'][0]['used_in_prompt'])
+        self.assertEqual(observed['web_input']['sources'][0]['used_content_kind'], 'search_snippet')
+        self.assertEqual(observed['web_input']['context_block'], 'WEB CONTEXT')
+        self.assertEqual(
+            observed['prompt_messages'],
+            [{'role': 'user', 'content': 'WEB CONTEXT\n\nQuestion : Bonjour'}],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {

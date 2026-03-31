@@ -42,10 +42,29 @@ def inject_web_context(
     conversation_id: str,
     web_search_module: Any,
     admin_logs_module: Any,
-) -> None:
-    ctx, search_query, n_results = web_search_module.build_context(user_msg)
+    web_context_payload: Mapping[str, Any] | None = None,
+) -> Mapping[str, Any]:
+    if web_context_payload is None:
+        build_context_payload = getattr(web_search_module, 'build_context_payload', None)
+        if callable(build_context_payload):
+            web_context_payload = build_context_payload(user_msg)
+        else:
+            ctx, search_query, n_results = web_search_module.build_context(user_msg)
+            web_context_payload = {
+                'enabled': True,
+                'status': 'ok' if ctx else 'skipped',
+                'reason_code': None if ctx else 'no_data',
+                'original_user_message': user_msg,
+                'query': search_query,
+                'results_count': n_results,
+                'runtime': {},
+                'sources': [],
+                'context_block': ctx,
+            }
+
+    ctx = str(web_context_payload.get('context_block') or '')
     if not ctx:
-        return
+        return web_context_payload
 
     for index in range(len(prompt_messages) - 1, -1, -1):
         if prompt_messages[index].get('role') == 'user':
@@ -58,7 +77,8 @@ def inject_web_context(
     admin_logs_module.log_event(
         'web_search',
         conversation_id=conversation_id,
-        query=search_query,
-        original=user_msg,
-        results=n_results,
+        query=web_context_payload.get('query'),
+        original=web_context_payload.get('original_user_message') or user_msg,
+        results=web_context_payload.get('results_count'),
     )
+    return web_context_payload

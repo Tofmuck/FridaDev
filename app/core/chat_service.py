@@ -11,6 +11,7 @@ from core import conversations_prompt_window
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import summary_input
+from core.hermeneutic_node.inputs import web_input as canonical_web_input
 
 
 # Phase 4 bis - Cartographie locale des responsabilités de ce module:
@@ -105,6 +106,42 @@ def _resolve_recent_context_input(
     )
 
 
+def _resolve_web_runtime_payload(
+    *,
+    user_msg: str,
+    web_search_on: bool,
+    web_search_module: Any,
+) -> dict[str, Any]:
+    if not web_search_on:
+        return {
+            'enabled': False,
+            'status': 'skipped',
+            'reason_code': 'feature_disabled',
+            'original_user_message': str(user_msg or ''),
+            'query': None,
+            'results_count': 0,
+            'runtime': {},
+            'sources': [],
+            'context_block': '',
+        }
+    build_context_payload = getattr(web_search_module, 'build_context_payload', None)
+    if callable(build_context_payload):
+        return dict(build_context_payload(user_msg))
+
+    ctx, query, n_results = web_search_module.build_context(user_msg)
+    return {
+        'enabled': True,
+        'status': 'ok' if ctx else 'skipped',
+        'reason_code': None if ctx else 'no_data',
+        'original_user_message': str(user_msg or ''),
+        'query': str(query or ''),
+        'results_count': int(n_results),
+        'runtime': {},
+        'sources': [],
+        'context_block': str(ctx or ''),
+    }
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -118,6 +155,7 @@ def _run_hermeneutic_node_insertion_point(
     summary_input: Mapping[str, Any] | None = None,
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
+    web_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
     return None
@@ -208,6 +246,12 @@ def chat_response(
         conversation=conversation,
         summary_payload=summary_payload,
     )
+    web_runtime_payload = _resolve_web_runtime_payload(
+        user_msg=user_msg,
+        web_search_on=web_search_on,
+        web_search_module=web_search_module,
+    )
+    web_payload = canonical_web_input.build_web_input_from_runtime_payload(web_runtime_payload)
 
     _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -221,6 +265,7 @@ def chat_response(
         summary_input=summary_payload,
         identity_input=identity_payload,
         recent_context_input=recent_context_payload,
+        web_input=web_payload,
     )
 
     prompt_messages = conv_store_module.build_prompt_messages(
@@ -238,6 +283,7 @@ def chat_response(
             conversation_id=conversation['id'],
             web_search_module=web_search_module,
             admin_logs_module=admin_logs_module,
+            web_context_payload=web_runtime_payload,
         )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,
