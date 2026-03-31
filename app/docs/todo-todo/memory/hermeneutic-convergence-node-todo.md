@@ -91,7 +91,7 @@ Objectif: isoler la matiere diffuse du tour en cours en separant clairement extr
 Perimetre: `fenetre_recente`, `demande_utilisateur`, signaux d'ambiguite/sous-determination.
 
 Sous-bloc A - Extraction simple:
-- [ ] Definir l'extraction canonique de `fenetre_recente` (selection, profondeur, horodatage, format).
+- [x] Definir l'extraction canonique de `fenetre_recente` (selection, profondeur, horodatage, format).
 - [ ] Definir l'objet de sortie `fenetre_recente` exploitable sans interpretation metier forte.
 
 Sous-bloc B - Qualification semantique minimale:
