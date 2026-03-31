@@ -1010,11 +1010,28 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
                 web_search.reformulate = original_reformulate
                 web_search.search = original_search
                 web_search._format_context = original_format_context
+
+            token_truncated = chat_turn_logger.begin_turn(
+                conversation_id='conv-web-truncated',
+                user_msg='bonjour',
+                web_search_enabled=True,
+            )
+            web_search.reformulate = lambda _msg: 'query truncated'
+            web_search.search = lambda _query: [{'title': 'A', 'url': 'https://a', 'content': 'x'}]
+            web_search._format_context = lambda _query, _results: 'CTX [...contenu tronqué]'
+            try:
+                ctx, query, count = web_search.build_context('bonjour')
+                self.assertEqual((ctx, query, count), ('CTX [...contenu tronqué]', 'query truncated', 1))
+                chat_turn_logger.end_turn(token_truncated, final_status='ok')
+            finally:
+                web_search.reformulate = original_reformulate
+                web_search.search = original_search
+                web_search._format_context = original_format_context
         finally:
             log_store.insert_chat_log_event = original_insert
 
         web_search_events = [event for event in observed if event['stage'] == 'web_search']
-        self.assertGreaterEqual(len(web_search_events), 2)
+        self.assertGreaterEqual(len(web_search_events), 3)
         statuses = {event['status'] for event in web_search_events}
         self.assertIn('ok', statuses)
         self.assertIn('skipped', statuses)
@@ -1033,6 +1050,11 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         skipped_events = [event for event in web_search_events if event['status'] == 'skipped']
         self.assertTrue(skipped_events)
         self.assertTrue(all(event['payload_json'].get('reason_code') == 'no_data' for event in skipped_events))
+        truncated_event = next(
+            event for event in web_search_events
+            if event['payload_json'].get('query_preview') == 'query truncated'
+        )
+        self.assertTrue(truncated_event['payload_json']['truncated'])
 
     def test_web_search_build_context_payload_exposes_structured_sources(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -1127,7 +1149,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload.get('query_preview'), 'message source')
         self.assertNotIn('context', payload)
         self.assertNotIn('results', payload)
-        self.assertTrue(any(event['stage'] == 'error' and event['status'] == 'error' for event in observed))
+        logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')
+        self.assertEqual(logger_error_event['payload_json']['message_short'], 'reformulation boom')
 
 
 if __name__ == '__main__':

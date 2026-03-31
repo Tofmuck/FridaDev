@@ -131,6 +131,27 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(query, 'query reformulee')
         self.assertEqual(result_count, 2)
 
+    def test_build_context_keeps_legacy_contract_when_context_is_truncated(self) -> None:
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_format_context = web_search._format_context
+
+        web_search.reformulate = lambda _user_msg: 'query tronquee'
+        web_search.search = lambda _query: [
+            {'title': 'A', 'url': 'https://a.example', 'content': 'a'},
+        ]
+        web_search._format_context = lambda query, _results: f'CTX::{query}::[...contenu tronqué]'
+        try:
+            context, query, result_count = web_search.build_context('question initiale')
+        finally:
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._format_context = original_format_context
+
+        self.assertEqual(context, 'CTX::query tronquee::[...contenu tronqué]')
+        self.assertEqual(query, 'query tronquee')
+        self.assertEqual(result_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

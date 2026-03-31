@@ -249,13 +249,19 @@ def _emit_web_search_runtime_event(
     context_block: str,
     sources: list[dict[str, Any]] | None = None,
     error_class: str | None = None,
+    truncated: bool | None = None,
+    message_short: str | None = None,
 ) -> None:
+    if truncated is None:
+        truncated = any(bool(source.get('truncated')) for source in (sources or []))
+        if not truncated and context_block:
+            truncated = '[...contenu tronqué]' in str(context_block)
     payload = {
         'enabled': bool(enabled),
         'query_preview': str(query_preview)[:120],
         'results_count': int(results_count),
         'context_injected': bool(context_block),
-        'truncated': any(bool(source.get('truncated')) for source in (sources or [])),
+        'truncated': bool(truncated),
     }
     if error_class:
         payload['error_class'] = error_class
@@ -275,7 +281,7 @@ def _emit_web_search_runtime_event(
         chat_turn_logger.emit_error(
             error_code=reason_code or 'upstream_error',
             error_class=error_class,
-            message_short=query_preview,
+            message_short=str(message_short or query_preview),
         )
 
 
@@ -327,6 +333,7 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             context_block='',
             sources=[],
             error_class=exc.__class__.__name__,
+            message_short=str(exc),
         )
         return error_payload
 
@@ -352,6 +359,7 @@ def build_context(user_msg: str) -> tuple[str, str, int]:
             results_count=len(results),
             context_block=ctx,
             sources=[],
+            truncated='[...contenu tronqué]' in ctx,
         )
         return ctx, query, len(results)
     except Exception as exc:
@@ -364,5 +372,6 @@ def build_context(user_msg: str) -> tuple[str, str, int]:
             context_block='',
             sources=[],
             error_class=exc.__class__.__name__,
+            message_short=str(exc),
         )
         return '', str(user_msg or ''), 0
