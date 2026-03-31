@@ -1,81 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any, Callable, Optional
 
 from psycopg.rows import dict_row
 
+from core.hermeneutic_node.inputs import time_input
+
 
 def delta_t_label(ts_msg: str, ts_now: str, *, timezone_name: str) -> str:
     """Retourne un label Delta-T lisible entre deux timestamps ISO."""
-    try:
-        from zoneinfo import ZoneInfo
-
-        dt_msg = datetime.fromisoformat(ts_msg.replace("Z", "+00:00"))
-        dt_now = datetime.fromisoformat(ts_now.replace("Z", "+00:00"))
-        secs = int((dt_now - dt_msg).total_seconds())
-
-        if secs < 60:
-            return "à l'instant"
-        if secs < 3600:
-            minutes = secs // 60
-            return f"il y a {minutes} minute{'s' if minutes > 1 else ''}"
-
-        # Comparaison calendaire en heure locale.
-        try:
-            tz = ZoneInfo(timezone_name)
-        except Exception:
-            tz = timezone.utc
-        local_msg = dt_msg.astimezone(tz)
-        local_now = dt_now.astimezone(tz)
-        hour = f"{local_msg.hour}h" + (f"{local_msg.minute:02d}" if local_msg.minute else "")
-
-        if local_msg.date() == local_now.date():
-            return f"aujourd'hui à {hour}"
-        if local_msg.date() == (local_now - timedelta(days=1)).date():
-            return f"hier à {hour}"
-
-        if secs < 86400 * 7:
-            days = secs // 86400
-            return f"il y a {days} jour{'s' if days > 1 else ''}"
-        if secs < 86400 * 30:
-            weeks = secs // (86400 * 7)
-            return f"il y a {weeks} semaine{'s' if weeks > 1 else ''}"
-        if secs < 86400 * 365:
-            months = secs // (86400 * 30)
-            return f"il y a {months} mois"
-        years = secs // (86400 * 365)
-        return f"il y a {years} an{'s' if years > 1 else ''}"
-    except Exception:
-        return ""
+    return time_input.render_delta_label(
+        ts_msg,
+        ts_now,
+        timezone_name=timezone_name,
+    )
 
 
 def silence_label(ts_before: str, ts_after: str) -> str:
     """Retourne un marqueur de silence entre deux messages consecutifs."""
-    try:
-        dt_before = datetime.fromisoformat(ts_before.replace("Z", "+00:00"))
-        dt_after = datetime.fromisoformat(ts_after.replace("Z", "+00:00"))
-        secs = int((dt_after - dt_before).total_seconds())
-        if secs < 60:
-            return "[— silence de quelques secondes —]"
-        if secs < 3600:
-            minutes = secs // 60
-            return f"[— silence de {minutes} minute{'s' if minutes > 1 else ''} —]"
-        if secs < 86400:
-            hours = secs // 3600
-            return f"[— silence de {hours} heure{'s' if hours > 1 else ''} —]"
-        if secs < 86400 * 2:
-            return "[— silence d'un jour —]"
-        if secs < 86400 * 7:
-            days = secs // 86400
-            return f"[— silence de {days} jours —]"
-        if secs < 86400 * 30:
-            weeks = secs // (86400 * 7)
-            return f"[— silence de {weeks} semaine{'s' if weeks > 1 else ''} —]"
-        months = secs // (86400 * 30)
-        return f"[— silence de {months} mois —]"
-    except Exception:
-        return ""
+    return time_input.render_silence_label(ts_before, ts_after)
 
 
 def make_summary_message(summary: dict[str, Any]) -> dict[str, str]:

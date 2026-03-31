@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Mapping
-from zoneinfo import ZoneInfo
+
+from core.hermeneutic_node.inputs import time_input
 
 
 def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
@@ -20,30 +20,12 @@ def build_augmented_system(
     identity_module: Any,
     now_iso: str,
 ) -> tuple[str, list[str]]:
-    tz_paris = ZoneInfo(config_module.FRIDA_TIMEZONE)
-    now_raw = datetime.fromisoformat(str(now_iso).replace("Z", "+00:00"))
-    if now_raw.tzinfo is None:
-        now_raw = now_raw.replace(tzinfo=timezone.utc)
-    now_paris = now_raw.astimezone(tz_paris)
-    now_human = now_paris.strftime('%A %d %B %Y à %H:%M')
-    now_canonical = now_paris.isoformat(timespec='seconds')
-    id_block, identity_ids = identity_module.build_identity_block()
-    delta_rule = (
-        '[RÉFÉRENCE TEMPORELLE]\n'
-        f"NOW: {now_canonical}\n"
-        f"TIMEZONE: {config_module.FRIDA_TIMEZONE}\n\n"
-        f"Nous sommes le {now_human}. C'est ton 'maintenant'.\n"
-        "Les messages ci-dessous sont horodatés relativement à ce maintenant (ex : 'il y a 2 jours').\n"
-        'Les marqueurs [— silence de X —] indiquent une interruption de la conversation. '
-        "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
-        "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
-        "sauf si on te le demande explicitement.\n"
-        "Le NOW de reference du tour est deja fourni ci-dessus: n'affirme jamais que tu n'y as pas acces.\n"
-        "N'utilise les formulations de journee (ce matin, cet apres-midi, ce soir, cette nuit) "
-        "que si l'ancrage dans NOW et les timestamps est robuste; sinon reste neutre.\n"
-        "Si on te demande quand on a parle la derniere fois, privilegie le relatif puis ajoute "
-        "un absolu court seulement si utile."
+    canonical_time_input = time_input.build_time_input(
+        now_utc_iso=now_iso,
+        timezone_name=str(config_module.FRIDA_TIMEZONE),
     )
+    id_block, identity_ids = identity_module.build_identity_block()
+    delta_rule = time_input.build_time_reference_block(canonical_time_input)
     parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
     return '\n\n'.join(parts), identity_ids
 

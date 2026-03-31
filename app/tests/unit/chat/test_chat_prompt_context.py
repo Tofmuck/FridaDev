@@ -18,9 +18,26 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import chat_prompt_context
+from core.hermeneutic_node.inputs import time_input
 
 
 class ChatPromptContextTests(unittest.TestCase):
+    def test_build_time_input_exposes_canonical_time_fields(self) -> None:
+        payload = time_input.build_time_input(
+            now_utc_iso='2026-01-15T08:15:00Z',
+            timezone_name='Europe/Paris',
+        )
+
+        self.assertEqual(payload['schema_version'], 'v1')
+        self.assertEqual(payload['now_utc_iso'], '2026-01-15T08:15:00Z')
+        self.assertEqual(payload['timezone'], 'Europe/Paris')
+        self.assertEqual(payload['now_local_iso'], '2026-01-15T09:15:00+01:00')
+        self.assertEqual(payload['local_date'], '2026-01-15')
+        self.assertEqual(payload['local_time'], '09:15')
+        self.assertEqual(payload['local_weekday'], 'thursday')
+        self.assertEqual(payload['day_part_class'], 'morning')
+        self.assertEqual(payload['day_part_human'], 'matin')
+
     def test_resolve_backend_prompts_uses_prompt_loader_authority(self) -> None:
         loader = SimpleNamespace(
             get_main_system_prompt=lambda: 'BACKEND SYSTEM PROMPT',
