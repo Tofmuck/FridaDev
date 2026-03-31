@@ -69,6 +69,7 @@ Regles associees:
 
 - un tour complet contient un message `user` suivi de la reponse `assistant` correspondante;
 - si le dernier tour est incomplet, le dernier message `user` doit etre conserve comme tour en cours;
+- si la matiere post-resume commence par un message `assistant`, ce message doit etre conserve comme tour structurel autonome, sans lui inventer un `user` synthetique;
 - aucun message `assistant` ne doit etre rattache retroactivement a un autre tour que celui qui le suit immediatement dans l'ordre chronologique.
 
 ## Timestamp Rule
@@ -86,7 +87,7 @@ Le format canonique attendu pour la future structure `fenetre_recente` doit au m
 - un versionnage de schema;
 - l'explicitation de `max_recent_turns`;
 - une liste ordonnee de tours recents;
-- la distinction entre tour complet et tour en cours;
+- la distinction entre tour complet, tour en cours, et message `assistant` initial autonome;
 - la conservation des messages sources avec leur `role`, `content`, et `timestamp`.
 
 Forme minimale attendue en esprit:
@@ -97,7 +98,7 @@ Forme minimale attendue en esprit:
 
 Et pour chaque tour:
 
-- `turn_status` (`complete` ou `in_progress`)
+- `turn_status` (`complete`, `in_progress`, ou `assistant_only`)
 - `messages`
 
 Et pour chaque message:
@@ -140,4 +141,5 @@ Les invariants suivants ne devront pas etre violes:
 - la selection doit rester post-resume actif;
 - l'ordre chronologique des messages doit etre conserve;
 - le dernier message `user` incomplet doit etre retenu comme tour en cours;
+- un `assistant` initial post-resume ne doit pas etre perdu ni force dans un faux tour complet;
 - l'extraction mecanique ne doit pas etre melangee avec la qualification hermeneutique.

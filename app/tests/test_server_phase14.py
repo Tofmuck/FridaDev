@@ -698,6 +698,104 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_recent_window_keeps_initial_assistant_without_fake_user_pair(self) -> None:
+        observed = {'recent_window_input': None}
+        conversation = {
+            'id': 'conv-recent-window-initial-assistant-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [
+                {'role': 'system', 'content': 'BACKEND SYSTEM PROMPT', 'timestamp': '2026-03-26T00:00:00Z'},
+                {'role': 'user', 'content': 'Message pre-summary', 'timestamp': '2026-03-20T08:00:00Z'},
+                {'role': 'assistant', 'content': 'Assistant post-summary initial', 'timestamp': '2026-03-25T09:00:00Z'},
+                {'role': 'user', 'content': 'Question récente', 'timestamp': '2026-03-25T09:10:00Z'},
+                {'role': 'assistant', 'content': 'Réponse récente', 'timestamp': '2026-03-25T09:11:00Z'},
+            ],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok recent assistant only'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_get_active_summary = self.server.chat_service.conversations_prompt_window.get_active_summary
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_now_iso = self.server.chat_service._now_iso
+        self.server.chat_service._now_iso = lambda: '2026-03-26T14:00:00Z'
+        self.server.chat_service.conversations_prompt_window.get_active_summary = lambda *_args, **_kwargs: {
+            'id': 'sum-recent-window-initial-assistant-phase14',
+            'conversation_id': 'conv-recent-window-initial-assistant-phase14',
+            'start_ts': '2026-03-18T10:00:00Z',
+            'end_ts': '2026-03-24T18:00:00Z',
+            'content': 'Résumé actif',
+        }
+
+        def fake_insertion(**kwargs):
+            observed['recent_window_input'] = kwargs.get('recent_window_input')
+            return None
+
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service._now_iso = original_now_iso
+            self.server.chat_service.conversations_prompt_window.get_active_summary = original_get_active_summary
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['recent_window_input']['turn_count'], 3)
+        self.assertTrue(observed['recent_window_input']['has_in_progress_turn'])
+        self.assertEqual(
+            [turn['turn_status'] for turn in observed['recent_window_input']['turns']],
+            ['assistant_only', 'complete', 'in_progress'],
+        )
+        self.assertEqual(
+            observed['recent_window_input']['turns'][0]['messages'],
+            [
+                {
+                    'role': 'assistant',
+                    'content': 'Assistant post-summary initial',
+                    'timestamp': '2026-03-25T09:00:00Z',
+                }
+            ],
+        )
+        self.assertEqual(
+            observed['recent_window_input']['turns'][1]['messages'],
+            [
+                {
+                    'role': 'user',
+                    'content': 'Question récente',
+                    'timestamp': '2026-03-25T09:10:00Z',
+                },
+                {
+                    'role': 'assistant',
+                    'content': 'Réponse récente',
+                    'timestamp': '2026-03-25T09:11:00Z',
+                },
+            ],
+        )
+        self.assertEqual(
+            observed['recent_window_input']['turns'][-1]['messages'],
+            [
+                {
+                    'role': 'user',
+                    'content': 'Bonjour',
+                    'timestamp': '2026-03-26T14:00:00Z',
+                }
+            ],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
         observed = {'web_input': None, 'prompt_messages': None, 'legacy_build_context_called': False}
         conversation = {

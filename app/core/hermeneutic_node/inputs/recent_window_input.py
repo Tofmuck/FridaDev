@@ -50,8 +50,9 @@ def build_recent_window_input(
             continue
 
         if not current_turn:
-            # A leading assistant message remains visible in recent_context_input
-            # but does not open a canonical recent turn on its own.
+            # A leading assistant message after summary cutoff must remain visible
+            # without being falsified as a synthetic user->assistant pair.
+            turns.append(_finalize_turn(messages=[message], turn_status="assistant_only"))
             continue
 
         current_turn.append(message)
