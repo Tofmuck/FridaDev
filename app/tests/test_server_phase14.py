@@ -427,6 +427,101 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['identity_input']['user']['dynamic'][0]['scope'], 'user')
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_identity_input_uses_same_effective_dynamic_selection_as_prompt_block(self) -> None:
+        identity = self.server.identity
+        originals = {
+            'load_llm_identity': identity.load_llm_identity,
+            'load_user_identity': identity.load_user_identity,
+            '_safe_static_identity_source': identity._safe_static_identity_source,
+            '_select_ranked_entries': identity._select_ranked_entries,
+            '_count_tokens': identity._count_tokens,
+            'identity_top_n': identity.config.IDENTITY_TOP_N,
+            'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
+        }
+        ranked_entries = {
+            'llm': [
+                {
+                    'id': 'frida-kept',
+                    'content': 'Frida dynamique retenue',
+                    'stability': 'durable',
+                    'recurrence': 'habitual',
+                    'confidence': 0.95,
+                    'last_seen_ts': '2026-03-24T12:00:00Z',
+                    'scope': 'llm',
+                },
+                {
+                    'id': 'frida-dropped',
+                    'content': 'Frida dynamique hors budget',
+                    'stability': 'durable',
+                    'recurrence': 'repeated',
+                    'confidence': 0.90,
+                    'last_seen_ts': '2026-03-23T10:00:00Z',
+                    'scope': 'llm',
+                },
+            ],
+            'user': [
+                {
+                    'id': 'user-kept',
+                    'content': 'User dynamique retenue',
+                    'stability': 'durable',
+                    'recurrence': 'repeated',
+                    'confidence': 0.88,
+                    'last_seen_ts': '2026-03-25T09:30:00Z',
+                    'scope': 'user',
+                },
+                {
+                    'id': 'user-dropped',
+                    'content': 'User dynamique hors budget',
+                    'stability': 'durable',
+                    'recurrence': 'repeated',
+                    'confidence': 0.83,
+                    'last_seen_ts': '2026-03-22T09:30:00Z',
+                    'scope': 'user',
+                },
+            ],
+        }
+
+        identity.load_llm_identity = lambda: ''
+        identity.load_user_identity = lambda: ''
+        identity._safe_static_identity_source = lambda _field: None
+        identity._select_ranked_entries = lambda subject: list(ranked_entries[subject])
+        identity.config.IDENTITY_TOP_N = 2
+        identity.config.IDENTITY_MAX_TOKENS = 4
+
+        def fake_count_tokens(text: str) -> int:
+            if not text:
+                return 0
+            if text.startswith('- ['):
+                return 2
+            return 0
+
+        identity._count_tokens = fake_count_tokens
+        try:
+            block, used_ids = identity.build_identity_block()
+            payload = identity.build_identity_input()
+        finally:
+            identity.load_llm_identity = originals['load_llm_identity']
+            identity.load_user_identity = originals['load_user_identity']
+            identity._safe_static_identity_source = originals['_safe_static_identity_source']
+            identity._select_ranked_entries = originals['_select_ranked_entries']
+            identity._count_tokens = originals['_count_tokens']
+            identity.config.IDENTITY_TOP_N = originals['identity_top_n']
+            identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
+
+        self.assertIn('Frida dynamique retenue', block)
+        self.assertNotIn('Frida dynamique hors budget', block)
+        self.assertIn('User dynamique retenue', block)
+        self.assertNotIn('User dynamique hors budget', block)
+        self.assertEqual(used_ids, ['frida-kept', 'user-kept'])
+        self.assertEqual(
+            [entry['id'] for entry in payload['frida']['dynamic']],
+            ['frida-kept'],
+        )
+        self.assertEqual(
+            [entry['id'] for entry in payload['user']['dynamic']],
+            ['user-kept'],
+        )
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {

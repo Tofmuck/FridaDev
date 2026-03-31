@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,21 @@ from core import token_utils
 from observability import chat_turn_logger
 
 logger = logging.getLogger('frida.identity')
+
+
+@dataclass(frozen=True)
+class _DynamicSelection:
+    entries: list[dict[str, Any]]
+    lines: list[str]
+    ids: list[str]
+
+
+@dataclass(frozen=True)
+class _IdentityRuntimeSelection:
+    block: str
+    used_identity_ids: list[str]
+    frida_dynamic_entries: list[dict[str, Any]]
+    user_dynamic_entries: list[dict[str, Any]]
 
 
 def _runtime_main_model_name() -> str:
@@ -167,14 +183,11 @@ def _select_ranked_entries(subject: str) -> list[dict[str, Any]]:
     return eligible
 
 
-def _selected_dynamic_entries(subject: str) -> list[dict[str, Any]]:
-    return _select_ranked_entries(subject)[: max(1, config.IDENTITY_TOP_N)]
-
-
-def _build_dynamic_lines(subject: str, max_tokens: int) -> tuple[list[str], list[str]]:
+def _select_effective_dynamic_entries(subject: str, max_tokens: int) -> _DynamicSelection:
     if max_tokens <= 0:
-        return [], []
+        return _DynamicSelection(entries=[], lines=[], ids=[])
 
+    entries: list[dict[str, Any]] = []
     lines: list[str] = []
     ids: list[str] = []
     spent_tokens = 0
@@ -188,12 +201,18 @@ def _build_dynamic_lines(subject: str, max_tokens: int) -> tuple[list[str], list
         line_tokens = _count_tokens(line)
         if spent_tokens + line_tokens > max_tokens:
             continue
+        entries.append(entry)
         lines.append(line)
         if entry.get('id'):
             ids.append(str(entry['id']))
         spent_tokens += line_tokens
 
-    return lines, ids
+    return _DynamicSelection(entries=entries, lines=lines, ids=ids)
+
+
+def _build_dynamic_lines(subject: str, max_tokens: int) -> tuple[list[str], list[str]]:
+    selection = _select_effective_dynamic_entries(subject, max_tokens)
+    return selection.lines, selection.ids
 
 
 def _compose_section(title: str, static_text: str, dynamic_lines: list[str]) -> str:
@@ -229,16 +248,11 @@ def _emit_static_identity_read(*, target_side: str, static_text: str) -> None:
     )
 
 
-def build_identity_block() -> tuple[str, list[str]]:
-    """
-    Build identity block injected at the top of system prompt.
-    Returns (block_text, used_identity_ids).
-    """
-    llm_static = load_llm_identity()
-    user_static = load_user_identity()
-    _emit_static_identity_read(target_side='frida', static_text=llm_static)
-    _emit_static_identity_read(target_side='user', static_text=user_static)
-
+def _resolve_identity_runtime_selection(
+    *,
+    llm_static: str,
+    user_static: str,
+) -> _IdentityRuntimeSelection:
     static_sections = [
         _compose_section('IDENTITÉ DU MODÈLE', llm_static, []),
         _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, []),
@@ -252,36 +266,67 @@ def build_identity_block() -> tuple[str, list[str]]:
     active_subjects = 2
     per_subject_budget = remaining_tokens // active_subjects if remaining_tokens > 0 else 0
 
-    llm_lines, llm_ids = _build_dynamic_lines('llm', per_subject_budget)
-    user_lines, user_ids = _build_dynamic_lines('user', per_subject_budget)
+    llm_selection = _select_effective_dynamic_entries('llm', per_subject_budget)
+    user_selection = _select_effective_dynamic_entries('user', per_subject_budget)
 
     # If only one side has dynamic candidates, give it the whole remaining budget.
-    if remaining_tokens > 0 and llm_lines and not user_lines:
-        llm_lines, llm_ids = _build_dynamic_lines('llm', remaining_tokens)
-    elif remaining_tokens > 0 and user_lines and not llm_lines:
-        user_lines, user_ids = _build_dynamic_lines('user', remaining_tokens)
+    if remaining_tokens > 0 and llm_selection.lines and not user_selection.lines:
+        llm_selection = _select_effective_dynamic_entries('llm', remaining_tokens)
+    elif remaining_tokens > 0 and user_selection.lines and not llm_selection.lines:
+        user_selection = _select_effective_dynamic_entries('user', remaining_tokens)
 
     sections = [
-        _compose_section('IDENTITÉ DU MODÈLE', llm_static, llm_lines),
-        _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, user_lines),
+        _compose_section('IDENTITÉ DU MODÈLE', llm_static, llm_selection.lines),
+        _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, user_selection.lines),
     ]
     block = '\n\n'.join(section for section in sections if section)
+    used_identity_ids = llm_selection.ids + user_selection.ids
 
     # Hard guardrail on identity budget.
     if _count_tokens(block) > budget:
         block = static_block
+        used_identity_ids = []
+        llm_selection = _DynamicSelection(entries=[], lines=[], ids=[])
+        user_selection = _DynamicSelection(entries=[], lines=[], ids=[])
     if _count_tokens(block) > budget:
         block = _truncate_to_words(block, budget)
 
-    return block, llm_ids + user_ids
+    return _IdentityRuntimeSelection(
+        block=block,
+        used_identity_ids=used_identity_ids,
+        frida_dynamic_entries=llm_selection.entries,
+        user_dynamic_entries=user_selection.entries,
+    )
+
+
+def build_identity_block() -> tuple[str, list[str]]:
+    """
+    Build identity block injected at the top of system prompt.
+    Returns (block_text, used_identity_ids).
+    """
+    llm_static = load_llm_identity()
+    user_static = load_user_identity()
+    _emit_static_identity_read(target_side='frida', static_text=llm_static)
+    _emit_static_identity_read(target_side='user', static_text=user_static)
+    selection = _resolve_identity_runtime_selection(
+        llm_static=llm_static,
+        user_static=user_static,
+    )
+    return selection.block, selection.used_identity_ids
 
 
 def build_identity_input() -> dict[str, Any]:
+    llm_static = load_llm_identity()
+    user_static = load_user_identity()
+    selection = _resolve_identity_runtime_selection(
+        llm_static=llm_static,
+        user_static=user_static,
+    )
     return canonical_identity_input.build_identity_input(
-        frida_static_content=load_llm_identity(),
+        frida_static_content=llm_static,
         frida_static_source=_safe_static_identity_source('llm_identity_path'),
-        frida_dynamic_entries=_selected_dynamic_entries('llm'),
-        user_static_content=load_user_identity(),
+        frida_dynamic_entries=selection.frida_dynamic_entries,
+        user_static_content=user_static,
         user_static_source=_safe_static_identity_source('user_identity_path'),
-        user_dynamic_entries=_selected_dynamic_entries('user'),
+        user_dynamic_entries=selection.user_dynamic_entries,
     )
