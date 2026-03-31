@@ -14,7 +14,8 @@ Son objectif est plus borne:
 
 - fixer un axe primaire de lecture du tour utilisateur;
 - poser une premiere taxonomie minimale et totalisante;
-- preparer les futurs qualificateurs secondaires sans les trancher ici.
+- ouvrir un deuxieme axe minimal sur le `besoin de preuve`;
+- preparer les autres qualificateurs secondaires sans les trancher ici.
 
 L'axe primaire retenu est:
 
@@ -126,32 +127,145 @@ Cas typiques:
 - rassurer;
 - exprimer une tension ou une confiance.
 
+## Secondary Axis - Besoin de preuve as Probative Regime
+
+Le `besoin de preuve` n'est pas un simple curseur `faible / moyen / fort`.
+
+Dans cette spec, il est ouvert comme un premier contrat de `regime probatoire`.
+
+Regle directrice:
+
+- le tour doit appeler le maximum de preuve possible au regard de ce qui est disponible et pertinent;
+- ce maximum n'autorise ni l'exigence de l'impossible, ni la reduction de la preuve a un score unique;
+- la force probatoire depend du type de preuve, de sa provenance, du regime de vigilance applicable, et de sa composition avec d'autres preuves.
+
+Nom doctrinal provisoire:
+
+- `maximal_possible`
+
+Ce nom ne fixe pas encore un format runtime final. Il fixe seulement la logique de lecture minimale du deuxieme axe.
+
+## Minimal Proof Types
+
+Premiere taxonomie minimale des natures de preuve:
+
+- `factuelle`
+- `scientifique`
+- `argumentative`
+- `hermeneutique`
+- `dialogique`
+
+Regles minimales:
+
+- cette taxonomie decrit des natures de preuve, pas une hierarchie finale entre elles;
+- `factuelle` ne vaut pas automatiquement plus que `hermeneutique`;
+- une preuve interpretee peut etre necessaire pour donner sens a un fait brut;
+- une preuve dialogique peut etre decisive pour etablir la continuite d'un echange, meme sans valoir comme preuve scientifique;
+- une preuve argumentative peut etre forte si elle est articulee avec d'autres preuves et faible si elle reste seule.
+
+## Provenance
+
+La provenance n'est pas identique au type de preuve.
+
+Liste minimale de provenance ouverte ici:
+
+- `dialogue_trace`
+- `dialogue_resume`
+- `web`
+
+Regles normatives minimales:
+
+- `dialogue_trace` designe l'ancrage dans les traces du dialogue et vaut en priorite comme ancrage `factuelle` ou `dialogique`;
+- `dialogue_resume` designe un ancrage interprete et vaut en priorite comme support `hermeneutique`;
+- `web` n'est jamais un type de preuve en soi; c'est une provenance possible de preuves `factuelle`, `scientifique`, `argumentative`, ou autres;
+- aucune lecture probatoire ne doit confondre la nature de la preuve et son lieu de provenance.
+
+## Vigilance Regime
+
+Le regime de vigilance minimal distingue ici:
+
+- `standard`
+- `renforce`
+
+Regles minimales:
+
+- `web` implique toujours une `vigilance renforcee`;
+- une preuve de provenance `web` exige une source explicite;
+- une preuve de provenance `web` reste fortement revisable;
+- une preuve de provenance `web` appelle un soupcon methodique;
+- cette vigilance est partagee entre `FridaDev` et l'interlocuteur, pas externalisee sur un seul pole;
+- `dialogue_trace` et `dialogue_resume` relevent par defaut de la vigilance `standard`, sans etre pour autant auto-suffisants en toute situation.
+
+## Probative Composition
+
+La force d'un regime probatoire depend aussi de la composition des preuves, pas seulement de leur type isole.
+
+Categories minimales de composition:
+
+- `isolee`
+- `appuyee`
+- `corroboree`
+- `articulee`
+- `convergente`
+- `fragilisee`
+- `sous_soupcon`
+
+Regles minimales:
+
+- une composition n'est renforcante que si les preuves restent relativement heterogenes ou independantes;
+- plusieurs preuves du meme ordre, issues de la meme provenance, ne valent pas automatiquement corroboration;
+- une composition n'est forte que si les preuves portent sur la meme these ou sur des aspects compatibles de cette these;
+- une articulation probatoire doit etre explicite et non seulement juxtaposee;
+- une contradiction non traitee fragilise la composition;
+- une provenance sous vigilance renforcee peut rester recevable, mais ne doit pas se presenter comme auto-suffisante.
+
+## Analytical Examples
+
+Exemples analytiques minimaux:
+
+- `scientifique + argumentative`
+  - plus fort qu'une argumentation seule si l'argumentation articule correctement le support scientifique;
+- `factuelle + hermeneutique`
+  - plus legitime qu'un fait nu quand l'interpretation eclaire le sens du fait sans l'ecraser;
+- `dialogique-trace + hermeneutique`
+  - fort pour etablir une continuite de sens dans le dialogue;
+- `resume + trace`
+  - bon combo: le resume interprete, la trace ancre;
+- `web sourcee + corroboration non-web`
+  - recevable et parfois fort, mais sous vigilance renforcee;
+- `web seule`
+  - jamais pleinement auto-suffisante dans cette premiere pose doctrinale.
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
 
-- `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md` ouvre le sous-bloc B du Lot 2 pour `demande_utilisateur`;
-- `app/docs/states/architecture/hermeneutic_convergence_node.md` fait de la demande utilisateur un determinant du noeud, pas une simple metadonnee de requete;
-- `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique que la demande utilisateur n'est pas encore canonique, mais doit devenir une entree autonome;
+- `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md` ouvre le sous-bloc B du Lot 2 pour `tour_utilisateur`;
+- `app/docs/states/architecture/hermeneutic_convergence_node.md` fait du tour utilisateur un determinant du noeud, pas une simple metadonnee de requete;
+- `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique que cette qualification n'est pas encore canonique, mais doit devenir une entree autonome;
 - `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les futures entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.
+- `app/docs/states/specs/hermeneutic-recent-window-extraction-contract.md` pose deja `fenetre_recente` comme extraction mecanique distincte de toute qualification semantique, ce qui oblige a situer le `besoin de preuve` au-dessus de cette extraction et non a la place de celle-ci.
 
-Cette spec ne cree donc pas un axe doctrinal abstrait hors-sol. Elle ouvre le futur contrat d'entree `demande_utilisateur` la ou le chantier Lot 2 en a besoin.
+Cette spec ne cree donc pas un axe doctrinal abstrait hors-sol. Elle ouvre le futur contrat d'entree `tour_utilisateur` la ou le chantier Lot 2 en a besoin.
 
 ## What Remains Open
 
 Restent explicitement ouverts:
 
 - les regles de decision permettant de choisir automatiquement le geste dominant;
+- les regles permettant de deriver un regime probatoire operationnel a partir de cette premiere grammaire;
+- la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
 - la frontiere exacte entre qualification minimale et interpretation metier avancee;
-- la forme runtime finale du futur objet canonique `demande_utilisateur`;
+- la forme runtime finale du futur objet canonique `tour_utilisateur`;
 - l'articulation avec la posture de jugement et le regime epistemique des lots suivants.
 
 ## Non-goals / Out of Scope
 
 Cette premiere pose doctrinale ne tranche pas:
 
-- le `besoin de preuve`;
+- un bareme final ou score unique de preuve;
+- une table finale de decision probatoire par cas d'usage;
 - la `portee temporelle`;
 - les signaux d'ambiguite ou de sous-determination;
 - la taxonomie finale complete des sous-cas;
@@ -162,9 +276,9 @@ Cette premiere pose doctrinale ne tranche pas:
 
 Les axes secondaires a ouvrir apres cette premiere pose sont:
 
-- `besoin de preuve`
 - `portee temporelle`
 - `ambiguite / sous-determination`
+- le raffinement du `besoin de preuve` en contrat operationnel plus fin
 
 Regle de lecture:
 
