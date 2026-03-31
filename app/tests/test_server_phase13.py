@@ -227,6 +227,7 @@ class ServerPhase13Tests(unittest.TestCase):
         original_decay_identities = self.server.memory_store.decay_identities
         original_maybe_summarize = self.server.summarizer.maybe_summarize
         original_build_identity_block = self.server.identity.build_identity_block
+        original_build_identity_input = self.server.identity.build_identity_input
         original_retrieve = self.server.memory_store.retrieve
         original_get_recent_context_hints = self.server.memory_store.get_recent_context_hints
         original_log_event = self.server.admin_logs.log_event
@@ -312,6 +313,11 @@ class ServerPhase13Tests(unittest.TestCase):
         self.server.memory_store.decay_identities = lambda: None
         self.server.summarizer.maybe_summarize = lambda *args, **kwargs: False
         self.server.identity.build_identity_block = lambda: ("[IDENTITÉ DU MODÈLE]\\nbloc identite", [])
+        self.server.identity.build_identity_input = lambda: {
+            'schema_version': 'v1',
+            'frida': {'static': {'content': 'bloc identite', 'source': 'test'}, 'dynamic': []},
+            'user': {'static': {'content': '', 'source': 'test'}, 'dynamic': []},
+        }
         self.server.memory_store.retrieve = lambda *_args, **_kwargs: []
         self.server.memory_store.get_recent_context_hints = lambda **_kwargs: []
         self.server.admin_logs.log_event = lambda *args, **kwargs: None
@@ -346,6 +352,7 @@ class ServerPhase13Tests(unittest.TestCase):
             self.server.memory_store.decay_identities = original_decay_identities
             self.server.summarizer.maybe_summarize = original_maybe_summarize
             self.server.identity.build_identity_block = original_build_identity_block
+            self.server.identity.build_identity_input = original_build_identity_input
             self.server.memory_store.retrieve = original_retrieve
             self.server.memory_store.get_recent_context_hints = original_get_recent_context_hints
             self.server.admin_logs.log_event = original_log_event

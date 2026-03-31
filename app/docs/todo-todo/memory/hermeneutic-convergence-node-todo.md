@@ -75,7 +75,7 @@ Perimetre: insertion pipeline, temps, memoire recuperee, decision d'arbitrage me
 - [x] Definir l'objet canonique `memoire_retrieved` (traces recuperees, metadonnees utiles).
 - [x] Definir l'objet canonique `memory_arbitration` (decisions/statuts) distinct de `memoire_retrieved`.
 - [ ] Definir les objets canoniques `resume`, `identite`, `contexte_recent`, `web`.
-  - Sous-avancement Lot 1: `resume` est canonise; l'item groupe reste ouvert tant que `identite`, `contexte_recent` et `web` ne le sont pas.
+  - Sous-avancement Lot 1: `resume` et `identite` sont canonises; l'item groupe reste ouvert tant que `contexte_recent` et `web` ne le sont pas.
 - [ ] Definir le contrat "double alimentation" (continue vers LLM principal + entree du noeud).
 - [ ] Definir une observabilite minimale de lot (presence/qualite des entrees + etape d'insertion), sans attendre le Lot 9.
 

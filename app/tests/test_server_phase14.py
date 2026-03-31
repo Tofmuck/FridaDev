@@ -100,6 +100,15 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         patch_attr(self.server.memory_store, 'decay_identities', lambda: None)
         patch_attr(self.server.summarizer, 'maybe_summarize', lambda *args, **kwargs: False)
         patch_attr(self.server.identity, 'build_identity_block', lambda: ('', []))
+        patch_attr(
+            self.server.identity,
+            'build_identity_input',
+            lambda: {
+                'schema_version': 'v1',
+                'frida': {'static': {'content': '', 'source': None}, 'dynamic': []},
+                'user': {'static': {'content': '', 'source': None}, 'dynamic': []},
+            },
+        )
         patch_attr(self.server.memory_store, 'retrieve', lambda *_args, **_kwargs: [])
         patch_attr(self.server.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
         patch_attr(self.server.admin_logs, 'log_event', lambda *args, **kwargs: None)
@@ -337,6 +346,85 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['summary_input']['summary']['start_ts'], '2026-03-20T10:00:00Z')
         self.assertEqual(observed['summary_input']['summary']['end_ts'], '2026-03-24T18:00:00Z')
         self.assertEqual(observed['summary_input']['summary']['content'], 'Résumé actif de continuité')
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_exposes_canonical_identity_input_to_hermeneutic_insertion_point(self) -> None:
+        observed = {'identity_input': None}
+        conversation = {
+            'id': 'conv-identity-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok identity'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_identity_input = self.server.identity.build_identity_input
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        self.server.identity.build_identity_input = lambda: {
+            'schema_version': 'v1',
+            'frida': {
+                'static': {'content': 'Frida statique', 'source': '/runtime/llm_identity.txt'},
+                'dynamic': [
+                    {
+                        'id': 'frida-dyn-1',
+                        'content': 'Frida aime les raisonnements structurés',
+                        'stability': 'durable',
+                        'recurrence': 'habitual',
+                        'confidence': 0.91,
+                        'last_seen_ts': '2026-03-24T12:00:00Z',
+                        'scope': 'llm',
+                    }
+                ],
+            },
+            'user': {
+                'static': {'content': 'Utilisateur statique', 'source': '/runtime/user_identity.txt'},
+                'dynamic': [
+                    {
+                        'id': 'user-dyn-1',
+                        'content': 'Utilisateur prefere les réponses concises',
+                        'stability': 'durable',
+                        'recurrence': 'repeated',
+                        'confidence': 0.88,
+                        'last_seen_ts': '2026-03-25T09:30:00Z',
+                        'scope': 'user',
+                    }
+                ],
+            },
+        }
+
+        def fake_insertion(**kwargs):
+            observed['identity_input'] = kwargs.get('identity_input')
+            return None
+
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.identity.build_identity_input = original_build_identity_input
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['identity_input']['schema_version'], 'v1')
+        self.assertEqual(observed['identity_input']['frida']['static']['content'], 'Frida statique')
+        self.assertEqual(observed['identity_input']['frida']['dynamic'][0]['id'], 'frida-dyn-1')
+        self.assertEqual(observed['identity_input']['frida']['dynamic'][0]['scope'], 'llm')
+        self.assertEqual(observed['identity_input']['user']['static']['content'], 'Utilisateur statique')
+        self.assertEqual(observed['identity_input']['user']['dynamic'][0]['id'], 'user-dyn-1')
+        self.assertEqual(observed['identity_input']['user']['dynamic'][0]['scope'], 'user')
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:

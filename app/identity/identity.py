@@ -8,6 +8,7 @@ from typing import Any
 
 import config
 from admin import runtime_settings
+from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core import token_utils
 from observability import chat_turn_logger
 
@@ -52,6 +53,14 @@ def load_llm_identity() -> str:
 
 def load_user_identity() -> str:
     return _load_file(_runtime_resource_path('user_identity_path'))
+
+
+def _safe_static_identity_source(field: str) -> str | None:
+    try:
+        return _runtime_resource_path(field)
+    except Exception as exc:
+        logger.warning('identity_resource_path_error field=%s err=%s', field, exc)
+        return None
 
 
 def _get_identities(subject: str, top_n: int) -> list[dict[str, Any]]:
@@ -158,6 +167,10 @@ def _select_ranked_entries(subject: str) -> list[dict[str, Any]]:
     return eligible
 
 
+def _selected_dynamic_entries(subject: str) -> list[dict[str, Any]]:
+    return _select_ranked_entries(subject)[: max(1, config.IDENTITY_TOP_N)]
+
+
 def _build_dynamic_lines(subject: str, max_tokens: int) -> tuple[list[str], list[str]]:
     if max_tokens <= 0:
         return [], []
@@ -261,3 +274,14 @@ def build_identity_block() -> tuple[str, list[str]]:
         block = _truncate_to_words(block, budget)
 
     return block, llm_ids + user_ids
+
+
+def build_identity_input() -> dict[str, Any]:
+    return canonical_identity_input.build_identity_input(
+        frida_static_content=load_llm_identity(),
+        frida_static_source=_safe_static_identity_source('llm_identity_path'),
+        frida_dynamic_entries=_selected_dynamic_entries('llm'),
+        user_static_content=load_user_identity(),
+        user_static_source=_safe_static_identity_source('user_identity_path'),
+        user_dynamic_entries=_selected_dynamic_entries('user'),
+    )
