@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import time
 from typing import Any, Mapping, Sequence
 
+from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
 from observability import chat_turn_logger
 
@@ -135,6 +136,7 @@ class PreparedMemoryContext:
     memory_traces: list[dict[str, Any]]
     context_hints: list[dict[str, Any]]
     memory_retrieved: dict[str, Any]
+    memory_arbitration: dict[str, Any]
 
     def __iter__(self):
         yield self.current_mode
@@ -221,6 +223,12 @@ def prepare_memory_context(
                 kept=len(filtered_traces),
                 decisions=len(arbiter_decisions),
             )
+            memory_arbitration = memory_arbitration_input.build_memory_arbitration_input(
+                memory_retrieved=memory_retrieved,
+                raw_candidates_count=len(raw_traces),
+                decisions=arbiter_decisions,
+                status='available',
+            )
 
             if _mode_enforces_memory(current_mode):
                 memory_traces = _enrich_retrieved_candidates(
@@ -245,6 +253,13 @@ def prepare_memory_context(
             chat_turn_logger.emit_branch_skipped(
                 reason_code='mode_off',
                 reason_short='arbiter_disabled_for_mode',
+            )
+            memory_arbitration = memory_arbitration_input.build_memory_arbitration_input(
+                memory_retrieved=memory_retrieved,
+                raw_candidates_count=len(raw_traces),
+                decisions=[],
+                status='skipped',
+                reason_code='mode_off',
             )
 
         admin_logs_module.log_event(
@@ -277,6 +292,13 @@ def prepare_memory_context(
             top_k_requested=top_k_requested,
             traces=[],
         )
+        memory_arbitration = memory_arbitration_input.build_memory_arbitration_input(
+            memory_retrieved=memory_retrieved,
+            raw_candidates_count=0,
+            decisions=[],
+            status='skipped',
+            reason_code='no_data',
+        )
 
     context_hints = memory_store_module.get_recent_context_hints(
         max_items=config_module.CONTEXT_HINTS_MAX_ITEMS,
@@ -295,6 +317,7 @@ def prepare_memory_context(
         memory_traces=memory_traces,
         context_hints=list(context_hints or []),
         memory_retrieved=memory_retrieved,
+        memory_arbitration=memory_arbitration,
     )
 
 

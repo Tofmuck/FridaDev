@@ -54,7 +54,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
         )
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
-        mode, memory_traces, context_hints = chat_memory_flow.prepare_memory_context(
+        prepared = chat_memory_flow.prepare_memory_context(
             conversation=conversation,
             user_msg='bonjour',
             config_module=config_module,
@@ -62,6 +62,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
             arbiter_module=arbiter_module,
             admin_logs_module=admin_logs_module,
         )
+        mode, memory_traces, context_hints = prepared
 
         self.assertEqual(mode, 'off')
         self.assertEqual(memory_traces, [{'trace_id': 'r1', 'enriched': True}])
@@ -72,6 +73,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['selected'], 1)
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['filtered'], 0)
         self.assertEqual(_event_payloads(events, 'memory_arbitrated'), [])
+        self.assertEqual(prepared.memory_arbitration['status'], 'skipped')
+        self.assertEqual(prepared.memory_arbitration['reason_code'], 'mode_off')
+        self.assertEqual(prepared.memory_arbitration['raw_candidates_count'], 1)
+        self.assertEqual(prepared.memory_arbitration['decisions'], [])
 
     def test_prepare_memory_context_exposes_canonical_memory_retrieved_without_arbiter_fields(self) -> None:
         events = []
@@ -176,6 +181,112 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertIsNone(second_trace['parent_summary'])
         self.assertNotIn('semantic_relevance', second_trace)
         self.assertNotIn('decision_source', second_trace)
+
+    def test_prepare_memory_context_exposes_canonical_memory_arbitration_with_stable_and_legacy_links(self) -> None:
+        raw_traces = [
+            {
+                'conversation_id': 'conv-source-a',
+                'role': 'user',
+                'content': 'Je cours le matin',
+                'timestamp': '2026-03-01T08:00:00Z',
+                'summary_id': 'sum-1',
+                'score': 0.91,
+            },
+            {
+                'conversation_id': 'conv-source-b',
+                'role': 'assistant',
+                'content': 'Tu avais parle de natation',
+                'timestamp': '2026-03-02T09:15:00Z',
+                'summary_id': None,
+                'score': 0.73,
+            },
+        ]
+        arbiter_decisions = [
+            {
+                'candidate_id': '0',
+                'keep': True,
+                'semantic_relevance': 0.94,
+                'contextual_gain': 0.81,
+                'redundant_with_recent': False,
+                'reason': 'best_match',
+                'decision_source': 'llm',
+                'model': 'openrouter/arbiter-test',
+            },
+            {
+                'candidate_id': '1',
+                'keep': False,
+                'semantic_relevance': 0.33,
+                'contextual_gain': 0.11,
+                'redundant_with_recent': True,
+                'reason': 'redundant',
+                'decision_source': 'llm',
+                'model': 'openrouter/arbiter-test',
+            },
+        ]
+
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE='shadow',
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            'id': 'conv-memory-arbitration',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve=lambda _msg: raw_traces,
+            record_arbiter_decisions=lambda *_args, **_kwargs: None,
+            enrich_traces_with_summaries=lambda traces: list(traces),
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+        arbiter_module = SimpleNamespace(
+            filter_traces_with_diagnostics=lambda _traces, _recent_turns: (
+                [raw_traces[0]],
+                arbiter_decisions,
+            ),
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+
+        prepared = chat_memory_flow.prepare_memory_context(
+            conversation=conversation,
+            user_msg='bonjour',
+            config_module=config_module,
+            memory_store_module=memory_store_module,
+            arbiter_module=arbiter_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        memory_retrieved = prepared.memory_retrieved
+        memory_arbitration = prepared.memory_arbitration
+
+        self.assertEqual(memory_arbitration['schema_version'], 'v1')
+        self.assertEqual(memory_arbitration['status'], 'available')
+        self.assertIsNone(memory_arbitration['reason_code'])
+        self.assertEqual(memory_arbitration['raw_candidates_count'], 2)
+        self.assertEqual(memory_arbitration['decisions_count'], 2)
+        self.assertEqual(memory_arbitration['kept_count'], 1)
+        self.assertEqual(memory_arbitration['rejected_count'], 1)
+
+        first_decision = memory_arbitration['decisions'][0]
+        second_decision = memory_arbitration['decisions'][1]
+        self.assertEqual(first_decision['legacy_candidate_id'], '0')
+        self.assertEqual(first_decision['legacy_candidate_index'], 0)
+        self.assertEqual(first_decision['retrieved_candidate_id'], memory_retrieved['traces'][0]['candidate_id'])
+        self.assertTrue(first_decision['keep'])
+        self.assertEqual(first_decision['semantic_relevance'], 0.94)
+        self.assertEqual(first_decision['contextual_gain'], 0.81)
+        self.assertFalse(first_decision['redundant_with_recent'])
+        self.assertEqual(first_decision['reason'], 'best_match')
+        self.assertEqual(first_decision['decision_source'], 'llm')
+        self.assertEqual(first_decision['model'], 'openrouter/arbiter-test')
+        self.assertNotIn('content', first_decision)
+
+        self.assertEqual(second_decision['legacy_candidate_id'], '1')
+        self.assertEqual(second_decision['legacy_candidate_index'], 1)
+        self.assertEqual(second_decision['retrieved_candidate_id'], memory_retrieved['traces'][1]['candidate_id'])
+        self.assertFalse(second_decision['keep'])
+        self.assertTrue(second_decision['redundant_with_recent'])
 
     def test_prepare_memory_context_mode_shadow_calls_arbiter_but_keeps_raw_source(self) -> None:
         events = []
