@@ -226,7 +226,17 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         )
         try:
             hermeneutic_node_logger.emit_hermeneutic_node_insertion(
-                now_iso='2026-03-31T09:30:00Z',
+                time_input={
+                    'schema_version': 'v1',
+                    'now_utc_iso': '2026-03-31T09:30:00Z',
+                    'timezone': 'Europe/Paris',
+                    'now_local_iso': '2026-03-31T11:30:00+02:00',
+                    'local_date': '2026-03-31',
+                    'local_time': '11:30',
+                    'local_weekday': 'tuesday',
+                    'day_part_class': 'morning',
+                    'day_part_human': 'matin',
+                },
                 current_mode='shadow',
                 memory_retrieved={
                     'retrieved_count': 2,
@@ -263,6 +273,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(payload['insertion_point_reached'])
         self.assertEqual(payload['mode'], 'shadow')
         self.assertTrue(payload['inputs']['time']['present'])
+        self.assertEqual(payload['inputs']['time']['timezone'], 'Europe/Paris')
+        self.assertEqual(payload['inputs']['time']['day_part_class'], 'morning')
         self.assertEqual(payload['inputs']['memory_retrieved']['retrieved_count'], 2)
         self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'available')
         self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 2)

@@ -21,9 +21,12 @@ def _bool_str(value: Any) -> bool:
     return bool(str(value or '').strip())
 
 
-def _summarize_time(now_iso: str) -> dict[str, Any]:
+def _summarize_time(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = _mapping(payload)
     return {
-        'present': _bool_str(now_iso),
+        'present': bool(data),
+        'timezone': str(data.get('timezone') or ''),
+        'day_part_class': str(data.get('day_part_class') or ''),
     }
 
 
@@ -92,7 +95,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 
 def build_hermeneutic_node_insertion_payload(
     *,
-    now_iso: str,
+    time_input: Mapping[str, Any] | None = None,
     current_mode: str,
     memory_retrieved: Mapping[str, Any] | None = None,
     memory_arbitration: Mapping[str, Any] | None = None,
@@ -105,7 +108,7 @@ def build_hermeneutic_node_insertion_payload(
         'insertion_point_reached': True,
         'mode': str(current_mode or ''),
         'inputs': {
-            'time': _summarize_time(now_iso),
+            'time': _summarize_time(time_input),
             'memory_retrieved': _summarize_memory_retrieved(memory_retrieved),
             'memory_arbitration': _summarize_memory_arbitration(memory_arbitration),
             'summary': _summarize_summary(summary_input),
@@ -118,7 +121,7 @@ def build_hermeneutic_node_insertion_payload(
 
 def emit_hermeneutic_node_insertion(
     *,
-    now_iso: str,
+    time_input: Mapping[str, Any] | None = None,
     current_mode: str,
     memory_retrieved: Mapping[str, Any] | None = None,
     memory_arbitration: Mapping[str, Any] | None = None,
@@ -131,7 +134,7 @@ def emit_hermeneutic_node_insertion(
         'hermeneutic_node_insertion',
         status='ok',
         payload=build_hermeneutic_node_insertion_payload(
-            now_iso=now_iso,
+            time_input=time_input,
             current_mode=current_mode,
             memory_retrieved=memory_retrieved,
             memory_arbitration=memory_arbitration,

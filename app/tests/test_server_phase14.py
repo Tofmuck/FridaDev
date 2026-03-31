@@ -738,6 +738,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertTrue(payload['insertion_point_reached'])
         self.assertEqual(payload['mode'], 'shadow')
         self.assertTrue(payload['inputs']['time']['present'])
+        self.assertEqual(payload['inputs']['time']['timezone'], str(self.server.config.FRIDA_TIMEZONE))
+        self.assertTrue(payload['inputs']['time']['day_part_class'])
         self.assertEqual(payload['inputs']['memory_retrieved']['retrieved_count'], 0)
         self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'skipped')
         self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 0)

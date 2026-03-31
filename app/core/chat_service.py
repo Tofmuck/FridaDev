@@ -8,6 +8,7 @@ from core import chat_memory_flow
 from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
+from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import summary_input
@@ -51,6 +52,17 @@ def _record_identity_entries_for_mode(
         arbiter_module=arbiter_module,
         memory_store_module=memory_store_module,
         admin_logs_module=admin_logs_module,
+    )
+
+
+def _resolve_time_input(
+    *,
+    now_iso: str,
+    config_module: Any,
+) -> dict[str, Any]:
+    return canonical_time_input.build_time_input(
+        now_utc_iso=now_iso,
+        timezone_name=str(config_module.FRIDA_TIMEZONE),
     )
 
 
@@ -148,6 +160,7 @@ def _run_hermeneutic_node_insertion_point(
     conversation: Mapping[str, Any],
     user_msg: str,
     now_iso: str,
+    time_input: Mapping[str, Any] | None = None,
     current_mode: str,
     memory_traces: list[dict[str, Any]],
     context_hints: list[dict[str, Any]],
@@ -160,7 +173,7 @@ def _run_hermeneutic_node_insertion_point(
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
     hermeneutic_node_logger.emit_hermeneutic_node_insertion(
-        now_iso=now_iso,
+        time_input=time_input,
         current_mode=current_mode,
         memory_retrieved=memory_retrieved,
         memory_arbitration=memory_arbitration,
@@ -230,6 +243,10 @@ def chat_response(
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
 
     now_iso_value = user_timestamp
+    time_payload = _resolve_time_input(
+        now_iso=now_iso_value,
+        config_module=config_module,
+    )
     augmented_system, identity_ids = chat_prompt_context.build_augmented_system(
         system_prompt=system_prompt,
         hermeneutical_prompt=hermeneutical_prompt,
@@ -268,6 +285,7 @@ def chat_response(
         conversation=conversation,
         user_msg=user_msg,
         now_iso=now_iso_value,
+        time_input=time_payload,
         current_mode=current_mode,
         memory_traces=memory_traces,
         context_hints=context_hints,
