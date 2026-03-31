@@ -11,6 +11,7 @@ from core import conversations_prompt_window
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
+from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core.hermeneutic_node.inputs import summary_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from observability import hermeneutic_node_logger
@@ -119,6 +120,15 @@ def _resolve_recent_context_input(
     )
 
 
+def _resolve_recent_window_input(
+    *,
+    recent_context_payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return canonical_recent_window_input.build_recent_window_input(
+        recent_context_input_payload=recent_context_payload,
+    )
+
+
 def _resolve_web_runtime_payload(
     *,
     user_msg: str,
@@ -169,6 +179,7 @@ def _run_hermeneutic_node_insertion_point(
     summary_input: Mapping[str, Any] | None = None,
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
+    recent_window_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
@@ -274,6 +285,9 @@ def chat_response(
         conversation=conversation,
         summary_payload=summary_payload,
     )
+    recent_window_payload = _resolve_recent_window_input(
+        recent_context_payload=recent_context_payload,
+    )
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,
         web_search_on=web_search_on,
@@ -294,6 +308,7 @@ def chat_response(
         summary_input=summary_payload,
         identity_input=identity_payload,
         recent_context_input=recent_context_payload,
+        recent_window_input=recent_window_payload,
         web_input=web_payload,
     )
 

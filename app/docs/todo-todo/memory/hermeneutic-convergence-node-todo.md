@@ -92,7 +92,7 @@ Perimetre: `fenetre_recente`, `demande_utilisateur`, signaux d'ambiguite/sous-de
 
 Sous-bloc A - Extraction simple:
 - [x] Definir l'extraction canonique de `fenetre_recente` (selection, profondeur, horodatage, format).
-- [ ] Definir l'objet de sortie `fenetre_recente` exploitable sans interpretation metier forte.
+- [x] Definir l'objet de sortie `fenetre_recente` exploitable sans interpretation metier forte.
 
 Sous-bloc B - Qualification semantique minimale:
 - [ ] Definir l'objet canonique `demande_utilisateur` (type de demande, besoin de preuve, portee temporelle).
