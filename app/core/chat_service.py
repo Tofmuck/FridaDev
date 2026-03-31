@@ -9,6 +9,7 @@ from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
+from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import summary_input
 
 
@@ -93,6 +94,17 @@ def _resolve_identity_input(
         return canonical_identity_input.build_identity_input()
 
 
+def _resolve_recent_context_input(
+    *,
+    conversation: Mapping[str, Any],
+    summary_payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return recent_context_input.build_recent_context_input(
+        messages=conversation.get('messages', []),
+        summary_input_payload=summary_payload,
+    )
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -105,6 +117,7 @@ def _run_hermeneutic_node_insertion_point(
     memory_arbitration: Mapping[str, Any] | None = None,
     summary_input: Mapping[str, Any] | None = None,
     identity_input: Mapping[str, Any] | None = None,
+    recent_context_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
     return None
@@ -191,6 +204,10 @@ def chat_response(
         conv_store_module=conv_store_module,
     )
     identity_payload = _resolve_identity_input(identity_module=identity_module)
+    recent_context_payload = _resolve_recent_context_input(
+        conversation=conversation,
+        summary_payload=summary_payload,
+    )
 
     _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -203,6 +220,7 @@ def chat_response(
         memory_arbitration=getattr(prepared_memory_context, 'memory_arbitration', None),
         summary_input=summary_payload,
         identity_input=identity_payload,
+        recent_context_input=recent_context_payload,
     )
 
     prompt_messages = conv_store_module.build_prompt_messages(

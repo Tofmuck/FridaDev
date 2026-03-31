@@ -522,6 +522,77 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             ['user-kept'],
         )
 
+    def test_api_chat_exposes_canonical_recent_context_to_hermeneutic_insertion_point(self) -> None:
+        observed = {'recent_context_input': None}
+        conversation = {
+            'id': 'conv-recent-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [
+                {'role': 'system', 'content': 'BACKEND SYSTEM PROMPT', 'timestamp': '2026-03-26T00:00:00Z'},
+                {'role': 'user', 'content': 'Message ancien', 'timestamp': '2026-03-20T08:00:00Z'},
+                {'role': 'assistant', 'content': 'Réponse récente', 'timestamp': '2026-03-25T09:00:00Z'},
+            ],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok recent'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_get_active_summary = self.server.chat_service.conversations_prompt_window.get_active_summary
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_now_iso = self.server.chat_service._now_iso
+        self.server.chat_service._now_iso = lambda: '2026-03-26T12:00:00Z'
+        self.server.chat_service.conversations_prompt_window.get_active_summary = lambda *_args, **_kwargs: {
+            'id': 'sum-recent-phase14',
+            'conversation_id': 'conv-recent-phase14',
+            'start_ts': '2026-03-18T10:00:00Z',
+            'end_ts': '2026-03-24T18:00:00Z',
+            'content': 'Résumé actif',
+        }
+
+        def fake_insertion(**kwargs):
+            observed['recent_context_input'] = kwargs.get('recent_context_input')
+            return None
+
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service._now_iso = original_now_iso
+            self.server.chat_service.conversations_prompt_window.get_active_summary = original_get_active_summary
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['recent_context_input']['schema_version'], 'v1')
+        self.assertEqual(
+            observed['recent_context_input']['messages'],
+            [
+                {
+                    'role': 'assistant',
+                    'content': 'Réponse récente',
+                    'timestamp': '2026-03-25T09:00:00Z',
+                },
+                {
+                    'role': 'user',
+                    'content': 'Bonjour',
+                    'timestamp': '2026-03-26T12:00:00Z',
+                },
+            ],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {
