@@ -74,6 +74,7 @@ def get_active_summary(
 
     return {
         "id": str(row.get("id") or ""),
+        "conversation_id": conv_id,
         "start_ts": ts_to_iso_func(row.get("start_ts")) if row.get("start_ts") else None,
         "end_ts": ts_to_iso_func(row.get("end_ts")) if row.get("end_ts") else None,
         "content": str(row.get("content") or ""),

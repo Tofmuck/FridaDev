@@ -7,6 +7,8 @@ from core import chat_llm_flow
 from core import chat_memory_flow
 from core import chat_prompt_context
 from core import chat_session_flow
+from core import conversations_prompt_window
+from core.hermeneutic_node.inputs import summary_input
 
 
 # Phase 4 bis - Cartographie locale des responsabilités de ce module:
@@ -48,6 +50,35 @@ def _record_identity_entries_for_mode(
     )
 
 
+def _resolve_summary_input(
+    *,
+    conversation_id: str | None,
+    conv_store_module: Any,
+) -> dict[str, Any]:
+    db_conn_func = getattr(conv_store_module, '_db_conn', None)
+    ts_to_iso_func = getattr(conv_store_module, '_ts_to_iso', None)
+    conv_logger = getattr(conv_store_module, 'logger', None)
+    if not callable(db_conn_func) or not callable(ts_to_iso_func) or conv_logger is None:
+        return summary_input.build_summary_input(
+            active_summary=None,
+            conversation_id=conversation_id,
+        )
+    try:
+        active_summary = conversations_prompt_window.get_active_summary(
+            conversation_id,
+            normalize_conversation_id_func=lambda value: str(value) if value else None,
+            db_conn_func=db_conn_func,
+            ts_to_iso_func=ts_to_iso_func,
+            logger=conv_logger,
+        )
+    except Exception:
+        active_summary = None
+    return summary_input.build_summary_input(
+        active_summary=active_summary,
+        conversation_id=conversation_id,
+    )
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -58,6 +89,7 @@ def _run_hermeneutic_node_insertion_point(
     context_hints: list[dict[str, Any]],
     memory_retrieved: Mapping[str, Any] | None = None,
     memory_arbitration: Mapping[str, Any] | None = None,
+    summary_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
     return None
@@ -139,6 +171,10 @@ def chat_response(
         admin_logs_module=admin_logs_module,
     )
     current_mode, memory_traces, context_hints = prepared_memory_context
+    summary_payload = _resolve_summary_input(
+        conversation_id=conversation.get('id'),
+        conv_store_module=conv_store_module,
+    )
 
     _run_hermeneutic_node_insertion_point(
         conversation=conversation,
@@ -149,6 +185,7 @@ def chat_response(
         context_hints=context_hints,
         memory_retrieved=getattr(prepared_memory_context, 'memory_retrieved', None),
         memory_arbitration=getattr(prepared_memory_context, 'memory_arbitration', None),
+        summary_input=summary_payload,
     )
 
     prompt_messages = conv_store_module.build_prompt_messages(
