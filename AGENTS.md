@@ -18,6 +18,7 @@ Agents must optimize for:
 ## Working method
 
 - Work one minimal, closed, reversible step at a time.
+- Before patching, check explicitly whether there is a cleaner, shorter, lower-side-effect plan; if yes, stop and propose it before editing.
 - Do not implement multiple unrelated changes in the same patch.
 - Do not perform opportunistic refactors outside the requested scope.
 - Prefer small, testable increments over large rewrites.
@@ -39,12 +40,15 @@ The repository is expected to stay readable by responsibility:
 Rules:
 
 - Keep module boundaries explicit.
+- Search for side effects and dependency leaks before editing, not after.
 - Prefer extraction by real responsibility or pipeline stage, not by convenience.
+- Prefer separation by business responsibility or pipeline role, not by local convenience.
 - Do not create new god modules.
 - Do not create vague dump files such as `utils.py`, `helpers.py`, or similar catch-all modules.
 - A facade or orchestrator is acceptable only if it stays readable, bounded, and delegates clearly.
 - If coupling cannot be removed yet, make it explicit and bounded rather than hiding it behind a cosmetic split.
 - Do not rename or move files as a cosmetic gesture; every move must improve classification, readability, or dependency structure.
+- Keep files short, legible, and bounded; if a file starts becoming a grab-bag, stop and split by real responsibility.
 
 ## Documentation placement rules
 
@@ -97,6 +101,7 @@ When FR/EN sections coexist in the same entry document, keep semantic parity and
 
 Use these documents as living anchors unless the user explicitly changes the strategy:
 
+- `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md`: active master roadmap for the hermeneutic convergence node
 - `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: active memory / hermeneutics roadmap
 - `app/docs/todo-todo/product/Frida-installation-config.md`: active product / installation roadmap
 - `app/docs/todo-done/refactors/admin-todo.md`: archived admin roadmap whose decisions must not be silently reopened
