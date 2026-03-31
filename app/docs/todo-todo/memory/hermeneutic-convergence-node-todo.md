@@ -70,7 +70,7 @@ Objectif: figer l'insertion du noeud et canoniser les entrees deja presentes san
 
 Perimetre: insertion pipeline, temps, memoire recuperee, decision d'arbitrage memoire, resume, identite, contexte recent, web, observabilite minimale.
 
-- [ ] Figer explicitement le point d'insertion: apres `prepare_memory_context(...)`, avant `build_prompt_messages(...)`.
+- [x] Figer explicitement le point d'insertion: apres `prepare_memory_context(...)`, avant `build_prompt_messages(...)`.
 - [ ] Definir l'objet canonique `temps` (NOW/TIMEZONE + derivees utiles).
 - [ ] Definir l'objet canonique `memoire_retrieved` (traces recuperees, metadonnees utiles).
 - [ ] Definir l'objet canonique `memory_arbitration` (decisions/statuts) distinct de `memoire_retrieved`.

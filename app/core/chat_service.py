@@ -48,6 +48,19 @@ def _record_identity_entries_for_mode(
     )
 
 
+def _run_hermeneutic_node_insertion_point(
+    *,
+    conversation: Mapping[str, Any],
+    user_msg: str,
+    now_iso: str,
+    current_mode: str,
+    memory_traces: list[dict[str, Any]],
+    context_hints: list[dict[str, Any]],
+) -> None:
+    """Fixed runtime seam reserved for the future hermeneutic node."""
+    return None
+
+
 def chat_response(
     data: Mapping[str, Any],
     *,
@@ -122,6 +135,15 @@ def chat_response(
         memory_store_module=memory_store_module,
         arbiter_module=arbiter_module,
         admin_logs_module=admin_logs_module,
+    )
+
+    _run_hermeneutic_node_insertion_point(
+        conversation=conversation,
+        user_msg=user_msg,
+        now_iso=now_iso_value,
+        current_mode=current_mode,
+        memory_traces=memory_traces,
+        context_hints=context_hints,
     )
 
     prompt_messages = conv_store_module.build_prompt_messages(

@@ -234,6 +234,56 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_keeps_hermeneutic_insertion_point_between_memory_and_prompt_build(self) -> None:
+        order: list[str] = []
+        conversation = {
+            'id': 'conv-seam-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok seam'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_prepare = self.server.chat_service.chat_memory_flow.prepare_memory_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        self.server.chat_service.chat_memory_flow.prepare_memory_context = (
+            lambda **_kwargs: order.append('prepare_memory_context') or ('shadow', [], [])
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = (
+            lambda **_kwargs: order.append('hermeneutic_insertion_point') or None
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda *_args, **_kwargs: order.append('build_prompt_messages') or [{'role': 'user', 'content': 'Bonjour'}]
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.chat_memory_flow.prepare_memory_context = original_prepare
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(
+            order,
+            ['prepare_memory_context', 'hermeneutic_insertion_point', 'build_prompt_messages'],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {
