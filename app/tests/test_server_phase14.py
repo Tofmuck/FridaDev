@@ -695,6 +695,61 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_emits_hermeneutic_node_insertion_observability_payload(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-observability-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok observability'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        event = next(item for item in observed_events if item['stage'] == 'hermeneutic_node_insertion')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'ok')
+        self.assertTrue(payload['insertion_point_reached'])
+        self.assertEqual(payload['mode'], 'shadow')
+        self.assertTrue(payload['inputs']['time']['present'])
+        self.assertEqual(payload['inputs']['memory_retrieved']['retrieved_count'], 0)
+        self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'skipped')
+        self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 0)
+        self.assertEqual(payload['inputs']['summary']['status'], 'missing')
+        self.assertEqual(payload['inputs']['identity']['frida']['dynamic_count'], 0)
+        self.assertEqual(payload['inputs']['identity']['user']['dynamic_count'], 0)
+        self.assertEqual(payload['inputs']['recent_context']['messages_count'], 1)
+        self.assertFalse(payload['inputs']['web']['enabled'])
+        self.assertEqual(payload['inputs']['web']['status'], 'skipped')
+        self.assertEqual(payload['inputs']['web']['results_count'], 0)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {

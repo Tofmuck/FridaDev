@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import chat_turn_logger
+from observability import hermeneutic_node_logger
 from observability import log_store
 from identity import identity
 from memory import memory_arbiter_audit
@@ -208,6 +209,74 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
             statuses.add(str(event['status']))
 
         self.assertTrue({'ok', 'error', 'skipped'}.issubset(statuses))
+
+    def test_hermeneutic_node_insertion_emits_compact_presence_quality_payload(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-hermeneutic-insertion',
+            user_msg='bonjour',
+            web_search_enabled=True,
+        )
+        try:
+            hermeneutic_node_logger.emit_hermeneutic_node_insertion(
+                now_iso='2026-03-31T09:30:00Z',
+                current_mode='shadow',
+                memory_retrieved={
+                    'retrieved_count': 2,
+                },
+                memory_arbitration={
+                    'status': 'available',
+                    'decisions_count': 2,
+                    'kept_count': 1,
+                    'rejected_count': 1,
+                },
+                summary_input={
+                    'status': 'available',
+                },
+                identity_input={
+                    'frida': {'static': {'content': 'Frida'}, 'dynamic': [{'id': 'f1'}]},
+                    'user': {'static': {'content': ''}, 'dynamic': [{'id': 'u1'}, {'id': 'u2'}]},
+                },
+                recent_context_input={
+                    'messages': [{'role': 'user'}, {'role': 'assistant'}],
+                },
+                web_input={
+                    'enabled': True,
+                    'status': 'ok',
+                    'results_count': 3,
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'hermeneutic_node_insertion')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'ok')
+        self.assertTrue(payload['insertion_point_reached'])
+        self.assertEqual(payload['mode'], 'shadow')
+        self.assertTrue(payload['inputs']['time']['present'])
+        self.assertEqual(payload['inputs']['memory_retrieved']['retrieved_count'], 2)
+        self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'available')
+        self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 2)
+        self.assertEqual(payload['inputs']['memory_arbitration']['kept_count'], 1)
+        self.assertEqual(payload['inputs']['memory_arbitration']['rejected_count'], 1)
+        self.assertEqual(payload['inputs']['summary']['status'], 'available')
+        self.assertTrue(payload['inputs']['identity']['frida']['static_present'])
+        self.assertFalse(payload['inputs']['identity']['user']['static_present'])
+        self.assertEqual(payload['inputs']['identity']['frida']['dynamic_count'], 1)
+        self.assertEqual(payload['inputs']['identity']['user']['dynamic_count'], 2)
+        self.assertEqual(payload['inputs']['recent_context']['messages_count'], 2)
+        self.assertTrue(payload['inputs']['web']['enabled'])
+        self.assertEqual(payload['inputs']['web']['status'], 'ok')
+        self.assertEqual(payload['inputs']['web']['results_count'], 3)
 
 
 class ChatInstrumentationPhase2Tests(unittest.TestCase):

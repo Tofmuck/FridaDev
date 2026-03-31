@@ -76,7 +76,7 @@ Perimetre: insertion pipeline, temps, memoire recuperee, decision d'arbitrage me
 - [x] Definir l'objet canonique `memory_arbitration` (decisions/statuts) distinct de `memoire_retrieved`.
 - [x] Definir les objets canoniques `resume`, `identite`, `contexte_recent`, `web`.
 - [x] Definir le contrat "double alimentation" (continue vers LLM principal + entree du noeud).
-- [ ] Definir une observabilite minimale de lot (presence/qualite des entrees + etape d'insertion), sans attendre le Lot 9.
+- [x] Definir une observabilite minimale de lot (presence/qualite des entrees + etape d'insertion), sans attendre le Lot 9.
 
 Sortie attendue du lot: contrat d'entrees canoniques + point d'insertion officiel + socle d'observabilite minimale.
 Validation minimale: schema d'entrees versionne et mappe 1:1 au pipeline reel, avec distinction explicite `memoire_retrieved` vs `memory_arbitration`.

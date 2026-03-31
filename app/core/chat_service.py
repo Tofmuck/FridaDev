@@ -12,6 +12,7 @@ from core.hermeneutic_node.inputs import identity_input as canonical_identity_in
 from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import summary_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from observability import hermeneutic_node_logger
 
 
 # Phase 4 bis - Cartographie locale des responsabilités de ce module:
@@ -158,6 +159,16 @@ def _run_hermeneutic_node_insertion_point(
     web_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
+    hermeneutic_node_logger.emit_hermeneutic_node_insertion(
+        now_iso=now_iso,
+        current_mode=current_mode,
+        memory_retrieved=memory_retrieved,
+        memory_arbitration=memory_arbitration,
+        summary_input=summary_input,
+        identity_input=identity_input,
+        recent_context_input=recent_context_input,
+        web_input=web_input,
+    )
     return None
 
 
