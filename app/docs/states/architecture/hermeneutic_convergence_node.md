@@ -169,23 +169,24 @@ Role :
 - corriger ou suspendre des souvenirs si ceux-ci portent sur des contenus temporellement instables ;
 - imposer un regime de preuve plus exigeant sur certaines questions.
 
-### 3.7 Stimmung / M6
+### 3.7 Stimmung
 
 Entrees attendues :
-- un contrat d'entree `stimmung` canonique (famille `inputs/`) ;
-- etat dialogique local ;
-- regime derive par M6 ;
-- stabilite de regime ;
-- preuves typées eventuelles ;
-- directives structurelles derivees ;
-- etat precedent persistant.
+- des `affective_turn_signal` recents produits par `app/core/stimmung_agent.py` ;
+- un input canonique `stimmung` stabilise calcule par `app/core/hermeneutic_node/inputs/stimmung_input.py` ;
+- une `dominant_tone` ;
+- des `active_tones` ;
+- une `stability` ;
+- un `shift_state` ;
+- un `turns_considered`.
 
 Role :
-- fournir un determinant de coherence dialogique ;
-- moduler l'acceptabilite des transitions de regime ;
-- contribuer au choix du regime discursif et epistemique ;
-- rester distinct de la gouvernance doctrinale `stimmung_governance` (famille `doctrine/`) ;
-- ne pas decider seul de la hierarchie de toutes les sources.
+- fournir un determinant affectif structure et stabilise ;
+- moduler l'acceptabilite de certaines transitions de regime ;
+- contribuer au regime d'enonciation ;
+- rester distinct du signal brut par tour ;
+- ne pas importer la machine `M6` complete ;
+- ne pas decider seul de la hierarchie de toutes les sources ni des directives finales.
 
 ### 3.8 Tour utilisateur
 

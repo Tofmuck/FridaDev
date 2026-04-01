@@ -114,40 +114,47 @@ Validation minimale: contrat de sortie qui distingue explicitement extraction me
 Dependances: Lot 1.
 Hors scope: posture de jugement finale et resolution de conflits inter-sources.
 
-## Lot 3 - Integration de Stimmung / M6 comme determinant
+## Lot 3 - Signal affectif amont + stimmung stabilisee
 Nature du lot: travail de structure + pause normative.
 
-Objectif: integrer M6 comme determinant structurel du noeud sans double souverainete de directives.
+Objectif: cadrer un signal affectif par tour et une `stimmung` stabilisee pour le noeud, sans importer la machine `M6` complete de `Frida_V4`.
 
-Perimetre: interface `stimmung`, compatibilite FridaDev, articulation des directives.
+Perimetre: `stimmung_agent.py`, `affective_turn_signal`, `stimmung_input.py`, stabilisation minimale, usage par le noeud pour le regime d'enonciation.
 
-- [ ] Definir l'interface canonique d'entree `stimmung` pour le noeud.
-- [ ] Definir les champs minimaux utiles (etat, stabilite, regime derive, signaux de preuve).
-- [ ] Distinguer explicitement les 2 artefacts `stimmung`: contrat d'entree (`inputs`) vs gouvernance doctrinale (`doctrine`).
-- [ ] Trancher noir sur blanc: M6 fournit des signaux/determinants d'entree, pas la sortie finale aval.
-- [ ] Trancher noir sur blanc: le noeud emet des `pipeline_directives_provisional`, la validation emet `pipeline_directives_final`.
-- [ ] Definir la compatibilite minimale avec l'existant `FridaDev` sans import brutal de `Frida_V4`.
+Sous-bloc A - Signal affectif par tour:
+- [ ] Definir le contrat minimal de `affective_turn_signal` produit par `stimmung_agent.py`.
+- [ ] Definir les grands groupes affectifs utilises dans `FridaDev` (taxonomie large, multi-`tones`, sans micro-taxonomie fine).
+- [ ] Trancher noir sur blanc: le signal amont est produit par tour, peut contenir plusieurs `tones`, et ne calcule pas a lui seul la `stimmung` stabilisee.
+
+Sous-bloc B - Stimmung stabilisee pour le noeud:
+- [ ] Definir le contrat minimal de `stimmung` exposee par `stimmung_input.py`.
+- [ ] Definir la frontiere stricte entre `affective_turn_signal` brut et `stimmung` stabilisee.
+- [ ] Definir la mecanique minimale de stabilisation (seuils, `delta`, `hysteresis`, `turns_considered`) au niveau de `stimmung_input.py`.
+- [ ] Definir le branchement minimal dans `chat_service.py` avant le seam hermeneutique.
+- [ ] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
+
+Sous-bloc C - Doctrine ulterieure eventuelle:
+- [ ] Si une couche doctrinale d'usage de `stimmung` reste necessaire, la redefinir comme doctrine locale d'influence sur le regime d'enonciation, sans souverainete propre ni directives finales.
+- [ ] Rappeler noir sur blanc qu'aucune importation brute de la gouvernance `M6` de `Frida_V4` n'est admise.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-stimmung-input-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-input-contract.md`
-- Module code cible: `core.hermeneutic_node.inputs.stimmung`
-- Repertoire code cible: `app/core/hermeneutic_node/inputs/`
-- Fichier Python cible: `stimmung.py`
-- Raison: fixer le contrat d'entree `stimmung` avant la gouvernance doctrinale.
+- Modules code cibles: `core.stimmung_agent` et `core.hermeneutic_node.inputs.stimmung_input`
+- Repertoires code cibles: `app/core/` et `app/core/hermeneutic_node/inputs/`
+- Fichiers Python cibles: `stimmung_agent.py` et `stimmung_input.py`
+- Raison: fixer la separation stricte entre signal brut par tour et input stabilise avant toute implementation runtime.
 
-Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-stimmung-governance-contract.md`
-- Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-governance-contract.md`
-- Module code cible: `core.hermeneutic_node.doctrine.stimmung_governance`
-- Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
-- Fichier Python cible: `stimmung_governance.py`
-- Raison: fixer une gouvernance unique `M6 -> noeud -> directives aval` avant implementation pour eviter les souverainetes concurrentes.
+Piste doctrinale ulterieure, non ouverte dans cette tranche:
+- Doc normatif eventuel: `hermeneutic-node-stimmung-governance-contract.md`
+- Module code cible eventuel: `core.hermeneutic_node.doctrine.stimmung_governance`
+- Fichier Python cible eventuel: `stimmung_governance.py`
+- Statut: a requalifier plus tard comme doctrine locale d'usage de `stimmung`, pas comme importation de la souverainete `M6`.
 
-Sortie attendue du lot: contrat `stimmung` + gouvernance explicite `M6 -> noeud -> directives aval`.
-Validation minimale: distinction explicite entre contrat d'entree `stimmung` et gouvernance doctrinale, avec regle anti-double-pilotage testable.
+Sortie attendue du lot: contrat `affective_turn_signal` + contrat `stimmung` stabilisee + separation stricte `stimmung_agent.py` / `stimmung_input.py`.
+Validation minimale: distinction explicite entre signal brut par tour, `stimmung` stabilisee et doctrine ulterieure eventuelle, sans import complet de `M6`.
 Dependances: Lots 1 et 2.
-Hors scope: implementation runtime complete de M6.
+Hors scope: implementation runtime complete de `M6`, gouvernance affective complete, directives finales aval.
 
 ## Lot 4 - Arbitrage epistemique
 Nature du lot: travail de structure + pause normative.

@@ -32,7 +32,7 @@ Cette matrice fige la lecture suivante:
 | Web | Deja la | Oui | Entree canonique | `inputs/` | Canoniser fraicheur, autorite, conflit potentiel |
 | Fenetre recente conversationnelle | Deja la mais diffuse | Oui | Entree canonique | `inputs/` | Extraire format propre |
 | Tour utilisateur | Socle canonique minimal pose | Oui (texte brut) | Entree canonique minimale | `inputs/` | Etendre ensuite vers ambiguite, sous-determination, et raffinements doctrinaux |
-| Stimmung / M6 | Externe a `FridaDev` | Non | Determinant d'entree (non souverain) | `inputs/` + `doctrine/` | Distinguer explicitement contrat d'entree (`inputs/stimmung.py`) et gouvernance (`doctrine/stimmung_governance.py`) |
+| Stimmung / M6 | Externe a `FridaDev` | Non | Determinant affectif d'entree (non souverain) | `core/` + `inputs/` | Distinguer explicitement le signal amont par tour (`stimmung_agent.py` -> `affective_turn_signal`) et l'input canonique stabilise (`inputs/stimmung_input.py`) |
 | Regime epistemique | Manquant | Non | Sortie primaire doctrinale | `doctrine/` | Creer module doctrinal |
 | Posture de jugement | Manquant | Non | Sortie primaire doctrinale | `doctrine/` | Creer module doctrinal `answer|clarify|suspend` |
 | Hierarchie des sources | Manquante | Non | Sortie primaire doctrinale | `doctrine/` | Creer module doctrinal |
@@ -50,7 +50,7 @@ Cette matrice fige la lecture suivante:
 | --- | --- | --- |
 | A canoniser depuis l'existant | Temps, memoire recuperee, arbitrage memoire, resume, identite, contexte, web | Contrats d'entree stables et lisibles |
 | A extraire depuis l'existant | Fenetre recente, qualification minimale du tour utilisateur, signaux d'ambiguite / sous-determination | Objets d'entree autonomes pour le noeud primaire |
-| A integrer depuis l'autre systeme | Stimmung / M6 | Determinant encadre en 2 artefacts: contrat d'entree (`inputs`) + gouvernance (`doctrine`) |
+| A integrer depuis l'autre systeme | Stimmung / M6 | Petit agent amont par tour + input canonique stabilise, sans import complet de `M6` |
 | A creer from scratch | Regimes doctrinaux, hierarchie, conflits, noeud primaire, etat runtime, validation agent | Dispositif complet `primaire + validation` |
 | A brancher apres creation | Branchement aval et observabilite complete | Aval consomme une sortie revisee uniquement |
 
@@ -73,7 +73,7 @@ Ordre recommande:
 
 1. Canoniser les entrees deja presentes.
 2. Extraire `fenetre_recente` et la qualification minimale du tour utilisateur.
-3. Integrer `Stimmung` comme determinant non souverain (entree `inputs` + gouvernance `doctrine`).
+3. Integrer `Stimmung` comme determinant non souverain via un signal amont par tour puis un input canonique stabilise.
 4. Construire la doctrine primaire (`epistemic`, `judgment`, `source_priority`, `source_conflicts`, `discursive`, `resituation`).
 5. Construire le runtime du noeud primaire (verdict premier + directives provisoires + fail-open).
 6. Construire l'etat persistant du noeud primaire.
