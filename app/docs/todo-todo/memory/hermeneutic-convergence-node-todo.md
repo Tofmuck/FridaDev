@@ -146,13 +146,13 @@ Sous-bloc C - Doctrine ulterieure eventuelle:
 - [ ] Si une couche doctrinale d'usage de `stimmung` reste necessaire, la redefinir comme doctrine locale d'influence sur le regime d'enonciation, sans souverainete propre ni directives finales.
 - [x] Rappeler noir sur blanc qu'aucune importation brute de la gouvernance `M6` de `Frida_V4` n'est admise.
 
-Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-stimmung-input-contract.md`
+Socle normatif de reference:
+- Doc normatif: `hermeneutic-node-stimmung-input-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-stimmung-input-contract.md`
 - Modules code cibles: `core.stimmung_agent` et `core.hermeneutic_node.inputs.stimmung_input`
 - Repertoires code cibles: `app/core/` et `app/core/hermeneutic_node/inputs/`
 - Fichiers Python cibles: `stimmung_agent.py` et `stimmung_input.py`
-- Raison: fixer la separation stricte entre signal brut par tour et input stabilise avant toute implementation runtime.
+- Raison: garder la separation stricte entre signal brut par tour et input stabilise pendant la suite de l'implementation runtime.
 
 Piste doctrinale ulterieure, non ouverte dans cette tranche:
 - Doc normatif eventuel: `hermeneutic-node-stimmung-governance-contract.md`
