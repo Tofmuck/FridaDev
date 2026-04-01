@@ -539,6 +539,86 @@ Exemples brefs:
 - "Je veux A, mais surtout pas ce qu'implique A"
   - `coherence`
 
+## Frontier With Advanced Interpretation
+
+La qualification minimale et l'interpretation metier avancee ne jouent pas le meme role.
+
+### Ce que la qualification minimale peut faire
+
+La qualification minimale peut:
+
+- decrire le tour;
+- localiser les zones de probleme;
+- qualifier les axes stables du tour;
+- signaler ce qui manque pour comprendre ou repondre proprement.
+
+Elle peut donc produire:
+
+- `geste_dialogique_dominant`;
+- `regime_probatoire`;
+- `qualification_temporelle`;
+- des signaux d'`ambiguite / sous_determination`.
+
+Elle repond a des questions du type:
+
+- qu'est-ce que ce tour est en train de faire ?
+- de quel type de preuve a-t-on besoin ?
+- de quel temps parle-t-on ?
+- ou cela bloque-t-il ?
+
+### Ce que la qualification minimale ne peut pas faire
+
+La qualification minimale ne doit pas:
+
+- decider quelle source doit primer;
+- decider la posture finale `answer | clarify | suspend`;
+- decider le regime epistemique final;
+- decider ce que l'utilisateur "veut vraiment" au-dela de ce qui est qualifiable;
+- redefinir les criteres doctrinaux;
+- arbitrer un conflit final entre systeme et agent de validation.
+
+Regle doctrinale:
+
+- elle qualifie;
+- elle ne gouverne pas;
+- elle ne tranche pas.
+
+### Test doctrinal simple
+
+Critere de frontiere:
+
+- si le bloc est encore en train de decrire le tour, il reste dans la qualification minimale;
+- s'il commence a decider quoi faire du tour, il bascule deja dans l'interpretation metier avancee.
+
+### Exemple normatif court
+
+Pour:
+
+- "Quel est le meilleur ?"
+
+La qualification minimale peut produire:
+
+- `geste_dialogique_dominant = interrogation`;
+- un signal `critere`;
+- une eventuelle `sous_determination`.
+
+Elle ne peut pas encore:
+
+- decider qu'il faut recommander un produit;
+- fixer le critere implicite qui doit primer;
+- decider s'il faut repondre plutot que clarifier.
+
+### Lien avec la gouvernance plus tardive
+
+Ne relevent pas de cette tranche:
+
+- l'arbitrage doctrinal final;
+- la priorisation des sources;
+- la posture finale;
+- la revision eventuelle par l'agent de validation.
+
+La qualification minimale ne doit pas anticiper ces couches sous couvert de comprehension du tour.
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
@@ -560,9 +640,9 @@ Restent explicitement ouverts:
 - les regles permettant de deriver un regime probatoire operationnel a partir de cette premiere grammaire;
 - les regles permettant de deriver automatiquement une `qualification_temporelle` stable dans les cas limites ou mixtes;
 - les regles permettant de combiner ces grands ensembles de signalisation avec les autres axes du tour;
+- la formalisation complete de l'interpretation metier avancee au-dela de cette frontiere minimale;
 - la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
-- la frontiere exacte entre qualification minimale et interpretation metier avancee;
 - les extensions futures et la forme runtime detaillee du futur objet canonique `tour_utilisateur`;
 - l'articulation avec la posture de jugement et le regime epistemique des lots suivants.
 
