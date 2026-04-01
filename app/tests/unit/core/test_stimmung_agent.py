@@ -93,6 +93,105 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
         self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
 
+    def test_build_affective_turn_signal_uses_recent_window_context_with_five_turn_cap(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    '{"schema_version":"v1","present":true,"tones":[{"tone":"neutralite","strength":3}],"dominant_tone":"neutralite","confidence":0.71}'
+                )
+            ]
+        )
+        recent_window_input_payload = {
+            'schema_version': 'v1',
+            'turns': [
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 0'},
+                        {'role': 'assistant', 'content': 'reponse 0'},
+                    ],
+                },
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 1'},
+                        {'role': 'assistant', 'content': 'reponse 1'},
+                    ],
+                },
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 2'},
+                        {'role': 'assistant', 'content': 'reponse 2'},
+                    ],
+                },
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 3'},
+                        {'role': 'assistant', 'content': 'reponse 3'},
+                    ],
+                },
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 4'},
+                        {'role': 'assistant', 'content': 'reponse 4'},
+                    ],
+                },
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien 5'},
+                        {'role': 'assistant', 'content': 'reponse 5'},
+                    ],
+                },
+                {
+                    'turn_status': 'in_progress',
+                    'messages': [{'role': 'user', 'content': 'Message courant'}],
+                },
+            ],
+        }
+
+        stimmung_agent.build_affective_turn_signal(
+            user_msg='Message courant',
+            recent_window_input_payload=recent_window_input_payload,
+            requests_module=requests_module,
+        )
+
+        request_content = requests_module.calls[0]['json']['messages'][1]['content']
+        self.assertIn('Fenetre conversationnelle locale (5 tours max)', request_content)
+        self.assertNotIn('ancien 0', request_content)
+        self.assertIn('ancien 1', request_content)
+        self.assertIn('reponse 5', request_content)
+        self.assertIn('Tour utilisateur courant (centre de l\'analyse, signal a produire pour ce tour)', request_content)
+        self.assertIn('Message courant', request_content)
+
+    def test_build_messages_keeps_current_turn_centered_without_claiming_stabilized_stimmung(self) -> None:
+        messages = stimmung_agent._build_messages(
+            system_prompt='SYSTEM PROMPT',
+            user_msg='Je suis perdu ici',
+            recent_window_input_payload={
+                'schema_version': 'v1',
+                'turns': [
+                    {
+                        'turn_status': 'complete',
+                        'messages': [
+                            {'role': 'user', 'content': 'Avant'},
+                            {'role': 'assistant', 'content': 'Reponse avant'},
+                        ],
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(messages[0]['content'], 'SYSTEM PROMPT')
+        self.assertIn('Fenetre conversationnelle locale (5 tours max)', messages[1]['content'])
+        self.assertIn('Avant', messages[1]['content'])
+        self.assertIn('Tour utilisateur courant (centre de l\'analyse, signal a produire pour ce tour)', messages[1]['content'])
+        self.assertIn('Je suis perdu ici', messages[1]['content'])
+        self.assertNotIn('stimmung stabilisee', messages[1]['content'])
+
     def test_validate_affective_turn_signal_rejects_tone_outside_taxonomy(self) -> None:
         with self.assertRaises(stimmung_agent._SignalValidationError):
             stimmung_agent._validate_affective_turn_signal(

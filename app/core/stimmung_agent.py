@@ -7,6 +7,7 @@ from typing import Any, Mapping
 import requests
 
 import config
+from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core import llm_client
 from core import prompt_loader
 
@@ -16,6 +17,9 @@ PRIMARY_MODEL = 'openai/gpt-5.4-mini'
 FALLBACK_MODEL = 'openai/gpt-5.4-nano'
 PROMPT_PATH = 'prompts/stimmung_agent.txt'
 REQUEST_TIMEOUT_S = 10
+CONTEXT_WINDOW_TURNS = canonical_recent_window_input.MAX_RECENT_TURNS
+MAX_CONTEXT_MESSAGE_CHARS = 220
+MAX_CURRENT_TURN_CHARS = 600
 
 ALLOWED_TONES = (
     'apaisement',
@@ -134,10 +138,79 @@ def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
 
 
-def _build_messages(*, system_prompt: str, user_msg: str) -> list[dict[str, str]]:
+def _compact_text(value: Any, *, max_chars: int) -> str:
+    text = ' '.join(str(value or '').split())
+    if len(text) <= max_chars:
+        return text
+    return f"{text[: max(0, max_chars - 3)].rstrip()}..."
+
+
+def _is_duplicate_current_turn(turn_payload: Mapping[str, Any], user_msg: str) -> bool:
+    raw_messages = turn_payload.get('messages')
+    if not isinstance(raw_messages, list) or len(raw_messages) != 1:
+        return False
+
+    message_payload = _mapping(raw_messages[0])
+    if str(message_payload.get('role') or '') != 'user':
+        return False
+
+    return _compact_text(message_payload.get('content'), max_chars=MAX_CURRENT_TURN_CHARS) == _compact_text(
+        user_msg,
+        max_chars=MAX_CURRENT_TURN_CHARS,
+    )
+
+
+def _serialize_recent_window(*, recent_window_input_payload: Mapping[str, Any] | None, user_msg: str) -> str:
+    payload = _mapping(recent_window_input_payload)
+    raw_turns = payload.get('turns')
+    if not isinstance(raw_turns, list):
+        return f"Aucun contexte recent exploitable ({CONTEXT_WINDOW_TURNS} tours max)."
+
+    turns = [_mapping(item) for item in raw_turns if isinstance(item, Mapping)]
+    if turns and _is_duplicate_current_turn(turns[-1], user_msg):
+        turns = turns[:-1]
+    turns = turns[-CONTEXT_WINDOW_TURNS:]
+
+    if not turns:
+        return f"Aucun contexte recent exploitable ({CONTEXT_WINDOW_TURNS} tours max)."
+
+    lines = [f"Fenetre conversationnelle locale ({CONTEXT_WINDOW_TURNS} tours max) :"]
+    for index, turn_payload in enumerate(turns, start=1):
+        turn_status = str(turn_payload.get('turn_status') or 'unknown')
+        lines.append(f"- Tour {index} [{turn_status}]")
+        raw_messages = turn_payload.get('messages')
+        if not isinstance(raw_messages, list):
+            continue
+        for message in raw_messages:
+            message_payload = _mapping(message)
+            role = str(message_payload.get('role') or '').strip()
+            content = _compact_text(message_payload.get('content'), max_chars=MAX_CONTEXT_MESSAGE_CHARS)
+            if role in {'user', 'assistant'} and content:
+                lines.append(f"  - {role}: {content}")
+
+    return '\n'.join(lines)
+
+
+def _build_messages(
+    *,
+    system_prompt: str,
+    user_msg: str,
+    recent_window_input_payload: Mapping[str, Any] | None,
+) -> list[dict[str, str]]:
+    contextual_window = _serialize_recent_window(
+        recent_window_input_payload=recent_window_input_payload,
+        user_msg=user_msg,
+    )
     return [
         {'role': 'system', 'content': str(system_prompt or '')},
-        {'role': 'user', 'content': f'Tour utilisateur courant :\n{str(user_msg or "").strip()}'},
+        {
+            'role': 'user',
+            'content': (
+                f"{contextual_window}\n\n"
+                "Tour utilisateur courant (centre de l'analyse, signal a produire pour ce tour) :\n"
+                f"{_compact_text(user_msg, max_chars=MAX_CURRENT_TURN_CHARS)}"
+            ),
+        },
     ]
 
 
@@ -222,6 +295,7 @@ def _call_model(
     *,
     system_prompt: str,
     user_msg: str,
+    recent_window_input_payload: Mapping[str, Any] | None,
     model: str,
     requests_module: Any,
 ) -> dict[str, Any]:
@@ -229,7 +303,11 @@ def _call_model(
         f'{config.OR_BASE}/chat/completions',
         json={
             'model': model,
-            'messages': _build_messages(system_prompt=system_prompt, user_msg=user_msg),
+            'messages': _build_messages(
+                system_prompt=system_prompt,
+                user_msg=user_msg,
+                recent_window_input_payload=recent_window_input_payload,
+            ),
             'temperature': 0.1,
             'top_p': 1.0,
             'max_tokens': 220,
@@ -247,8 +325,6 @@ def build_affective_turn_signal(
     recent_window_input_payload: Mapping[str, Any] | None = None,
     requests_module: Any = requests,
 ) -> StimmungAgentResult:
-    del recent_window_input_payload
-
     system_prompt = _load_system_prompt()
     if not system_prompt:
         return _build_fail_open_result(reason_code='prompt_missing', model=PRIMARY_MODEL)
@@ -262,6 +338,7 @@ def build_affective_turn_signal(
             signal = _call_model(
                 system_prompt=system_prompt,
                 user_msg=user_msg,
+                recent_window_input_payload=recent_window_input_payload,
                 model=model,
                 requests_module=requests_module,
             )

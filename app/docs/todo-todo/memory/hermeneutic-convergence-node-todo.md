@@ -131,6 +131,7 @@ Runtime amont isole deja ferme:
 - [x] Creer le prompt systeme `stimmung_agent.txt`.
 - [x] Fermer le modele principal `openai/gpt-5.4-mini` et le fallback `openai/gpt-5.4-nano`.
 - [x] Fermer le format JSON strict de `affective_turn_signal`.
+- [x] Fermer le calcul contextualise de `affective_turn_signal` sur une fenetre courte issue de `recent_window_input` (`5` tours max), tout en restant centre sur le tour courant.
 - [x] Fermer le fail-open compact du stage amont.
 - [x] Fermer l'observability amont via `chat_turn_logger`.
 - [x] Fermer l'appel amont depuis `chat_service.py`, sans injection au seam hermeneutique.

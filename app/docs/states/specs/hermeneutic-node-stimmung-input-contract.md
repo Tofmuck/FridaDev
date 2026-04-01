@@ -25,6 +25,7 @@ Le cadrage retenu pour `stimmung` suit cette separation:
 - `app/core/stimmung_agent.py`
   - petit agent LLM amont
   - produit un `affective_turn_signal` par tour
+  - calcule ce signal a partir du `user_msg` courant comme centre d'analyse, avec une fenetre conversationnelle locale issue de `recent_window_input` et bornee a `5` tours
   - ne calcule pas la `stimmung` stabilisee
   - n'est ni la gouvernance affective, ni la sortie finale du noeud
 - `app/core/hermeneutic_node/inputs/stimmung_input.py`
@@ -40,9 +41,14 @@ Il ne recoit ni la machine `M6` complete, ni une gouvernance affective complete 
 
 `affective_turn_signal` est un artefact brut par tour.
 
+Il reste emis a chaque nouveau tour, mais il n'est pas calcule a partir du seul dernier message brut.
+Le tour courant reste le centre d'analyse.
+Le calcul peut s'appuyer sur une courte fenetre conversationnelle locale issue de `recent_window_input`.
+
 Il sert a:
 
 - decrire la tonalite affective locale du tour
+- contextualiser localement le tour courant sur une fenetre courte
 - laisser coexister plusieurs tonalites
 - fournir un materiau simple a stabiliser ensuite
 
@@ -130,6 +136,8 @@ Invariants:
 - `dominant_tone` doit appartenir a `tones` quand `present = True`
 - `tones` peut contenir plusieurs `tone`
 - `strength` reste un score simple par tour, pas une stabilisation
+- le signal est emis par tour, mais peut etre calcule sur une fenetre conversationnelle locale bornee a `5` tours
+- cette contextualisation locale ne vaut pas stabilisation multi-tours
 
 ## 6. Minimal Contract For `stimmung`
 
@@ -199,6 +207,7 @@ Regle structurelle:
 La frontiere ne doit pas etre brouillee:
 
 - le petit agent amont ne calcule pas la stabilite
+- le petit agent amont peut contextualiser le tour courant sur une fenetre locale courte sans devenir une stabilisation multi-tours
 - l'input canonique du noeud ne redevient pas un dump brut des signaux par tour
 
 ## 8. Node Usage Boundary
