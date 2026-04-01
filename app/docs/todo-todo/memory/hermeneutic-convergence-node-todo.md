@@ -104,9 +104,9 @@ Sous-bloc B - Qualification semantique minimale:
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-user-demand-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
-- Module code cible: `core.hermeneutic_node.inputs.user_turn`
+- Module code cible: `core.hermeneutic_node.inputs.user_turn_input`
 - Repertoire code cible: `app/core/hermeneutic_node/inputs/`
-- Fichier Python cible: `user_turn.py`
+- Fichier Python cible: `user_turn_input.py`
 - Raison: la qualification du tour utilisateur et les signaux d'ambiguite sont doctrinaux; le contrat doit preceder le code.
 
 Sortie attendue du lot: deux objets distincts et lisibles (`fenetre_recente`, `tour_utilisateur`) + signaux d'ambiguite.

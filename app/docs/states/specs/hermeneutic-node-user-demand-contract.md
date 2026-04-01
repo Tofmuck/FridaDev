@@ -656,7 +656,7 @@ Cette premiere pose doctrinale ne tranche pas:
 - les sous-categories finales fines des signaux d'ambiguite ou de sous-determination;
 - une table finale de decision convertissant ces signaux en posture de sortie;
 - la taxonomie finale complete des sous-cas;
-- le code runtime `user_turn.py`;
+- le code runtime `user_turn_input.py`;
 - l'implementation du classement automatique des tours.
 
 ## Next Axes To Discuss Later
