@@ -342,6 +342,64 @@ Elle ne decide pas encore:
 - quelle posture de jugement adopter;
 - quelle table de decision complete permet de deriver automatiquement chaque qualification temporelle.
 
+## Minimal Canonical Object
+
+L'objet canonique minimal `tour_utilisateur` est maintenant defini comme une structure exploitable, non finale, et suffisante pour porter:
+
+- l'axe primaire `geste_dialogique_dominant`;
+- le qualificateur secondaire `regime_probatoire`;
+- le qualificateur secondaire `qualification_temporelle`.
+
+Forme minimale normative:
+
+- `schema_version`
+- `geste_dialogique_dominant`
+- `regime_probatoire`
+- `qualification_temporelle`
+
+Contraintes minimales:
+
+- `schema_version` versionne explicitement le contrat canonique minimal;
+- `geste_dialogique_dominant` porte un seul geste dominant dans cette premiere version;
+- `regime_probatoire` reste structure et ne se reduit jamais a un score unique;
+- `qualification_temporelle` contient explicitement `portee_temporelle` et `ancrage_temporel`;
+- ce contrat est minimal et exploitable, mais il ne pretend pas fixer tous les axes futurs.
+
+Le sous-objet `regime_probatoire` doit au minimum contenir:
+
+- `principe`
+- `types_de_preuve_attendus`
+- `provenances`
+- `regime_de_vigilance`
+- `composition_probatoire`
+
+Le sous-objet `qualification_temporelle` doit au minimum contenir:
+
+- `portee_temporelle`
+- `ancrage_temporel`
+
+Exemple normatif compact:
+
+```python
+tour_utilisateur = {
+    "schema_version": "v1",
+    "geste_dialogique_dominant": "interrogation",
+    "regime_probatoire": {
+        "principe": "maximal_possible",
+        "types_de_preuve_attendus": ["factuelle", "dialogique"],
+        "provenances": ["dialogue_trace"],
+        "regime_de_vigilance": "standard",
+        "composition_probatoire": "appuyee",
+    },
+    "qualification_temporelle": {
+        "portee_temporelle": "passee",
+        "ancrage_temporel": "dialogue_trace",
+    },
+}
+```
+
+Cet exemple illustre le contrat minimal. Il ne fixe ni les extensions futures, ni les regles de derivation automatique.
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
@@ -365,7 +423,7 @@ Restent explicitement ouverts:
 - la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
 - la frontiere exacte entre qualification minimale et interpretation metier avancee;
-- la forme runtime finale du futur objet canonique `tour_utilisateur`;
+- les extensions futures et la forme runtime detaillee du futur objet canonique `tour_utilisateur`;
 - l'articulation avec la posture de jugement et le regime epistemique des lots suivants.
 
 ## Non-goals / Out of Scope

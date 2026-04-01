@@ -96,7 +96,7 @@ Sous-bloc A - Extraction simple:
 - [x] Definir l'observabilite minimale de `fenetre_recente` au seam (presence/qualite minimale).
 
 Sous-bloc B - Qualification semantique minimale:
-- [ ] Definir l'objet canonique `tour_utilisateur` (geste dialogique dominant, puis qualificateurs secondaires comme besoin de preuve et portee temporelle).
+- [x] Definir l'objet canonique `tour_utilisateur` (geste dialogique dominant, puis qualificateurs secondaires comme besoin de preuve et portee temporelle).
 - [ ] Definir les signaux minimaux d'ambiguite/sous-determination.
 - [ ] Definir la frontiere explicite entre qualification minimale et interpretation metier avancee.
 - [ ] Definir l'observabilite minimale des objets canoniques / signaux du sous-bloc B des leur exposition au seam.
