@@ -52,11 +52,21 @@ def _sequence(value: Any) -> Sequence[Any]:
 def _normalize_text(raw: Any) -> str:
     text = unicodedata.normalize("NFKD", str(raw or ""))
     text = text.encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"\s+", " ", text).strip().lower()
+    text = text.lower().replace("'", " ").replace("-", " ")
+    text = re.sub(r"[^a-z0-9?]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _contains_any(text: str, fragments: Sequence[str]) -> bool:
-    return any(fragment in text for fragment in fragments)
+    compact_text = text.replace(" ", "").replace("?", "")
+    for fragment in fragments:
+        normalized_fragment = _normalize_text(fragment)
+        if normalized_fragment and normalized_fragment in text:
+            return True
+        compact_fragment = normalized_fragment.replace(" ", "").replace("?", "")
+        if compact_fragment and compact_fragment in compact_text:
+            return True
+    return False
 
 
 def _ordered_unique(values: Sequence[str], order: Sequence[str]) -> list[str]:
@@ -77,7 +87,7 @@ def _recent_window_messages(recent_window_input_payload: Mapping[str, Any] | Non
     return messages
 
 
-def _has_prior_context(
+def _has_resolutive_prior_context(
     *,
     recent_window_input_payload: Mapping[str, Any] | None,
     user_message: str,
@@ -91,7 +101,38 @@ def _has_prior_context(
             and _normalize_text(last_message.get("content")) == normalized_user_message
         ):
             messages = messages[:-1]
-    return any(_normalize_text(message.get("content")) for message in messages)
+    if not messages:
+        return False
+
+    contextual_terms = (
+        "patch",
+        "diff",
+        "texte",
+        "message",
+        "reponse",
+        "version",
+        "plan",
+        "bloc",
+        "paragraphe",
+        "phrase",
+        "section",
+        "ligne",
+        "code",
+        "fichier",
+        "contenu",
+        "precedent",
+        "precedente",
+    )
+    for message in reversed(messages):
+        normalized_content = _normalize_text(_mapping(message).get("content"))
+        if not normalized_content:
+            continue
+        if _contains_any(normalized_content, contextual_terms):
+            return True
+        if len(normalized_content.split()) >= 6:
+            return True
+        return False
+    return False
 
 
 def _is_address_relationnelle(text: str) -> bool:
@@ -184,6 +225,7 @@ def _is_interrogation(text: str) -> bool:
             "quels ",
             "quelles ",
             "est ce que",
+            "qu est ce",
             "cest quoi",
             "qu est ce que",
         ),
@@ -241,7 +283,6 @@ def _web_markers(text: str) -> bool:
             "citations",
             "lien",
             "liens",
-            "repo",
         ),
     )
 
@@ -254,7 +295,17 @@ def _resolve_regime_probatoire(text: str) -> dict[str, Any]:
         types.append("factuelle")
     if _contains_any(text, ("scientifique", "etude", "etudes", "paper", "publication", "publie")):
         types.append("scientifique")
-    if _contains_any(text, ("pourquoi", "justifie", "argumente", "raison", "raisons")):
+    if _contains_any(
+        text,
+        (
+            "pourquoi",
+            "justifie",
+            "argumente",
+            "quelles raisons",
+            "pour quelles raisons",
+            "donne les raisons",
+        ),
+    ):
         types.append("argumentative")
     if _contains_any(text, ("comment comprendre", "que veut dire", "sens", "interpret", "signifie")):
         types.append("hermeneutique")
@@ -345,7 +396,7 @@ def _has_referent_signal(
 ) -> bool:
     if not _contains_any(text, ("ca", "cela", "ce point", "la dessus", "la-dessus", "ceci", "lui")):
         return False
-    return not _has_prior_context(
+    return not _has_resolutive_prior_context(
         recent_window_input_payload=recent_window_input_payload,
         user_message=user_message,
     )

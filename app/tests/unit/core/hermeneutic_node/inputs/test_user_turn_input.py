@@ -20,9 +20,9 @@ from core.hermeneutic_node.inputs import user_turn_input
 
 
 class UserTurnInputTests(unittest.TestCase):
-    def test_build_user_turn_input_for_definition_question_is_sober(self) -> None:
+    def test_build_user_turn_input_for_definition_question_without_cleaned_punctuation_is_sober(self) -> None:
         bundle = user_turn_input.build_user_turn_bundle(
-            user_message="C'est quoi un embedding ?",
+            user_message="C'est quoi un embedding",
             recent_window_input_payload=None,
             time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
         )
@@ -42,7 +42,7 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(bundle['user_turn_signals']['active_signal_families'], [])
         self.assertEqual(bundle['user_turn_signals']['active_signal_families_count'], 0)
 
-    def test_build_user_turn_input_for_dialogue_trace_question(self) -> None:
+    def test_build_user_turn_input_for_dialogue_trace_question_with_apostrophes_and_accents(self) -> None:
         recent_window_payload = {
             'schema_version': 'v1',
             'max_recent_turns': 5,
@@ -59,14 +59,14 @@ class UserTurnInputTests(unittest.TestCase):
                 {
                     'turn_status': 'in_progress',
                     'messages': [
-                        {'role': 'user', 'content': "Qu'est-ce qu'on s'est dit plus tot ?", 'timestamp': '2026-04-01T10:00:00Z'},
+                        {'role': 'user', 'content': "Qu'est-ce qu'on s'est dit plus tôt", 'timestamp': '2026-04-01T10:00:00Z'},
                     ],
                 },
             ],
         }
 
         payload = user_turn_input.build_user_turn_input(
-            user_message="Qu'est-ce qu'on s'est dit plus tot ?",
+            user_message="Qu'est-ce qu'on s'est dit plus tôt",
             recent_window_input_payload=recent_window_payload,
             time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
         )
@@ -76,6 +76,53 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(payload['regime_probatoire']['provenances'], ['dialogue_trace'])
         self.assertEqual(payload['qualification_temporelle']['portee_temporelle'], 'passee')
         self.assertEqual(payload['qualification_temporelle']['ancrage_temporel'], 'dialogue_trace')
+
+    def test_build_user_turn_input_detects_positionnement_with_french_apostrophe(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message="Je ne suis pas d'accord",
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['geste_dialogique_dominant'], 'positionnement')
+
+    def test_build_user_turn_input_does_not_fall_back_to_exposition_for_est_ce_que_request(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message="Est-ce que tu peux vérifier ça",
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertNotEqual(payload['geste_dialogique_dominant'], 'exposition')
+        self.assertIn(payload['geste_dialogique_dominant'], {'interrogation', 'orientation'})
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], ['factuelle'])
+
+    def test_build_user_turn_input_does_not_mark_tu_as_raison_as_argumentative(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='Tu as raison',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['geste_dialogique_dominant'], 'positionnement')
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], [])
+
+    def test_build_user_turn_input_does_not_treat_repo_as_web_provenance(self) -> None:
+        question_payload = user_turn_input.build_user_turn_input(
+            user_message='Quel est le meilleur repo ?',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+        orientation_payload = user_turn_input.build_user_turn_input(
+            user_message='Tu peux chercher dans le repo ?',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(question_payload['regime_probatoire']['provenances'], [])
+        self.assertEqual(question_payload['regime_probatoire']['regime_de_vigilance'], 'standard')
+        self.assertEqual(orientation_payload['regime_probatoire']['provenances'], [])
+        self.assertEqual(orientation_payload['regime_probatoire']['regime_de_vigilance'], 'standard')
 
     def test_build_user_turn_signals_detects_underdetermined_criterion(self) -> None:
         payload = user_turn_input.build_user_turn_signals(
@@ -89,28 +136,52 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(payload['active_signal_families'], ['critere'])
         self.assertEqual(payload['active_signal_families_count'], 1)
 
-    def test_build_user_turn_signals_uses_recent_window_to_avoid_gross_referent_false_positive(self) -> None:
-        with_context = user_turn_input.build_user_turn_signals(
-            user_message='Corrige ca',
+    def test_build_user_turn_signals_keeps_referent_after_non_resolutive_context(self) -> None:
+        payload = user_turn_input.build_user_turn_signals(
+            user_message='Corrige ça',
             recent_window_input_payload={
                 'turns': [
                     {
                         'turn_status': 'complete',
                         'messages': [
-                            {'role': 'assistant', 'content': 'Voici le patch precedent', 'timestamp': '2026-04-01T09:00:00Z'},
+                            {'role': 'assistant', 'content': 'Salut', 'timestamp': '2026-04-01T09:00:00Z'},
                         ],
                     },
                     {
                         'turn_status': 'in_progress',
                         'messages': [
-                            {'role': 'user', 'content': 'Corrige ca', 'timestamp': '2026-04-01T10:00:00Z'},
+                            {'role': 'user', 'content': 'Corrige ça', 'timestamp': '2026-04-01T10:00:00Z'},
+                        ],
+                    },
+                ],
+            },
+        )
+
+        self.assertIn('referent', payload['active_signal_families'])
+        self.assertTrue(payload['ambiguity_present'])
+
+    def test_build_user_turn_signals_uses_resolutive_recent_window_to_avoid_gross_referent_false_positive(self) -> None:
+        with_context = user_turn_input.build_user_turn_signals(
+            user_message='Corrige ça',
+            recent_window_input_payload={
+                'turns': [
+                    {
+                        'turn_status': 'complete',
+                        'messages': [
+                            {'role': 'assistant', 'content': 'Voici le patch précédent', 'timestamp': '2026-04-01T09:00:00Z'},
+                        ],
+                    },
+                    {
+                        'turn_status': 'in_progress',
+                        'messages': [
+                            {'role': 'user', 'content': 'Corrige ça', 'timestamp': '2026-04-01T10:00:00Z'},
                         ],
                     },
                 ],
             },
         )
         without_context = user_turn_input.build_user_turn_signals(
-            user_message='Corrige ca',
+            user_message='Corrige ça',
             recent_window_input_payload={'turns': []},
         )
 
