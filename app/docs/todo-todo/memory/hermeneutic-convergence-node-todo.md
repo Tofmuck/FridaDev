@@ -83,7 +83,7 @@ Validation minimale: schema d'entrees versionne et mappe 1:1 au pipeline reel, a
 Dependances: docs d'architecture noeud + matrice.
 Hors scope: arbitrage global inter-sources et branchement aval complet.
 
-## Lot 2 - Extraction fenetre recente + qualification minimale de la demande
+## Lot 2 - Extraction fenetre recente + qualification minimale du tour utilisateur
 Nature du lot: travail de structure + pause normative.
 
 Objectif: isoler la matiere diffuse du tour en cours en separant clairement extraction mecanique et qualification semantique minimale.

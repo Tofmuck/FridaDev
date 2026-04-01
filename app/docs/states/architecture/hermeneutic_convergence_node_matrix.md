@@ -49,7 +49,7 @@ Cette matrice fige la lecture suivante:
 | Nature de travail | Briques concernees | Resultat attendu |
 | --- | --- | --- |
 | A canoniser depuis l'existant | Temps, memoire recuperee, arbitrage memoire, resume, identite, contexte, web | Contrats d'entree stables et lisibles |
-| A extraire depuis l'existant | Fenetre recente, qualification minimale du tour utilisateur, signaux d'ambiguite | Objets d'entree autonomes pour le noeud primaire |
+| A extraire depuis l'existant | Fenetre recente, qualification minimale du tour utilisateur, signaux d'ambiguite / sous-determination | Objets d'entree autonomes pour le noeud primaire |
 | A integrer depuis l'autre systeme | Stimmung / M6 | Determinant encadre en 2 artefacts: contrat d'entree (`inputs`) + gouvernance (`doctrine`) |
 | A creer from scratch | Regimes doctrinaux, hierarchie, conflits, noeud primaire, etat runtime, validation agent | Dispositif complet `primaire + validation` |
 | A brancher apres creation | Branchement aval et observabilite complete | Aval consomme une sortie revisee uniquement |
