@@ -126,11 +126,20 @@ Sous-bloc A - Signal affectif par tour:
 - [x] Definir les grands groupes affectifs utilises dans `FridaDev` (taxonomie large, multi-`tones`, sans micro-taxonomie fine).
 - [x] Trancher noir sur blanc: le signal amont est produit par tour, peut contenir plusieurs `tones`, et ne calcule pas a lui seul la `stimmung` stabilisee.
 
+Runtime amont isole deja ferme:
+- [x] Creer `stimmung_agent.py` comme agent LLM amont isole.
+- [x] Creer le prompt systeme `stimmung_agent.txt`.
+- [x] Fermer le modele principal `openai/gpt-5.4-mini` et le fallback `openai/gpt-5.4-nano`.
+- [x] Fermer le format JSON strict de `affective_turn_signal`.
+- [x] Fermer le fail-open compact du stage amont.
+- [x] Fermer l'observability amont via `chat_turn_logger`.
+- [x] Fermer l'appel amont depuis `chat_service.py`, sans injection au seam hermeneutique.
+
 Sous-bloc B - Stimmung stabilisee pour le noeud:
 - [x] Definir le contrat minimal de `stimmung` exposee par `stimmung_input.py`.
 - [x] Definir la frontiere stricte entre `affective_turn_signal` brut et `stimmung` stabilisee.
 - [x] Definir la mecanique minimale de stabilisation (seuils, `delta`, `hysteresis`, `turns_considered`) au niveau de `stimmung_input.py`.
-- [ ] Definir le branchement minimal dans `chat_service.py` avant le seam hermeneutique.
+- [ ] Definir le branchement minimal de `stimmung_input.py` dans `chat_service.py` avant le seam hermeneutique.
 - [x] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
 
 Sous-bloc C - Doctrine ulterieure eventuelle:
