@@ -409,7 +409,7 @@ Cette ouverture de contrat est grounded dans l'etat actuel du programme:
 
 - `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md` ouvre le sous-bloc B du Lot 2 pour `tour_utilisateur`;
 - `app/docs/states/architecture/hermeneutic_convergence_node.md` fait du tour utilisateur un determinant du noeud, pas une simple metadonnee de requete;
-- `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique que cette qualification n'est pas encore canonique, mais doit devenir une entree autonome;
+- `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique qu'un socle canonique minimal est desormais pose pour `tour_utilisateur`, tout en laissant ses raffinements ouverts;
 - `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les futures entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.
 - `app/docs/states/specs/hermeneutic-recent-window-extraction-contract.md` pose deja `fenetre_recente` comme extraction mecanique distincte de toute qualification semantique, ce qui oblige a situer le `besoin de preuve` au-dessus de cette extraction et non a la place de celle-ci.
 - le grounding temporel du repo existe deja comme entree canonique `temps`, mais cette spec ne transforme pas `qualification_temporelle` en doctrine finale du temps; elle fixe seulement la lecture minimale du temps du tour utilisateur.
