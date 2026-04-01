@@ -15,6 +15,7 @@ Son objectif est plus borne:
 - fixer un axe primaire de lecture du tour utilisateur;
 - poser une premiere taxonomie minimale et totalisante;
 - ouvrir un deuxieme axe minimal sur le `besoin de preuve`;
+- ouvrir un troisieme axe minimal sur la `qualification_temporelle`;
 - preparer les autres qualificateurs secondaires sans les trancher ici.
 
 L'axe primaire retenu est:
@@ -236,6 +237,111 @@ Exemples analytiques minimaux:
 - `web seule`
   - jamais pleinement auto-suffisante dans cette premiere pose doctrinale.
 
+## Secondary Axis - Qualification temporelle
+
+La `qualification_temporelle` qualifie le regime de temps du tour utilisateur.
+
+Elle comporte deux dimensions distinctes mais jointes:
+
+- `portee_temporelle`
+- `ancrage_temporel`
+
+Regle de structure:
+
+- ces deux dimensions doivent rester distinctes;
+- elles appartiennent pourtant a une meme `qualification_temporelle`;
+- `portee_temporelle` ne dit pas quelle source prime;
+- `ancrage_temporel` ne remplace pas la portee;
+- un tour recoit une `portee_temporelle` dominante;
+- un tour recoit un `ancrage_temporel` dominant, sauf si le cas est honnetement `mixte`.
+
+## Portee temporelle
+
+La `portee_temporelle` dit de quel temps parle le tour.
+
+Taxonomie minimale:
+
+- `atemporale`
+- `immediate`
+- `actuelle`
+- `passee`
+- `prospective`
+
+Regles minimales:
+
+- `atemporale`
+  - contenu relativement independant d'un moment precis;
+- `immediate`
+  - maintenant strict du dialogue ou de l'action en cours;
+- `actuelle`
+  - etat courant, presentement valable, mais revisable;
+- `passee`
+  - etat, fait, sequence ou sens situes dans le passe;
+- `prospective`
+  - futur, projection, anticipation, plan.
+
+## Ancrage temporel
+
+L'`ancrage_temporel` dit depuis quelle matiere temporelle le tour se comprend ou s'etablit.
+
+Taxonomie minimale:
+
+- `now`
+- `dialogue_trace`
+- `dialogue_resume`
+- `historique_externe`
+- `projection`
+- `mixte`
+
+Regles minimales:
+
+- `now`
+  - ancrage dans le maintenant strict du systeme ou du dialogue;
+- `dialogue_trace`
+  - ancrage dans les traces du dialogue;
+- `dialogue_resume`
+  - ancrage dans le resume du dialogue;
+- `historique_externe`
+  - ancrage dans une histoire ou un passe exterieurs au dialogue;
+- `projection`
+  - ancrage dans un horizon d'anticipation ou de planification;
+- `mixte`
+  - plusieurs ancrages temporels sont reellement actifs sans reduction honnete a un seul.
+
+## Minimal Temporal Examples
+
+Exemples minimaux:
+
+- "Qu'est-ce qu'on fait maintenant ?"
+  - `portee_temporelle = immediate`
+  - `ancrage_temporel = now`
+- "Qu'est-ce qu'on s'est dit plus tot ?"
+  - `portee_temporelle = passee`
+  - `ancrage_temporel = dialogue_trace`
+- "Selon ce qu'on a deja resume..."
+  - `portee_temporelle = passee`
+  - `ancrage_temporel = dialogue_resume`
+- "Historiquement, cette notion vient d'ou ?"
+  - `portee_temporelle = passee`
+  - `ancrage_temporel = historique_externe`
+- "Que devra-t-on faire ensuite ?"
+  - `portee_temporelle = prospective`
+  - `ancrage_temporel = projection`
+- "C'est quoi un embedding ?"
+  - `portee_temporelle = atemporale`
+  - `ancrage_temporel = mixte`
+
+## Temporal Qualification Frontier
+
+Cette `qualification_temporelle` reste minimale.
+
+Elle ne decide pas encore:
+
+- quelle source prime;
+- quel regime epistemique final s'impose;
+- quelle posture de jugement adopter;
+- quelle table de decision complete permet de deriver automatiquement chaque qualification temporelle.
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
@@ -245,6 +351,7 @@ Cette ouverture de contrat est grounded dans l'etat actuel du programme:
 - `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique que cette qualification n'est pas encore canonique, mais doit devenir une entree autonome;
 - `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les futures entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.
 - `app/docs/states/specs/hermeneutic-recent-window-extraction-contract.md` pose deja `fenetre_recente` comme extraction mecanique distincte de toute qualification semantique, ce qui oblige a situer le `besoin de preuve` au-dessus de cette extraction et non a la place de celle-ci.
+- le grounding temporel du repo existe deja comme entree canonique `temps`, mais cette spec ne transforme pas `qualification_temporelle` en doctrine finale du temps; elle fixe seulement la lecture minimale du temps du tour utilisateur.
 
 Cette spec ne cree donc pas un axe doctrinal abstrait hors-sol. Elle ouvre le futur contrat d'entree `tour_utilisateur` la ou le chantier Lot 2 en a besoin.
 
@@ -254,6 +361,7 @@ Restent explicitement ouverts:
 
 - les regles de decision permettant de choisir automatiquement le geste dominant;
 - les regles permettant de deriver un regime probatoire operationnel a partir de cette premiere grammaire;
+- les regles permettant de deriver automatiquement une `qualification_temporelle` stable dans les cas limites ou mixtes;
 - la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
 - la frontiere exacte entre qualification minimale et interpretation metier avancee;
@@ -266,7 +374,7 @@ Cette premiere pose doctrinale ne tranche pas:
 
 - un bareme final ou score unique de preuve;
 - une table finale de decision probatoire par cas d'usage;
-- la `portee temporelle`;
+- une doctrine finale du temps ou une hierarchie des ancrages temporels;
 - les signaux d'ambiguite ou de sous-determination;
 - la taxonomie finale complete des sous-cas;
 - le code runtime `user_demand.py`;
@@ -276,9 +384,9 @@ Cette premiere pose doctrinale ne tranche pas:
 
 Les axes secondaires a ouvrir apres cette premiere pose sont:
 
-- `portee temporelle`
 - `ambiguite / sous-determination`
 - le raffinement du `besoin de preuve` en contrat operationnel plus fin
+- le raffinement de la `qualification_temporelle` en contrat operationnel plus fin
 
 Regle de lecture:
 
