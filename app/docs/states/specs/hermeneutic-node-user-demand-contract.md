@@ -619,6 +619,84 @@ Ne relevent pas de cette tranche:
 
 La qualification minimale ne doit pas anticiper ces couches sous couvert de comprehension du tour.
 
+## Minimal Seam Observability
+
+Cette observabilite minimale ne vaut qu'au moment ou `tour_utilisateur` et les signaux d'`ambiguite / sous_determination` seront reellement exposes au seam runtime.
+
+Elle devra etre branchee sur la chaine d'observabilite existante via `app/observability/hermeneutic_node_logger.py`, sans creer de mecanisme parallele.
+
+Son role est borne:
+
+- rendre visible la presence des objets du sous-bloc B;
+- rendre visible leur exploitabilite minimale;
+- rester compacte et lisible;
+- ne pas transformer le logger en second moteur doctrinal.
+
+### Observed Fields for `tour_utilisateur`
+
+L'observabilite minimale de `tour_utilisateur` doit permettre de savoir au minimum:
+
+- `present`
+- `geste_dialogique_dominant`
+- `regime_probatoire.principe`
+- `regime_probatoire.types_de_preuve_attendus`
+- `regime_probatoire.regime_de_vigilance`
+- `qualification_temporelle.portee_temporelle`
+- `qualification_temporelle.ancrage_temporel`
+
+Cette observabilite ne doit pas journaliser:
+
+- le texte brut du tour utilisateur;
+- l'objet canonique complet comme substitut du resume d'observabilite;
+- des justifications detaillees ou longues explications.
+
+### Observed Fields for `ambiguite / sous_determination`
+
+L'observabilite minimale des signaux adjacents doit permettre de savoir au minimum:
+
+- `present`
+- `ambiguite_present`
+- `sous_determination_present`
+- `familles_actives`
+
+Champ compact optionnel, coherent avec le style deja retenu:
+
+- `families_count`
+
+`familles_actives` renvoie aux grands ensembles doctrinaux deja fixes:
+
+- `referent`
+- `visee`
+- `critere`
+- `portee`
+- `ancrage_de_source`
+- `coherence`
+
+Cette observabilite ne doit pas journaliser:
+
+- une explication textuelle longue;
+- une interpretation detaillee du blocage;
+- un arbitrage futur non encore tranche.
+
+### Observability Constraints
+
+Contraintes normatives:
+
+- le payload d'observabilite doit rester compact;
+- il doit resumer presence et qualite minimale, pas reconstruire toute la doctrine;
+- il ne doit jamais journaliser le contenu brut du tour utilisateur comme substitut du contrat canonique;
+- il ne doit pas encoder une justification longue a la place de champs structures;
+- il doit rester homogene avec la philosophie deja posee pour `time`, `memory_retrieved`, `summary`, `identity`, `recent_window` et `web`.
+
+### Repo Grounding for Seam Observability
+
+Grounding minimal dans l'etat actuel du repo:
+
+- `app/observability/hermeneutic_node_logger.py` porte deja le resume compact des entrees exposees au seam;
+- `app/core/chat_service.py` branche deja ce resume au point d'insertion hermeneutique;
+- le sous-bloc B n'est pas encore expose au seam runtime;
+- cette section fixe donc le contrat minimal a respecter des que `user_turn_input.py` et les signaux adjacents seront effectivement branches.
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:

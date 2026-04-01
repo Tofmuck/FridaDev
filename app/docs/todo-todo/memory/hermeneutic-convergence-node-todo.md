@@ -99,7 +99,7 @@ Sous-bloc B - Qualification semantique minimale:
 - [x] Definir l'objet canonique `tour_utilisateur` (geste dialogique dominant, puis qualificateurs secondaires comme besoin de preuve et portee temporelle).
 - [x] Definir les signaux minimaux d'ambiguite/sous-determination.
 - [x] Definir la frontiere explicite entre qualification minimale et interpretation metier avancee.
-- [ ] Definir l'observabilite minimale des objets canoniques / signaux du sous-bloc B des leur exposition au seam.
+- [x] Definir l'observabilite minimale des objets canoniques / signaux du sous-bloc B des leur exposition au seam.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-user-demand-contract.md`
