@@ -122,20 +122,20 @@ Objectif: cadrer un signal affectif par tour et une `stimmung` stabilisee pour l
 Perimetre: `stimmung_agent.py`, `affective_turn_signal`, `stimmung_input.py`, stabilisation minimale, usage par le noeud pour le regime d'enonciation.
 
 Sous-bloc A - Signal affectif par tour:
-- [ ] Definir le contrat minimal de `affective_turn_signal` produit par `stimmung_agent.py`.
-- [ ] Definir les grands groupes affectifs utilises dans `FridaDev` (taxonomie large, multi-`tones`, sans micro-taxonomie fine).
-- [ ] Trancher noir sur blanc: le signal amont est produit par tour, peut contenir plusieurs `tones`, et ne calcule pas a lui seul la `stimmung` stabilisee.
+- [x] Definir le contrat minimal de `affective_turn_signal` produit par `stimmung_agent.py`.
+- [x] Definir les grands groupes affectifs utilises dans `FridaDev` (taxonomie large, multi-`tones`, sans micro-taxonomie fine).
+- [x] Trancher noir sur blanc: le signal amont est produit par tour, peut contenir plusieurs `tones`, et ne calcule pas a lui seul la `stimmung` stabilisee.
 
 Sous-bloc B - Stimmung stabilisee pour le noeud:
-- [ ] Definir le contrat minimal de `stimmung` exposee par `stimmung_input.py`.
-- [ ] Definir la frontiere stricte entre `affective_turn_signal` brut et `stimmung` stabilisee.
-- [ ] Definir la mecanique minimale de stabilisation (seuils, `delta`, `hysteresis`, `turns_considered`) au niveau de `stimmung_input.py`.
+- [x] Definir le contrat minimal de `stimmung` exposee par `stimmung_input.py`.
+- [x] Definir la frontiere stricte entre `affective_turn_signal` brut et `stimmung` stabilisee.
+- [x] Definir la mecanique minimale de stabilisation (seuils, `delta`, `hysteresis`, `turns_considered`) au niveau de `stimmung_input.py`.
 - [ ] Definir le branchement minimal dans `chat_service.py` avant le seam hermeneutique.
-- [ ] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
+- [x] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
 
 Sous-bloc C - Doctrine ulterieure eventuelle:
 - [ ] Si une couche doctrinale d'usage de `stimmung` reste necessaire, la redefinir comme doctrine locale d'influence sur le regime d'enonciation, sans souverainete propre ni directives finales.
-- [ ] Rappeler noir sur blanc qu'aucune importation brute de la gouvernance `M6` de `Frida_V4` n'est admise.
+- [x] Rappeler noir sur blanc qu'aucune importation brute de la gouvernance `M6` de `Frida_V4` n'est admise.
 
 Pause normative obligatoire:
 - Doc normatif a ouvrir: `hermeneutic-node-stimmung-input-contract.md`
