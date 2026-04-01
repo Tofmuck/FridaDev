@@ -172,7 +172,6 @@ Role :
 ### 3.7 Stimmung
 
 Entrees attendues :
-- des `affective_turn_signal` recents produits par `app/core/stimmung_agent.py` ;
 - un input canonique `stimmung` stabilise calcule par `app/core/hermeneutic_node/inputs/stimmung_input.py` ;
 - une `dominant_tone` ;
 - des `active_tones` ;
@@ -184,7 +183,7 @@ Role :
 - fournir un determinant affectif structure et stabilise ;
 - moduler l'acceptabilite de certaines transitions de regime ;
 - contribuer au regime d'enonciation ;
-- rester distinct du signal brut par tour ;
+- etre calcule en amont a partir de `affective_turn_signal` produits par `app/core/stimmung_agent.py`, sans exposer ces signaux bruts comme entree canonique directe du noeud ;
 - ne pas importer la machine `M6` complete ;
 - ne pas decider seul de la hierarchie de toutes les sources ni des directives finales.
 

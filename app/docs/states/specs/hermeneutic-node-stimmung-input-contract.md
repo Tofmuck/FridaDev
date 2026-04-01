@@ -23,8 +23,10 @@ Le repo suit deja une separation stricte entre:
 Le cadrage retenu pour `stimmung` suit cette separation:
 
 - `app/core/stimmung_agent.py`
-  - petit agent amont
+  - petit agent LLM amont
   - produit un `affective_turn_signal` par tour
+  - ne calcule pas la `stimmung` stabilisee
+  - n'est ni la gouvernance affective, ni la sortie finale du noeud
 - `app/core/hermeneutic_node/inputs/stimmung_input.py`
   - agrege plusieurs `affective_turn_signal`
   - calcule une `stimmung` dominante / stabilisee
@@ -161,7 +163,7 @@ Champs minimaux:
 - `active_tones[].tone`
   - tonalite retenue
 - `active_tones[].strength`
-  - force compacte issue de la stabilisation
+  - force compacte issue de la stabilisation, sur la meme echelle simple `1` a `10` que `tones[].strength`
 - `stability`
   - statut compact de stabilite
   - forme minimale attendue: `emerging | stable | volatile`
@@ -175,6 +177,7 @@ Invariants:
 
 - `stimmung` reste compacte et lisible
 - `active_tones` n'est pas l'historique complet
+- `active_tones[].strength` reste sur une echelle fermee `1` a `10`
 - le noeud recoit `stimmung`, pas les signaux bruts complets
 
 ## 7. Stabilization Boundary
