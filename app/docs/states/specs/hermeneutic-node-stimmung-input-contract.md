@@ -30,7 +30,16 @@ Le cadrage retenu pour `stimmung` suit cette separation:
   - n'est ni la gouvernance affective, ni la sortie finale du noeud
 - `app/core/hermeneutic_node/inputs/stimmung_input.py`
   - agrege plusieurs `affective_turn_signal`
+  - relit ces signaux via `message.meta.affective_turn_signal` sur les tours utilisateur de la conversation
   - calcule une `stimmung` dominante / stabilisee
+
+La source runtime retenue pour les signaux recents est donc:
+
+- `message.meta.affective_turn_signal`
+- sur les messages `user`
+- dans le stockage metier de conversation
+
+Cette retention compacte n'utilise ni `chat_turn_logger`, ni `hermeneutic_node_logger`, ni un stockage d'observability comme source metier.
 
 Le noeud hermeneutique recoit `stimmung`.
 Il ne recoit ni la machine `M6` complete, ni une gouvernance affective complete importee, ni des directives finales aval.
@@ -210,7 +219,34 @@ La frontiere ne doit pas etre brouillee:
 - le petit agent amont peut contextualiser le tour courant sur une fenetre locale courte sans devenir une stabilisation multi-tours
 - l'input canonique du noeud ne redevient pas un dump brut des signaux par tour
 
-## 8. Node Usage Boundary
+## 8. Minimal Runtime And Seam Exposure
+
+Runtime minimal retenu:
+
+- `stimmung_agent.py` produit un `affective_turn_signal` par tour
+- ce signal est retenu de maniere compacte dans `message.meta.affective_turn_signal`
+- `stimmung_input.py` relit plusieurs signaux recents depuis cette source metier compacte
+- `chat_service.py` construit ensuite `stimmung_input` avant le seam hermeneutique
+- le seam recoit `stimmung`
+- le seam ne recoit ni `affective_turn_signal`, ni l'historique brut des signaux
+
+Observability canonique minimale au seam:
+
+- `inputs.stimmung.present`
+- `inputs.stimmung.dominant_tone`
+- `inputs.stimmung.active_tones`
+- `inputs.stimmung.stability`
+- `inputs.stimmung.shift_state`
+- `inputs.stimmung.turns_considered`
+
+Contraintes:
+
+- pas de texte brut utilisateur
+- pas de prompt brut
+- pas de sortie LLM brute
+- pas d'historique complet des signaux
+
+## 9. Node Usage Boundary
 
 Le noeud peut prendre `stimmung` en consideration pour:
 
@@ -225,7 +261,7 @@ Le noeud ne doit pas traiter `stimmung` comme:
 - une sortie aval
 - la machine `M6` complete
 
-## 9. Non-goals
+## 10. Non-goals
 
 Cette spec n'ouvre pas encore:
 

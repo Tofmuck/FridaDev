@@ -140,7 +140,8 @@ Sous-bloc B - Stimmung stabilisee pour le noeud:
 - [x] Definir le contrat minimal de `stimmung` exposee par `stimmung_input.py`.
 - [x] Definir la frontiere stricte entre `affective_turn_signal` brut et `stimmung` stabilisee.
 - [x] Definir la mecanique minimale de stabilisation (seuils, `delta`, `hysteresis`, `turns_considered`) au niveau de `stimmung_input.py`.
-- [ ] Definir le branchement minimal de `stimmung_input.py` dans `chat_service.py` avant le seam hermeneutique.
+- [x] Retenir `message.meta.affective_turn_signal` comme source runtime compacte et relisible des signaux recents pour `stimmung_input.py`.
+- [x] Definir le branchement minimal de `stimmung_input.py` dans `chat_service.py` avant le seam hermeneutique.
 - [x] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
 
 Sous-bloc C - Doctrine ulterieure eventuelle:

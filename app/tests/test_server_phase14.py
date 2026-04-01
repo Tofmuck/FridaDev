@@ -951,9 +951,29 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertNotIn('raw_output', payload)
         self.assertIsNotNone(observed['insertion_kwargs'])
         self.assertNotIn('affective_turn_signal', observed['insertion_kwargs'])
-        self.assertNotIn('stimmung', observed['insertion_kwargs'])
+        self.assertIn('stimmung_input', observed['insertion_kwargs'])
+        self.assertTrue(observed['insertion_kwargs']['stimmung_input']['present'])
+        self.assertEqual(observed['insertion_kwargs']['stimmung_input']['dominant_tone'], 'frustration')
+        self.assertEqual(observed['insertion_kwargs']['stimmung_input']['stability'], 'emerging')
+        self.assertEqual(observed['insertion_kwargs']['stimmung_input']['shift_state'], 'steady')
+        self.assertEqual(observed['insertion_kwargs']['stimmung_input']['turns_considered'], 1)
         self.assertIn('user_turn_input', observed['insertion_kwargs'])
         self.assertIn('user_turn_signals', observed['insertion_kwargs'])
+        user_messages = [message for message in conversation['messages'] if message.get('role') == 'user']
+        self.assertTrue(user_messages)
+        self.assertEqual(
+            user_messages[-1].get('meta', {}).get('affective_turn_signal'),
+            {
+                'schema_version': 'v1',
+                'present': True,
+                'tones': [
+                    {'tone': 'frustration', 'strength': 7},
+                    {'tone': 'confusion', 'strength': 4},
+                ],
+                'dominant_tone': 'frustration',
+                'confidence': 0.82,
+            },
+        )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
@@ -1125,6 +1145,12 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertFalse(payload['inputs']['user_turn_signals']['underdetermination_present'])
         self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families'], [])
         self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families_count'], 0)
+        self.assertTrue(payload['inputs']['stimmung']['present'])
+        self.assertEqual(payload['inputs']['stimmung']['dominant_tone'], 'neutralite')
+        self.assertEqual(payload['inputs']['stimmung']['active_tones'], [{'tone': 'neutralite', 'strength': 3}])
+        self.assertEqual(payload['inputs']['stimmung']['stability'], 'emerging')
+        self.assertEqual(payload['inputs']['stimmung']['shift_state'], 'steady')
+        self.assertEqual(payload['inputs']['stimmung']['turns_considered'], 1)
         self.assertFalse(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'skipped')
         self.assertEqual(payload['inputs']['web']['results_count'], 0)

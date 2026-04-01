@@ -13,6 +13,7 @@ from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
+from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.inputs import summary_input
 from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
@@ -149,6 +150,30 @@ def _resolve_user_turn_runtime_inputs(
     )
 
 
+def _store_latest_user_affective_turn_signal(
+    *,
+    conversation: Mapping[str, Any],
+    signal: Mapping[str, Any] | None,
+) -> None:
+    messages = conversation.get("messages")
+    if not isinstance(messages, list):
+        return
+
+    canonical_signal = dict(signal or {})
+    if not canonical_signal:
+        return
+
+    for message in reversed(messages):
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "") != "user":
+            continue
+        meta = dict(message.get("meta") or {})
+        meta[canonical_stimmung_input.SIGNAL_META_KEY] = canonical_signal
+        message["meta"] = meta
+        return
+
+
 def _resolve_web_runtime_payload(
     *,
     user_msg: str,
@@ -242,6 +267,7 @@ def _run_hermeneutic_node_insertion_point(
     recent_window_input: Mapping[str, Any] | None = None,
     user_turn_input: Mapping[str, Any] | None = None,
     user_turn_signals: Mapping[str, Any] | None = None,
+    stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
@@ -256,6 +282,7 @@ def _run_hermeneutic_node_insertion_point(
         recent_window_input=recent_window_input,
         user_turn_input=user_turn_input,
         user_turn_signals=user_turn_signals,
+        stimmung_input=stimmung_input,
         web_input=web_input,
     )
     return None
@@ -358,10 +385,17 @@ def chat_response(
         recent_window_payload=recent_window_payload,
         time_payload=time_payload,
     )
-    _run_stimmung_agent_stage(
+    affective_turn_signal = _run_stimmung_agent_stage(
         user_msg=user_msg,
         recent_window_payload=recent_window_payload,
         requests_module=requests_module,
+    )
+    _store_latest_user_affective_turn_signal(
+        conversation=conversation,
+        signal=affective_turn_signal,
+    )
+    stimmung_payload = canonical_stimmung_input.build_stimmung_input(
+        messages=conversation.get("messages", []),
     )
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,
@@ -386,6 +420,7 @@ def chat_response(
         recent_window_input=recent_window_payload,
         user_turn_input=user_turn_payload,
         user_turn_signals=user_turn_signals_payload,
+        stimmung_input=stimmung_payload,
         web_input=web_payload,
     )
 

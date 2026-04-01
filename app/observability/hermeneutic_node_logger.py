@@ -124,6 +124,25 @@ def _summarize_user_turn_signals(payload: Mapping[str, Any] | None) -> dict[str,
     }
 
 
+def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = _mapping(payload)
+    active_tones = []
+    for item in _sequence(data.get("active_tones")):
+        tone_payload = _mapping(item)
+        tone = str(tone_payload.get("tone") or "").strip()
+        strength = tone_payload.get("strength")
+        if tone and isinstance(strength, int):
+            active_tones.append({"tone": tone, "strength": strength})
+    return {
+        "present": bool(data.get("present", bool(data))),
+        "dominant_tone": data.get("dominant_tone"),
+        "active_tones": active_tones,
+        "stability": str(data.get("stability") or ""),
+        "shift_state": str(data.get("shift_state") or ""),
+        "turns_considered": int(data.get("turns_considered") or 0),
+    }
+
+
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     return {
@@ -146,6 +165,7 @@ def build_hermeneutic_node_insertion_payload(
     recent_window_input: Mapping[str, Any] | None = None,
     user_turn_input: Mapping[str, Any] | None = None,
     user_turn_signals: Mapping[str, Any] | None = None,
+    stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -161,6 +181,7 @@ def build_hermeneutic_node_insertion_payload(
             'recent_window': _summarize_recent_window(recent_window_input),
             'user_turn': _summarize_user_turn(user_turn_input),
             'user_turn_signals': _summarize_user_turn_signals(user_turn_signals),
+            'stimmung': _summarize_stimmung(stimmung_input),
             'web': _summarize_web(web_input),
         },
     }
@@ -178,6 +199,7 @@ def emit_hermeneutic_node_insertion(
     recent_window_input: Mapping[str, Any] | None = None,
     user_turn_input: Mapping[str, Any] | None = None,
     user_turn_signals: Mapping[str, Any] | None = None,
+    stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> bool:
     return chat_turn_logger.emit(
@@ -194,6 +216,7 @@ def emit_hermeneutic_node_insertion(
             recent_window_input=recent_window_input,
             user_turn_input=user_turn_input,
             user_turn_signals=user_turn_signals,
+            stimmung_input=stimmung_input,
             web_input=web_input,
         ),
     )

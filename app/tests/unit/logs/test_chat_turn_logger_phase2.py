@@ -284,6 +284,18 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'active_signal_families': ['critere'],
                     'active_signal_families_count': 1,
                 },
+                stimmung_input={
+                    'schema_version': 'v1',
+                    'present': True,
+                    'dominant_tone': 'frustration',
+                    'active_tones': [
+                        {'tone': 'frustration', 'strength': 6},
+                        {'tone': 'confusion', 'strength': 3},
+                    ],
+                    'stability': 'stable',
+                    'shift_state': 'steady',
+                    'turns_considered': 4,
+                },
                 web_input={
                     'enabled': True,
                     'status': 'ok',
@@ -334,6 +346,18 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(payload['inputs']['user_turn_signals']['underdetermination_present'])
         self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families'], ['critere'])
         self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families_count'], 1)
+        self.assertTrue(payload['inputs']['stimmung']['present'])
+        self.assertEqual(payload['inputs']['stimmung']['dominant_tone'], 'frustration')
+        self.assertEqual(
+            payload['inputs']['stimmung']['active_tones'],
+            [
+                {'tone': 'frustration', 'strength': 6},
+                {'tone': 'confusion', 'strength': 3},
+            ],
+        )
+        self.assertEqual(payload['inputs']['stimmung']['stability'], 'stable')
+        self.assertEqual(payload['inputs']['stimmung']['shift_state'], 'steady')
+        self.assertEqual(payload['inputs']['stimmung']['turns_considered'], 4)
         self.assertTrue(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)
