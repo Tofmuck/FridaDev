@@ -652,18 +652,37 @@ Cette observabilite ne doit pas journaliser:
 
 ### Observed Fields for `ambiguite / sous_determination`
 
+Ces signaux devront apparaitre dans un bloc adjacent explicite:
+
+- `user_turn_signals`
+
+Ce bloc devra rester distinct de `tour_utilisateur`, tout en vivant au meme niveau de seam dans la logique de payload `inputs`.
+
 L'observabilite minimale des signaux adjacents doit permettre de savoir au minimum:
 
 - `present`
-- `ambiguite_present`
-- `sous_determination_present`
-- `familles_actives`
+- `ambiguity_present`
+- `underdetermination_present`
+- `active_signal_families`
 
 Champ compact optionnel, coherent avec le style deja retenu:
 
-- `families_count`
+- `active_signal_families_count`
 
-`familles_actives` renvoie aux grands ensembles doctrinaux deja fixes:
+Semantique normative de `present` pour `user_turn_signals`:
+
+- `present = true`
+  - le bloc de signalisation a bien ete produit au seam, meme si aucun signal actif n'est releve;
+- `present = false`
+  - le bloc n'a pas ete produit au seam;
+- `ambiguity_present = true`
+  - au moins un signal d'ambiguite est actif;
+- `underdetermination_present = true`
+  - au moins un signal de sous-determination est actif;
+- un bloc peut donc etre `present = true` avec `ambiguity_present = false` et `underdetermination_present = false`, ce qui signifie:
+  - bloc produit, aucun signal actif.
+
+`active_signal_families` renvoie aux grands ensembles doctrinaux deja fixes:
 
 - `referent`
 - `visee`
@@ -686,6 +705,7 @@ Contraintes normatives:
 - il doit resumer presence et qualite minimale, pas reconstruire toute la doctrine;
 - il ne doit jamais journaliser le contenu brut du tour utilisateur comme substitut du contrat canonique;
 - il ne doit pas encoder une justification longue a la place de champs structures;
+- il doit reserver un bloc adjacent explicite `user_turn_signals` pour la signalisation du sous-bloc B, distinct de `tour_utilisateur`;
 - il doit rester homogene avec la philosophie deja posee pour `time`, `memory_retrieved`, `summary`, `identity`, `recent_window` et `web`.
 
 ### Repo Grounding for Seam Observability
