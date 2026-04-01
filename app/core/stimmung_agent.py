@@ -110,20 +110,19 @@ def _as_confidence(value: Any) -> float:
     return confidence
 
 
-def _build_fail_open_signal(reason_code: str) -> dict[str, Any]:
+def _build_fail_open_signal() -> dict[str, Any]:
     return {
         'schema_version': SCHEMA_VERSION,
         'present': False,
         'tones': [],
         'dominant_tone': None,
         'confidence': 0.0,
-        'reason_code': str(reason_code or 'upstream_error'),
     }
 
 
 def _build_fail_open_result(*, reason_code: str, model: str) -> StimmungAgentResult:
     return StimmungAgentResult(
-        signal=_build_fail_open_signal(reason_code),
+        signal=_build_fail_open_signal(),
         status='error',
         model=str(model or FALLBACK_MODEL),
         decision_source='fail_open',
@@ -235,7 +234,7 @@ def _call_model(
             'top_p': 1.0,
             'max_tokens': 220,
         },
-        headers=llm_client.or_headers(caller='llm'),
+        headers=llm_client.or_headers(caller='stimmung_agent'),
         timeout=REQUEST_TIMEOUT_S,
     )
     response.raise_for_status()

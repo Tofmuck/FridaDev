@@ -49,6 +49,10 @@ OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'Fr
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE}/LLM').strip() or f'{OR_TITLE_BASE}/LLM'
 OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE}/Arbiter').strip() or f'{OR_TITLE_BASE}/Arbiter'
 OR_TITLE_RESUMER = os.environ.get('OPENROUTER_TITLE_RESUMER', f'{OR_TITLE_BASE}/Resumer').strip() or f'{OR_TITLE_BASE}/Resumer'
+OR_TITLE_STIMMUNG_AGENT = os.environ.get(
+    'OPENROUTER_TITLE_STIMMUNG_AGENT',
+    f'{OR_TITLE_BASE}/StimmungAgent',
+).strip() or f'{OR_TITLE_BASE}/StimmungAgent'
 OR_TITLE = OR_TITLE_LLM
 
 # SearXNG

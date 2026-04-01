@@ -91,7 +91,7 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['dominant_tone'], 'frustration')
         self.assertEqual(result.signal['tones'][1], {'tone': 'confusion', 'strength': 4})
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
-        self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=llm'})
+        self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
 
     def test_validate_affective_turn_signal_rejects_tone_outside_taxonomy(self) -> None:
         with self.assertRaises(stimmung_agent._SignalValidationError):
@@ -173,6 +173,10 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.model, stimmung_agent.FALLBACK_MODEL)
         self.assertEqual(result.reason_code, 'validation_error')
         self.assertEqual(
+            stimmung_agent._validate_affective_turn_signal(result.signal),
+            result.signal,
+        )
+        self.assertEqual(
             result.signal,
             {
                 'schema_version': 'v1',
@@ -180,7 +184,6 @@ class StimmungAgentTests(unittest.TestCase):
                 'tones': [],
                 'dominant_tone': None,
                 'confidence': 0.0,
-                'reason_code': 'validation_error',
             },
         )
 

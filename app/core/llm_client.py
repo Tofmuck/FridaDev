@@ -28,6 +28,7 @@ def or_headers(caller: str = "llm") -> dict:
         "llm": config.OR_TITLE_LLM,
         "arbiter": config.OR_TITLE_ARBITER,
         "resumer": config.OR_TITLE_RESUMER,
+        "stimmung_agent": config.OR_TITLE_STIMMUNG_AGENT,
     }
     title = title_map.get(caller_key, config.OR_TITLE_LLM)
 
