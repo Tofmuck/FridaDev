@@ -93,6 +93,37 @@ def _summarize_recent_window(payload: Mapping[str, Any] | None) -> dict[str, Any
     }
 
 
+def _summarize_user_turn(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = _mapping(payload)
+    regime = _mapping(data.get('regime_probatoire'))
+    temporal = _mapping(data.get('qualification_temporelle'))
+    return {
+        'present': bool(data),
+        'geste_dialogique_dominant': str(data.get('geste_dialogique_dominant') or ''),
+        'regime_probatoire': {
+            'principe': str(regime.get('principe') or ''),
+            'types_de_preuve_attendus': [str(value) for value in _sequence(regime.get('types_de_preuve_attendus')) if str(value)],
+            'regime_de_vigilance': str(regime.get('regime_de_vigilance') or ''),
+        },
+        'qualification_temporelle': {
+            'portee_temporelle': str(temporal.get('portee_temporelle') or ''),
+            'ancrage_temporel': str(temporal.get('ancrage_temporel') or ''),
+        },
+    }
+
+
+def _summarize_user_turn_signals(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = _mapping(payload)
+    active_families = [str(value) for value in _sequence(data.get('active_signal_families')) if str(value)]
+    return {
+        'present': bool(data.get('present', bool(data))),
+        'ambiguity_present': bool(data.get('ambiguity_present', False)),
+        'underdetermination_present': bool(data.get('underdetermination_present', False)),
+        'active_signal_families': active_families,
+        'active_signal_families_count': int(data.get('active_signal_families_count') or len(active_families)),
+    }
+
+
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     return {
@@ -113,6 +144,8 @@ def build_hermeneutic_node_insertion_payload(
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
     recent_window_input: Mapping[str, Any] | None = None,
+    user_turn_input: Mapping[str, Any] | None = None,
+    user_turn_signals: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -126,6 +159,8 @@ def build_hermeneutic_node_insertion_payload(
             'identity': _summarize_identity(identity_input),
             'recent_context': _summarize_recent_context(recent_context_input),
             'recent_window': _summarize_recent_window(recent_window_input),
+            'user_turn': _summarize_user_turn(user_turn_input),
+            'user_turn_signals': _summarize_user_turn_signals(user_turn_signals),
             'web': _summarize_web(web_input),
         },
     }
@@ -141,6 +176,8 @@ def emit_hermeneutic_node_insertion(
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
     recent_window_input: Mapping[str, Any] | None = None,
+    user_turn_input: Mapping[str, Any] | None = None,
+    user_turn_signals: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> bool:
     return chat_turn_logger.emit(
@@ -155,6 +192,8 @@ def emit_hermeneutic_node_insertion(
             identity_input=identity_input,
             recent_context_input=recent_context_input,
             recent_window_input=recent_window_input,
+            user_turn_input=user_turn_input,
+            user_turn_signals=user_turn_signals,
             web_input=web_input,
         ),
     )

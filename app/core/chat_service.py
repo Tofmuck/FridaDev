@@ -13,6 +13,7 @@ from core.hermeneutic_node.inputs import identity_input as canonical_identity_in
 from core.hermeneutic_node.inputs import recent_context_input
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core.hermeneutic_node.inputs import summary_input
+from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from observability import hermeneutic_node_logger
 
@@ -129,6 +130,23 @@ def _resolve_recent_window_input(
     )
 
 
+def _resolve_user_turn_runtime_inputs(
+    *,
+    user_msg: str,
+    recent_window_payload: Mapping[str, Any] | None,
+    time_payload: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    bundle = canonical_user_turn_input.build_user_turn_bundle(
+        user_message=user_msg,
+        recent_window_input_payload=recent_window_payload,
+        time_input_payload=time_payload,
+    )
+    return (
+        dict(bundle.get("user_turn") or {}),
+        dict(bundle.get("user_turn_signals") or {}),
+    )
+
+
 def _resolve_web_runtime_payload(
     *,
     user_msg: str,
@@ -180,6 +198,8 @@ def _run_hermeneutic_node_insertion_point(
     identity_input: Mapping[str, Any] | None = None,
     recent_context_input: Mapping[str, Any] | None = None,
     recent_window_input: Mapping[str, Any] | None = None,
+    user_turn_input: Mapping[str, Any] | None = None,
+    user_turn_signals: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> None:
     """Fixed runtime seam reserved for the future hermeneutic node."""
@@ -192,6 +212,8 @@ def _run_hermeneutic_node_insertion_point(
         identity_input=identity_input,
         recent_context_input=recent_context_input,
         recent_window_input=recent_window_input,
+        user_turn_input=user_turn_input,
+        user_turn_signals=user_turn_signals,
         web_input=web_input,
     )
     return None
@@ -289,6 +311,11 @@ def chat_response(
     recent_window_payload = _resolve_recent_window_input(
         recent_context_payload=recent_context_payload,
     )
+    user_turn_payload, user_turn_signals_payload = _resolve_user_turn_runtime_inputs(
+        user_msg=user_msg,
+        recent_window_payload=recent_window_payload,
+        time_payload=time_payload,
+    )
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,
         web_search_on=web_search_on,
@@ -310,6 +337,8 @@ def chat_response(
         identity_input=identity_payload,
         recent_context_input=recent_context_payload,
         recent_window_input=recent_window_payload,
+        user_turn_input=user_turn_payload,
+        user_turn_signals=user_turn_signals_payload,
         web_input=web_payload,
     )
 

@@ -262,6 +262,28 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'has_in_progress_turn': False,
                     'max_recent_turns': 5,
                 },
+                user_turn_input={
+                    'schema_version': 'v1',
+                    'geste_dialogique_dominant': 'interrogation',
+                    'regime_probatoire': {
+                        'principe': 'maximal_possible',
+                        'types_de_preuve_attendus': ['factuelle', 'dialogique'],
+                        'provenances': ['dialogue_trace'],
+                        'regime_de_vigilance': 'standard',
+                        'composition_probatoire': 'appuyee',
+                    },
+                    'qualification_temporelle': {
+                        'portee_temporelle': 'passee',
+                        'ancrage_temporel': 'dialogue_trace',
+                    },
+                },
+                user_turn_signals={
+                    'present': True,
+                    'ambiguity_present': False,
+                    'underdetermination_present': True,
+                    'active_signal_families': ['critere'],
+                    'active_signal_families_count': 1,
+                },
                 web_input={
                     'enabled': True,
                     'status': 'ok',
@@ -294,6 +316,24 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['recent_window']['turn_count'], 1)
         self.assertFalse(payload['inputs']['recent_window']['has_in_progress_turn'])
         self.assertEqual(payload['inputs']['recent_window']['max_recent_turns'], 5)
+        self.assertTrue(payload['inputs']['user_turn']['present'])
+        self.assertEqual(payload['inputs']['user_turn']['geste_dialogique_dominant'], 'interrogation')
+        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['principe'], 'maximal_possible')
+        self.assertEqual(
+            payload['inputs']['user_turn']['regime_probatoire']['types_de_preuve_attendus'],
+            ['factuelle', 'dialogique'],
+        )
+        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['regime_de_vigilance'], 'standard')
+        self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['portee_temporelle'], 'passee')
+        self.assertEqual(
+            payload['inputs']['user_turn']['qualification_temporelle']['ancrage_temporel'],
+            'dialogue_trace',
+        )
+        self.assertTrue(payload['inputs']['user_turn_signals']['present'])
+        self.assertFalse(payload['inputs']['user_turn_signals']['ambiguity_present'])
+        self.assertTrue(payload['inputs']['user_turn_signals']['underdetermination_present'])
+        self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families'], ['critere'])
+        self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families_count'], 1)
         self.assertTrue(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)

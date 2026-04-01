@@ -796,6 +796,58 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_exposes_user_turn_input_and_signals_to_hermeneutic_insertion_point(self) -> None:
+        observed = {'user_turn_input': None, 'user_turn_signals': None}
+        conversation = {
+            'id': 'conv-user-turn-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok user turn'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+
+        def fake_insertion(**kwargs):
+            observed['user_turn_input'] = kwargs.get('user_turn_input')
+            observed['user_turn_signals'] = kwargs.get('user_turn_signals')
+            return None
+
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Quel est le meilleur ?'})
+        finally:
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['user_turn_input']['schema_version'], 'v1')
+        self.assertEqual(observed['user_turn_input']['geste_dialogique_dominant'], 'interrogation')
+        self.assertEqual(observed['user_turn_input']['regime_probatoire']['principe'], 'maximal_possible')
+        self.assertEqual(observed['user_turn_input']['regime_probatoire']['types_de_preuve_attendus'], [])
+        self.assertEqual(observed['user_turn_input']['regime_probatoire']['regime_de_vigilance'], 'standard')
+        self.assertEqual(observed['user_turn_input']['qualification_temporelle']['portee_temporelle'], 'atemporale')
+        self.assertEqual(observed['user_turn_input']['qualification_temporelle']['ancrage_temporel'], 'non_ancre')
+        self.assertTrue(observed['user_turn_signals']['present'])
+        self.assertFalse(observed['user_turn_signals']['ambiguity_present'])
+        self.assertTrue(observed['user_turn_signals']['underdetermination_present'])
+        self.assertEqual(observed['user_turn_signals']['active_signal_families'], ['critere'])
+        self.assertEqual(observed['user_turn_signals']['active_signal_families_count'], 1)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
         observed = {'web_input': None, 'prompt_messages': None, 'legacy_build_context_called': False}
         conversation = {
@@ -953,6 +1005,18 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['recent_window']['turn_count'], 1)
         self.assertTrue(payload['inputs']['recent_window']['has_in_progress_turn'])
         self.assertEqual(payload['inputs']['recent_window']['max_recent_turns'], 5)
+        self.assertTrue(payload['inputs']['user_turn']['present'])
+        self.assertEqual(payload['inputs']['user_turn']['geste_dialogique_dominant'], 'adresse_relationnelle')
+        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['principe'], 'maximal_possible')
+        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['types_de_preuve_attendus'], [])
+        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['regime_de_vigilance'], 'standard')
+        self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['portee_temporelle'], 'atemporale')
+        self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['ancrage_temporel'], 'non_ancre')
+        self.assertTrue(payload['inputs']['user_turn_signals']['present'])
+        self.assertFalse(payload['inputs']['user_turn_signals']['ambiguity_present'])
+        self.assertFalse(payload['inputs']['user_turn_signals']['underdetermination_present'])
+        self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families'], [])
+        self.assertEqual(payload['inputs']['user_turn_signals']['active_signal_families_count'], 0)
         self.assertFalse(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'skipped')
         self.assertEqual(payload['inputs']['web']['results_count'], 0)
