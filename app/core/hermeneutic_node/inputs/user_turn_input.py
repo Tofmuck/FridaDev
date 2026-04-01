@@ -129,8 +129,6 @@ def _has_resolutive_prior_context(
             continue
         if _contains_any(normalized_content, contextual_terms):
             return True
-        if len(normalized_content.split()) >= 6:
-            return True
         return False
     return False
 
@@ -205,6 +203,9 @@ def _is_orientation(text: str) -> bool:
             "corrige",
             "resume",
             "propose",
+            "reponds",
+            "reponds la dessus",
+            "reponds la-dessus",
             "cherche",
             "liste",
             "compare",

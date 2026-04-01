@@ -124,6 +124,21 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(orientation_payload['regime_probatoire']['provenances'], [])
         self.assertEqual(orientation_payload['regime_probatoire']['regime_de_vigilance'], 'standard')
 
+    def test_build_user_turn_input_classifies_reponds_forms_as_orientation(self) -> None:
+        imperative_payload = user_turn_input.build_user_turn_input(
+            user_message='Réponds',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+        deictic_payload = user_turn_input.build_user_turn_input(
+            user_message='Réponds là-dessus',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(imperative_payload['geste_dialogique_dominant'], 'orientation')
+        self.assertEqual(deictic_payload['geste_dialogique_dominant'], 'orientation')
+
     def test_build_user_turn_signals_detects_underdetermined_criterion(self) -> None:
         payload = user_turn_input.build_user_turn_signals(
             user_message='Quel est le meilleur ?',
@@ -145,6 +160,34 @@ class UserTurnInputTests(unittest.TestCase):
                         'turn_status': 'complete',
                         'messages': [
                             {'role': 'assistant', 'content': 'Salut', 'timestamp': '2026-04-01T09:00:00Z'},
+                        ],
+                    },
+                    {
+                        'turn_status': 'in_progress',
+                        'messages': [
+                            {'role': 'user', 'content': 'Corrige ça', 'timestamp': '2026-04-01T10:00:00Z'},
+                        ],
+                    },
+                ],
+            },
+        )
+
+        self.assertIn('referent', payload['active_signal_families'])
+        self.assertTrue(payload['ambiguity_present'])
+
+    def test_build_user_turn_signals_keeps_referent_after_long_non_resolutive_context(self) -> None:
+        payload = user_turn_input.build_user_turn_signals(
+            user_message='Corrige ça',
+            recent_window_input_payload={
+                'turns': [
+                    {
+                        'turn_status': 'complete',
+                        'messages': [
+                            {
+                                'role': 'assistant',
+                                'content': 'Je pense qu il faudrait revoir la methode de travail demain',
+                                'timestamp': '2026-04-01T09:00:00Z',
+                            },
                         ],
                     },
                     {
