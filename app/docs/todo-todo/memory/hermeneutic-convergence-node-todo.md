@@ -144,8 +144,8 @@ Sous-bloc B - Stimmung stabilisee pour le noeud:
 - [x] Definir le branchement minimal de `stimmung_input.py` dans `chat_service.py` avant le seam hermeneutique.
 - [x] Rappeler noir sur blanc: le noeud recoit `stimmung` pour le regime d'enonciation, pas la machine `M6` complete.
 
-Sous-bloc C - Doctrine ulterieure eventuelle:
-- [ ] Si une couche doctrinale d'usage de `stimmung` reste necessaire, la redefinir comme doctrine locale d'influence sur le regime d'enonciation, sans souverainete propre ni directives finales.
+Sous-bloc C - Fermeture doctrinale:
+- [x] Trancher noir sur blanc qu'aucune doctrine dediee d'usage de `stimmung` n'est retenue a ce stade ; son interpretation appartient au noeud comme traitement d'un determinant d'entree parmi d'autres.
 - [x] Rappeler noir sur blanc qu'aucune importation brute de la gouvernance `M6` de `Frida_V4` n'est admise.
 
 Socle normatif de reference:
@@ -156,14 +156,8 @@ Socle normatif de reference:
 - Fichiers Python cibles: `stimmung_agent.py` et `stimmung_input.py`
 - Raison: garder la separation stricte entre signal brut par tour et input stabilise pendant la suite de l'implementation runtime.
 
-Piste doctrinale ulterieure, non ouverte dans cette tranche:
-- Doc normatif eventuel: `hermeneutic-node-stimmung-governance-contract.md`
-- Module code cible eventuel: `core.hermeneutic_node.doctrine.stimmung_governance`
-- Fichier Python cible eventuel: `stimmung_governance.py`
-- Statut: a requalifier plus tard comme doctrine locale d'usage de `stimmung`, pas comme importation de la souverainete `M6`.
-
 Sortie attendue du lot: contrat `affective_turn_signal` + contrat `stimmung` stabilisee + separation stricte `stimmung_agent.py` / `stimmung_input.py`.
-Validation minimale: distinction explicite entre signal brut par tour, `stimmung` stabilisee et doctrine ulterieure eventuelle, sans import complet de `M6`.
+Validation minimale: distinction explicite entre signal brut par tour, `stimmung` stabilisee et absence de doctrine dediee supplementaire, sans import complet de `M6`.
 Dependances: Lots 1 et 2.
 Hors scope: implementation runtime complete de `M6`, gouvernance affective complete, directives finales aval.
 
