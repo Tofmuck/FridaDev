@@ -16,6 +16,7 @@ Son objectif est plus borne:
 - poser une premiere taxonomie minimale et totalisante;
 - ouvrir un deuxieme axe minimal sur le `besoin de preuve`;
 - ouvrir un troisieme axe minimal sur la `qualification_temporelle`;
+- ouvrir un quatrieme axe minimal sur les signaux d'`ambiguite / sous-determination`;
 - preparer les autres qualificateurs secondaires sans les trancher ici.
 
 L'axe primaire retenu est:
@@ -403,6 +404,136 @@ tour_utilisateur = {
 
 Cet exemple illustre le contrat minimal. Il ne fixe ni les extensions futures, ni les regles de derivation automatique.
 
+## Secondary Signals - Ambiguite / Sous-determination
+
+Les signaux d'`ambiguite / sous-determination` servent a localiser la zone de probleme dans la lecture du tour.
+
+Ils ne remplacent pas:
+
+- le `geste_dialogique_dominant`;
+- le `regime_probatoire`;
+- la `qualification_temporelle`;
+- la posture finale `answer | clarify | suspend`.
+
+Regle doctrinale minimale:
+
+- `ambiguite`
+  - plusieurs lectures concurrentes restent ouvertes;
+- `sous_determination`
+  - une lecture globale existe, mais elle ne suffit pas encore pour repondre ou trancher proprement.
+
+Ces signaux sont poses ici comme grands ensembles englobants:
+
+- ils sont couvrants a gros grain;
+- ils ne constituent pas encore les sous-categories finales;
+- un meme tour peut activer plusieurs ensembles;
+- ils servent a localiser la zone de probleme;
+- ils ne produisent pas, a eux seuls, toute la posture finale.
+
+## Englobing Signal Families
+
+Les grands ensembles normatifs sont:
+
+- `referent`
+- `visee`
+- `critere`
+- `portee`
+- `ancrage`
+- `coherence`
+
+Dans chacun de ces ensembles, le signal peut prendre surtout la forme:
+
+- d'une `ambiguite`;
+- d'une `sous_determination`;
+- ou des deux.
+
+### `referent`
+
+Le tour ne permet pas d'identifier clairement ce dont on parle.
+
+Exemples typiques:
+
+- "corrige ca"
+- "reprends ce point"
+- "je parle de lui"
+
+### `visee`
+
+Le tour ne permet pas de savoir quel geste de reponse est reellement attendu.
+
+Le probleme n'est pas le `geste_dialogique_dominant` en soi, mais la visee pratique de la reponse attendue.
+
+Exemples typiques:
+
+- expliquer
+- evaluer
+- decider
+- reformuler
+- agir
+- continuer
+
+### `critere`
+
+Le tour ne donne pas selon quoi il faut juger, comparer, choisir ou valider.
+
+Exemples typiques:
+
+- "le meilleur"
+- "correct"
+- "propre"
+- "important"
+
+### `portee`
+
+Le tour ne fixe pas clairement le perimetre dans lequel il faut le comprendre.
+
+Cela peut concerner:
+
+- la portee temporelle;
+- la portee materielle;
+- la portee conversationnelle;
+- la portee du probleme traite.
+
+### `ancrage`
+
+Le tour ne dit pas assez sur quelle matiere ou quel sol il faut s'appuyer.
+
+Exemples typiques:
+
+- trace du dialogue
+- resume
+- savoir general
+- web
+- document precis
+- contexte anterieur
+
+### `coherence`
+
+Le tour contient lui-meme plusieurs directions, tensions ou incompatibilites qui empechent une lecture univoque.
+
+Exemples typiques:
+
+- deux demandes contraires
+- changement de cap interne non articule
+- melange de niveaux incompatibles
+
+## Minimal Signal Examples
+
+Exemples brefs:
+
+- "Corrige ca"
+  - `referent`
+- "Quel est le meilleur ?"
+  - `critere`
+- "Reponds la-dessus"
+  - `visee` ou `referent`
+- "On parle d'aujourd'hui ou du lot entier ?"
+  - `portee`
+- "Tu veux que je m'appuie sur le repo, la memoire ou le web ?"
+  - `ancrage`
+- "Je veux A, mais surtout pas ce qu'implique A"
+  - `coherence`
+
 ## Repo / Program Grounding
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
@@ -423,6 +554,7 @@ Restent explicitement ouverts:
 - les regles de decision permettant de choisir automatiquement le geste dominant;
 - les regles permettant de deriver un regime probatoire operationnel a partir de cette premiere grammaire;
 - les regles permettant de deriver automatiquement une `qualification_temporelle` stable dans les cas limites ou mixtes;
+- les regles permettant de combiner ces grands ensembles de signalisation avec les autres axes du tour;
 - la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
 - la frontiere exacte entre qualification minimale et interpretation metier avancee;
@@ -436,7 +568,8 @@ Cette premiere pose doctrinale ne tranche pas:
 - un bareme final ou score unique de preuve;
 - une table finale de decision probatoire par cas d'usage;
 - une doctrine finale du temps ou une hierarchie des ancrages temporels;
-- les signaux d'ambiguite ou de sous-determination;
+- les sous-categories finales fines des signaux d'ambiguite ou de sous-determination;
+- une table finale de decision convertissant ces signaux en posture de sortie;
 - la taxonomie finale complete des sous-cas;
 - le code runtime `user_turn.py`;
 - l'implementation du classement automatique des tours.
@@ -445,9 +578,9 @@ Cette premiere pose doctrinale ne tranche pas:
 
 Les axes secondaires a ouvrir apres cette premiere pose sont:
 
-- `ambiguite / sous-determination`
 - le raffinement du `besoin de preuve` en contrat operationnel plus fin
 - le raffinement de la `qualification_temporelle` en contrat operationnel plus fin
+- le raffinement des signaux d'`ambiguite / sous-determination` en sous-categories et regles de decision plus fines
 
 Regle de lecture:
 
