@@ -32,7 +32,7 @@ Le noeud primaire est l'instance de synthese qui arbitre entre :
 - resume ;
 - contexte recent ;
 - `Stimmung` ;
-- demande utilisateur.
+- `tour_utilisateur`.
 
 Sa finalite est de produire, pour chaque tour, un verdict premier qui dise :
 - comment parler ;

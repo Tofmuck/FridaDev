@@ -72,7 +72,7 @@ Structure cible (non creee dans cette tranche):
 Ordre recommande:
 
 1. Canoniser les entrees deja presentes.
-2. Extraire `fenetre_recente` et `demande_utilisateur`.
+2. Extraire `fenetre_recente` et la qualification minimale du tour utilisateur.
 3. Integrer `Stimmung` comme determinant non souverain (entree `inputs` + gouvernance `doctrine`).
 4. Construire la doctrine primaire (`epistemic`, `judgment`, `source_priority`, `source_conflicts`, `discursive`, `resituation`).
 5. Construire le runtime du noeud primaire (verdict premier + directives provisoires + fail-open).
