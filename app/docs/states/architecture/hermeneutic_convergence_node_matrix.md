@@ -31,7 +31,7 @@ Cette matrice fige la lecture suivante:
 | Contexte recent | Deja la | Oui | Entree canonique | `inputs/` | Stabiliser statut de source faible |
 | Web | Deja la | Oui | Entree canonique | `inputs/` | Canoniser fraicheur, autorite, conflit potentiel |
 | Fenetre recente conversationnelle | Deja la mais diffuse | Oui | Entree canonique | `inputs/` | Extraire format propre |
-| Demande utilisateur / intention | Pas encore canonique | Oui (texte brut) | Entree canonique | `inputs/` | Creer qualification minimale |
+| Tour utilisateur | Socle canonique minimal pose | Oui (texte brut) | Entree canonique minimale | `inputs/` | Etendre ensuite vers ambiguite, sous-determination, et raffinements doctrinaux |
 | Stimmung / M6 | Externe a `FridaDev` | Non | Determinant d'entree (non souverain) | `inputs/` + `doctrine/` | Distinguer explicitement contrat d'entree (`inputs/stimmung.py`) et gouvernance (`doctrine/stimmung_governance.py`) |
 | Regime epistemique | Manquant | Non | Sortie primaire doctrinale | `doctrine/` | Creer module doctrinal |
 | Posture de jugement | Manquant | Non | Sortie primaire doctrinale | `doctrine/` | Creer module doctrinal `answer|clarify|suspend` |
@@ -49,7 +49,7 @@ Cette matrice fige la lecture suivante:
 | Nature de travail | Briques concernees | Resultat attendu |
 | --- | --- | --- |
 | A canoniser depuis l'existant | Temps, memoire recuperee, arbitrage memoire, resume, identite, contexte, web | Contrats d'entree stables et lisibles |
-| A extraire depuis l'existant | Fenetre recente, demande utilisateur brute, signaux d'ambiguite | Objets d'entree autonomes pour le noeud primaire |
+| A extraire depuis l'existant | Fenetre recente, qualification minimale du tour utilisateur, signaux d'ambiguite | Objets d'entree autonomes pour le noeud primaire |
 | A integrer depuis l'autre systeme | Stimmung / M6 | Determinant encadre en 2 artefacts: contrat d'entree (`inputs`) + gouvernance (`doctrine`) |
 | A creer from scratch | Regimes doctrinaux, hierarchie, conflits, noeud primaire, etat runtime, validation agent | Dispositif complet `primaire + validation` |
 | A brancher apres creation | Branchement aval et observabilite complete | Aval consomme une sortie revisee uniquement |

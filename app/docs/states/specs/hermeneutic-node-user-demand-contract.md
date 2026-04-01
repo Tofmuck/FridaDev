@@ -287,6 +287,7 @@ L'`ancrage_temporel` dit depuis quelle matiere temporelle le tour se comprend ou
 Taxonomie minimale:
 
 - `now`
+- `non_ancre`
 - `dialogue_trace`
 - `dialogue_resume`
 - `historique_externe`
@@ -297,6 +298,8 @@ Regles minimales:
 
 - `now`
   - ancrage dans le maintenant strict du systeme ou du dialogue;
+- `non_ancre`
+  - le tour ne depend pas d'un ancrage temporel fort et ne mobilise pas honnetement plusieurs ancrages distincts;
 - `dialogue_trace`
   - ancrage dans les traces du dialogue;
 - `dialogue_resume`
@@ -329,7 +332,7 @@ Exemples minimaux:
   - `ancrage_temporel = projection`
 - "C'est quoi un embedding ?"
   - `portee_temporelle = atemporale`
-  - `ancrage_temporel = mixte`
+  - `ancrage_temporel = non_ancre`
 
 ## Temporal Qualification Frontier
 

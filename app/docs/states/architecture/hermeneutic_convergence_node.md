@@ -187,14 +187,18 @@ Role :
 - rester distinct de la gouvernance doctrinale `stimmung_governance` (famille `doctrine/`) ;
 - ne pas decider seul de la hierarchie de toutes les sources.
 
-### 3.8 Demande utilisateur
+### 3.8 Tour utilisateur
 
 Entrees attendues :
-- geste dialogique dominant du tour ;
-- formulation explicite ;
-- qualificateurs secondaires a expliciter ensuite (besoin de preuve, portee temporelle, ambiguite / sous-determination) ;
+- `geste_dialogique_dominant` ;
+- `regime_probatoire` ;
+- `qualification_temporelle`.
+
+Raffinements ulterieurs possibles, hors contrat minimal courant :
+- formulation explicite du tour ;
 - marqueurs de precision, de rappel, de speculation ou de clarification ;
-- rapport du tour a une information stable ou instable.
+- rapport du tour a une information stable ou instable ;
+- signaux d'ambiguite / sous-determination.
 
 Role :
 - orienter la fonction de reponse ;
