@@ -88,7 +88,7 @@ Nature du lot: travail de structure + pause normative.
 
 Objectif: isoler la matiere diffuse du tour en cours en separant clairement extraction mecanique et qualification semantique minimale.
 
-Perimetre: `fenetre_recente`, `demande_utilisateur`, signaux d'ambiguite/sous-determination.
+Perimetre: `fenetre_recente`, `tour_utilisateur`, signaux d'ambiguite/sous-determination.
 
 Sous-bloc A - Extraction simple:
 - [x] Definir l'extraction canonique de `fenetre_recente` (selection, profondeur, horodatage, format).

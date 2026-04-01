@@ -16,7 +16,7 @@ Son objectif est plus borne:
 - poser une premiere taxonomie minimale et totalisante;
 - ouvrir un deuxieme axe minimal sur le `besoin de preuve`;
 - ouvrir un troisieme axe minimal sur la `qualification_temporelle`;
-- ouvrir un quatrieme axe minimal sur les signaux d'`ambiguite / sous-determination`;
+- ouvrir un volet minimal de signalisation pour l'`ambiguite / sous-determination`, adjacent a l'objet canonique minimal;
 - preparer les autres qualificateurs secondaires sans les trancher ici.
 
 L'axe primaire retenu est:
@@ -367,6 +367,7 @@ Contraintes minimales:
 - `geste_dialogique_dominant` porte un seul geste dominant dans cette premiere version;
 - `regime_probatoire` reste structure et ne se reduit jamais a un score unique;
 - `qualification_temporelle` contient explicitement `portee_temporelle` et `ancrage_temporel`;
+- les signaux d'`ambiguite / sous-determination` restent, a ce stade, adjacents a cet objet canonique minimal et n'entrent pas encore dans sa forme fermee;
 - ce contrat est minimal et exploitable, mais il ne pretend pas fixer tous les axes futurs.
 
 Le sous-objet `regime_probatoire` doit au minimum contenir:
@@ -408,6 +409,8 @@ Cet exemple illustre le contrat minimal. Il ne fixe ni les extensions futures, n
 
 Les signaux d'`ambiguite / sous-determination` servent a localiser la zone de probleme dans la lecture du tour.
 
+Ils sont doctrinalement definis ici comme une couche adjacente au contrat canonique minimal de `tour_utilisateur`, et non comme des champs deja requis de sa forme minimale fermee.
+
 Ils ne remplacent pas:
 
 - le `geste_dialogique_dominant`;
@@ -438,7 +441,7 @@ Les grands ensembles normatifs sont:
 - `visee`
 - `critere`
 - `portee`
-- `ancrage`
+- `ancrage_de_source`
 - `coherence`
 
 Dans chacun de ces ensembles, le signal peut prendre surtout la forme:
@@ -494,9 +497,11 @@ Cela peut concerner:
 - la portee conversationnelle;
 - la portee du probleme traite.
 
-### `ancrage`
+### `ancrage_de_source`
 
 Le tour ne dit pas assez sur quelle matiere ou quel sol il faut s'appuyer.
+
+Cette famille ne doit pas etre confondue avec l'`ancrage_temporel` de la `qualification_temporelle`.
 
 Exemples typiques:
 
@@ -530,7 +535,7 @@ Exemples brefs:
 - "On parle d'aujourd'hui ou du lot entier ?"
   - `portee`
 - "Tu veux que je m'appuie sur le repo, la memoire ou le web ?"
-  - `ancrage`
+  - `ancrage_de_source`
 - "Je veux A, mais surtout pas ce qu'implique A"
   - `coherence`
 
