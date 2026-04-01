@@ -8,6 +8,7 @@ from core import chat_memory_flow
 from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
+from core import stimmung_agent
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
@@ -15,6 +16,7 @@ from core.hermeneutic_node.inputs import recent_window_input as canonical_recent
 from core.hermeneutic_node.inputs import summary_input
 from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 
 
@@ -183,6 +185,46 @@ def _resolve_web_runtime_payload(
     }
 
 
+def _run_stimmung_agent_stage(
+    *,
+    user_msg: str,
+    recent_window_payload: Mapping[str, Any] | None,
+    requests_module: Any,
+) -> dict[str, Any]:
+    result = stimmung_agent.build_affective_turn_signal(
+        user_msg=user_msg,
+        recent_window_input_payload=recent_window_payload,
+        requests_module=requests_module,
+    )
+    signal = dict(result.signal or {})
+    tones = []
+    for item in signal.get('tones', []):
+        tone_payload = dict(item or {})
+        tone = str(tone_payload.get('tone') or '').strip()
+        strength = tone_payload.get('strength')
+        if tone and isinstance(strength, int):
+            tones.append({'tone': tone, 'strength': strength})
+
+    payload = {
+        'present': bool(signal.get('present', False)),
+        'dominant_tone': signal.get('dominant_tone'),
+        'tones_count': len(tones),
+        'tones': tones,
+        'confidence': float(signal.get('confidence') or 0.0),
+        'decision_source': str(result.decision_source or ''),
+    }
+    if result.reason_code:
+        payload['reason_code'] = str(result.reason_code)
+
+    chat_turn_logger.emit(
+        'stimmung_agent',
+        status=str(result.status or 'ok'),
+        payload=payload,
+        model=str(result.model or ''),
+    )
+    return signal
+
+
 def _run_hermeneutic_node_insertion_point(
     *,
     conversation: Mapping[str, Any],
@@ -315,6 +357,11 @@ def chat_response(
         user_msg=user_msg,
         recent_window_payload=recent_window_payload,
         time_payload=time_payload,
+    )
+    _run_stimmung_agent_stage(
+        user_msg=user_msg,
+        recent_window_payload=recent_window_payload,
+        requests_module=requests_module,
     )
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,

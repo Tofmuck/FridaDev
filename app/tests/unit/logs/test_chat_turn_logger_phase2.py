@@ -338,6 +338,52 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)
 
+    def test_stimmung_agent_stage_emits_compact_upstream_payload(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-stimmung-stage',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'stimmung_agent',
+                status='error',
+                model='openai/gpt-5.4-nano',
+                payload={
+                    'present': False,
+                    'dominant_tone': None,
+                    'tones_count': 0,
+                    'tones': [],
+                    'confidence': 0.0,
+                    'decision_source': 'fail_open',
+                    'reason_code': 'invalid_json',
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'stimmung_agent')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'error')
+        self.assertEqual(payload['model'], 'openai/gpt-5.4-nano')
+        self.assertFalse(payload['present'])
+        self.assertEqual(payload['tones_count'], 0)
+        self.assertEqual(payload['tones'], [])
+        self.assertEqual(payload['decision_source'], 'fail_open')
+        self.assertEqual(payload['reason_code'], 'invalid_json')
+        self.assertNotIn('user_msg', payload)
+        self.assertNotIn('prompt', payload)
+        self.assertNotIn('raw_output', payload)
+
 
 class ChatInstrumentationPhase2Tests(unittest.TestCase):
     def test_embedding_events_include_source_kind_for_query_trace_and_summary(self) -> None:

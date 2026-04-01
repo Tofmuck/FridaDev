@@ -128,6 +128,23 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         patch_attr(self.server.memory_store, 'save_new_traces', lambda *_args, **_kwargs: None)
         patch_attr(self.server.chat_service, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
         patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
+        patch_attr(
+            self.server.chat_service.stimmung_agent,
+            'build_affective_turn_signal',
+            lambda **_kwargs: self.server.chat_service.stimmung_agent.StimmungAgentResult(
+                signal={
+                    'schema_version': 'v1',
+                    'present': True,
+                    'tones': [{'tone': 'neutralite', 'strength': 3}],
+                    'dominant_tone': 'neutralite',
+                    'confidence': 0.55,
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            ),
+        )
 
         def restore():
             while originals:
@@ -846,6 +863,97 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertTrue(observed['user_turn_signals']['underdetermination_present'])
         self.assertEqual(observed['user_turn_signals']['active_signal_families'], ['critere'])
         self.assertEqual(observed['user_turn_signals']['active_signal_families_count'], 1)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_runs_stimmung_agent_as_upstream_stage_without_seam_injection(self) -> None:
+        observed = {'insertion_kwargs': None, 'events': []}
+        conversation = {
+            'id': 'conv-stimmung-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok stimmung stage'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_affective_turn_signal = self.server.chat_service.stimmung_agent.build_affective_turn_signal
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_build_affective_turn_signal(**_kwargs):
+            return self.server.chat_service.stimmung_agent.StimmungAgentResult(
+                signal={
+                    'schema_version': 'v1',
+                    'present': True,
+                    'tones': [
+                        {'tone': 'frustration', 'strength': 7},
+                        {'tone': 'confusion', 'strength': 4},
+                    ],
+                    'dominant_tone': 'frustration',
+                    'confidence': 0.82,
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+
+        def fake_insertion(**kwargs):
+            observed['insertion_kwargs'] = dict(kwargs)
+            return None
+
+        def fake_insert(event, **_kwargs):
+            observed['events'].append(event)
+            return True
+
+        self.server.chat_service.stimmung_agent.build_affective_turn_signal = fake_build_affective_turn_signal
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': "C'est agaçant et je suis perdu"})
+        finally:
+            self.server.chat_service.stimmung_agent.build_affective_turn_signal = original_build_affective_turn_signal
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        stage_event = next(item for item in observed['events'] if item['stage'] == 'stimmung_agent')
+        payload = stage_event['payload_json']
+        self.assertEqual(stage_event['status'], 'ok')
+        self.assertTrue(payload['present'])
+        self.assertEqual(payload['dominant_tone'], 'frustration')
+        self.assertEqual(payload['tones_count'], 2)
+        self.assertEqual(
+            payload['tones'],
+            [
+                {'tone': 'frustration', 'strength': 7},
+                {'tone': 'confusion', 'strength': 4},
+            ],
+        )
+        self.assertEqual(payload['confidence'], 0.82)
+        self.assertEqual(payload['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(payload['decision_source'], 'primary')
+        self.assertNotIn('user_msg', payload)
+        self.assertNotIn('prompt', payload)
+        self.assertNotIn('raw_output', payload)
+        self.assertIsNotNone(observed['insertion_kwargs'])
+        self.assertNotIn('affective_turn_signal', observed['insertion_kwargs'])
+        self.assertNotIn('stimmung', observed['insertion_kwargs'])
+        self.assertIn('user_turn_input', observed['insertion_kwargs'])
+        self.assertIn('user_turn_signals', observed['insertion_kwargs'])
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
