@@ -438,7 +438,7 @@ Cette premiere pose doctrinale ne tranche pas:
 - une doctrine finale du temps ou une hierarchie des ancrages temporels;
 - les signaux d'ambiguite ou de sous-determination;
 - la taxonomie finale complete des sous-cas;
-- le code runtime `user_demand.py`;
+- le code runtime `user_turn.py`;
 - l'implementation du classement automatique des tours.
 
 ## Next Axes To Discuss Later
