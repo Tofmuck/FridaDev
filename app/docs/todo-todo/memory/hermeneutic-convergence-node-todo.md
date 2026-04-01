@@ -204,10 +204,10 @@ Nature du lot: travail de structure + pause normative.
 
 Objectif: rendre explicite quelle source prime selon la demande et le contexte du tour.
 
-Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, demande utilisateur.
+Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, tour_utilisateur.
 
 - [ ] Definir les regles minimales de priorisation entre sources.
-- [ ] Definir les cas ou la demande utilisateur renverse la priorite par defaut.
+- [ ] Definir les cas ou certains signaux du `tour_utilisateur` renversent la priorite par defaut.
 - [ ] Definir le format compact de `source_priority`.
 - [ ] Definir les cas de cohabitation de sources sans fusion abusive.
 
