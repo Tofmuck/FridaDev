@@ -264,6 +264,47 @@ class SourceConflictsTests(unittest.TestCase):
             },
         )
 
+    def test_build_source_conflicts_does_not_emit_anchor_conflict_from_dynamic_only_identity(self) -> None:
+        payload = source_conflicts.build_source_conflicts(
+            source_priority=_source_priority(),
+            user_turn_input=_user_turn(gesture="adresse_relationnelle"),
+            user_turn_signals=_signals(
+                underdetermination=True,
+                families=["ancrage_de_source"],
+            ),
+            identity_input=_identity(static=False, dynamic_count=1),
+            memory_retrieved=_memory_retrieved(retrieved_count=1),
+            memory_arbitration=_memory_arbitration(kept_count=1),
+        )
+
+        self.assertEqual(payload, {"source_conflicts": []})
+
+    def test_build_source_conflicts_keeps_static_identity_as_anchor_conflict_candidate(self) -> None:
+        payload = source_conflicts.build_source_conflicts(
+            source_priority=_source_priority(),
+            user_turn_input=_user_turn(gesture="adresse_relationnelle"),
+            user_turn_signals=_signals(
+                underdetermination=True,
+                families=["ancrage_de_source"],
+            ),
+            identity_input=_identity(static=True),
+            memory_retrieved=_memory_retrieved(retrieved_count=1),
+            memory_arbitration=_memory_arbitration(kept_count=1),
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "source_conflicts": [
+                    {
+                        "conflict_type": "conflit_d_ancrage_de_source",
+                        "sources": ["memoire", "identity"],
+                        "issue": "clarify",
+                    }
+                ]
+            },
+        )
+
     def test_build_source_conflicts_does_not_emit_anchor_conflict_when_one_source_is_missing(self) -> None:
         payload = source_conflicts.build_source_conflicts(
             source_priority=_source_priority(

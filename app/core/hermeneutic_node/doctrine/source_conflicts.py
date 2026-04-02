@@ -136,6 +136,15 @@ def _identity_available(identity_input: Mapping[str, Any]) -> bool:
     return False
 
 
+def _identity_static_available(identity_input: Mapping[str, Any]) -> bool:
+    for side_name in ("frida", "user"):
+        side = _mapping(identity_input.get(side_name))
+        static_block = _mapping(side.get("static"))
+        if _text(static_block.get("content")):
+            return True
+    return False
+
+
 def _web_available(web_input: Mapping[str, Any]) -> bool:
     return _text(web_input.get("status")) == "ok" and _int_or_zero(web_input.get("results_count")) > 0
 
@@ -167,13 +176,14 @@ def _anchor_candidate_families(
     *,
     user_turn_input: Mapping[str, Any],
     available_families: set[str],
+    identity_input: Mapping[str, Any],
 ) -> set[str]:
     candidates = {
         family
         for provenance, family in _PROVENANCE_TO_SOURCE.items()
         if provenance in _required_provenances(user_turn_input) and family in available_families
     }
-    if _gesture(user_turn_input) == "adresse_relationnelle" and "identity" in available_families:
+    if _gesture(user_turn_input) == "adresse_relationnelle" and _identity_static_available(identity_input):
         candidates.add("identity")
     if _gesture(user_turn_input) == "regulation" and "contexte_recent" in available_families:
         candidates.add("contexte_recent")
@@ -226,6 +236,7 @@ def _anchor_conflict(
     user_turn_input: Mapping[str, Any],
     user_turn_signals: Mapping[str, Any],
     available_families: set[str],
+    identity_input: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     active_families = {
         _text(value)
@@ -238,6 +249,7 @@ def _anchor_conflict(
     candidates = _anchor_candidate_families(
         user_turn_input=user_turn_input,
         available_families=available_families,
+        identity_input=identity_input,
     )
     if len(candidates) < 2:
         return None
@@ -283,6 +295,7 @@ def build_source_conflicts(
         user_turn_input=user_turn_payload,
         user_turn_signals=user_turn_signals_payload,
         available_families=available_families,
+        identity_input=_mapping(identity_input),
     )
     if anchor_conflict:
         conflicts.append(anchor_conflict)
