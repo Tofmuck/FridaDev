@@ -107,6 +107,8 @@ Decision normative sur `challenge`:
 - `challenge` reste visible comme `validation_decision`
 - `challenge` n'est pas une posture aval-consommable terminale
 - `challenge` doit etre resolu par la table de combinaison vers `final_judgment_posture`
+- `challenge` sur un primaire `answer` ne doit pas etre rabattu mecaniquement sur `clarify`
+- en V1, il peut deboucher sur `final_judgment_posture = answer` quand la validation juge qu'une correction du verdict primaire reste compatible avec une reponse finale normale
 
 ## 6. Minimal Normative Combination Table
 
@@ -116,7 +118,7 @@ Table minimale retenue:
 {
     "answer": {
         "confirm": "answer",
-        "challenge": "clarify",
+        "challenge": "answer",
         "clarify": "clarify",
         "suspend": "suspend",
     },
@@ -141,9 +143,11 @@ Lecture normative compacte:
 2. `clarify` force `final_judgment_posture = clarify`
 3. `suspend` force `final_judgment_posture = suspend`
 4. `challenge` n'est pas terminal pour l'aval
-5. `challenge` se resout conservativement vers:
-   - `clarify` si la posture primaire etait `answer` ou `clarify`
+5. `challenge` se resout vers:
+   - `answer` si la posture primaire etait `answer`
+   - `clarify` si la posture primaire etait `clarify`
    - `suspend` si la posture primaire etait deja `suspend`
+6. cette resolution garde `challenge` visible comme decision de validation sans exclure artificiellement une posture finale `answer`
 
 Regle forte:
 
@@ -158,7 +162,7 @@ La forme canonique minimale retenue est:
 {
     "schema_version": "v1",
     "validation_decision": "challenge",
-    "final_judgment_posture": "clarify",
+    "final_judgment_posture": "answer",
     "pipeline_directives_final": ["..."],
 }
 ```
