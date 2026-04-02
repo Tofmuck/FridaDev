@@ -132,6 +132,67 @@ def _resolve_recent_context_input(
     )
 
 
+def _canonical_dialogue_messages(value: Mapping[str, Any] | None) -> list[dict[str, Any]]:
+    payload = _mapping(value)
+    raw_messages = payload.get('messages')
+    if not isinstance(raw_messages, list):
+        return []
+
+    messages: list[dict[str, Any]] = []
+    for item in raw_messages:
+        message_payload = _mapping(item)
+        role = str(message_payload.get('role') or '').strip()
+        content = str(message_payload.get('content') or '').strip()
+        if role not in {'user', 'assistant'} or not content:
+            continue
+        timestamp = str(message_payload.get('timestamp') or '').strip() or None
+        messages.append(
+            {
+                'role': role,
+                'content': content,
+                'timestamp': timestamp,
+            }
+        )
+    return messages
+
+
+def _resolve_validation_dialogue_context(
+    *,
+    conversation: Mapping[str, Any],
+    recent_context_payload: Mapping[str, Any] | None,
+    user_msg: str,
+    now_iso: str,
+) -> dict[str, Any]:
+    base_messages = _canonical_dialogue_messages(recent_context_payload)
+    if base_messages:
+        return {
+            'schema_version': str(_mapping(recent_context_payload).get('schema_version') or recent_context_input.SCHEMA_VERSION),
+            'messages': base_messages,
+        }
+
+    rebuilt_payload = recent_context_input.build_recent_context_input(
+        messages=conversation.get('messages', []),
+        summary_input_payload=None,
+    )
+    rebuilt_messages = _canonical_dialogue_messages(rebuilt_payload)
+    if rebuilt_messages:
+        return {
+            'schema_version': recent_context_input.SCHEMA_VERSION,
+            'messages': rebuilt_messages,
+        }
+
+    return {
+        'schema_version': recent_context_input.SCHEMA_VERSION,
+        'messages': [
+            {
+                'role': 'user',
+                'content': str(user_msg or ''),
+                'timestamp': str(now_iso or '').strip() or None,
+            }
+        ],
+    }
+
+
 def _resolve_recent_window_input(
     *,
     recent_context_payload: Mapping[str, Any] | None,
@@ -309,10 +370,16 @@ def _run_hermeneutic_node_insertion_point(
         stimmung_input=stimmung_input,
         web_input=web_input,
     )
+    validation_dialogue_context = _resolve_validation_dialogue_context(
+        conversation=conversation,
+        recent_context_payload=recent_context_input,
+        user_msg=user_msg,
+        now_iso=now_iso,
+    )
     validated_result = validation_agent.build_validated_output(
         primary_verdict=primary_payload['primary_verdict'],
         justifications={},
-        validation_dialogue_context=recent_context_input or {},
+        validation_dialogue_context=validation_dialogue_context,
         canonical_inputs={
             'time_input': _mapping(time_input),
             'memory_retrieved': _mapping(memory_retrieved),

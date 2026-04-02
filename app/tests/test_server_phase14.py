@@ -756,6 +756,104 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_rebuilds_validation_dialogue_context_when_recent_context_is_empty_after_summary_cutoff(self) -> None:
+        observed = {'validation_dialogue_context': None}
+        conversation = {
+            'id': 'conv-validation-context-fallback-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok validation context fallback'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_now_iso = self.server.chat_service._now_iso
+        original_get_active_summary = self.server.chat_service.conversations_prompt_window.get_active_summary
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        self.server.chat_service._now_iso = lambda: '2026-03-26T10:00:00Z'
+        self.server.chat_service.conversations_prompt_window.get_active_summary = lambda *_args, **_kwargs: {
+            'id': 'sum-future-cutoff-phase14',
+            'conversation_id': 'conv-validation-context-fallback-phase14',
+            'start_ts': '2026-03-25T08:00:00Z',
+            'end_ts': '2026-03-26T12:00:00Z',
+            'content': 'Résumé actif avec cutoff futur',
+        }
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'incertain',
+                'proof_regime': 'source_explicite_requise',
+                'uncertainty_posture': 'prudente',
+                'judgment_posture': 'answer',
+                'discursive_regime': 'simple',
+                'resituation_level': 'none',
+                'time_reference_mode': 'atemporal',
+                'source_priority': [['tour_utilisateur']],
+                'source_conflicts': [],
+                'pipeline_directives_provisional': ['posture_answer'],
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+
+        def fake_build_validated_output(**kwargs):
+            observed['validation_dialogue_context'] = kwargs.get('validation_dialogue_context')
+            return self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'confirm',
+                    'final_judgment_posture': 'answer',
+                    'pipeline_directives_final': ['posture_answer'],
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+
+        self.server.chat_service.validation_agent.build_validated_output = fake_build_validated_output
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service._now_iso = original_now_iso
+            self.server.chat_service.conversations_prompt_window.get_active_summary = original_get_active_summary
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(
+            observed['validation_dialogue_context'],
+            {
+                'schema_version': 'v1',
+                'messages': [
+                    {
+                        'role': 'user',
+                        'content': 'Bonjour',
+                        'timestamp': '2026-03-26T10:00:00Z',
+                    }
+                ],
+            },
+        )
+        self.assertEqual(observed['validation_dialogue_context']['schema_version'], 'v1')
+        self.assertTrue(observed['validation_dialogue_context']['messages'])
+        self.assertEqual(observed['validation_dialogue_context']['messages'][-1]['role'], 'user')
+        self.assertEqual(observed['validation_dialogue_context']['messages'][-1]['content'], 'Bonjour')
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_exposes_canonical_recent_window_to_hermeneutic_insertion_point(self) -> None:
         observed = {'recent_window_input': None}
         conversation = {
