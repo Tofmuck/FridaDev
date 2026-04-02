@@ -275,9 +275,9 @@ Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, pa
 - [x] Definir la sortie canonique `discursive_regime`.
 - [x] Definir la sortie canonique `resituation_level`.
 - [x] Definir la taxonomie canonique de `time_reference_mode` et son articulation avec `discursive_regime` / `resituation_level`.
-- [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives_provisional`).
-- [ ] Definir le fail-open du noeud primaire (fallback minimal + auditabilite) sans effondrement du pipeline.
-- [ ] Definir les champs minimaux d'auditabilite de ce payload.
+- [x] Definir le payload unique du noeud (incluant `schema_version`, `epistemic_regime`, `proof_regime`, `uncertainty_posture`, `judgment_posture`, `discursive_regime`, `resituation_level`, `time_reference_mode`, `source_priority`, `source_conflicts`, `pipeline_directives_provisional` et un bloc `audit` minimal).
+- [x] Definir le fail-open du noeud primaire (meme forme canonique de payload + fallback explicite) sans effondrement du pipeline.
+- [x] Definir les champs minimaux d'auditabilite de ce payload.
 
 Pause normative fermee:
 - Doc normatif: `hermeneutic-node-output-regime-contract.md`
@@ -295,8 +295,16 @@ Pause normative fermee:
 - Fichier Python candidat: `node_state.py` (a confirmer)
 - Raison: le sous-bloc runtime `node_state` est maintenant pose comme state de pilotage conversation-scoped, distinct du payload complet, des logs et des futurs snapshots d'audit.
 
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-primary-verdict-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-primary-verdict-contract.md`
+- Module code cible: `core.hermeneutic_node.runtime.primary_node`
+- Repertoire code cible: `app/core/hermeneutic_node/runtime/`
+- Fichier Python candidat: `primary_node.py` (a confirmer)
+- Raison: le verdict primaire unique est maintenant pose avec une forme canonique minimale, un fail-open primaire explicite et un bloc d'auditabilite minimal, sans fermer encore la validation finale ni l'implementation runtime.
+
 Sortie attendue du lot complet: snapshot persistant + payload unique complet, compact et versionne.
-Validation minimale des sous-pas fermes: `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`; `state_persistence` fixe un `node_state` minimal conversation-scoped et des regles d'inertie bornees; le payload unique complet, le fail-open primaire et l'auditabilite complete restent ouverts.
+Validation minimale des sous-pas fermes: `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`; `state_persistence` fixe un `node_state` minimal conversation-scoped et des regles d'inertie bornees; `primary_verdict` fixe la forme canonique unique du verdict primaire, le fail-open primaire explicite et un bloc d'auditabilite minimal; l'audit hermeneutique complet par tour et la validation finale restent ouverts.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 

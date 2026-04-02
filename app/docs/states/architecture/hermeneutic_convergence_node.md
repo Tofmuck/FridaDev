@@ -226,7 +226,7 @@ Le dispositif produit deux niveaux de sortie:
 
 La sortie primaire du noeud doit rester compacte, structuree, stable et testable.
 
-Cette sortie primaire doit au minimum contenir:
+Le noyau doctrinal de cette sortie primaire doit au minimum contenir:
 - un `discursive_regime` ;
 - un `epistemic_regime` ;
 - un `proof_regime` ;
@@ -234,6 +234,7 @@ Cette sortie primaire doit au minimum contenir:
 - un `resituation_level` ;
 - un `time_reference_mode` ;
 - une `source_priority` ou hierarchie effective des sources ;
+- un `source_conflicts` compact ;
 - un `uncertainty_posture` ;
 - des `pipeline_directives_provisional`.
 
@@ -646,7 +647,7 @@ Chaque determinant doit avoir :
 
 ### 11.3 Etape 3 - Sortie minimale du noeud
 
-V1 recommandee :
+V1 recommandee (noyau doctrinal) :
 - `discursive_regime`
 - `epistemic_regime`
 - `proof_regime`
@@ -654,6 +655,7 @@ V1 recommandee :
 - `resituation_level`
 - `time_reference_mode`
 - `source_priority`
+- `source_conflicts`
 - `uncertainty_posture`
 - `pipeline_directives_provisional`
 
