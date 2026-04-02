@@ -316,24 +316,24 @@ Objectif: placer un agent hermeneutique de validation apres le noeud primaire et
 
 Perimetre: validation agent, verdict final valide, branchement aval, observabilite du dispositif final, preconditions shadow.
 
-- [ ] Definir le contrat de revision: entree = verdict primaire + justifications + directives provisoires + entrees canoniques.
-- [ ] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
+- [x] Definir le contrat de revision: entree = verdict primaire + justifications + directives provisoires + entrees canoniques.
+- [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
 - [ ] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
 - [ ] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.
 - [ ] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire).
-- [ ] Definir le cadre operationnel du validation agent: budget token, timeout, fail-open, circuit breaker, cout/latence cible.
+- [x] Definir le cadre operationnel du validation agent: budget token, timeout, fail-open, circuit breaker, cout/latence cible.
 - [ ] Definir les signaux d'observabilite du dispositif final (noeud primaire + validation), sans inflation de logs.
 - [ ] Definir les KPI minimaux de stabilite pour ce branchement.
 - [ ] Definir les preconditions strictes d'une future shadow globale.
 - [ ] Verifier que la shadow globale reste hors scope tant que ces preconditions ne sont pas remplies.
 
-Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-validation-agent-contract.md`
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-validation-agent-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-validation-agent-contract.md`
 - Module code cible: `core.hermeneutic_node.validation.validation_agent`
 - Repertoire code cible: `app/core/hermeneutic_node/validation/`
 - Fichier Python cible: `validation_agent.py`
-- Raison: la revision finale est souveraine sur la validation du verdict, la table de combinaison normative et le cadre operationnel; ce contrat doit preceder le code.
+- Raison: la revision finale est souveraine sur la validation du verdict, mais le validation agent V1 doit d'abord etre pose comme juge borne, en une passe, relisant `primary_verdict` avec un `validation_dialogue_context` recent elargi comme matiere hermeneutique principale; ce contrat doit preceder le code.
 
 Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + observabilite complete + check-list pre-shadow.
 Validation minimale: l'aval consomme explicitement une sortie revisee (`confirm|challenge|clarify|suspend`) et des `pipeline_directives_final`, jamais un verdict primaire brut.
