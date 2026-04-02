@@ -139,7 +139,7 @@ def _build_primary_verdict(
     }
 
 
-def _fallback_existing_state(
+def _usable_existing_node_state(
     *,
     conversation_id: str,
     existing_node_state: Mapping[str, Any] | None,
@@ -157,18 +157,14 @@ def _fallback_result(
     *,
     conversation_id: str,
     updated_at: str,
-    existing_node_state: Mapping[str, Any] | None,
+    usable_existing_node_state: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    usable_existing_state = _fallback_existing_state(
-        conversation_id=conversation_id,
-        existing_node_state=existing_node_state,
-    )
     fallback_node_state = build_node_state(
         conversation_id=conversation_id,
         updated_at=updated_at,
         judgment_posture=_FALLBACK_JUDGMENT_POSTURE,
         output_regime=_FALLBACK_OUTPUT_REGIME,
-        existing_node_state=usable_existing_state,
+        existing_node_state=usable_existing_node_state,
     )
     fallback_primary_verdict = _build_primary_verdict(
         epistemic_payload=_FALLBACK_EPISTEMIC,
@@ -205,6 +201,10 @@ def build_primary_node(
 ) -> dict[str, Any]:
     conversation_id_value = _validated_conversation_id(conversation_id)
     updated_at_value = _validated_updated_at(updated_at)
+    usable_existing_node_state = _usable_existing_node_state(
+        conversation_id=conversation_id_value,
+        existing_node_state=existing_node_state,
+    )
 
     try:
         epistemic_payload = build_epistemic_regime(
@@ -255,7 +255,7 @@ def build_primary_node(
             conversation_id=conversation_id_value,
             judgment_posture=judgment_payload["judgment_posture"],
             output_regime=current_output_regime,
-            existing_node_state=existing_node_state,
+            existing_node_state=usable_existing_node_state,
         )
         stabilized_output_regime = dict(inertia_payload["output_regime"])
         next_node_state = build_node_state(
@@ -263,7 +263,7 @@ def build_primary_node(
             updated_at=updated_at_value,
             judgment_posture=judgment_payload["judgment_posture"],
             output_regime=stabilized_output_regime,
-            existing_node_state=existing_node_state,
+            existing_node_state=usable_existing_node_state,
         )
         primary_verdict = _build_primary_verdict(
             epistemic_payload=epistemic_payload,
@@ -283,5 +283,5 @@ def build_primary_node(
         return _fallback_result(
             conversation_id=conversation_id_value,
             updated_at=updated_at_value,
-            existing_node_state=existing_node_state,
+            usable_existing_node_state=usable_existing_node_state,
         )

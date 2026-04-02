@@ -362,6 +362,70 @@ class PrimaryNodeTests(unittest.TestCase):
             },
         )
 
+    def test_build_primary_node_ignores_invalid_existing_node_state_on_valid_turn(self) -> None:
+        payload = primary_node.build_primary_node(
+            conversation_id="conv-1",
+            updated_at="2026-04-02T12:00:00Z",
+            time_input=_time(),
+            user_turn_input=_user_turn(gesture="regulation"),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+            existing_node_state={},
+        )
+
+        self.assertFalse(payload["primary_verdict"]["audit"]["fail_open"])
+        self.assertFalse(payload["primary_verdict"]["audit"]["state_used"])
+        self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
+        self.assertEqual(payload["primary_verdict"]["discursive_regime"], "cadre")
+        self.assertEqual(payload["primary_verdict"]["resituation_level"], "explicit")
+        self.assertEqual(
+            payload["node_state"],
+            {
+                "schema_version": "v1",
+                "conversation_id": "conv-1",
+                "updated_at": "2026-04-02T12:00:00Z",
+                "last_judgment_posture": "answer",
+                "last_answer_output_regime": {
+                    "discursive_regime": "cadre",
+                    "resituation_level": "explicit",
+                    "time_reference_mode": "atemporal",
+                },
+            },
+        )
+
+    def test_build_primary_node_ignores_cross_conversation_state_on_valid_turn(self) -> None:
+        payload = primary_node.build_primary_node(
+            conversation_id="conv-1",
+            updated_at="2026-04-02T12:00:00Z",
+            time_input=_time(),
+            user_turn_input=_user_turn(gesture="regulation"),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+            existing_node_state=_existing_state(conversation_id="conv-other"),
+        )
+
+        self.assertFalse(payload["primary_verdict"]["audit"]["fail_open"])
+        self.assertFalse(payload["primary_verdict"]["audit"]["state_used"])
+        self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
+        self.assertEqual(payload["primary_verdict"]["discursive_regime"], "cadre")
+        self.assertEqual(payload["primary_verdict"]["resituation_level"], "explicit")
+        self.assertEqual(
+            payload["node_state"],
+            {
+                "schema_version": "v1",
+                "conversation_id": "conv-1",
+                "updated_at": "2026-04-02T12:00:00Z",
+                "last_judgment_posture": "answer",
+                "last_answer_output_regime": {
+                    "discursive_regime": "cadre",
+                    "resituation_level": "explicit",
+                    "time_reference_mode": "atemporal",
+                },
+            },
+        )
+
     def test_build_primary_node_fail_opens_on_invalid_user_turn_signals(self) -> None:
         payload = primary_node.build_primary_node(
             conversation_id="conv-1",
@@ -442,25 +506,6 @@ class PrimaryNodeTests(unittest.TestCase):
             "pipeline_directives_provisional",
             "audit",
         })
-
-    def test_build_primary_node_fail_opens_on_invalid_existing_node_state(self) -> None:
-        payload = primary_node.build_primary_node(
-            conversation_id="conv-1",
-            updated_at="2026-04-02T12:00:00Z",
-            time_input=_time(),
-            user_turn_input=_user_turn(),
-            user_turn_signals=_signals(),
-            existing_node_state={},
-        )
-
-        self.assertTrue(payload["primary_verdict"]["audit"]["fail_open"])
-        self.assertFalse(payload["primary_verdict"]["audit"]["state_used"])
-        self.assertEqual(
-            payload["primary_verdict"]["pipeline_directives_provisional"],
-            ["posture_suspend", "fallback_primary_verdict"],
-        )
-        self.assertIsNone(payload["node_state"]["last_answer_output_regime"])
-        self.assertNotIn("pipeline_directives_final", payload["primary_verdict"])
 
 
 if __name__ == "__main__":
