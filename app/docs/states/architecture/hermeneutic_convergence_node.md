@@ -650,9 +650,11 @@ V1 recommandee :
 - `discursive_regime`
 - `epistemic_regime`
 - `proof_regime`
+- `judgment_posture`
 - `resituation_level`
 - `time_reference_mode`
 - `source_priority`
+- `uncertainty_posture`
 - `pipeline_directives_provisional`
 
 ### 11.4 Etape 4 - Validation avant aval
