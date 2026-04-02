@@ -154,6 +154,7 @@ Table `public.runtime_settings`
 - `payload` (JSONB)
 - Contraintes notables:
 - sections autorisees via `runtime_settings_section_chk`
+- sections runtime actuelles: `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`
 - `payload` doit etre un objet JSON via `runtime_settings_payload_object_chk`
 - Index notable:
 - `runtime_settings_updated_at_idx`

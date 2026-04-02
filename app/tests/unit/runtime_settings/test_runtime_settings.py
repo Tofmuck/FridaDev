@@ -36,6 +36,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'main_model',
                 'arbiter_model',
                 'summary_model',
+                'stimmung_agent_model',
+                'validation_agent_model',
                 'embedding',
                 'database',
                 'services',
@@ -305,6 +307,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'stimmung_agent_model',
+                'validation_agent_model',
                 'embedding',
                 'database',
                 'resources',
@@ -418,6 +422,39 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
         self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
 
+    def test_get_section_readonly_info_stimmung_agent_model_exposes_prompt_and_shared_transport(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('stimmung_agent_model')
+
+        self.assertEqual(readonly_info['prompt_path']['label'], 'STIMMUNG_AGENT_PROMPT_PATH')
+        self.assertEqual(readonly_info['prompt_path']['value'], 'prompts/stimmung_agent.txt')
+        self.assertEqual(
+            readonly_info['prompt_loader']['value'],
+            'core.stimmung_agent._load_system_prompt()',
+        )
+        self.assertIn('Tu es un classificateur affectif minimal', readonly_info['prompt_text']['value'])
+        self.assertIn('main_model.title_stimmung_agent', readonly_info['shared_transport']['value'])
+        self.assertEqual(
+            readonly_info['recent_window_turn_cap']['value'],
+            runtime_settings.canonical_recent_window_input.MAX_RECENT_TURNS,
+        )
+        self.assertEqual(readonly_info['max_context_message_chars']['value'], 220)
+        self.assertEqual(readonly_info['max_current_turn_chars']['value'], 600)
+
+    def test_get_section_readonly_info_validation_agent_model_exposes_prompt_and_contract(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('validation_agent_model')
+
+        self.assertEqual(readonly_info['prompt_path']['label'], 'VALIDATION_AGENT_PROMPT_PATH')
+        self.assertEqual(readonly_info['prompt_path']['value'], 'prompts/validation_agent.txt')
+        self.assertEqual(
+            readonly_info['prompt_loader']['value'],
+            'core.hermeneutic_node.validation.validation_agent._load_system_prompt()',
+        )
+        self.assertIn('validation_dialogue_context', readonly_info['prompt_text']['value'])
+        self.assertIn('main_model.title_validation_agent', readonly_info['shared_transport']['value'])
+        self.assertEqual(readonly_info['validation_context_messages_cap']['value'], 8)
+        self.assertEqual(readonly_info['validation_context_message_chars']['value'], 420)
+        self.assertIn('validation_decision', readonly_info['validated_output_contract']['value'])
+
     def test_get_section_readonly_info_services_exposes_web_reformulation_prompt(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('services')
 
@@ -444,6 +481,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             'main_model',
             'arbiter_model',
             'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
             'services',
         }
         expected_empty = {
@@ -469,6 +508,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'stimmung_agent_model',
+                'validation_agent_model',
                 'database',
                 'resources',
             ),
@@ -481,12 +522,14 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'stimmung_agent_model',
+                'validation_agent_model',
                 'database',
                 'resources',
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[2].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[4].payload['backend']['origin'], 'db_seed')
 
     def test_runtime_section_falls_back_to_env_when_table_is_empty(self) -> None:
         view = runtime_settings.get_runtime_section('main_model', fetcher=lambda: {})
@@ -948,7 +991,15 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(observed['committed'])
         self.assertEqual(
             result['inserted_sections'],
-            ('arbiter_model', 'summary_model', 'database', 'services', 'resources'),
+            (
+                'arbiter_model',
+                'summary_model',
+                'stimmung_agent_model',
+                'validation_agent_model',
+                'database',
+                'services',
+                'resources',
+            ),
         )
         self.assertEqual(result['updated_sections'], ())
         self.assertEqual(result['updated_fields'], ())
@@ -958,12 +1009,14 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             for query, params in zip(observed['queries'], observed['params'])
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
-        self.assertEqual(len(runtime_payloads), 5)
+        self.assertEqual(len(runtime_payloads), 7)
         self.assertEqual(runtime_payloads[0]['model']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[0]['timeout_s']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[2]['backend']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[3]['searxng_url']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[4]['llm_identity_path']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[2]['primary_model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[3]['fallback_model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[4]['backend']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[5]['searxng_url']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[6]['llm_identity_path']['origin'], 'db_seed')
 
     def test_bootstrap_runtime_settings_from_env_does_not_overwrite_existing_sections(self) -> None:
         observed = {
@@ -1798,6 +1851,66 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['api_key_runtime']['ok'])
         self.assertIn('db_encrypted', checks['api_key_runtime']['detail'])
+
+    def test_validate_runtime_section_accepts_candidate_stimmung_agent_model_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-stimmung'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'stimmung_agent_model',
+                {
+                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano'},
+                    'timeout_s': {'value': 11},
+                    'temperature': {'value': 0.2},
+                    'top_p': {'value': 0.95},
+                    'max_tokens': {'value': 240},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['primary_model']['ok'])
+        self.assertTrue(checks['fallback_model']['ok'])
+        self.assertTrue(checks['timeout_s']['ok'])
+        self.assertTrue(checks['temperature']['ok'])
+        self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['max_tokens']['ok'])
+        self.assertTrue(checks['shared_transport_runtime']['ok'])
+        self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
+
+    def test_validate_runtime_section_accepts_candidate_validation_agent_model_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation-agent'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'validation_agent_model',
+                {
+                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano'},
+                    'timeout_s': {'value': 9},
+                    'temperature': {'value': 0.0},
+                    'top_p': {'value': 1.0},
+                    'max_tokens': {'value': 96},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['primary_model']['ok'])
+        self.assertTrue(checks['fallback_model']['ok'])
+        self.assertTrue(checks['timeout_s']['ok'])
+        self.assertTrue(checks['temperature']['ok'])
+        self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['max_tokens']['ok'])
+        self.assertTrue(checks['shared_transport_runtime']['ok'])
+        self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
 
     def test_validate_runtime_section_accepts_candidate_embedding_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value

@@ -173,6 +173,8 @@ _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'main-model': 'main_model',
     'arbiter-model': 'arbiter_model',
     'summary-model': 'summary_model',
+    'stimmung-agent-model': 'stimmung_agent_model',
+    'validation-agent-model': 'validation_agent_model',
     'embedding': 'embedding',
     'database': 'database',
     'services': 'services',
@@ -638,6 +640,16 @@ def api_admin_settings_summary_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
 
 
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model')
+def api_admin_settings_stimmung_agent_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
+
+
+@app.get(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model')
+def api_admin_settings_validation_agent_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
+
+
 @app.get(f'{_ADMIN_SETTINGS_PREFIX}/embedding')
 def api_admin_settings_embedding_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
@@ -683,6 +695,16 @@ def api_admin_settings_summary_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
 
 
+@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model')
+def api_admin_settings_stimmung_agent_model_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
+
+
+@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model')
+def api_admin_settings_validation_agent_model_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
+
+
 @app.patch(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model')
 def api_admin_settings_arbiter_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
@@ -706,6 +728,16 @@ def api_admin_settings_arbiter_model_validate():
 @app.post(f'{_ADMIN_SETTINGS_PREFIX}/summary-model/validate')
 def api_admin_settings_summary_model_validate():
     return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model/validate')
+def api_admin_settings_stimmung_agent_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
+
+
+@app.post(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model/validate')
+def api_admin_settings_validation_agent_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
 
 
 @app.post(f'{_ADMIN_SETTINGS_PREFIX}/embedding/validate')

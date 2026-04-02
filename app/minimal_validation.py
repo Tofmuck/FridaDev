@@ -417,6 +417,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_section_main_model_js": web_dir / "admin_section_main_model.js",
         "admin_section_arbiter_model_js": web_dir / "admin_section_arbiter_model.js",
         "admin_section_summary_model_js": web_dir / "admin_section_summary_model.js",
+        "admin_section_stimmung_agent_model_js": web_dir / "admin_section_stimmung_agent_model.js",
+        "admin_section_validation_agent_model_js": web_dir / "admin_section_validation_agent_model.js",
         "admin_section_embedding_js": web_dir / "admin_section_embedding.js",
         "admin_section_database_js": web_dir / "admin_section_database.js",
         "admin_section_services_js": web_dir / "admin_section_services.js",
@@ -446,6 +448,8 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_section_main_model_js = required_files["admin_section_main_model_js"].read_text(encoding="utf-8")
     admin_section_arbiter_model_js = required_files["admin_section_arbiter_model_js"].read_text(encoding="utf-8")
     admin_section_summary_model_js = required_files["admin_section_summary_model_js"].read_text(encoding="utf-8")
+    admin_section_stimmung_agent_model_js = required_files["admin_section_stimmung_agent_model_js"].read_text(encoding="utf-8")
+    admin_section_validation_agent_model_js = required_files["admin_section_validation_agent_model_js"].read_text(encoding="utf-8")
     admin_section_embedding_js = required_files["admin_section_embedding_js"].read_text(encoding="utf-8")
     admin_section_database_js = required_files["admin_section_database_js"].read_text(encoding="utf-8")
     admin_section_services_js = required_files["admin_section_services_js"].read_text(encoding="utf-8")
@@ -458,6 +462,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{admin_section_main_model_js}\n"
         f"{admin_section_arbiter_model_js}\n"
         f"{admin_section_summary_model_js}\n"
+        f"{admin_section_stimmung_agent_model_js}\n"
+        f"{admin_section_validation_agent_model_js}\n"
         f"{admin_section_embedding_js}\n"
         f"{admin_section_database_js}\n"
         f"{admin_section_services_js}\n"
@@ -472,6 +478,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_section_main_model.js",
         "admin_section_arbiter_model.js",
         "admin_section_summary_model.js",
+        "admin_section_stimmung_agent_model.js",
+        "admin_section_validation_agent_model.js",
         "admin_section_embedding.js",
         "admin_section_database.js",
         "admin_section_services.js",
@@ -494,6 +502,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/settings/arbiter-model/validate",
         "/api/admin/settings/summary-model",
         "/api/admin/settings/summary-model/validate",
+        "/api/admin/settings/stimmung-agent-model",
+        "/api/admin/settings/stimmung-agent-model/validate",
+        "/api/admin/settings/validation-agent-model",
+        "/api/admin/settings/validation-agent-model/validate",
         "/api/admin/settings/embedding",
         "/api/admin/settings/embedding/validate",
         "/api/admin/settings/database",
@@ -537,6 +549,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminSummaryModel-${field}",
         "adminSummaryModelFieldError-${field}",
         "adminSummaryModelSource-${spec.key}",
+        "adminStimmungAgentModel-${field}",
+        "adminStimmungAgentModelFieldError-${field}",
+        "adminStimmungAgentModelSource-${spec.key}",
+        "adminValidationAgentModel-${field}",
+        "adminValidationAgentModelFieldError-${field}",
+        "adminValidationAgentModelSource-${spec.key}",
         "adminEmbedding-${field}",
         "adminEmbeddingFieldError-${field}",
         "adminEmbeddingSource-${spec.key}",
@@ -571,6 +589,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminSummaryModel-${spec.key}",
         "adminSummaryModelFieldError-${spec.key}",
         "adminSummaryModelSource-${spec.key}",
+        "adminStimmungAgentModel-${spec.key}",
+        "adminStimmungAgentModelFieldError-${spec.key}",
+        "adminStimmungAgentModelSource-${spec.key}",
+        "adminValidationAgentModel-${spec.key}",
+        "adminValidationAgentModelFieldError-${spec.key}",
+        "adminValidationAgentModelSource-${spec.key}",
         "adminEmbedding-${spec.key}",
         "adminEmbeddingFieldError-${spec.key}",
         "adminEmbeddingSource-${spec.key}",
@@ -625,6 +649,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         '[data-field="${field}"]',
         '[data-arbiter-field="${field}"]',
         '[data-summary-field="${field}"]',
+        '[data-stimmung-agent-field="${field}"]',
+        '[data-validation-agent-field="${field}"]',
         '[data-embedding-field="${field}"]',
         '[data-database-field="${field}"]',
         '[data-services-field="${field}"]',
@@ -671,6 +697,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminMainModelFields",
         "adminArbiterModelFields",
         "adminSummaryModelFields",
+        "adminStimmungAgentModelFields",
+        "adminValidationAgentModelFields",
         "adminEmbeddingFields",
         "adminDatabaseFields",
         "adminServicesFields",
@@ -701,6 +729,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="admin_section_main_model.js"',
         'script src="admin_section_arbiter_model.js"',
         'script src="admin_section_summary_model.js"',
+        'script src="admin_section_stimmung_agent_model.js"',
+        'script src="admin_section_validation_agent_model.js"',
         'script src="admin_section_embedding.js"',
         'script src="admin_section_database.js"',
         'script src="admin_section_services.js"',
@@ -728,6 +758,16 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="adminSummaryModelSave"',
         'id="adminSummaryModelReadonlyInfo"',
         'id="adminSummaryModelChecks"',
+        'id="adminStimmungAgentModelForm"',
+        'id="adminStimmungAgentModelValidate"',
+        'id="adminStimmungAgentModelSave"',
+        'id="adminStimmungAgentModelReadonlyInfo"',
+        'id="adminStimmungAgentModelChecks"',
+        'id="adminValidationAgentModelForm"',
+        'id="adminValidationAgentModelValidate"',
+        'id="adminValidationAgentModelSave"',
+        'id="adminValidationAgentModelReadonlyInfo"',
+        'id="adminValidationAgentModelChecks"',
         'id="adminEmbeddingForm"',
         'id="adminEmbeddingValidate"',
         'id="adminEmbeddingSave"',
@@ -772,6 +812,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/settings/arbiter-model/validate",
         "/api/admin/settings/summary-model",
         "/api/admin/settings/summary-model/validate",
+        "/api/admin/settings/stimmung-agent-model",
+        "/api/admin/settings/stimmung-agent-model/validate",
+        "/api/admin/settings/validation-agent-model",
+        "/api/admin/settings/validation-agent-model/validate",
         "/api/admin/settings/embedding",
         "/api/admin/settings/embedding/validate",
         "/api/admin/settings/database",
@@ -796,6 +840,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "createMainModelSectionController",
         "createArbiterModelSectionController",
         "createSummaryModelSectionController",
+        "createStimmungAgentModelSectionController",
+        "createValidationAgentModelSectionController",
         "createEmbeddingSectionController",
         "createDatabaseSectionController",
         "createServicesSectionController",
@@ -805,6 +851,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminArbiterModelReadonlyInfo",
         "adminSummaryModelSave",
         "adminSummaryModelReadonlyInfo",
+        "adminStimmungAgentModelSave",
+        "adminStimmungAgentModelReadonlyInfo",
+        "adminValidationAgentModelSave",
+        "adminValidationAgentModelReadonlyInfo",
         "adminEmbeddingSave",
         "adminEmbeddingTokenReplace",
         "adminDatabaseSave",

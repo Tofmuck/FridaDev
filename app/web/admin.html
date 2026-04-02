@@ -33,7 +33,7 @@
           Surface V1 reservee aux variables contingentes de deploiement. L'edition detaillee s'ouvre section par section.
         </p>
         <p class="admin-sublead">
-          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les premiers blocs complets pour le modele principal, l'arbitre, le resumeur et les embeddings.
+          Cette facade reste volontairement epuree: vue d'ensemble globale, puis les blocs complets pour le modele principal, l'arbitre, le resumeur, l'agent Stimmung, l'agent de validation et les embeddings.
         </p>
       </div>
 
@@ -234,6 +234,92 @@
       <div id="adminSummaryModelChecks" class="admin-check-list" aria-live="polite"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="admin-stimmung-agent-model-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Sixieme bloc detaille</p>
+          <h2 id="admin-stimmung-agent-model-title">Agent Stimmung</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminStimmungAgentModelDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminStimmungAgentModelValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminStimmungAgentModelSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc affectif amont: modele primaire/repli, echantillonnage, timeout et prompt de composant en lecture seule.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminStimmungAgentModelSource" class="admin-chip">Section: chargement</span>
+      </div>
+
+      <p id="adminStimmungAgentModelStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc Stimmung...
+      </p>
+
+      <form id="adminStimmungAgentModelForm" class="admin-form" novalidate>
+        <div id="adminStimmungAgentModelFields" class="admin-form-grid"></div>
+      </form>
+
+      <section class="admin-readonly-panel" aria-labelledby="admin-stimmung-agent-model-readonly-title">
+        <div class="admin-readonly-head">
+          <div>
+            <p class="admin-kicker">Lecture seule</p>
+            <h3 id="admin-stimmung-agent-model-readonly-title">Prompt Stimmung et reperes runtime</h3>
+          </div>
+          <span class="admin-readonly-badge">Hors edition</span>
+        </div>
+        <div id="adminStimmungAgentModelReadonlyInfo" class="admin-readonly-grid"></div>
+      </section>
+
+      <div id="adminStimmungAgentModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="admin-validation-agent-model-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Septieme bloc detaille</p>
+          <h2 id="admin-validation-agent-model-title">Agent de validation</h2>
+        </div>
+        <div class="admin-inline-actions">
+          <span id="adminValidationAgentModelDirty" class="admin-chip" data-state="clean">A jour</span>
+          <button id="adminValidationAgentModelValidate" class="admin-btn admin-btn-secondary" type="button">Verifier</button>
+          <button id="adminValidationAgentModelSave" class="admin-btn admin-btn-primary" type="button">Enregistrer</button>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Bloc de relecture aval: modele primaire/repli, echantillonnage, timeout, budget de sortie et prompt en lecture seule.
+      </p>
+
+      <div class="admin-inline-meta">
+        <span id="adminValidationAgentModelSource" class="admin-chip">Section: chargement</span>
+      </div>
+
+      <p id="adminValidationAgentModelStatus" class="admin-inline-status" role="status" aria-live="polite">
+        Chargement du bloc validation...
+      </p>
+
+      <form id="adminValidationAgentModelForm" class="admin-form" novalidate>
+        <div id="adminValidationAgentModelFields" class="admin-form-grid"></div>
+      </form>
+
+      <section class="admin-readonly-panel" aria-labelledby="admin-validation-agent-model-readonly-title">
+        <div class="admin-readonly-head">
+          <div>
+            <p class="admin-kicker">Lecture seule</p>
+            <h3 id="admin-validation-agent-model-readonly-title">Prompt validation et reperes runtime</h3>
+          </div>
+          <span class="admin-readonly-badge">Hors edition</span>
+        </div>
+        <div id="adminValidationAgentModelReadonlyInfo" class="admin-readonly-grid"></div>
+      </section>
+
+      <div id="adminValidationAgentModelChecks" class="admin-check-list" aria-live="polite"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="admin-embedding-title">
       <div class="admin-section-head">
         <div>
@@ -355,7 +441,7 @@
     <section class="admin-section-block" aria-labelledby="admin-services-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Sixieme bloc detaille</p>
+          <p class="admin-kicker">Huitieme bloc detaille</p>
           <h2 id="admin-services-title">Services externes</h2>
         </div>
         <div class="admin-inline-actions">
@@ -425,7 +511,7 @@
     <section class="admin-section-block" aria-labelledby="admin-resources-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Septieme bloc detaille</p>
+          <p class="admin-kicker">Neuvieme bloc detaille</p>
           <h2 id="admin-resources-title">Ressources</h2>
         </div>
         <div class="admin-inline-actions">
@@ -481,6 +567,8 @@
   <script src="admin_section_main_model.js"></script>
   <script src="admin_section_arbiter_model.js"></script>
   <script src="admin_section_summary_model.js"></script>
+  <script src="admin_section_stimmung_agent_model.js"></script>
+  <script src="admin_section_validation_agent_model.js"></script>
   <script src="admin_section_embedding.js"></script>
   <script src="admin_section_database.js"></script>
   <script src="admin_section_services.js"></script>

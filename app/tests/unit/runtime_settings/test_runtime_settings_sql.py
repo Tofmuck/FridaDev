@@ -36,6 +36,8 @@ class RuntimeSettingsSqlTests(unittest.TestCase):
             "'main_model'",
             "'arbiter_model'",
             "'summary_model'",
+            "'stimmung_agent_model'",
+            "'validation_agent_model'",
             "'embedding'",
             "'database'",
             "'services'",

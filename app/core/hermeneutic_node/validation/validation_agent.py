@@ -6,7 +6,7 @@ from typing import Any, Mapping, Sequence
 
 import requests
 
-import config
+from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
 
@@ -23,6 +23,7 @@ MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
 MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
 MAX_JUSTIFICATIONS_JSON_CHARS = 700
 MAX_CANONICAL_INPUTS_JSON_CHARS = 700
+RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
@@ -347,6 +348,18 @@ def _build_fail_open_result(*, reason_code: str, model: str) -> ValidationAgentR
     )
 def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
+
+
+def _runtime_model_settings() -> dict[str, Any]:
+    view = runtime_settings.get_validation_agent_model_settings()
+    return {
+        "primary_model": str(view.payload["primary_model"]["value"]),
+        "fallback_model": str(view.payload["fallback_model"]["value"]),
+        "timeout_s": int(view.payload["timeout_s"]["value"]),
+        "temperature": float(view.payload["temperature"]["value"]),
+        "top_p": float(view.payload["top_p"]["value"]),
+        "max_tokens": int(view.payload["max_tokens"]["value"]),
+    }
 def _build_messages(
     *,
     system_prompt: str,
@@ -398,10 +411,14 @@ def _call_model(
     justifications: Mapping[str, Any],
     validation_dialogue_context: Mapping[str, Any],
     canonical_inputs: Mapping[str, Any],
+    timeout_s: int,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
     requests_module: Any,
 ) -> dict[str, str]:
     response = requests_module.post(
-        f"{config.OR_BASE}/chat/completions",
+        llm_client.or_chat_completions_url(),
         json={
             "model": model,
             "messages": _build_messages(
@@ -411,12 +428,12 @@ def _call_model(
                 validation_dialogue_context=validation_dialogue_context,
                 canonical_inputs=canonical_inputs,
             ),
-            "temperature": 0.0,
-            "top_p": 1.0,
-            "max_tokens": MAX_RESPONSE_TOKENS,
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": max_tokens,
         },
-        headers=llm_client.or_headers(caller="llm"),
-        timeout=REQUEST_TIMEOUT_S,
+        headers=llm_client.or_headers(caller="validation_agent"),
+        timeout=timeout_s,
     )
     response.raise_for_status()
     return _validated_model_decision(_safe_json_loads(_extract_response_text(response)))
@@ -445,6 +462,7 @@ def build_validated_output(
     canonical_inputs: Any,
     requests_module: Any = requests,
 ) -> ValidationAgentResult:
+    runtime_model_settings = _runtime_model_settings()
     primary_verdict_payload = _validated_primary_verdict(primary_verdict)
     justifications_payload = _validated_support_mapping(
         justifications,
@@ -460,12 +478,15 @@ def build_validated_output(
 
     system_prompt = _load_system_prompt()
     if not system_prompt:
-        return _build_fail_open_result(reason_code="prompt_missing", model=PRIMARY_MODEL)
+        return _build_fail_open_result(
+            reason_code="prompt_missing",
+            model=runtime_model_settings["primary_model"],
+        )
 
     last_reason_code = "upstream_error"
     for model, decision_source in (
-        (PRIMARY_MODEL, "primary"),
-        (FALLBACK_MODEL, "fallback"),
+        (runtime_model_settings["primary_model"], "primary"),
+        (runtime_model_settings["fallback_model"], "fallback"),
     ):
         try:
             decision_payload = _call_model(
@@ -475,6 +496,10 @@ def build_validated_output(
                 justifications=justifications_payload,
                 validation_dialogue_context=validation_dialogue_context_payload,
                 canonical_inputs=canonical_inputs_payload,
+                timeout_s=runtime_model_settings["timeout_s"],
+                temperature=runtime_model_settings["temperature"],
+                top_p=runtime_model_settings["top_p"],
+                max_tokens=runtime_model_settings["max_tokens"],
                 requests_module=requests_module,
             )
             final_judgment_posture = _resolved_final_judgment_posture(
@@ -499,4 +524,7 @@ def build_validated_output(
         except Exception as exc:
             last_reason_code = _request_reason_code(exc, requests_module)
 
-    return _build_fail_open_result(reason_code=last_reason_code, model=FALLBACK_MODEL)
+    return _build_fail_open_result(
+        reason_code=last_reason_code,
+        model=runtime_model_settings["fallback_model"],
+    )

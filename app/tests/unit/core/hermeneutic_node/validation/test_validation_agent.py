@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -117,14 +118,29 @@ class ValidationAgentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.original_read_prompt = validation_agent.prompt_loader.read_prompt_text
         self.original_or_headers = validation_agent.llm_client.or_headers
+        self.original_or_chat_completions_url = validation_agent.llm_client.or_chat_completions_url
+        self.original_runtime_settings_getter = validation_agent.runtime_settings.get_validation_agent_model_settings
         validation_agent.prompt_loader.read_prompt_text = lambda _path: "SYSTEM PROMPT"
         validation_agent.llm_client.or_headers = lambda caller="llm": {
             "Authorization": f"caller={caller}"
         }
+        validation_agent.llm_client.or_chat_completions_url = lambda: "https://openrouter.example/chat/completions"
+        validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
+            payload={
+                "primary_model": {"value": validation_agent.PRIMARY_MODEL},
+                "fallback_model": {"value": validation_agent.FALLBACK_MODEL},
+                "timeout_s": {"value": 10},
+                "temperature": {"value": 0.0},
+                "top_p": {"value": 1.0},
+                "max_tokens": {"value": 80},
+            }
+        )
 
     def tearDown(self) -> None:
         validation_agent.prompt_loader.read_prompt_text = self.original_read_prompt
         validation_agent.llm_client.or_headers = self.original_or_headers
+        validation_agent.llm_client.or_chat_completions_url = self.original_or_chat_completions_url
+        validation_agent.runtime_settings.get_validation_agent_model_settings = self.original_runtime_settings_getter
 
     def test_build_validated_output_rejects_invalid_primary_verdict(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
@@ -212,9 +228,49 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module.calls[0]["json"]["model"],
             validation_agent.PRIMARY_MODEL,
         )
+        self.assertEqual(
+            requests_module.calls[0]["headers"],
+            {"Authorization": "caller=validation_agent"},
+        )
         self.assertNotIn("primary_verdict", result.validated_output)
         self.assertNotIn("validation_dialogue_context", result.validated_output)
         self.assertNotIn("justifications", result.validated_output)
+
+    def test_build_validated_output_uses_runtime_settings_models_and_sampling(self) -> None:
+        validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
+            payload={
+                "primary_model": {"value": "openai/custom-validation-primary"},
+                "fallback_model": {"value": "openai/custom-validation-fallback"},
+                "timeout_s": {"value": 14},
+                "temperature": {"value": 0.2},
+                "top_p": {"value": 0.88},
+                "max_tokens": {"value": 64},
+            }
+        )
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.model, "openai/custom-validation-primary")
+        self.assertEqual(requests_module.calls[0]["json"]["model"], "openai/custom-validation-primary")
+        self.assertEqual(requests_module.calls[0]["json"]["temperature"], 0.2)
+        self.assertEqual(requests_module.calls[0]["json"]["top_p"], 0.88)
+        self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 64)
+        self.assertEqual(requests_module.calls[0]["timeout"], 14)
+        self.assertEqual(
+            requests_module.calls[0]["headers"],
+            {"Authorization": "caller=validation_agent"},
+        )
 
     def test_build_validated_output_accepts_minimal_recent_context_like_dialogue_context(self) -> None:
         requests_module = _FakeRequests(

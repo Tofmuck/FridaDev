@@ -20,6 +20,7 @@ from admin.runtime_settings_spec import (
     list_sections,
 )
 from core import prompt_loader
+from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 
 # Phase 3 internal split plan (incremental, compatibility-first):
 # 1) spec/schema/catalogue -> admin.runtime_settings_spec (this tranche)
@@ -185,6 +186,8 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'title_llm'): config.OR_TITLE_LLM,
         ('main_model', 'title_arbiter'): config.OR_TITLE_ARBITER,
         ('main_model', 'title_resumer'): config.OR_TITLE_RESUMER,
+        ('main_model', 'title_stimmung_agent'): config.OR_TITLE_STIMMUNG_AGENT,
+        ('main_model', 'title_validation_agent'): config.OR_TITLE_VALIDATION_AGENT,
         ('main_model', 'temperature'): 0.4,
         ('main_model', 'top_p'): 1.0,
         ('main_model', 'response_max_tokens'): 1500,
@@ -453,6 +456,13 @@ def _main_hermeneutical_runtime_bricks_text() -> str:
     )
 
 
+def _shared_openrouter_transport_text(title_field: str) -> str:
+    return (
+        "Transport OpenRouter partage via main_model: "
+        f"base_url + referer + api_key + {title_field}."
+    )
+
+
 def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
     get_section_spec(section)
     if section == 'main_model':
@@ -572,6 +582,96 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'prompt_file',
             },
         }
+    if section == 'stimmung_agent_model':
+        return {
+            'prompt_path': {
+                'label': 'STIMMUNG_AGENT_PROMPT_PATH',
+                'value': 'prompts/stimmung_agent.txt',
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'prompt_loader': {
+                'label': 'STIMMUNG_AGENT_PROMPT_RUNTIME_SOURCE',
+                'value': 'core.stimmung_agent._load_system_prompt()',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'prompt_text': {
+                'label': 'stimmung_agent_prompt',
+                'value': prompt_loader.read_prompt_text('prompts/stimmung_agent.txt'),
+                'is_editable': False,
+                'source': 'prompt_file',
+            },
+            'shared_transport': {
+                'label': 'SHARED_OPENROUTER_TRANSPORT',
+                'value': _shared_openrouter_transport_text('main_model.title_stimmung_agent'),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'recent_window_turn_cap': {
+                'label': 'STIMMUNG_CONTEXT_WINDOW_TURNS',
+                'value': int(canonical_recent_window_input.MAX_RECENT_TURNS),
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'max_context_message_chars': {
+                'label': 'STIMMUNG_MAX_CONTEXT_MESSAGE_CHARS',
+                'value': 220,
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'max_current_turn_chars': {
+                'label': 'STIMMUNG_MAX_CURRENT_TURN_CHARS',
+                'value': 600,
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+        }
+    if section == 'validation_agent_model':
+        return {
+            'prompt_path': {
+                'label': 'VALIDATION_AGENT_PROMPT_PATH',
+                'value': 'prompts/validation_agent.txt',
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'prompt_loader': {
+                'label': 'VALIDATION_AGENT_PROMPT_RUNTIME_SOURCE',
+                'value': 'core.hermeneutic_node.validation.validation_agent._load_system_prompt()',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'prompt_text': {
+                'label': 'validation_agent_prompt',
+                'value': prompt_loader.read_prompt_text('prompts/validation_agent.txt'),
+                'is_editable': False,
+                'source': 'prompt_file',
+            },
+            'shared_transport': {
+                'label': 'SHARED_OPENROUTER_TRANSPORT',
+                'value': _shared_openrouter_transport_text('main_model.title_validation_agent'),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'validation_context_messages_cap': {
+                'label': 'VALIDATION_CONTEXT_MESSAGES_CAP',
+                'value': 8,
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'validation_context_message_chars': {
+                'label': 'VALIDATION_CONTEXT_MESSAGE_CHARS',
+                'value': 420,
+                'is_editable': False,
+                'source': 'runtime_component',
+            },
+            'validated_output_contract': {
+                'label': 'VALIDATED_OUTPUT_DECISION_CONTRACT',
+                'value': '{"schema_version":"v1","validation_decision":"confirm|challenge|clarify|suspend"}',
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+        }
     if section == 'services':
         return {
             'web_reformulation_max_tokens': {
@@ -604,6 +704,14 @@ def get_summary_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict
 
 def get_embedding_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('embedding', fetcher=fetcher)
+
+
+def get_stimmung_agent_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('stimmung_agent_model', fetcher=fetcher)
+
+
+def get_validation_agent_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
+    return get_runtime_section('validation_agent_model', fetcher=fetcher)
 
 
 def get_database_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:

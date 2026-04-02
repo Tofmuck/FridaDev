@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 import requests
 
-import config
+from admin import runtime_settings
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core import llm_client
 from core import prompt_loader
@@ -20,6 +20,7 @@ REQUEST_TIMEOUT_S = 10
 CONTEXT_WINDOW_TURNS = canonical_recent_window_input.MAX_RECENT_TURNS
 MAX_CONTEXT_MESSAGE_CHARS = 220
 MAX_CURRENT_TURN_CHARS = 600
+RUNTIME_SETTINGS_SECTION = 'stimmung_agent_model'
 
 ALLOWED_TONES = (
     'apaisement',
@@ -136,6 +137,18 @@ def _build_fail_open_result(*, reason_code: str, model: str) -> StimmungAgentRes
 
 def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
+
+
+def _runtime_model_settings() -> dict[str, Any]:
+    view = runtime_settings.get_stimmung_agent_model_settings()
+    return {
+        'primary_model': str(view.payload['primary_model']['value']),
+        'fallback_model': str(view.payload['fallback_model']['value']),
+        'timeout_s': int(view.payload['timeout_s']['value']),
+        'temperature': float(view.payload['temperature']['value']),
+        'top_p': float(view.payload['top_p']['value']),
+        'max_tokens': int(view.payload['max_tokens']['value']),
+    }
 
 
 def _compact_text(value: Any, *, max_chars: int) -> str:
@@ -297,10 +310,14 @@ def _call_model(
     user_msg: str,
     recent_window_input_payload: Mapping[str, Any] | None,
     model: str,
+    timeout_s: int,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
     requests_module: Any,
 ) -> dict[str, Any]:
     response = requests_module.post(
-        f'{config.OR_BASE}/chat/completions',
+        llm_client.or_chat_completions_url(),
         json={
             'model': model,
             'messages': _build_messages(
@@ -308,12 +325,12 @@ def _call_model(
                 user_msg=user_msg,
                 recent_window_input_payload=recent_window_input_payload,
             ),
-            'temperature': 0.1,
-            'top_p': 1.0,
-            'max_tokens': 220,
+            'temperature': temperature,
+            'top_p': top_p,
+            'max_tokens': max_tokens,
         },
         headers=llm_client.or_headers(caller='stimmung_agent'),
-        timeout=REQUEST_TIMEOUT_S,
+        timeout=timeout_s,
     )
     response.raise_for_status()
     return _validate_affective_turn_signal(_safe_json_loads(_extract_response_text(response)))
@@ -325,14 +342,18 @@ def build_affective_turn_signal(
     recent_window_input_payload: Mapping[str, Any] | None = None,
     requests_module: Any = requests,
 ) -> StimmungAgentResult:
+    runtime_model_settings = _runtime_model_settings()
     system_prompt = _load_system_prompt()
     if not system_prompt:
-        return _build_fail_open_result(reason_code='prompt_missing', model=PRIMARY_MODEL)
+        return _build_fail_open_result(
+            reason_code='prompt_missing',
+            model=runtime_model_settings['primary_model'],
+        )
 
     last_reason_code = 'upstream_error'
     for model, decision_source in (
-        (PRIMARY_MODEL, 'primary'),
-        (FALLBACK_MODEL, 'fallback'),
+        (runtime_model_settings['primary_model'], 'primary'),
+        (runtime_model_settings['fallback_model'], 'fallback'),
     ):
         try:
             signal = _call_model(
@@ -340,6 +361,10 @@ def build_affective_turn_signal(
                 user_msg=user_msg,
                 recent_window_input_payload=recent_window_input_payload,
                 model=model,
+                timeout_s=runtime_model_settings['timeout_s'],
+                temperature=runtime_model_settings['temperature'],
+                top_p=runtime_model_settings['top_p'],
+                max_tokens=runtime_model_settings['max_tokens'],
                 requests_module=requests_module,
             )
             return StimmungAgentResult(
@@ -356,4 +381,7 @@ def build_affective_turn_signal(
         except Exception as exc:
             last_reason_code = _request_reason_code(exc, requests_module)
 
-    return _build_fail_open_result(reason_code=last_reason_code, model=FALLBACK_MODEL)
+    return _build_fail_open_result(
+        reason_code=last_reason_code,
+        model=runtime_model_settings['fallback_model'],
+    )

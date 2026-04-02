@@ -135,6 +135,44 @@ def validate_runtime_section(
                 ),
             )
         )
+    elif section in {'stimmung_agent_model', 'validation_agent_model'}:
+        primary_model = _runtime_text_value(view, 'primary_model')
+        fallback_model = _runtime_text_value(view, 'fallback_model')
+        timeout_s = _runtime_int_value(view, 'timeout_s')
+        temperature = _runtime_float_value(view, 'temperature')
+        top_p = _runtime_float_value(view, 'top_p')
+        max_tokens = _runtime_int_value(view, 'max_tokens')
+        main_model_view = candidate_runtime_section('main_model', fetcher=fetcher)
+        base_url = _runtime_text_value(main_model_view, 'base_url')
+        try:
+            api_key_secret = resolve_runtime_secret_from_view(main_model_view, 'api_key')
+            shared_transport_ok = _is_http_url(base_url) and bool(str(api_key_secret.value).strip())
+            shared_transport_detail = (
+                f'main_model.base_url={base_url or "missing"}; '
+                f'main_model.api_key available from {api_key_secret.source}'
+            )
+        except (secret_required_error_cls, secret_resolution_error_cls) as exc:
+            shared_transport_ok = False
+            shared_transport_detail = str(exc)
+        checks.extend(
+            (
+                _validation_check('primary_model', bool(primary_model), f'primary_model={primary_model or "missing"}'),
+                _validation_check('fallback_model', bool(fallback_model), f'fallback_model={fallback_model or "missing"}'),
+                _validation_check('timeout_s', timeout_s is not None and timeout_s > 0, f'timeout_s={timeout_s!r}'),
+                _validation_check(
+                    'temperature',
+                    temperature is not None and 0.0 <= temperature <= 2.0,
+                    f'temperature={temperature!r}',
+                ),
+                _validation_check(
+                    'top_p',
+                    top_p is not None and 0.0 < top_p <= 1.0,
+                    f'top_p={top_p!r}',
+                ),
+                _validation_check('max_tokens', max_tokens is not None and max_tokens > 0, f'max_tokens={max_tokens!r}'),
+                _validation_check('shared_transport_runtime', shared_transport_ok, shared_transport_detail),
+            )
+        )
     elif section == 'embedding':
         endpoint = _runtime_text_value(view, 'endpoint')
         model = _runtime_text_value(view, 'model')

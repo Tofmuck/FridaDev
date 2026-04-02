@@ -30,6 +30,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_section_main_model.js"', html)
         self.assertIn('script src="admin_section_arbiter_model.js"', html)
         self.assertIn('script src="admin_section_summary_model.js"', html)
+        self.assertIn('script src="admin_section_stimmung_agent_model.js"', html)
+        self.assertIn('script src="admin_section_validation_agent_model.js"', html)
         self.assertIn('script src="admin_section_embedding.js"', html)
         self.assertIn('script src="admin_section_database.js"', html)
         self.assertIn('script src="admin_section_services.js"', html)
@@ -59,6 +61,16 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminSummaryModelSave"', html)
         self.assertIn('id="adminSummaryModelReadonlyInfo"', html)
         self.assertIn('id="adminSummaryModelChecks"', html)
+        self.assertIn('id="adminStimmungAgentModelForm"', html)
+        self.assertIn('id="adminStimmungAgentModelValidate"', html)
+        self.assertIn('id="adminStimmungAgentModelSave"', html)
+        self.assertIn('id="adminStimmungAgentModelReadonlyInfo"', html)
+        self.assertIn('id="adminStimmungAgentModelChecks"', html)
+        self.assertIn('id="adminValidationAgentModelForm"', html)
+        self.assertIn('id="adminValidationAgentModelValidate"', html)
+        self.assertIn('id="adminValidationAgentModelSave"', html)
+        self.assertIn('id="adminValidationAgentModelReadonlyInfo"', html)
+        self.assertIn('id="adminValidationAgentModelChecks"', html)
         self.assertIn('id="adminEmbeddingForm"', html)
         self.assertIn('id="adminEmbeddingValidate"', html)
         self.assertIn('id="adminEmbeddingSave"', html)
@@ -86,6 +98,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("Bloc court et fonctionnel", html)
         self.assertIn("Modele resumeur", html)
         self.assertIn("Bloc de synthese conversationnelle", html)
+        self.assertIn("Agent Stimmung", html)
+        self.assertIn("Bloc affectif amont", html)
+        self.assertIn("Agent de validation", html)
+        self.assertIn("Bloc de relecture aval", html)
         self.assertIn("Embeddings", html)
         self.assertIn("Bloc memoire vectorielle", html)
         self.assertIn("Base de donnees", html)
@@ -126,6 +142,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
             "admin_section_main_model.js",
             "admin_section_arbiter_model.js",
             "admin_section_summary_model.js",
+            "admin_section_stimmung_agent_model.js",
+            "admin_section_validation_agent_model.js",
             "admin_section_embedding.js",
             "admin_section_database.js",
             "admin_section_services.js",
@@ -141,13 +159,16 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        stimmung_agent_source = (APP_DIR / "web" / "admin_section_stimmung_agent_model.js").read_text(encoding="utf-8")
+        validation_agent_source = (APP_DIR / "web" / "admin_section_validation_agent_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
         source_all = (
             f"{admin_api_source}\n{admin_source}\n{main_model_source}\n{arbiter_source}\n{summary_source}\n"
-            f"{embedding_source}\n{database_source}\n{services_source}\n{resources_source}"
+            f"{stimmung_agent_source}\n{validation_agent_source}\n{embedding_source}\n"
+            f"{database_source}\n{services_source}\n{resources_source}"
         )
 
         found_endpoints = set(re.findall(r"/api/admin/settings(?:/[a-z-]+(?:/validate)?)?", source_all))
@@ -162,6 +183,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "/api/admin/settings/arbiter-model/validate",
                 "/api/admin/settings/summary-model",
                 "/api/admin/settings/summary-model/validate",
+                "/api/admin/settings/stimmung-agent-model",
+                "/api/admin/settings/stimmung-agent-model/validate",
+                "/api/admin/settings/validation-agent-model",
+                "/api/admin/settings/validation-agent-model/validate",
                 "/api/admin/settings/embedding",
                 "/api/admin/settings/embedding/validate",
                 "/api/admin/settings/database",
@@ -195,6 +220,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "adminSummaryModel-${field}",
                 "adminSummaryModelFieldError-${field}",
                 "adminSummaryModelSource-${spec.key}",
+                "adminStimmungAgentModel-${field}",
+                "adminStimmungAgentModelFieldError-${field}",
+                "adminStimmungAgentModelSource-${spec.key}",
+                "adminValidationAgentModel-${field}",
+                "adminValidationAgentModelFieldError-${field}",
+                "adminValidationAgentModelSource-${spec.key}",
                 "adminEmbedding-${field}",
                 "adminEmbeddingFieldError-${field}",
                 "adminEmbeddingSource-${spec.key}",
@@ -225,6 +256,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "adminSummaryModel-${spec.key}",
                 "adminSummaryModelFieldError-${spec.key}",
                 "adminSummaryModelSource-${spec.key}",
+                "adminStimmungAgentModel-${spec.key}",
+                "adminStimmungAgentModelFieldError-${spec.key}",
+                "adminStimmungAgentModelSource-${spec.key}",
+                "adminValidationAgentModel-${spec.key}",
+                "adminValidationAgentModelFieldError-${spec.key}",
+                "adminValidationAgentModelSource-${spec.key}",
                 "adminEmbedding-${spec.key}",
                 "adminEmbeddingFieldError-${spec.key}",
                 "adminEmbeddingSource-${spec.key}",
@@ -263,6 +300,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 '[data-field="${field}"]',
                 '[data-arbiter-field="${field}"]',
                 '[data-summary-field="${field}"]',
+                '[data-stimmung-agent-field="${field}"]',
+                '[data-validation-agent-field="${field}"]',
                 '[data-embedding-field="${field}"]',
                 '[data-database-field="${field}"]',
                 '[data-services-field="${field}"]',
@@ -282,6 +321,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "data-field",
                 "data-arbiter-field",
                 "data-summary-field",
+                "data-stimmung-agent-field",
+                "data-validation-agent-field",
                 "data-embedding-field",
                 "data-database-field",
                 "data-services-field",
@@ -292,6 +333,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('field.dataset.field = spec.key;', main_model_source)
         self.assertIn('field.dataset.arbiterField = spec.key;', arbiter_source)
         self.assertIn('field.dataset.summaryField = spec.key;', summary_source)
+        self.assertIn('field.dataset.stimmungAgentField = spec.key;', stimmung_agent_source)
+        self.assertIn('field.dataset.validationAgentField = spec.key;', validation_agent_source)
         self.assertIn('field.dataset.embeddingField = spec.key;', embedding_source)
         self.assertIn('field.dataset.databaseField = spec.key;', database_source)
         self.assertIn('field.dataset.servicesField = spec.key;', services_source)
@@ -310,13 +353,16 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        stimmung_agent_source = (APP_DIR / "web" / "admin_section_stimmung_agent_model.js").read_text(encoding="utf-8")
+        validation_agent_source = (APP_DIR / "web" / "admin_section_validation_agent_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
         source_all = (
             f"{api_source}\n{ui_source}\n{state_source}\n{main_model_source}\n{arbiter_source}\n"
-            f"{summary_source}\n{embedding_source}\n{database_source}\n{services_source}\n{resources_source}\n{source}"
+            f"{summary_source}\n{stimmung_agent_source}\n{validation_agent_source}\n{embedding_source}\n"
+            f"{database_source}\n{services_source}\n{resources_source}\n{source}"
         )
 
         self.assertIn("/api/admin/settings/status", source_all)
@@ -379,6 +425,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        stimmung_agent_source = (APP_DIR / "web" / "admin_section_stimmung_agent_model.js").read_text(encoding="utf-8")
+        validation_agent_source = (APP_DIR / "web" / "admin_section_validation_agent_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
@@ -394,6 +442,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("window.FridaAdminMainModelSection", source)
         self.assertIn("window.FridaAdminArbiterModelSection", source)
         self.assertIn("window.FridaAdminSummaryModelSection", source)
+        self.assertIn("window.FridaAdminStimmungAgentModelSection", source)
+        self.assertIn("window.FridaAdminValidationAgentModelSection", source)
         self.assertIn("window.FridaAdminEmbeddingSection", source)
         self.assertIn("window.FridaAdminDatabaseSection", source)
         self.assertIn("window.FridaAdminServicesSection", source)
@@ -433,6 +483,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("const runSummaryValidation = async (payload) => {", summary_source)
         self.assertIn("const saveSummarySection = async () => {", summary_source)
         self.assertIn("window.FridaAdminSummaryModelSection = Object.freeze({", summary_source)
+        self.assertIn("const createStimmungAgentModelSectionController = ({", stimmung_agent_source)
+        self.assertIn("const runStimmungAgentValidation = async (payload) => {", stimmung_agent_source)
+        self.assertIn("const saveStimmungAgentSection = async () => {", stimmung_agent_source)
+        self.assertIn("window.FridaAdminStimmungAgentModelSection = Object.freeze({", stimmung_agent_source)
+        self.assertIn("const createValidationAgentModelSectionController = ({", validation_agent_source)
+        self.assertIn("const runValidationAgentValidation = async (payload) => {", validation_agent_source)
+        self.assertIn("const saveValidationAgentSection = async () => {", validation_agent_source)
+        self.assertIn("window.FridaAdminValidationAgentModelSection = Object.freeze({", validation_agent_source)
         self.assertIn("const createEmbeddingSectionController = ({", embedding_source)
         self.assertIn("const runEmbeddingValidation = async (payload) => {", embedding_source)
         self.assertIn("const saveEmbeddingSection = async () => {", embedding_source)
@@ -469,6 +527,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("baseline: null", source)
         self.assertIn("draft: null", source)
         self.assertIn("mainModel: createSectionStateSlice()", source)
+        self.assertIn("stimmungAgentModel: createSectionStateSlice()", source)
+        self.assertIn("validationAgentModel: createSectionStateSlice()", source)
         self.assertIn("resources: createSectionStateSlice()", source)
         self.assertIn("const initializeAdminSectionDrafts = (state, draftFactories = {}) => {", source)
         self.assertNotIn("EventEmitter", source)
@@ -502,6 +562,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("summaryModelSection.loadSummaryModelSection(),", source)
         self.assertNotIn("const saveSummarySection = async () => {", source)
         self.assertNotIn("const runSummaryValidation = async (payload) => {", source)
+        self.assertIn("stimmungAgentModelSection.bindStimmungAgentModelSectionEvents();", source)
+        self.assertIn("stimmungAgentModelSection.loadStimmungAgentModelSection(),", source)
+        self.assertIn("validationAgentModelSection.bindValidationAgentModelSectionEvents();", source)
+        self.assertIn("validationAgentModelSection.loadValidationAgentModelSection(),", source)
         self.assertIn("embeddingSection.bindEmbeddingSectionEvents();", source)
         self.assertIn("embeddingSection.loadEmbeddingSection(),", source)
         self.assertNotIn("const saveEmbeddingSection = async () => {", source)
@@ -535,6 +599,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
         arbiter_source = (APP_DIR / "web" / "admin_section_arbiter_model.js").read_text(encoding="utf-8")
         summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+        stimmung_agent_source = (APP_DIR / "web" / "admin_section_stimmung_agent_model.js").read_text(encoding="utf-8")
+        validation_agent_source = (APP_DIR / "web" / "admin_section_validation_agent_model.js").read_text(encoding="utf-8")
         embedding_source = (APP_DIR / "web" / "admin_section_embedding.js").read_text(encoding="utf-8")
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
@@ -543,6 +609,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
             main_model_source,
             arbiter_source,
             summary_source,
+            stimmung_agent_source,
+            validation_agent_source,
             embedding_source,
             database_source,
             services_source,
@@ -575,6 +643,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('sectionKey: "embedding"', embedding_source)
         self.assertIn('secretField: "token"', embedding_source)
         self.assertIn('document.getElementById("adminEmbeddingSecretCard")', embedding_source)
+        self.assertIn('sectionKey: "stimmung_agent_model"', stimmung_agent_source)
+        self.assertIn('sectionKey: "validation_agent_model"', validation_agent_source)
 
         self.assertIn('sectionKey: "database"', database_source)
         self.assertIn('secretField: "dsn"', database_source)
@@ -593,7 +663,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
             1,
         )[0]
 
-        self.assertEqual(html.count("Hors edition"), 4)
+        self.assertEqual(html.count("Hors edition"), 6)
         self.assertNotIn("Invariant", html)
         self.assertNotIn("invariant", html)
         self.assertIn("textarea.readOnly = true", readonly_block)
@@ -657,6 +727,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_section_main_model.js"', source)
         self.assertIn('script src="admin_section_arbiter_model.js"', source)
         self.assertIn('script src="admin_section_summary_model.js"', source)
+        self.assertIn('script src="admin_section_stimmung_agent_model.js"', source)
+        self.assertIn('script src="admin_section_validation_agent_model.js"', source)
         self.assertIn('script src="admin_section_embedding.js"', source)
         self.assertIn('script src="admin_section_database.js"', source)
         self.assertIn('script src="admin_section_services.js"', source)
@@ -674,6 +746,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminSummaryModelForm"', source)
         self.assertIn('id="adminSummaryModelSave"', source)
         self.assertIn('id="adminSummaryModelReadonlyInfo"', source)
+        self.assertIn('id="adminStimmungAgentModelForm"', source)
+        self.assertIn('id="adminStimmungAgentModelSave"', source)
+        self.assertIn('id="adminStimmungAgentModelReadonlyInfo"', source)
+        self.assertIn('id="adminValidationAgentModelForm"', source)
+        self.assertIn('id="adminValidationAgentModelSave"', source)
+        self.assertIn('id="adminValidationAgentModelReadonlyInfo"', source)
         self.assertIn('id="adminEmbeddingForm"', source)
         self.assertIn('id="adminEmbeddingSave"', source)
         self.assertIn('id="adminDatabaseForm"', source)
@@ -689,6 +767,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/arbiter-model/validate", source)
         self.assertIn("/api/admin/settings/summary-model", source)
         self.assertIn("/api/admin/settings/summary-model/validate", source)
+        self.assertIn("/api/admin/settings/stimmung-agent-model", source)
+        self.assertIn("/api/admin/settings/stimmung-agent-model/validate", source)
+        self.assertIn("/api/admin/settings/validation-agent-model", source)
+        self.assertIn("/api/admin/settings/validation-agent-model/validate", source)
         self.assertIn("/api/admin/settings/embedding", source)
         self.assertIn("/api/admin/settings/embedding/validate", source)
         self.assertIn("/api/admin/settings/database", source)

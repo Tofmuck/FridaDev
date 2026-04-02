@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS runtime_settings (
             'main_model',
             'arbiter_model',
             'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
             'embedding',
             'database',
             'services',
@@ -32,6 +34,28 @@ COMMENT ON TABLE runtime_settings IS
     'Runtime settings by section. One row per section JSONB payload.';
 COMMENT ON COLUMN runtime_settings.payload IS
     'Field map. Secret fields are stored as objects using value_encrypted, is_secret, is_set, origin. Non-secret fields use value, is_secret, origin.';
+
+ALTER TABLE runtime_settings
+    DROP CONSTRAINT IF EXISTS runtime_settings_section_chk,
+    DROP CONSTRAINT IF EXISTS runtime_settings_payload_object_chk;
+
+ALTER TABLE runtime_settings
+    ADD CONSTRAINT runtime_settings_section_chk CHECK (
+        section IN (
+            'main_model',
+            'arbiter_model',
+            'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
+            'embedding',
+            'database',
+            'services',
+            'resources'
+        )
+    ),
+    ADD CONSTRAINT runtime_settings_payload_object_chk CHECK (
+        jsonb_typeof(payload) = 'object'
+    );
 
 CREATE INDEX IF NOT EXISTS runtime_settings_updated_at_idx
 ON runtime_settings (updated_at DESC);
@@ -49,6 +73,8 @@ CREATE TABLE IF NOT EXISTS runtime_settings_history (
             'main_model',
             'arbiter_model',
             'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
             'embedding',
             'database',
             'services',
@@ -65,6 +91,32 @@ CREATE TABLE IF NOT EXISTS runtime_settings_history (
 
 COMMENT ON TABLE runtime_settings_history IS
     'Revision log for runtime settings. Snapshots keep secret field structure under encrypted form only.';
+
+ALTER TABLE runtime_settings_history
+    DROP CONSTRAINT IF EXISTS runtime_settings_history_section_chk,
+    DROP CONSTRAINT IF EXISTS runtime_settings_history_before_object_chk,
+    DROP CONSTRAINT IF EXISTS runtime_settings_history_after_object_chk;
+
+ALTER TABLE runtime_settings_history
+    ADD CONSTRAINT runtime_settings_history_section_chk CHECK (
+        section IN (
+            'main_model',
+            'arbiter_model',
+            'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
+            'embedding',
+            'database',
+            'services',
+            'resources'
+        )
+    ),
+    ADD CONSTRAINT runtime_settings_history_before_object_chk CHECK (
+        jsonb_typeof(payload_before) = 'object'
+    ),
+    ADD CONSTRAINT runtime_settings_history_after_object_chk CHECK (
+        jsonb_typeof(payload_after) = 'object'
+    );
 
 CREATE INDEX IF NOT EXISTS runtime_settings_history_section_changed_at_idx
 ON runtime_settings_history (section, changed_at DESC);

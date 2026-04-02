@@ -36,6 +36,20 @@
   ) {
     throw new Error("admin_section_summary_model.js must be loaded before admin.js");
   }
+  const stimmungAgentModelSectionModule = window.FridaAdminStimmungAgentModelSection;
+  if (
+    !stimmungAgentModelSectionModule
+    || typeof stimmungAgentModelSectionModule.createStimmungAgentModelSectionController !== "function"
+  ) {
+    throw new Error("admin_section_stimmung_agent_model.js must be loaded before admin.js");
+  }
+  const validationAgentModelSectionModule = window.FridaAdminValidationAgentModelSection;
+  if (
+    !validationAgentModelSectionModule
+    || typeof validationAgentModelSectionModule.createValidationAgentModelSectionController !== "function"
+  ) {
+    throw new Error("admin_section_validation_agent_model.js must be loaded before admin.js");
+  }
   const embeddingSectionModule = window.FridaAdminEmbeddingSection;
   if (
     !embeddingSectionModule
@@ -78,6 +92,8 @@
   const { createMainModelSectionController } = mainModelSectionModule;
   const { createArbiterModelSectionController } = arbiterModelSectionModule;
   const { createSummaryModelSectionController } = summaryModelSectionModule;
+  const { createStimmungAgentModelSectionController } = stimmungAgentModelSectionModule;
+  const { createValidationAgentModelSectionController } = validationAgentModelSectionModule;
   const { createEmbeddingSectionController } = embeddingSectionModule;
   const { createDatabaseSectionController } = databaseSectionModule;
   const { createServicesSectionController } = servicesSectionModule;
@@ -86,6 +102,8 @@
   let mainModelSection;
   let arbiterModelSection;
   let summaryModelSection;
+  let stimmungAgentModelSection;
+  let validationAgentModelSection;
   let embeddingSection;
   let databaseSection;
   let servicesSection;
@@ -105,6 +123,16 @@
       key: "summary_model",
       title: "Modele resumeur",
       description: "Synthese conversationnelle et reglages de resume.",
+    },
+    {
+      key: "stimmung_agent_model",
+      title: "Agent Stimmung",
+      description: "Agent LLM affectif amont, avec primaire/repli, echantillonnage et timeout propres.",
+    },
+    {
+      key: "validation_agent_model",
+      title: "Agent de validation",
+      description: "Agent LLM aval de relecture, avec primaire/repli, echantillonnage, timeout et budget de sortie.",
     },
     {
       key: "embedding",
@@ -174,6 +202,20 @@
       key: "title_resumer",
       label: "Titre resumeur",
       hint: "Titre du flux resume cote provider.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "title_stimmung_agent",
+      label: "Titre Stimmung",
+      hint: "Titre OpenRouter du flux Stimmung.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "title_validation_agent",
+      label: "Titre validation",
+      hint: "Titre OpenRouter du flux de validation.",
       inputType: "text",
       autocomplete: "off",
     },
@@ -277,6 +319,120 @@
       autocomplete: "off",
     },
   ];
+  const stimmungAgentModelFieldSpecs = [
+    {
+      key: "primary_model",
+      label: "Modele primaire",
+      hint: "Modele principal de l'agent Stimmung.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "fallback_model",
+      label: "Modele repli",
+      hint: "Modele de secours de l'agent Stimmung.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "timeout_s",
+      label: "Timeout",
+      hint: "Timeout applique aux appels Stimmung.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "temperature",
+      label: "Temperature",
+      hint: "Echantillonnage propre a l'agent Stimmung.",
+      inputType: "number",
+      step: "0.1",
+      min: "0",
+      max: "2",
+      autocomplete: "off",
+    },
+    {
+      key: "top_p",
+      label: "Top p",
+      hint: "Coupe nucleus propre a l'agent Stimmung.",
+      inputType: "number",
+      step: "0.05",
+      min: "0.01",
+      max: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "max_tokens",
+      label: "Max tokens",
+      hint: "Budget de sortie envoye au modele Stimmung.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+  ];
+  const stimmungAgentModelCheckFieldMap = {
+    shared_transport_runtime: "primary_model",
+  };
+  const validationAgentModelFieldSpecs = [
+    {
+      key: "primary_model",
+      label: "Modele primaire",
+      hint: "Modele principal de l'agent de validation.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "fallback_model",
+      label: "Modele repli",
+      hint: "Modele de secours de l'agent de validation.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "timeout_s",
+      label: "Timeout",
+      hint: "Timeout applique aux appels de validation.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "temperature",
+      label: "Temperature",
+      hint: "Echantillonnage propre a l'agent de validation.",
+      inputType: "number",
+      step: "0.1",
+      min: "0",
+      max: "2",
+      autocomplete: "off",
+    },
+    {
+      key: "top_p",
+      label: "Top p",
+      hint: "Coupe nucleus propre a l'agent de validation.",
+      inputType: "number",
+      step: "0.05",
+      min: "0.01",
+      max: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "max_tokens",
+      label: "Max tokens",
+      hint: "Budget de sortie envoye au modele de validation.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+  ];
+  const validationAgentModelCheckFieldMap = {
+    shared_transport_runtime: "primary_model",
+  };
   const embeddingFieldSpecs = [
     {
       key: "endpoint",
@@ -433,6 +589,24 @@
     summaryModelSource: document.getElementById("adminSummaryModelSource"),
     summaryModelReadonlyInfo: document.getElementById("adminSummaryModelReadonlyInfo"),
     summaryModelChecks: document.getElementById("adminSummaryModelChecks"),
+    stimmungAgentModelForm: document.getElementById("adminStimmungAgentModelForm"),
+    stimmungAgentModelFields: document.getElementById("adminStimmungAgentModelFields"),
+    stimmungAgentModelStatus: document.getElementById("adminStimmungAgentModelStatus"),
+    stimmungAgentModelSave: document.getElementById("adminStimmungAgentModelSave"),
+    stimmungAgentModelValidate: document.getElementById("adminStimmungAgentModelValidate"),
+    stimmungAgentModelDirty: document.getElementById("adminStimmungAgentModelDirty"),
+    stimmungAgentModelSource: document.getElementById("adminStimmungAgentModelSource"),
+    stimmungAgentModelReadonlyInfo: document.getElementById("adminStimmungAgentModelReadonlyInfo"),
+    stimmungAgentModelChecks: document.getElementById("adminStimmungAgentModelChecks"),
+    validationAgentModelForm: document.getElementById("adminValidationAgentModelForm"),
+    validationAgentModelFields: document.getElementById("adminValidationAgentModelFields"),
+    validationAgentModelStatus: document.getElementById("adminValidationAgentModelStatus"),
+    validationAgentModelSave: document.getElementById("adminValidationAgentModelSave"),
+    validationAgentModelValidate: document.getElementById("adminValidationAgentModelValidate"),
+    validationAgentModelDirty: document.getElementById("adminValidationAgentModelDirty"),
+    validationAgentModelSource: document.getElementById("adminValidationAgentModelSource"),
+    validationAgentModelReadonlyInfo: document.getElementById("adminValidationAgentModelReadonlyInfo"),
+    validationAgentModelChecks: document.getElementById("adminValidationAgentModelChecks"),
     embeddingForm: document.getElementById("adminEmbeddingForm"),
     embeddingFields: document.getElementById("adminEmbeddingFields"),
     embeddingStatus: document.getElementById("adminEmbeddingStatus"),
@@ -876,6 +1050,58 @@
     onSaved: () => void loadRuntimeStatus(),
   });
 
+  stimmungAgentModelSection = createStimmungAgentModelSectionController({
+    adminApi,
+    sectionRoute: sectionRoutes.stimmungAgentModel,
+    stimmungAgentModelFieldSpecs,
+    stimmungAgentModelCheckFieldMap,
+    state,
+    elements,
+    sourceLabel,
+    fieldOriginLabel,
+    toDraftString,
+    renderCheckList,
+    renderReadonlyInfoCards,
+    applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
+    setInlineStatus,
+    setSectionControlsDisabled,
+    buildSectionPatchPayload,
+    updateSectionDirtyChip,
+    applySectionDraftToForm,
+    banner,
+    onSaved: () => void loadRuntimeStatus(),
+  });
+
+  validationAgentModelSection = createValidationAgentModelSectionController({
+    adminApi,
+    sectionRoute: sectionRoutes.validationAgentModel,
+    validationAgentModelFieldSpecs,
+    validationAgentModelCheckFieldMap,
+    state,
+    elements,
+    sourceLabel,
+    fieldOriginLabel,
+    toDraftString,
+    renderCheckList,
+    renderReadonlyInfoCards,
+    applyFieldError,
+    clearSectionFieldErrors,
+    applySectionLocalFieldErrors,
+    applySectionBackendFieldError,
+    collectSectionFailedChecks,
+    setInlineStatus,
+    setSectionControlsDisabled,
+    buildSectionPatchPayload,
+    updateSectionDirtyChip,
+    applySectionDraftToForm,
+    banner,
+    onSaved: () => void loadRuntimeStatus(),
+  });
+
   embeddingSection = createEmbeddingSectionController({
     adminApi,
     sectionRoute: sectionRoutes.embedding,
@@ -985,6 +1211,8 @@
       mainModelSection.loadMainModelSection(),
       arbiterModelSection.loadArbiterModelSection(),
       summaryModelSection.loadSummaryModelSection(),
+      stimmungAgentModelSection.loadStimmungAgentModelSection(),
+      validationAgentModelSection.loadValidationAgentModelSection(),
       embeddingSection.loadEmbeddingSection(),
       databaseSection.loadDatabaseSection(),
       servicesSection.loadServicesSection(),
@@ -1011,6 +1239,8 @@
   mainModelSection.bindMainModelSectionEvents();
   arbiterModelSection.bindArbiterModelSectionEvents();
   summaryModelSection.bindSummaryModelSectionEvents();
+  stimmungAgentModelSection.bindStimmungAgentModelSectionEvents();
+  validationAgentModelSection.bindValidationAgentModelSectionEvents();
   embeddingSection.bindEmbeddingSectionEvents();
   databaseSection.bindDatabaseSectionEvents();
   servicesSection.bindServicesSectionEvents();
@@ -1019,6 +1249,8 @@
   mainModelSection.ensureMainModelFieldSkeleton();
   arbiterModelSection.ensureArbiterModelFieldSkeleton();
   summaryModelSection.ensureSummaryModelFieldSkeleton();
+  stimmungAgentModelSection.ensureStimmungAgentModelFieldSkeleton();
+  validationAgentModelSection.ensureValidationAgentModelFieldSkeleton();
   embeddingSection.ensureEmbeddingFieldSkeleton();
   databaseSection.ensureDatabaseFieldSkeleton();
   servicesSection.ensureServicesFieldSkeleton();
@@ -1027,6 +1259,8 @@
     mainModel: mainModelSection.emptyMainModelDraft,
     arbiterModel: arbiterModelSection.emptyArbiterModelDraft,
     summaryModel: summaryModelSection.emptySummaryModelDraft,
+    stimmungAgentModel: stimmungAgentModelSection.emptyStimmungAgentModelDraft,
+    validationAgentModel: validationAgentModelSection.emptyValidationAgentModelDraft,
     embedding: embeddingSection.emptyEmbeddingDraft,
     database: databaseSection.emptyDatabaseDraft,
     services: servicesSection.emptyServicesDraft,
@@ -1044,6 +1278,14 @@
   summaryModelSection.applySummaryDraftToForm();
   summaryModelSection.renderSummaryModelReadonlyInfo();
   summaryModelSection.renderSummaryModelChecks([]);
+  stimmungAgentModelSection.renderStimmungAgentModelMeta();
+  stimmungAgentModelSection.applyStimmungAgentDraftToForm();
+  stimmungAgentModelSection.renderStimmungAgentModelReadonlyInfo();
+  stimmungAgentModelSection.renderStimmungAgentModelChecks([]);
+  validationAgentModelSection.renderValidationAgentModelMeta();
+  validationAgentModelSection.applyValidationAgentDraftToForm();
+  validationAgentModelSection.renderValidationAgentModelReadonlyInfo();
+  validationAgentModelSection.renderValidationAgentModelChecks([]);
   embeddingSection.renderEmbeddingMeta();
   embeddingSection.applyEmbeddingDraftToForm();
   embeddingSection.renderEmbeddingChecks([]);
@@ -1060,6 +1302,8 @@
   mainModelSection.setMainModelControlsDisabled(true);
   arbiterModelSection.setArbiterControlsDisabled(true);
   summaryModelSection.setSummaryControlsDisabled(true);
+  stimmungAgentModelSection.setStimmungAgentControlsDisabled(true);
+  validationAgentModelSection.setValidationAgentControlsDisabled(true);
   embeddingSection.setEmbeddingControlsDisabled(true);
   databaseSection.setDatabaseControlsDisabled(true);
   servicesSection.setServicesControlsDisabled(true);

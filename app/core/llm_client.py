@@ -21,26 +21,62 @@ def _runtime_main_api_key() -> str:
     return str(secret.value)
 
 
-def or_headers(caller: str = "llm") -> dict:
-    """Construit les headers HTTP pour OpenRouter, selon le composant appelant."""
+def _runtime_main_view():
+    return runtime_settings.get_main_model_settings()
+
+
+def _runtime_main_base_url() -> str:
+    view = _runtime_main_view()
+    payload = view.payload.get('base_url') or {}
+    return str(payload.get('value') or config.OR_BASE).rstrip('/')
+
+
+def _runtime_main_referer() -> str:
+    view = _runtime_main_view()
+    payload = view.payload.get('referer') or {}
+    return str(payload.get('value') or config.OR_REFERER).strip()
+
+
+def _runtime_main_title(caller: str) -> str:
     caller_key = str(caller or "llm").strip().lower()
-    title_map = {
+    title_field_map = {
+        "llm": "title_llm",
+        "arbiter": "title_arbiter",
+        "resumer": "title_resumer",
+        "stimmung_agent": "title_stimmung_agent",
+        "validation_agent": "title_validation_agent",
+    }
+    title_default_map = {
         "llm": config.OR_TITLE_LLM,
         "arbiter": config.OR_TITLE_ARBITER,
         "resumer": config.OR_TITLE_RESUMER,
         "stimmung_agent": config.OR_TITLE_STIMMUNG_AGENT,
+        "validation_agent": config.OR_TITLE_VALIDATION_AGENT,
     }
-    title = title_map.get(caller_key, config.OR_TITLE_LLM)
+    view = _runtime_main_view()
+    field_name = title_field_map.get(caller_key, "title_llm")
+    payload = view.payload.get(field_name) or {}
+    title = str(payload.get('value') or '').strip()
+    return title or title_default_map.get(caller_key, config.OR_TITLE_LLM)
 
+
+def or_headers(caller: str = "llm") -> dict:
+    """Construit les headers HTTP pour OpenRouter, selon le composant appelant."""
     h = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {_runtime_main_api_key()}",
     }
-    if config.OR_REFERER:
-        h["HTTP-Referer"] = config.OR_REFERER
+    referer = _runtime_main_referer()
+    if referer:
+        h["HTTP-Referer"] = referer
+    title = _runtime_main_title(caller)
     if title:
         h["X-Title"] = title
     return h
+
+
+def or_chat_completions_url() -> str:
+    return f"{_runtime_main_base_url()}/chat/completions"
 
 
 def _runtime_main_model_name() -> str:

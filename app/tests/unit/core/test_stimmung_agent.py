@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -63,12 +64,27 @@ class StimmungAgentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.original_read_prompt = stimmung_agent.prompt_loader.read_prompt_text
         self.original_or_headers = stimmung_agent.llm_client.or_headers
+        self.original_or_chat_completions_url = stimmung_agent.llm_client.or_chat_completions_url
+        self.original_runtime_settings_getter = stimmung_agent.runtime_settings.get_stimmung_agent_model_settings
         stimmung_agent.prompt_loader.read_prompt_text = lambda _path: 'SYSTEM PROMPT'
         stimmung_agent.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
+        stimmung_agent.llm_client.or_chat_completions_url = lambda: 'https://openrouter.example/chat/completions'
+        stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = lambda: types.SimpleNamespace(
+            payload={
+                'primary_model': {'value': stimmung_agent.PRIMARY_MODEL},
+                'fallback_model': {'value': stimmung_agent.FALLBACK_MODEL},
+                'timeout_s': {'value': 10},
+                'temperature': {'value': 0.1},
+                'top_p': {'value': 1.0},
+                'max_tokens': {'value': 220},
+            }
+        )
 
     def tearDown(self) -> None:
         stimmung_agent.prompt_loader.read_prompt_text = self.original_read_prompt
         stimmung_agent.llm_client.or_headers = self.original_or_headers
+        stimmung_agent.llm_client.or_chat_completions_url = self.original_or_chat_completions_url
+        stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = self.original_runtime_settings_getter
 
     def test_build_affective_turn_signal_returns_primary_validated_signal(self) -> None:
         requests_module = _FakeRequests(
@@ -91,6 +107,38 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['dominant_tone'], 'frustration')
         self.assertEqual(result.signal['tones'][1], {'tone': 'confusion', 'strength': 4})
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
+        self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
+
+    def test_build_affective_turn_signal_uses_runtime_settings_models_and_sampling(self) -> None:
+        stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = lambda: types.SimpleNamespace(
+            payload={
+                'primary_model': {'value': 'openai/custom-stimmung-primary'},
+                'fallback_model': {'value': 'openai/custom-stimmung-fallback'},
+                'timeout_s': {'value': 22},
+                'temperature': {'value': 0.6},
+                'top_p': {'value': 0.77},
+                'max_tokens': {'value': 333},
+            }
+        )
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    '{"schema_version":"v1","present":true,"tones":[{"tone":"curiosite","strength":5}],"dominant_tone":"curiosite","confidence":0.74}'
+                )
+            ]
+        )
+
+        result = stimmung_agent.build_affective_turn_signal(
+            user_msg='Je veux un test runtime-backed',
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.model, 'openai/custom-stimmung-primary')
+        self.assertEqual(requests_module.calls[0]['json']['model'], 'openai/custom-stimmung-primary')
+        self.assertEqual(requests_module.calls[0]['json']['temperature'], 0.6)
+        self.assertEqual(requests_module.calls[0]['json']['top_p'], 0.77)
+        self.assertEqual(requests_module.calls[0]['json']['max_tokens'], 333)
+        self.assertEqual(requests_module.calls[0]['timeout'], 22)
         self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
 
     def test_build_affective_turn_signal_uses_recent_window_context_with_five_turn_cap(self) -> None:

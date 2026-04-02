@@ -217,7 +217,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
 
-        for section in ('main_model', 'arbiter_model', 'summary_model', 'services'):
+        for section in (
+            'main_model',
+            'arbiter_model',
+            'summary_model',
+            'stimmung_agent_model',
+            'validation_agent_model',
+            'services',
+        ):
             readonly_info = data['sections'][section]['readonly_info']
             self.assertTrue(readonly_info, section)
             for item in readonly_info.values():
@@ -356,6 +363,68 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'Tu es un assistant de synthèse.',
             data['readonly_info']['system_prompt']['value'],
         )
+
+    def test_get_admin_settings_stimmung_agent_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'stimmung_agent_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'primary_model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'db'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 11, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/stimmung-agent-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'stimmung_agent_model')
+        self.assertEqual(data['payload']['primary_model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['timeout_s']['value'], 11)
+        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/stimmung_agent.txt')
+        self.assertIn('main_model.title_stimmung_agent', data['readonly_info']['shared_transport']['value'])
+
+    def test_get_admin_settings_validation_agent_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'validation_agent_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'primary_model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'db'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 80, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/validation-agent-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'validation_agent_model')
+        self.assertEqual(data['payload']['primary_model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['max_tokens']['value'], 80)
+        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/validation_agent.txt')
+        self.assertIn('validation_decision', data['readonly_info']['validated_output_contract']['value'])
 
     def test_get_admin_settings_embedding_returns_single_section_with_redacted_secret(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -1467,6 +1536,8 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertIn('/api/admin/settings/main-model/validate', routes)
         self.assertIn('/api/admin/settings/arbiter-model/validate', routes)
         self.assertIn('/api/admin/settings/summary-model/validate', routes)
+        self.assertIn('/api/admin/settings/stimmung-agent-model/validate', routes)
+        self.assertIn('/api/admin/settings/validation-agent-model/validate', routes)
         self.assertIn('/api/admin/settings/embedding/validate', routes)
         self.assertIn('/api/admin/settings/database/validate', routes)
         self.assertIn('/api/admin/settings/services/validate', routes)

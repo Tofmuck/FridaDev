@@ -10,6 +10,8 @@
     mainModel: createSectionStateSlice(),
     arbiterModel: createSectionStateSlice(),
     summaryModel: createSectionStateSlice(),
+    stimmungAgentModel: createSectionStateSlice(),
+    validationAgentModel: createSectionStateSlice(),
     embedding: createSectionStateSlice(),
     database: createSectionStateSlice(),
     services: createSectionStateSlice(),

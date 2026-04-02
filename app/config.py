@@ -53,6 +53,10 @@ OR_TITLE_STIMMUNG_AGENT = os.environ.get(
     'OPENROUTER_TITLE_STIMMUNG_AGENT',
     f'{OR_TITLE_BASE}/StimmungAgent',
 ).strip() or f'{OR_TITLE_BASE}/StimmungAgent'
+OR_TITLE_VALIDATION_AGENT = os.environ.get(
+    'OPENROUTER_TITLE_VALIDATION_AGENT',
+    f'{OR_TITLE_BASE}/ValidationAgent',
+).strip() or f'{OR_TITLE_BASE}/ValidationAgent'
 OR_TITLE = OR_TITLE_LLM
 
 # SearXNG
