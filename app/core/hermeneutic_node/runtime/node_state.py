@@ -106,6 +106,21 @@ def _validated_output_regime(
     return result
 
 
+def _validated_current_output_regime(
+    *,
+    judgment_posture: str,
+    output_regime: Mapping[str, Any] | None,
+) -> dict[str, str]:
+    allow_meta = judgment_posture != "answer"
+    result = _validated_output_regime(
+        output_regime,
+        allow_meta=allow_meta,
+    )
+    if allow_meta and result["discursive_regime"] != "meta":
+        raise ValueError("invalid_output_regime")
+    return result
+
+
 def _validated_node_state(
     node_state: Mapping[str, Any] | None,
     *,
@@ -164,14 +179,16 @@ def _is_inertia_candidate(output_regime: Mapping[str, str]) -> bool:
 
 def apply_output_regime_inertia(
     *,
+    conversation_id: Any,
     judgment_posture: str,
     output_regime: Mapping[str, Any] | None,
     existing_node_state: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    conversation_id_value = _validated_conversation_id(conversation_id)
     posture = _validated_judgment_posture(judgment_posture)
-    current_output_regime = _validated_output_regime(
-        output_regime,
-        allow_meta=posture != "answer",
+    current_output_regime = _validated_current_output_regime(
+        judgment_posture=posture,
+        output_regime=output_regime,
     )
     existing_state = _validated_node_state(existing_node_state, field_name="existing_node_state")
 
@@ -180,6 +197,8 @@ def apply_output_regime_inertia(
             "output_regime": current_output_regime,
             "state_used": False,
         }
+    if existing_state is not None and existing_state["conversation_id"] != conversation_id_value:
+        raise ValueError("invalid_existing_node_state")
     if existing_state is None or existing_state["last_answer_output_regime"] is None:
         return {
             "output_regime": current_output_regime,
@@ -214,9 +233,9 @@ def build_node_state(
     conversation_id_value = _validated_conversation_id(conversation_id)
     updated_at_value = _validated_updated_at(updated_at)
     posture = _validated_judgment_posture(judgment_posture)
-    current_output_regime = _validated_output_regime(
-        output_regime,
-        allow_meta=posture != "answer",
+    current_output_regime = _validated_current_output_regime(
+        judgment_posture=posture,
+        output_regime=output_regime,
     )
     existing_state = _validated_node_state(existing_node_state, field_name="existing_node_state")
 

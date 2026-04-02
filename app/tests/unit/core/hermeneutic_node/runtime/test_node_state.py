@@ -97,6 +97,43 @@ class NodeStateTests(unittest.TestCase):
                 existing_node_state={},
             )
 
+    def test_build_node_state_rejects_clarify_with_substantive_output_regime(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_output_regime"):
+            node_state.build_node_state(
+                conversation_id="conv-1",
+                updated_at="2026-04-02T12:00:00Z",
+                judgment_posture="clarify",
+                output_regime=_output_regime(
+                    discursive_regime="continuite",
+                    resituation_level="light",
+                    time_reference_mode="dialogue_relative",
+                ),
+            )
+
+    def test_apply_output_regime_inertia_rejects_suspend_with_substantive_output_regime(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_output_regime"):
+            node_state.apply_output_regime_inertia(
+                conversation_id="conv-1",
+                judgment_posture="suspend",
+                output_regime=_output_regime(
+                    discursive_regime="continuite",
+                    resituation_level="light",
+                    time_reference_mode="dialogue_relative",
+                ),
+            )
+
+    def test_apply_output_regime_inertia_rejects_answer_with_meta_output_regime(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_output_regime"):
+            node_state.apply_output_regime_inertia(
+                conversation_id="conv-1",
+                judgment_posture="answer",
+                output_regime=_output_regime(
+                    discursive_regime="meta",
+                    resituation_level="none",
+                    time_reference_mode="atemporal",
+                ),
+            )
+
     def test_validate_node_state_normalizes_missing_last_answer_output_regime(self) -> None:
         validated = node_state.validate_node_state(
             _state(
@@ -200,6 +237,7 @@ class NodeStateTests(unittest.TestCase):
 
     def test_apply_output_regime_inertia_does_not_reuse_without_prior_answer(self) -> None:
         payload = node_state.apply_output_regime_inertia(
+            conversation_id="conv-1",
             judgment_posture="answer",
             output_regime=_output_regime(),
             existing_node_state=None,
@@ -224,6 +262,7 @@ class NodeStateTests(unittest.TestCase):
         )
 
         payload = node_state.apply_output_regime_inertia(
+            conversation_id="conv-1",
             judgment_posture="answer",
             output_regime=_output_regime(),
             existing_node_state=existing,
@@ -252,6 +291,7 @@ class NodeStateTests(unittest.TestCase):
         )
 
         payload = node_state.apply_output_regime_inertia(
+            conversation_id="conv-1",
             judgment_posture="answer",
             output_regime=_output_regime(
                 discursive_regime="cadre",
@@ -284,6 +324,7 @@ class NodeStateTests(unittest.TestCase):
         )
 
         payload = node_state.apply_output_regime_inertia(
+            conversation_id="conv-1",
             judgment_posture="clarify",
             output_regime=_output_regime(
                 discursive_regime="meta",
@@ -304,6 +345,23 @@ class NodeStateTests(unittest.TestCase):
                 "state_used": False,
             },
         )
+
+    def test_apply_output_regime_inertia_rejects_cross_conversation_state(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_existing_node_state"):
+            node_state.apply_output_regime_inertia(
+                conversation_id="conv-1",
+                judgment_posture="answer",
+                output_regime=_output_regime(),
+                existing_node_state=_state(
+                    conversation_id="conv-other",
+                    judgment_posture="answer",
+                    last_answer_output_regime=_output_regime(
+                        discursive_regime="continuite",
+                        resituation_level="light",
+                        time_reference_mode="dialogue_relative",
+                    ),
+                ),
+            )
 
     def test_node_state_never_stores_meta_as_last_answer_output_regime(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_existing_node_state"):
