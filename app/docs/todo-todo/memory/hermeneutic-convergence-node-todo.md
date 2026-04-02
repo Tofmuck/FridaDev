@@ -318,8 +318,8 @@ Perimetre: validation agent, verdict final valide, branchement aval, observabili
 
 - [x] Definir le contrat de revision: entree = verdict primaire + justifications + `validation_dialogue_context` + directives provisoires + entrees canoniques.
 - [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
-- [ ] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
-- [ ] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.
+- [x] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
+- [x] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.
 - [ ] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire).
 - [x] Definir le cadre operationnel du validation agent: budget token, timeout, fail-open, circuit breaker, cout/latence cible.
 - [ ] Definir les signaux d'observabilite du dispositif final (noeud primaire + validation), sans inflation de logs.
@@ -335,7 +335,15 @@ Pause normative fermee:
 - Fichier Python cible: `validation_agent.py`
 - Raison: la revision finale est souveraine sur la validation du verdict, mais le validation agent V1 doit d'abord etre pose comme juge borne, en une passe, relisant `primary_verdict` avec un `validation_dialogue_context` recent elargi comme matiere hermeneutique principale; ce contrat doit preceder le code.
 
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-validated-output-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-validated-output-contract.md`
+- Module code cible: `core.hermeneutic_node.validation.validation_agent`
+- Repertoire code cible: `app/core/hermeneutic_node/validation/`
+- Fichier Python cible: `validation_agent.py`
+- Raison: la sortie finale aval-consommable est maintenant posee avec une table de combinaison compacte, un `final_judgment_posture` explicite, et un statut ferme de `pipeline_directives_final`, sans fermer encore le wiring aval ni l'observabilite complete.
+
 Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + observabilite complete + check-list pre-shadow.
-Validation minimale: l'aval consomme explicitement une sortie revisee (`confirm|challenge|clarify|suspend`) et des `pipeline_directives_final`, jamais un verdict primaire brut.
+Validation minimale: l'aval consomme explicitement une sortie validee contenant `validation_decision`, `final_judgment_posture` et `pipeline_directives_final`, jamais un verdict primaire brut.
 Dependances: Lots 1, 5 et 8.
 Hors scope: lancement operationnel de la shadow globale.

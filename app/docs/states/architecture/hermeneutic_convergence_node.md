@@ -345,7 +345,12 @@ Il agit comme juge de revision et produit une decision de validation:
 
 La validation produit une sortie finale explicite:
 - `validation_decision` ;
+- `final_judgment_posture` ;
 - `pipeline_directives_final`.
+
+`challenge` reste visible comme decision de validation,
+mais il n'est pas une posture aval-consommable en propre.
+La table de combinaison le resout vers `final_judgment_posture`.
 
 Le contrat du validation agent doit inclure une table de combinaison normative
 entre:
@@ -664,11 +669,9 @@ V1 recommandee (noyau doctrinal) :
 
 Le verdict primaire ne doit pas etre consomme directement par l'aval.
 
-L'agent hermeneutique de validation revise ce verdict, puis produit:
-- `confirm`
-- `challenge`
-- `clarify`
-- `suspend`
+L'agent hermeneutique de validation revise ce verdict, puis produit une sortie validee minimale:
+- `validation_decision` (`confirm|challenge|clarify|suspend`)
+- `final_judgment_posture`
 - `pipeline_directives_final` (issues d'une table de combinaison normative).
 
 Modele cible de reference pour cette etape: `GPT-5.4`.
@@ -682,7 +685,7 @@ Cette etape inclut aussi le cadre operationnel de validation:
 ### 11.5 Etape 5 - Wiring aval
 
 Les modules aval ne doivent plus deduire chacun leur politique dans leur coin.
-Ils doivent consommer `pipeline_directives_final` uniquement.
+Ils doivent consommer la sortie validee, et non `primary_verdict` brut, avec `final_judgment_posture` et `pipeline_directives_final` comme surface normative minimale.
 
 ### 11.6 Etape 6 - Shadow globale
 
