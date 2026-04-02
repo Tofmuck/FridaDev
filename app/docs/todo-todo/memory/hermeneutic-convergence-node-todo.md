@@ -320,7 +320,7 @@ Perimetre: validation agent, verdict final valide, branchement aval, observabili
 - [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
 - [x] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
 - [x] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.
-- [ ] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire).
+- [x] Definir le contrat de branchement aval sur verdict valide uniquement (pas de consommation directe du verdict primaire, projection aval en prose `[JUGEMENT HERMENEUTIQUE]` derivee de `validated_output`).
 - [x] Definir le cadre operationnel du validation agent: budget token, timeout, fail-open, circuit breaker, cout/latence cible.
 - [ ] Definir les signaux d'observabilite du dispositif final (noeud primaire + validation), sans inflation de logs.
 - [ ] Definir les KPI minimaux de stabilite pour ce branchement.
@@ -343,7 +343,14 @@ Pause normative fermee:
 - Fichier Python cible: `validation_agent.py`
 - Raison: la sortie finale aval-consommable est maintenant posee avec une table de combinaison compacte, un `final_judgment_posture` explicite, et un statut ferme de `pipeline_directives_final`, sans fermer encore le wiring aval ni l'observabilite complete.
 
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-downstream-branching-contract.md`
+- Chemin docs: `app/docs/states/specs/hermeneutic-node-downstream-branching-contract.md`
+- Zones runtime cibles: `core.chat_service` et `core.chat_prompt_context`
+- Fichiers runtime cibles: `app/core/chat_service.py`, `app/core/chat_prompt_context.py`
+- Raison: l'aval ne consomme jamais `primary_verdict` brut; il branche sur `validated_output` comme source canonique interne, puis le prompt principal lit une projection aval en prose `[JUGEMENT HERMENEUTIQUE]`, sans dump des artefacts internes.
+
 Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + observabilite complete + check-list pre-shadow.
-Validation minimale: l'aval consomme explicitement une sortie validee contenant `validation_decision`, `final_judgment_posture` et `pipeline_directives_final`, jamais un verdict primaire brut.
+Validation minimale: l'aval branche uniquement sur un jugement valide derive de `validated_output`; le prompt principal lit un bloc prose `[JUGEMENT HERMENEUTIQUE]` resolu, jamais `primary_verdict` brut ni le dossier interne complet.
 Dependances: Lots 1, 5 et 8.
 Hors scope: lancement operationnel de la shadow globale.

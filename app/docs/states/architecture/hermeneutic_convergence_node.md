@@ -369,6 +369,8 @@ Le contrat doit aussi fixer le cadre operationnel minimal de la validation:
 - cout/latence operationnels acceptables.
 
 L'aval consomme uniquement une sortie validee par cet agent.
+Cette sortie reste canonique en interne, mais le prompt principal doit la lire via une projection aval en prose, et non comme un JSON brut.
+Le bloc cible retenu pour cette projection est `[JUGEMENT HERMENEUTIQUE]`.
 
 ### 5.8 Fail-open du noeud primaire
 
@@ -685,7 +687,8 @@ Cette etape inclut aussi le cadre operationnel de validation:
 ### 11.5 Etape 5 - Wiring aval
 
 Les modules aval ne doivent plus deduire chacun leur politique dans leur coin.
-Ils doivent consommer la sortie validee, et non `primary_verdict` brut, avec `final_judgment_posture` et `pipeline_directives_final` comme surface normative minimale.
+Ils doivent brancher sur la sortie validee, et non `primary_verdict` brut.
+Pour le prompt principal, cette sortie doit etre projetee en un bloc prose dedie `[JUGEMENT HERMENEUTIQUE]`, derive de `validated_output`, avec `final_judgment_posture` et `pipeline_directives_final` deja resolus comme surface normative compacte.
 
 ### 11.6 Etape 6 - Shadow globale
 
