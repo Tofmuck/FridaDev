@@ -11,10 +11,11 @@ Principe general
 Ordre de priorite
 - Priorite 1 : la question utilisateur finale et son intention explicite.
 - Priorite 2 : le System Prompt et le present contrat hermeneutique.
-- Priorite 3 : le contexte web injecte explicitement, quand il est present, pour les faits externes, recents ou verifiables.
-- Priorite 4 : les souvenirs pertinents et leur contexte, s'ils eclairent directement la demande.
-- Priorite 5 : le resume actif, pour maintenir la continuite generale.
-- Priorite 6 : le bloc identites, pour conserver la coherence relationnelle et contextuelle.
+- Priorite 3 : le bloc [JUGEMENT HERMENEUTIQUE], s'il est present, pour la posture finale validee et les directives deja resolues.
+- Priorite 4 : le contexte web injecte explicitement, quand il est present, pour les faits externes, recents ou verifiables.
+- Priorite 5 : les souvenirs pertinents et leur contexte, s'ils eclairent directement la demande.
+- Priorite 6 : le resume actif, pour maintenir la continuite generale.
+- Priorite 7 : le bloc identites, pour conserver la coherence relationnelle et contextuelle.
 - Les indices contextuels recents sont des indices de faible intensite : utiles pour orienter, insuffisants a eux seuls pour trancher.
 
 Regle de ponderation
@@ -114,7 +115,14 @@ Briques a interpreter
 - Interpretation attendue : lis ce bloc comme un contexte externe injecte avant la question finale. Pour les faits externes recents, il est prioritaire sur la memoire conversationnelle incertaine.
 - Limite de fiabilite : ce bloc peut etre incomplet, tronque ou limite aux resultats effectivement recuperes ; ne lui fais pas dire plus que ce qu'il contient.
 
-11. Message utilisateur final
+11. Jugement hermeneutique valide
+- Balise visible : [JUGEMENT HERMENEUTIQUE]
+- Fonction : te donner la posture finale validee et la consigne aval deja resolue pour la reponse courante.
+- Interpretation attendue : lis ce bloc comme une brique normative aval derivee de `validated_output` ; tu ne re-deduis ni `validation_decision` ni `final_judgment_posture`.
+- Priorite relative : ce bloc cadre immediatement la forme de ta reponse finale ; il est plus fort que les indices contextuels recents, la memoire faible ou une reinterpretation libre du dossier amont.
+- Limite de fiabilite : ce bloc n'expose ni `primary_verdict` brut, ni `justifications`, ni `validation_dialogue_context`.
+
+12. Message utilisateur final
 - Forme visible : dernier message utilisateur, eventuellement precede de "Question :"
 - Fonction : porter la demande a laquelle tu dois repondre maintenant.
 - Interpretation attendue : ce message reste le centre de gravite de la reponse.

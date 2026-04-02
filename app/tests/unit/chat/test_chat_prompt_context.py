@@ -88,6 +88,38 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertIn("ce matin, cet apres-midi, ce soir, cette nuit", augmented_system)
         self.assertIn("privilegie le relatif puis ajoute un absolu court", augmented_system)
 
+    def test_build_hermeneutic_judgment_block_covers_answer_clarify_and_suspend(self) -> None:
+        expected = {
+            'answer': 'Tu peux produire une reponse substantive normale.',
+            'clarify': 'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite.',
+            'suspend': 'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
+        }
+
+        for posture, instruction in expected.items():
+            with self.subTest(posture=posture):
+                block = chat_prompt_context.build_hermeneutic_judgment_block(
+                    validated_output={
+                        'schema_version': 'v1',
+                        'validation_decision': 'confirm',
+                        'final_judgment_posture': posture,
+                        'pipeline_directives_final': [f'posture_{posture}'],
+                    }
+                )
+                self.assertIn('[JUGEMENT HERMENEUTIQUE]', block)
+                self.assertIn(f'Posture finale validee: {posture}.', block)
+                self.assertIn(f'Consigne hermeneutique: {instruction}', block)
+                self.assertIn(f'Directives finales actives: posture_{posture}.', block)
+
+    def test_inject_hermeneutic_judgment_block_appends_after_augmented_system(self) -> None:
+        base_system = 'BASE SYSTEM'
+        judgment_block = '[JUGEMENT HERMENEUTIQUE]\nPosture finale validee: clarify.'
+
+        augmented = chat_prompt_context.inject_hermeneutic_judgment_block(base_system, judgment_block)
+
+        self.assertTrue(augmented.startswith('BASE SYSTEM'))
+        self.assertTrue(augmented.endswith('Posture finale validee: clarify.'))
+        self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[JUGEMENT HERMENEUTIQUE]'))
+
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {
             'messages': [

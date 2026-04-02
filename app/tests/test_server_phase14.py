@@ -113,16 +113,16 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         patch_attr(self.server.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
         patch_attr(self.server.admin_logs, 'log_event', lambda *args, **kwargs: None)
         patch_attr(self.server.llm, 'or_headers', lambda **_kwargs: {})
-        patch_attr(
-            self.server.llm,
-            'build_payload',
-            lambda _messages, _temperature, _top_p, max_tokens, stream=False: {
+        def fake_build_payload(_messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['payload_messages'] = [dict(message) for message in _messages]
+            return {
                 'model': 'openrouter/runtime-main-model',
-                'messages': [],
+                'messages': list(_messages),
                 'max_tokens': max_tokens,
                 'stream': stream,
-            },
-        )
+            }
+
+        patch_attr(self.server.llm, 'build_payload', fake_build_payload)
         patch_attr(self.server.requests, 'post', requests_post)
         patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
         patch_attr(self.server.memory_store, 'save_new_traces', lambda *_args, **_kwargs: None)
@@ -308,6 +308,152 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             order,
             ['prepare_memory_context', 'hermeneutic_insertion_point', 'build_prompt_messages'],
         )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_injects_hermeneutic_judgment_block_from_validated_output(self) -> None:
+        conversation = {
+            'id': 'conv-validated-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok validated block'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'judgment_posture': 'answer',
+                'pipeline_directives_provisional': ['posture_answer'],
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'challenge',
+                    'final_judgment_posture': 'answer',
+                    'pipeline_directives_final': ['posture_answer', 'source_conflict_clarify'],
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        system_prompt = observed_state['payload_messages'][0]['content']
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertIn('Posture finale validee: answer.', system_prompt)
+        self.assertIn('Consigne hermeneutique: Tu peux produire une reponse substantive normale.', system_prompt)
+        self.assertIn('Directives finales actives: posture_answer, source_conflict_clarify.', system_prompt)
+        self.assertNotIn('primary_verdict', system_prompt)
+        self.assertNotIn('validation_dialogue_context', system_prompt)
+        self.assertNotIn('justifications', system_prompt)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_injects_suspend_block_when_validation_agent_fail_opens(self) -> None:
+        conversation = {
+            'id': 'conv-validation-fail-open-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok fail open block'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'judgment_posture': 'answer',
+                'pipeline_directives_provisional': ['posture_answer'],
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'suspend',
+                    'final_judgment_posture': 'suspend',
+                    'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                },
+                status='error',
+                model='openai/gpt-5.4-nano',
+                decision_source='fail_open',
+                reason_code='timeout',
+            )
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        system_prompt = observed_state['payload_messages'][0]['content']
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertIn('Posture finale validee: suspend.', system_prompt)
+        self.assertIn(
+            'Consigne hermeneutique: Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
+            system_prompt,
+        )
+        self.assertIn('Directives finales actives: posture_suspend, fallback_validation.', system_prompt)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_active_summary_to_hermeneutic_insertion_point(self) -> None:

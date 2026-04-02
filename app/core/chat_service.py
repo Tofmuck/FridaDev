@@ -9,6 +9,8 @@ from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
 from core import stimmung_agent
+from core.hermeneutic_node.runtime import primary_node
+from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core.hermeneutic_node.inputs import recent_context_input
@@ -39,6 +41,12 @@ def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] |
         'status': int(status),
         'headers': headers or {},
     }
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}
 
 
 def _record_identity_entries_for_mode(
@@ -269,8 +277,9 @@ def _run_hermeneutic_node_insertion_point(
     user_turn_signals: Mapping[str, Any] | None = None,
     stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
-) -> None:
-    """Fixed runtime seam reserved for the future hermeneutic node."""
+    requests_module: Any,
+) -> dict[str, Any]:
+    """Bounded runtime seam for primary verdict and validated downstream wiring."""
     hermeneutic_node_logger.emit_hermeneutic_node_insertion(
         time_input=time_input,
         current_mode=current_mode,
@@ -285,7 +294,44 @@ def _run_hermeneutic_node_insertion_point(
         stimmung_input=stimmung_input,
         web_input=web_input,
     )
-    return None
+    primary_payload = primary_node.build_primary_node(
+        conversation_id=conversation.get('id'),
+        updated_at=now_iso,
+        time_input=time_input,
+        memory_retrieved=memory_retrieved,
+        memory_arbitration=memory_arbitration,
+        summary_input=summary_input,
+        identity_input=identity_input,
+        recent_context_input=recent_context_input,
+        recent_window_input=recent_window_input,
+        user_turn_input=user_turn_input,
+        user_turn_signals=user_turn_signals,
+        stimmung_input=stimmung_input,
+        web_input=web_input,
+    )
+    validated_result = validation_agent.build_validated_output(
+        primary_verdict=primary_payload['primary_verdict'],
+        justifications={},
+        validation_dialogue_context=recent_context_input or {},
+        canonical_inputs={
+            'time_input': _mapping(time_input),
+            'memory_retrieved': _mapping(memory_retrieved),
+            'memory_arbitration': _mapping(memory_arbitration),
+            'summary_input': _mapping(summary_input),
+            'identity_input': _mapping(identity_input),
+            'recent_context_input': _mapping(recent_context_input),
+            'recent_window_input': _mapping(recent_window_input),
+            'user_turn_input': _mapping(user_turn_input),
+            'user_turn_signals': _mapping(user_turn_signals),
+            'stimmung_input': _mapping(stimmung_input),
+            'web_input': _mapping(web_input),
+        },
+        requests_module=requests_module,
+    )
+    return {
+        'primary_payload': primary_payload,
+        'validated_result': validated_result,
+    }
 
 
 def chat_response(
@@ -404,7 +450,7 @@ def chat_response(
     )
     web_payload = canonical_web_input.build_web_input_from_runtime_payload(web_runtime_payload)
 
-    _run_hermeneutic_node_insertion_point(
+    hermeneutic_node_runtime = _run_hermeneutic_node_insertion_point(
         conversation=conversation,
         user_msg=user_msg,
         now_iso=now_iso_value,
@@ -422,7 +468,20 @@ def chat_response(
         user_turn_signals=user_turn_signals_payload,
         stimmung_input=stimmung_payload,
         web_input=web_payload,
+        requests_module=requests_module,
     )
+    hermeneutic_judgment_block = chat_prompt_context.build_hermeneutic_judgment_block(
+        validated_output=getattr(
+            _mapping(hermeneutic_node_runtime).get('validated_result'),
+            'validated_output',
+            None,
+        ),
+    )
+    augmented_system = chat_prompt_context.inject_hermeneutic_judgment_block(
+        augmented_system,
+        hermeneutic_judgment_block,
+    )
+    chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
     prompt_messages = conv_store_module.build_prompt_messages(
         conversation,

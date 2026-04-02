@@ -45,6 +45,7 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         for snippet in [
             "Lis ce bloc comme un contrat d'interpretation stable.",
             "Priorite 1 : la question utilisateur finale",
+            "Priorite 3 : le bloc [JUGEMENT HERMENEUTIQUE]",
             "Regles candidates de resolution",
             "Discipline temporelle d'application",
             "NOW: ...",
@@ -71,6 +72,8 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "[Memoire -- souvenirs pertinents]",
             "[RECHERCHE WEB -- ...]",
             "[FIN DES RESULTATS WEB]",
+            "[JUGEMENT HERMENEUTIQUE]",
+            "tu ne re-deduis ni `validation_decision` ni `final_judgment_posture`",
             "Question :",
             "stability, recurrence et confidence reste partiellement provisoire",
             "Tu ne vois pas les sorties brutes de l'identity extractor.",

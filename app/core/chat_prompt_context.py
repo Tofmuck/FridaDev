@@ -4,6 +4,31 @@ from typing import Any, Mapping
 
 from core.hermeneutic_node.inputs import time_input
 
+_FINAL_JUDGMENT_INSTRUCTIONS = {
+    'answer': 'Tu peux produire une reponse substantive normale',
+    'clarify': 'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite',
+    'suspend': 'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente',
+}
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
+
+
+def _stable_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in value:
+        normalized = _text(item)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(normalized)
+    return ordered
+
 
 def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
     return (
@@ -28,6 +53,35 @@ def build_augmented_system(
     delta_rule = time_input.build_time_reference_block(canonical_time_input)
     parts = [p for p in [system_prompt, hermeneutical_prompt, delta_rule, id_block] if p]
     return '\n\n'.join(parts), identity_ids
+
+
+def build_hermeneutic_judgment_block(
+    *,
+    validated_output: Mapping[str, Any] | None,
+) -> str:
+    payload = validated_output if isinstance(validated_output, Mapping) else {}
+    final_judgment_posture = _text(payload.get('final_judgment_posture'))
+    instruction = _FINAL_JUDGMENT_INSTRUCTIONS.get(final_judgment_posture)
+    directives = _stable_string_list(payload.get('pipeline_directives_final'))
+    if not instruction or not directives:
+        return ''
+
+    return (
+        '[JUGEMENT HERMENEUTIQUE]\n'
+        f'Posture finale validee: {final_judgment_posture}.\n'
+        f'Consigne hermeneutique: {instruction}.\n'
+        f"Directives finales actives: {', '.join(directives)}."
+    )
+
+
+def inject_hermeneutic_judgment_block(
+    augmented_system: str,
+    hermeneutic_judgment_block: str,
+) -> str:
+    block = _text(hermeneutic_judgment_block)
+    if not block:
+        return str(augmented_system or '')
+    return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
 
 
 def apply_augmented_system(conversation: dict[str, Any], augmented_system: str) -> None:
