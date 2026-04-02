@@ -194,13 +194,14 @@ Objectif: operationaliser la sortie `answer | clarify | suspend` avec les signau
 
 Perimetre: `judgment_posture`, criteres de decision, effets minimaux.
 
-- [ ] Definir les criteres minimaux pour `answer`.
-- [ ] Definir les criteres minimaux pour `clarify`.
-- [ ] Definir les criteres minimaux pour `suspend`.
-- [ ] Definir le lien explicite entre `judgment_posture`, signaux d'ambiguite (Lot 2) et `epistemic_regime` (Lot 4).
+- [x] Trancher noir sur blanc que `judgment_posture` est une sortie doctrinale du noeud: posture primaire de parole et de jugement, pas input canonique, pas validation finale, pas simple routing d'action.
+- [x] Definir les criteres minimaux pour `answer`.
+- [x] Definir les criteres minimaux pour `clarify`.
+- [x] Definir les criteres minimaux pour `suspend`, en explicitant que `suspend` = reponse de suspension du jugement et non absence de reponse.
+- [x] Definir le lien explicite entre `judgment_posture`, signaux d'ambiguite (Lot 2) et `epistemic_regime` (Lot 4).
 
 Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-judgment-posture-contract.md`
+- Doc normatif: `hermeneutic-node-judgment-posture-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-judgment-posture-contract.md`
 - Module code cible: `core.hermeneutic_node.doctrine.judgment_posture`
 - Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
@@ -208,7 +209,7 @@ Pause normative obligatoire:
 - Raison: la posture de jugement engage la doctrine de sortie et ne doit pas etre codee avant regle explicite.
 
 Sortie attendue du lot: sortie `judgment_posture` explicite et auditable.
-Validation minimale: regles de decision qui couvrent les 3 postures sans zone implicite.
+Validation minimale: definitions minimales de `answer | clarify | suspend` + articulation explicite Lot 2 / Lot 4, sans confusion entre posture de parole et validation finale.
 Dependances: Lots 2 et 4.
 Hors scope: UX detaillee des messages de clarification.
 
