@@ -200,7 +200,7 @@ def _support_sources(
         support.add("dialogue_resume")
     if _recent_trace_available(recent_window_input):
         support.add("dialogue_trace")
-    if _web_support_available(web_input):
+    if _web_evidence_available(web_input):
         support.add("web")
     return support
 

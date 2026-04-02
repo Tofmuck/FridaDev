@@ -299,6 +299,25 @@ class EpistemicRegimeTests(unittest.TestCase):
             },
         )
 
+    def test_build_epistemic_regime_does_not_count_generic_web_activity_as_doctrinal_support(self) -> None:
+        payload = epistemic_regime.build_epistemic_regime(
+            recent_window_input=_recent_window(turn_count=1),
+            user_turn_input=_user_turn(provenances=["dialogue_trace"]),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(status="ok", results_count=3, sources=[]),
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "epistemic_regime": "probable",
+                "proof_regime": "source_explicite_requise",
+                "uncertainty_posture": "discrete",
+            },
+        )
+        self.assertNotEqual(payload["epistemic_regime"], "certain")
+
     def test_build_epistemic_regime_does_not_invent_contradiction_from_synthetic_reason_codes(self) -> None:
         payload = epistemic_regime.build_epistemic_regime(
             memory_retrieved=_memory_retrieved(retrieved_count=2),
