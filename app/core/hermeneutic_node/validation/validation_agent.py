@@ -17,9 +17,14 @@ FALLBACK_MODEL = "openai/gpt-5.4-nano"
 PROMPT_PATH = "prompts/validation_agent.txt"
 REQUEST_TIMEOUT_S = 10
 MAX_RESPONSE_TOKENS = 80
+MAX_VALIDATION_CONTEXT_MESSAGES = 8
+MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = 420
+MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
+MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
+MAX_JUSTIFICATIONS_JSON_CHARS = 700
+MAX_CANONICAL_INPUTS_JSON_CHARS = 700
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
-ALLOWED_FINAL_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
@@ -58,8 +63,6 @@ _FINAL_POSTURE_BY_PRIMARY_AND_DECISION = {
         "suspend": "suspend",
     },
 }
-
-
 @dataclass(frozen=True)
 class ValidationAgentResult:
     validated_output: dict[str, Any]
@@ -75,8 +78,6 @@ class _ValidationJsonError(ValueError):
 
 class _ValidationPayloadError(ValueError):
     pass
-
-
 def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
@@ -85,8 +86,6 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
-
-
 def _stable_unique(values: Sequence[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -101,8 +100,58 @@ def _stable_unique(values: Sequence[str]) -> list[str]:
 
 def _compact_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+def _compact_text(value: Any, *, max_chars: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return f"{text[: max(0, max_chars - 3)].rstrip()}..."
 
 
+def _bounded_json_preview(value: Any, *, max_chars: int) -> str:
+    raw = _compact_json(value)
+    if len(raw) <= max_chars:
+        return raw
+
+    preview_chars = max(32, max_chars - 48)
+    bounded = _compact_json({"truncated": True, "preview": _compact_text(raw, max_chars=preview_chars)})
+    while len(bounded) > max_chars and preview_chars > 16:
+        preview_chars -= 16
+        bounded = _compact_json({"truncated": True, "preview": _compact_text(raw, max_chars=preview_chars)})
+    return bounded
+def _compacted_validation_dialogue_context(value: Any) -> str:
+    payload = _mapping(value)
+    raw_messages = payload.get("messages")
+    if not isinstance(raw_messages, list):
+        return _bounded_json_preview(payload, max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS)
+
+    retained_messages: list[dict[str, Any]] = []
+    content_truncated = False
+    for item in raw_messages[-MAX_VALIDATION_CONTEXT_MESSAGES:]:
+        message_payload = _mapping(item)
+        role = _text(message_payload.get("role"))
+        if role not in {"user", "assistant"}:
+            continue
+        raw_content = _text(message_payload.get("content"))
+        content = _compact_text(raw_content, max_chars=MAX_VALIDATION_CONTEXT_MESSAGE_CHARS)
+        content_truncated = content_truncated or raw_content != content
+        retained_messages.append(
+            {
+                "role": role,
+                "timestamp": _text(message_payload.get("timestamp")) or None,
+                "content": content,
+            }
+        )
+
+    return _bounded_json_preview(
+        {
+            "schema_version": _text(payload.get("schema_version")) or SCHEMA_VERSION,
+            "message_count": len(raw_messages),
+            "retained_message_count": len(retained_messages),
+            "messages": retained_messages,
+            "truncated": bool(len(raw_messages) > len(retained_messages) or content_truncated),
+        },
+        max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS,
+    )
 def _validated_string_list(value: Any, *, error_code: str) -> list[str]:
     if not isinstance(value, list):
         raise ValueError(error_code)
@@ -127,8 +176,6 @@ def _validated_source_priority(value: Any) -> list[list[str]]:
         normalized_rank = _validated_string_list(rank, error_code="invalid_primary_verdict")
         validated.append(normalized_rank)
     return validated
-
-
 def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise ValueError("invalid_primary_verdict")
@@ -139,8 +186,6 @@ def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
             raise ValueError("invalid_primary_verdict")
         conflicts.append(dict(item))
     return conflicts
-
-
 def _validated_primary_verdict(value: Any) -> dict[str, Any]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_PRIMARY_VERDICT_KEYS:
@@ -197,8 +242,6 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
             else [],
         },
     }
-
-
 def _validated_support_mapping(value: Any, *, error_code: str, allow_empty: bool) -> dict[str, Any]:
     payload = _mapping(value)
     if not isinstance(value, Mapping):
@@ -208,8 +251,6 @@ def _validated_support_mapping(value: Any, *, error_code: str, allow_empty: bool
     if "schema_version" in payload and _text(payload.get("schema_version")) not in {"", SCHEMA_VERSION}:
         raise ValueError(error_code)
     return dict(payload)
-
-
 def _extract_json_blob(raw: Any) -> str:
     text = str(raw or "").strip()
     if text.startswith("```"):
@@ -225,8 +266,6 @@ def _extract_json_blob(raw: Any) -> str:
     if start != -1 and end != -1 and end >= start:
         return text[start : end + 1]
     return text
-
-
 def _safe_json_loads(raw: Any) -> dict[str, Any]:
     try:
         payload = json.loads(_extract_json_blob(raw))
@@ -235,15 +274,11 @@ def _safe_json_loads(raw: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise _ValidationJsonError("invalid_json")
     return payload
-
-
 def _extract_response_text(response: Any) -> str:
     try:
         return llm_client._sanitize_encoding(response.json()["choices"][0]["message"]["content"]).strip()
     except (KeyError, IndexError, TypeError, AttributeError) as exc:
         raise _ValidationJsonError("invalid_json") from exc
-
-
 def _validated_model_decision(value: Any) -> dict[str, str]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_MODEL_PAYLOAD_KEYS:
@@ -259,8 +294,6 @@ def _validated_model_decision(value: Any) -> dict[str, str]:
         "schema_version": SCHEMA_VERSION,
         "validation_decision": validation_decision,
     }
-
-
 def _build_fail_open_validated_output() -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -268,8 +301,6 @@ def _build_fail_open_validated_output() -> dict[str, Any]:
         "final_judgment_posture": "suspend",
         "pipeline_directives_final": ["posture_suspend", "fallback_validation"],
     }
-
-
 def _build_fail_open_result(*, reason_code: str, model: str) -> ValidationAgentResult:
     return ValidationAgentResult(
         validated_output=_build_fail_open_validated_output(),
@@ -278,12 +309,8 @@ def _build_fail_open_result(*, reason_code: str, model: str) -> ValidationAgentR
         decision_source="fail_open",
         reason_code=str(reason_code or "upstream_error"),
     )
-
-
 def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
-
-
 def _build_messages(
     *,
     system_prompt: str,
@@ -292,19 +319,23 @@ def _build_messages(
     validation_dialogue_context: Mapping[str, Any],
     canonical_inputs: Mapping[str, Any],
 ) -> list[dict[str, str]]:
+    compacted_validation_dialogue_context = _compacted_validation_dialogue_context(validation_dialogue_context)
+    compacted_primary_verdict = _bounded_json_preview(primary_verdict, max_chars=MAX_PRIMARY_VERDICT_JSON_CHARS)
+    compacted_justifications = _bounded_json_preview(justifications, max_chars=MAX_JUSTIFICATIONS_JSON_CHARS)
+    compacted_canonical_inputs = _bounded_json_preview(canonical_inputs, max_chars=MAX_CANONICAL_INPUTS_JSON_CHARS)
     return [
         {"role": "system", "content": str(system_prompt or "")},
         {
             "role": "user",
             "content": (
                 "validation_dialogue_context (matiere hermeneutique principale de la relecture):\n"
-                f"{_compact_json(validation_dialogue_context)}\n\n"
+                f"{compacted_validation_dialogue_context}\n\n"
                 "primary_verdict (support structure amont, non terminal):\n"
-                f"{_compact_json(primary_verdict)}\n\n"
+                f"{compacted_primary_verdict}\n\n"
                 "justifications (artefact frere, hors primary_verdict):\n"
-                f"{_compact_json(justifications)}\n\n"
+                f"{compacted_justifications}\n\n"
                 "canonical_inputs (supports de relecture contextuelle):\n"
-                f"{_compact_json(canonical_inputs)}\n\n"
+                f"{compacted_canonical_inputs}\n\n"
                 "Tache:\n"
                 "- decide seulement validation_decision\n"
                 "- n'invente pas final_judgment_posture\n"
@@ -314,8 +345,6 @@ def _build_messages(
             ),
         },
     ]
-
-
 def _request_reason_code(exc: Exception, requests_module: Any) -> str:
     exceptions = getattr(requests_module, "exceptions", None)
     timeout_cls = getattr(exceptions, "Timeout", None)
@@ -325,8 +354,6 @@ def _request_reason_code(exc: Exception, requests_module: Any) -> str:
     if request_cls is not None and isinstance(exc, request_cls):
         return "http_error"
     return "upstream_error"
-
-
 def _call_model(
     *,
     model: str,
@@ -357,19 +384,13 @@ def _call_model(
     )
     response.raise_for_status()
     return _validated_model_decision(_safe_json_loads(_extract_response_text(response)))
-
-
 def _resolved_final_judgment_posture(*, primary_judgment_posture: str, validation_decision: str) -> str:
     return _FINAL_POSTURE_BY_PRIMARY_AND_DECISION[primary_judgment_posture][validation_decision]
-
-
 def _pipeline_directives_final(*, final_judgment_posture: str, fail_open: bool) -> list[str]:
     directives = [f"posture_{final_judgment_posture}"]
     if fail_open:
         directives.append("fallback_validation")
     return _stable_unique(directives)
-
-
 def _build_validated_output_payload(*, validation_decision: str, final_judgment_posture: str, fail_open: bool) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -380,8 +401,6 @@ def _build_validated_output_payload(*, validation_decision: str, final_judgment_
             fail_open=fail_open,
         ),
     }
-
-
 def build_validated_output(
     *,
     primary_verdict: Any,

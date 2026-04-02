@@ -334,6 +334,38 @@ class ValidationAgentTests(unittest.TestCase):
             user_message,
         )
 
+    def test_build_messages_bounds_large_validation_inputs(self) -> None:
+        large_context = {
+            "schema_version": "v1",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "x" * 20000,
+                    "timestamp": "2026-04-02T10:00:00Z",
+                }
+            ],
+        }
+        large_justifications = {"analysis": "y" * 8000}
+        large_canonical_inputs = {"recent_context_input": {"messages": ["z" * 8000]}}
+
+        messages = validation_agent._build_messages(
+            system_prompt="SYSTEM PROMPT",
+            primary_verdict=_primary_verdict(),
+            justifications=large_justifications,
+            validation_dialogue_context=large_context,
+            canonical_inputs=large_canonical_inputs,
+        )
+
+        user_message = messages[1]["content"]
+        self.assertLess(len(user_message), 7800)
+        self.assertIn("validation_dialogue_context (matiere hermeneutique principale de la relecture):", user_message)
+        self.assertIn('"message_count":1', user_message)
+        self.assertIn('"truncated":true', user_message)
+        self.assertIn("primary_verdict (support structure amont, non terminal):", user_message)
+        self.assertIn("justifications (artefact frere, hors primary_verdict):", user_message)
+        self.assertIn("canonical_inputs (supports de relecture contextuelle):", user_message)
+        self.assertLess(user_message.index("validation_dialogue_context"), user_message.index("primary_verdict"))
+
 
 if __name__ == "__main__":
     unittest.main()
