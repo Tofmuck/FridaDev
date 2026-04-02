@@ -305,13 +305,12 @@ Le noeud doit determiner :
 
 ### 5.6 Hierarchie des sources
 
-La sortie doit dire quelle source prime ici, ou quel ordre de lecture doit etre applique :
-- web avant memoire ;
-- memoire avant resume ;
-- resume avant rien du tout ;
-- identite pertinente ou hors sujet ;
-- contexte recent fort ou faible ;
-- M6 contributif mais non souverain.
+La sortie doit dire quelle source prime ici, ou quel ordre de lecture doit etre applique, selon une hierarchie doctrinale explicite :
+- `tour_utilisateur` puis `temps` comme couches de cadrage et de validite ;
+- `memoire`, `contexte_recent` et `identity` comme premier rang de contenu par defaut ;
+- `resume` comme support de continuite ;
+- `web` comme priorite faible par defaut mais forte sur les contenus instables, dates ou explicitement verifiables ;
+- `M6` contributif pour l'enonciation, non souverain.
 
 ### 5.7 Validation finale du verdict primaire
 

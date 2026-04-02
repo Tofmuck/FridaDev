@@ -220,21 +220,21 @@ Objectif: rendre explicite quelle source prime selon la demande et le contexte d
 
 Perimetre: memoire, web, identite, resume, contexte recent, temps, stimmung, tour_utilisateur.
 
-- [ ] Definir les regles minimales de priorisation entre sources.
-- [ ] Definir les cas ou certains signaux du `tour_utilisateur` renversent la priorite par defaut.
-- [ ] Definir le format compact de `source_priority`.
-- [ ] Definir les cas de cohabitation de sources sans fusion abusive.
+- [x] Definir les regles minimales de priorisation entre sources.
+- [x] Definir les cas ou certains signaux du `tour_utilisateur` renversent la priorite par defaut.
+- [x] Definir le format compact de `source_priority`.
+- [x] Definir les cas de cohabitation de sources sans fusion abusive.
 
 Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-source-priority-contract.md`
+- Doc normatif: `hermeneutic-node-source-priority-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-source-priority-contract.md`
 - Module code cible: `core.hermeneutic_node.doctrine.source_priority`
 - Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `source_priority.py`
 - Raison: la hierarchie des sources est une regle doctrinale centrale, a trancher avant implementation.
 
-Sortie attendue du lot: hierarchie des sources stable et exploitable.
-Validation minimale: chaque tour produit un ordre explicite de sources ou une regle explicite d'egalite.
+Sortie attendue du lot: hierarchie des sources stable et exploitable, avec ordre par defaut, renversements minimaux et format compact de rangs.
+Validation minimale: ordre explicite de rangs avec egalites, statut special de `tour_utilisateur` et `temps`, `identity` maintenu comme famille top-level unique avec regle interne `static > dynamic`, et `web` pose comme faible priorite par defaut mais forte priorite conditionnelle.
 Dependances: Lots 4 et 5.
 Hors scope: moteur complet de resolution des conflits.
 
