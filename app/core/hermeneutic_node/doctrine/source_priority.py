@@ -132,7 +132,7 @@ def _identity_static_present(identity_input: Mapping[str, Any]) -> bool:
     for side_name in ("frida", "user"):
         side = _mapping(identity_input.get(side_name))
         static_block = _mapping(side.get("static"))
-        if _text(static_block.get("content")) or _text(static_block.get("source")):
+        if _text(static_block.get("content")):
             return True
     return False
 
@@ -145,27 +145,9 @@ def _identity_dynamic_present(identity_input: Mapping[str, Any]) -> bool:
     return False
 
 
-def _web_source_materially_used(source: Any) -> bool:
-    payload = _mapping(source)
-    if not payload:
-        return False
-    if not bool(payload.get("used_in_prompt")):
-        return False
-    if _text(payload.get("used_content_kind")) in {"", "none"}:
-        return False
-    return bool(_text(payload.get("content_used")))
-
-
-def _web_materially_used(web_input: Mapping[str, Any]) -> bool:
-    if _text(web_input.get("status")) != "ok":
-        return False
-    return any(_web_source_materially_used(source) for source in _sequence(web_input.get("sources")))
-
-
 def _web_priority_requested(
     *,
     user_turn_input: Mapping[str, Any],
-    web_input: Mapping[str, Any],
 ) -> bool:
     provenances = _required_provenances(user_turn_input)
     proof_types = _requested_proof_types(user_turn_input)
@@ -177,7 +159,7 @@ def _web_priority_requested(
         return True
     if "factuelle" in proof_types and temporal_scope in _CURRENT_FACT_TEMPORAL_SCOPES:
         return True
-    return _web_materially_used(web_input)
+    return False
 
 
 def _promote(rank_map: dict[str, int], family: str, target_rank: int) -> None:
@@ -220,11 +202,9 @@ def build_source_priority(
     summary_payload = _mapping(summary_input)
     identity_payload = _mapping(identity_input)
     recent_context_payload = _mapping(recent_context_input)
-    web_payload = _mapping(web_input)
-
     rank_map = dict(_BASE_RANKS)
 
-    if _web_priority_requested(user_turn_input=user_turn_payload, web_input=web_payload):
+    if _web_priority_requested(user_turn_input=user_turn_payload):
         _promote(rank_map, "web", 2)
 
     if (

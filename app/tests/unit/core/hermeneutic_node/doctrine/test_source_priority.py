@@ -282,11 +282,61 @@ class SourcePriorityTests(unittest.TestCase):
         self.assertEqual(payload["source_priority"][2], ["identity"])
         self.assertEqual(_flatten(payload).count("identity"), 1)
 
+    def test_build_source_priority_does_not_promote_identity_from_sourced_but_empty_static_block(self) -> None:
+        payload = source_priority.build_source_priority(
+            user_turn_input=_user_turn(gesture="adresse_relationnelle"),
+            time_input=_time(),
+            identity_input={
+                "schema_version": "v1",
+                "frida": {"static": {"content": "", "source": "repo"}, "dynamic": []},
+                "user": {"static": {"content": "", "source": None}, "dynamic": []},
+            },
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "source_priority": [
+                    ["tour_utilisateur"],
+                    ["temps"],
+                    ["memoire", "contexte_recent", "identity"],
+                    ["resume"],
+                    ["web"],
+                    ["stimmung"],
+                ]
+            },
+        )
+
     def test_build_source_priority_does_not_promote_identity_from_dynamic_only(self) -> None:
         payload = source_priority.build_source_priority(
             user_turn_input=_user_turn(gesture="adresse_relationnelle"),
             time_input=_time(),
             identity_input=_identity(static=False, dynamic_count=2),
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "source_priority": [
+                    ["tour_utilisateur"],
+                    ["temps"],
+                    ["memoire", "contexte_recent", "identity"],
+                    ["resume"],
+                    ["web"],
+                    ["stimmung"],
+                ]
+            },
+        )
+
+    def test_build_source_priority_does_not_promote_web_from_downstream_usage_markers(self) -> None:
+        payload = source_priority.build_source_priority(
+            user_turn_input=_user_turn(),
+            time_input=_time(),
+            web_input=_web(
+                status="ok",
+                results_count=3,
+                sources=[_web_source(used_in_prompt=True, used_content_kind="quote", content_used="used")],
+            ),
         )
 
         self.assertEqual(
