@@ -11,6 +11,7 @@ Elle tranche:
 
 - la nature exacte de `primary_verdict`
 - la forme canonique minimale du payload primaire unique
+- la place exacte des `justifications`
 - le statut minimal de `pipeline_directives_provisional`
 - le contrat minimal de fail-open primaire
 - les champs minimaux d'auditabilite embarques dans le payload
@@ -61,6 +62,9 @@ Il:
 - reste compact, stable, testable et minimalement auditable
 - est destine a etre revise par l'agent de validation
 
+En V1, les `justifications` ne font pas partie de cette forme canonique minimale.
+Elles restent un artefact frere destine a la validation.
+
 Il n'est pas:
 
 - une nouvelle entree canonique
@@ -95,12 +99,14 @@ Il ne sert pas a:
 - recopier les inputs bruts
 - remplacer `node_state`
 - remplacer `chat_log_events`
+- embarquer en V1 un bloc de `justifications`
 - devenir une table d'audit hermeneutique complete
 
 Regle structurante:
 
 - en V1, `primary_verdict` reste la meme forme canonique en mode nominal et en fail-open primaire
 - le fail-open degrade des valeurs dans cette forme; il n'introduit pas un second format concurrent
+- en V1, les `justifications` restent hors `primary_verdict` pour conserver un payload compact et distinct de l'artefact argumentatif destine a la validation
 
 ## 5. Minimal Canonical Payload Shape
 
@@ -138,6 +144,9 @@ Regles minimales:
 - `source_conflicts`
   - est inclus dans le payload primaire minimal en V1
   - raison: c'est deja une sortie doctrinale compacte du noeud primaire, utile a la validation et a la relecture du verdict
+- `justifications`
+  - ne font pas partie du `primary_verdict` minimal en V1
+  - raison: leur forme exacte releve du futur contrat de validation et les fusionner maintenant regonflerait un payload qui vient d'etre fixe comme compact
 - `audit`
   - reste un bloc minimal de relecture du verdict
   - ne devient ni un journal technique, ni un snapshot complet du tour
@@ -149,6 +158,7 @@ Invariants minimaux:
 - aucun dump des inputs
 - aucune duplication integrale de `node_state`
 - aucun champ d'observabilite detaille
+- aucun bloc de `justifications` integre en V1
 
 ## 6. Minimal Status Of `pipeline_directives_provisional`
 
@@ -263,6 +273,7 @@ Le validation agent recoit le `primary_verdict`.
 
 Il doit ensuite:
 
+- recevoir a cote un artefact frere de `justifications`
 - le relire
 - le reviser si necessaire
 - transformer `pipeline_directives_provisional` vers `pipeline_directives_final`
@@ -271,6 +282,8 @@ Il doit ensuite:
 Regles minimales:
 
 - `primary_verdict` n'est pas encore la sortie finale
+- `justifications` ne font pas partie du `primary_verdict` minimal en V1
+- leur contrat exact reste a ouvrir au Lot 9
 - `pipeline_directives_provisional` n'est pas directement aval-consommable
 - cette spec n'ouvre pas encore la table de combinaison normative complete du Lot 9
 
@@ -281,6 +294,7 @@ Cette troisieme brique normative ne fixe pas encore:
 - le runtime complet de `primary_node.py`
 - le wiring complet du noeud primaire
 - la persistance SQL detaillee
+- le contrat exact des `justifications`
 - une table d'audit hermeneutique complete
 - la validation finale
 - le branchement aval
