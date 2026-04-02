@@ -251,6 +251,42 @@ def _validated_support_mapping(value: Any, *, error_code: str, allow_empty: bool
     if "schema_version" in payload and _text(payload.get("schema_version")) not in {"", SCHEMA_VERSION}:
         raise ValueError(error_code)
     return dict(payload)
+
+
+def _validated_validation_dialogue_context(value: Any) -> dict[str, Any]:
+    payload = _mapping(value)
+    if not isinstance(value, Mapping):
+        raise ValueError("invalid_validation_dialogue_context")
+    if "schema_version" in payload and _text(payload.get("schema_version")) not in {"", SCHEMA_VERSION}:
+        raise ValueError("invalid_validation_dialogue_context")
+
+    raw_messages = payload.get("messages")
+    if not isinstance(raw_messages, list) or not raw_messages:
+        raise ValueError("invalid_validation_dialogue_context")
+
+    retained_messages: list[dict[str, Any]] = []
+    for item in raw_messages:
+        message_payload = _mapping(item)
+        role = _text(message_payload.get("role"))
+        content = _text(message_payload.get("content"))
+        if role not in {"user", "assistant"} or not content:
+            continue
+        retained_messages.append(
+            {
+                "role": role,
+                "content": content,
+                "timestamp": _text(message_payload.get("timestamp")) or None,
+            }
+        )
+
+    if not retained_messages:
+        raise ValueError("invalid_validation_dialogue_context")
+
+    validated_payload = dict(payload)
+    validated_payload["messages"] = retained_messages
+    if "schema_version" in validated_payload:
+        validated_payload["schema_version"] = _text(validated_payload.get("schema_version")) or SCHEMA_VERSION
+    return validated_payload
 def _extract_json_blob(raw: Any) -> str:
     text = str(raw or "").strip()
     if text.startswith("```"):
@@ -415,11 +451,7 @@ def build_validated_output(
         error_code="invalid_justifications",
         allow_empty=True,
     )
-    validation_dialogue_context_payload = _validated_support_mapping(
-        validation_dialogue_context,
-        error_code="invalid_validation_dialogue_context",
-        allow_empty=False,
-    )
+    validation_dialogue_context_payload = _validated_validation_dialogue_context(validation_dialogue_context)
     canonical_inputs_payload = _validated_support_mapping(
         canonical_inputs,
         error_code="invalid_canonical_inputs",

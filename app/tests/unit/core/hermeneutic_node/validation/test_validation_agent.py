@@ -144,6 +144,24 @@ class ValidationAgentTests(unittest.TestCase):
                 canonical_inputs={},
             )
 
+    def test_build_validated_output_rejects_validation_dialogue_context_with_schema_only(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
+            validation_agent.build_validated_output(
+                primary_verdict=_primary_verdict(),
+                justifications={},
+                validation_dialogue_context={"schema_version": "v1"},
+                canonical_inputs={},
+            )
+
+    def test_build_validated_output_rejects_arbitrary_validation_dialogue_context_mapping(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
+            validation_agent.build_validated_output(
+                primary_verdict=_primary_verdict(),
+                justifications={},
+                validation_dialogue_context={"foo": "bar"},
+                canonical_inputs={},
+            )
+
     def test_build_validated_output_rejects_non_mapping_justifications(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_justifications"):
             validation_agent.build_validated_output(
@@ -197,6 +215,28 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertNotIn("primary_verdict", result.validated_output)
         self.assertNotIn("validation_dialogue_context", result.validated_output)
         self.assertNotIn("justifications", result.validated_output)
+
+    def test_build_validated_output_accepts_minimal_recent_context_like_dialogue_context(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "Bonjour"}],
+            },
+            canonical_inputs={},
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.validated_output["validation_decision"], "confirm")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
 
     def test_build_validated_output_keeps_answer_after_challenge(self) -> None:
         requests_module = _FakeRequests(
