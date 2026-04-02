@@ -314,7 +314,7 @@ Nature du lot: travail de structure + pause normative.
 
 Objectif: placer un agent hermeneutique de validation apres le noeud primaire et avant l'aval, puis brancher l'aval uniquement sur la sortie revisee.
 
-Perimetre: validation agent, verdict final valide, branchement aval, integration admin des modeles hermeneutiques, surfaces logs/inspection du dispositif final, preconditions de bascule full et garde-fou shadow.
+Perimetre: validation agent, verdict final valide, branchement aval, integration admin des modeles hermeneutiques, surfaces logs/inspection du dispositif final, preconditions de bascule full avec observabilite maintenue, et garde-fou shadow transitoire.
 
 - [x] Definir le contrat de revision: entree = verdict primaire + justifications + `validation_dialogue_context` + directives provisoires + entrees canoniques.
 - [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
@@ -325,8 +325,8 @@ Perimetre: validation agent, verdict final valide, branchement aval, integration
 - [ ] Integrer dans l'admin runtime settings deux modeles hermeneutiques GPT-5.4-mini distincts, avec identites explicites, lecture/edition DB et surfaces read-only alignees sur `main_model`, `arbiter_model` et `summary_model`.
 - [ ] Etendre la vue `Logs applicatifs` pour montrer de facon synthetique les grandes etapes du pipeline hermeneutique par tour: entree du premier hermeneute, sortie du second, statut ok/erreur, sans dump integral des payloads internes.
 - [ ] Ajouter `Hermeneutic admin`, surface admin HTML distincte de `Logs applicatifs`, detaillee et majoritairement read-only, reprenant `admin.css`, le meme langage visuel que l'admin existante et une logique less is more sobre/compacte; l'acces depuis les autres surfaces admin se fait dans la meme fenetre, l'ouverture depuis la surface principale se fait dans un autre onglet ou une autre fenetre.
-- [ ] Definir les preconditions concretes d'une bascule full au redemarrage de Frida/du conteneur a partir de cette infrastructure reelle: modeles hermeneutiques administres, vue logs synthetique exploitable, `Hermeneutic admin` navigable depuis les autres surfaces admin, route de restart admin utilisable, et sortie de `HERMENEUTIC_MODE=shadow` vers un fonctionnement runtime reel.
-- [ ] Verifier que la shadow globale reste un garde-fou transitoire et hors scope tant que ces preconditions admin/logs/inspection/restart ne sont pas remplies; elle ne constitue pas la cible finale du lot.
+- [ ] Definir les preconditions concretes d'une bascule full au redemarrage de Frida/du conteneur a partir de cette infrastructure reelle: modeles hermeneutiques administres, vue logs synthetique exploitable, `Hermeneutic admin` navigable depuis les autres surfaces admin, route de restart admin utilisable, et sortie de `HERMENEUTIC_MODE=shadow` vers un fonctionnement runtime reel avec logs et inspection admin toujours presents.
+- [ ] Verifier que la shadow globale reste un garde-fou transitoire et hors scope tant que ces preconditions admin/logs/inspection/restart ne sont pas remplies; la cible finale normale du lot reste un runtime full avec observabilite et inspection detaillee, pas un mode `shadow-only`.
 
 Pause normative fermee:
 - Doc normatif: `hermeneutic-node-validation-agent-contract.md`
@@ -351,7 +351,7 @@ Pause normative fermee:
 - Fichiers runtime cibles: `app/core/chat_service.py`, `app/core/chat_prompt_context.py`
 - Raison: l'aval ne consomme jamais `primary_verdict` brut; il branche sur `validated_output` comme source canonique interne, puis le prompt principal lit une projection aval en prose `[JUGEMENT HERMENEUTIQUE]`, sans dump des artefacts internes.
 
-Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + integration admin des deux modeles hermeneutiques + vue `Logs applicatifs` synthetique du pipeline + `Hermeneutic admin` detaillee et navigable + bascule full au redemarrage de Frida/du conteneur, avec pipeline actif, base/identities alimentees et effets runtime reels.
+Sortie attendue du lot: chaine finalisee `noeud primaire -> validation agent -> aval` + integration admin des deux modeles hermeneutiques + vue `Logs applicatifs` synthetique du pipeline + `Hermeneutic admin` detaillee et navigable + bascule full au redemarrage de Frida/du conteneur, avec pipeline actif, base/identities alimentees, effets runtime reels, logs conserves et inspection admin maintenue.
 Validation minimale: l'aval branche uniquement sur un jugement valide derive de `validated_output`; le prompt principal lit un bloc prose `[JUGEMENT HERMENEUTIQUE]` resolu, jamais `primary_verdict` brut ni le dossier interne complet.
 Dependances: Lots 1, 5 et 8.
 Hors scope: lancement operationnel de la shadow globale.
