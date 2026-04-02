@@ -272,22 +272,22 @@ Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, pa
 
 - [ ] Definir le schema minimal de persistance de l'etat du noeud par conversation.
 - [ ] Definir les regles d'inertie (quand conserver ou changer un regime).
-- [ ] Definir la sortie canonique `discursive_regime`.
-- [ ] Definir la sortie canonique `resituation_level`.
-- [ ] Definir la taxonomie canonique de `time_reference_mode` et son articulation avec `discursive_regime` / `resituation_level`.
+- [x] Definir la sortie canonique `discursive_regime`.
+- [x] Definir la sortie canonique `resituation_level`.
+- [x] Definir la taxonomie canonique de `time_reference_mode` et son articulation avec `discursive_regime` / `resituation_level`.
 - [ ] Definir le payload unique du noeud (incluant `epistemic_regime`, `proof_regime`, `judgment_posture`, `source_priority`, `time_reference_mode`, `pipeline_directives_provisional`).
 - [ ] Definir le fail-open du noeud primaire (fallback minimal + auditabilite) sans effondrement du pipeline.
 - [ ] Definir les champs minimaux d'auditabilite de ce payload.
 
-Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-output-regime-contract.md`
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-output-regime-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
 - Module code cible: `core.hermeneutic_node.doctrine.output_regime`
 - Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `output_regime.py`
-- Raison: `discursive_regime` et `resituation_level` exigent une doctrine de sortie stable avant implementation.
+- Raison: le sous-bloc doctrinal `output_regime` est maintenant pose pour `discursive_regime`, `resituation_level` et `time_reference_mode`, sans fermer encore la persistance d'etat.
 
-Pause normative obligatoire:
+Pause normative obligatoire restante:
 - Doc normatif a ouvrir: `hermeneutic-node-state-persistence-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-state-persistence-contract.md`
 - Module code cible: `core.hermeneutic_node.runtime.node_state`
@@ -295,8 +295,8 @@ Pause normative obligatoire:
 - Fichier Python candidat: `node_state.py` (a confirmer)
 - Raison: la persistance d'etat du noeud doit etre fixee contractuellement avant choix technique final.
 
-Sortie attendue du lot: snapshot persistant + payload unique complet, compact et versionne.
-Validation minimale: le payload de sortie couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`, avec fail-open primaire defini.
+Sortie attendue du lot complet: snapshot persistant + payload unique complet, compact et versionne.
+Validation minimale du sous-pas ferme: le bloc doctrinal `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`, sans fermer encore `state_persistence`, le payload unique complet, ni le fail-open primaire.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 

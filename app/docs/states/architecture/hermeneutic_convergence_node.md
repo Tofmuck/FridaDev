@@ -239,17 +239,21 @@ Cette sortie primaire doit au minimum contenir:
 
 ### 5.1 Regime discursif
 
-Le regime discursif dit comment la reponse doit se tenir formellement.
+Le regime discursif dit quelle forme discursive substantive prend la sortie primaire.
 
-Exemples de dimensions possibles :
-- reprise simple ;
-- reprise resituee ;
-- explicatif prudent ;
-- directif justifie ;
-- exploratoire ;
-- neutre.
+Il doit rester distinct :
+- de `judgment_posture`, qui garde seul `answer|clarify|suspend` ;
+- de `resituation_level`, qui dit combien la sortie recontextualise.
 
-Ce regime ne doit pas etre une humeur vague. Il doit etre derive d'un arbitrage entre determinants.
+Taxonomie minimale cible :
+- `meta` ;
+- `simple` ;
+- `cadre` ;
+- `comparatif` ;
+- `continuite`.
+
+`meta` ne vaut ni `clarify` ni `suspend`.
+Il indique seulement qu'aucun regime discursif substantif n'est retenu en propre dans cette premiere version.
 
 ### 5.2 Regime epistemique
 
@@ -300,11 +304,17 @@ Elle est la forme operationnelle de la suspension du jugement dans le pipeline.
 
 ### 5.5 Niveau de re-situation
 
-Le noeud doit determiner :
-- si la reponse doit reprendre directement ;
-- si elle doit rappeler le dernier echange ;
-- si elle doit resituer temporellement ou discursivement ;
-- si elle doit clarifier un conflit de cadre.
+Le noeud doit determiner combien la sortie doit recontextualiser.
+
+Taxonomie minimale cible :
+- `none` ;
+- `light` ;
+- `explicit` ;
+- `strong`.
+
+Cet axe reste orthogonal au regime discursif :
+- `discursive_regime` dit sous quelle forme substantive la sortie se tient ;
+- `resituation_level` dit combien elle rappelle ou recontextualise.
 
 ### 5.6 Hierarchie des sources
 
