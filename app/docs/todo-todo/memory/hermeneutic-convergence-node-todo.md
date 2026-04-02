@@ -269,6 +269,7 @@ Nature du lot: travail de structure + pause normative.
 Objectif: stabiliser le noeud dans le temps et formaliser la sortie canonique complete.
 
 Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, payload unique.
+Etat du lot: ferme (normatif + runtime).
 
 - [x] Definir le schema minimal de persistance de l'etat du noeud par conversation.
 - [x] Definir les regles d'inertie (quand conserver ou changer un regime).
@@ -292,7 +293,7 @@ Pause normative fermee:
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-state-persistence-contract.md`
 - Module code cible: `core.hermeneutic_node.runtime.node_state`
 - Repertoire code cible: `app/core/hermeneutic_node/runtime/`
-- Fichier Python candidat: `node_state.py` (a confirmer)
+- Fichier Python cible: `node_state.py`
 - Raison: le sous-bloc runtime `node_state` est maintenant pose comme state de pilotage conversation-scoped, distinct du payload complet, des logs et des futurs snapshots d'audit.
 
 Pause normative fermee:
@@ -300,10 +301,10 @@ Pause normative fermee:
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-primary-verdict-contract.md`
 - Module code cible: `core.hermeneutic_node.runtime.primary_node`
 - Repertoire code cible: `app/core/hermeneutic_node/runtime/`
-- Fichier Python candidat: `primary_node.py` (a confirmer)
-- Raison: le verdict primaire unique est maintenant pose avec une forme canonique minimale, un fail-open primaire explicite et un bloc d'auditabilite minimal, sans fermer encore la validation finale ni l'implementation runtime.
+- Fichier Python cible: `primary_node.py`
+- Raison: le verdict primaire unique est maintenant pose avec une forme canonique minimale, un fail-open primaire explicite et un bloc d'auditabilite minimal, sans fermer encore la validation finale.
 
-Sortie attendue du lot complet: snapshot persistant + payload unique complet, compact et versionne.
+Resultat du lot ferme: `output_regime` doctrinal calcule, `node_state` minimal conversation-scoped, `primary_verdict` canonique unique, fail-open primaire explicite et inertie bornee.
 Validation minimale des sous-pas fermes: `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`; `state_persistence` fixe un `node_state` minimal conversation-scoped et des regles d'inertie bornees; `primary_verdict` fixe la forme canonique unique du verdict primaire, le fail-open primaire explicite et un bloc d'auditabilite minimal; l'audit hermeneutique complet par tour et la validation finale restent ouverts.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.

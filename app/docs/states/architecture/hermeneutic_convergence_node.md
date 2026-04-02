@@ -599,15 +599,12 @@ Existe de maniere partielle :
 - hierarchie locale implicite entre certaines sources ;
 - contraintes hermeneutiques du prompt.
 
-Mais ces elements restent distribues dans plusieurs couches et non rassembles dans un unique arbitre de convergence.
+Le Lot 8 les a maintenant rassembles dans un noeud primaire compact, mais la validation finale et le wiring aval restent ouverts.
 
 ### 10.3 Ce qui manque
 
 Il manque encore :
 - un objet d'entree canonique pour chaque determinant ;
-- un nœud unique de synthese ;
-- une sortie compacte unique pour le regime de reponse ;
-- une hierarchie explicite et centralisee des sources ;
 - un arbitrage explicite certain/probable/incertain ;
 - un agent hermeneutique de validation place avant l'aval ;
 - un wiring aval pilote par une sortie revisee.
@@ -752,12 +749,12 @@ La decision architecturale retenue est la suivante:
 
 - le pipeline actuel de `FridaDev` n'est pas encore le pipeline hermeneutique complet ;
 - `M6 Stimmung` n'est pas le noeud de convergence ;
-- `M6 Stimmung` est un determinant du futur noeud ;
-- le futur noeud primaire devra arbitrer entre temps, memoire, web, identite, resume, contexte et `Stimmung` ;
+- `M6 Stimmung` est un determinant du noeud primaire ;
+- le noeud primaire arbitre entre temps, memoire, web, identite, resume, contexte et `Stimmung` ;
 - le verdict primaire devra etre revise par un agent hermeneutique de validation, modele cible `GPT-5.4` ;
 - cet agent sera souverain sur la validation finale (`confirm|challenge|clarify|suspend`) mais non souverain sur les criteres ;
 - l'aval consommera uniquement la sortie validee ;
-- tant que ce noeud n'existe pas, toute validation globale du pipeline reste necessairement partielle.
+- tant que la validation hermeneutique et le wiring aval ne sont pas livres, toute validation globale du pipeline reste necessairement partielle.
 
 ## 15. Structure code cible (documentaire)
 
