@@ -270,8 +270,8 @@ Objectif: stabiliser le noeud dans le temps et formaliser la sortie canonique co
 
 Perimetre: etat precedent, inertie, `discursive_regime`, `resituation_level`, payload unique.
 
-- [ ] Definir le schema minimal de persistance de l'etat du noeud par conversation.
-- [ ] Definir les regles d'inertie (quand conserver ou changer un regime).
+- [x] Definir le schema minimal de persistance de l'etat du noeud par conversation.
+- [x] Definir les regles d'inertie (quand conserver ou changer un regime).
 - [x] Definir la sortie canonique `discursive_regime`.
 - [x] Definir la sortie canonique `resituation_level`.
 - [x] Definir la taxonomie canonique de `time_reference_mode` et son articulation avec `discursive_regime` / `resituation_level`.
@@ -287,16 +287,16 @@ Pause normative fermee:
 - Fichier Python cible: `output_regime.py`
 - Raison: le sous-bloc doctrinal `output_regime` est maintenant pose pour `discursive_regime`, `resituation_level` et `time_reference_mode`, sans fermer encore la persistance d'etat.
 
-Pause normative obligatoire restante:
-- Doc normatif a ouvrir: `hermeneutic-node-state-persistence-contract.md`
+Pause normative fermee:
+- Doc normatif: `hermeneutic-node-state-persistence-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-state-persistence-contract.md`
 - Module code cible: `core.hermeneutic_node.runtime.node_state`
 - Repertoire code cible: `app/core/hermeneutic_node/runtime/`
 - Fichier Python candidat: `node_state.py` (a confirmer)
-- Raison: la persistance d'etat du noeud doit etre fixee contractuellement avant choix technique final.
+- Raison: le sous-bloc runtime `node_state` est maintenant pose comme state de pilotage conversation-scoped, distinct du payload complet, des logs et des futurs snapshots d'audit.
 
 Sortie attendue du lot complet: snapshot persistant + payload unique complet, compact et versionne.
-Validation minimale du sous-pas ferme: le bloc doctrinal `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`, sans fermer encore `state_persistence`, le payload unique complet, ni le fail-open primaire.
+Validation minimale des sous-pas fermes: `output_regime` couvre explicitement `discursive_regime`, `resituation_level` et `time_reference_mode`; `state_persistence` fixe un `node_state` minimal conversation-scoped et des regles d'inertie bornees; le payload unique complet, le fail-open primaire et l'auditabilite complete restent ouverts.
 Dependances: Lots 4 a 7.
 Hors scope: branchement aval complet et shadow globale.
 
