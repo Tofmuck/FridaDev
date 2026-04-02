@@ -37,6 +37,24 @@ def _signals(
 
 
 class JudgmentPostureTests(unittest.TestCase):
+    def test_build_judgment_posture_rejects_missing_user_turn_signals(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_user_turn_signals"):
+            judgment_posture.build_judgment_posture(
+                user_turn_signals=None,
+                epistemic_regime="probable",
+                proof_regime="source_explicite_requise",
+                uncertainty_posture="prudente",
+            )
+
+    def test_build_judgment_posture_rejects_non_produced_user_turn_signals(self) -> None:
+        with self.assertRaisesRegex(ValueError, "invalid_user_turn_signals"):
+            judgment_posture.build_judgment_posture(
+                user_turn_signals=_signals(present=False),
+                epistemic_regime="probable",
+                proof_regime="source_explicite_requise",
+                uncertainty_posture="prudente",
+            )
+
     def test_build_judgment_posture_returns_answer_for_certain_without_cadrage_block(self) -> None:
         payload = judgment_posture.build_judgment_posture(
             user_turn_signals=_signals(),
@@ -144,6 +162,16 @@ class JudgmentPostureTests(unittest.TestCase):
             epistemic_regime="incertain",
             proof_regime="source_explicite_requise",
             uncertainty_posture="explicite",
+        )
+
+        self.assertEqual(payload, {"judgment_posture": "answer"})
+
+    def test_build_judgment_posture_ignores_non_canonical_signal_family_count_alone(self) -> None:
+        payload = judgment_posture.build_judgment_posture(
+            user_turn_signals=_signals(families=["tonalite"]),
+            epistemic_regime="probable",
+            proof_regime="source_explicite_requise",
+            uncertainty_posture="prudente",
         )
 
         self.assertEqual(payload, {"judgment_posture": "answer"})

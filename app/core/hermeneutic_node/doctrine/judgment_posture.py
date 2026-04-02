@@ -61,22 +61,26 @@ def _validate_choice(*, value: str, allowed: Sequence[str], field_name: str) -> 
     return normalized
 
 
+def _validated_user_turn_signals(user_turn_signals: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    payload = _mapping(user_turn_signals)
+    if not payload or payload.get("present") is not True:
+        raise ValueError("invalid_user_turn_signals")
+    return payload
+
+
 def _clarification_needed(user_turn_signals: Mapping[str, Any]) -> bool:
-    if not user_turn_signals or user_turn_signals.get("present") is False:
-        return False
+    payload = _validated_user_turn_signals(user_turn_signals)
 
     active_families = {
         _text(value)
-        for value in _sequence(user_turn_signals.get("active_signal_families"))
+        for value in _sequence(payload.get("active_signal_families"))
         if _text(value)
-    }
-    if active_families & _CLARIFY_SIGNAL_FAMILIES:
+    } & _CLARIFY_SIGNAL_FAMILIES
+    if active_families:
         return True
-    if _int_or_zero(user_turn_signals.get("active_signal_families_count")) > 0:
+    if bool(payload.get("ambiguity_present")):
         return True
-    if bool(user_turn_signals.get("ambiguity_present")):
-        return True
-    if bool(user_turn_signals.get("underdetermination_present")):
+    if bool(payload.get("underdetermination_present")):
         return True
     return False
 
@@ -112,7 +116,7 @@ def build_judgment_posture(
         allowed=UNCERTAINTY_POSTURES,
         field_name="uncertainty_posture",
     )
-    user_turn_signals_payload = _mapping(user_turn_signals)
+    user_turn_signals_payload = _validated_user_turn_signals(user_turn_signals)
 
     if (
         epistemic_value in _SUSPENDING_EPISTEMIC_REGIMES
