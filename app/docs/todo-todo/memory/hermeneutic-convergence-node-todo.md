@@ -168,21 +168,22 @@ Objectif: produire un statut epistemique explicite par tour et un regime de preu
 
 Perimetre: `epistemic_regime`, `proof_regime`, `uncertainty_posture`.
 
-- [ ] Definir les classes epistemiques minimales (`certain|probable|incertain|suspendu|contradictoire|a_verifier`).
-- [ ] Definir les conditions minimales de passage entre classes.
-- [ ] Definir un `proof_regime` compact coherent avec l'etat epistemique.
-- [ ] Definir une `uncertainty_posture` explicite et non cosmetique.
+- [x] Definir les classes epistemiques minimales (`certain|probable|incertain|suspendu|contradictoire|a_verifier`).
+- [x] Definir les conditions minimales de passage entre classes.
+- [x] Definir un `proof_regime` compact coherent avec l'etat epistemique.
+- [x] Definir une `uncertainty_posture` explicite et non cosmetique.
+- [x] Trancher noir sur blanc que `epistemic_regime`, `proof_regime` et `uncertainty_posture` sont des sorties doctrinales du noeud, pas des inputs canoniques.
 
 Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-epistemic-regime-contract.md`
+- Doc normatif: `hermeneutic-node-epistemic-regime-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-epistemic-regime-contract.md`
 - Module code cible: `core.hermeneutic_node.doctrine.epistemic_regime`
 - Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `epistemic_regime.py`
 - Raison: les classes epistemiques et leur regime de preuve sont doctrinaux et doivent etre stabilises avant code.
 
-Sortie attendue du lot: composant d'arbitrage epistemique stable et lisible.
-Validation minimale: table de decision compacte qui produit toujours une classe epistemique + un regime de preuve.
+Sortie attendue du lot: contrat doctrinal d'arbitrage epistemique stable et lisible.
+Validation minimale: taxonomie minimale + conditions de passage + `proof_regime` + `uncertainty_posture` ecrits noir sur blanc dans la spec de reference.
 Dependances: Lots 1 a 3.
 Hors scope: formulation finale de la reponse utilisateur.
 
