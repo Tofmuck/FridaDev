@@ -243,23 +243,23 @@ Nature du lot: travail de structure + pause normative.
 
 Objectif: detecter et traiter les conflits explicites entre sources sans les masquer.
 
-Perimetre: detection, explicitation, issue minimale de conflit.
+Perimetre: detection, explicitation, seuil strict de detection, issue minimale de clarification.
 
-- [ ] Definir les types minimaux de conflits inter-sources a couvrir.
-- [ ] Definir le format compact de signalement d'un conflit.
-- [ ] Definir les regles minimales d'issue (`prioriser | clarify | suspend`).
-- [ ] Definir le lien entre conflit, `epistemic_regime` et `judgment_posture`.
+- [x] Definir les types minimaux de conflits inter-sources residuels a couvrir.
+- [x] Definir le seuil strict de detection et le format compact de signalement d'un conflit.
+- [x] Definir les regles minimales d'issue (`clarify`), en ecartant `prioriser` comme doublon du Lot 6 et `suspend` comme issue normale du conflit residuel.
+- [x] Definir le lien entre conflit, `source_priority`, `epistemic_regime` et `judgment_posture`.
 
 Pause normative obligatoire:
-- Doc normatif a ouvrir: `hermeneutic-node-source-conflict-contract.md`
+- Doc normatif: `hermeneutic-node-source-conflict-contract.md`
 - Chemin docs: `app/docs/states/specs/hermeneutic-node-source-conflict-contract.md`
 - Module code cible: `core.hermeneutic_node.doctrine.source_conflicts`
 - Repertoire code cible: `app/core/hermeneutic_node/doctrine/`
 - Fichier Python cible: `source_conflicts.py`
 - Raison: les regles de conflit inter-sources doivent etre explicites et stables avant implementation.
 
-Sortie attendue du lot: mecanisme minimal de conflit inter-sources compatible avec l'auditabilite.
-Validation minimale: un conflit detecte declenche obligatoirement une issue explicite et tracable.
+Sortie attendue du lot: mecanisme minimal de conflit inter-sources residuel compatible avec l'auditabilite, sans reouvrir la priorisation normale du Lot 6.
+Validation minimale: un conflit residuel detecte produit un signal compact et une issue explicite `clarify`, sans pousser par defaut vers `suspend`.
 Dependances: Lot 6.
 Hors scope: explication longue source par source dans la reponse finale.
 

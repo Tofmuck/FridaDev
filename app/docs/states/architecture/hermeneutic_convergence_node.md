@@ -286,11 +286,14 @@ La cible minimale retenue est :
 Sens :
 - `answer` : le cadre est assez stable pour produire une reponse substantive ;
 - `clarify` : la demande est sous-determinee, trop floue, ou demande une precision avant de conclure ;
-- `suspend` : les sources sont insuffisantes, contradictoires, ou non assez solides pour trancher proprement.
+- `suspend` : l'assise epistemique ou probatoire reste insuffisante, bloquee, ou non assez solide pour trancher proprement.
 
 Effets attendus :
 - `clarify` doit permettre des formes du type `Peux-tu preciser ?`
 - `suspend` doit permettre des formes du type `Je ne sais pas`, `Je ne peux pas trancher proprement`, ou une suspension equivalente.
+
+Un conflit inter-source residuel clarifiable n'appelle pas, a lui seul, `suspend`.
+Il doit normalement nourrir une parole de clarification explicite.
 
 Cette posture n'est pas un simple style de sortie.
 Elle est la forme operationnelle de la suspension du jugement dans le pipeline.
@@ -400,10 +403,8 @@ Le dispositif (noeud primaire + validation) doit etre explicitement charge de tr
 - obligatoire.
 
 7. Que faire en cas de conflit ?
-- suspendre ;
 - expliciter le conflit ;
-- privilegier une source ;
-- demander verification ;
+- demander une clarification explicite ;
 - reduire l'assertivite.
 
 8. Le verdict primaire est-il valide en revision ?
