@@ -426,6 +426,51 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/validation_agent.txt')
         self.assertIn('validation_decision', data['readonly_info']['validated_output_contract']['value'])
 
+    def test_get_admin_settings_hermeneutic_agent_models_report_seed_default_origin_without_db(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            return original_get_section(section, fetcher=lambda: {})
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            stimmung_response = self.client.get('/api/admin/settings/stimmung-agent-model')
+            validation_response = self.client.get('/api/admin/settings/validation-agent-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(stimmung_response.status_code, 200)
+        stimmung_data = stimmung_response.get_json()
+        self.assertTrue(stimmung_data['ok'])
+        self.assertEqual(stimmung_data['source'], 'env')
+        self.assertEqual(
+            {field_name: field_payload['origin'] for field_name, field_payload in stimmung_data['payload'].items()},
+            {
+                'primary_model': 'seed_default',
+                'fallback_model': 'seed_default',
+                'timeout_s': 'seed_default',
+                'temperature': 'seed_default',
+                'top_p': 'seed_default',
+                'max_tokens': 'seed_default',
+            },
+        )
+
+        self.assertEqual(validation_response.status_code, 200)
+        validation_data = validation_response.get_json()
+        self.assertTrue(validation_data['ok'])
+        self.assertEqual(validation_data['source'], 'env')
+        self.assertEqual(
+            {field_name: field_payload['origin'] for field_name, field_payload in validation_data['payload'].items()},
+            {
+                'primary_model': 'seed_default',
+                'fallback_model': 'seed_default',
+                'timeout_s': 'seed_default',
+                'temperature': 'seed_default',
+                'top_p': 'seed_default',
+                'max_tokens': 'seed_default',
+            },
+        )
+
     def test_get_admin_settings_embedding_returns_single_section_with_redacted_secret(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
 

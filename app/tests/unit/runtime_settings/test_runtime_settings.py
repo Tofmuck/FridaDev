@@ -291,6 +291,38 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(bundle.payload['top_k']['value'], config.MEMORY_TOP_K)
         self.assertEqual(bundle.payload['token']['is_set'], bool(config.EMBED_TOKEN))
 
+    def test_build_env_seed_bundle_marks_seed_default_fields_with_seed_default_origin(self) -> None:
+        main_model_bundle = runtime_settings.build_env_seed_bundle('main_model')
+        self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')
+        self.assertEqual(main_model_bundle.payload['top_p']['origin'], 'seed_default')
+        self.assertEqual(main_model_bundle.payload['response_max_tokens']['origin'], 'seed_default')
+
+        stimmung_bundle = runtime_settings.build_env_seed_bundle('stimmung_agent_model')
+        self.assertEqual(
+            {field_name: field_payload['origin'] for field_name, field_payload in stimmung_bundle.payload.items()},
+            {
+                'primary_model': 'seed_default',
+                'fallback_model': 'seed_default',
+                'timeout_s': 'seed_default',
+                'temperature': 'seed_default',
+                'top_p': 'seed_default',
+                'max_tokens': 'seed_default',
+            },
+        )
+
+        validation_bundle = runtime_settings.build_env_seed_bundle('validation_agent_model')
+        self.assertEqual(
+            {field_name: field_payload['origin'] for field_name, field_payload in validation_bundle.payload.items()},
+            {
+                'primary_model': 'seed_default',
+                'fallback_model': 'seed_default',
+                'timeout_s': 'seed_default',
+                'temperature': 'seed_default',
+                'top_p': 'seed_default',
+                'max_tokens': 'seed_default',
+            },
+        )
+
     def test_build_db_seed_bundle_uses_db_seed_for_non_secret_fields(self) -> None:
         bundle = runtime_settings.build_db_seed_bundle('main_model')
         self.assertEqual(bundle.payload['base_url']['origin'], 'db_seed')
@@ -1894,7 +1926,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                     'timeout_s': {'value': 9},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
-                    'max_tokens': {'value': 96},
+                    'max_tokens': {'value': 80},
                 },
                 fetcher=lambda: {},
             )
@@ -1911,6 +1943,48 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(checks['max_tokens']['ok'])
         self.assertTrue(checks['shared_transport_runtime']['ok'])
         self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
+
+    def test_validate_runtime_section_rejects_candidate_validation_agent_model_payload_above_contractual_max_tokens(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation-agent'
+        try:
+            over_cap_result = runtime_settings.validate_runtime_section(
+                'validation_agent_model',
+                {
+                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano'},
+                    'timeout_s': {'value': 9},
+                    'temperature': {'value': 0.0},
+                    'top_p': {'value': 1.0},
+                    'max_tokens': {'value': 96},
+                },
+                fetcher=lambda: {},
+            )
+            probe_result = runtime_settings.validate_runtime_section(
+                'validation_agent_model',
+                {
+                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano'},
+                    'timeout_s': {'value': 9},
+                    'temperature': {'value': 0.0},
+                    'top_p': {'value': 1.0},
+                    'max_tokens': {'value': 2000},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertFalse(over_cap_result['valid'])
+        over_cap_checks = {check['name']: check for check in over_cap_result['checks']}
+        self.assertFalse(over_cap_checks['max_tokens']['ok'])
+        self.assertIn('max_allowed=80', over_cap_checks['max_tokens']['detail'])
+
+        self.assertFalse(probe_result['valid'])
+        probe_checks = {check['name']: check for check in probe_result['checks']}
+        self.assertFalse(probe_checks['max_tokens']['ok'])
+        self.assertIn('max_tokens=2000', probe_checks['max_tokens']['detail'])
+        self.assertIn('max_allowed=80', probe_checks['max_tokens']['detail'])
 
     def test_validate_runtime_section_accepts_candidate_embedding_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value

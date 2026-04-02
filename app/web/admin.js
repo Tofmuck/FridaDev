@@ -423,10 +423,11 @@
     {
       key: "max_tokens",
       label: "Max tokens",
-      hint: "Budget de sortie envoye au modele de validation.",
+      hint: "Budget de sortie envoye au modele de validation, borne contractuelle max 80.",
       inputType: "number",
       step: "1",
       min: "1",
+      max: "80",
       autocomplete: "off",
     },
   ];

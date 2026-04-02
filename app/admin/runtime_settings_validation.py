@@ -52,6 +52,12 @@ def _resolve_app_path(path_str: str) -> Path:
     return Path(__file__).resolve().parents[1] / path
 
 
+def _validation_agent_max_tokens_cap() -> int:
+    from core.hermeneutic_node.validation import validation_agent
+
+    return int(validation_agent.MAX_RESPONSE_TOKENS)
+
+
 def validate_runtime_section(
     section: str,
     patch_payload: Mapping[str, Any] | None = None,
@@ -142,6 +148,12 @@ def validate_runtime_section(
         temperature = _runtime_float_value(view, 'temperature')
         top_p = _runtime_float_value(view, 'top_p')
         max_tokens = _runtime_int_value(view, 'max_tokens')
+        max_tokens_cap = _validation_agent_max_tokens_cap() if section == 'validation_agent_model' else None
+        max_tokens_ok = max_tokens is not None and max_tokens > 0
+        max_tokens_detail = f'max_tokens={max_tokens!r}'
+        if max_tokens_cap is not None:
+            max_tokens_ok = max_tokens_ok and max_tokens <= max_tokens_cap
+            max_tokens_detail = f'max_tokens={max_tokens!r}; max_allowed={max_tokens_cap}'
         main_model_view = candidate_runtime_section('main_model', fetcher=fetcher)
         base_url = _runtime_text_value(main_model_view, 'base_url')
         try:
@@ -169,7 +181,7 @@ def validate_runtime_section(
                     top_p is not None and 0.0 < top_p <= 1.0,
                     f'top_p={top_p!r}',
                 ),
-                _validation_check('max_tokens', max_tokens is not None and max_tokens > 0, f'max_tokens={max_tokens!r}'),
+                _validation_check('max_tokens', max_tokens_ok, max_tokens_detail),
                 _validation_check('shared_transport_runtime', shared_transport_ok, shared_transport_detail),
             )
         )

@@ -350,6 +350,16 @@ def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
 
 
+def _bounded_response_max_tokens(value: Any) -> int:
+    try:
+        candidate = int(value)
+    except (TypeError, ValueError):
+        return MAX_RESPONSE_TOKENS
+    if candidate <= 0:
+        return MAX_RESPONSE_TOKENS
+    return min(candidate, MAX_RESPONSE_TOKENS)
+
+
 def _runtime_model_settings() -> dict[str, Any]:
     view = runtime_settings.get_validation_agent_model_settings()
     return {
@@ -358,7 +368,7 @@ def _runtime_model_settings() -> dict[str, Any]:
         "timeout_s": int(view.payload["timeout_s"]["value"]),
         "temperature": float(view.payload["temperature"]["value"]),
         "top_p": float(view.payload["top_p"]["value"]),
-        "max_tokens": int(view.payload["max_tokens"]["value"]),
+        "max_tokens": _bounded_response_max_tokens(view.payload["max_tokens"]["value"]),
     }
 def _build_messages(
     *,
@@ -430,7 +440,7 @@ def _call_model(
             ),
             "temperature": temperature,
             "top_p": top_p,
-            "max_tokens": max_tokens,
+            "max_tokens": _bounded_response_max_tokens(max_tokens),
         },
         headers=llm_client.or_headers(caller="validation_agent"),
         timeout=timeout_s,

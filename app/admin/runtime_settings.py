@@ -217,6 +217,12 @@ def _seed_value(section: str, field: str) -> Any:
     return values.get((section, field), spec.seed_default)
 
 
+def _non_secret_seed_origin(field: FieldSpec) -> str:
+    if field.seed_from_env:
+        return 'env_seed'
+    return 'seed_default'
+
+
 def build_env_seed_bundle(section: str) -> SectionSeedBundle:
     spec = get_section_spec(section)
     payload: dict[str, dict[str, Any]] = {}
@@ -241,7 +247,7 @@ def build_env_seed_bundle(section: str) -> SectionSeedBundle:
         payload[field.key] = {
             'value': value,
             'is_secret': False,
-            'origin': 'env_seed',
+            'origin': _non_secret_seed_origin(field),
         }
 
     return SectionSeedBundle(section=section, payload=payload, secret_values=secret_values)

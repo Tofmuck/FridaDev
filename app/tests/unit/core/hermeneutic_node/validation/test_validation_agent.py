@@ -272,6 +272,38 @@ class ValidationAgentTests(unittest.TestCase):
             {"Authorization": "caller=validation_agent"},
         )
 
+    def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:
+        validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
+            payload={
+                "primary_model": {"value": "openai/custom-validation-primary"},
+                "fallback_model": {"value": "openai/custom-validation-fallback"},
+                "timeout_s": {"value": 14},
+                "temperature": {"value": 0.2},
+                "top_p": {"value": 0.88},
+                "max_tokens": {"value": 2000},
+            }
+        )
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.model, "openai/custom-validation-primary")
+        self.assertEqual(
+            requests_module.calls[0]["json"]["max_tokens"],
+            validation_agent.MAX_RESPONSE_TOKENS,
+        )
+
     def test_build_validated_output_accepts_minimal_recent_context_like_dialogue_context(self) -> None:
         requests_module = _FakeRequests(
             [
