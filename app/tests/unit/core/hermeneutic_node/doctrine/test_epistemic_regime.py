@@ -75,7 +75,32 @@ def _stimmung(
     }
 
 
-def _web(*, status: str = "skipped", results_count: int = 0, reason_code: str | None = None) -> dict[str, object]:
+def _web_source(
+    *,
+    used_in_prompt: bool = False,
+    used_content_kind: str = "none",
+    content_used: str = "",
+) -> dict[str, object]:
+    return {
+        "rank": 1,
+        "title": "Source",
+        "url": "https://example.test/source",
+        "source_domain": "example.test",
+        "search_snippet": "",
+        "used_in_prompt": used_in_prompt,
+        "used_content_kind": used_content_kind,
+        "content_used": content_used,
+        "truncated": False,
+    }
+
+
+def _web(
+    *,
+    status: str = "skipped",
+    results_count: int = 0,
+    reason_code: str | None = None,
+    sources: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
     return {
         "schema_version": "v1",
         "enabled": True,
@@ -85,7 +110,7 @@ def _web(*, status: str = "skipped", results_count: int = 0, reason_code: str | 
         "query": None,
         "results_count": results_count,
         "runtime": {},
-        "sources": [],
+        "sources": list(sources or []),
         "context_block": "",
     }
 
@@ -235,13 +260,12 @@ class EpistemicRegimeTests(unittest.TestCase):
             },
         )
 
-    def test_build_epistemic_regime_returns_contradictoire_only_on_explicit_conflict_signal(self) -> None:
+    def test_build_epistemic_regime_does_not_count_fully_rejected_memory_as_support(self) -> None:
         payload = epistemic_regime.build_epistemic_regime(
             memory_retrieved=_memory_retrieved(retrieved_count=2),
             memory_arbitration=_memory_arbitration(
-                kept_count=1,
-                rejected_count=1,
-                reason_code="source_conflict",
+                kept_count=0,
+                rejected_count=2,
             ),
             user_turn_input=_user_turn(),
             user_turn_signals=_signals(),
@@ -252,9 +276,54 @@ class EpistemicRegimeTests(unittest.TestCase):
         self.assertEqual(
             payload,
             {
-                "epistemic_regime": "contradictoire",
-                "proof_regime": "arbitrage_requis",
-                "uncertainty_posture": "bloquante",
+                "epistemic_regime": "incertain",
+                "proof_regime": "source_explicite_requise",
+                "uncertainty_posture": "prudente",
+            },
+        )
+
+    def test_build_epistemic_regime_keeps_scientifique_in_a_verifier_on_generic_web_hit(self) -> None:
+        payload = epistemic_regime.build_epistemic_regime(
+            user_turn_input=_user_turn(provenances=["web"], proof_types=["scientifique"], temporal_scope="actuelle"),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(status="ok", results_count=3),
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "epistemic_regime": "a_verifier",
+                "proof_regime": "verification_externe_requise",
+                "uncertainty_posture": "explicite",
+            },
+        )
+
+    def test_build_epistemic_regime_does_not_invent_contradiction_from_synthetic_reason_codes(self) -> None:
+        payload = epistemic_regime.build_epistemic_regime(
+            memory_retrieved=_memory_retrieved(retrieved_count=2),
+            memory_arbitration=_memory_arbitration(
+                kept_count=1,
+                rejected_count=1,
+                reason_code="source_conflict",
+                decisions=[
+                    {"keep": True, "reason": "source_conflict"},
+                    {"keep": False, "reason": "conflict marker"},
+                ],
+            ),
+            recent_window_input=_recent_window(turn_count=1),
+            user_turn_input=_user_turn(provenances=["dialogue_trace"]),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+        )
+
+        self.assertEqual(
+            payload,
+            {
+                "epistemic_regime": "probable",
+                "proof_regime": "source_explicite_requise",
+                "uncertainty_posture": "discrete",
             },
         )
 
@@ -298,8 +367,8 @@ class EpistemicRegimeTests(unittest.TestCase):
                 web_input=_web(status="error", results_count=0, reason_code="upstream_error"),
             ),
             epistemic_regime.build_epistemic_regime(
-                memory_arbitration=_memory_arbitration(reason_code="source_conflict"),
-                user_turn_input=_user_turn(),
+                recent_window_input=_recent_window(turn_count=1),
+                user_turn_input=_user_turn(provenances=["dialogue_trace"]),
                 user_turn_signals=_signals(),
                 stimmung_input=_stimmung(),
                 web_input=_web(),

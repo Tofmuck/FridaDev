@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import unicodedata
 from typing import Any, Mapping, Sequence
 
 
@@ -25,13 +24,6 @@ UNCERTAINTY_POSTURES = (
     "bloquante",
 )
 
-_CONFLICT_MARKERS = (
-    "conflict",
-    "contradic",
-    "incompatib",
-    "desaccord",
-    "disagree",
-)
 _WEB_REQUIRED_TYPES = {"scientifique"}
 _CURRENT_FACT_TYPES = {"factuelle", "scientifique"}
 _CAUTIONARY_SHIFT_STATES = {"candidate_shift", "shifted"}
@@ -60,31 +52,13 @@ def _text(value: Any) -> str:
     return str(value or "").strip()
 
 
-def _normalize_text(value: Any) -> str:
-    text = unicodedata.normalize("NFKD", str(value or ""))
-    text = text.encode("ascii", "ignore").decode("ascii")
-    return text.lower().strip()
-
-
-def _contains_conflict_marker(value: Any) -> bool:
-    normalized = _normalize_text(value)
-    return any(marker in normalized for marker in _CONFLICT_MARKERS)
-
-
 def _explicit_conflict_signal(
     *,
     memory_arbitration: Mapping[str, Any],
     web_input: Mapping[str, Any],
 ) -> bool:
-    if _contains_conflict_marker(memory_arbitration.get("reason_code")):
-        return True
-    if _contains_conflict_marker(web_input.get("reason_code")):
-        return True
-    for decision in _sequence(memory_arbitration.get("decisions")):
-        if not isinstance(decision, Mapping):
-            continue
-        if _contains_conflict_marker(decision.get("reason")):
-            return True
+    # No canonical structured conflict signal is emitted yet by current runtime inputs.
+    del memory_arbitration, web_input
     return False
 
 
@@ -115,6 +89,22 @@ def _web_support_available(web_input: Mapping[str, Any]) -> bool:
     return _text(web_input.get("status")) == "ok" and _int_or_zero(web_input.get("results_count")) > 0
 
 
+def _web_source_materially_used(source: Any) -> bool:
+    if not isinstance(source, Mapping):
+        return False
+    if not bool(source.get("used_in_prompt")):
+        return False
+    if _text(source.get("used_content_kind")) in {"", "none"}:
+        return False
+    return bool(_text(source.get("content_used")))
+
+
+def _web_evidence_available(web_input: Mapping[str, Any]) -> bool:
+    if _text(web_input.get("status")) != "ok":
+        return False
+    return any(_web_source_materially_used(source) for source in _sequence(web_input.get("sources")))
+
+
 def _summary_available(summary_input: Mapping[str, Any]) -> bool:
     return _text(summary_input.get("status")) == "available" and bool(_mapping(summary_input.get("summary")))
 
@@ -128,11 +118,10 @@ def _memory_support_available(
     memory_retrieved: Mapping[str, Any],
     memory_arbitration: Mapping[str, Any],
 ) -> bool:
-    kept_count = _int_or_zero(memory_arbitration.get("kept_count"))
-    if kept_count > 0:
-        return True
-    if _text(memory_arbitration.get("status")) == "error":
-        return False
+    if memory_arbitration:
+        if _text(memory_arbitration.get("status")) == "error":
+            return False
+        return _int_or_zero(memory_arbitration.get("kept_count")) > 0
     return _int_or_zero(memory_retrieved.get("retrieved_count")) > 0
 
 
@@ -151,7 +140,7 @@ def _satisfied_provenances(
         satisfied.add("dialogue_trace")
     if _summary_available(summary_input):
         satisfied.add("dialogue_resume")
-    if _web_support_available(web_input):
+    if _web_evidence_available(web_input):
         satisfied.add("web")
     return satisfied
 
@@ -178,18 +167,20 @@ def _needs_external_verification(
     user_turn_input: Mapping[str, Any],
     web_input: Mapping[str, Any],
 ) -> bool:
-    if _web_support_available(web_input):
-        return False
-
     required_provenances = _required_provenances(user_turn_input)
     requested_types = _requested_proof_types(user_turn_input)
     temporal_scope = _current_temporal_scope(user_turn_input)
+    web_evidence_available = _web_evidence_available(web_input)
 
-    if "web" in required_provenances:
-        return True
     if requested_types & _WEB_REQUIRED_TYPES:
         return True
-    if temporal_scope in {"immediate", "actuelle", "prospective"} and requested_types & _CURRENT_FACT_TYPES:
+    if "web" in required_provenances and not web_evidence_available:
+        return True
+    if (
+        temporal_scope in {"immediate", "actuelle", "prospective"}
+        and requested_types & _CURRENT_FACT_TYPES
+        and not web_evidence_available
+    ):
         return True
     return False
 
