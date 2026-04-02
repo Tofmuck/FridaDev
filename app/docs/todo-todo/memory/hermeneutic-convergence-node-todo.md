@@ -316,7 +316,7 @@ Objectif: placer un agent hermeneutique de validation apres le noeud primaire et
 
 Perimetre: validation agent, verdict final valide, branchement aval, observabilite du dispositif final, preconditions shadow.
 
-- [x] Definir le contrat de revision: entree = verdict primaire + justifications + directives provisoires + entrees canoniques.
+- [x] Definir le contrat de revision: entree = verdict primaire + justifications + `validation_dialogue_context` + directives provisoires + entrees canoniques.
 - [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
 - [ ] Definir la table de combinaison normative entre `judgment_posture` primaire et decision de validation.
 - [ ] Definir le format de sortie finale post-validation, dont `pipeline_directives_final`.

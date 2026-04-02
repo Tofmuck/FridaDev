@@ -329,9 +329,13 @@ La sortie doit dire quelle source prime ici, ou quel ordre de lecture doit etre 
 ### 5.7 Validation finale du verdict primaire
 
 L'agent hermeneutique de validation recoit:
+- un `validation_dialogue_context` recent elargi;
 - les entrees canoniques;
 - le verdict primaire du noeud;
 - les justifications et directives provisoires.
+
+Ce contexte dialogique recent elargi n'est pas un simple complement.
+Il constitue la matiere hermeneutique principale de la relecture.
 
 Il agit comme juge de revision et produit une decision de validation:
 - `confirm`
