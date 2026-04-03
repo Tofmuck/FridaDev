@@ -1400,6 +1400,205 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['web']['results_count'], 0)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_emits_primary_node_and_validation_agent_synthetic_log_events(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-hermeneutic-stages-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok hermeneutic stages'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'ouvert',
+                'proof_regime': 'source_explicite_requise',
+                'judgment_posture': 'clarify',
+                'source_conflicts': [{'kind': 'memory_conflict'}, {'kind': 'web_conflict'}],
+                'audit': {'fail_open': False, 'state_used': True, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'clarify',
+                    'final_judgment_posture': 'clarify',
+                    'pipeline_directives_final': ['posture_clarify'],
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+        )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        stages = [item['stage'] for item in observed_events]
+        self.assertIn('stimmung_agent', stages)
+        self.assertIn('hermeneutic_node_insertion', stages)
+        self.assertIn('primary_node', stages)
+        self.assertIn('validation_agent', stages)
+
+        primary_event = next(item for item in observed_events if item['stage'] == 'primary_node')
+        self.assertEqual(primary_event['status'], 'ok')
+        self.assertEqual(
+            primary_event['payload_json'],
+            {
+                'judgment_posture': 'clarify',
+                'epistemic_regime': 'ouvert',
+                'proof_regime': 'source_explicite_requise',
+                'source_conflicts_count': 2,
+                'fail_open': False,
+                'state_used': True,
+                'degraded_fields_count': 0,
+            },
+        )
+
+        validation_event = next(item for item in observed_events if item['stage'] == 'validation_agent')
+        self.assertEqual(validation_event['status'], 'ok')
+        self.assertEqual(
+            validation_event['payload_json'],
+            {
+                'dialogue_messages_count': 1,
+                'primary_judgment_posture': 'clarify',
+                'validation_decision': 'clarify',
+                'final_judgment_posture': 'clarify',
+                'pipeline_directives_final': ['posture_clarify'],
+                'decision_source': 'primary',
+                'model': 'openai/gpt-5.4-mini',
+            },
+        )
+
+        for payload in (primary_event['payload_json'], validation_event['payload_json']):
+            self.assertNotIn('primary_verdict', payload)
+            self.assertNotIn('validated_output', payload)
+            self.assertNotIn('validation_dialogue_context', payload)
+            self.assertNotIn('justifications', payload)
+            self.assertNotIn('canonical_inputs', payload)
+            self.assertNotIn('prompt', payload)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_emits_validation_agent_error_stage_without_raw_payload_dump(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-validation-error-stage-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok validation error stage'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'ouvert',
+                'proof_regime': 'source_explicite_requise',
+                'judgment_posture': 'answer',
+                'source_conflicts': [],
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'suspend',
+                    'final_judgment_posture': 'suspend',
+                    'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                },
+                status='error',
+                model='openai/gpt-5.4-nano',
+                decision_source='fail_open',
+                reason_code='timeout',
+            )
+        )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        validation_event = next(item for item in observed_events if item['stage'] == 'validation_agent')
+        self.assertEqual(validation_event['status'], 'error')
+        self.assertEqual(
+            validation_event['payload_json'],
+            {
+                'dialogue_messages_count': 1,
+                'primary_judgment_posture': 'answer',
+                'validation_decision': 'suspend',
+                'final_judgment_posture': 'suspend',
+                'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                'decision_source': 'fail_open',
+                'reason_code': 'timeout',
+                'model': 'openai/gpt-5.4-nano',
+            },
+        )
+        self.assertNotIn('validation_dialogue_context', validation_event['payload_json'])
+        self.assertNotIn('validated_output', validation_event['payload_json'])
+        self.assertNotIn('primary_verdict', validation_event['payload_json'])
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_keeps_contract_invalid_raw_conversation_id_creates_new_conversation(self) -> None:
         observed = {'normalized_raw': None, 'new_conversation_calls': 0, 'load_called': False}
         conversation = {

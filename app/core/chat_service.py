@@ -370,6 +370,9 @@ def _run_hermeneutic_node_insertion_point(
         stimmung_input=stimmung_input,
         web_input=web_input,
     )
+    hermeneutic_node_logger.emit_primary_node(
+        primary_payload=primary_payload,
+    )
     validation_dialogue_context = _resolve_validation_dialogue_context(
         conversation=conversation,
         recent_context_payload=recent_context_input,
@@ -394,6 +397,11 @@ def _run_hermeneutic_node_insertion_point(
             'web_input': _mapping(web_input),
         },
         requests_module=requests_module,
+    )
+    hermeneutic_node_logger.emit_validation_agent(
+        validation_dialogue_context=validation_dialogue_context,
+        primary_payload=primary_payload,
+        validated_result=validated_result,
     )
     return {
         'primary_payload': primary_payload,

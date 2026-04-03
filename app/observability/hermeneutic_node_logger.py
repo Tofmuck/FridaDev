@@ -17,6 +17,10 @@ def _sequence(value: Any) -> Sequence[Any]:
     return ()
 
 
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
 def _bool_str(value: Any) -> bool:
     return bool(str(value or '').strip())
 
@@ -151,6 +155,84 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'status': str(data.get('status') or 'missing'),
         'results_count': int(data.get('results_count') or 0),
     }
+
+
+def build_primary_node_payload(
+    *,
+    primary_payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
+    audit = _mapping(primary_verdict.get("audit"))
+    degraded_fields = [value for value in (_text(item) for item in _sequence(audit.get("degraded_fields"))) if value]
+    return {
+        "judgment_posture": _text(primary_verdict.get("judgment_posture")),
+        "epistemic_regime": _text(primary_verdict.get("epistemic_regime")),
+        "proof_regime": _text(primary_verdict.get("proof_regime")),
+        "source_conflicts_count": len(_sequence(primary_verdict.get("source_conflicts"))),
+        "fail_open": bool(audit.get("fail_open", False)),
+        "state_used": bool(audit.get("state_used", False)),
+        "degraded_fields_count": len(degraded_fields),
+    }
+
+
+def emit_primary_node(
+    *,
+    primary_payload: Mapping[str, Any] | None,
+) -> bool:
+    payload = build_primary_node_payload(primary_payload=primary_payload)
+    return chat_turn_logger.emit(
+        "primary_node",
+        status="error" if payload["fail_open"] else "ok",
+        payload=payload,
+    )
+
+
+def build_validation_agent_payload(
+    *,
+    validation_dialogue_context: Mapping[str, Any] | None,
+    primary_payload: Mapping[str, Any] | None,
+    validated_result: Any,
+) -> dict[str, Any]:
+    primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
+    validated_output = _mapping(getattr(validated_result, "validated_output", None))
+    directives = [
+        value
+        for value in (_text(item) for item in _sequence(validated_output.get("pipeline_directives_final")))
+        if value
+    ]
+    payload = {
+        "dialogue_messages_count": len(_sequence(_mapping(validation_dialogue_context).get("messages"))),
+        "primary_judgment_posture": _text(primary_verdict.get("judgment_posture")),
+        "validation_decision": _text(validated_output.get("validation_decision")),
+        "final_judgment_posture": _text(validated_output.get("final_judgment_posture")),
+        "pipeline_directives_final": directives,
+        "decision_source": _text(getattr(validated_result, "decision_source", "")),
+    }
+    reason_code = _text(getattr(validated_result, "reason_code", ""))
+    if reason_code:
+        payload["reason_code"] = reason_code
+    return payload
+
+
+def emit_validation_agent(
+    *,
+    validation_dialogue_context: Mapping[str, Any] | None,
+    primary_payload: Mapping[str, Any] | None,
+    validated_result: Any,
+) -> bool:
+    status = _text(getattr(validated_result, "status", "")) or "ok"
+    if status not in {"ok", "error", "skipped"}:
+        status = "ok"
+    return chat_turn_logger.emit(
+        "validation_agent",
+        status=status,
+        payload=build_validation_agent_payload(
+            validation_dialogue_context=validation_dialogue_context,
+            primary_payload=primary_payload,
+            validated_result=validated_result,
+        ),
+        model=_text(getattr(validated_result, "model", "")) or None,
+    )
 
 
 def build_hermeneutic_node_insertion_payload(
