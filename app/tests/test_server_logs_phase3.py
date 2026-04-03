@@ -346,6 +346,117 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
+    def test_requests_proxy_non_stream_validation_agent_uses_title_fallback_for_provider_identity(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        class FakeJsonResponse:
+            def json(self) -> dict[str, object]:
+                return {
+                    'id': 'gen-validation',
+                    'model': 'openai/gpt-5.4-mini',
+                    'usage': {
+                        'prompt_tokens': 10,
+                        'completion_tokens': 2,
+                        'total_tokens': 12,
+                    },
+                    'choices': [
+                        {'message': {'content': 'ok'}},
+                    ],
+                }
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-validation-json',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._RequestsChatLogProxy(
+                base_module=SimpleNamespace(post=lambda *_args, **_kwargs: FakeJsonResponse()),
+            )
+            proxy.post(
+                'https://openrouter.example/chat/completions',
+                json={'model': 'openai/gpt-5.4-mini'},
+                headers={'X-Title': 'FridaDev/ValidationAgent'},
+                timeout=30,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        llm_events = [event for event in observed if event.get('stage') == 'llm_call']
+        self.assertEqual(len(llm_events), 1)
+        payload = llm_events[0]['payload_json']
+        self.assertEqual(payload.get('provider_caller'), 'validation_agent')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev/ValidationAgent')
+        self.assertEqual(payload.get('provider_generation_id'), 'gen-validation')
+        self.assertEqual(payload.get('provider_total_tokens'), 12)
+
+    def test_requests_proxy_strips_internal_caller_header_before_upstream_request(self) -> None:
+        observed: list[dict[str, object]] = []
+        forwarded_headers: dict[str, object] = {}
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        class FakeJsonResponse:
+            def json(self) -> dict[str, object]:
+                return {
+                    'id': 'gen-stimmung',
+                    'model': 'openai/gpt-5.4-mini',
+                    'usage': {
+                        'prompt_tokens': 11,
+                        'completion_tokens': 3,
+                        'total_tokens': 14,
+                    },
+                    'choices': [
+                        {'message': {'content': 'ok'}},
+                    ],
+                }
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        def fake_post(*_args, **kwargs):
+            forwarded_headers.update(dict(kwargs.get('headers') or {}))
+            return FakeJsonResponse()
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-stimmung-json',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._RequestsChatLogProxy(
+                base_module=SimpleNamespace(post=fake_post),
+            )
+            proxy.post(
+                'https://openrouter.example/chat/completions',
+                json={'model': 'openai/gpt-5.4-mini'},
+                headers={
+                    self.server.llm.INTERNAL_PROVIDER_CALLER_HEADER: 'stimmung_agent',
+                    'X-Title': 'FridaDev/StimmungAgent',
+                },
+                timeout=30,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        self.assertNotIn(self.server.llm.INTERNAL_PROVIDER_CALLER_HEADER, forwarded_headers)
+        llm_events = [event for event in observed if event.get('stage') == 'llm_call']
+        self.assertEqual(len(llm_events), 1)
+        payload = llm_events[0]['payload_json']
+        self.assertEqual(payload.get('provider_caller'), 'stimmung_agent')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev/StimmungAgent')
+
     def test_api_chat_stream_emits_llm_call_with_final_response_chars(self) -> None:
         observed: list[dict[str, object]] = []
         original_insert = self.server.log_store.insert_chat_log_event

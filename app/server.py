@@ -345,14 +345,25 @@ class _RequestsChatLogProxy:
         model = str(payload.get('model') or '')
         stream_mode = bool(kwargs.get('stream'))
         timeout_s = kwargs.get('timeout')
-        provider_title = str(headers.get('X-OpenRouter-Title') or headers.get('X-Title') or llm.resolve_provider_title('llm') or '')
+        provider_caller = llm.resolve_provider_caller_from_headers(headers)
+        provider_title = str(
+            headers.get('X-OpenRouter-Title')
+            or headers.get('X-Title')
+            or llm.resolve_provider_title(provider_caller)
+            or ''
+        )
         provider_identity_payload = {
-            'provider_caller': 'llm',
+            'provider_caller': provider_caller,
             'provider_title': provider_title,
         }
+        request_kwargs = kwargs
+        sanitized_headers = llm.strip_internal_provider_headers(headers)
+        if sanitized_headers != headers:
+            request_kwargs = dict(kwargs)
+            request_kwargs['headers'] = sanitized_headers
 
         try:
-            response = self._base.post(url, *args, **kwargs)
+            response = self._base.post(url, *args, **request_kwargs)
         except Exception as exc:
             if is_llm_call:
                 chat_turn_logger.set_state('llm_stream_call_meta', None)
@@ -397,13 +408,15 @@ class _RequestsChatLogProxy:
                     response_chars = len(str(llm.extract_openrouter_text(llm_json) or ''))
                     provider_fields.update(
                         llm.build_provider_observability_fields(
-                            caller='llm',
+                            caller=provider_caller,
                             provider_metadata=llm.extract_openrouter_provider_metadata(
                                 llm_json,
                                 requested_model=model,
                             ),
                         )
                     )
+                    if provider_title:
+                        provider_fields['provider_title'] = provider_title
                 except Exception:
                     response_chars = 0
 

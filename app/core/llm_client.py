@@ -4,6 +4,16 @@ from typing import Any, Mapping
 import config
 from admin import runtime_settings
 
+INTERNAL_PROVIDER_CALLER_HEADER = 'X-Frida-Caller'
+_KNOWN_PROVIDER_CALLERS = (
+    'llm',
+    'arbiter',
+    'identity_extractor',
+    'resumer',
+    'stimmung_agent',
+    'validation_agent',
+)
+
 
 def _sanitize_encoding(text: str) -> str:
     """Corrige les chaînes doublement encodées type 'Ã§' si nécessaire."""
@@ -40,7 +50,7 @@ def _runtime_main_referer() -> str:
 
 
 def _runtime_main_title(caller: str) -> str:
-    caller_key = str(caller or "llm").strip().lower()
+    caller_key = normalize_provider_caller(caller)
     title_field_map = {
         "llm": "title_llm",
         "arbiter": "title_arbiter",
@@ -68,16 +78,48 @@ def resolve_provider_title(caller: str = "llm") -> str:
     return _runtime_main_title(caller)
 
 
+def normalize_provider_caller(caller: Any) -> str:
+    caller_key = str(caller or 'llm').strip().lower()
+    if caller_key in _KNOWN_PROVIDER_CALLERS:
+        return caller_key
+    return 'llm'
+
+
+def resolve_provider_caller_from_headers(headers: Mapping[str, Any] | None) -> str:
+    header_map = _mapping(headers)
+    internal_caller = str(header_map.get(INTERNAL_PROVIDER_CALLER_HEADER) or '').strip()
+    if internal_caller:
+        return normalize_provider_caller(internal_caller)
+
+    provider_title = str(
+        header_map.get('X-OpenRouter-Title') or header_map.get('X-Title') or ''
+    ).strip()
+    if provider_title:
+        provider_title_key = provider_title.casefold()
+        for caller in _KNOWN_PROVIDER_CALLERS:
+            if resolve_provider_title(caller).casefold() == provider_title_key:
+                return caller
+    return 'llm'
+
+
+def strip_internal_provider_headers(headers: Mapping[str, Any] | None) -> dict[str, Any]:
+    sanitized_headers = dict(_mapping(headers))
+    sanitized_headers.pop(INTERNAL_PROVIDER_CALLER_HEADER, None)
+    return sanitized_headers
+
+
 def or_headers(caller: str = "llm") -> dict:
     """Construit les headers HTTP pour OpenRouter, selon le composant appelant."""
+    caller_key = normalize_provider_caller(caller)
     h = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {_runtime_main_api_key()}",
+        INTERNAL_PROVIDER_CALLER_HEADER: caller_key,
     }
     referer = _runtime_main_referer()
     if referer:
         h["HTTP-Referer"] = referer
-    title = _runtime_main_title(caller)
+    title = _runtime_main_title(caller_key)
     if title:
         h["X-OpenRouter-Title"] = title
         h["X-Title"] = title

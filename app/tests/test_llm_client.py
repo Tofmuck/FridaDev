@@ -91,6 +91,13 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['X-OpenRouter-Title'], 'FridaDev/IdentityExtractor')
         self.assertEqual(headers['X-Title'], 'FridaDev/IdentityExtractor')
 
+    def test_or_headers_keeps_internal_caller_marker_local(self) -> None:
+        headers = llm_client.or_headers(caller='validation_agent')
+
+        self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'validation_agent')
+        self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_VALIDATION_AGENT)
+        self.assertEqual(headers['X-Title'], config.OR_TITLE_VALIDATION_AGENT)
+
     def test_or_headers_keeps_env_fallback_when_db_secret_is_missing(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
         original_api_key = config.OR_KEY
@@ -113,6 +120,32 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             config.OR_KEY = original_api_key
 
         self.assertEqual(headers['Authorization'], 'Bearer sk-env-fallback-key')
+
+    def test_resolve_provider_caller_from_headers_prefers_internal_header_and_falls_back_to_title(self) -> None:
+        self.assertEqual(
+            llm_client.resolve_provider_caller_from_headers(
+                {
+                    llm_client.INTERNAL_PROVIDER_CALLER_HEADER: 'stimmung_agent',
+                    'X-Title': config.OR_TITLE_LLM,
+                }
+            ),
+            'stimmung_agent',
+        )
+        self.assertEqual(
+            llm_client.resolve_provider_caller_from_headers(
+                {'X-Title': config.OR_TITLE_VALIDATION_AGENT}
+            ),
+            'validation_agent',
+        )
+        self.assertEqual(
+            llm_client.strip_internal_provider_headers(
+                {
+                    llm_client.INTERNAL_PROVIDER_CALLER_HEADER: 'validation_agent',
+                    'X-Title': config.OR_TITLE_VALIDATION_AGENT,
+                }
+            ),
+            {'X-Title': config.OR_TITLE_VALIDATION_AGENT},
+        )
 
     def test_build_payload_uses_runtime_main_model_from_db_when_present(self) -> None:
         original = llm_client.runtime_settings.get_main_model_settings
