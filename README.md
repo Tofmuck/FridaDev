@@ -2,73 +2,55 @@
 
 ## English
 
-Frida is an independent AI R&D project.
-This repository is a **working engineering state** of the Frida runtime and tooling.
-Project state references are dated **March 28, 2026**, with operations/baseline docs updated on **March 29, 2026**.
+Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
+This repository tracks the real engineering state of the system as of **April 3, 2026**.
 
-Primary references for this repository state:
-- `app/docs/states/project/Frida-State-english-28-03-26.md`
-- `app/docs/states/project/Frida-State-french-28-03-26.md`
-- `app/docs/states/operations/frida-installation-operations.md` (installation/exploitation initial guide)
+Primary references for the current repository state:
+- `app/docs/states/project/Frida-State-english-03-04-26.md`
+- `app/docs/states/project/Frida-State-french-03-04-26.md`
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/README.md`
 
-### Website and contact
-- website: [https://frida-ai.fr](https://frida-ai.fr)
-- contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
+### What the system does today
+- Flask runtime exposing `/`, `/admin`, `/log`, `/hermeneutic-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*`, and the live dashboard route `GET /api/admin/hermeneutics/dashboard`.
+- Verified local stack on `http://127.0.0.1:8093`, currently running with `HERMENEUTIC_MODE=enforced_all`.
+- Chat flow wired as: session resolution -> time grounding -> memory retrieval/arbitration -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> `[JUGEMENT HERMENEUTIQUE]` injection -> main LLM call -> persistence and logs.
+- Operator observability keeping local `estimated_*` counters distinct from post-call OpenRouter `provider_*` truth.
+- OpenRouter transport identity split by caller (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) through dedicated `HTTP-Referer` and `X-OpenRouter-Title`.
+- Main system prompt now framing Frida as a work/reflection interlocutor rather than a generic execution assistant.
 
-### What this repository contains
-- Flask backend (`app/server.py`) with chat routes, admin settings routes, hermeneutics routes, and observability routes.
-- Core chat flows split by responsibility under `app/core/`.
-- Memory/identity pipeline under `app/memory/` and `app/identity/`.
-- Runtime admin settings services under `app/admin/`.
-- Dedicated observability package under `app/observability/`.
-- Static prompts under `app/prompts/`.
-- Web UI under `app/web/` (`/`, `/admin`, `/log`).
-- Tests under `app/tests/`.
-- Structured docs under `app/docs/`.
+### What the repository contains
+- Flask backend orchestration in `app/server.py`
+- Core chat flows in `app/core/`
+- Memory and identity pipeline in `app/memory/` and `app/identity/`
+- Admin/runtime settings and hermeneutic services in `app/admin/`
+- Observability modules in `app/observability/`
+- Web UI in `app/web/`
+- Tests in `app/tests/`
+- Structured documentation in `app/docs/`
 
-### What Frida Does Today
-- Receives a user message through `/api/chat` and resolves an existing conversation or creates a new one.
-- Sets the turn generation present (`user_timestamp`) and appends the user turn with that timestamp.
-- Optionally summarizes older unsummarized turns when thresholds are exceeded, stores the summary in DB, and links covered traces.
-- Builds the augmented system message from backend prompts + identity block + canonical temporal reference (`[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`).
-- Runs memory retrieval from embeddings, then applies hermeneutic arbitration depending runtime mode.
-- Enriches selected memory traces with parent summaries and also fetches recent context hints.
-- Rebuilds the prompt window from the current conversation with: active summary, context hints, memory-context summaries, memory traces, and recent turns.
-- Anchors temporal reading to the same turn `NOW` (relative delta labels + silence markers between turns).
-- Optionally reformulates/searches/crawls web sources and injects web context into the last user prompt.
-- Calls the main LLM (JSON or stream), then persists the assistant turn, new traces, identity writes/evidence by mode, and structured admin/observability logs.
+### Documentation anchors
+- Current EN project state: `app/docs/states/project/Frida-State-english-03-04-26.md`
+- Current FR project state: `app/docs/states/project/Frida-State-french-03-04-26.md`
+- Canonical repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
+- Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
-### What Frida Is Building
-In progress (not fully implemented yet):
-- Frida is building a decision layer between context assembly and final answer generation, so source arbitration is explicit instead of implicit.
-- This layer is designed to ingest canonical inputs from: time, memory, web, identity, active summary, recent context, Stimmung, and the user request.
-- A primary convergence node will produce a first verdict: how to answer, with what certainty level, with which source priority, and with what proof posture.
-- That first verdict can lead to `answer`, `clarify`, or `suspend` when evidence is weak, ambiguous, or contradictory.
-- A second-stage validation agent (revision judge) then re-reads the verdict before downstream use and can `confirm`, `challenge`, `clarify`, or `suspend`.
-- Validation is sovereign on final acceptance, but not on criteria: criteria stay fixed by explicit doctrine contracts.
-- Practical goal: better situated answers, clearer source hierarchy, stronger justification, fewer hallucinations, and explicit non-conclusion when needed.
-- Target structure for this work is a clearer split between `inputs/`, `doctrine/`, `runtime/`, and `validation/`.
-
-### Where Contributors Can Help
-- Memory retrieval and grounding: hybrid retrieval, reranking, clearer memory assembly, and dense retrieval vs BM25-like signals comparisons.
-- Observability and operator tooling: clearer diagnostics/log views, actionable exports, and better visibility on what the pipeline actually used.
-- Installation and runtime operations: lower fresh-clone friction with dependency checks, connectivity validation, and clearer operator setup.
-- Hermeneutic pipeline construction: source hierarchy, judgment posture, conflict handling, validation agent, and cleaner `inputs/` / `doctrine/` / `runtime/` / `validation/` structure.
-- Interface design and interaction clarity: improve the product's visual and interaction quality with a "less is more" discipline: clearer hierarchy, calmer screens, stronger readability, and fewer but better UI decisions.
-
-### What is versioned vs runtime-local
+### Versioned vs runtime-local
 Versioned:
-- code, prompts, scripts, tests, docs.
+- code, prompts, scripts, tests, docs
 
 Not versioned:
 - `app/.env`
-- runtime state under `state/conv`, `state/logs`, `state/data` (host/operator view)
-- local caches, venvs, and OS/editor residue.
+- runtime state under `state/conv`, `state/logs`, `state/data`
+- local caches, virtualenvs, OS/editor residue
 
 Container mapping note:
-- `/app/conv`, `/app/logs`, `/app/data` are internal container mount targets for those host `state/...` directories.
+- `/app/conv`, `/app/logs`, `/app/data` are container mount targets for those host `state/...` directories.
 
-A fresh clone needs a valid local `.env`, reachable runtime dependencies, and initialized local runtime state under `state/...`.
+A fresh clone still needs a valid local `.env`, reachable runtime dependencies, and initialized local runtime state under `state/...`.
 
 ### Stack operations
 ```bash
@@ -78,91 +60,72 @@ A fresh clone needs a valid local `.env`, reachable runtime dependencies, and in
 ```
 
 ### Essential paths
-- `docker-compose.yml`: local stack definition
-- `stack.sh`: operator commands (`up`, `down`, `restart`, `logs`, `ps`, `config`, `health`)
-- `app/server.py`: HTTP entrypoint/orchestration
-- `app/minimal_validation.py`: global smoke validation layer
-- `app/docs/README.md`: documentation map
+- `docker-compose.yml`
+- `stack.sh`
+- `app/server.py`
+- `app/minimal_validation.py`
+- `app/docs/README.md`
 
-### Documentation map
-- `app/docs/states/`: durable reference docs (specs, baselines, project states, policies, operations)
-- `app/docs/todo-todo/`: active workstreams
-- `app/docs/todo-done/`: completed workstream traces
+### Website and contact
+- website: [https://frida-ai.fr](https://frida-ai.fr)
+- contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
 
 ### License
 This repository is distributed under the **MIT License**. See [LICENSE](LICENSE).
 
 ---
 
-## Français
+## Francais
 
-Frida est un projet indépendant de R&D en intelligence artificielle.
-Ce depot correspond a un **etat d'ingenierie vivant** du runtime et des outils Frida.
-Les etats projet de reference sont dates du **28 mars 2026**, avec des docs operationnelles/baselines mises a jour au **29 mars 2026**.
+Frida est un runtime IA de travail centre sur le dialogue, la memoire, le jugement hermeneutique et l'observabilite operateur.
+Ce depot suit l'etat d'ingenierie reel du systeme au **3 avril 2026**.
 
-References principales pour l'etat du depot:
-- `app/docs/states/project/Frida-State-french-28-03-26.md`
-- `app/docs/states/project/Frida-State-english-28-03-26.md`
-- `app/docs/states/operations/frida-installation-operations.md` (guide d'installation/exploitation initiale)
+References principales pour l'etat actuel du depot:
+- `app/docs/states/project/Frida-State-french-03-04-26.md`
+- `app/docs/states/project/Frida-State-english-03-04-26.md`
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/README.md`
 
-### Site et contact
-- site: [https://frida-ai.fr](https://frida-ai.fr)
-- contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
+### Ce que fait aujourd'hui le systeme
+- Runtime Flask exposant `/`, `/admin`, `/log`, `/hermeneutic-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*` et la route live `GET /api/admin/hermeneutics/dashboard`.
+- Stack locale verifiee sur `http://127.0.0.1:8093`, actuellement en `HERMENEUTIC_MODE=enforced_all`.
+- Pipeline chat branche ainsi: resolution de session -> grounding temporel -> retrieval/arbitrage memoire -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> injection `[JUGEMENT HERMENEUTIQUE]` -> appel LLM principal -> persistance et logs.
+- Observabilite operateur distinguant les compteurs locaux `estimated_*` et la verite OpenRouter post-call `provider_*`.
+- Identite transport OpenRouter differenciee par composant (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) via des `HTTP-Referer` et `X-OpenRouter-Title` dedies.
+- Prompt systeme principal recadre comme interlocuteur de travail et de reflexion, et non comme simple assistant d'execution.
 
-### Ce que contient ce depot
-- Backend Flask (`app/server.py`) avec routes chat, admin settings, hermeneutique et observabilite.
-- Flux chat decoupes par responsabilite dans `app/core/`.
-- Pipeline memoire/identite dans `app/memory/` et `app/identity/`.
-- Services runtime settings admin dans `app/admin/`.
-- Package d'observabilite dedie dans `app/observability/`.
-- Prompts statiques dans `app/prompts/`.
-- UI web dans `app/web/` (`/`, `/admin`, `/log`).
-- Tests dans `app/tests/`.
-- Documentation structuree dans `app/docs/`.
+### Ce que contient le depot
+- Orchestration backend Flask dans `app/server.py`
+- Flux chat centraux dans `app/core/`
+- Pipeline memoire et identite dans `app/memory/` et `app/identity/`
+- Services admin/runtime settings et hermeneutiques dans `app/admin/`
+- Modules d'observabilite dans `app/observability/`
+- UI web dans `app/web/`
+- Tests dans `app/tests/`
+- Documentation structuree dans `app/docs/`
 
-### Ce que Frida fait aujourd'hui
-- Recoit un message utilisateur via `/api/chat` et resout une conversation existante ou en cree une nouvelle.
-- Fixe le present de generation du tour (`user_timestamp`) et ajoute le tour utilisateur avec ce timestamp.
-- Peut resumer les anciens tours non resumes si les seuils sont depasses, persiste le resume en DB et rattache les traces couvertes.
-- Construit le systeme augmente depuis les prompts backend + bloc identite + reference temporelle canonique (`[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`).
-- Lance la recuperation memoire par embeddings puis l'arbitrage hermeneutique selon le mode runtime.
-- Enrichit les traces memoire retenues avec leurs resumes parents et recupere aussi des indices contextuels recents.
-- Reconstruit la fenetre de prompt depuis la conversation courante avec: resume actif, indices contextuels, contexte de souvenirs, traces memoire et tours recents.
-- Relit la temporalite depuis le meme `NOW` de tour (labels relatifs Delta-T + marqueurs de silence entre tours).
-- Peut reformuler/rechercher/crawler le web et injecter ce contexte dans le dernier message utilisateur.
-- Appelle le LLM principal (JSON ou stream), puis persiste la reponse, les nouvelles traces, l'identite (ecriture ou evidence selon le mode) et les logs admin/observabilite.
-
-### Ce que Frida est en train de construire
-En cours (pas completement implemente):
-- Frida construit une couche de decision entre l'assemblage du contexte et la generation finale, pour arbitrer les sources explicitement plutot que de les empiler.
-- Cette couche est concue pour recevoir des entrees canoniques: temps, memoire, web, identite, resume actif, contexte recent, Stimmung et demande utilisateur.
-- Un noeud primaire de convergence doit produire un premier verdict: comment repondre, avec quel niveau de certitude, avec quelle priorite de sources et avec quel regime de preuve.
-- Ce premier verdict peut conduire a `answer`, `clarify` ou `suspend` quand les elements sont insuffisants, ambigus ou contradictoires.
-- Un agent de validation en second niveau (juge de revision) relit ensuite ce verdict avant consommation aval et peut `confirm`, `challenge`, `clarify` ou `suspend`.
-- La validation est souveraine sur l'acceptation finale, mais pas sur les criteres: les criteres restent fixes par des contrats doctrinaux explicites.
-- Objectif pratique: mieux situer les reponses, mieux hierarchiser les sources, mieux justifier, moins halluciner et accepter explicitement de ne pas conclure quand il le faut.
-- La cible de structuration est une separation plus nette entre `inputs/`, `doctrine/`, `runtime/` et `validation/`.
-
-### Où contribuer utilement
-- Retrieval memoire et grounding: retrieval hybride, reranking, assemblage memoire plus lisible et comparaison dense retrieval vs signaux type BM25.
-- Observabilite et outillage operateur: diagnostics/logs plus lisibles, exports exploitables et meilleure visibilite sur ce que le pipeline a reellement utilise.
-- Installation et exploitation runtime: reduire la friction du clone neuf avec checks de dependances, validation de connectivite et setup operateur plus clair.
-- Construction du pipeline hermeneutique: hierarchie des sources, posture de jugement, gestion des conflits, agent de validation et structuration `inputs/` / `doctrine/` / `runtime/` / `validation/`.
-- Design d’interface et clarté d’interaction: ameliorer la qualite visuelle et interactionnelle du produit avec une discipline "less is more" : hierarchie plus nette, ecrans plus calmes, meilleure lisibilite, et moins de decisions UI mais mieux tenues.
+### Ancres documentaires
+- Etat projet FR courant: `app/docs/states/project/Frida-State-french-03-04-26.md`
+- Etat projet EN courant: `app/docs/states/project/Frida-State-english-03-04-26.md`
+- Audit canonique du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
+- Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
 ### Ce qui est versionne vs local runtime
 Versionne:
-- code, prompts, scripts, tests, docs.
+- code, prompts, scripts, tests, docs
 
 Non versionne:
 - `app/.env`
-- etat runtime sous `state/conv`, `state/logs`, `state/data` (vue operateur cote hote)
-- caches locaux, venvs et residus systeme/editeur.
+- etat runtime sous `state/conv`, `state/logs`, `state/data`
+- caches locaux, virtualenvs et residus systeme/editeur
 
 Repere conteneur:
-- `/app/conv`, `/app/logs`, `/app/data` sont les chemins internes montes depuis `state/...`.
+- `/app/conv`, `/app/logs`, `/app/data` sont les cibles de montage conteneur des repertoires hote `state/...`.
 
-Un clone neuf necessite un `.env` local valide, des dependances runtime accessibles et un state local initialise sous `state/...`.
+Un clone neuf necessite toujours un `.env` local valide, des dependances runtime joignables et un state local initialise sous `state/...`.
 
 ### Exploitation de la stack
 ```bash
@@ -172,16 +135,15 @@ Un clone neuf necessite un `.env` local valide, des dependances runtime accessib
 ```
 
 ### Chemins essentiels
-- `docker-compose.yml`: definition de la stack locale
-- `stack.sh`: commandes operateur (`up`, `down`, `restart`, `logs`, `ps`, `config`, `health`)
-- `app/server.py`: point d'entree HTTP/orchestration
-- `app/minimal_validation.py`: couche smoke globale
-- `app/docs/README.md`: carte de la documentation
+- `docker-compose.yml`
+- `stack.sh`
+- `app/server.py`
+- `app/minimal_validation.py`
+- `app/docs/README.md`
 
-### Carte documentaire
-- `app/docs/states/`: references stables (specs, baselines, etats projet, policies, operations)
-- `app/docs/todo-todo/`: chantiers actifs
-- `app/docs/todo-done/`: traces de chantiers termines
+### Site et contact
+- site: [https://frida-ai.fr](https://frida-ai.fr)
+- contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
 
 ### Licence
 Ce depot est distribue sous licence **MIT**. Voir [LICENSE](LICENSE).

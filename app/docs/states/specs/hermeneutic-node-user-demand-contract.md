@@ -721,7 +721,7 @@ Grounding minimal dans l'etat actuel du repo:
 
 Cette ouverture de contrat est grounded dans l'etat actuel du programme:
 
-- `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md` ouvre le sous-bloc B du Lot 2 pour `tour_utilisateur`;
+- `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md` documente l'ouverture du sous-bloc B du Lot 2 pour `tour_utilisateur`;
 - `app/docs/states/architecture/hermeneutic_convergence_node.md` fait du tour utilisateur un determinant du noeud, pas une simple metadonnee de requete;
 - `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique qu'un socle canonique minimal est desormais pose pour `tour_utilisateur`, tout en laissant ses raffinements ouverts;
 - `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les futures entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.

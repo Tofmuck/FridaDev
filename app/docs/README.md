@@ -36,17 +36,19 @@ Sous-structure en place:
 
 Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
+- audit general canonique: `todo-done/audits/fridadev_repo_audit.md`
+- etat projet FR 03/04/2026: `states/project/Frida-State-french-03-04-26.md`
+- etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
-- roadmap mere ouverte noeud de convergence hermeneutique: `todo-todo/memory/hermeneutic-convergence-node-todo.md`
+- roadmap Lot 9 archivee noeud de convergence hermeneutique: `todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - roadmap archivee refactor structurel `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`
 - TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 - TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
 - TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
-- etat projet FR 28/03/2026: `states/project/Frida-State-french-28-03-26.md`
-- etat projet EN 28/03/2026: `states/project/Frida-State-english-28-03-26.md`
+- serie historique des etats projet precedents: `states/project/Frida-State-*-23-03-26.md` et `states/project/Frida-State-*-28-03-26.md`
 - les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
 - nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes

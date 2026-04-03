@@ -99,11 +99,14 @@ When FR/EN sections coexist in the same entry document, keep semantic parity and
 
 ## Current authoritative documents
 
-Use these documents as living anchors unless the user explicitly changes the strategy:
+Use these documents as living anchors unless noted otherwise or the user explicitly changes the strategy:
 
-- `app/docs/todo-todo/memory/hermeneutic-convergence-node-todo.md`: active master roadmap for the hermeneutic convergence node
+- `app/docs/states/project/Frida-State-french-03-04-26.md`: current French project state reference
+- `app/docs/states/project/Frida-State-english-03-04-26.md`: current English project state reference
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`: canonical general repo audit
 - `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: active memory / hermeneutics roadmap
 - `app/docs/todo-todo/product/Frida-installation-config.md`: active product / installation roadmap
+- `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: archived closure trace for the closed hermeneutic convergence roadmap; do not treat it as an active roadmap
 - `app/docs/todo-done/refactors/admin-todo.md`: archived admin roadmap whose decisions must not be silently reopened
 - `app/docs/todo-done/refactors/fridadev_refactor_closure.md`: closure record for the repository audit/refactor cycle
 - `app/docs/todo-done/refactors/fridadev_refactor_todo.md`: completed refactor checklist kept as trace, not as an active roadmap

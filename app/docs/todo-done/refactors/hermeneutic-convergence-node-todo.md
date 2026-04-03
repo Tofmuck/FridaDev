@@ -1,12 +1,28 @@
-# Noeud de convergence hermeneutique - roadmap mere
+# Noeud de convergence hermeneutique - roadmap mere cloturee
+
+## Statut de cloture
+Cloture documentaire: 2026-04-03
+Statut: archivee dans `app/docs/todo-done/refactors/`
+
+Resultat reel cloture:
+- Lot 9 est ferme et la cible runtime retenue est active: `HERMENEUTIC_MODE=enforced_all`
+- pipeline observable: `stimmung_agent -> primary_node -> validation_agent -> aval`
+- surfaces live: `/log`, `/hermeneutic-admin`, `GET /api/admin/hermeneutics/dashboard`
+- marqueurs d'enforcement reel: `memory_mode_apply.source=arbiter_enforced`, `identity_mode_apply.action=persist_enforced`
+- observabilite OpenRouter: distinction `estimated_*` / `provider_*`, `HTTP-Referer` et `X-OpenRouter-Title` distincts par composant
+
+Regle de lecture:
+- ce document est conserve comme trace de chantier cloture;
+- il ne pilote plus un travail actif;
+- la reference active memoire/hermeneutique restante est `app/docs/todo-todo/memory/hermeneutical-add-todo.md`.
 
 ## Cadrage
-Objet: piloter la construction du futur noeud de convergence hermeneutique a partir des references:
+Objet historique: piloter la construction du futur noeud de convergence hermeneutique a partir des references:
 - `app/docs/states/architecture/hermeneutic_convergence_node.md`
 - `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md`
 
-Regle de lecture:
-- ce document est la roadmap mere unique du chantier;
+Regle de lecture historique:
+- ce document a ete la roadmap mere unique du chantier jusqu'a la cloture du 2026-04-03;
 - les docs d'architecture restent la norme, ce TODO est leur plan d'execution;
 - les briques existantes continuent a alimenter le LLM principal pendant toute la construction du noeud;
 - la convergence vise un dispositif en 2 etages: `noeud primaire -> validation agent`;
@@ -315,6 +331,7 @@ Nature du lot: travail de structure + pause normative.
 Objectif: placer un agent hermeneutique de validation apres le noeud primaire et avant l'aval, puis brancher l'aval uniquement sur la sortie revisee.
 
 Perimetre: validation agent, verdict final valide, branchement aval, integration admin des deux agents LLM hermeneutiques reels du pipeline, surfaces logs/inspection du dispositif final, preconditions de bascule full avec observabilite maintenue, et garde-fou shadow transitoire.
+Etat du lot: ferme (runtime + documentation).
 
 - [x] Definir le contrat de revision: entree = verdict primaire + justifications + `validation_dialogue_context` + directives provisoires + entrees canoniques.
 - [x] Definir les sorties de revision: `confirm | challenge | clarify | suspend`.
