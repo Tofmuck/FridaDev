@@ -81,4 +81,29 @@ Sinon:
 
 - la bascule full n'est pas acceptee comme validee
 - un rollback operatoire peut reutiliser `shadow` ou `off`
-- la doctrine complete de ce garde-fou transitoire reste traitee separement par l'item 329
+- la cible normale reste `enforced_all`; `shadow` n'est alors qu'un repli borne
+
+## Place residuelle de `shadow`
+
+Pour le Lot 9, la cible finale normale est:
+
+- un runtime reel en `HERMENEUTIC_MODE=enforced_all`
+- avec pipeline hermeneutique actif
+- avec `/log`, `/hermeneutic-admin` et l'observability existante maintenus
+
+`shadow` n'est donc plus:
+
+- une destination normale
+- un etat final `shadow-only`
+- une phase d'observation prolongee pour se rassurer avant de decider
+
+`shadow` reste seulement:
+
+- un etat transitoire tant que les preconditions de ce document ne sont pas remplies
+- un mode de repli si la verification immediate post-restart echoue
+- un garde-fou borne avant retour vers `enforced_all`
+
+`enforced_identities` reste de meme un mode partiel:
+
+- utile comme mode intermediaire si un besoin ponctuel l'impose
+- hors cible finale normale du Lot 9
