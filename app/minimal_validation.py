@@ -408,6 +408,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     required_files = {
         "index_html": web_dir / "index.html",
         "admin_html": web_dir / "admin.html",
+        "hermeneutic_admin_html": web_dir / "hermeneutic-admin.html",
         "admin_css": web_dir / "admin.css",
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
@@ -424,6 +425,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_section_services_js": web_dir / "admin_section_services.js",
         "admin_section_resources_js": web_dir / "admin_section_resources.js",
         "admin_js": web_dir / "admin.js",
+        "hermeneutic_admin_api_js": web_dir / "hermeneutic_admin" / "api.js",
+        "hermeneutic_admin_render_js": web_dir / "hermeneutic_admin" / "render.js",
+        "hermeneutic_admin_main_js": web_dir / "hermeneutic_admin" / "main.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
     forbidden_files = {
@@ -442,6 +446,7 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     index_html = required_files["index_html"].read_text(encoding="utf-8")
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
+    hermeneutic_admin_html = required_files["hermeneutic_admin_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
     admin_state_js = required_files["admin_state_js"].read_text(encoding="utf-8")
@@ -455,6 +460,9 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_section_services_js = required_files["admin_section_services_js"].read_text(encoding="utf-8")
     admin_section_resources_js = required_files["admin_section_resources_js"].read_text(encoding="utf-8")
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
+    hermeneutic_admin_api_js = required_files["hermeneutic_admin_api_js"].read_text(encoding="utf-8")
+    hermeneutic_admin_render_js = required_files["hermeneutic_admin_render_js"].read_text(encoding="utf-8")
+    hermeneutic_admin_main_js = required_files["hermeneutic_admin_main_js"].read_text(encoding="utf-8")
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
@@ -469,6 +477,11 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{admin_section_services_js}\n"
         f"{admin_section_resources_js}\n"
         f"{admin_js}"
+    )
+    hermeneutic_admin_front_js = (
+        f"{hermeneutic_admin_api_js}\n"
+        f"{hermeneutic_admin_render_js}\n"
+        f"{hermeneutic_admin_main_js}"
     )
 
     admin_script_order = [
@@ -491,6 +504,20 @@ def _check_ui_assets() -> Dict[str, Any]:
         raise RuntimeError(
             "ordre scripts admin invalide: "
             f"attendu={admin_script_order}, trouve={admin_script_srcs}"
+        )
+
+    hermeneutic_admin_script_order = [
+        "admin_api.js",
+        "admin_ui_common.js",
+        "hermeneutic_admin/api.js",
+        "hermeneutic_admin/render.js",
+        "hermeneutic_admin/main.js",
+    ]
+    hermeneutic_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', hermeneutic_admin_html)
+    if hermeneutic_admin_script_srcs != hermeneutic_admin_script_order:
+        raise RuntimeError(
+            "ordre scripts hermeneutic admin invalide: "
+            f"attendu={hermeneutic_admin_script_order}, trouve={hermeneutic_admin_script_srcs}"
         )
 
     expected_admin_settings_endpoints = {
@@ -719,6 +746,15 @@ def _check_ui_assets() -> Dict[str, Any]:
     for marker in index_markers:
         if marker not in index_html:
             raise RuntimeError(f"marker index.html manquant: {marker}")
+    index_hermeneutic_markers = [
+        'id="btnHermeneuticAdmin"',
+        'href="/hermeneutic-admin"',
+        'target="_blank"',
+        'rel="noopener noreferrer"',
+    ]
+    for marker in index_hermeneutic_markers:
+        if marker not in index_html:
+            raise RuntimeError(f"marker index.html hermeneutic admin manquant: {marker}")
 
     admin_markers = [
         "Admin de configuration",
@@ -804,6 +840,53 @@ def _check_ui_assets() -> Dict[str, Any]:
         if marker in admin_html:
             raise RuntimeError(f"marker admin.html legacy inattendu: {marker}")
 
+    hermeneutic_admin_markers = [
+        "Hermeneutic admin",
+        'href="admin.css"',
+        'script src="admin_api.js"',
+        'script src="admin_ui_common.js"',
+        'script src="hermeneutic_admin/api.js"',
+        'script src="hermeneutic_admin/render.js"',
+        'script src="hermeneutic_admin/main.js"',
+        'id="hermeneuticAdminRefresh"',
+        'id="hermeneuticConversationId"',
+        'id="hermeneuticTurnId"',
+        'id="hermeneuticTurnStages"',
+        'id="hermeneuticArbiterList"',
+        'id="hermeneuticIdentityList"',
+        'id="hermeneuticCorrectionsList"',
+        "Vue d'ensemble",
+        "Inspection par tour",
+        "Decisions arbitre",
+        "Identites candidates",
+        "Corrections recentes",
+    ]
+    for marker in hermeneutic_admin_markers:
+        if marker not in hermeneutic_admin_html:
+            raise RuntimeError(f"marker hermeneutic-admin.html manquant: {marker}")
+
+    expected_hermeneutic_admin_endpoints = {
+        "/api/admin/hermeneutics/dashboard",
+        "/api/admin/hermeneutics/identity-candidates",
+        "/api/admin/hermeneutics/arbiter-decisions",
+        "/api/admin/hermeneutics/corrections-export",
+        "/api/admin/logs/chat",
+        "/api/admin/logs/chat/metadata",
+    }
+    found_hermeneutic_admin_endpoints = set(
+        re.findall(
+            r"/api/admin/(?:hermeneutics/[a-z-]+|logs/chat(?:/metadata)?)",
+            hermeneutic_admin_front_js,
+        )
+    )
+    if found_hermeneutic_admin_endpoints != expected_hermeneutic_admin_endpoints:
+        missing = sorted(expected_hermeneutic_admin_endpoints - found_hermeneutic_admin_endpoints)
+        extra = sorted(found_hermeneutic_admin_endpoints - expected_hermeneutic_admin_endpoints)
+        raise RuntimeError(
+            "endpoints hermeneutic admin invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
     admin_js_markers = [
         "/api/admin/settings/status",
         "/api/admin/settings/main-model",
@@ -886,6 +969,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_script_srcs": admin_script_srcs,
         "admin_settings_endpoints_expected": sorted(expected_admin_settings_endpoints),
         "admin_settings_endpoints_found": sorted(found_admin_settings_endpoints),
+        "hermeneutic_admin_script_order": hermeneutic_admin_script_order,
+        "hermeneutic_admin_script_srcs": hermeneutic_admin_script_srcs,
+        "hermeneutic_admin_endpoints_expected": sorted(expected_hermeneutic_admin_endpoints),
+        "hermeneutic_admin_endpoints_found": sorted(found_hermeneutic_admin_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
         "admin_dynamic_getelement_templates_expected": sorted(expected_dynamic_getelement_templates),
         "admin_dynamic_getelement_templates_found": dynamic_getelement_templates,
@@ -899,7 +986,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_dataset_attrs_checked": dataset_attrs,
         "admin_field_containers_checked": field_container_ids,
         "index_markers": index_markers,
+        "index_hermeneutic_markers": index_hermeneutic_markers,
         "admin_markers": admin_markers,
+        "hermeneutic_admin_markers": hermeneutic_admin_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,
         "admin_js_markers": admin_js_markers,
         "admin_js_forbidden_markers": admin_js_forbidden_markers,
@@ -914,6 +1003,10 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     admin = _http_json("GET", f"{base_url}/admin")
     if admin.status_code != 200 or "Admin de configuration" not in admin.text:
         raise RuntimeError("admin invalide")
+
+    hermeneutic_admin = _http_json("GET", f"{base_url}/hermeneutic-admin")
+    if hermeneutic_admin.status_code != 200 or "Hermeneutic admin" not in hermeneutic_admin.text:
+        raise RuntimeError("hermeneutic-admin invalide")
 
     admin_old = _http_json("GET", f"{base_url}/admin-old")
     if admin_old.status_code != 404:
@@ -999,6 +1092,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     return {
         "root_status": root.status_code,
         "admin_status": admin.status_code,
+        "hermeneutic_admin_status": hermeneutic_admin.status_code,
         "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
         "admin_settings_status": admin_settings.status_code,

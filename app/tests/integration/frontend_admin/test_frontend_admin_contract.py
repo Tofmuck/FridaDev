@@ -19,6 +19,14 @@ if str(APP_DIR) not in sys.path:
 
 
 class AdminPhase7FoundationTests(unittest.TestCase):
+    def test_admin_topbar_links_keep_admin_navigation_in_same_window(self) -> None:
+        html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
+
+        self.assertIn('href="/log"', html)
+        self.assertIn('href="/hermeneutic-admin"', html)
+        self.assertNotIn('href="/hermeneutic-admin" target="_blank"', html)
+        self.assertNotIn('href="/log" target="_blank"', html)
+
     def test_admin_html_uses_phase7_foundation_layout(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
 

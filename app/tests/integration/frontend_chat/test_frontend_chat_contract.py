@@ -29,6 +29,17 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('window.location.href = "/admin";', js_source)
         self.assertNotIn('window.location.href = "admin.html";', js_source)
 
+    def test_hermeneutic_admin_link_opens_in_new_tab_from_chat_surface(self) -> None:
+        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        js_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="btnHermeneuticAdmin"', html_source)
+        self.assertIn('href="/hermeneutic-admin"', html_source)
+        self.assertIn('target="_blank"', html_source)
+        self.assertIn('rel="noopener noreferrer"', html_source)
+        self.assertNotIn('window.location.href = "/hermeneutic-admin";', js_source)
+        self.assertNotIn('window.open("/hermeneutic-admin"', js_source)
+
     def test_admin_route_alignment_stays_server_side(self) -> None:
         source = (APP_DIR / "server.py").read_text(encoding="utf-8")
 

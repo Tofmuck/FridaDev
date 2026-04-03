@@ -46,6 +46,15 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.server.config.FRIDA_ADMIN_LAN_ONLY = self._original_admin_lan_only
         self.server.config.FRIDA_ADMIN_ALLOWED_CIDRS = self._original_admin_allowed_cidrs
 
+    def test_hermeneutic_admin_route_serves_dedicated_static_page(self) -> None:
+        response = self.client.get('/hermeneutic-admin')
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('Hermeneutic admin', html)
+        self.assertIn('href="admin.css"', html)
+        self.assertIn('script src="hermeneutic_admin/main.js"', html)
+
     def test_identity_candidates_limit_fallback_and_sort_by_weight(self) -> None:
         observed = {'calls': []}
         original_get_identities = self.server.memory_store.get_identities

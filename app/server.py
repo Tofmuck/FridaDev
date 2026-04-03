@@ -1037,5 +1037,10 @@ def log_root():
     return send_from_directory(app.static_folder, "log.html")
 
 
+@app.get("/hermeneutic-admin")
+def hermeneutic_admin_root():
+    return send_from_directory(app.static_folder, "hermeneutic-admin.html")
+
+
 if __name__ == "__main__":
     app.run(host=config.WEB_HOST, port=config.WEB_PORT)

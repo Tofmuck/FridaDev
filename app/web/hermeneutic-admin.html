@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Hermeneutic admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Hermeneutic admin</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
+        <button id="hermeneuticAdminTokenButton" class="admin-btn admin-btn-secondary" type="button">Token admin</button>
+        <button id="hermeneuticAdminClearToken" class="admin-btn admin-btn-secondary" type="button">Effacer</button>
+        <button id="hermeneuticAdminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="admin-hero">
+      <div class="admin-copy">
+        <p class="admin-lead">
+          Surface detaillee, majoritairement read-only, pour inspecter le pipeline hermeneutique tour par tour
+          sans recreer une observability parallele.
+        </p>
+        <p class="admin-sublead">
+          La page reemploie les APIs admin et logs deja presentes: vue d'ensemble, inspection par tour,
+          decisions arbitre, identites candidates et corrections recentes.
+        </p>
+      </div>
+
+      <div class="admin-meta">
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Mode courant</span>
+          <strong id="hermeneuticAdminMode">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Conversation</span>
+          <strong id="hermeneuticAdminConversationMeta">Aucune</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Tour</span>
+          <strong id="hermeneuticAdminTurnMeta">Aucun</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Cle admin</span>
+          <strong id="hermeneuticAdminTokenState">Session vide</strong>
+        </article>
+      </div>
+    </section>
+
+    <p id="hermeneuticAdminStatusBanner" class="admin-status" role="status" aria-live="polite">
+      Chargement de la surface hermeneutique...
+    </p>
+
+    <section class="admin-section-block" aria-labelledby="hermeneutic-dashboard-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Vue d'ensemble</p>
+          <h2 id="hermeneutic-dashboard-title">Synthese runtime</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Resume compact du mode, des alertes, des compteurs, des taux et des latences deja exposes par le backend.
+      </p>
+
+      <div id="hermeneuticOverviewCards" class="admin-section-grid"></div>
+
+      <section class="admin-readonly-panel" aria-labelledby="hermeneutic-runtime-metrics-title">
+        <div class="admin-readonly-head">
+          <div>
+            <p class="admin-kicker">Lecture seule</p>
+            <h3 id="hermeneutic-runtime-metrics-title">Runtime metrics</h3>
+          </div>
+          <span class="admin-readonly-badge">API existante</span>
+        </div>
+        <div id="hermeneuticRuntimeMetrics" class="admin-readonly-grid"></div>
+      </section>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="hermeneutic-turn-inspection-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Inspection par tour</p>
+          <h2 id="hermeneutic-turn-inspection-title">Pipeline hermeneutique</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Lecture detaillee des stages `stimmung_agent`, `hermeneutic_node_insertion`, `primary_node`
+        et `validation_agent` a partir des logs existants, sans dump des payloads interdits.
+      </p>
+
+      <form id="hermeneuticInspectionForm" class="admin-form" novalidate>
+        <div class="admin-form-grid">
+          <label class="admin-field" for="hermeneuticConversationId">
+            <span>Conversation</span>
+            <select id="hermeneuticConversationId" name="conversation_id">
+              <option value="">Aucune conversation</option>
+            </select>
+            <small>Le selecteur reutilise `/api/admin/logs/chat/metadata`.</small>
+          </label>
+
+          <label class="admin-field" for="hermeneuticTurnId">
+            <span>Tour</span>
+            <select id="hermeneuticTurnId" name="turn_id" disabled>
+              <option value="">Selectionner une conversation</option>
+            </select>
+            <small>Le detail par stage se charge a partir de `/api/admin/logs/chat`.</small>
+          </label>
+        </div>
+      </form>
+
+      <div id="hermeneuticTurnStages" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="hermeneutic-arbiter-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Lecture seule</p>
+          <h2 id="hermeneutic-arbiter-title">Decisions arbitre</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Liste read-only des decisions arbitre deja exposees par le backend, filtrees par conversation quand c'est possible.
+      </p>
+
+      <div id="hermeneuticArbiterMeta" class="admin-inline-meta"></div>
+      <div id="hermeneuticArbiterList" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="hermeneutic-identities-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Lecture seule</p>
+          <h2 id="hermeneutic-identities-title">Identites candidates</h2>
+        </div>
+      </div>
+
+      <form id="hermeneuticIdentityFilters" class="admin-form" novalidate>
+        <div class="admin-form-grid">
+          <label class="admin-field" for="hermeneuticIdentitySubject">
+            <span>Sujet</span>
+            <select id="hermeneuticIdentitySubject" name="subject">
+              <option value="all">all</option>
+              <option value="user">user</option>
+              <option value="llm">llm</option>
+            </select>
+          </label>
+
+          <label class="admin-field" for="hermeneuticIdentityStatus">
+            <span>Status</span>
+            <select id="hermeneuticIdentityStatus" name="status">
+              <option value="all">all</option>
+              <option value="accepted">accepted</option>
+              <option value="deferred">deferred</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </label>
+        </div>
+      </form>
+
+      <div id="hermeneuticIdentityList" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="hermeneutic-corrections-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Lecture seule</p>
+          <h2 id="hermeneutic-corrections-title">Corrections recentes</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Export de consultation compact des corrections admin recentes, sans branchement mutateur dans cette tranche.
+      </p>
+
+      <div id="hermeneuticCorrectionsList" class="admin-readonly-stack"></div>
+    </section>
+  </main>
+
+  <script src="admin_api.js"></script>
+  <script src="admin_ui_common.js"></script>
+  <script src="hermeneutic_admin/api.js"></script>
+  <script src="hermeneutic_admin/render.js"></script>
+  <script src="hermeneutic_admin/main.js"></script>
+</body>
+</html>
