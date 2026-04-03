@@ -453,11 +453,11 @@ def chat_response(
     max_tokens = int(data.get('max_tokens') or runtime_response_max_tokens)
 
     user_timestamp = _now_iso()
-    user_tokens = token_utils_module.count_tokens([{'content': user_msg}], runtime_main_model)
+    estimated_user_tokens = token_utils_module.estimate_tokens([{'content': user_msg}], runtime_main_model)
     admin_logs_module.log_event(
         'UserMessage',
         conversation_id=conversation['id'],
-        user_tokens=user_tokens,
+        estimated_user_tokens=estimated_user_tokens,
         message_timestamp=user_timestamp,
     )
     conv_store_module.append_message(conversation, 'user', user_msg, timestamp=user_timestamp)

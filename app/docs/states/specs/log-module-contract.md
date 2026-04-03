@@ -8,6 +8,7 @@ Goal:
 - provide usable observability for one chat turn,
 - without turning logs into a business data source,
 - and without dumping large raw payloads.
+- keep local token heuristics explicitly labelled as estimates, distinct from provider truth.
 
 ## 2) Boundary: business memory vs application logs
 Business memory (source of truth, unchanged by log deletion):
@@ -124,13 +125,17 @@ Minimum event-specific details:
   - if skipped: `status=skipped` + `reason_code`
 
 - `context_build`
-  - `context_tokens`, `token_limit`, `truncated`
+  - `estimated_context_tokens`, `token_limit`, `truncated`
 
 - `prompt_prepared`
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`
 
 - `llm_call`
   - `model`, `mode`, `timeout_s`, `response_chars`
+  - optional provider truth fields when available from OpenRouter:
+    - `provider_caller`, `provider_title`
+    - `provider_generation_id`, `provider_model`
+    - `provider_prompt_tokens`, `provider_completion_tokens`, `provider_total_tokens`
 
 - `arbiter`
   - `raw_candidates`, `kept_candidates`, `mode`

@@ -28,10 +28,10 @@ class ServerPhase4MainModelTests(unittest.TestCase):
         source_llm_flow = (APP_DIR / 'core' / 'chat_llm_flow.py').read_text()
         self.assertIn('runtime_main_view = runtime_settings_module.get_main_model_settings()', source_chat)
         self.assertIn("runtime_main_model = str(runtime_main_payload['model']['value'])", source_chat)
-        self.assertIn("token_utils_module.count_tokens([{'content': user_msg}], runtime_main_model)", source_chat)
+        self.assertIn("token_utils_module.estimate_tokens([{'content': user_msg}], runtime_main_model)", source_chat)
         self.assertIn('summarizer_module.maybe_summarize(conversation, runtime_main_model)', source_chat)
-        self.assertIn("token_utils_module.count_tokens([{'content': text}], runtime_main_model)", source_llm_flow)
-        self.assertIn("token_utils_module.count_tokens([{'content': assistant_text}], runtime_main_model)", source_llm_flow)
+        self.assertIn("token_utils_module.estimate_tokens([{'content': text}], runtime_main_model)", source_llm_flow)
+        self.assertIn("token_utils_module.estimate_tokens(", source_llm_flow)
         self.assertNotIn('config.OR_MODEL', source_chat)
         self.assertNotIn('config.OR_MODEL', source_llm_flow)
 

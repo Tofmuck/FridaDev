@@ -597,7 +597,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'load_user_identity': identity.load_user_identity,
             '_safe_static_identity_source': identity._safe_static_identity_source,
             '_select_ranked_entries': identity._select_ranked_entries,
-            '_count_tokens': identity._count_tokens,
+            '_estimate_tokens': identity._estimate_tokens,
             'identity_top_n': identity.config.IDENTITY_TOP_N,
             'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
         }
@@ -651,14 +651,14 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         identity.config.IDENTITY_TOP_N = 2
         identity.config.IDENTITY_MAX_TOKENS = 4
 
-        def fake_count_tokens(text: str) -> int:
+        def fake_estimate_tokens(text: str) -> int:
             if not text:
                 return 0
             if text.startswith('- ['):
                 return 2
             return 0
 
-        identity._count_tokens = fake_count_tokens
+        identity._estimate_tokens = fake_estimate_tokens
         try:
             block, used_ids = identity.build_identity_block()
             payload = identity.build_identity_input()
@@ -667,7 +667,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             identity.load_user_identity = originals['load_user_identity']
             identity._safe_static_identity_source = originals['_safe_static_identity_source']
             identity._select_ranked_entries = originals['_select_ranked_entries']
-            identity._count_tokens = originals['_count_tokens']
+            identity._estimate_tokens = originals['_estimate_tokens']
             identity.config.IDENTITY_TOP_N = originals['identity_top_n']
             identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
 

@@ -132,7 +132,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         )
         try:
             # No exception must propagate despite insert failures.
-            self.assertFalse(chat_turn_logger.emit('context_build', status='ok', payload={'context_tokens': 12}))
+            self.assertFalse(chat_turn_logger.emit('context_build', status='ok', payload={'estimated_context_tokens': 12}))
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
@@ -188,7 +188,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
             web_search_enabled=False,
         )
         try:
-            chat_turn_logger.emit('context_build', status='ok', payload={'context_tokens': 42, 'token_limit': 4000})
+            chat_turn_logger.emit('context_build', status='ok', payload={'estimated_context_tokens': 42, 'token_limit': 4000})
             chat_turn_logger.emit_branch_skipped(reason_code='no_data', reason_short='no_optional_branch')
             chat_turn_logger.emit_error(
                 error_code='upstream_error',
@@ -611,7 +611,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         original_insert = log_store.insert_chat_log_event
         original_load_llm_identity = identity.load_llm_identity
         original_load_user_identity = identity.load_user_identity
-        original_count_tokens = identity._count_tokens
+        original_estimate_tokens = identity._estimate_tokens
         original_build_dynamic_lines = identity._build_dynamic_lines
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
@@ -620,7 +620,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         identity.load_llm_identity = lambda: 'Frida static identity'
         identity.load_user_identity = lambda: 'User static identity'
-        identity._count_tokens = lambda _text: 1
+        identity._estimate_tokens = lambda _text: 1
         identity._build_dynamic_lines = lambda _subject, _max_tokens: ([], [])
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
@@ -638,7 +638,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             log_store.insert_chat_log_event = original_insert
             identity.load_llm_identity = original_load_llm_identity
             identity.load_user_identity = original_load_user_identity
-            identity._count_tokens = original_count_tokens
+            identity._estimate_tokens = original_estimate_tokens
             identity._build_dynamic_lines = original_build_dynamic_lines
 
         identities_events = [event for event in observed if event['stage'] == 'identities_read']

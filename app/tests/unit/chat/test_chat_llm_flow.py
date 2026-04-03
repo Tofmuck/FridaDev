@@ -90,6 +90,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: observed.update({'headers_called_with': caller}) or {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=fake_build_payload,
             read_openrouter_response_payload=lambda response: response.json(),
             extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
@@ -98,6 +99,11 @@ class ChatLlmFlowTests(unittest.TestCase):
                 'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
                 'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
                 'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                'provider_title': f'FridaDev/{caller}',
+                **dict(provider_metadata),
             },
             merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
                 key: value
@@ -118,7 +124,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             post=fake_post,
             exceptions=SimpleNamespace(RequestException=_RequestException),
         )
-        token_utils_module = SimpleNamespace(count_tokens=lambda _messages, _model: 7)
+        token_utils_module = SimpleNamespace(estimate_tokens=lambda _messages, _model: 7)
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
         config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
@@ -172,13 +178,42 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertTrue(observed['identity_callback_called'])
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:10:00Z')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
+        self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_caller'], 'llm')
+        self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_title'], 'FridaDev/llm')
         self.assertFalse(_event_payloads(events, 'llm_call')[0]['stream'])
+        self.assertEqual(
+            _event_payloads(events, 'llm_provider_response'),
+            [
+                {
+                    'conversation_id': 'conv-sync',
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/llm',
+                    'provider_generation_id': 'gen-sync',
+                    'provider_model': 'openrouter/runtime-main-model',
+                    'provider_prompt_tokens': 12,
+                    'provider_completion_tokens': 5,
+                    'provider_total_tokens': 17,
+                }
+            ],
+        )
+        self.assertEqual(
+            _event_payloads(events, 'AssistantText'),
+            [
+                {
+                    'conversation_id': 'conv-sync',
+                    'estimated_assistant_tokens': 7,
+                    'message_timestamp': '2026-03-26T00:10:00Z',
+                }
+            ],
+        )
         self.assertEqual(
             observed['provider_log_calls'],
             [
                 (
                     'llm_provider_response',
                     {
+                        'provider_caller': 'llm',
+                        'provider_title': 'FridaDev/llm',
                         'provider_generation_id': 'gen-sync',
                         'provider_model': 'openrouter/runtime-main-model',
                         'provider_prompt_tokens': 12,
@@ -243,6 +278,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
             read_openrouter_response_payload=lambda response: response.json(),
             extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
@@ -251,6 +287,11 @@ class ChatLlmFlowTests(unittest.TestCase):
                 'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
                 'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
                 'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                'provider_title': f'FridaDev/{caller}',
+                **dict(provider_metadata),
             },
             merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
                 key: value
@@ -271,7 +312,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             post=fake_post,
             exceptions=SimpleNamespace(RequestException=_RequestException),
         )
-        token_utils_module = SimpleNamespace(count_tokens=lambda _messages, _model: 3)
+        token_utils_module = SimpleNamespace(estimate_tokens=lambda _messages, _model: 3)
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
         config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
@@ -310,6 +351,8 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(result['headers']['X-Conversation-Id'], 'conv-stream')
         self.assertEqual(result['headers']['X-Conversation-Updated-At'], '2026-03-26T00:11:00Z')
         self.assertTrue(_event_payloads(events, 'llm_call')[0]['stream'])
+        self.assertEqual(_event_payloads(events, 'llm_call')[0]['provider_caller'], 'llm')
+        self.assertEqual(_event_payloads(events, 'llm_call')[0]['provider_title'], 'FridaDev/llm')
 
         streamed = ''.join(part for part in result['stream'])
         self.assertEqual(streamed, 'Bonjour')
@@ -320,11 +363,38 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertTrue(observed['identity_callback_called'])
         self.assertTrue(observed['reactivate_called'])
         self.assertEqual(
+            _event_payloads(events, 'llm_provider_response'),
+            [
+                {
+                    'conversation_id': 'conv-stream',
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/llm',
+                    'provider_generation_id': 'gen-stream',
+                    'provider_model': 'openrouter/runtime-main-model',
+                    'provider_prompt_tokens': 40,
+                    'provider_completion_tokens': 2,
+                    'provider_total_tokens': 42,
+                }
+            ],
+        )
+        self.assertEqual(
+            _event_payloads(events, 'AssistantText'),
+            [
+                {
+                    'conversation_id': 'conv-stream',
+                    'estimated_assistant_tokens': 3,
+                    'message_timestamp': '2026-03-26T00:11:00Z',
+                }
+            ],
+        )
+        self.assertEqual(
             observed['provider_log_calls'],
             [
                 (
                     'llm_provider_response',
                     {
+                        'provider_caller': 'llm',
+                        'provider_title': 'FridaDev/llm',
                         'provider_generation_id': 'gen-stream',
                         'provider_model': 'openrouter/runtime-main-model',
                         'provider_prompt_tokens': 40,
@@ -354,6 +424,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         llm_module = SimpleNamespace(
             or_headers=lambda **_kwargs: {},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
             _sanitize_encoding=lambda text: text,
         )
@@ -361,7 +432,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             post=fake_post,
             exceptions=SimpleNamespace(RequestException=_RequestException),
         )
-        token_utils_module = SimpleNamespace(count_tokens=lambda *_args, **_kwargs: 1)
+        token_utils_module = SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 1)
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
         config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
@@ -413,6 +484,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
         llm_module = SimpleNamespace(
             or_headers=lambda **_kwargs: {},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: observed.update({'build_payload_called': True}) or {},
             _sanitize_encoding=lambda text: text,
         )
@@ -435,7 +507,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 post=lambda *_args, **_kwargs: None,
                 exceptions=SimpleNamespace(RequestException=_RequestException),
             ),
-            token_utils_module=SimpleNamespace(count_tokens=lambda *_args, **_kwargs: 1),
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 1),
             admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
             config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
             logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),

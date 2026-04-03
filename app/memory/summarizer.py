@@ -10,7 +10,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import llm_client, prompt_loader
-from core.token_utils import count_tokens
+from core.token_utils import estimate_tokens
 
 logger = logging.getLogger("frida.summarizer")
 
@@ -80,11 +80,11 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
     if not unsummarized:
         return False
 
-    total = count_tokens(
+    estimated_total_tokens = estimate_tokens(
         [{"role": m["role"], "content": m["content"]} for m in unsummarized],
         model,
     )
-    if total <= config.SUMMARY_THRESHOLD_TOKENS:
+    if estimated_total_tokens <= config.SUMMARY_THRESHOLD_TOKENS:
         return False
 
     keep_n = config.SUMMARY_KEEP_TURNS * 2  # user + assistant = 2 messages par tour
@@ -94,7 +94,7 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
 
     logger.info(
         "summarize_trigger conv_id=%s tokens=%s to_summarize=%s",
-        conversation.get("id"), total, len(to_summarize),
+        conversation.get("id"), estimated_total_tokens, len(to_summarize),
     )
 
     try:

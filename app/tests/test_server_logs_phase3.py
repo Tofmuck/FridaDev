@@ -262,7 +262,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                         'stream': stream,
                     }
                 ),
-                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 321),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 321),
             )
             payload = proxy.build_payload(
                 [{'role': 'user', 'content': 'bonjour'}],
@@ -294,6 +294,13 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         class FakeJsonResponse:
             def json(self) -> dict[str, object]:
                 return {
+                    'id': 'gen-sync',
+                    'model': 'openrouter/runtime-main-model',
+                    'usage': {
+                        'prompt_tokens': 12,
+                        'completion_tokens': 5,
+                        'total_tokens': 17,
+                    },
                     'choices': [
                         {'message': {'content': 'reponse finale'}},
                     ]
@@ -316,6 +323,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             proxy.post(
                 'https://openrouter.example/chat/completions',
                 json={'model': 'openrouter/runtime-main-model'},
+                headers={'X-OpenRouter-Title': 'FridaDev/LLM'},
                 timeout=30,
                 stream=False,
             )
@@ -329,6 +337,12 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('mode'), 'json')
         self.assertEqual(payload.get('response_chars'), len('reponse finale'))
         self.assertEqual(payload.get('model'), 'openrouter/runtime-main-model')
+        self.assertEqual(payload.get('provider_caller'), 'llm')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
+        self.assertEqual(payload.get('provider_generation_id'), 'gen-sync')
+        self.assertEqual(payload.get('provider_prompt_tokens'), 12)
+        self.assertEqual(payload.get('provider_completion_tokens'), 5)
+        self.assertEqual(payload.get('provider_total_tokens'), 17)
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
@@ -348,6 +362,20 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'model': 'openrouter/runtime-main-model',
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/LLM',
+                },
+            )
+            self.server.chat_turn_logger.set_state(
+                'llm_provider_response_meta',
+                {
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/LLM',
+                    'provider_generation_id': 'gen-stream',
+                    'provider_model': 'openrouter/runtime-main-model',
+                    'provider_prompt_tokens': 40,
+                    'provider_completion_tokens': 2,
+                    'provider_total_tokens': 42,
                 },
             )
 
@@ -389,6 +417,12 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('timeout_s'), 45)
         self.assertEqual(payload.get('response_chars'), 6)
         self.assertEqual(payload.get('stream_chunks'), 2)
+        self.assertEqual(payload.get('provider_caller'), 'llm')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
+        self.assertEqual(payload.get('provider_generation_id'), 'gen-stream')
+        self.assertEqual(payload.get('provider_prompt_tokens'), 40)
+        self.assertEqual(payload.get('provider_completion_tokens'), 2)
+        self.assertEqual(payload.get('provider_total_tokens'), 42)
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
@@ -408,6 +442,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'model': 'openrouter/runtime-main-model',
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/LLM',
                 },
             )
 
@@ -448,6 +484,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         payload = stream_llm_events[0]['payload_json']
         self.assertEqual(payload.get('response_chars'), 5)
         self.assertEqual(payload.get('stream_chunks'), 2)
+        self.assertEqual(payload.get('provider_caller'), 'llm')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
@@ -473,7 +511,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                         {'role': 'user', 'content': 'bonjour'},
                     ]
                 ),
-                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 42),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 42),
             )
             prompt_messages = proxy.build_prompt_messages(
                 {'id': 'conv-summaries-used', 'messages': []},
@@ -486,7 +524,11 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             self.server.log_store.insert_chat_log_event = original_insert
 
         summaries_events = [event for event in observed if event.get('stage') == 'summaries']
+        context_events = [event for event in observed if event.get('stage') == 'context_build']
         self.assertEqual(len(summaries_events), 1)
+        self.assertEqual(len(context_events), 1)
+        self.assertEqual(context_events[0]['payload_json'].get('estimated_context_tokens'), 42)
+        self.assertNotIn('context_tokens', context_events[0]['payload_json'])
         summary_event = summaries_events[0]
         self.assertEqual(summary_event.get('status'), 'ok')
         payload = summary_event['payload_json']
@@ -522,7 +564,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                         {'role': 'user', 'content': 'bonjour'},
                     ]
                 ),
-                token_utils_module=SimpleNamespace(count_tokens=lambda _messages, _model: 7),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 7),
             )
             proxy.build_prompt_messages(
                 {'id': 'conv-summaries-none', 'messages': []},

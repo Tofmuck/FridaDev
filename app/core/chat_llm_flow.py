@@ -58,6 +58,7 @@ def run_llm_exchange(
     headers = llm_module.or_headers(caller='llm')
     payload = llm_module.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
     call_model = str(payload['model'])
+    provider_title = llm_module.resolve_provider_title('llm')
     url = f'{config_module.OR_BASE}/chat/completions'
 
     admin_logs_module.log_event(
@@ -69,6 +70,8 @@ def run_llm_exchange(
         max_tokens=max_tokens,
         stream=stream_req,
         message_count=len(prompt_messages),
+        provider_caller='llm',
+        provider_title=provider_title,
     )
 
     try:
@@ -80,23 +83,33 @@ def run_llm_exchange(
                 model=call_model,
                 message_count=len(prompt_messages),
                 stream=False,
+                provider_caller='llm',
+                provider_title=provider_title,
             )
             response = requests_module.post(url, json=payload, headers=headers, timeout=config_module.TIMEOUT_S)
             response.raise_for_status()
             obj = llm_module.read_openrouter_response_payload(response)
-            llm_module.log_provider_metadata(
-                logger,
+            provider_fields = llm_module.build_provider_observability_fields(
+                caller='llm',
+                provider_metadata=llm_module.extract_openrouter_provider_metadata(
+                    obj,
+                    requested_model=call_model,
+                ),
+            )
+            llm_module.log_provider_metadata(logger, 'llm_provider_response', provider_fields)
+            admin_logs_module.log_event(
                 'llm_provider_response',
-                llm_module.extract_openrouter_provider_metadata(obj, requested_model=call_model),
+                conversation_id=conversation['id'],
+                **provider_fields,
             )
             text = llm_module.extract_openrouter_text(obj)
             updated_at = now_iso_func()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
-            assistant_tokens = token_utils_module.count_tokens([{'content': text}], runtime_main_model)
+            estimated_assistant_tokens = token_utils_module.estimate_tokens([{'content': text}], runtime_main_model)
             admin_logs_module.log_event(
                 'AssistantText',
                 conversation_id=conversation['id'],
-                assistant_tokens=assistant_tokens,
+                estimated_assistant_tokens=estimated_assistant_tokens,
                 message_timestamp=updated_at,
             )
             memory_store_module.save_new_traces(conversation)
@@ -180,10 +193,15 @@ def run_llm_exchange(
                 )
             finally:
                 if provider_response_open:
-                    llm_module.log_provider_metadata(
-                        logger,
+                    provider_fields = llm_module.build_provider_observability_fields(
+                        caller='llm',
+                        provider_metadata=provider_metadata,
+                    )
+                    llm_module.log_provider_metadata(logger, 'llm_provider_response', provider_fields)
+                    admin_logs_module.log_event(
                         'llm_provider_response',
-                        provider_metadata,
+                        conversation_id=conversation['id'],
+                        **provider_fields,
                     )
                 assistant_text = llm_module._sanitize_encoding(''.join(assistant_chunks)).strip()
                 if assistant_text:
@@ -193,11 +211,14 @@ def run_llm_exchange(
                         assistant_text,
                         timestamp=response_updated_at,
                     )
-                    assistant_tokens = token_utils_module.count_tokens([{'content': assistant_text}], runtime_main_model)
+                    estimated_assistant_tokens = token_utils_module.estimate_tokens(
+                        [{'content': assistant_text}],
+                        runtime_main_model,
+                    )
                     admin_logs_module.log_event(
                         'AssistantText',
                         conversation_id=conversation['id'],
-                        assistant_tokens=assistant_tokens,
+                        estimated_assistant_tokens=estimated_assistant_tokens,
                         message_timestamp=response_updated_at,
                     )
                 memory_store_module.save_new_traces(conversation)
@@ -225,6 +246,8 @@ def run_llm_exchange(
             model=call_model,
             message_count=len(prompt_messages),
             stream=True,
+            provider_caller='llm',
+            provider_title=provider_title,
         )
         return _stream_result(
             event_stream(),

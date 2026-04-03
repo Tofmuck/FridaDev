@@ -232,6 +232,111 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             },
         )
 
+    def test_build_provider_observability_fields_adds_caller_and_title(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'app_name': {'value': 'FridaDev', 'origin': 'db'},
+                        'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
+                        'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
+                        'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
+                        'title_stimmung_agent': {'value': 'FridaDev/StimmungAgent', 'origin': 'db'},
+                        'title_validation_agent': {'value': 'FridaDev/ValidationAgent', 'origin': 'db'},
+                        'temperature': {'value': 0.4, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            fields = llm_client.build_provider_observability_fields(
+                caller='identity_extractor',
+                provider_metadata={
+                    'provider_generation_id': 'gen-42',
+                    'provider_total_tokens': 99,
+                },
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+        self.assertEqual(
+            fields,
+            {
+                'provider_caller': 'identity_extractor',
+                'provider_title': 'FridaDev/IdentityExtractor',
+                'provider_generation_id': 'gen-42',
+                'provider_total_tokens': 99,
+            },
+        )
+
+    def test_log_provider_metadata_infers_caller_and_title_from_event_name(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+        observed = []
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'app_name': {'value': 'FridaDev', 'origin': 'db'},
+                        'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
+                        'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
+                        'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
+                        'title_stimmung_agent': {'value': 'FridaDev/StimmungAgent', 'origin': 'db'},
+                        'title_validation_agent': {'value': 'FridaDev/ValidationAgent', 'origin': 'db'},
+                        'temperature': {'value': 0.4, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            llm_client.log_provider_metadata(
+                type('Logger', (), {'info': lambda self, msg, *args: observed.append(args)})(),
+                'validation_agent_provider_response',
+                {'provider_model': 'openai/gpt-5.4-mini'},
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+        self.assertEqual(
+            observed,
+            [
+                (
+                    'validation_agent_provider_response',
+                    'validation_agent',
+                    'FridaDev/ValidationAgent',
+                    '',
+                    'openai/gpt-5.4-mini',
+                    None,
+                    None,
+                    None,
+                )
+            ],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

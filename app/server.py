@@ -223,9 +223,9 @@ class _ConvStoreChatLogProxy:
     def build_prompt_messages(self, conversation: dict[str, Any], model: str, **kwargs: Any):
         prompt_messages = self._base.build_prompt_messages(conversation, model, **kwargs)
         try:
-            context_tokens = int(self._token_utils.count_tokens(prompt_messages, model))
+            estimated_context_tokens = int(self._token_utils.estimate_tokens(prompt_messages, model))
         except Exception:
-            context_tokens = 0
+            estimated_context_tokens = 0
 
         memory_traces = kwargs.get('memory_traces') or []
         memory_items_used = len(memory_traces) if isinstance(memory_traces, list) else 0
@@ -236,9 +236,9 @@ class _ConvStoreChatLogProxy:
             'context_build',
             status='ok',
             payload={
-                'context_tokens': context_tokens,
+                'estimated_context_tokens': estimated_context_tokens,
                 'token_limit': token_limit,
-                'truncated': bool(context_tokens >= token_limit),
+                'truncated': bool(estimated_context_tokens >= token_limit),
             },
         )
 
@@ -313,7 +313,7 @@ class _LlmChatLogProxy:
         payload = self._base.build_payload(messages, temperature, top_p, max_tokens, stream=stream)
         model = str(payload.get('model') or '')
         try:
-            estimated_prompt_tokens = int(self._token_utils.count_tokens(messages, model))
+            estimated_prompt_tokens = int(self._token_utils.estimate_tokens(messages, model))
         except Exception:
             estimated_prompt_tokens = 0
         chat_turn_logger.emit(
@@ -341,15 +341,22 @@ class _RequestsChatLogProxy:
         is_llm_call = '/chat/completions' in str(url)
         started_at = time.perf_counter()
         payload = kwargs.get('json') or {}
+        headers = kwargs.get('headers') or {}
         model = str(payload.get('model') or '')
         stream_mode = bool(kwargs.get('stream'))
         timeout_s = kwargs.get('timeout')
+        provider_title = str(headers.get('X-OpenRouter-Title') or headers.get('X-Title') or llm.resolve_provider_title('llm') or '')
+        provider_identity_payload = {
+            'provider_caller': 'llm',
+            'provider_title': provider_title,
+        }
 
         try:
             response = self._base.post(url, *args, **kwargs)
         except Exception as exc:
             if is_llm_call:
                 chat_turn_logger.set_state('llm_stream_call_meta', None)
+                chat_turn_logger.set_state('llm_provider_response_meta', None)
                 chat_turn_logger.emit(
                     'llm_call',
                     status='error',
@@ -361,6 +368,7 @@ class _RequestsChatLogProxy:
                         'timeout_s': timeout_s,
                         'response_chars': 0,
                         'error_class': exc.__class__.__name__,
+                        **provider_identity_payload,
                     },
                 )
                 chat_turn_logger.emit_error(
@@ -378,13 +386,24 @@ class _RequestsChatLogProxy:
                         'model': model,
                         'timeout_s': timeout_s,
                         'started_at': started_at,
+                        **provider_identity_payload,
                     },
                 )
             else:
                 response_chars = 0
+                provider_fields = dict(provider_identity_payload)
                 try:
-                    llm_json = response.json()
-                    response_chars = len(str(llm_json['choices'][0]['message']['content'] or ''))
+                    llm_json = llm.read_openrouter_response_payload(response)
+                    response_chars = len(str(llm.extract_openrouter_text(llm_json) or ''))
+                    provider_fields.update(
+                        llm.build_provider_observability_fields(
+                            caller='llm',
+                            provider_metadata=llm.extract_openrouter_provider_metadata(
+                                llm_json,
+                                requested_model=model,
+                            ),
+                        )
+                    )
                 except Exception:
                     response_chars = 0
 
@@ -397,6 +416,7 @@ class _RequestsChatLogProxy:
                         'mode': 'json',
                         'timeout_s': timeout_s,
                         'response_chars': response_chars,
+                        **provider_fields,
                     },
                 )
         return response
@@ -411,6 +431,14 @@ class _AdminLogsChatLogProxy:
 
     def log_event(self, event: str, level: str = 'INFO', **fields: Any) -> None:
         self._base.log_event(event, level=level, **fields)
+        if event == 'llm_provider_response':
+            provider_fields = {
+                key: value
+                for key, value in fields.items()
+                if str(key).startswith('provider_')
+            }
+            chat_turn_logger.set_state('llm_provider_response_meta', provider_fields)
+            return
         if event in {'llm_error', 'llm_stream_error'}:
             chat_turn_logger.emit_error(
                 error_code='upstream_error',
@@ -524,6 +552,12 @@ def api_chat():
                     'response_chars': stream_response_chars,
                     'stream_chunks': stream_chunk_count,
                 }
+                provider_meta = chat_turn_logger.get_state('llm_provider_response_meta', {}) or {}
+                if isinstance(provider_meta, dict):
+                    llm_payload.update(provider_meta)
+                for key in ('provider_caller', 'provider_title'):
+                    if key not in llm_payload and stream_meta.get(key):
+                        llm_payload[key] = stream_meta.get(key)
                 llm_status = 'error' if llm_call_error_class else 'ok'
                 if llm_call_error_class:
                     llm_payload['error_class'] = llm_call_error_class
@@ -536,6 +570,7 @@ def api_chat():
                     payload=llm_payload,
                 )
                 chat_turn_logger.set_state('llm_stream_call_meta', None)
+                chat_turn_logger.set_state('llm_provider_response_meta', None)
                 chat_turn_logger.end_turn(turn_token, final_status=final_status)
 
         response = Response(

@@ -22,7 +22,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
     def test_identity_token_count_uses_runtime_main_model_from_db_when_present(self) -> None:
         observed = {'model': None}
         original_get_settings = identity.runtime_settings.get_main_model_settings
-        original_count_tokens = identity.token_utils.count_tokens
+        original_estimate_tokens = identity.token_utils.estimate_tokens
 
         def fake_get_main_model_settings():
             return runtime_settings.RuntimeSectionView(
@@ -46,17 +46,17 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 source_reason='db_row',
             )
 
-        def fake_count_tokens(messages, model):
+        def fake_estimate_tokens(messages, model):
             observed['model'] = model
             return 42
 
         identity.runtime_settings.get_main_model_settings = fake_get_main_model_settings
-        identity.token_utils.count_tokens = fake_count_tokens
+        identity.token_utils.estimate_tokens = fake_estimate_tokens
         try:
-            count = identity._count_tokens('memoire identitaire')
+            count = identity._estimate_tokens('memoire identitaire')
         finally:
             identity.runtime_settings.get_main_model_settings = original_get_settings
-            identity.token_utils.count_tokens = original_count_tokens
+            identity.token_utils.estimate_tokens = original_estimate_tokens
 
         self.assertEqual(count, 42)
         self.assertEqual(observed['model'], 'openai/gpt-5.4-nano')
@@ -64,7 +64,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
     def test_identity_token_count_keeps_env_fallback_when_db_row_is_missing(self) -> None:
         observed = {'model': None}
         original_get_settings = identity.runtime_settings.get_main_model_settings
-        original_count_tokens = identity.token_utils.count_tokens
+        original_estimate_tokens = identity.token_utils.estimate_tokens
 
         def fake_get_main_model_settings():
             return runtime_settings.RuntimeSectionView(
@@ -74,17 +74,17 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 source_reason='empty_table',
             )
 
-        def fake_count_tokens(messages, model):
+        def fake_estimate_tokens(messages, model):
             observed['model'] = model
             return 7
 
         identity.runtime_settings.get_main_model_settings = fake_get_main_model_settings
-        identity.token_utils.count_tokens = fake_count_tokens
+        identity.token_utils.estimate_tokens = fake_estimate_tokens
         try:
-            count = identity._count_tokens('memoire identitaire')
+            count = identity._estimate_tokens('memoire identitaire')
         finally:
             identity.runtime_settings.get_main_model_settings = original_get_settings
-            identity.token_utils.count_tokens = original_count_tokens
+            identity.token_utils.estimate_tokens = original_estimate_tokens
 
         self.assertEqual(count, 7)
         self.assertEqual(observed['model'], config.OR_MODEL)

@@ -107,13 +107,13 @@ def _parse_ts(value: Any) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-def _count_tokens(text: str) -> int:
+def _estimate_tokens(text: str) -> int:
     if not text:
         return 0
     try:
-        return token_utils.count_tokens([{'content': text}], _runtime_main_model_name())
+        return token_utils.estimate_tokens([{'content': text}], _runtime_main_model_name())
     except Exception as exc:
-        logger.warning('identity_token_count_error err=%s', exc)
+        logger.warning('identity_token_estimate_error err=%s', exc)
         return max(1, len(text.split()))
 
 
@@ -198,7 +198,7 @@ def _select_effective_dynamic_entries(subject: str, max_tokens: int) -> _Dynamic
         line = _format_identity_line(entry)
         if not line:
             continue
-        line_tokens = _count_tokens(line)
+        line_tokens = _estimate_tokens(line)
         if spent_tokens + line_tokens > max_tokens:
             continue
         entries.append(entry)
@@ -260,7 +260,7 @@ def _resolve_identity_runtime_selection(
     static_block = '\n\n'.join(section for section in static_sections if section)
 
     budget = max(1, config.IDENTITY_MAX_TOKENS)
-    static_tokens = _count_tokens(static_block)
+    static_tokens = _estimate_tokens(static_block)
     remaining_tokens = max(0, budget - static_tokens)
 
     active_subjects = 2
@@ -283,12 +283,12 @@ def _resolve_identity_runtime_selection(
     used_identity_ids = llm_selection.ids + user_selection.ids
 
     # Hard guardrail on identity budget.
-    if _count_tokens(block) > budget:
+    if _estimate_tokens(block) > budget:
         block = static_block
         used_identity_ids = []
         llm_selection = _DynamicSelection(entries=[], lines=[], ids=[])
         user_selection = _DynamicSelection(entries=[], lines=[], ids=[])
-    if _count_tokens(block) > budget:
+    if _estimate_tokens(block) > budget:
         block = _truncate_to_words(block, budget)
 
     return _IdentityRuntimeSelection(

@@ -64,6 +64,10 @@ def _runtime_main_title(caller: str) -> str:
     return title or title_default_map.get(caller_key, config.OR_TITLE_LLM)
 
 
+def resolve_provider_title(caller: str = "llm") -> str:
+    return _runtime_main_title(caller)
+
+
 def or_headers(caller: str = "llm") -> dict:
     """Construit les headers HTTP pour OpenRouter, selon le composant appelant."""
     h = {
@@ -148,6 +152,32 @@ def extract_openrouter_provider_metadata(
     return metadata
 
 
+def build_provider_observability_fields(
+    *,
+    caller: str,
+    provider_metadata: Any,
+) -> dict[str, Any]:
+    caller_value = str(caller or 'llm').strip() or 'llm'
+    fields = {'provider_caller': caller_value}
+    title = resolve_provider_title(caller_value)
+    if title:
+        fields['provider_title'] = title
+    fields.update(dict(_mapping(provider_metadata)))
+    return fields
+
+
+def _caller_from_provider_event_name(event_name: str) -> str:
+    event_key = str(event_name or '').strip().lower()
+    return {
+        'llm_provider_response': 'llm',
+        'arbiter_provider_response': 'arbiter',
+        'identity_extractor_provider_response': 'identity_extractor',
+        'summarizer_provider_response': 'resumer',
+        'stimmung_agent_provider_response': 'stimmung_agent',
+        'validation_agent_provider_response': 'validation_agent',
+    }.get(event_key, 'llm')
+
+
 def merge_openrouter_provider_metadata(
     current: Any,
     payload: Any,
@@ -160,13 +190,24 @@ def merge_openrouter_provider_metadata(
 
 
 def log_provider_metadata(logger: Any, event_name: str, provider_metadata: Any) -> None:
-    metadata = _mapping(provider_metadata)
+    metadata = dict(_mapping(provider_metadata))
     log_info = getattr(logger, 'info', None)
     if not metadata or not callable(log_info):
         return
+    provider_caller = str(metadata.get('provider_caller') or '').strip()
+    if not provider_caller:
+        provider_caller = _caller_from_provider_event_name(event_name)
+        metadata['provider_caller'] = provider_caller
+    provider_title = str(metadata.get('provider_title') or '').strip()
+    if not provider_title:
+        provider_title = resolve_provider_title(provider_caller)
+        if provider_title:
+            metadata['provider_title'] = provider_title
     log_info(
-        '%s provider_generation_id=%s provider_model=%s provider_prompt_tokens=%s provider_completion_tokens=%s provider_total_tokens=%s',
+        '%s provider_caller=%s provider_title=%s provider_generation_id=%s provider_model=%s provider_prompt_tokens=%s provider_completion_tokens=%s provider_total_tokens=%s',
         str(event_name or 'provider_response'),
+        provider_caller,
+        provider_title,
         str(metadata.get('provider_generation_id') or ''),
         str(metadata.get('provider_model') or ''),
         metadata.get('provider_prompt_tokens'),

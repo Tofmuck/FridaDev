@@ -1,4 +1,4 @@
-"""Token counters (heuristic only)."""
+"""Heuristic token estimators."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ _CODE_RE = re.compile(r"```[\s\S]*?```", re.MULTILINE)
 _BULLET_RE = re.compile(r"^\s*([-*•+]|\d+\.)", re.MULTILINE)
 _WHITESPACE_COLLAPSE_RE = re.compile(r"[ \t]{2,}")
 
-def count(text: str) -> int:
+def estimate_text_tokens(text: str) -> int:
     cleaned = _normalize(text)
     if not cleaned:
         return 0
@@ -41,13 +41,23 @@ def count(text: str) -> int:
     return max(_HARD_MIN, tokens)
 
 
-def count_messages(contents: Iterable[str]) -> int:
+def estimate_message_tokens(contents: Iterable[str]) -> int:
     total = 0
     for content in contents:
         total += _PER_MESSAGE_OVERHEAD
-        total += count(content)
+        total += estimate_text_tokens(content)
     total += 2
     return max(_HARD_MIN, total)
+
+
+def count(text: str) -> int:
+    """Legacy shim around the heuristic estimator."""
+    return estimate_text_tokens(text)
+
+
+def count_messages(contents: Iterable[str]) -> int:
+    """Legacy shim around the heuristic message estimator."""
+    return estimate_message_tokens(contents)
 
 
 def _normalize(text: str) -> str:

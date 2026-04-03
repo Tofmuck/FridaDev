@@ -181,8 +181,8 @@ def make_context_hints_message(
         line = f"- {prefix}{kind}: {content} (confidence: {confidence:.2f})"
 
         trial = "\n".join(lines + [line])
-        trial_tokens = count_tokens_func([{"role": "system", "content": trial}], model)
-        if trial_tokens > context_hints_max_tokens:
+        estimated_trial_tokens = count_tokens_func([{"role": "system", "content": trial}], model)
+        if estimated_trial_tokens > context_hints_max_tokens:
             continue
 
         lines.append(line)
@@ -260,25 +260,25 @@ def build_prompt_messages(
     selected_reversed: list[dict[str, Any]] = []
     for msg in reversed(candidates):
         trial = prefix + list(reversed(selected_reversed + [msg]))
-        tokens = count_tokens_func(trial, model)
-        if tokens > max_tokens:
+        estimated_trial_tokens = count_tokens_func(trial, model)
+        if estimated_trial_tokens > max_tokens:
             break
         selected_reversed.append(msg)
     selected = list(reversed(selected_reversed))
 
     prompt_messages = prefix + selected
-    total_tokens = count_tokens_func(prompt_messages, model)
+    estimated_prompt_window_tokens = count_tokens_func(prompt_messages, model)
     logger.info(
-        "token_window id=%s tokens=%s messages=%s summary=%s",
+        "token_window id=%s estimated_tokens=%s messages=%s summary=%s",
         conversation.get("id"),
-        total_tokens,
+        estimated_prompt_window_tokens,
         len(prompt_messages),
         active_summary["id"][:8] if active_summary else "none",
     )
     admin_log_event_func(
         "token_window",
         conversation_id=conversation.get("id"),
-        tokens=total_tokens,
+        estimated_prompt_window_tokens=estimated_prompt_window_tokens,
         message_count=len(prompt_messages),
         summary_id=active_summary["id"] if active_summary else None,
     )
