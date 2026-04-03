@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
+import logging
 from typing import Any, Mapping, Sequence
 
 import requests
@@ -10,6 +11,7 @@ from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
 
+logger = logging.getLogger('frida.validation_agent')
 
 SCHEMA_VERSION = "v1"
 PRIMARY_MODEL = "openai/gpt-5.4-mini"
@@ -71,6 +73,7 @@ class ValidationAgentResult:
     model: str
     decision_source: str
     reason_code: str | None = None
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class _ValidationJsonError(ValueError):
@@ -311,11 +314,6 @@ def _safe_json_loads(raw: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise _ValidationJsonError("invalid_json")
     return payload
-def _extract_response_text(response: Any) -> str:
-    try:
-        return llm_client._sanitize_encoding(response.json()["choices"][0]["message"]["content"]).strip()
-    except (KeyError, IndexError, TypeError, AttributeError) as exc:
-        raise _ValidationJsonError("invalid_json") from exc
 def _validated_model_decision(value: Any) -> dict[str, str]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_MODEL_PAYLOAD_KEYS:
@@ -426,7 +424,7 @@ def _call_model(
     top_p: float,
     max_tokens: int,
     requests_module: Any,
-) -> dict[str, str]:
+) -> tuple[dict[str, str], dict[str, Any]]:
     response = requests_module.post(
         llm_client.or_chat_completions_url(),
         json={
@@ -446,7 +444,16 @@ def _call_model(
         timeout=timeout_s,
     )
     response.raise_for_status()
-    return _validated_model_decision(_safe_json_loads(_extract_response_text(response)))
+    response_payload = llm_client.read_openrouter_response_payload(response)
+    provider_metadata = llm_client.extract_openrouter_provider_metadata(
+        response_payload,
+        requested_model=model,
+    )
+    llm_client.log_provider_metadata(logger, 'validation_agent_provider_response', provider_metadata)
+    return (
+        _validated_model_decision(_safe_json_loads(llm_client.extract_openrouter_text(response_payload))),
+        provider_metadata,
+    )
 def _resolved_final_judgment_posture(*, primary_judgment_posture: str, validation_decision: str) -> str:
     return _FINAL_POSTURE_BY_PRIMARY_AND_DECISION[primary_judgment_posture][validation_decision]
 def _pipeline_directives_final(*, final_judgment_posture: str, fail_open: bool) -> list[str]:
@@ -499,7 +506,7 @@ def build_validated_output(
         (runtime_model_settings["fallback_model"], "fallback"),
     ):
         try:
-            decision_payload = _call_model(
+            decision_payload, provider_metadata = _call_model(
                 model=model,
                 system_prompt=system_prompt,
                 primary_verdict=primary_verdict_payload,
@@ -526,6 +533,7 @@ def build_validated_output(
                 model=model,
                 decision_source=decision_source,
                 reason_code=None,
+                provider_metadata=provider_metadata,
             )
         except _ValidationJsonError as exc:
             last_reason_code = str(exc) or "invalid_json"

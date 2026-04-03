@@ -147,6 +147,13 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(spec.seed_from_env)
         self.assertEqual(spec.seed_default, 1500)
 
+    def test_main_model_includes_identity_extractor_title_field(self) -> None:
+        spec = runtime_settings.get_field_spec('main_model', 'title_identity_extractor')
+        self.assertEqual(spec.value_type, 'text')
+        self.assertFalse(spec.is_secret)
+        self.assertTrue(spec.seed_from_env)
+        self.assertEqual(spec.env_var, 'OPENROUTER_TITLE_IDENTITY_EXTRACTOR')
+
     def test_embedding_model_exists_but_is_not_seeded_from_env(self) -> None:
         spec = runtime_settings.get_field_spec('embedding', 'model')
         self.assertEqual(spec.value_type, 'text')
@@ -268,6 +275,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(bundle.section, 'main_model')
         self.assertEqual(bundle.payload['base_url']['value'], config.OR_BASE)
+        self.assertEqual(bundle.payload['title_identity_extractor']['value'], config.OR_TITLE_IDENTITY_EXTRACTOR)
         self.assertEqual(bundle.payload['temperature']['value'], 0.4)
         self.assertEqual(bundle.payload['api_key']['is_secret'], True)
         self.assertEqual(bundle.payload['api_key']['is_set'], bool(config.OR_KEY))

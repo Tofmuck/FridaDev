@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
+import logging
 from typing import Any, Mapping
 
 import requests
@@ -11,6 +12,7 @@ from core.hermeneutic_node.inputs import recent_window_input as canonical_recent
 from core import llm_client
 from core import prompt_loader
 
+logger = logging.getLogger('frida.stimmung_agent')
 
 SCHEMA_VERSION = 'v1'
 PRIMARY_MODEL = 'openai/gpt-5.4-mini'
@@ -52,6 +54,7 @@ class StimmungAgentResult:
     model: str
     decision_source: str
     reason_code: str | None = None
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class _SignalJsonError(ValueError):
@@ -227,13 +230,6 @@ def _build_messages(
     ]
 
 
-def _extract_response_text(response: Any) -> str:
-    try:
-        return llm_client._sanitize_encoding(response.json()['choices'][0]['message']['content']).strip()
-    except (KeyError, IndexError, TypeError, AttributeError) as exc:
-        raise _SignalJsonError('invalid_json') from exc
-
-
 def _validate_affective_turn_signal(data: Mapping[str, Any]) -> dict[str, Any]:
     payload = _mapping(data)
     if set(payload.keys()) != _ALLOWED_SIGNAL_KEYS:
@@ -315,7 +311,7 @@ def _call_model(
     top_p: float,
     max_tokens: int,
     requests_module: Any,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     response = requests_module.post(
         llm_client.or_chat_completions_url(),
         json={
@@ -333,7 +329,16 @@ def _call_model(
         timeout=timeout_s,
     )
     response.raise_for_status()
-    return _validate_affective_turn_signal(_safe_json_loads(_extract_response_text(response)))
+    response_payload = llm_client.read_openrouter_response_payload(response)
+    provider_metadata = llm_client.extract_openrouter_provider_metadata(
+        response_payload,
+        requested_model=model,
+    )
+    llm_client.log_provider_metadata(logger, 'stimmung_agent_provider_response', provider_metadata)
+    return (
+        _validate_affective_turn_signal(_safe_json_loads(llm_client.extract_openrouter_text(response_payload))),
+        provider_metadata,
+    )
 
 
 def build_affective_turn_signal(
@@ -356,7 +361,7 @@ def build_affective_turn_signal(
         (runtime_model_settings['fallback_model'], 'fallback'),
     ):
         try:
-            signal = _call_model(
+            signal, provider_metadata = _call_model(
                 system_prompt=system_prompt,
                 user_msg=user_msg,
                 recent_window_input_payload=recent_window_input_payload,
@@ -373,6 +378,7 @@ def build_affective_turn_signal(
                 model=model,
                 decision_source=decision_source,
                 reason_code=None,
+                provider_metadata=provider_metadata,
             )
         except _SignalJsonError as exc:
             last_reason_code = str(exc) or 'invalid_json'

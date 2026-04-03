@@ -9,8 +9,7 @@ import requests
 
 import config
 from admin import runtime_settings
-from core import prompt_loader
-from core.llm_client import or_headers, _sanitize_encoding
+from core import llm_client, prompt_loader
 from core.token_utils import count_tokens
 
 logger = logging.getLogger("frida.summarizer")
@@ -58,11 +57,17 @@ def summarize_conversation(turns: list[dict[str, Any]], model: str) -> str:
     r = requests.post(
         f"{config.OR_BASE}/chat/completions",
         json=payload,
-        headers=or_headers(caller='resumer'),
+        headers=llm_client.or_headers(caller='resumer'),
         timeout=90,
     )
     r.raise_for_status()
-    return _sanitize_encoding(r.json()["choices"][0]["message"]["content"]).strip()
+    response_payload = llm_client.read_openrouter_response_payload(r)
+    llm_client.log_provider_metadata(
+        logger,
+        'summarizer_provider_response',
+        llm_client.extract_openrouter_provider_metadata(response_payload, requested_model=model),
+    )
+    return llm_client.extract_openrouter_text(response_payload)
 
 
 def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:

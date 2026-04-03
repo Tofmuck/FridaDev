@@ -208,6 +208,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
         self.assertIn('const TOKEN_KEY = "frida.adminToken";', admin_api_source)
         self.assertIn('headers.set("X-Admin-Token", token);', admin_api_source)
+        self.assertIn('title_identity_extractor', admin_source)
+        self.assertIn("Titre extracteur d'identite", admin_source)
 
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
         missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)

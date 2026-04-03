@@ -57,7 +57,12 @@ class _FakeResponse:
             raise self._error
 
     def json(self):
-        return {'choices': [{'message': {'content': self._content}}]}
+        return {
+            'id': 'gen-stimmung',
+            'model': 'openai/gpt-5.4-mini',
+            'usage': {'prompt_tokens': 14, 'completion_tokens': 6, 'total_tokens': 20},
+            'choices': [{'message': {'content': self._content}}],
+        }
 
 
 class StimmungAgentTests(unittest.TestCase):
@@ -65,10 +70,15 @@ class StimmungAgentTests(unittest.TestCase):
         self.original_read_prompt = stimmung_agent.prompt_loader.read_prompt_text
         self.original_or_headers = stimmung_agent.llm_client.or_headers
         self.original_or_chat_completions_url = stimmung_agent.llm_client.or_chat_completions_url
+        self.original_log_provider_metadata = stimmung_agent.llm_client.log_provider_metadata
         self.original_runtime_settings_getter = stimmung_agent.runtime_settings.get_stimmung_agent_model_settings
+        self.provider_logs = []
         stimmung_agent.prompt_loader.read_prompt_text = lambda _path: 'SYSTEM PROMPT'
         stimmung_agent.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
         stimmung_agent.llm_client.or_chat_completions_url = lambda: 'https://openrouter.example/chat/completions'
+        stimmung_agent.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: self.provider_logs.append(
+            (event_name, dict(provider_metadata))
+        )
         stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = lambda: types.SimpleNamespace(
             payload={
                 'primary_model': {'value': stimmung_agent.PRIMARY_MODEL},
@@ -84,6 +94,7 @@ class StimmungAgentTests(unittest.TestCase):
         stimmung_agent.prompt_loader.read_prompt_text = self.original_read_prompt
         stimmung_agent.llm_client.or_headers = self.original_or_headers
         stimmung_agent.llm_client.or_chat_completions_url = self.original_or_chat_completions_url
+        stimmung_agent.llm_client.log_provider_metadata = self.original_log_provider_metadata
         stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = self.original_runtime_settings_getter
 
     def test_build_affective_turn_signal_returns_primary_validated_signal(self) -> None:
@@ -108,6 +119,31 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['tones'][1], {'tone': 'confusion', 'strength': 4})
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
         self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
+        self.assertEqual(
+            result.provider_metadata,
+            {
+                'provider_generation_id': 'gen-stimmung',
+                'provider_model': 'openai/gpt-5.4-mini',
+                'provider_prompt_tokens': 14,
+                'provider_completion_tokens': 6,
+                'provider_total_tokens': 20,
+            },
+        )
+        self.assertEqual(
+            self.provider_logs,
+            [
+                (
+                    'stimmung_agent_provider_response',
+                    {
+                        'provider_generation_id': 'gen-stimmung',
+                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_prompt_tokens': 14,
+                        'provider_completion_tokens': 6,
+                        'provider_total_tokens': 20,
+                    },
+                )
+            ],
+        )
 
     def test_build_affective_turn_signal_uses_runtime_settings_models_and_sampling(self) -> None:
         stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = lambda: types.SimpleNamespace(

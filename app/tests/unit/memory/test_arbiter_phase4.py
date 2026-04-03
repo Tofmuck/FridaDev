@@ -27,9 +27,13 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_arbiter_calls_use_runtime_model_from_db_when_present(self) -> None:
         observed_models = []
+        observed_headers = []
+        observed_provider_logs = []
         original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
         def fake_get_arbiter_model_settings():
             return runtime_settings.RuntimeSectionView(
@@ -48,26 +52,38 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
 
         class FakeResponse:
-            def __init__(self, content: str) -> None:
+            def __init__(self, content: str, generation_id: str) -> None:
                 self._content = content
+                self._generation_id = generation_id
 
             def raise_for_status(self) -> None:
                 return None
 
             def json(self):
-                return {'choices': [{'message': {'content': self._content}}]}
+                return {
+                    'id': self._generation_id,
+                    'model': 'openai/gpt-5.4-mini',
+                    'usage': {'prompt_tokens': 10, 'completion_tokens': 3, 'total_tokens': 13},
+                    'choices': [{'message': {'content': self._content}}],
+                }
 
         def fake_post(url, json, headers, timeout):
             observed_models.append(json['model'])
+            observed_headers.append(dict(headers))
             if len(observed_models) == 1:
                 return FakeResponse(
-                    '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}'
+                    '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}',
+                    generation_id='gen-1',
                 )
-            return FakeResponse('{"entries":[]}')
+            return FakeResponse('{"entries":[]}', generation_id='gen-2')
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: observed_provider_logs.append(
+            (event_name, dict(provider_metadata))
+        )
         try:
             kept, decisions = arbiter.filter_traces_with_diagnostics(
                 [{'role': 'assistant', 'content': 'memoire candidate', 'timestamp': '2026-03-24T00:00:00Z', 'score': 0.9}],
@@ -80,11 +96,45 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
 
         self.assertEqual(kept, [])
         self.assertEqual(len(decisions), 1)
         self.assertEqual(entries, [])
         self.assertEqual(observed_models, ['openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'])
+        self.assertEqual(
+            observed_headers,
+            [
+                {'Authorization': 'caller=arbiter'},
+                {'Authorization': 'caller=identity_extractor'},
+            ],
+        )
+        self.assertEqual(
+            observed_provider_logs,
+            [
+                (
+                    'arbiter_provider_response',
+                    {
+                        'provider_generation_id': 'gen-1',
+                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_prompt_tokens': 10,
+                        'provider_completion_tokens': 3,
+                        'provider_total_tokens': 13,
+                    },
+                ),
+                (
+                    'identity_extractor_provider_response',
+                    {
+                        'provider_generation_id': 'gen-2',
+                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_prompt_tokens': 10,
+                        'provider_completion_tokens': 3,
+                        'provider_total_tokens': 13,
+                    },
+                ),
+            ],
+        )
 
     def test_arbiter_calls_keep_env_fallback_when_db_row_is_missing(self) -> None:
         observed_models = []

@@ -77,6 +77,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('app_name', 'text', env_var='OPENROUTER_APP_NAME'),
             FieldSpec('title_llm', 'text', env_var='OPENROUTER_TITLE_LLM'),
             FieldSpec('title_arbiter', 'text', env_var='OPENROUTER_TITLE_ARBITER'),
+            FieldSpec('title_identity_extractor', 'text', env_var='OPENROUTER_TITLE_IDENTITY_EXTRACTOR'),
             FieldSpec('title_resumer', 'text', env_var='OPENROUTER_TITLE_RESUMER'),
             FieldSpec('title_stimmung_agent', 'text', env_var='OPENROUTER_TITLE_STIMMUNG_AGENT'),
             FieldSpec('title_validation_agent', 'text', env_var='OPENROUTER_TITLE_VALIDATION_AGENT'),

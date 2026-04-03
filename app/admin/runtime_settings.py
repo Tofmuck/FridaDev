@@ -185,6 +185,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'app_name'): config.OR_TITLE_BASE,
         ('main_model', 'title_llm'): config.OR_TITLE_LLM,
         ('main_model', 'title_arbiter'): config.OR_TITLE_ARBITER,
+        ('main_model', 'title_identity_extractor'): config.OR_TITLE_IDENTITY_EXTRACTOR,
         ('main_model', 'title_resumer'): config.OR_TITLE_RESUMER,
         ('main_model', 'title_stimmung_agent'): config.OR_TITLE_STIMMUNG_AGENT,
         ('main_model', 'title_validation_agent'): config.OR_TITLE_VALIDATION_AGENT,

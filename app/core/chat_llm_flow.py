@@ -83,8 +83,13 @@ def run_llm_exchange(
             )
             response = requests_module.post(url, json=payload, headers=headers, timeout=config_module.TIMEOUT_S)
             response.raise_for_status()
-            obj = response.json()
-            text = llm_module._sanitize_encoding(obj['choices'][0]['message']['content'])
+            obj = llm_module.read_openrouter_response_payload(response)
+            llm_module.log_provider_metadata(
+                logger,
+                'llm_provider_response',
+                llm_module.extract_openrouter_provider_metadata(obj, requested_model=call_model),
+            )
+            text = llm_module.extract_openrouter_text(obj)
             updated_at = now_iso_func()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
             assistant_tokens = token_utils_module.count_tokens([{'content': text}], runtime_main_model)
@@ -127,6 +132,8 @@ def run_llm_exchange(
 
         def event_stream():
             assistant_chunks: list[str] = []
+            provider_metadata: dict[str, object] = {}
+            provider_response_open = False
             try:
                 with requests_module.post(
                     url,
@@ -136,6 +143,11 @@ def run_llm_exchange(
                     stream=True,
                 ) as response:
                     response.raise_for_status()
+                    provider_response_open = True
+                    provider_metadata = llm_module.extract_openrouter_provider_metadata(
+                        {},
+                        requested_model=call_model,
+                    )
                     response.encoding = response.encoding or 'utf-8'
                     for line in response.iter_lines(decode_unicode=True, delimiter='\n'):
                         if not line or not line.startswith('data:'):
@@ -147,6 +159,11 @@ def run_llm_exchange(
                             chunk = json.loads(data_str)
                         except json.JSONDecodeError:
                             continue
+                        provider_metadata = llm_module.merge_openrouter_provider_metadata(
+                            provider_metadata,
+                            chunk,
+                            requested_model=call_model,
+                        )
                         delta = chunk.get('choices', [{}])[0].get('delta', {})
                         content = delta.get('content')
                         if content:
@@ -162,6 +179,12 @@ def run_llm_exchange(
                     error=str(exc),
                 )
             finally:
+                if provider_response_open:
+                    llm_module.log_provider_metadata(
+                        logger,
+                        'llm_provider_response',
+                        provider_metadata,
+                    )
                 assistant_text = llm_module._sanitize_encoding(''.join(assistant_chunks)).strip()
                 if assistant_text:
                     conv_store_module.append_message(

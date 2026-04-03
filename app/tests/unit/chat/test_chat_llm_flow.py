@@ -38,6 +38,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'identity_callback_called': False,
             'save_calls': [],
             'secret_calls': 0,
+            'provider_log_calls': [],
         }
         conversation = {
             'id': 'conv-sync',
@@ -50,7 +51,12 @@ class ChatLlmFlowTests(unittest.TestCase):
                 return None
 
             def json(self):
-                return {'choices': [{'message': {'content': 'reponse test'}}]}
+                return {
+                    'id': 'gen-sync',
+                    'model': 'openrouter/runtime-main-model',
+                    'usage': {'prompt_tokens': 12, 'completion_tokens': 5, 'total_tokens': 17},
+                    'choices': [{'message': {'content': 'reponse test'}}],
+                }
 
         def fake_post(_url, *, json, headers, timeout):
             observed['request_stream_flag'] = None
@@ -85,6 +91,27 @@ class ChatLlmFlowTests(unittest.TestCase):
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: observed.update({'headers_called_with': caller}) or {'Authorization': 'Bearer token'},
             build_payload=fake_build_payload,
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
+                'provider_generation_id': payload.get('id'),
+                'provider_model': payload.get('model') or requested_model,
+                'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+            },
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
+                key: value
+                for key, value in {
+                    'provider_generation_id': payload.get('id'),
+                    'provider_model': payload.get('model') or requested_model,
+                    'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                    'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                    'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+                }.items()
+                if value is not None
+            }),
+            log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
             _sanitize_encoding=lambda text: text,
         )
         requests_module = SimpleNamespace(
@@ -146,6 +173,21 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:10:00Z')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
         self.assertFalse(_event_payloads(events, 'llm_call')[0]['stream'])
+        self.assertEqual(
+            observed['provider_log_calls'],
+            [
+                (
+                    'llm_provider_response',
+                    {
+                        'provider_generation_id': 'gen-sync',
+                        'provider_model': 'openrouter/runtime-main-model',
+                        'provider_prompt_tokens': 12,
+                        'provider_completion_tokens': 5,
+                        'provider_total_tokens': 17,
+                    },
+                )
+            ],
+        )
 
     def test_run_llm_exchange_stream_success_keeps_stream_contract(self) -> None:
         events = []
@@ -154,6 +196,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'save_calls': [],
             'identity_callback_called': False,
             'reactivate_called': False,
+            'provider_log_calls': [],
         }
         conversation = {
             'id': 'conv-stream',
@@ -174,8 +217,9 @@ class ChatLlmFlowTests(unittest.TestCase):
                 return None
 
             def iter_lines(self, decode_unicode=True, delimiter='\n'):
-                yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: {"id":"gen-stream","model":"openrouter/runtime-main-model","choices":[{"delta":{"content":"Bon"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
+                yield 'data: {"usage":{"prompt_tokens":40,"completion_tokens":2,"total_tokens":42},"choices":[{"delta":{}}]}'
                 yield 'data: [DONE]'
 
         def fake_post(_url, *, json, headers, timeout, stream=False):
@@ -200,6 +244,27 @@ class ChatLlmFlowTests(unittest.TestCase):
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
+                'provider_generation_id': payload.get('id'),
+                'provider_model': payload.get('model') or requested_model,
+                'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+            },
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
+                key: value
+                for key, value in {
+                    'provider_generation_id': payload.get('id'),
+                    'provider_model': payload.get('model') or requested_model,
+                    'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                    'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                    'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+                }.items()
+                if value is not None
+            }),
+            log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
             _sanitize_encoding=lambda text: text,
         )
         requests_module = SimpleNamespace(
@@ -254,6 +319,21 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertTrue(observed['identity_callback_called'])
         self.assertTrue(observed['reactivate_called'])
+        self.assertEqual(
+            observed['provider_log_calls'],
+            [
+                (
+                    'llm_provider_response',
+                    {
+                        'provider_generation_id': 'gen-stream',
+                        'provider_model': 'openrouter/runtime-main-model',
+                        'provider_prompt_tokens': 40,
+                        'provider_completion_tokens': 2,
+                        'provider_total_tokens': 42,
+                    },
+                )
+            ],
+        )
 
     def test_run_llm_exchange_returns_502_on_request_exception(self) -> None:
         events = []

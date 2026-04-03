@@ -10,7 +10,7 @@ import requests
 
 import config
 from admin import runtime_settings
-from core.llm_client import _sanitize_encoding, or_headers
+from core import llm_client
 
 logger = logging.getLogger('frida.arbiter')
 
@@ -328,11 +328,20 @@ def filter_traces_with_diagnostics(
         response = requests.post(
             f'{config.OR_BASE}/chat/completions',
             json=payload,
-            headers=or_headers(caller='arbiter'),
+            headers=llm_client.or_headers(caller='arbiter'),
             timeout=config.ARBITER_TIMEOUT_S,
         )
         response.raise_for_status()
-        raw = _sanitize_encoding(response.json()['choices'][0]['message']['content']).strip()
+        response_payload = llm_client.read_openrouter_response_payload(response)
+        llm_client.log_provider_metadata(
+            logger,
+            'arbiter_provider_response',
+            llm_client.extract_openrouter_provider_metadata(
+                response_payload,
+                requested_model=arbiter_model,
+            ),
+        )
+        raw = llm_client.extract_openrouter_text(response_payload)
         result = _safe_json_loads(raw)
         decisions = _validate_arbiter_output(result)
     except requests.exceptions.Timeout:
@@ -544,11 +553,20 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         response = requests.post(
             f'{config.OR_BASE}/chat/completions',
             json=payload,
-            headers=or_headers(caller='arbiter'),
+            headers=llm_client.or_headers(caller='identity_extractor'),
             timeout=config.ARBITER_TIMEOUT_S,
         )
         response.raise_for_status()
-        raw = _sanitize_encoding(response.json()['choices'][0]['message']['content']).strip()
+        response_payload = llm_client.read_openrouter_response_payload(response)
+        llm_client.log_provider_metadata(
+            logger,
+            'identity_extractor_provider_response',
+            llm_client.extract_openrouter_provider_metadata(
+                response_payload,
+                requested_model=arbiter_model,
+            ),
+        )
+        raw = llm_client.extract_openrouter_text(response_payload)
         result = _safe_json_loads(raw)
         entries = _validate_identity_output(result)
         logger.info('identity_extracted count=%s', len(entries))

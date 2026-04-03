@@ -129,6 +129,64 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(observed['model'], config.SUMMARY_MODEL)
 
+    def test_summarize_conversation_logs_provider_metadata_and_uses_resumer_caller(self) -> None:
+        observed = {'headers': None, 'provider_logs': []}
+        original_post = summarizer.requests.post
+        original_or_headers = summarizer.llm_client.or_headers
+        original_log_provider_metadata = summarizer.llm_client.log_provider_metadata
+        original_get_summary_system_prompt = summarizer.prompt_loader.get_summary_system_prompt
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    'id': 'gen-summary',
+                    'model': 'openai/gpt-5.4-mini',
+                    'usage': {'prompt_tokens': 21, 'completion_tokens': 9, 'total_tokens': 30},
+                    'choices': [{'message': {'content': 'resume test'}}],
+                }
+
+        def fake_post(_url, *, json, headers, timeout):
+            observed['headers'] = dict(headers)
+            return FakeResponse()
+
+        summarizer.requests.post = fake_post
+        summarizer.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
+        summarizer.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: observed['provider_logs'].append(
+            (event_name, dict(provider_metadata))
+        )
+        summarizer.prompt_loader.get_summary_system_prompt = lambda: 'SYSTEM SUMMARY'
+        try:
+            result = summarizer.summarize_conversation(
+                [{'role': 'user', 'content': 'bonjour', 'timestamp': '2026-03-24T10:00:00Z'}],
+                'openai/gpt-5.4-mini',
+            )
+        finally:
+            summarizer.requests.post = original_post
+            summarizer.llm_client.or_headers = original_or_headers
+            summarizer.llm_client.log_provider_metadata = original_log_provider_metadata
+            summarizer.prompt_loader.get_summary_system_prompt = original_get_summary_system_prompt
+
+        self.assertEqual(result, 'resume test')
+        self.assertEqual(observed['headers'], {'Authorization': 'caller=resumer'})
+        self.assertEqual(
+            observed['provider_logs'],
+            [
+                (
+                    'summarizer_provider_response',
+                    {
+                        'provider_generation_id': 'gen-summary',
+                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_prompt_tokens': 21,
+                        'provider_completion_tokens': 9,
+                        'provider_total_tokens': 30,
+                    },
+                )
+            ],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

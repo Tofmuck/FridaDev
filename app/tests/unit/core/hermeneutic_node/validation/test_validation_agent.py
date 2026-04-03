@@ -111,7 +111,12 @@ class _FakeResponse:
             raise self._error
 
     def json(self):
-        return {"choices": [{"message": {"content": self._content}}]}
+        return {
+            "id": "gen-validation",
+            "model": "openai/gpt-5.4-mini",
+            "usage": {"prompt_tokens": 18, "completion_tokens": 4, "total_tokens": 22},
+            "choices": [{"message": {"content": self._content}}],
+        }
 
 
 class ValidationAgentTests(unittest.TestCase):
@@ -119,12 +124,17 @@ class ValidationAgentTests(unittest.TestCase):
         self.original_read_prompt = validation_agent.prompt_loader.read_prompt_text
         self.original_or_headers = validation_agent.llm_client.or_headers
         self.original_or_chat_completions_url = validation_agent.llm_client.or_chat_completions_url
+        self.original_log_provider_metadata = validation_agent.llm_client.log_provider_metadata
         self.original_runtime_settings_getter = validation_agent.runtime_settings.get_validation_agent_model_settings
+        self.provider_logs = []
         validation_agent.prompt_loader.read_prompt_text = lambda _path: "SYSTEM PROMPT"
         validation_agent.llm_client.or_headers = lambda caller="llm": {
             "Authorization": f"caller={caller}"
         }
         validation_agent.llm_client.or_chat_completions_url = lambda: "https://openrouter.example/chat/completions"
+        validation_agent.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: self.provider_logs.append(
+            (event_name, dict(provider_metadata))
+        )
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
             payload={
                 "primary_model": {"value": validation_agent.PRIMARY_MODEL},
@@ -140,6 +150,7 @@ class ValidationAgentTests(unittest.TestCase):
         validation_agent.prompt_loader.read_prompt_text = self.original_read_prompt
         validation_agent.llm_client.or_headers = self.original_or_headers
         validation_agent.llm_client.or_chat_completions_url = self.original_or_chat_completions_url
+        validation_agent.llm_client.log_provider_metadata = self.original_log_provider_metadata
         validation_agent.runtime_settings.get_validation_agent_model_settings = self.original_runtime_settings_getter
 
     def test_build_validated_output_rejects_invalid_primary_verdict(self) -> None:
@@ -216,6 +227,16 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.model, validation_agent.PRIMARY_MODEL)
         self.assertIsNone(result.reason_code)
         self.assertEqual(
+            result.provider_metadata,
+            {
+                "provider_generation_id": "gen-validation",
+                "provider_model": "openai/gpt-5.4-mini",
+                "provider_prompt_tokens": 18,
+                "provider_completion_tokens": 4,
+                "provider_total_tokens": 22,
+            },
+        )
+        self.assertEqual(
             result.validated_output,
             {
                 "schema_version": "v1",
@@ -235,6 +256,21 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertNotIn("primary_verdict", result.validated_output)
         self.assertNotIn("validation_dialogue_context", result.validated_output)
         self.assertNotIn("justifications", result.validated_output)
+        self.assertEqual(
+            self.provider_logs,
+            [
+                (
+                    "validation_agent_provider_response",
+                    {
+                        "provider_generation_id": "gen-validation",
+                        "provider_model": "openai/gpt-5.4-mini",
+                        "provider_prompt_tokens": 18,
+                        "provider_completion_tokens": 4,
+                        "provider_total_tokens": 22,
+                    },
+                )
+            ],
+        )
 
     def test_build_validated_output_uses_runtime_settings_models_and_sampling(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(

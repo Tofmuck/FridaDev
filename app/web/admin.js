@@ -199,6 +199,13 @@
       autocomplete: "off",
     },
     {
+      key: "title_identity_extractor",
+      label: "Titre extracteur d'identite",
+      hint: "Titre OpenRouter du flux d'extraction d'identite.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
       key: "title_resumer",
       label: "Titre resumeur",
       hint: "Titre du flux resume cote provider.",
