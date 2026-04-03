@@ -211,7 +211,33 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             )
             self.assertEqual(
                 llm_client.resolve_provider_referer('stimmung_agent'),
-                config.OR_REFERER_STIMMUNG_AGENT,
+                'https://shared.frida-system.fr/',
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+    def test_resolve_provider_referer_falls_back_to_component_seed_when_shared_is_missing(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'referer': {'value': '', 'origin': 'db'},
+                        'referer_validation_agent': {'value': '', 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            self.assertEqual(
+                llm_client.resolve_provider_referer('validation_agent'),
+                config.OR_REFERER_VALIDATION_AGENT,
             )
         finally:
             llm_client.runtime_settings.get_main_model_settings = original_view

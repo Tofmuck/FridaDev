@@ -1929,6 +1929,53 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(checks['referer_validation_agent']['ok'])
         self.assertIn('notaurl', checks['referer_validation_agent']['detail'])
 
+    def test_validate_runtime_section_accepts_blank_component_referers_when_shared_referer_is_valid(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'referer': {'value': 'https://shared.example/'},
+                    'referer_llm': {'value': ''},
+                    'referer_arbiter': {'value': ''},
+                    'referer_identity_extractor': {'value': ''},
+                    'referer_resumer': {'value': ''},
+                    'referer_stimmung_agent': {'value': ''},
+                    'referer_validation_agent': {'value': ''},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['referer']['ok'])
+        self.assertTrue(checks['referer_llm']['ok'])
+        self.assertTrue(checks['referer_validation_agent']['ok'])
+        self.assertIn('shared_referer=https://shared.example/', checks['referer_llm']['detail'])
+
+    def test_validate_runtime_section_rejects_blank_component_referers_without_shared_fallback(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'referer': {'value': ''},
+                    'referer_validation_agent': {'value': ''},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['referer_validation_agent']['ok'])
+        self.assertIn('shared_referer=missing', checks['referer_validation_agent']['detail'])
+
     def test_validate_runtime_section_accepts_candidate_main_model_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
         original_decrypt = runtime_settings.runtime_secrets.decrypt_runtime_secret_value

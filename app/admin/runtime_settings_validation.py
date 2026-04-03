@@ -45,6 +45,13 @@ def _is_http_url(value: str) -> bool:
     return parsed.scheme in {'http', 'https'} and bool(parsed.netloc)
 
 
+def _component_referer_valid_or_shared_fallback(component_referer: str, shared_referer: str) -> bool:
+    component_value = str(component_referer or '').strip()
+    if component_value:
+        return _is_http_url(component_value)
+    return _is_http_url(shared_referer)
+
+
 def _resolve_app_path(path_str: str) -> Path:
     path = Path(path_str)
     if path.is_absolute():
@@ -100,31 +107,44 @@ def validate_runtime_section(
                     (not referer) or _is_http_url(referer),
                     f'referer={referer or "missing"}',
                 ),
-                _validation_check('referer_llm', _is_http_url(referer_llm), f'referer_llm={referer_llm or "missing"}'),
+                _validation_check(
+                    'referer_llm',
+                    _component_referer_valid_or_shared_fallback(referer_llm, referer),
+                    f'referer_llm={referer_llm or "missing"}; shared_referer={referer or "missing"}',
+                ),
                 _validation_check(
                     'referer_arbiter',
-                    _is_http_url(referer_arbiter),
-                    f'referer_arbiter={referer_arbiter or "missing"}',
+                    _component_referer_valid_or_shared_fallback(referer_arbiter, referer),
+                    f'referer_arbiter={referer_arbiter or "missing"}; shared_referer={referer or "missing"}',
                 ),
                 _validation_check(
                     'referer_identity_extractor',
-                    _is_http_url(referer_identity_extractor),
-                    f'referer_identity_extractor={referer_identity_extractor or "missing"}',
+                    _component_referer_valid_or_shared_fallback(referer_identity_extractor, referer),
+                    (
+                        'referer_identity_extractor='
+                        f'{referer_identity_extractor or "missing"}; shared_referer={referer or "missing"}'
+                    ),
                 ),
                 _validation_check(
                     'referer_resumer',
-                    _is_http_url(referer_resumer),
-                    f'referer_resumer={referer_resumer or "missing"}',
+                    _component_referer_valid_or_shared_fallback(referer_resumer, referer),
+                    f'referer_resumer={referer_resumer or "missing"}; shared_referer={referer or "missing"}',
                 ),
                 _validation_check(
                     'referer_stimmung_agent',
-                    _is_http_url(referer_stimmung_agent),
-                    f'referer_stimmung_agent={referer_stimmung_agent or "missing"}',
+                    _component_referer_valid_or_shared_fallback(referer_stimmung_agent, referer),
+                    (
+                        'referer_stimmung_agent='
+                        f'{referer_stimmung_agent or "missing"}; shared_referer={referer or "missing"}'
+                    ),
                 ),
                 _validation_check(
                     'referer_validation_agent',
-                    _is_http_url(referer_validation_agent),
-                    f'referer_validation_agent={referer_validation_agent or "missing"}',
+                    _component_referer_valid_or_shared_fallback(referer_validation_agent, referer),
+                    (
+                        'referer_validation_agent='
+                        f'{referer_validation_agent or "missing"}; shared_referer={referer or "missing"}'
+                    ),
                 ),
                 _validation_check(
                     'temperature',

@@ -93,17 +93,14 @@ def _runtime_main_referer(caller: str) -> str:
     if component_referer:
         return component_referer
 
-    default_component_referer = str(
-        _PROVIDER_DEFAULT_REFERER_MAP.get(caller_key, config.OR_REFERER_LLM) or ''
-    ).strip()
-    if component_payload is None and default_component_referer:
-        return default_component_referer
-
     legacy_payload = view.payload.get('referer') or {}
     legacy_referer = str(legacy_payload.get('value') or '').strip()
     if legacy_referer:
         return legacy_referer
 
+    default_component_referer = str(
+        _PROVIDER_DEFAULT_REFERER_MAP.get(caller_key, config.OR_REFERER_LLM) or ''
+    ).strip()
     return default_component_referer or str(config.OR_REFERER or '').strip()
 
 
