@@ -243,6 +243,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 section=section,
                 payload={
                     'model': {'value': 'openrouter/main-model-route', 'is_secret': False, 'origin': 'db'},
+                    'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'is_secret': False, 'origin': 'db'},
                     'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'is_secret': False, 'origin': 'db'},
                     'response_max_tokens': {'value': 1500, 'is_secret': False, 'origin': 'db_seed'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
@@ -262,6 +263,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'main_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/main-model-route')
+        self.assertEqual(
+            data['payload']['referer_identity_extractor']['value'],
+            'https://identity-extractor.frida-system.fr/',
+        )
         self.assertEqual(data['payload']['title_identity_extractor']['value'], 'FridaDev/IdentityExtractor')
         self.assertEqual(data['payload']['response_max_tokens']['value'], 1500)
         self.assertEqual(

@@ -154,6 +154,23 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(spec.seed_from_env)
         self.assertEqual(spec.env_var, 'OPENROUTER_TITLE_IDENTITY_EXTRACTOR')
 
+    def test_main_model_includes_component_referer_fields(self) -> None:
+        expected_env_vars = {
+            'referer_llm': 'OPENROUTER_REFERER_LLM',
+            'referer_arbiter': 'OPENROUTER_REFERER_ARBITER',
+            'referer_identity_extractor': 'OPENROUTER_REFERER_IDENTITY_EXTRACTOR',
+            'referer_resumer': 'OPENROUTER_REFERER_RESUMER',
+            'referer_stimmung_agent': 'OPENROUTER_REFERER_STIMMUNG_AGENT',
+            'referer_validation_agent': 'OPENROUTER_REFERER_VALIDATION_AGENT',
+        }
+
+        for field_name, env_var in expected_env_vars.items():
+            spec = runtime_settings.get_field_spec('main_model', field_name)
+            self.assertEqual(spec.value_type, 'text')
+            self.assertFalse(spec.is_secret)
+            self.assertTrue(spec.seed_from_env)
+            self.assertEqual(spec.env_var, env_var)
+
     def test_embedding_model_exists_but_is_not_seeded_from_env(self) -> None:
         spec = runtime_settings.get_field_spec('embedding', 'model')
         self.assertEqual(spec.value_type, 'text')
@@ -275,6 +292,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(bundle.section, 'main_model')
         self.assertEqual(bundle.payload['base_url']['value'], config.OR_BASE)
+        self.assertEqual(bundle.payload['referer_llm']['value'], config.OR_REFERER_LLM)
+        self.assertEqual(bundle.payload['referer_validation_agent']['value'], config.OR_REFERER_VALIDATION_AGENT)
         self.assertEqual(bundle.payload['title_identity_extractor']['value'], config.OR_TITLE_IDENTITY_EXTRACTOR)
         self.assertEqual(bundle.payload['temperature']['value'], 0.4)
         self.assertEqual(bundle.payload['api_key']['is_secret'], True)
@@ -304,6 +323,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')
         self.assertEqual(main_model_bundle.payload['top_p']['origin'], 'seed_default')
         self.assertEqual(main_model_bundle.payload['response_max_tokens']['origin'], 'seed_default')
+        self.assertEqual(main_model_bundle.payload['referer_llm']['origin'], 'env_seed')
+        self.assertEqual(main_model_bundle.payload['referer_validation_agent']['origin'], 'env_seed')
 
         stimmung_bundle = runtime_settings.build_env_seed_bundle('stimmung_agent_model')
         self.assertEqual(
@@ -473,6 +494,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         )
         self.assertIn('Tu es un classificateur affectif minimal', readonly_info['prompt_text']['value'])
         self.assertIn('main_model.title_stimmung_agent', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_stimmung_agent', readonly_info['shared_transport']['value'])
         self.assertEqual(
             readonly_info['recent_window_turn_cap']['value'],
             runtime_settings.canonical_recent_window_input.MAX_RECENT_TURNS,
@@ -491,6 +513,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         )
         self.assertIn('validation_dialogue_context', readonly_info['prompt_text']['value'])
         self.assertIn('main_model.title_validation_agent', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_validation_agent', readonly_info['shared_transport']['value'])
         self.assertEqual(readonly_info['validation_context_messages_cap']['value'], 8)
         self.assertEqual(readonly_info['validation_context_message_chars']['value'], 420)
         self.assertIn('validation_decision', readonly_info['validated_output_contract']['value'])
@@ -1133,6 +1156,12 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             if section == 'main_model':
                 payload = dict(payload)
                 payload.pop('response_max_tokens', None)
+                payload.pop('referer_llm', None)
+                payload.pop('referer_arbiter', None)
+                payload.pop('referer_identity_extractor', None)
+                payload.pop('referer_resumer', None)
+                payload.pop('referer_stimmung_agent', None)
+                payload.pop('referer_validation_agent', None)
             existing_rows.append((section, payload))
 
         class FakeCursor:
@@ -1180,7 +1209,18 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(result['inserted_sections'], ())
         self.assertEqual(result['inserted_fields'], ())
         self.assertEqual(result['updated_sections'], ('main_model',))
-        self.assertEqual(result['updated_fields'], ('main_model.response_max_tokens',))
+        self.assertEqual(
+            result['updated_fields'],
+            (
+                'main_model.referer_llm',
+                'main_model.referer_arbiter',
+                'main_model.referer_identity_extractor',
+                'main_model.referer_resumer',
+                'main_model.referer_stimmung_agent',
+                'main_model.referer_validation_agent',
+                'main_model.response_max_tokens',
+            ),
+        )
 
         updated_payloads = [
             json.loads(params[2])
@@ -1188,6 +1228,8 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
         self.assertEqual(len(updated_payloads), 1)
+        self.assertEqual(updated_payloads[0]['referer_llm']['value'], config.OR_REFERER_LLM)
+        self.assertEqual(updated_payloads[0]['referer_llm']['origin'], 'db_seed')
         self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 1500)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
 
@@ -1861,10 +1903,31 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(result['source_reason'], 'validate_payload')
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['model']['ok'])
+        self.assertTrue(checks['referer_llm']['ok'])
+        self.assertTrue(checks['referer_validation_agent']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
         self.assertTrue(checks['api_key_runtime']['ok'])
         self.assertIn('env_fallback', checks['api_key_runtime']['detail'])
+
+    def test_validate_runtime_section_rejects_invalid_component_referer(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'main_model',
+                {
+                    'referer_validation_agent': {'value': 'notaurl'},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['referer_validation_agent']['ok'])
+        self.assertIn('notaurl', checks['referer_validation_agent']['detail'])
 
     def test_validate_runtime_section_accepts_candidate_main_model_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value

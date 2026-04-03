@@ -182,6 +182,12 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'model'): config.OR_MODEL,
         ('main_model', 'api_key'): config.OR_KEY,
         ('main_model', 'referer'): config.OR_REFERER,
+        ('main_model', 'referer_llm'): config.OR_REFERER_LLM,
+        ('main_model', 'referer_arbiter'): config.OR_REFERER_ARBITER,
+        ('main_model', 'referer_identity_extractor'): config.OR_REFERER_IDENTITY_EXTRACTOR,
+        ('main_model', 'referer_resumer'): config.OR_REFERER_RESUMER,
+        ('main_model', 'referer_stimmung_agent'): config.OR_REFERER_STIMMUNG_AGENT,
+        ('main_model', 'referer_validation_agent'): config.OR_REFERER_VALIDATION_AGENT,
         ('main_model', 'app_name'): config.OR_TITLE_BASE,
         ('main_model', 'title_llm'): config.OR_TITLE_LLM,
         ('main_model', 'title_arbiter'): config.OR_TITLE_ARBITER,
@@ -463,10 +469,10 @@ def _main_hermeneutical_runtime_bricks_text() -> str:
     )
 
 
-def _shared_openrouter_transport_text(title_field: str) -> str:
+def _shared_openrouter_transport_text(title_field: str, referer_field: str) -> str:
     return (
         "Transport OpenRouter partage via main_model: "
-        f"base_url + referer + api_key + {title_field}."
+        f"base_url + {referer_field} + api_key + {title_field}."
     )
 
 
@@ -611,7 +617,10 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
-                'value': _shared_openrouter_transport_text('main_model.title_stimmung_agent'),
+                'value': _shared_openrouter_transport_text(
+                    'main_model.title_stimmung_agent',
+                    'main_model.referer_stimmung_agent',
+                ),
                 'is_editable': False,
                 'source': 'runtime_contract',
             },
@@ -656,7 +665,10 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
-                'value': _shared_openrouter_transport_text('main_model.title_validation_agent'),
+                'value': _shared_openrouter_transport_text(
+                    'main_model.title_validation_agent',
+                    'main_model.referer_validation_agent',
+                ),
                 'is_editable': False,
                 'source': 'runtime_contract',
             },

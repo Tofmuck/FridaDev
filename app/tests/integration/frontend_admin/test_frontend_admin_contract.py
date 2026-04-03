@@ -209,7 +209,11 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('const TOKEN_KEY = "frida.adminToken";', admin_api_source)
         self.assertIn('headers.set("X-Admin-Token", token);', admin_api_source)
         self.assertIn('title_identity_extractor', admin_source)
+        self.assertIn('referer_identity_extractor', admin_source)
+        self.assertIn('referer_validation_agent', admin_source)
         self.assertIn("Titre extracteur d'identite", admin_source)
+        self.assertIn("Referer extracteur d'identite", admin_source)
+        self.assertIn("Referer validation", admin_source)
 
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
         missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)
@@ -527,6 +531,20 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('label: "Max tokens reponse"', source)
         self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', source)
         self.assertIn('integerFields: ["response_max_tokens"]', source_all)
+
+    def test_admin_js_exposes_editable_main_model_component_referers(self) -> None:
+        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+
+        self.assertIn('key: "referer_llm"', source)
+        self.assertIn('key: "referer_arbiter"', source)
+        self.assertIn('key: "referer_identity_extractor"', source)
+        self.assertIn('key: "referer_resumer"', source)
+        self.assertIn('key: "referer_stimmung_agent"', source)
+        self.assertIn('key: "referer_validation_agent"', source)
+        self.assertIn('label: "Referer LLM"', source)
+        self.assertIn('label: "Referer arbitre"', source)
+        self.assertIn('label: "Referer extracteur d\'identite"', source)
+        self.assertIn('label: "Referer validation"', source)
 
     def test_admin_state_module_uses_plain_object_slices_without_store_framework(self) -> None:
         source = (APP_DIR / "web" / "admin_state.js").read_text(encoding="utf-8")

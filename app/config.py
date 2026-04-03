@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 try:
     from dotenv import load_dotenv
@@ -45,6 +46,46 @@ OR_BASE = os.environ.get('OPENROUTER_BASE', 'https://openrouter.ai/api/v1').rstr
 OR_MODEL = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-5.1')
 OR_KEY = os.environ.get('OPENROUTER_API_KEY', '').strip()
 OR_REFERER = os.environ.get('OPENROUTER_REFERER', os.environ.get('OPENROUTER_SITE_URL', '')).strip()
+
+
+def _default_openrouter_component_referer(component_slug: str) -> str:
+    raw_base_referer = str(
+        os.environ.get('OPENROUTER_REFERER', os.environ.get('OPENROUTER_SITE_URL', ''))
+    ).strip()
+    parsed = urlparse(raw_base_referer)
+    if parsed.scheme in {'http', 'https'} and parsed.hostname:
+        hostname = parsed.hostname
+        if hostname.startswith('www.'):
+            hostname = hostname[4:]
+        if hostname:
+            return f'{parsed.scheme}://{component_slug}.{hostname}/'
+    return f'https://{component_slug}.frida-system.fr/'
+
+
+OR_REFERER_LLM = os.environ.get(
+    'OPENROUTER_REFERER_LLM',
+    _default_openrouter_component_referer('llm'),
+).strip() or _default_openrouter_component_referer('llm')
+OR_REFERER_ARBITER = os.environ.get(
+    'OPENROUTER_REFERER_ARBITER',
+    _default_openrouter_component_referer('arbiter'),
+).strip() or _default_openrouter_component_referer('arbiter')
+OR_REFERER_IDENTITY_EXTRACTOR = os.environ.get(
+    'OPENROUTER_REFERER_IDENTITY_EXTRACTOR',
+    _default_openrouter_component_referer('identity-extractor'),
+).strip() or _default_openrouter_component_referer('identity-extractor')
+OR_REFERER_RESUMER = os.environ.get(
+    'OPENROUTER_REFERER_RESUMER',
+    _default_openrouter_component_referer('resumer'),
+).strip() or _default_openrouter_component_referer('resumer')
+OR_REFERER_STIMMUNG_AGENT = os.environ.get(
+    'OPENROUTER_REFERER_STIMMUNG_AGENT',
+    _default_openrouter_component_referer('stimmung-agent'),
+).strip() or _default_openrouter_component_referer('stimmung-agent')
+OR_REFERER_VALIDATION_AGENT = os.environ.get(
+    'OPENROUTER_REFERER_VALIDATION_AGENT',
+    _default_openrouter_component_referer('validation-agent'),
+).strip() or _default_openrouter_component_referer('validation-agent')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE}/LLM').strip() or f'{OR_TITLE_BASE}/LLM'
 OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE}/Arbiter').strip() or f'{OR_TITLE_BASE}/Arbiter'

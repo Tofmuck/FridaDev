@@ -13,6 +13,38 @@ _KNOWN_PROVIDER_CALLERS = (
     'stimmung_agent',
     'validation_agent',
 )
+_PROVIDER_TITLE_FIELD_MAP = {
+    'llm': 'title_llm',
+    'arbiter': 'title_arbiter',
+    'identity_extractor': 'title_identity_extractor',
+    'resumer': 'title_resumer',
+    'stimmung_agent': 'title_stimmung_agent',
+    'validation_agent': 'title_validation_agent',
+}
+_PROVIDER_DEFAULT_TITLE_MAP = {
+    'llm': config.OR_TITLE_LLM,
+    'arbiter': config.OR_TITLE_ARBITER,
+    'identity_extractor': config.OR_TITLE_IDENTITY_EXTRACTOR,
+    'resumer': config.OR_TITLE_RESUMER,
+    'stimmung_agent': config.OR_TITLE_STIMMUNG_AGENT,
+    'validation_agent': config.OR_TITLE_VALIDATION_AGENT,
+}
+_PROVIDER_REFERER_FIELD_MAP = {
+    'llm': 'referer_llm',
+    'arbiter': 'referer_arbiter',
+    'identity_extractor': 'referer_identity_extractor',
+    'resumer': 'referer_resumer',
+    'stimmung_agent': 'referer_stimmung_agent',
+    'validation_agent': 'referer_validation_agent',
+}
+_PROVIDER_DEFAULT_REFERER_MAP = {
+    'llm': config.OR_REFERER_LLM,
+    'arbiter': config.OR_REFERER_ARBITER,
+    'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
+    'resumer': config.OR_REFERER_RESUMER,
+    'stimmung_agent': config.OR_REFERER_STIMMUNG_AGENT,
+    'validation_agent': config.OR_REFERER_VALIDATION_AGENT,
+}
 
 
 def _sanitize_encoding(text: str) -> str:
@@ -43,39 +75,44 @@ def _runtime_main_base_url() -> str:
     return str(payload.get('value') or config.OR_BASE).rstrip('/')
 
 
-def _runtime_main_referer() -> str:
-    view = _runtime_main_view()
-    payload = view.payload.get('referer') or {}
-    return str(payload.get('value') or config.OR_REFERER).strip()
-
-
 def _runtime_main_title(caller: str) -> str:
     caller_key = normalize_provider_caller(caller)
-    title_field_map = {
-        "llm": "title_llm",
-        "arbiter": "title_arbiter",
-        "identity_extractor": "title_identity_extractor",
-        "resumer": "title_resumer",
-        "stimmung_agent": "title_stimmung_agent",
-        "validation_agent": "title_validation_agent",
-    }
-    title_default_map = {
-        "llm": config.OR_TITLE_LLM,
-        "arbiter": config.OR_TITLE_ARBITER,
-        "identity_extractor": config.OR_TITLE_IDENTITY_EXTRACTOR,
-        "resumer": config.OR_TITLE_RESUMER,
-        "stimmung_agent": config.OR_TITLE_STIMMUNG_AGENT,
-        "validation_agent": config.OR_TITLE_VALIDATION_AGENT,
-    }
     view = _runtime_main_view()
-    field_name = title_field_map.get(caller_key, "title_llm")
+    field_name = _PROVIDER_TITLE_FIELD_MAP.get(caller_key, 'title_llm')
     payload = view.payload.get(field_name) or {}
     title = str(payload.get('value') or '').strip()
-    return title or title_default_map.get(caller_key, config.OR_TITLE_LLM)
+    return title or _PROVIDER_DEFAULT_TITLE_MAP.get(caller_key, config.OR_TITLE_LLM)
+
+
+def _runtime_main_referer(caller: str) -> str:
+    caller_key = normalize_provider_caller(caller)
+    view = _runtime_main_view()
+    field_name = _PROVIDER_REFERER_FIELD_MAP.get(caller_key, 'referer_llm')
+    component_payload = view.payload.get(field_name)
+    component_referer = str((component_payload or {}).get('value') or '').strip()
+    if component_referer:
+        return component_referer
+
+    default_component_referer = str(
+        _PROVIDER_DEFAULT_REFERER_MAP.get(caller_key, config.OR_REFERER_LLM) or ''
+    ).strip()
+    if component_payload is None and default_component_referer:
+        return default_component_referer
+
+    legacy_payload = view.payload.get('referer') or {}
+    legacy_referer = str(legacy_payload.get('value') or '').strip()
+    if legacy_referer:
+        return legacy_referer
+
+    return default_component_referer or str(config.OR_REFERER or '').strip()
 
 
 def resolve_provider_title(caller: str = "llm") -> str:
     return _runtime_main_title(caller)
+
+
+def resolve_provider_referer(caller: str = "llm") -> str:
+    return _runtime_main_referer(caller)
 
 
 def normalize_provider_caller(caller: Any) -> str:
@@ -116,7 +153,7 @@ def or_headers(caller: str = "llm") -> dict:
         "Authorization": f"Bearer {_runtime_main_api_key()}",
         INTERNAL_PROVIDER_CALLER_HEADER: caller_key,
     }
-    referer = _runtime_main_referer()
+    referer = resolve_provider_referer(caller_key)
     if referer:
         h["HTTP-Referer"] = referer
     title = _runtime_main_title(caller_key)

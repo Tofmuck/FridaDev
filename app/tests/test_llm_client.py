@@ -40,6 +40,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['Authorization'], 'Bearer sk-db-runtime-key')
         self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_ARBITER)
         self.assertEqual(headers['X-Title'], config.OR_TITLE_ARBITER)
+        self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_ARBITER)
 
     def test_or_headers_uses_distinct_identity_extractor_title(self) -> None:
         original_secret = llm_client.runtime_settings.get_runtime_secret_value
@@ -65,6 +66,12 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
                         'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
+                        'referer_arbiter': {'value': 'https://arbiter.frida-system.fr/', 'origin': 'db'},
+                        'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'origin': 'db'},
+                        'referer_resumer': {'value': 'https://resumer.frida-system.fr/', 'origin': 'db'},
+                        'referer_stimmung_agent': {'value': 'https://stimmung-agent.frida-system.fr/', 'origin': 'db'},
+                        'referer_validation_agent': {'value': 'https://validation-agent.frida-system.fr/', 'origin': 'db'},
                         'app_name': {'value': 'FridaDev', 'origin': 'db'},
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
@@ -90,6 +97,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
 
         self.assertEqual(headers['X-OpenRouter-Title'], 'FridaDev/IdentityExtractor')
         self.assertEqual(headers['X-Title'], 'FridaDev/IdentityExtractor')
+        self.assertEqual(headers['HTTP-Referer'], 'https://identity-extractor.frida-system.fr/')
 
     def test_or_headers_keeps_internal_caller_marker_local(self) -> None:
         headers = llm_client.or_headers(caller='validation_agent')
@@ -97,6 +105,32 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'validation_agent')
         self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_VALIDATION_AGENT)
         self.assertEqual(headers['X-Title'], config.OR_TITLE_VALIDATION_AGENT)
+        self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_VALIDATION_AGENT)
+
+    def test_or_headers_uses_distinct_component_referers_for_all_known_callers(self) -> None:
+        observed = {
+            caller: llm_client.or_headers(caller=caller)['HTTP-Referer']
+            for caller in (
+                'llm',
+                'arbiter',
+                'identity_extractor',
+                'resumer',
+                'stimmung_agent',
+                'validation_agent',
+            )
+        }
+
+        self.assertEqual(
+            observed,
+            {
+                'llm': config.OR_REFERER_LLM,
+                'arbiter': config.OR_REFERER_ARBITER,
+                'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
+                'resumer': config.OR_REFERER_RESUMER,
+                'stimmung_agent': config.OR_REFERER_STIMMUNG_AGENT,
+                'validation_agent': config.OR_REFERER_VALIDATION_AGENT,
+            },
+        )
 
     def test_or_headers_keeps_env_fallback_when_db_secret_is_missing(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
@@ -147,6 +181,41 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             {'X-Title': config.OR_TITLE_VALIDATION_AGENT},
         )
 
+    def test_resolve_provider_referer_prefers_component_field_and_falls_back_to_shared_then_seed(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'referer': {'value': 'https://shared.frida-system.fr/', 'origin': 'db'},
+                        'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
+                        'referer_validation_agent': {'value': '', 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            self.assertEqual(
+                llm_client.resolve_provider_referer('llm'),
+                'https://llm.frida-system.fr/',
+            )
+            self.assertEqual(
+                llm_client.resolve_provider_referer('validation_agent'),
+                'https://shared.frida-system.fr/',
+            )
+            self.assertEqual(
+                llm_client.resolve_provider_referer('stimmung_agent'),
+                config.OR_REFERER_STIMMUNG_AGENT,
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
     def test_build_payload_uses_runtime_main_model_from_db_when_present(self) -> None:
         original = llm_client.runtime_settings.get_main_model_settings
 
@@ -160,6 +229,12 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
                         'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
+                        'referer_arbiter': {'value': 'https://arbiter.frida-system.fr/', 'origin': 'db'},
+                        'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'origin': 'db'},
+                        'referer_resumer': {'value': 'https://resumer.frida-system.fr/', 'origin': 'db'},
+                        'referer_stimmung_agent': {'value': 'https://stimmung-agent.frida-system.fr/', 'origin': 'db'},
+                        'referer_validation_agent': {'value': 'https://validation-agent.frida-system.fr/', 'origin': 'db'},
                         'app_name': {'value': 'FridaDev', 'origin': 'db'},
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
@@ -278,6 +353,12 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
                         'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
+                        'referer_arbiter': {'value': 'https://arbiter.frida-system.fr/', 'origin': 'db'},
+                        'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'origin': 'db'},
+                        'referer_resumer': {'value': 'https://resumer.frida-system.fr/', 'origin': 'db'},
+                        'referer_stimmung_agent': {'value': 'https://stimmung-agent.frida-system.fr/', 'origin': 'db'},
+                        'referer_validation_agent': {'value': 'https://validation-agent.frida-system.fr/', 'origin': 'db'},
                         'app_name': {'value': 'FridaDev', 'origin': 'db'},
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},

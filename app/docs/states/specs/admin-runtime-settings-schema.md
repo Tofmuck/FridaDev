@@ -109,10 +109,19 @@ Valeurs d'`origin` retenues :
 | `model` | `text` | non | `OPENROUTER_MODEL` |
 | `api_key` | `text` | oui | `OPENROUTER_API_KEY` |
 | `referer` | `text` | non | `OPENROUTER_REFERER` |
+| `referer_llm` | `text` | non | `OPENROUTER_REFERER_LLM` |
+| `referer_arbiter` | `text` | non | `OPENROUTER_REFERER_ARBITER` |
+| `referer_identity_extractor` | `text` | non | `OPENROUTER_REFERER_IDENTITY_EXTRACTOR` |
+| `referer_resumer` | `text` | non | `OPENROUTER_REFERER_RESUMER` |
+| `referer_stimmung_agent` | `text` | non | `OPENROUTER_REFERER_STIMMUNG_AGENT` |
+| `referer_validation_agent` | `text` | non | `OPENROUTER_REFERER_VALIDATION_AGENT` |
 | `app_name` | `text` | non | `OPENROUTER_APP_NAME` |
 | `title_llm` | `text` | non | `OPENROUTER_TITLE_LLM` |
 | `title_arbiter` | `text` | non | `OPENROUTER_TITLE_ARBITER` |
+| `title_identity_extractor` | `text` | non | `OPENROUTER_TITLE_IDENTITY_EXTRACTOR` |
 | `title_resumer` | `text` | non | `OPENROUTER_TITLE_RESUMER` |
+| `title_stimmung_agent` | `text` | non | `OPENROUTER_TITLE_STIMMUNG_AGENT` |
+| `title_validation_agent` | `text` | non | `OPENROUTER_TITLE_VALIDATION_AGENT` |
 | `temperature` | `float` | non | valeur par defaut `/api/chat` = `0.4` |
 | `top_p` | `float` | non | valeur par defaut `/api/chat` = `1.0` |
 | `response_max_tokens` | `int` | non | valeur par defaut `/api/chat` = `1500` |
