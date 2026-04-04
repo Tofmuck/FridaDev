@@ -556,6 +556,13 @@ def chat_response(
         augmented_system,
         hermeneutic_judgment_block,
     )
+    web_reading_guard_block = chat_prompt_context.build_web_reading_guard_block(
+        web_input=web_payload,
+    )
+    augmented_system = chat_prompt_context.inject_web_reading_guard_block(
+        augmented_system,
+        web_reading_guard_block,
+    )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
     prompt_messages = conv_store_module.build_prompt_messages(

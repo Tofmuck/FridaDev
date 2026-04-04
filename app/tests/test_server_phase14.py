@@ -1344,6 +1344,94 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_injects_runtime_derived_web_reading_guard_into_system_prompt(self) -> None:
+        conversation = {
+            'id': 'conv-web-guard-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok web guard'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        self.server.ws.build_context_payload = lambda _user_msg: {
+            'enabled': True,
+            'status': 'ok',
+            'reason_code': None,
+            'original_user_message': 'Bonjour',
+            'query': 'query test',
+            'results_count': 1,
+            'explicit_url_detected': True,
+            'explicit_url': 'https://example.com/article',
+            'read_state': 'page_not_read_snippet_fallback',
+            'primary_source_kind': 'explicit_url',
+            'primary_read_attempted': True,
+            'primary_read_status': 'empty',
+            'fallback_used': True,
+            'collection_path': 'explicit_url_fallback_search',
+            'runtime': {
+                'searxng_results': 5,
+                'crawl4ai_top_n': 2,
+                'crawl4ai_max_chars': 1500,
+            },
+            'sources': [
+                {
+                    'rank': 1,
+                    'title': 'Titre source',
+                    'url': 'https://example.com/article',
+                    'source_domain': 'example.com',
+                    'search_snippet': 'Snippet source',
+                    'used_in_prompt': True,
+                    'used_content_kind': 'search_snippet',
+                    'content_used': 'Snippet source',
+                    'truncated': False,
+                    'source_origin': 'explicit_url',
+                    'is_primary_source': True,
+                    'crawl_status': 'empty',
+                }
+            ],
+            'context_block': 'WEB CONTEXT',
+        }
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.conv_store.build_prompt_messages = lambda conversation_arg, *_args, **_kwargs: [
+            {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+            {'role': 'user', 'content': 'Bonjour'},
+        ]
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'web_search': True})
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        prompt_messages = observed_state['payload_messages']
+        self.assertEqual(prompt_messages[0]['role'], 'system')
+        self.assertIn('[GARDE DE LECTURE WEB]', prompt_messages[0]['content'])
+        self.assertIn('read_state: page_not_read_snippet_fallback.', prompt_messages[0]['content'])
+        self.assertIn("La page cible n'a pas ete lue directement.", prompt_messages[0]['content'])
+        self.assertIn("je l'ai sous les yeux", prompt_messages[0]['content'])
+        self.assertEqual(prompt_messages[1]['role'], 'user')
+        self.assertEqual(prompt_messages[1]['content'], 'WEB CONTEXT\n\nQuestion : Bonjour')
+
     def test_api_chat_emits_hermeneutic_node_insertion_observability_payload(self) -> None:
         observed_events: list[dict] = []
         conversation = {

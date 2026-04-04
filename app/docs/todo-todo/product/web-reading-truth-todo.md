@@ -36,7 +36,8 @@ Etat de cette tranche:
   - `fallback_used`
   - `collection_path`
 - dans le chemin fallback, l'URL explicite reste maintenant preservee en tete de `sources[]` comme source primaire nominale, avec dedup si la recherche retourne aussi cette meme URL;
-- les autres sous-chantiers restent ouverts: `read_state` complet, garde anti-mensonge reponse, garde memoire durable, observability complete.
+- le runtime produit maintenant un `read_state` explicite pour la page cible;
+- les autres sous-chantiers restent ouverts: garde memoire durable, observability complete.
 
 ## Objectif produit
 
@@ -67,7 +68,7 @@ Hors scope de ce mini-chantier:
 - [x] Une URL explicite fournie par l'utilisateur est traitee comme source primaire prioritaire.
 - [x] Le runtime produit un `read_state` veridique pour la page cible.
 - [x] Un `search_snippet` n'est plus confondu avec une lecture de page.
-- [ ] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
+- [x] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
 - [ ] Une pretention de lecture non soutenue ne devient plus une trace durable cote Frida.
 - [ ] Les logs de production permettent de diagnostiquer le cas sans replay manuel du code.
 
@@ -81,9 +82,9 @@ Statuts cibles minimaux a cadrer:
 - [x] `page_not_read_snippet_fallback`
 
 Contraintes de vocabulaire:
-- [ ] definir ce qui autorise une formulation du type "j'ai lu la page";
-- [ ] definir ce qui n'autorise qu'une formulation du type "j'ai trouve un resultat / un extrait / un snippet";
-- [ ] expliciter qu'un snippet injecte n'est pas une preuve de lecture primaire.
+- [x] definir ce qui autorise une formulation du type "j'ai lu la page";
+- [x] definir ce qui n'autorise qu'une formulation du type "j'ai trouve un resultat / un extrait / un snippet";
+- [x] expliciter qu'un snippet injecte n'est pas une preuve de lecture primaire.
 
 ## Sous-chantier 1 - Statut de lecture web veridique
 
@@ -115,17 +116,23 @@ Contraintes de vocabulaire:
 
 ## Sous-chantier 3 - Garde anti-mensonge dans la reponse
 
-- [ ] Interdire les formulations de lecture directe si `read_state` n'est pas compatible.
-- [ ] Cadrer explicitement des formulations a interdire quand la page n'a pas ete lue:
+- [x] Interdire les formulations de lecture directe si `read_state` n'est pas compatible.
+- [x] Cadrer explicitement des formulations a interdire quand la page n'a pas ete lue:
   - `je l'ai sous les yeux`
   - `j'ai lu l'article`
   - `dans le texte tu dis ...`
-- [ ] Cadrer explicitement les formulations encore permises:
+- [x] Cadrer explicitement les formulations encore permises:
   - resultat trouve;
   - extrait disponible;
   - snippet;
   - absence de lecture directe.
-- [ ] Eviter le faux bon correctif "prompt only" de surface sans signal runtime veridique.
+- [x] Eviter le faux bon correctif "prompt only" de surface sans signal runtime veridique.
+- garde appliquee:
+  - bloc system runtime derive de `read_state`, injecte avant l'appel LLM;
+  - `page_read` autorise une formulation de lecture directe;
+  - `page_partially_read` impose une nuance de lecture partielle/tronquee;
+  - `page_not_read_snippet_fallback` interdit la pretention de lecture directe et n'autorise qu'un langage de resultat/extrait/snippet;
+  - `page_not_read_crawl_empty` et `page_not_read_error` imposent d'assumer l'absence de lecture directe.
 
 ## Sous-chantier 4 - Garde anti-mensonge en memoire durable
 

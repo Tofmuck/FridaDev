@@ -120,6 +120,69 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertTrue(augmented.endswith('Posture finale validee: clarify.'))
         self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[JUGEMENT HERMENEUTIQUE]'))
 
+    def test_build_web_reading_guard_block_for_snippet_fallback_forbids_direct_reading_claims(self) -> None:
+        block = chat_prompt_context.build_web_reading_guard_block(
+            web_input={
+                'explicit_url': 'https://example.com/article',
+                'read_state': 'page_not_read_snippet_fallback',
+            }
+        )
+
+        self.assertIn('[GARDE DE LECTURE WEB]', block)
+        self.assertIn('read_state: page_not_read_snippet_fallback.', block)
+        self.assertIn("La page cible n'a pas ete lue directement.", block)
+        self.assertIn("je l'ai sous les yeux", block)
+        self.assertIn("j'ai lu l'article", block)
+        self.assertIn("je n'ai qu'un extrait/snippet", block)
+
+    def test_build_web_reading_guard_block_for_crawl_empty_forbids_direct_reading_claims(self) -> None:
+        block = chat_prompt_context.build_web_reading_guard_block(
+            web_input={
+                'explicit_url': 'https://example.com/article',
+                'read_state': 'page_not_read_crawl_empty',
+            }
+        )
+
+        self.assertIn('read_state: page_not_read_crawl_empty.', block)
+        self.assertIn('crawl vide', block)
+        self.assertIn("je l'ai sous les yeux", block)
+        self.assertIn("Tu dois assumer explicitement que tu n'as pas pu lire directement la page.", block)
+
+    def test_build_web_reading_guard_block_for_page_read_allows_direct_reading(self) -> None:
+        block = chat_prompt_context.build_web_reading_guard_block(
+            web_input={
+                'explicit_url': 'https://example.com/article',
+                'read_state': 'page_read',
+            }
+        )
+
+        self.assertIn('read_state: page_read.', block)
+        self.assertIn('La lecture directe de cette page est soutenue par le runtime.', block)
+        self.assertIn('Tu peux parler de lecture directe', block)
+        self.assertNotIn("je l'ai sous les yeux", block)
+
+    def test_build_web_reading_guard_block_for_partial_read_requires_nuance(self) -> None:
+        block = chat_prompt_context.build_web_reading_guard_block(
+            web_input={
+                'explicit_url': 'https://example.com/article',
+                'read_state': 'page_partially_read',
+            }
+        )
+
+        self.assertIn('read_state: page_partially_read.', block)
+        self.assertIn("Tu peux parler d'une lecture partielle ou d'un extrait tronque.", block)
+        self.assertIn("N'affirme pas une lecture integrale, exhaustive ou detaillee de toute la page.", block)
+
+    def test_inject_web_reading_guard_block_appends_after_augmented_system(self) -> None:
+        augmented = chat_prompt_context.inject_web_reading_guard_block(
+            'BASE SYSTEM',
+            '[GARDE DE LECTURE WEB]\nread_state: page_not_read_snippet_fallback.',
+        )
+
+        self.assertTrue(augmented.startswith('BASE SYSTEM'))
+        self.assertIn('[GARDE DE LECTURE WEB]', augmented)
+        self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[GARDE DE LECTURE WEB]'))
+
     def test_apply_augmented_system_overwrites_first_system_message_only(self) -> None:
         conversation = {
             'messages': [
