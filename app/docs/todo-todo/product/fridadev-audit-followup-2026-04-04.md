@@ -1,0 +1,48 @@
+# FridaDev - Suivi d'audit complet du 2026-04-04
+
+Objectif: transformer l'audit Claude Opus 4.6 et sa revalidation SSH en checklist d'execution claire, en separant ce qui a ete bien vu, ce qui a ete vu trop legerement, et ce qui doit etre prouve avant cloture.
+
+Sources de travail retenues:
+- [x] audit Claude Opus 4.6 du 2026-04-04
+- [x] revalidation SSH sur `/home/tof/docker-stacks/fridadev`
+- [x] runtime live `127.0.0.1:8093`
+- [x] suite complete `python -m unittest discover -s tests -p "test_*.py"`
+
+## 1. Findings confirmes apres revalidation
+
+- [ ] Realigner `app/docs/todo-todo/memory/hermeneutical-add-todo.md` avec le runtime live deja en `mode=enforced_all`, au minimum sur les Steps 2-4 de la Phase 13.
+- [ ] Decider quoi faire des criteres d'acceptation finaux encore ouverts dans `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: les mesurer a posteriori, les reformuler, ou les deplacer si le rollout reel a deja saute l'etape progressive documentee.
+- [ ] Corriger la verite temporelle du stream dans `app/core/chat_llm_flow.py`: en chemin stream, `updated_at` ne doit plus etre capture avant la fin effective de la reponse.
+- [ ] Donner a `app/tools/web_search.py` un caller transport dedie pour la reformulation web, distinct du caller principal `llm`, afin de separer proprement observabilite, tokens et couts provider.
+- [ ] Extraire les constantes `READ_STATE_*` dans une source de verite unique puis migrer `app/tools/web_search.py`, `app/core/chat_prompt_context.py` et `app/memory/hermeneutics_policy.py` vers cet import commun.
+- [ ] Remplacer le couplage prive a `llm_module._sanitize_encoding(...)` dans `app/core/chat_llm_flow.py` par une API publique explicite ou un wrapper stable.
+- [ ] Verifier sur au moins une conversation longue reelle si l'arbiter memoire garde parfois des traces utiles, ou si le pattern recent `raw>0, kept=0` traduit un probleme de reglage, de produit, ou seulement d'echantillon de test.
+
+## 2. Ce que l'audit Claude a vu trop legerement ou trop globalement
+
+- [ ] Requalifier explicitement les `5 failures` de la suite complete par familles exactes, sans continuer a les presenter comme un seul probleme d'isolation DB.
+- [ ] Corriger l'isolation du test `app/tests/unit/logs/test_chat_turn_logger_phase2.py::test_build_identity_block_emits_identities_read_for_static_sources`, en couvrant le vrai chemin `_select_effective_dynamic_entries()` / `_get_identities()` au lieu du seul monkeypatch `_build_dynamic_lines`.
+- [ ] Corriger ou mettre a jour `app/tests/test_conv_store_json_sync_inventory_phase6.py::test_sync_helpers_are_documented_in_repo_audit`, puis remettre en coherence `app/docs/todo-done/audits/fridadev_repo_audit.md` si le test reste normatif.
+- [ ] Corriger ou recadrer `app/tests/test_logging_conventions_phase8.py::test_repo_has_no_legacy_logger_token`, en decidant explicitement si les archives et traces historiques doivent rester hors perimetre du grep ou etre nettoyees.
+- [ ] Corriger ou mettre a jour `app/tests/test_phase4_transversal.py::test_frontend_chat_payload_contract_no_longer_serializes_history`, dont l'assertion de signature `sendToServer(...)` est stale par rapport a `app/web/app.js`.
+- [ ] Corriger ou mettre a jour `app/tests/test_phase4_transversal.py::test_run_and_compose_runtime_binding_contract_is_unchanged`, dont l'assertion `exec python3 server.py` est stale par rapport a `app/run.sh` et au wrapper `PYTHON_BIN`.
+- [ ] Rejouer la suite complete `python -m unittest discover -s tests -p "test_*.py"` jusqu'a `0 failure`, puis consigner la preuve de retour au vert.
+
+## 3. Restes d'audit importants a ne pas perdre
+
+- [ ] Corriger le comptage stale `58` -> `59` fichiers `test_*.py` dans `app/docs/states/project/Frida-State-french-03-04-26.md`, `app/docs/states/project/Frida-State-english-03-04-26.md` et `app/docs/todo-done/audits/fridadev_repo_audit.md`.
+- [ ] Verifier si les reliquats ouverts `Verifier en conditions reelles...` et `Monitorer le surcout tokens + latence...` dans `app/docs/todo-todo/memory/hermeneutical-add-todo.md` doivent rester dans la roadmap active, etre requalifies, ou etre deplaces dans un suivi post-rollout plus honnete.
+- [ ] Verifier le bruit `admin_log_write_error err=[Errno 13] Permission denied: '/app'` observe pendant `unittest discover`, et decider s'il s'agit d'un bruit acceptable de test, d'une mauvaise isolation, ou d'un vrai probleme de chemin/logs.
+- [ ] Verifier le `ResourceWarning` sur `app/web/hermeneutic-admin.html` observe pendant la suite complete, puis corriger la fermeture de ressource ou recadrer le test qui la laisse ouverte.
+
+## 4. Idees alignees avec Frida a arbitrer apres stabilisation
+
+- [ ] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final.
+- [ ] Ajouter dans le dashboard hermeneutique une indication `mode depuis` / `derniere bascule` pour rendre le rollout lisible sans replay documentaire manuel.
+
+## 5. Condition de cloture de ce TODO
+
+- [ ] Les points confirmes de la section 1 sont traites ou explicitement reclasses.
+- [ ] Les points trop legers ou incomplets de la section 2 sont requalifies avec preuves exactes.
+- [ ] La suite complete du repo revient a `0 failure` sur le perimetre retenu.
+- [ ] Les docs actives et l'etat runtime racontent enfin la meme histoire.

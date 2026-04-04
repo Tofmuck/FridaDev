@@ -42,6 +42,7 @@ Notes:
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
+- roadmap ouverte follow-up audit complet 2026-04-04: `todo-todo/product/fridadev-audit-followup-2026-04-04.md`
 - note archivee verite de lecture web: `todo-done/notes/web-reading-truth-todo.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
