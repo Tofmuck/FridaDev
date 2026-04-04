@@ -145,7 +145,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(spec.value_type, 'int')
         self.assertFalse(spec.is_secret)
         self.assertFalse(spec.seed_from_env)
-        self.assertEqual(spec.seed_default, 1500)
+        self.assertEqual(spec.seed_default, 8192)
 
     def test_main_model_includes_identity_extractor_title_field(self) -> None:
         spec = runtime_settings.get_field_spec('main_model', 'title_identity_extractor')
@@ -358,7 +358,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(bundle.payload['model']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['temperature']['origin'], 'db_seed')
         self.assertEqual(bundle.payload['response_max_tokens']['origin'], 'db_seed')
-        self.assertEqual(bundle.payload['response_max_tokens']['value'], 1500)
+        self.assertEqual(bundle.payload['response_max_tokens']['value'], 8192)
         self.assertEqual(bundle.payload['api_key']['origin'], 'env_seed')
 
     def test_get_unseeded_sections_uses_missing_rows_as_signal(self) -> None:
@@ -1230,7 +1230,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(len(updated_payloads), 1)
         self.assertEqual(updated_payloads[0]['referer_llm']['value'], config.OR_REFERER_LLM)
         self.assertEqual(updated_payloads[0]['referer_llm']['origin'], 'db_seed')
-        self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 1500)
+        self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 8192)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
 
     def test_cache_can_be_invalidated(self) -> None:
@@ -1383,7 +1383,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         normalized = runtime_settings.normalize_admin_patch_payload(
             'main_model',
             {
-                'response_max_tokens': {'value': 4096},
+                'response_max_tokens': {'value': 8192},
             },
         )
 
@@ -1391,7 +1391,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             normalized,
             {
                 'response_max_tokens': {
-                    'value': 4096,
+                    'value': 8192,
                     'is_secret': False,
                     'origin': 'admin_ui',
                 },
@@ -1628,7 +1628,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             view = runtime_settings.update_runtime_section(
                 'main_model',
                 {
-                    'response_max_tokens': {'value': 4096},
+                    'response_max_tokens': {'value': 8192},
                 },
                 updated_by='phase12-test',
                 fetcher=lambda: {},
@@ -1645,12 +1645,12 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             observed['dsn'],
             'postgresql://bootstrap-user:bootstrap-pass@bootstrap-host/bootstrap-db',
         )
-        self.assertEqual(view.payload['response_max_tokens']['value'], 4096)
+        self.assertEqual(view.payload['response_max_tokens']['value'], 8192)
         self.assertEqual(view.payload['response_max_tokens']['origin'], 'admin_ui')
         payload_after = observed['params'][1][2]
         history_after = observed['params'][2][3]
-        self.assertIn('"response_max_tokens": {"value": 4096, "is_secret": false, "origin": "admin_ui"}', payload_after)
-        self.assertIn('"response_max_tokens": {"value": 4096, "is_secret": false, "origin": "admin_ui"}', history_after)
+        self.assertIn('"response_max_tokens": {"value": 8192, "is_secret": false, "origin": "admin_ui"}', payload_after)
+        self.assertIn('"response_max_tokens": {"value": 8192, "is_secret": false, "origin": "admin_ui"}', history_after)
 
     def test_backfill_runtime_secrets_from_env_encrypts_env_secrets_without_persisting_clear_text(self) -> None:
         observed = {

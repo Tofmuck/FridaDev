@@ -124,7 +124,13 @@ Valeurs d'`origin` retenues :
 | `title_validation_agent` | `text` | non | `OPENROUTER_TITLE_VALIDATION_AGENT` |
 | `temperature` | `float` | non | valeur par defaut `/api/chat` = `0.4` |
 | `top_p` | `float` | non | valeur par defaut `/api/chat` = `1.0` |
-| `response_max_tokens` | `int` | non | valeur par defaut `/api/chat` = `1500` |
+| `response_max_tokens` | `int` | non | valeur par defaut `/api/chat` = `8192` |
+
+Notes:
+
+- Pour la surface chat principale first-party (`/`), `main_model.response_max_tokens` est la source de verite du budget de reponse.
+- Le frontend principal n'envoie plus de surcharge silencieuse `max_tokens`.
+- L'override `max_tokens` de `/api/chat` reste un contrat d'API de compatibilite pour les clients externes explicites.
 
 ### `arbiter_model`
 

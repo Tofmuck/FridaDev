@@ -46,11 +46,12 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('@app.get("/admin")', source)
         self.assertIn('return send_from_directory(app.static_folder, "admin.html")', source)
 
-    def test_session_storage_drops_sampling_fields(self) -> None:
+    def test_main_front_no_longer_persists_legacy_max_tokens_session_override(self) -> None:
         source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn('localStorage.setItem("frida.settings", JSON.stringify(cfg));', source)
-        self.assertIn("max_tokens: Number(max_tokens.value)", source)
+        self.assertIn('localStorage.removeItem("frida.settings");', source)
+        self.assertNotIn('localStorage.setItem("frida.settings", JSON.stringify(cfg));', source)
+        self.assertNotIn('localStorage.getItem("frida.settings")', source)
         self.assertNotIn("temperature: Number(temperature.value)", source)
         self.assertNotIn("top_p: Number(top_p.value)", source)
         self.assertNotIn("cfg.temperature", source)
@@ -59,10 +60,11 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("top_p.value", source)
         self.assertNotIn("syncRangeBadges", source)
 
-    def test_chat_request_keeps_session_only_controls(self) -> None:
+    def test_chat_request_no_longer_sends_first_party_max_tokens_override(self) -> None:
         source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn("max_tokens: cfg.max_tokens,", source)
+        self.assertNotIn("max_tokens: cfg.max_tokens,", source)
+        self.assertNotIn("const currentSettings = () =>", source)
         self.assertNotIn("system: cfg.system,", source)
         self.assertNotIn("MAX_CONTEXT_MESSAGES", source)
         self.assertNotIn("const SYSTEM_PROMPT =", source)
@@ -83,17 +85,17 @@ class AppPhase8Tests(unittest.TestCase):
             index_source,
         )
 
-    def test_session_panel_requalifies_sampling_and_max_tokens(self) -> None:
+    def test_session_panel_points_main_llm_response_budget_to_admin_runtime(self) -> None:
         source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
 
         self.assertIn("<h3>Reglages de session</h3>", source)
         self.assertIn("`temperature` et `top_p` sont maintenant portes par la configuration globale des modeles dans l'admin.", source)
-        self.assertIn("Reglage de session local, hors admin V1.", source)
+        self.assertIn("Le budget de reponse du LLM principal est maintenant porte par <code>main_model.response_max_tokens</code> dans l'admin.", source)
         self.assertNotIn('id="temperature"', source)
         self.assertNotIn('id="temperatureVal"', source)
         self.assertNotIn('id="top_p"', source)
         self.assertNotIn('id="toppVal"', source)
-        self.assertIn('id="max_tokens"', source)
+        self.assertNotIn('id="max_tokens"', source)
         self.assertNotIn('id="system"', source)
         self.assertIn("Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.", source)
 

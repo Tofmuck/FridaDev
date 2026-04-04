@@ -1363,7 +1363,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         payload = event['payload_json']
         self.assertEqual(event['status'], 'ok')
         self.assertTrue(payload['insertion_point_reached'])
-        self.assertEqual(payload['mode'], 'shadow')
+        self.assertEqual(payload['mode'], str(self.server.config.HERMENEUTIC_MODE))
         self.assertTrue(payload['inputs']['time']['present'])
         self.assertEqual(payload['inputs']['time']['timezone'], str(self.server.config.FRIDA_TIMEZONE))
         self.assertTrue(payload['inputs']['time']['day_part_class'])

@@ -89,7 +89,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('title_validation_agent', 'text', env_var='OPENROUTER_TITLE_VALIDATION_AGENT'),
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.4),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
-            FieldSpec('response_max_tokens', 'int', seed_from_env=False, seed_default=1500),
+            FieldSpec('response_max_tokens', 'int', seed_from_env=False, seed_default=8192),
         ),
     ),
     'arbiter_model': SectionSpec(

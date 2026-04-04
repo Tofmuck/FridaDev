@@ -34,9 +34,9 @@
       updateWebSearchBtn();
     });
   }
-
-  // Settings popover
-  const max_tokens = $("#max_tokens");
+  try {
+    localStorage.removeItem("frida.settings");
+  } catch {}
   // ---- Helpers
   const fmtDateFR = (d = new Date()) =>
     d.toLocaleDateString("fr-FR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -88,22 +88,6 @@
 
     scrollToBottom(true);
     return { bubble, byline: by };
-  };
-
-  const saveSettings = () => {
-    const cfg = {
-      max_tokens: Number(max_tokens.value)
-    };
-    localStorage.setItem("frida.settings", JSON.stringify(cfg));
-  };
-
-  const loadSettings = () => {
-    const raw = localStorage.getItem("frida.settings");
-    if (!raw) return;
-    try {
-      const cfg = JSON.parse(raw);
-      if (typeof cfg.max_tokens === "number") max_tokens.value = cfg.max_tokens;
-    } catch {}
   };
 
   const setHero = async () => {
@@ -584,12 +568,6 @@
     saveThreads([...getThreads()]);
   };
 
-  [max_tokens].forEach(el => {
-    el.addEventListener("input", () => {
-      saveSettings();
-    });
-  });
-
   // ---- Nouveau chat
   newChatBtn.addEventListener("click", () => { void newThread(); });
 
@@ -607,8 +585,7 @@
     let assistantText = "";
 
     try {
-      const cfg = currentSettings();
-      const reply = await sendToServer(text, cfg, (chunk) => {
+      const reply = await sendToServer(text, (chunk) => {
         if (!chunk) return;
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
@@ -635,19 +612,14 @@
     }
   });
 
-  const currentSettings = () => ({
-    max_tokens: Number(max_tokens.value),
-  });
-
   // ---- Endpoint réseau
-  async function sendToServer(userText, cfg, onChunk, threadId){
+  async function sendToServer(userText, onChunk, threadId){
     const thread = threadId ? getThreadById(threadId) : null;
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: userText,
-        max_tokens: cfg.max_tokens,
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
         web_search: webSearchEnabled,
@@ -720,8 +692,6 @@
   }
 
   // ---- Init
-  loadSettings();
-
   const bootstrapApp = async () => {
     const loaded = await refreshThreadsFromServer({ keepSelection: false });
     renderThreads();

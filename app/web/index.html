@@ -69,10 +69,9 @@
         Le prompt systeme global est maintenant porte par le backend et visible dans l'admin.
       </p>
 
-      <label>Max tokens
-        <input type="number" id="max_tokens" min="64" max="4096" value="1500" />
-        <span>Reglage de session local, hors admin V1.</span>
-      </label>
+      <p class="panel-note">
+        Le budget de reponse du LLM principal est maintenant porte par <code>main_model.response_max_tokens</code> dans l'admin.
+      </p>
     </div>
 
     <!-- Zone chat -->

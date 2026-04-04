@@ -60,7 +60,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             if section == 'main_model':
                 payload = {
                     'model': {'value': 'openrouter/test-runtime-model', 'is_secret': False, 'origin': 'db'},
-                    'response_max_tokens': {'value': 1500, 'is_secret': False, 'origin': 'db_seed'},
+                    'response_max_tokens': {'value': 8192, 'is_secret': False, 'origin': 'db_seed'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
                 }
                 return runtime_settings.RuntimeSectionView(
@@ -92,7 +92,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         )
         self.assertEqual(
             data['sections']['main_model']['payload']['response_max_tokens']['value'],
-            1500,
+            8192,
         )
         self.assertEqual(
             data['sections']['main_model']['payload']['api_key'],
@@ -245,7 +245,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                     'model': {'value': 'openrouter/main-model-route', 'is_secret': False, 'origin': 'db'},
                     'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'is_secret': False, 'origin': 'db'},
                     'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'is_secret': False, 'origin': 'db'},
-                    'response_max_tokens': {'value': 1500, 'is_secret': False, 'origin': 'db_seed'},
+                    'response_max_tokens': {'value': 8192, 'is_secret': False, 'origin': 'db_seed'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
                 },
                 source='db',
@@ -268,7 +268,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'https://identity-extractor.frida-system.fr/',
         )
         self.assertEqual(data['payload']['title_identity_extractor']['value'], 'FridaDev/IdentityExtractor')
-        self.assertEqual(data['payload']['response_max_tokens']['value'], 1500)
+        self.assertEqual(data['payload']['response_max_tokens']['value'], 8192)
         self.assertEqual(
             data['payload']['api_key'],
             {'is_secret': True, 'is_set': True, 'origin': 'db'},
@@ -915,7 +915,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 section=section,
                 payload={
                     'model': {'value': 'openrouter/patched-main-model', 'is_secret': False, 'origin': 'db'},
-                    'response_max_tokens': {'value': 4096, 'is_secret': False, 'origin': 'admin_ui'},
+                    'response_max_tokens': {'value': 8192, 'is_secret': False, 'origin': 'admin_ui'},
                     'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
                 },
                 source='db',
@@ -929,7 +929,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 json={
                     'updated_by': 'phase12-admin',
                     'payload': {
-                        'response_max_tokens': {'value': 4096},
+                        'response_max_tokens': {'value': 8192},
                     },
                 },
             )
@@ -939,10 +939,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(observed['section'], 'main_model')
         self.assertEqual(observed['updated_by'], 'phase12-admin')
-        self.assertEqual(observed['payload'], {'response_max_tokens': {'value': 4096}})
+        self.assertEqual(observed['payload'], {'response_max_tokens': {'value': 8192}})
         data = response.get_json()
         self.assertTrue(data['ok'])
-        self.assertEqual(data['payload']['response_max_tokens']['value'], 4096)
+        self.assertEqual(data['payload']['response_max_tokens']['value'], 8192)
         self.assertEqual(data['payload']['response_max_tokens']['origin'], 'admin_ui')
         self.assertEqual(data['readonly_info']['context_max_tokens']['label'], 'FRIDA_MAX_TOKENS')
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])

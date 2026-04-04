@@ -197,7 +197,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'title_validation_agent'): config.OR_TITLE_VALIDATION_AGENT,
         ('main_model', 'temperature'): 0.4,
         ('main_model', 'top_p'): 1.0,
-        ('main_model', 'response_max_tokens'): 1500,
+        ('main_model', 'response_max_tokens'): 8192,
         ('arbiter_model', 'model'): config.ARBITER_MODEL,
         ('arbiter_model', 'temperature'): 0.0,
         ('arbiter_model', 'top_p'): 1.0,

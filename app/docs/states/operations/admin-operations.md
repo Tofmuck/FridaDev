@@ -52,7 +52,7 @@ Restent explicitement hors V1 :
 - l'UI logs/restart legacy
 - un nouvel ecran logs
 - les routes hermeneutiques dans l'UI admin
-- `max_tokens`
+- les surcharges explicites `max_tokens` au niveau requete `/api/chat` pour des clients externes
 - `SYSTEM_PROMPT`
 - les seuils hermeneutiques et autres invariants conceptuels
 
@@ -127,6 +127,11 @@ Sequence nominale :
 5. lancer `Verifier`
 6. corriger si la validation backend remonte une erreur
 7. lancer `Enregistrer`
+
+Regle d'exploitation associee au chat principal :
+
+- la surface first-party `/` n'envoie plus de `max_tokens` dans ses requetes `/api/chat`
+- pour cette surface, `main_model.response_max_tokens` est la source de verite operative du budget de reponse
 
 Pour un secret :
 
