@@ -36,6 +36,7 @@ _BLOCKQUOTE_RE = re.compile(r'^(\s*)>\s*')
 _HORIZONTAL_RULE_RE = re.compile(r'^\s*(?:-{3,}|\*{3,}|_{3,})\s*$')
 _BULLET_RE = re.compile(r'^(\s*)[-*•]\s+')
 _NUMBERED_RE = re.compile(r'^(\s*)\d+[.)]\s+')
+_CODE_FENCE_RE = re.compile(r'^\s*```')
 _BOLD_RE = re.compile(r'\*\*(.+?)\*\*|__(.+?)__')
 _ITALIC_STAR_RE = re.compile(r'(?<!\*)\*([^*\n]+)\*(?!\*)')
 _ITALIC_UNDERSCORE_RE = re.compile(r'(?<!_)_([^_\n]+)_(?!_)')
@@ -116,7 +117,17 @@ def _normalize_line(line: str, policy: AssistantOutputPolicy) -> str:
 def normalize_assistant_output(text: str, policy: AssistantOutputPolicy | None) -> str:
     current = policy or AssistantOutputPolicy()
     raw = str(text or '').replace('\r', '')
-    normalized_lines = [_normalize_line(line, current) for line in raw.split('\n')]
+    normalized_lines: list[str] = []
+    in_fenced_code_block = False
+
+    for line in raw.split('\n'):
+        if not current.allow_code and _CODE_FENCE_RE.match(line):
+            in_fenced_code_block = not in_fenced_code_block
+            continue
+        if in_fenced_code_block and not current.allow_code:
+            continue
+        normalized_lines.append(_normalize_line(line, current))
+
     normalized = '\n'.join(normalized_lines)
     normalized = re.sub(r'\n{3,}', '\n\n', normalized)
     return normalized.strip()

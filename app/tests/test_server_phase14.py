@@ -308,6 +308,62 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             response.headers.get('X-Conversation-Updated-At'),
         )
 
+    def test_api_chat_stream_removes_unrequested_fenced_code_blocks_for_first_party_surface(self) -> None:
+        conversation = {
+            'id': 'conv-stream-code-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"Voici JSON :\\n\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"```json\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"{\\n  \\"nom\\": \\"Dupont\\"\\n}\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"```\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"C\\u2019est un format texte."}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': "Explique simplement ce qu'est JSON.", 'stream': True},
+                buffered=True,
+            )
+        finally:
+            restore()
+
+        text = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertIn('Voici JSON :', text)
+        self.assertIn('C’est un format texte.', text)
+        self.assertNotIn('```', text)
+        self.assertNotIn('"nom"', text)
+        self.assertEqual(conversation['messages'][-1]['content'], text)
+        self.assertEqual(
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            response.headers.get('X-Conversation-Updated-At'),
+        )
+
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})
 

@@ -94,6 +94,18 @@ class AssistantOutputContractTests(unittest.TestCase):
         self.assertIn('```python', normalized)
         self.assertIn('print("hello")', normalized)
 
+    def test_normalize_assistant_output_removes_fenced_code_block_body_when_code_is_not_allowed(self) -> None:
+        text = 'Avant.\n\n```json\n{\n  "nom": "Dupont"\n}\n```\n\nAprès.'
+
+        normalized = assistant_output_contract.normalize_assistant_output(
+            text,
+            assistant_output_contract.AssistantOutputPolicy(),
+        )
+
+        self.assertEqual(normalized, 'Avant.\n\nAprès.')
+        self.assertNotIn('```', normalized)
+        self.assertNotIn('"nom"', normalized)
+
 
 if __name__ == '__main__':
     unittest.main()
