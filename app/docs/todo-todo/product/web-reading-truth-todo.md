@@ -35,6 +35,7 @@ Etat de cette tranche:
   - `primary_read_status`
   - `fallback_used`
   - `collection_path`
+- dans le chemin fallback, l'URL explicite reste maintenant preservee en tete de `sources[]` comme source primaire nominale, avec dedup si la recherche retourne aussi cette meme URL;
 - les autres sous-chantiers restent ouverts: `read_state` complet, garde anti-mensonge reponse, garde memoire durable, observability complete.
 
 ## Objectif produit

@@ -65,6 +65,31 @@ def _source_domain(url: str) -> str | None:
     return host or None
 
 
+def _normalized_source_url(url: str) -> str:
+    text = str(url or '').strip()
+    if not text:
+        return ''
+    parsed = urlparse(text)
+    if not parsed.scheme or not parsed.netloc:
+        return text.rstrip('/')
+    path = parsed.path or ''
+    if path != '/':
+        path = path.rstrip('/')
+    normalized = parsed._replace(
+        scheme=parsed.scheme.lower(),
+        netloc=parsed.netloc.lower(),
+        path=path,
+        fragment='',
+    )
+    return normalized.geturl()
+
+
+def _urls_match(left: str, right: str) -> bool:
+    normalized_left = _normalized_source_url(left)
+    normalized_right = _normalized_source_url(right)
+    return bool(normalized_left and normalized_right and normalized_left == normalized_right)
+
+
 def _extract_explicit_url(user_msg: str) -> str | None:
     text = str(user_msg or '')
     if not text:
@@ -152,6 +177,36 @@ def _build_context_material(query: str, results: list[dict[str, str]]) -> dict[s
     return _build_search_context_material(query, results)
 
 
+def _build_explicit_url_fallback_source(
+    explicit_url: str,
+    *,
+    matching_result: dict[str, str] | None,
+    primary_read_status: str,
+    crawl4ai_top_n: int,
+    crawl4ai_max_chars: int,
+    preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    base_result = dict(matching_result or {})
+    base_result['title'] = str(base_result.get('title') or 'URL explicite utilisateur')
+    base_result['url'] = str(explicit_url or '')
+    source = _build_source_payload(
+        1,
+        base_result,
+        crawl4ai_top_n=crawl4ai_top_n,
+        crawl4ai_max_chars=crawl4ai_max_chars,
+        preloaded_crawl_results=preloaded_crawl_results,
+        source_origin='explicit_url',
+        is_primary_source=True,
+    )
+    source['title'] = str(base_result.get('title') or 'URL explicite utilisateur')
+    source['url'] = str(explicit_url or '')
+    source['source_domain'] = _source_domain(explicit_url)
+    source['source_origin'] = 'explicit_url'
+    source['is_primary_source'] = True
+    source['crawl_status'] = str(primary_read_status or source.get('crawl_status') or 'not_attempted')
+    return source
+
+
 def _build_explicit_url_context_material(url: str, crawled_markdown: str) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
     crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
@@ -199,7 +254,32 @@ def _build_search_context_material(
     preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
-    if not results:
+    crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
+    crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
+    today = datetime.now(timezone.utc).strftime("%d %B %Y")
+    primary_source: dict[str, Any] | None = None
+    fallback_results = list(results or [])
+
+    if explicit_url:
+        matching_result: dict[str, str] | None = None
+        deduped_results: list[dict[str, str]] = []
+        for result in fallback_results:
+            result_url = str(result.get('url') or '')
+            if matching_result is None and _urls_match(result_url, explicit_url):
+                matching_result = result
+                continue
+            deduped_results.append(result)
+        primary_source = _build_explicit_url_fallback_source(
+            explicit_url,
+            matching_result=matching_result,
+            primary_read_status=primary_read_status,
+            crawl4ai_top_n=crawl4ai_top_n,
+            crawl4ai_max_chars=crawl4ai_max_chars,
+            preloaded_crawl_results=preloaded_crawl_results,
+        )
+        fallback_results = deduped_results
+
+    if not fallback_results and not primary_source:
         return {
             'runtime': runtime,
             'results_count': 0,
@@ -207,10 +287,7 @@ def _build_search_context_material(
             'context_block': '',
         }
 
-    crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
-    crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
-    today = datetime.now(timezone.utc).strftime("%d %B %Y")
-    sources = [
+    search_sources = [
         _build_source_payload(
             index,
             result,
@@ -218,8 +295,10 @@ def _build_search_context_material(
             crawl4ai_max_chars=crawl4ai_max_chars,
             preloaded_crawl_results=preloaded_crawl_results,
         )
-        for index, result in enumerate(results, 1)
+        for index, result in enumerate(fallback_results, 2 if primary_source else 1)
     ]
+    sources = [primary_source] if primary_source else []
+    sources.extend(search_sources)
     lines = [f"[RECHERCHE WEB — {today}]"]
     if explicit_url:
         lines.extend(

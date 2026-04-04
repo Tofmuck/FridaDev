@@ -269,12 +269,73 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertTrue(payload['fallback_used'])
         self.assertEqual(payload['collection_path'], 'explicit_url_fallback_search')
         self.assertEqual(payload['query'], 'requete fallback')
-        self.assertEqual(payload['results_count'], 1)
-        self.assertEqual(payload['sources'][0]['source_origin'], 'search_result')
-        self.assertFalse(payload['sources'][0]['is_primary_source'])
-        self.assertEqual(payload['sources'][0]['crawl_status'], 'not_attempted')
-        self.assertEqual(payload['sources'][0]['used_content_kind'], 'search_snippet')
+        self.assertEqual(payload['results_count'], 2)
+        self.assertEqual(payload['sources'][0]['url'], url)
+        self.assertEqual(payload['sources'][0]['source_origin'], 'explicit_url')
+        self.assertTrue(payload['sources'][0]['is_primary_source'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'empty')
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'none')
+        self.assertEqual(payload['sources'][1]['source_origin'], 'search_result')
+        self.assertFalse(payload['sources'][1]['is_primary_source'])
+        self.assertEqual(payload['sources'][1]['crawl_status'], 'not_attempted')
+        self.assertEqual(payload['sources'][1]['used_content_kind'], 'search_snippet')
         self.assertIn("Lecture directe tentee d'abord : empty.", payload['context_block'])
+
+    def test_build_context_payload_promotes_matching_explicit_url_in_fallback_without_duplicate(self) -> None:
+        url = 'https://example.com/article'
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 80,
+        }[field]
+        web_search.crawl_with_status = lambda _url: {
+            'status': 'empty',
+            'markdown': '',
+            'error_class': None,
+        }
+        web_search.reformulate = lambda _user_msg: 'requete fallback'
+        web_search.search = lambda _query: [
+            {
+                'title': 'Resultat hors sujet',
+                'url': 'https://irrelevant.example/article',
+                'content': 'resume hors sujet',
+            },
+            {
+                'title': 'Titre Mediapart',
+                'url': url,
+                'content': 'resume primaire',
+            },
+        ]
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['results_count'], 2)
+        self.assertEqual(payload['sources'][0]['url'], url)
+        self.assertEqual(payload['sources'][0]['title'], 'Titre Mediapart')
+        self.assertEqual(payload['sources'][0]['source_origin'], 'explicit_url')
+        self.assertTrue(payload['sources'][0]['is_primary_source'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'empty')
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'search_snippet')
+        self.assertEqual(payload['sources'][1]['url'], 'https://irrelevant.example/article')
+        self.assertEqual(payload['sources'][1]['source_origin'], 'search_result')
+        self.assertFalse(payload['sources'][1]['is_primary_source'])
+        self.assertEqual(
+            [source['url'] for source in payload['sources']].count(url),
+            1,
+        )
 
 
 if __name__ == '__main__':
