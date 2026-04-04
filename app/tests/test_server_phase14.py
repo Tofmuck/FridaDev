@@ -895,6 +895,58 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             ['Je suis Christophe Muck'],
         )
 
+    def test_identity_input_reserves_dynamic_budget_when_static_identity_is_large(self) -> None:
+        identity = self.server.identity
+        originals = {
+            'load_llm_identity': identity.load_llm_identity,
+            'load_user_identity': identity.load_user_identity,
+            '_safe_static_identity_source': identity._safe_static_identity_source,
+            '_select_ranked_entries': identity._select_ranked_entries,
+            '_estimate_tokens': identity._estimate_tokens,
+            'identity_top_n': identity.config.IDENTITY_TOP_N,
+            'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
+        }
+        ranked_entries = {
+            'llm': [],
+            'user': [
+                {
+                    'id': 'user-christophe',
+                    'content': 'Je suis Christophe Muck',
+                    'stability': 'durable',
+                    'recurrence': 'first_seen',
+                    'confidence': 0.93,
+                    'last_seen_ts': '2026-04-04T19:00:00Z',
+                    'scope': 'user',
+                },
+            ],
+        }
+
+        identity.load_llm_identity = lambda: 'Profil statique Frida ' * 120
+        identity.load_user_identity = lambda: 'Profil statique utilisateur ' * 120
+        identity._safe_static_identity_source = lambda _field: None
+        identity._select_ranked_entries = lambda subject: list(ranked_entries[subject])
+        identity._estimate_tokens = lambda text: len(str(text or '').split())
+        identity.config.IDENTITY_TOP_N = 2
+        identity.config.IDENTITY_MAX_TOKENS = 80
+        try:
+            block, used_ids = identity.build_identity_block()
+            payload = identity.build_identity_input()
+        finally:
+            identity.load_llm_identity = originals['load_llm_identity']
+            identity.load_user_identity = originals['load_user_identity']
+            identity._safe_static_identity_source = originals['_safe_static_identity_source']
+            identity._select_ranked_entries = originals['_select_ranked_entries']
+            identity._estimate_tokens = originals['_estimate_tokens']
+            identity.config.IDENTITY_TOP_N = originals['identity_top_n']
+            identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
+
+        self.assertIn('Je suis Christophe Muck', block)
+        self.assertEqual(used_ids, ['user-christophe'])
+        self.assertEqual(
+            [entry['content'] for entry in payload['user']['dynamic']],
+            ['Je suis Christophe Muck'],
+        )
+
     def test_api_chat_exposes_canonical_recent_context_to_hermeneutic_insertion_point(self) -> None:
         observed = {'recent_context_input': None}
         conversation = {

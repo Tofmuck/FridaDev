@@ -226,6 +226,84 @@ def _compose_section(title: str, static_text: str, dynamic_lines: list[str]) -> 
     return f'[{title}]\n' + '\n\n'.join(parts)
 
 
+def _build_identity_block_text(
+    *,
+    llm_static: str,
+    user_static: str,
+    llm_dynamic_lines: list[str],
+    user_dynamic_lines: list[str],
+) -> str:
+    sections = [
+        _compose_section('IDENTITÉ DU MODÈLE', llm_static, llm_dynamic_lines),
+        _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, user_dynamic_lines),
+    ]
+    return '\n\n'.join(section for section in sections if section)
+
+
+def _truncate_static_identity_texts(
+    *,
+    llm_static: str,
+    user_static: str,
+    max_tokens: int,
+) -> tuple[str, str]:
+    if max_tokens <= 0:
+        return '', ''
+
+    llm_words = llm_static.split()
+    user_words = user_static.split()
+    total_words = len(llm_words) + len(user_words)
+    current_static_block = _build_identity_block_text(
+        llm_static=llm_static,
+        user_static=user_static,
+        llm_dynamic_lines=[],
+        user_dynamic_lines=[],
+    )
+    if _estimate_tokens(current_static_block) <= max_tokens:
+        return llm_static, user_static
+    if total_words == 0:
+        return '', ''
+
+    current_token_estimate = max(1, _estimate_tokens(current_static_block))
+    word_budget = max(1, int(total_words * (max_tokens / current_token_estimate)))
+
+    def _allocate(max_words: int) -> tuple[str, str]:
+        llm_budget = min(len(llm_words), round(max_words * (len(llm_words) / total_words)))
+        user_budget = min(len(user_words), max_words - llm_budget)
+
+        if llm_words and llm_budget == 0:
+            llm_budget = 1
+        if user_words and user_budget == 0 and llm_budget < max_words:
+            user_budget = 1
+
+        while llm_budget + user_budget > max_words:
+            if llm_budget >= user_budget and llm_budget > 0:
+                llm_budget -= 1
+            elif user_budget > 0:
+                user_budget -= 1
+            else:
+                break
+
+        return (
+            _truncate_to_words(llm_static, llm_budget) if llm_budget > 0 else '',
+            _truncate_to_words(user_static, user_budget) if user_budget > 0 else '',
+        )
+
+    llm_truncated, user_truncated = _allocate(word_budget)
+    while word_budget > 0:
+        truncated_static_block = _build_identity_block_text(
+            llm_static=llm_truncated,
+            user_static=user_truncated,
+            llm_dynamic_lines=[],
+            user_dynamic_lines=[],
+        )
+        if _estimate_tokens(truncated_static_block) <= max_tokens:
+            return llm_truncated, user_truncated
+        word_budget = max(0, word_budget - max(1, word_budget // 10))
+        llm_truncated, user_truncated = _allocate(word_budget)
+
+    return '', ''
+
+
 def _emit_static_identity_read(*, target_side: str, static_text: str) -> None:
     if not chat_turn_logger.is_active():
         return
@@ -253,38 +331,78 @@ def _resolve_identity_runtime_selection(
     llm_static: str,
     user_static: str,
 ) -> _IdentityRuntimeSelection:
-    static_sections = [
-        _compose_section('IDENTITÉ DU MODÈLE', llm_static, []),
-        _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, []),
-    ]
-    static_block = '\n\n'.join(section for section in static_sections if section)
-
     budget = max(1, config.IDENTITY_MAX_TOKENS)
+    llm_dynamic_candidates = _select_ranked_entries('llm')
+    user_dynamic_candidates = _select_ranked_entries('user')
+
+    llm_static_for_budget = llm_static
+    user_static_for_budget = user_static
+    llm_dynamic_budget = 0
+    user_dynamic_budget = 0
+
+    static_block = _build_identity_block_text(
+        llm_static=llm_static_for_budget,
+        user_static=user_static_for_budget,
+        llm_dynamic_lines=[],
+        user_dynamic_lines=[],
+    )
     static_tokens = _estimate_tokens(static_block)
-    remaining_tokens = max(0, budget - static_tokens)
+    has_dynamic_candidates = bool(llm_dynamic_candidates or user_dynamic_candidates)
 
-    active_subjects = 2
-    per_subject_budget = remaining_tokens // active_subjects if remaining_tokens > 0 else 0
+    if has_dynamic_candidates:
+        reserved_dynamic_budget = max(1, budget // 4)
+        static_budget = max(0, budget - reserved_dynamic_budget)
+        if static_tokens > static_budget:
+            llm_static_for_budget, user_static_for_budget = _truncate_static_identity_texts(
+                llm_static=llm_static,
+                user_static=user_static,
+                max_tokens=static_budget,
+            )
 
-    llm_selection = _select_effective_dynamic_entries('llm', per_subject_budget)
-    user_selection = _select_effective_dynamic_entries('user', per_subject_budget)
+        dynamic_budget = max(0, budget - _estimate_tokens(
+            _build_identity_block_text(
+                llm_static=llm_static_for_budget,
+                user_static=user_static_for_budget,
+                llm_dynamic_lines=[],
+                user_dynamic_lines=[],
+            )
+        ))
+        if not dynamic_budget and reserved_dynamic_budget > 0:
+            dynamic_budget = reserved_dynamic_budget
+        if dynamic_budget > 0:
+            if llm_dynamic_candidates and user_dynamic_candidates:
+                llm_dynamic_budget = dynamic_budget // 2
+                user_dynamic_budget = dynamic_budget - llm_dynamic_budget
+            elif llm_dynamic_candidates:
+                llm_dynamic_budget = dynamic_budget
+            else:
+                user_dynamic_budget = dynamic_budget
 
-    # If only one side has dynamic candidates, give it the whole remaining budget.
-    if remaining_tokens > 0 and llm_selection.lines and not user_selection.lines:
-        llm_selection = _select_effective_dynamic_entries('llm', remaining_tokens)
-    elif remaining_tokens > 0 and user_selection.lines and not llm_selection.lines:
-        user_selection = _select_effective_dynamic_entries('user', remaining_tokens)
+    llm_selection = _select_effective_dynamic_entries('llm', llm_dynamic_budget)
+    user_selection = _select_effective_dynamic_entries('user', user_dynamic_budget)
 
-    sections = [
-        _compose_section('IDENTITÉ DU MODÈLE', llm_static, llm_selection.lines),
-        _compose_section("IDENTITÉ DE L'UTILISATEUR", user_static, user_selection.lines),
-    ]
-    block = '\n\n'.join(section for section in sections if section)
+    if llm_dynamic_budget > 0 and llm_selection.lines and not user_selection.lines and not user_dynamic_candidates:
+        llm_selection = _select_effective_dynamic_entries('llm', llm_dynamic_budget)
+    elif user_dynamic_budget > 0 and user_selection.lines and not llm_selection.lines and not llm_dynamic_candidates:
+        user_selection = _select_effective_dynamic_entries('user', user_dynamic_budget)
+
+    fallback_static_block = _build_identity_block_text(
+        llm_static=llm_static_for_budget,
+        user_static=user_static_for_budget,
+        llm_dynamic_lines=[],
+        user_dynamic_lines=[],
+    )
+    block = _build_identity_block_text(
+        llm_static=llm_static_for_budget,
+        user_static=user_static_for_budget,
+        llm_dynamic_lines=llm_selection.lines,
+        user_dynamic_lines=user_selection.lines,
+    )
     used_identity_ids = llm_selection.ids + user_selection.ids
 
     # Hard guardrail on identity budget.
     if _estimate_tokens(block) > budget:
-        block = static_block
+        block = fallback_static_block
         used_identity_ids = []
         llm_selection = _DynamicSelection(entries=[], lines=[], ids=[])
         user_selection = _DynamicSelection(entries=[], lines=[], ids=[])
