@@ -612,7 +612,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         original_load_llm_identity = identity.load_llm_identity
         original_load_user_identity = identity.load_user_identity
         original_estimate_tokens = identity._estimate_tokens
-        original_build_dynamic_lines = identity._build_dynamic_lines
+        original_select_ranked_entries = identity._select_ranked_entries
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
             observed.append(event)
@@ -621,7 +621,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         identity.load_llm_identity = lambda: 'Frida static identity'
         identity.load_user_identity = lambda: 'User static identity'
         identity._estimate_tokens = lambda _text: 1
-        identity._build_dynamic_lines = lambda _subject, _max_tokens: ([], [])
+        identity._select_ranked_entries = lambda _subject: []
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
             conversation_id='conv-static-identities',
@@ -639,7 +639,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             identity.load_llm_identity = original_load_llm_identity
             identity.load_user_identity = original_load_user_identity
             identity._estimate_tokens = original_estimate_tokens
-            identity._build_dynamic_lines = original_build_dynamic_lines
+            identity._select_ranked_entries = original_select_ranked_entries
 
         identities_events = [event for event in observed if event['stage'] == 'identities_read']
         static_events = [event for event in identities_events if event['payload_json'].get('source_kind') == 'static']
