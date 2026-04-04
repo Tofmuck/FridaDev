@@ -18,6 +18,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import chat_memory_flow
+from memory import hermeneutics_policy
+from memory import memory_identity_dynamics
 
 
 def _event_payloads(events, name: str):
@@ -713,6 +715,50 @@ class ChatMemoryFlowTests(unittest.TestCase):
             ['Claims to have the linked article open and read it'],
         )
 
+    def test_record_identity_entries_for_mode_filters_frida_pipeline_meta_identity_in_enforced_mode(self) -> None:
+        events = []
+        observed = {'persisted': None}
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [
+                {
+                    'subject': 'llm',
+                    'content': 'Unable to provide a substantive answer on that turn because the rules did not allow it',
+                    'confidence': 0.92,
+                    'stability': 'durable',
+                    'utterance_mode': 'self_description',
+                    'recurrence': 'repeated',
+                    'scope': 'llm',
+                    'evidence_kind': 'explicit',
+                }
+            ],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-identity-meta-filter',
+            [{'role': 'assistant', 'content': 'meta'}],
+            mode='enforced_all',
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed['persisted'], ('conv-identity-meta-filter', []))
+        event = _event_payloads(events, 'identity_mode_apply')[0]
+        self.assertEqual(event['guard_filtered_count'], 1)
+        self.assertEqual(
+            event['guard_filtered_preview']['frida'],
+            ['Unable to provide a substantive answer on that turn because the rules did not allow it'],
+        )
+
     def test_record_identity_entries_for_mode_keeps_prudent_web_limitation_statement(self) -> None:
         events = []
         observed = {'persisted': None}
@@ -826,6 +872,60 @@ class ChatMemoryFlowTests(unittest.TestCase):
         )
 
         self.assertEqual(observed['persisted'], ('conv-identity-partial', []))
+
+    def test_record_identity_entries_for_mode_accepts_explicit_user_identity_revelation(self) -> None:
+        observed = {'persisted': None}
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [
+                {
+                    'subject': 'user',
+                    'content': 'Je suis Christophe Muck',
+                    'confidence': 0.93,
+                    'stability': 'durable',
+                    'utterance_mode': 'self_description',
+                    'recurrence': 'first_seen',
+                    'scope': 'user',
+                    'evidence_kind': 'explicit',
+                }
+            ],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {
+                    'persisted': (
+                        conversation_id,
+                        memory_identity_dynamics.preview_identity_entries(
+                            list(entries),
+                            policy_module=hermeneutics_policy,
+                            config_module=SimpleNamespace(
+                                IDENTITY_MIN_CONFIDENCE=0.6,
+                                IDENTITY_DEFER_MIN_CONFIDENCE=0.3,
+                            ),
+                            trace_float_fn=lambda value: float(value or 0.0),
+                        ),
+                    )
+                }
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-user-identity-revelation',
+            [{'role': 'user', 'content': 'Je suis Christophe Muck'}],
+            mode='enforced_all',
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        persisted = observed['persisted']
+        self.assertIsNotNone(persisted)
+        self.assertEqual(persisted[0], 'conv-user-identity-revelation')
+        self.assertEqual(persisted[1][0]['status'], 'accepted')
+        self.assertIn('explicit_user_identity_revelation', persisted[1][0]['reason'])
 
 
 if __name__ == '__main__':

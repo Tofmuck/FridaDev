@@ -17,6 +17,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.hermeneutic_node.runtime import primary_node
+from core.hermeneutic_node.inputs import user_turn_input
 
 
 def _time() -> dict[str, object]:
@@ -313,6 +314,27 @@ class PrimaryNodeTests(unittest.TestCase):
             payload["primary_verdict"]["judgment_posture"],
             "clarify",
         )
+
+    def test_build_primary_node_does_not_suspend_clear_imaginative_question_as_external_verification(self) -> None:
+        bundle = user_turn_input.build_user_turn_bundle(
+            user_message="Imagine que tu es une extraterrestre envoyee sur Terre pour sauver la biodiversite. C'est ton job ultime. Que fais-tu ?",
+            recent_window_input_payload=None,
+            time_input_payload={"now_utc_iso": "2026-04-02T10:00:00Z"},
+        )
+
+        payload = primary_node.build_primary_node(
+            conversation_id="conv-fiction",
+            updated_at="2026-04-02T12:00:00Z",
+            time_input=_time(),
+            user_turn_input=bundle["user_turn"],
+            user_turn_signals=bundle["user_turn_signals"],
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+        )
+
+        self.assertNotEqual(payload["primary_verdict"]["epistemic_regime"], "a_verifier")
+        self.assertNotEqual(payload["primary_verdict"]["proof_regime"], "verification_externe_requise")
+        self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
 
     def test_build_primary_node_applies_inertia_before_verdict_and_state(self) -> None:
         payload = primary_node.build_primary_node(

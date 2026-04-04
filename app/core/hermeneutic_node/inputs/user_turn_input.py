@@ -58,13 +58,23 @@ def _normalize_text(raw: Any) -> str:
 
 
 def _contains_any(text: str, fragments: Sequence[str]) -> bool:
-    compact_text = text.replace(" ", "").replace("?", "")
+    normalized_text = _normalize_text(text)
+    compact_text = normalized_text.replace(" ", "").replace("?", "")
+    tokens = {token for token in normalized_text.split() if token}
     for fragment in fragments:
         normalized_fragment = _normalize_text(fragment)
-        if normalized_fragment and normalized_fragment in text:
+        if not normalized_fragment:
+            continue
+        if " " in normalized_fragment:
+            if normalized_fragment in normalized_text:
+                return True
+            compact_fragment = normalized_fragment.replace(" ", "").replace("?", "")
+            if compact_fragment and compact_fragment in compact_text:
+                return True
+            continue
+        if normalized_fragment in tokens:
             return True
-        compact_fragment = normalized_fragment.replace(" ", "").replace("?", "")
-        if compact_fragment and compact_fragment in compact_text:
+        if len(normalized_fragment) >= 5 and any(token.startswith(normalized_fragment) for token in tokens):
             return True
     return False
 

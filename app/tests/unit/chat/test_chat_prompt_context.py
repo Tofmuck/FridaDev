@@ -120,6 +120,34 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertTrue(augmented.endswith('Posture finale validee: clarify.'))
         self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[JUGEMENT HERMENEUTIQUE]'))
 
+    def test_build_direct_identity_revelation_guard_block_marks_explicit_non_ambiguous_revelation(self) -> None:
+        block = chat_prompt_context.build_direct_identity_revelation_guard_block(
+            user_msg='Je suis Christophe Muck',
+            user_turn_input={'geste_dialogique_dominant': 'exposition'},
+            user_turn_signals={
+                'ambiguity_present': False,
+                'underdetermination_present': False,
+                'active_signal_families': [],
+            },
+        )
+
+        self.assertIn('[GARDE DE REVELATION IDENTITAIRE]', block)
+        self.assertIn('revelation identitaire explicite et non ambigue', block)
+        self.assertIn("N'ajoute pas de question de clarification bureaucratique", block)
+
+    def test_build_direct_identity_revelation_guard_block_stays_silent_when_revelation_is_ambiguous(self) -> None:
+        block = chat_prompt_context.build_direct_identity_revelation_guard_block(
+            user_msg='Je suis Christophe Muck',
+            user_turn_input={'geste_dialogique_dominant': 'exposition'},
+            user_turn_signals={
+                'ambiguity_present': True,
+                'underdetermination_present': False,
+                'active_signal_families': ['referent'],
+            },
+        )
+
+        self.assertEqual(block, '')
+
     def test_build_plain_text_guard_block_for_default_turn_forbids_markdown_lists_and_code_fences(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
             user_msg='Explique simplement la différence entre la mémoire vive et le disque dur.',

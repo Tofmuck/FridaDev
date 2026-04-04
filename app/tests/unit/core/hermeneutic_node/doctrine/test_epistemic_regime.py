@@ -239,6 +239,17 @@ class EpistemicRegimeTests(unittest.TestCase):
             },
         )
 
+    def test_build_epistemic_regime_does_not_require_external_verification_for_imaginative_turn_without_proof_demand(self) -> None:
+        payload = epistemic_regime.build_epistemic_regime(
+            user_turn_input=_user_turn(provenances=[], proof_types=[], temporal_scope="atemporale"),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(status="skipped", results_count=0, reason_code="no_data"),
+        )
+
+        self.assertNotEqual(payload["epistemic_regime"], "a_verifier")
+        self.assertNotEqual(payload["proof_regime"], "verification_externe_requise")
+
     def test_build_epistemic_regime_returns_suspendu_when_no_responsible_reading_can_be_held(self) -> None:
         payload = epistemic_regime.build_epistemic_regime(
             user_turn_input=_user_turn(provenances=["dialogue_trace"]),

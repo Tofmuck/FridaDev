@@ -95,6 +95,23 @@ _WEB_READING_MITIGATION_HINTS = (
     'not full',
     'pas complet',
 )
+_USER_EXPLICIT_IDENTITY_REVELATION_PREFIXES = (
+    'je suis ',
+    'moi c est ',
+    'mon nom est ',
+    'my name is ',
+    'i am ',
+)
+_LLM_PIPELINE_META_HINTS = (
+    'unable to provide',
+    'rules did not allow',
+    'system constraints',
+    'response delay',
+    'on that turn',
+    'refuses to answer a fictional role play request',
+    'refuses to answer a fictional role-play request',
+)
+_LLM_EPHEMERAL_UTTERANCE_MODES = {'role_play', 'projection', 'speculation'}
 
 
 @dataclass
@@ -183,6 +200,9 @@ def decide_identity_status(
     if confidence < defer_min_confidence:
         return 'rejected', f'confidence<{defer_min_confidence:.2f}'
 
+    if _is_explicit_user_identity_revelation(entry) and confidence >= min_confidence:
+        return 'accepted', 'explicit_user_identity_revelation'
+
     if stability == 'durable' and recurrence == 'first_seen':
         return 'deferred', 'durable_first_seen'
 
@@ -215,6 +235,19 @@ def should_accept_identity(
             reason = 'durable_requires_more_evidence'
 
     return {'status': status, 'reason': reason}
+
+
+def _is_explicit_user_identity_revelation(entry: Mapping[str, Any]) -> bool:
+    subject = str(entry.get('subject') or '').strip().lower()
+    if subject != 'user':
+        return False
+    utterance_mode = str(entry.get('utterance_mode') or 'unknown').strip().lower()
+    if utterance_mode not in {'self_description', 'unknown'}:
+        return False
+    content = str(entry.get('content') or '').strip().lower()
+    if not content:
+        return False
+    return any(content.startswith(prefix) for prefix in _USER_EXPLICIT_IDENTITY_REVELATION_PREFIXES)
 
 
 def build_evidence_events(rows: Iterable[Mapping[str, Any]]) -> List[EvidenceEvent]:
@@ -353,7 +386,26 @@ def unsupported_web_reading_claim_reason(
     return None
 
 
-def filter_unsupported_web_reading_identities(
+def unsupported_llm_durable_identity_reason(
+    entry: Mapping[str, Any],
+) -> str | None:
+    subject = str(entry.get('subject') or '').strip().lower()
+    if subject != 'llm':
+        return None
+
+    utterance_mode = str(entry.get('utterance_mode') or 'unknown').strip().lower()
+    if utterance_mode in _LLM_EPHEMERAL_UTTERANCE_MODES:
+        return f'llm_identity_ephemeral_{utterance_mode}'
+
+    content = str(entry.get('content') or '').strip().lower()
+    if not content:
+        return None
+    if any(hint in content for hint in _LLM_PIPELINE_META_HINTS):
+        return 'llm_identity_pipeline_meta'
+    return None
+
+
+def filter_unsupported_dialogic_identities(
     entries: Sequence[Mapping[str, Any]],
     *,
     web_input: Mapping[str, Any] | None,
@@ -366,6 +418,8 @@ def filter_unsupported_web_reading_identities(
             canonical_entry,
             web_input=web_input,
         )
+        if reason is None:
+            reason = unsupported_llm_durable_identity_reason(canonical_entry)
         if reason:
             filtered.append(
                 {
@@ -377,3 +431,11 @@ def filter_unsupported_web_reading_identities(
             continue
         kept.append(canonical_entry)
     return kept, filtered
+
+
+def filter_unsupported_web_reading_identities(
+    entries: Sequence[Mapping[str, Any]],
+    *,
+    web_input: Mapping[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    return filter_unsupported_dialogic_identities(entries, web_input=web_input)

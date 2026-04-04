@@ -15,6 +15,13 @@ _READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
 _READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
 _READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
 _READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
+_EXPLICIT_IDENTITY_REVELATION_PREFIXES = (
+    'je suis ',
+    'moi c est ',
+    'mon nom est ',
+    'my name is ',
+    'i am ',
+)
 
 
 def _text(value: Any) -> str:
@@ -34,6 +41,12 @@ def _stable_string_list(value: Any) -> list[str]:
         seen.add(normalized)
         ordered.append(normalized)
     return ordered
+
+
+def _looks_like_explicit_identity_revelation(user_msg: str) -> bool:
+    normalized = _text(user_msg).lower().replace("'", '’')
+    normalized = normalized.replace('’', "'")
+    return any(normalized.startswith(prefix.replace('’', "'")) for prefix in _EXPLICIT_IDENTITY_REVELATION_PREFIXES)
 
 
 def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
@@ -85,6 +98,43 @@ def inject_hermeneutic_judgment_block(
     hermeneutic_judgment_block: str,
 ) -> str:
     block = _text(hermeneutic_judgment_block)
+    if not block:
+        return str(augmented_system or '')
+    return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
+
+
+def build_direct_identity_revelation_guard_block(
+    *,
+    user_msg: str,
+    user_turn_input: Mapping[str, Any] | None,
+    user_turn_signals: Mapping[str, Any] | None,
+) -> str:
+    turn_payload = user_turn_input if isinstance(user_turn_input, Mapping) else {}
+    signal_payload = user_turn_signals if isinstance(user_turn_signals, Mapping) else {}
+    gesture = _text(turn_payload.get('geste_dialogique_dominant'))
+    if gesture != 'exposition':
+        return ''
+    if not _looks_like_explicit_identity_revelation(user_msg):
+        return ''
+    if bool(signal_payload.get('ambiguity_present')) or bool(signal_payload.get('underdetermination_present')):
+        return ''
+    if _stable_string_list(signal_payload.get('active_signal_families')):
+        return ''
+
+    return (
+        '[GARDE DE REVELATION IDENTITAIRE]\n'
+        "Le tour utilisateur contient une revelation identitaire explicite et non ambigue.\n"
+        "Traite cette revelation comme operative des maintenant.\n"
+        "N'ajoute pas de question de clarification bureaucratique ou de recadrage si l'utilisateur n'a rien demande d'autre.\n"
+        "Accuse reception simplement, sans requalifier le tour en demande de cadrage."
+    )
+
+
+def inject_direct_identity_revelation_guard_block(
+    augmented_system: str,
+    direct_identity_revelation_guard_block: str,
+) -> str:
+    block = _text(direct_identity_revelation_guard_block)
     if not block:
         return str(augmented_system or '')
     return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)

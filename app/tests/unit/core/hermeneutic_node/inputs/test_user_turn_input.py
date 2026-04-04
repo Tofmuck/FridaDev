@@ -86,6 +86,26 @@ class UserTurnInputTests(unittest.TestCase):
 
         self.assertEqual(payload['geste_dialogique_dominant'], 'positionnement')
 
+    def test_build_user_turn_input_does_not_misclassify_self_identification_as_regulation(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='Je suis Christophe Muck',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['geste_dialogique_dominant'], 'exposition')
+        self.assertEqual(payload['regime_probatoire']['provenances'], [])
+
+    def test_build_user_turn_input_does_not_treat_biodiversite_as_web_provenance(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message="Imagine que tu es une extraterrestre envoyee sur Terre pour sauver la biodiversite. Que fais-tu ?",
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['provenances'], [])
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], [])
+
     def test_build_user_turn_input_does_not_fall_back_to_exposition_for_est_ce_que_request(self) -> None:
         payload = user_turn_input.build_user_turn_input(
             user_message="Est-ce que tu peux vérifier ça",

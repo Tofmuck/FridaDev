@@ -412,6 +412,67 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(suspend_result.validated_output["final_judgment_posture"], "suspend")
         self.assertEqual(suspend_result.validated_output["pipeline_directives_final"], ["posture_suspend"])
 
+    def test_build_validated_output_keeps_answer_for_low_ambiguity_direct_identity_revelation(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(judgment_posture="answer"),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "Je suis Christophe Muck"}],
+            },
+            canonical_inputs={
+                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "exposition"},
+                "user_turn_signals": {
+                    "present": True,
+                    "ambiguity_present": False,
+                    "underdetermination_present": False,
+                    "active_signal_families": [],
+                    "active_signal_families_count": 0,
+                },
+            },
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.validated_output["validation_decision"], "confirm")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
+        self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
+
+    def test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(judgment_posture="answer"),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "Corrige ça"}],
+            },
+            canonical_inputs={
+                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "orientation"},
+                "user_turn_signals": {
+                    "present": True,
+                    "ambiguity_present": True,
+                    "underdetermination_present": False,
+                    "active_signal_families": ["referent"],
+                    "active_signal_families_count": 1,
+                },
+            },
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.validated_output["validation_decision"], "clarify")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "clarify")
+
     def test_build_validated_output_uses_fallback_model_after_primary_invalid_json(self) -> None:
         requests_module = _FakeRequests(
             [

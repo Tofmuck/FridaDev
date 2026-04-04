@@ -559,6 +559,15 @@ def chat_response(
         augmented_system,
         hermeneutic_judgment_block,
     )
+    direct_identity_revelation_guard_block = chat_prompt_context.build_direct_identity_revelation_guard_block(
+        user_msg=user_msg,
+        user_turn_input=user_turn_payload,
+        user_turn_signals=user_turn_signals_payload,
+    )
+    augmented_system = chat_prompt_context.inject_direct_identity_revelation_guard_block(
+        augmented_system,
+        direct_identity_revelation_guard_block,
+    )
     web_reading_guard_block = chat_prompt_context.build_web_reading_guard_block(
         web_input=web_payload,
     )

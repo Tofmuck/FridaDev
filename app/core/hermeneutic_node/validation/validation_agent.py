@@ -29,6 +29,7 @@ RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
+_NON_AMBIGUOUS_DIRECT_GESTURES = ("exposition", "positionnement", "adresse_relationnelle")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "schema_version",
@@ -402,6 +403,46 @@ def _build_messages(
             ),
         },
     ]
+
+
+def _canonical_low_ambiguity_direct_turn(canonical_inputs: Mapping[str, Any]) -> bool:
+    user_turn_input = _mapping(canonical_inputs.get("user_turn_input"))
+    user_turn_signals = _mapping(canonical_inputs.get("user_turn_signals"))
+
+    gesture = _text(user_turn_input.get("geste_dialogique_dominant"))
+    if gesture not in _NON_AMBIGUOUS_DIRECT_GESTURES:
+        return False
+    if bool(user_turn_signals.get("ambiguity_present")):
+        return False
+    if bool(user_turn_signals.get("underdetermination_present")):
+        return False
+
+    active_signal_families = [
+        _text(value)
+        for value in (user_turn_signals.get("active_signal_families") or [])
+        if _text(value)
+    ]
+    return not active_signal_families
+
+
+def _normalize_validation_decision(
+    *,
+    primary_verdict: Mapping[str, Any],
+    canonical_inputs: Mapping[str, Any],
+    validation_decision: str,
+) -> str:
+    normalized_decision = _text(validation_decision)
+    if normalized_decision != "clarify":
+        return normalized_decision
+    if _text(primary_verdict.get("judgment_posture")) != "answer":
+        return normalized_decision
+    if _validated_source_conflicts(primary_verdict.get("source_conflicts")):
+        return normalized_decision
+    if _canonical_low_ambiguity_direct_turn(canonical_inputs):
+        return "confirm"
+    return normalized_decision
+
+
 def _request_reason_code(exc: Exception, requests_module: Any) -> str:
     exceptions = getattr(requests_module, "exceptions", None)
     timeout_cls = getattr(exceptions, "Timeout", None)
@@ -519,13 +560,18 @@ def build_validated_output(
                 max_tokens=runtime_model_settings["max_tokens"],
                 requests_module=requests_module,
             )
+            validation_decision = _normalize_validation_decision(
+                primary_verdict=primary_verdict_payload,
+                canonical_inputs=canonical_inputs_payload,
+                validation_decision=decision_payload["validation_decision"],
+            )
             final_judgment_posture = _resolved_final_judgment_posture(
                 primary_judgment_posture=primary_verdict_payload["judgment_posture"],
-                validation_decision=decision_payload["validation_decision"],
+                validation_decision=validation_decision,
             )
             return ValidationAgentResult(
                 validated_output=_build_validated_output_payload(
-                    validation_decision=decision_payload["validation_decision"],
+                    validation_decision=validation_decision,
                     final_judgment_posture=final_judgment_posture,
                     fail_open=False,
                 ),
