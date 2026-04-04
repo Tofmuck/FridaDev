@@ -131,6 +131,42 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertIn('Réponds en courts paragraphes continus.', block)
         self.assertIn("n'utilise pas de code fences", block)
 
+    def test_build_plain_text_guard_block_does_not_treat_plan_marshall_as_explicit_format_request(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Explique le plan Marshall.',
+        )
+
+        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn("n'utilise pas de code fences", block)
+        self.assertNotIn("demande explicitement un plan, des étapes ou une liste", block)
+
+    def test_build_plain_text_guard_block_does_not_treat_topic_points_as_explicit_format_request(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Parle-moi des points communs entre Platon et Aristote.',
+        )
+
+        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn("n'utilise pas de code fences", block)
+        self.assertNotIn("demande explicitement un plan, des étapes ou une liste", block)
+
+    def test_build_plain_text_guard_block_does_not_treat_json_topic_as_explicit_code_request(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg="Explique simplement ce qu'est JSON.",
+        )
+
+        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn("n'utilise pas de code fences", block)
+        self.assertNotIn("demande explicitement du code", block)
+
+    def test_build_plain_text_guard_block_does_not_treat_math_function_topic_as_explicit_code_request(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg="Explique ce qu'est une fonction continue en maths.",
+        )
+
+        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn("n'utilise pas de code fences", block)
+        self.assertNotIn("demande explicitement du code", block)
+
     def test_build_plain_text_guard_block_allows_minimal_structure_when_user_explicitly_requests_steps(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
             user_msg='Donne-moi un plan en quatre étapes pour préparer un exposé.',
@@ -143,6 +179,14 @@ class ChatPromptContextTests(unittest.TestCase):
     def test_build_plain_text_guard_block_allows_code_only_when_user_explicitly_requests_it(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(
             user_msg='Montre-moi un exemple de code Python pour lire un fichier JSON.',
+        )
+
+        self.assertIn("demande explicitement du code", block)
+        self.assertNotIn("n'utilise pas de code fences", block)
+
+    def test_build_plain_text_guard_block_allows_bash_command_when_explicitly_requested(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Donne-moi la commande bash pour lister les fichiers.',
         )
 
         self.assertIn("demande explicitement du code", block)
