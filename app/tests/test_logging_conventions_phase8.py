@@ -18,12 +18,21 @@ LOGGER_EXPECTATIONS = {
     APP_DIR / 'memory' / 'arbiter.py': 'frida.arbiter',
 }
 
+LEGACY_TOKEN_EXCLUDE_GLOBS = (
+    '!docs/todo-done/**',
+    '!docs/states/legacy/**',
+    '!docs/states/baselines/**',
+)
+
 
 class LoggingConventionsPhase8Tests(unittest.TestCase):
     def test_repo_has_no_legacy_logger_token(self) -> None:
         legacy_token = 'ki' + 'ki'
+        command = ['rg', '-n', legacy_token, str(APP_DIR), '-S']
+        for glob in LEGACY_TOKEN_EXCLUDE_GLOBS:
+            command.extend(['-g', glob])
         run = subprocess.run(
-            ['rg', '-n', legacy_token, str(REPO_ROOT), '-S'],
+            command,
             capture_output=True,
             text=True,
             check=False,

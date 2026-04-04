@@ -9,7 +9,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = APP_DIR.parent
 CONV_STORE_PATH = APP_DIR / "core" / "conv_store.py"
-AUDIT_PATH = APP_DIR / "docs" / "todo-done" / "audits" / "fridadev_repo_audit.md"
+CLOSURE_PATH = APP_DIR / "docs" / "todo-done" / "refactors" / "fridadev_refactor_closure.md"
 TODO_PATH = APP_DIR / "docs" / "todo-done" / "refactors" / "fridadev_refactor_todo.md"
 SELF_PATH = Path(__file__).resolve()
 
@@ -54,11 +54,11 @@ class ConvStoreJsonSyncInventoryPhase6Tests(unittest.TestCase):
             self.assertEqual(_find_name_matches(runtime_py_files, helper_name), [])
             self.assertEqual(_find_name_matches(test_py_files, helper_name), [])
 
-    def test_sync_helpers_are_documented_in_repo_audit(self) -> None:
+    def test_sync_helpers_are_documented_in_refactor_closure(self) -> None:
         docs_md_files = sorted((APP_DIR / "docs").rglob("*.md"))
         for helper_name in SYNC_HELPERS:
             matches = _find_name_matches(docs_md_files, helper_name)
-            self.assertIn(AUDIT_PATH, matches)
+            self.assertIn(CLOSURE_PATH, matches)
 
     def test_sync_helper_status_is_explicitly_documented_as_conserved(self) -> None:
         todo_source = TODO_PATH.read_text(encoding="utf-8")

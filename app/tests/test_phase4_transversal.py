@@ -69,7 +69,9 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertIn('Entree canonique runtime container', run_sh)
         self.assertIn('PORT="${FRIDA_WEB_PORT:-8089}"', run_sh)
         self.assertIn('HOST="${FRIDA_WEB_HOST:-0.0.0.0}"', run_sh)
-        self.assertIn('exec python3 server.py', run_sh)
+        self.assertIn('resolve_python_bin()', run_sh)
+        self.assertIn('PYTHON_BIN="$(resolve_python_bin)"', run_sh)
+        self.assertIn('exec "$PYTHON_BIN" server.py', run_sh)
         self.assertIn('CMD ["python", "server.py"]', dockerfile)
 
         self.assertIn("WEB_HOST = os.environ.get('FRIDA_WEB_HOST', '0.0.0.0').strip() or '0.0.0.0'", config_py)
@@ -87,8 +89,8 @@ class Phase4TransversalTests(unittest.TestCase):
 
         self.assertNotIn('history: Array.isArray(history) ? history : [],', app_js)
         self.assertNotIn('const history = buildContextHistory(MAX_CONTEXT_TURNS);', app_js)
-        self.assertIn('async function sendToServer(userText, cfg, onChunk, threadId){', app_js)
-        self.assertIn('const reply = await sendToServer(text, cfg, (chunk) => {', app_js)
+        self.assertIn('async function sendToServer(userText, onChunk, threadId){', app_js)
+        self.assertIn('const reply = await sendToServer(text, (chunk) => {', app_js)
 
 
 if __name__ == '__main__':

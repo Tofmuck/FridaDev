@@ -20,13 +20,16 @@ Sources de travail retenues:
 
 ## 2. Ce que l'audit Claude a vu trop legerement ou trop globalement
 
-- [ ] Requalifier explicitement les `5 failures` de la suite complete par familles exactes, sans continuer a les presenter comme un seul probleme d'isolation DB.
-- [ ] Corriger l'isolation du test `app/tests/unit/logs/test_chat_turn_logger_phase2.py::test_build_identity_block_emits_identities_read_for_static_sources`, en couvrant le vrai chemin `_select_effective_dynamic_entries()` / `_get_identities()` au lieu du seul monkeypatch `_build_dynamic_lines`.
-- [ ] Corriger ou mettre a jour `app/tests/test_conv_store_json_sync_inventory_phase6.py::test_sync_helpers_are_documented_in_repo_audit`, puis remettre en coherence `app/docs/todo-done/audits/fridadev_repo_audit.md` si le test reste normatif.
-- [ ] Corriger ou recadrer `app/tests/test_logging_conventions_phase8.py::test_repo_has_no_legacy_logger_token`, en decidant explicitement si les archives et traces historiques doivent rester hors perimetre du grep ou etre nettoyees.
-- [ ] Corriger ou mettre a jour `app/tests/test_phase4_transversal.py::test_frontend_chat_payload_contract_no_longer_serializes_history`, dont l'assertion de signature `sendToServer(...)` est stale par rapport a `app/web/app.js`.
-- [ ] Corriger ou mettre a jour `app/tests/test_phase4_transversal.py::test_run_and_compose_runtime_binding_contract_is_unchanged`, dont l'assertion `exec python3 server.py` est stale par rapport a `app/run.sh` et au wrapper `PYTHON_BIN`.
-- [ ] Rejouer la suite complete `python -m unittest discover -s tests -p "test_*.py"` jusqu'a `0 failure`, puis consigner la preuve de retour au vert.
+- [x] Requalifier explicitement les `4 failures` restantes du HEAD courant par familles exactes, sans continuer a les presenter comme un seul probleme d'isolation DB:
+  - `1` doc/test stale sur le sous-ensemble sync JSON `conv_store`;
+  - `1` grep stale sur le token logger legacy limite a des archives/traces historiques;
+  - `2` assertions de contrat stales dans `test_phase4_transversal.py`.
+- [x] Reclasser l'item `app/tests/unit/logs/test_chat_turn_logger_phase2.py::test_build_identity_block_emits_identities_read_for_static_sources` comme deja ferme sur le HEAD courant par `ea81da4`; plus aucun correctif runtime n'etait requis dans cette tranche.
+- [x] Corriger `app/tests/test_conv_store_json_sync_inventory_phase6.py` pour pointer la vraie trace normative encore vivante (`app/docs/todo-done/refactors/fridadev_refactor_closure.md`) au lieu de forcer `app/docs/todo-done/audits/fridadev_repo_audit.md`.
+- [x] Corriger `app/tests/test_logging_conventions_phase8.py::test_repo_has_no_legacy_logger_token` en sortant explicitement les archives et traces historiques du grep, sans requalifier a tort ces occurrences documentaires en fuite runtime.
+- [x] Mettre a jour `app/tests/test_phase4_transversal.py::test_frontend_chat_payload_contract_no_longer_serializes_history` sur la signature reelle actuelle de `sendToServer(...)` dans `app/web/app.js`.
+- [x] Mettre a jour `app/tests/test_phase4_transversal.py::test_run_and_compose_runtime_binding_contract_is_unchanged` sur le wrapper runtime reel `resolve_python_bin()` / `PYTHON_BIN` de `app/run.sh`.
+- [x] Rejouer la suite complete `python -m unittest discover -s tests -p "test_*.py"` jusqu'a `0 failure`, puis consigner la preuve de retour au vert.
 
 ## 3. Restes d'audit importants a ne pas perdre
 
