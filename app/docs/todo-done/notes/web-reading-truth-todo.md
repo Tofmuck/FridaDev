@@ -1,8 +1,8 @@
-# Web Reading Truth - TODO
+# Web Reading Truth - Closure
 
-Objectif: cadrer un mini-chantier runtime/user-facing pour que Frida dise vrai sur ce qu'elle a reellement lu sur le web, n'assimile plus un snippet a une lecture de page, et n'enfouisse plus une lecture fictive en memoire durable.
+Document de cloture du mini-chantier runtime/user-facing ferme le 2026-04-04 pour que Frida dise vrai sur ce qu'elle a reellement lu sur le web, n'assimile plus un snippet a une lecture de page, et n'enfouisse plus une lecture fictive en memoire durable.
 
-## Etat apres tranche 1 - URL explicite primaire (2026-04-04)
+## Contexte de depart (2026-04-04)
 
 Cas de reference verifie:
 - conversation: `28756d17-061b-4058-8199-cfebfe46075f`
@@ -37,7 +37,7 @@ Etat de cette tranche:
   - `collection_path`
 - dans le chemin fallback, l'URL explicite reste maintenant preservee en tete de `sources[]` comme source primaire nominale, avec dedup si la recherche retourne aussi cette meme URL;
 - le runtime produit maintenant un `read_state` explicite pour la page cible;
-- les autres sous-chantiers restent ouverts: garde memoire durable, observability complete.
+- ce mini-chantier est maintenant clos: source primaire, `read_state`, garde de reponse, garde memoire et observability compacte ont ete fermee dans le meme cycle.
 
 ## Objectif produit
 
@@ -168,41 +168,41 @@ Contraintes de vocabulaire:
 
 ## Preuves attendues pour clore le mini-chantier
 
-- [ ] Reproduction du cas Mediapart avec URL explicite et `read_state` visible.
-- [ ] Cas de lecture primaire reussie montrant une difference claire avec le fallback snippet.
-- [ ] Cas `crawl_empty` montrant une reponse prudente sans pretention de lecture.
+- [x] Reproduction du cas Mediapart avec URL explicite et `read_state` visible.
+  - preuve live revalidee: conversation `4f1fcb36-4b4f-4e7a-adb8-a6bd075f8d96`, tour `turn-a4b102a5-497f-45a4-88f6-e450a086ab61`, `read_state=page_not_read_snippet_fallback`, `collection_path=explicit_url_fallback_search`, `primary_read_status=empty`.
+- [x] Cas de lecture primaire reussie montrant une difference claire avec le fallback snippet.
+  - preuve locale revalidee: `direct_success -> page_read ['crawl_markdown']` versus `fallback_snippet -> page_not_read_snippet_fallback ['search_snippet']`.
+- [x] Cas `crawl_empty` montrant une reponse prudente sans pretention de lecture.
+  - preuve revalidee via `tests.unit.chat.test_chat_prompt_context`: les cas `page_not_read_crawl_empty` et `page_not_read_error` imposent un langage d'absence de lecture directe.
 - [x] Cas de logs prod montrant, sans replay code, l'URL cible, le chemin suivi, le `used_content_kind`, et la longueur injectee.
-- [ ] Cas memoire montrant qu'une lecture fictive n'est plus retenue en durable.
+- [x] Cas memoire montrant qu'une lecture fictive n'est plus retenue en durable.
+  - preuve live revalidee sur la meme conversation Mediapart: `identity_write` Frida retient une formulation prudente (`cannot access full blog post from provided link; only title/snippet available`) et aucune pretention de lecture directe.
 
-## Faux bons correctifs a eviter
+## Faux bons correctifs evites pendant le chantier
 
-- [ ] Requalifier le probleme comme simple bug de troncature.
-- [ ] Corriger seulement la phrase du LLM sans introduire de verite runtime.
-- [ ] Corriger seulement le crawl sans traiter la garde memoire.
-- [ ] Corriger seulement la memoire sans traiter la source primaire et le langage de sur-pretention.
-- [ ] Ajouter un log `truncated` de plus sans exposer la lecture primaire vs fallback.
-- [ ] Lancer une refonte web complete alors qu'une tranche plus petite suffit.
+- ne pas requalifier le probleme comme simple bug de troncature;
+- ne pas corriger seulement la phrase du LLM sans introduire de verite runtime;
+- ne pas corriger seulement le crawl sans traiter la garde memoire;
+- ne pas corriger seulement la memoire sans traiter la source primaire et le langage de sur-pretention;
+- ne pas ajouter un log `truncated` de plus sans exposer la lecture primaire vs fallback;
+- ne pas lancer une refonte web complete alors qu'une tranche plus petite suffisait.
 
-## Surface probable concernee au prochain cycle
+## Surface effectivement concernee
 
-Surface probable du patch cycle suivant, a garder dans un seul mini-chantier:
+Surface effectivement touchee pour fermer ce mini-chantier:
 - `app/tools/web_search.py`
 - `app/core/chat_prompt_context.py`
 - `app/core/chat_service.py`
 - `app/core/chat_llm_flow.py`
-- `app/core/hermeneutic_node/doctrine/epistemic_regime.py`
 - `app/core/hermeneutic_node/inputs/web_input.py`
 - `app/observability/hermeneutic_node_logger.py`
 - `app/core/chat_memory_flow.py`
-- `app/memory/memory_identity_dynamics.py`
 - `app/memory/hermeneutics_policy.py`
-- `app/prompts/main_system.txt`
-- `app/prompts/main_hermeneutical.txt`
 - tests web/chat/logs associes
 
 ## Regle de cadrage
 
-Ce TODO pilote un mini-chantier unique et ferme:
+Ce document archive la cloture d'un mini-chantier unique et ferme:
 - dire vrai sur la lecture web reelle;
 - traiter l'URL explicite comme source primaire;
 - empecher la sur-pretention dans la reponse;

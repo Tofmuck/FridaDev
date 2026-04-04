@@ -42,7 +42,7 @@ Notes:
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
-- roadmap ouverte verite de lecture web: `todo-todo/product/web-reading-truth-todo.md`
+- note archivee verite de lecture web: `todo-done/notes/web-reading-truth-todo.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
 - roadmap Lot 9 archivee noeud de convergence hermeneutique: `todo-done/refactors/hermeneutic-convergence-node-todo.md`
