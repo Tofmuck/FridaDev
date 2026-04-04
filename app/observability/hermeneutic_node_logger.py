@@ -149,11 +149,39 @@ def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
+    source_material_summary = []
+    for item in _sequence(data.get('source_material_summary')):
+        source = _mapping(item)
+        source_material_summary.append(
+            {
+                'rank': int(source.get('rank') or 0),
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'used_in_prompt': bool(source.get('used_in_prompt', False)),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                'content_chars': int(source.get('content_chars') or 0),
+                'truncated': bool(source.get('truncated', False)),
+            }
+        )
     return {
         'present': bool(data),
         'enabled': bool(data.get('enabled', False)),
         'status': str(data.get('status') or 'missing'),
         'results_count': int(data.get('results_count') or 0),
+        'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
+        'explicit_url': str(data.get('explicit_url') or ''),
+        'read_state': str(data.get('read_state') or ''),
+        'primary_source_kind': str(data.get('primary_source_kind') or ''),
+        'primary_read_attempted': bool(data.get('primary_read_attempted', False)),
+        'primary_read_status': str(data.get('primary_read_status') or ''),
+        'fallback_used': bool(data.get('fallback_used', False)),
+        'collection_path': str(data.get('collection_path') or ''),
+        'used_content_kinds': [str(value) for value in _sequence(data.get('used_content_kinds')) if str(value)],
+        'injected_chars': int(data.get('injected_chars') or 0),
+        'context_chars': int(data.get('context_chars') or 0),
+        'source_material_summary': source_material_summary,
     }
 
 

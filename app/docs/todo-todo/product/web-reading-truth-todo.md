@@ -70,7 +70,7 @@ Hors scope de ce mini-chantier:
 - [x] Un `search_snippet` n'est plus confondu avec une lecture de page.
 - [x] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
 - [x] Une pretention de lecture non soutenue ne devient plus une trace durable cote Frida.
-- [ ] Les logs de production permettent de diagnostiquer le cas sans replay manuel du code.
+- [x] Les logs de production permettent de diagnostiquer le cas sans replay manuel du code.
 
 ## Vocabulaire runtime a introduire
 
@@ -100,7 +100,7 @@ Contraintes de vocabulaire:
   - `page_not_read_snippet_fallback` = aucune lecture de page cible, mais un snippet fallback a ete utilise pour repondre;
   - `page_not_read_crawl_empty` = crawl vide sur la page cible sans snippet fallback utilise;
   - `page_not_read_error` = erreur de crawl sur la page cible sans snippet fallback utilise.
-- [ ] Ne plus laisser `status=ok` porter a lui seul une promesse implicite de lecture.
+- [x] Ne plus laisser `status=ok` porter a lui seul une promesse implicite de lecture.
 - rappel de cadrage: garder ce vocabulaire petit et borne, sans taxonomie web generale au-dela de ce qui sert la verite de lecture.
 
 ## Sous-chantier 2 - Traitement prioritaire des URLs explicites
@@ -154,20 +154,24 @@ Contraintes de vocabulaire:
 
 ## Sous-chantier 5 - Observability suffisante
 
-- [ ] Exposer si une URL explicite a ete detectee.
-- [ ] Exposer le `read_state` reel.
-- [ ] Exposer la difference entre lecture primaire et fallback.
-- [ ] Exposer `used_content_kind`.
-- [ ] Exposer la longueur de contenu reellement injecte.
-- [ ] Exposer si la page cible a produit un crawl vide, une erreur, une lecture partielle, ou un snippet fallback.
-- [ ] Faire de cette visibilite un livrable de verite produit, pas un luxe secondaire.
+- [x] Exposer si une URL explicite a ete detectee.
+- [x] Exposer le `read_state` reel.
+- [x] Exposer la difference entre lecture primaire et fallback.
+- [x] Exposer `used_content_kind`.
+- [x] Exposer la longueur de contenu reellement injecte.
+- [x] Exposer si la page cible a produit un crawl vide, une erreur, une lecture partielle, ou un snippet fallback.
+- [x] Faire de cette visibilite un livrable de verite produit, pas un luxe secondaire.
+- observability runtime retenue:
+  - l'event `web_search` expose `explicit_url_detected`, `explicit_url`, `read_state`, `collection_path`, `primary_read_status`, `used_content_kinds`, `injected_chars`, `context_chars` et une `source_material_summary` compacte;
+  - `hermeneutic_node_insertion.inputs.web` reprend cette synthese pour lecture prod sans replay;
+  - aucun `context_block`, `content_used`, snippet brut ou markdown brut n'est journalise.
 
 ## Preuves attendues pour clore le mini-chantier
 
 - [ ] Reproduction du cas Mediapart avec URL explicite et `read_state` visible.
 - [ ] Cas de lecture primaire reussie montrant une difference claire avec le fallback snippet.
 - [ ] Cas `crawl_empty` montrant une reponse prudente sans pretention de lecture.
-- [ ] Cas de logs prod montrant, sans replay code, l'URL cible, le chemin suivi, le `used_content_kind`, et la longueur injectee.
+- [x] Cas de logs prod montrant, sans replay code, l'URL cible, le chemin suivi, le `used_content_kind`, et la longueur injectee.
 - [ ] Cas memoire montrant qu'une lecture fictive n'est plus retenue en durable.
 
 ## Faux bons correctifs a eviter

@@ -209,6 +209,11 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertTrue(payload['sources'][0]['is_primary_source'])
         self.assertEqual(payload['sources'][0]['crawl_status'], 'success')
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'crawl_markdown')
+        self.assertEqual(payload['used_content_kinds'], ['crawl_markdown'])
+        self.assertEqual(payload['injected_chars'], len(payload['sources'][0]['content_used']))
+        self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(payload['source_material_summary'][0]['used_content_kind'], 'crawl_markdown')
+        self.assertEqual(payload['source_material_summary'][0]['content_chars'], len(payload['sources'][0]['content_used']))
         self.assertIn('URL explicite fournie par l\'utilisateur', payload['context_block'])
 
     def test_build_context_payload_marks_explicit_url_as_partially_read_when_direct_content_is_truncated(self) -> None:
@@ -248,6 +253,8 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['read_state'], 'page_partially_read')
         self.assertTrue(payload['sources'][0]['truncated'])
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'crawl_markdown')
+        self.assertEqual(payload['used_content_kinds'], ['crawl_markdown'])
+        self.assertTrue(payload['source_material_summary'][0]['truncated'])
 
     def test_build_context_payload_tries_explicit_url_before_search_fallback(self) -> None:
         url = 'https://example.com/article'
@@ -319,6 +326,36 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertFalse(payload['sources'][1]['is_primary_source'])
         self.assertEqual(payload['sources'][1]['crawl_status'], 'not_attempted')
         self.assertEqual(payload['sources'][1]['used_content_kind'], 'search_snippet')
+        self.assertEqual(payload['used_content_kinds'], ['search_snippet'])
+        self.assertGreater(payload['injected_chars'], 0)
+        self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(
+            payload['source_material_summary'],
+            [
+                {
+                    'rank': 1,
+                    'url': url,
+                    'source_origin': 'explicit_url',
+                    'is_primary_source': True,
+                    'used_in_prompt': False,
+                    'used_content_kind': 'none',
+                    'crawl_status': 'empty',
+                    'content_chars': 0,
+                    'truncated': False,
+                },
+                {
+                    'rank': 2,
+                    'url': 'https://fallback.example/article',
+                    'source_origin': 'search_result',
+                    'is_primary_source': False,
+                    'used_in_prompt': True,
+                    'used_content_kind': 'search_snippet',
+                    'crawl_status': 'not_attempted',
+                    'content_chars': len(payload['sources'][1]['content_used']),
+                    'truncated': False,
+                },
+            ],
+        )
         self.assertIn("Lecture directe tentee d'abord : empty.", payload['context_block'])
 
     def test_build_context_payload_promotes_matching_explicit_url_in_fallback_without_duplicate(self) -> None:
@@ -421,6 +458,25 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertTrue(payload['sources'][0]['is_primary_source'])
         self.assertEqual(payload['sources'][0]['crawl_status'], 'empty')
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'none')
+        self.assertEqual(payload['used_content_kinds'], [])
+        self.assertEqual(payload['injected_chars'], 0)
+        self.assertEqual(payload['context_chars'], 0)
+        self.assertEqual(
+            payload['source_material_summary'],
+            [
+                {
+                    'rank': 1,
+                    'url': url,
+                    'source_origin': 'explicit_url',
+                    'is_primary_source': True,
+                    'used_in_prompt': False,
+                    'used_content_kind': 'none',
+                    'crawl_status': 'empty',
+                    'content_chars': 0,
+                    'truncated': False,
+                }
+            ],
+        )
 
     def test_build_context_payload_marks_explicit_url_as_not_read_error_when_crawl_errors_and_fallback_is_empty(self) -> None:
         url = 'https://example.com/article'
@@ -460,6 +516,9 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['sources'][0]['url'], url)
         self.assertEqual(payload['sources'][0]['crawl_status'], 'error')
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'none')
+        self.assertEqual(payload['used_content_kinds'], [])
+        self.assertEqual(payload['injected_chars'], 0)
+        self.assertEqual(payload['context_chars'], 0)
 
 
 if __name__ == '__main__':

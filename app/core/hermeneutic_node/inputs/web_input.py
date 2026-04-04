@@ -46,6 +46,91 @@ def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _source_content_chars(source: Mapping[str, Any]) -> int:
+    return len(str(source.get('content_used') or ''))
+
+
+def _canonical_source_material_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        'rank': _optional_int(entry.get('rank')) or 0,
+        'url': str(entry.get('url') or ''),
+        'source_origin': str(entry.get('source_origin') or 'search_result'),
+        'is_primary_source': bool(entry.get('is_primary_source', False)),
+        'used_in_prompt': bool(entry.get('used_in_prompt', False)),
+        'used_content_kind': str(entry.get('used_content_kind') or 'none'),
+        'crawl_status': str(entry.get('crawl_status') or 'not_attempted'),
+        'content_chars': _optional_int(entry.get('content_chars')) or 0,
+        'truncated': bool(entry.get('truncated', False)),
+    }
+
+
+def _derive_source_material_summary(sources: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            'rank': _optional_int(source.get('rank')) or 0,
+            'url': str(source.get('url') or ''),
+            'source_origin': str(source.get('source_origin') or 'search_result'),
+            'is_primary_source': bool(source.get('is_primary_source', False)),
+            'used_in_prompt': bool(source.get('used_in_prompt', False)),
+            'used_content_kind': str(source.get('used_content_kind') or 'none'),
+            'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+            'content_chars': _source_content_chars(source),
+            'truncated': bool(source.get('truncated', False)),
+        }
+        for source in sources
+    ]
+
+
+def _canonical_source_material_summary(
+    source_material_summary: Sequence[Mapping[str, Any]] | None,
+    *,
+    sources: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    if isinstance(source_material_summary, Sequence) and not isinstance(source_material_summary, (str, bytes, bytearray)):
+        summary = [
+            _canonical_source_material_entry(entry)
+            for entry in source_material_summary
+            if isinstance(entry, Mapping)
+        ]
+        if summary:
+            return summary
+    return _derive_source_material_summary(sources)
+
+
+def _canonical_used_content_kinds(
+    used_content_kinds: Sequence[Any] | None,
+    *,
+    source_material_summary: Sequence[Mapping[str, Any]],
+) -> list[str]:
+    if isinstance(used_content_kinds, Sequence) and not isinstance(used_content_kinds, (str, bytes, bytearray)):
+        deduped: list[str] = []
+        for kind in used_content_kinds:
+            text = str(kind or '')
+            if text and text not in deduped:
+                deduped.append(text)
+        if deduped:
+            return deduped
+
+    deduped: list[str] = []
+    for source in source_material_summary:
+        if not bool(source.get('used_in_prompt', False)):
+            continue
+        kind = str(source.get('used_content_kind') or 'none')
+        if kind == 'none' or kind in deduped:
+            continue
+        deduped.append(kind)
+    return deduped
+
+
+def _derive_injected_chars(source_material_summary: Sequence[Mapping[str, Any]]) -> int:
+    total = 0
+    for source in source_material_summary:
+        if not bool(source.get('used_in_prompt', False)):
+            continue
+        total += _optional_int(source.get('content_chars')) or 0
+    return total
+
+
 def build_web_input(
     *,
     enabled: bool,
@@ -65,7 +150,31 @@ def build_web_input(
     runtime: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
+    used_content_kinds: Sequence[Any] | None = None,
+    injected_chars: int | None = None,
+    context_chars: int | None = None,
+    source_material_summary: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    canonical_sources = [
+        _canonical_source(source)
+        for source in sources
+        if isinstance(source, Mapping)
+    ]
+    canonical_context_block = str(context_block or '')
+    canonical_source_material_summary = _canonical_source_material_summary(
+        source_material_summary,
+        sources=canonical_sources,
+    )
+    canonical_used_content_kinds = _canonical_used_content_kinds(
+        used_content_kinds,
+        source_material_summary=canonical_source_material_summary,
+    )
+    canonical_injected_chars = _optional_int(injected_chars)
+    if canonical_injected_chars is None:
+        canonical_injected_chars = _derive_injected_chars(canonical_source_material_summary)
+    canonical_context_chars = _optional_int(context_chars)
+    if canonical_context_chars is None:
+        canonical_context_chars = len(canonical_context_block)
     return {
         'schema_version': SCHEMA_VERSION,
         'enabled': bool(enabled),
@@ -83,8 +192,12 @@ def build_web_input(
         'fallback_used': bool(fallback_used),
         'collection_path': _optional_str(collection_path),
         'runtime': _canonical_runtime(runtime),
-        'sources': [_canonical_source(source) for source in sources],
-        'context_block': str(context_block or ''),
+        'used_content_kinds': canonical_used_content_kinds,
+        'injected_chars': canonical_injected_chars,
+        'context_chars': canonical_context_chars,
+        'source_material_summary': canonical_source_material_summary,
+        'sources': canonical_sources,
+        'context_block': canonical_context_block,
     }
 
 
@@ -108,4 +221,10 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),
+        used_content_kinds=payload.get('used_content_kinds') if isinstance(payload.get('used_content_kinds'), Sequence) else (),
+        injected_chars=_optional_int(payload.get('injected_chars')),
+        context_chars=_optional_int(payload.get('context_chars')),
+        source_material_summary=payload.get('source_material_summary')
+        if isinstance(payload.get('source_material_summary'), Sequence)
+        else (),
     )

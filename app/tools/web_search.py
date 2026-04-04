@@ -178,6 +178,66 @@ def _build_source_payload(
     }
 
 
+def _source_content_chars(source: dict[str, Any]) -> int:
+    return len(str(source.get('content_used') or ''))
+
+
+def _build_source_material_summary(sources: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for source in sources or []:
+        try:
+            rank = int(source.get('rank') or 0)
+        except (TypeError, ValueError):
+            rank = 0
+        summary.append(
+            {
+                'rank': rank,
+                'url': str(source.get('url') or ''),
+                'source_origin': str(source.get('source_origin') or 'search_result'),
+                'is_primary_source': bool(source.get('is_primary_source', False)),
+                'used_in_prompt': bool(source.get('used_in_prompt', False)),
+                'used_content_kind': str(source.get('used_content_kind') or 'none'),
+                'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+                'content_chars': _source_content_chars(source),
+                'truncated': bool(source.get('truncated', False)),
+            }
+        )
+    return summary
+
+
+def _derive_used_content_kinds(source_material_summary: list[dict[str, Any]] | None) -> list[str]:
+    kinds: list[str] = []
+    for source in source_material_summary or []:
+        if not bool(source.get('used_in_prompt', False)):
+            continue
+        kind = str(source.get('used_content_kind') or 'none')
+        if kind == 'none' or kind in kinds:
+            continue
+        kinds.append(kind)
+    return kinds
+
+
+def _derive_injected_chars(source_material_summary: list[dict[str, Any]] | None) -> int:
+    total = 0
+    for source in source_material_summary or []:
+        if not bool(source.get('used_in_prompt', False)):
+            continue
+        try:
+            total += int(source.get('content_chars') or 0)
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
+def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
+    source_material_summary = _build_source_material_summary(list(payload.get('sources') or []))
+    payload['source_material_summary'] = source_material_summary
+    payload['used_content_kinds'] = _derive_used_content_kinds(source_material_summary)
+    payload['injected_chars'] = _derive_injected_chars(source_material_summary)
+    payload['context_chars'] = len(str(payload.get('context_block') or ''))
+    return payload
+
+
 def _build_context_material(query: str, results: list[dict[str, str]]) -> dict[str, Any]:
     return _build_search_context_material(query, results)
 
@@ -502,11 +562,23 @@ def _emit_web_search_runtime_event(
     primary_read_status: str | None = None,
     fallback_used: bool = False,
     collection_path: str = 'search_only',
+    used_content_kinds: list[str] | None = None,
+    injected_chars: int | None = None,
+    context_chars: int | None = None,
+    source_material_summary: list[dict[str, Any]] | None = None,
 ) -> None:
     if truncated is None:
         truncated = any(bool(source.get('truncated')) for source in (sources or []))
         if not truncated and context_block:
             truncated = '[...contenu tronqué]' in str(context_block)
+    if source_material_summary is None:
+        source_material_summary = _build_source_material_summary(list(sources or []))
+    if used_content_kinds is None:
+        used_content_kinds = _derive_used_content_kinds(source_material_summary)
+    if injected_chars is None:
+        injected_chars = _derive_injected_chars(source_material_summary)
+    if context_chars is None:
+        context_chars = len(str(context_block or ''))
     payload = {
         'enabled': bool(enabled),
         'query_preview': str(query_preview)[:120],
@@ -521,6 +593,10 @@ def _emit_web_search_runtime_event(
         'primary_read_status': str(primary_read_status or ''),
         'fallback_used': bool(fallback_used),
         'collection_path': str(collection_path or 'search_only'),
+        'used_content_kinds': list(used_content_kinds or []),
+        'injected_chars': int(injected_chars or 0),
+        'context_chars': int(context_chars or 0),
+        'source_material_summary': list(source_material_summary or []),
     }
     if error_class:
         payload['error_class'] = error_class
@@ -648,10 +724,10 @@ def _build_payload_from_collection(
 def build_context_payload(user_msg: str) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     try:
-        payload = _build_payload_from_collection(
+        payload = _augment_payload_observability(_build_payload_from_collection(
             user_msg=user_msg,
             explicit_url=explicit_url,
-        )
+        ))
         _emit_web_search_runtime_event(
             enabled=True,
             status=payload['status'],
@@ -669,10 +745,14 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             primary_read_status=str(payload['primary_read_status'] or ''),
             fallback_used=bool(payload['fallback_used']),
             collection_path=str(payload['collection_path']),
+            used_content_kinds=list(payload.get('used_content_kinds') or []),
+            injected_chars=int(payload.get('injected_chars') or 0),
+            context_chars=int(payload.get('context_chars') or 0),
+            source_material_summary=list(payload.get('source_material_summary') or []),
         )
         return payload
     except Exception as exc:
-        error_payload = {
+        error_payload = _augment_payload_observability({
             'enabled': True,
             'status': 'error',
             'reason_code': 'upstream_error',
@@ -691,7 +771,7 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             'primary_read_status': 'error' if explicit_url else 'not_attempted',
             'fallback_used': bool(explicit_url),
             'collection_path': 'explicit_url_fallback_search' if explicit_url else 'search_only',
-        }
+        })
         _emit_web_search_runtime_event(
             enabled=True,
             status='error',
@@ -711,6 +791,10 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             primary_read_status=str(error_payload['primary_read_status'] or ''),
             fallback_used=bool(error_payload['fallback_used']),
             collection_path=str(error_payload['collection_path']),
+            used_content_kinds=list(error_payload.get('used_content_kinds') or []),
+            injected_chars=int(error_payload.get('injected_chars') or 0),
+            context_chars=int(error_payload.get('context_chars') or 0),
+            source_material_summary=list(error_payload.get('source_material_summary') or []),
         )
         return error_payload
 

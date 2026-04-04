@@ -1319,6 +1319,11 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['sources'][0]['crawl_status'], 'success')
         self.assertEqual(payload['sources'][1]['used_content_kind'], 'search_snippet')
         self.assertTrue(payload['sources'][1]['truncated'])
+        self.assertEqual(payload['used_content_kinds'], ['crawl_markdown', 'search_snippet'])
+        self.assertEqual(payload['injected_chars'], len(payload['sources'][0]['content_used']) + len(payload['sources'][1]['content_used']))
+        self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(payload['source_material_summary'][0]['used_content_kind'], 'crawl_markdown')
+        self.assertEqual(payload['source_material_summary'][1]['used_content_kind'], 'search_snippet')
         self.assertTrue(payload['context_block'].startswith('[RECHERCHE WEB'))
 
         web_event = next(event for event in observed if event['stage'] == 'web_search')
@@ -1330,6 +1335,18 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'not_attempted')
         self.assertFalse(web_event['payload_json']['fallback_used'])
         self.assertEqual(web_event['payload_json']['collection_path'], 'search_only')
+        self.assertEqual(web_event['payload_json']['used_content_kinds'], ['crawl_markdown', 'search_snippet'])
+        self.assertEqual(web_event['payload_json']['injected_chars'], payload['injected_chars'])
+        self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))
+        self.assertEqual(
+            web_event['payload_json']['source_material_summary'],
+            payload['source_material_summary'],
+        )
+        self.assertNotIn('context_block', web_event['payload_json'])
+        self.assertNotIn('sources', web_event['payload_json'])
+        self.assertNotIn('content_used', str(web_event['payload_json']))
+        self.assertNotIn('snippet a', str(web_event['payload_json']))
+        self.assertNotIn('snippet b', str(web_event['payload_json']))
 
     def test_web_search_build_context_payload_logs_explicit_url_primary_path(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -1397,6 +1414,104 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'success')
         self.assertFalse(web_event['payload_json']['fallback_used'])
         self.assertEqual(web_event['payload_json']['collection_path'], 'explicit_url_direct')
+        self.assertEqual(web_event['payload_json']['used_content_kinds'], ['crawl_markdown'])
+        self.assertEqual(web_event['payload_json']['injected_chars'], len(payload['sources'][0]['content_used']))
+        self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))
+        self.assertEqual(
+            web_event['payload_json']['source_material_summary'],
+            payload['source_material_summary'],
+        )
+        self.assertNotIn('context_block', web_event['payload_json'])
+        self.assertNotIn('sources', web_event['payload_json'])
+        self.assertNotIn('content_used', str(web_event['payload_json']))
+        self.assertNotIn('contenu primaire', str(web_event['payload_json']))
+
+    def test_web_search_build_context_payload_logs_explicit_url_fallback_material_summary(self) -> None:
+        observed: list[dict[str, Any]] = []
+        explicit_url = 'https://example.com/article'
+        original_insert = log_store.insert_chat_log_event
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_runtime_services_value = web_search._runtime_services_value
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        web_search.crawl_with_status = lambda _url: {
+            'status': 'empty',
+            'markdown': '',
+            'error_class': None,
+        }
+        web_search.reformulate = lambda _msg: 'requete fallback'
+        web_search.search = lambda _query: [
+            {
+                'title': 'Source fallback',
+                'url': 'https://fallback.example/article',
+                'content': 'resume fallback',
+            }
+        ]
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 80,
+        }[field]
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-web-explicit-url-fallback',
+            user_msg='bonjour',
+            web_search_enabled=True,
+        )
+        try:
+            payload = web_search.build_context_payload(f'lis cette page: {explicit_url}')
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._runtime_services_value = original_runtime_services_value
+
+        web_event = next(event for event in observed if event['stage'] == 'web_search')
+        self.assertEqual(web_event['status'], 'ok')
+        self.assertEqual(web_event['payload_json']['read_state'], 'page_not_read_snippet_fallback')
+        self.assertEqual(web_event['payload_json']['collection_path'], 'explicit_url_fallback_search')
+        self.assertEqual(web_event['payload_json']['primary_read_status'], 'empty')
+        self.assertEqual(web_event['payload_json']['used_content_kinds'], ['search_snippet'])
+        self.assertEqual(web_event['payload_json']['injected_chars'], payload['injected_chars'])
+        self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))
+        self.assertEqual(
+            web_event['payload_json']['source_material_summary'],
+            [
+                {
+                    'rank': 1,
+                    'url': explicit_url,
+                    'source_origin': 'explicit_url',
+                    'is_primary_source': True,
+                    'used_in_prompt': False,
+                    'used_content_kind': 'none',
+                    'crawl_status': 'empty',
+                    'content_chars': 0,
+                    'truncated': False,
+                },
+                {
+                    'rank': 2,
+                    'url': 'https://fallback.example/article',
+                    'source_origin': 'search_result',
+                    'is_primary_source': False,
+                    'used_in_prompt': True,
+                    'used_content_kind': 'search_snippet',
+                    'crawl_status': 'not_attempted',
+                    'content_chars': len(payload['sources'][1]['content_used']),
+                    'truncated': False,
+                },
+            ],
+        )
+        self.assertNotIn('context_block', web_event['payload_json'])
+        self.assertNotIn('sources', web_event['payload_json'])
+        self.assertNotIn('content_used', str(web_event['payload_json']))
+        self.assertNotIn('resume fallback', str(web_event['payload_json']))
 
     def test_web_search_build_context_emits_error_event(self) -> None:
         observed: list[dict[str, Any]] = []
