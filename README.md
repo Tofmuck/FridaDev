@@ -18,6 +18,7 @@ Primary references for the current repository state:
 - Operator observability keeping local `estimated_*` counters distinct from post-call OpenRouter `provider_*` truth.
 - OpenRouter transport identity split by caller (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) through dedicated `HTTP-Referer` and `X-OpenRouter-Title`.
 - Main system prompt now framing Frida as a work/reflection interlocutor rather than a generic execution assistant.
+- Main chat surface `/` remains plain-text; the main LLM is instructed to answer in strict plain text, without visible Markdown formatting unless code is explicitly requested.
 
 ### What the repository contains
 - Flask backend orchestration in `app/server.py`
@@ -93,6 +94,7 @@ References principales pour l'etat actuel du depot:
 - Observabilite operateur distinguant les compteurs locaux `estimated_*` et la verite OpenRouter post-call `provider_*`.
 - Identite transport OpenRouter differenciee par composant (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) via des `HTTP-Referer` et `X-OpenRouter-Title` dedies.
 - Prompt systeme principal recadre comme interlocuteur de travail et de reflexion, et non comme simple assistant d'execution.
+- La surface chat principale `/` reste en texte brut ; le LLM principal est desormais contraint a repondre en texte brut strict, sans Markdown visible sauf si du code est explicitement demande.
 
 ### Ce que contient le depot
 - Orchestration backend Flask dans `app/server.py`

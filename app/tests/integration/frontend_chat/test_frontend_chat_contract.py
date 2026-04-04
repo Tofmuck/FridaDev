@@ -85,6 +85,14 @@ class AppPhase8Tests(unittest.TestCase):
             index_source,
         )
 
+    def test_main_chat_renders_messages_as_plain_text_without_markdown_renderer(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("bubble.innerText = text;", app_source)
+        self.assertNotIn("bubble.innerHTML =", app_source)
+        self.assertNotIn("marked(", app_source)
+        self.assertNotIn("markdown-it", app_source)
+
     def test_session_panel_points_main_llm_response_budget_to_admin_runtime(self) -> None:
         source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
 

@@ -27,6 +27,22 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertEqual(prompt_loader.get_main_system_prompt(), path.read_text(encoding='utf-8').strip())
         self.assertIn('Cadre de réponse', prompt_loader.get_main_system_prompt())
 
+    def test_main_system_prompt_enforces_strict_plain_text_contract(self) -> None:
+        prompt = prompt_loader.get_main_system_prompt()
+
+        for snippet in [
+            'Par défaut, tu réponds en texte brut strict',
+            "Tu n'utilises pas de mise en forme Markdown visible",
+            "pas de titres `#`",
+            "pas de `**`",
+            "pas de `---`",
+            "pas de blockquotes `>`",
+            "Par défaut, tu n'utilises ni puces, ni listes numérotées",
+            "Tu n'utilises pas de code fences sauf si l'utilisateur demande explicitement du code.",
+            "Si l'utilisateur demande explicitement un plan, des étapes ou une liste",
+        ]:
+            self.assertIn(snippet, prompt)
+
     def test_main_hermeneutical_prompt_reads_centralized_prompt_file(self) -> None:
         path = prompt_loader.resolve_app_prompt_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH)
         self.assertTrue(path.exists())

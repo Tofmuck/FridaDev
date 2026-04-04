@@ -120,6 +120,44 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertTrue(augmented.endswith('Posture finale validee: clarify.'))
         self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[JUGEMENT HERMENEUTIQUE]'))
 
+    def test_build_plain_text_guard_block_for_default_turn_forbids_markdown_lists_and_code_fences(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Explique simplement la différence entre la mémoire vive et le disque dur.',
+        )
+
+        self.assertIn('[CONTRAT TEXTE BRUT]', block)
+        self.assertIn('texte brut strict', block)
+        self.assertIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn('Réponds en courts paragraphes continus.', block)
+        self.assertIn("n'utilise pas de code fences", block)
+
+    def test_build_plain_text_guard_block_allows_minimal_structure_when_user_explicitly_requests_steps(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Donne-moi un plan en quatre étapes pour préparer un exposé.',
+        )
+
+        self.assertIn("demande explicitement un plan, des étapes ou une liste", block)
+        self.assertNotIn("n'utilise ni puces, ni listes numérotées", block)
+        self.assertIn("n'utilise pas de code fences", block)
+
+    def test_build_plain_text_guard_block_allows_code_only_when_user_explicitly_requests_it(self) -> None:
+        block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg='Montre-moi un exemple de code Python pour lire un fichier JSON.',
+        )
+
+        self.assertIn("demande explicitement du code", block)
+        self.assertNotIn("n'utilise pas de code fences", block)
+
+    def test_inject_plain_text_guard_block_appends_after_augmented_system(self) -> None:
+        augmented = chat_prompt_context.inject_plain_text_guard_block(
+            'BASE SYSTEM',
+            '[CONTRAT TEXTE BRUT]\nRéponds en texte brut strict.',
+        )
+
+        self.assertTrue(augmented.startswith('BASE SYSTEM'))
+        self.assertIn('[CONTRAT TEXTE BRUT]', augmented)
+        self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[CONTRAT TEXTE BRUT]'))
+
     def test_build_web_reading_guard_block_for_snippet_fallback_forbids_direct_reading_claims(self) -> None:
         block = chat_prompt_context.build_web_reading_guard_block(
             web_input={

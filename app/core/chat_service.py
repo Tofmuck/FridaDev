@@ -565,6 +565,13 @@ def chat_response(
         augmented_system,
         web_reading_guard_block,
     )
+    plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
+        user_msg=user_msg,
+    )
+    augmented_system = chat_prompt_context.inject_plain_text_guard_block(
+        augmented_system,
+        plain_text_guard_block,
+    )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
     prompt_messages = conv_store_module.build_prompt_messages(

@@ -14,6 +14,37 @@ _READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
 _READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
 _READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
 _READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
+_LIST_REQUEST_MARKERS = (
+    'liste',
+    'list',
+    'plan',
+    'etape',
+    'étape',
+    'etapes',
+    'étapes',
+    'points',
+    'puces',
+    'bullet',
+)
+_CODE_REQUEST_MARKERS = (
+    'code',
+    'python',
+    'javascript',
+    'typescript',
+    'js',
+    'sql',
+    'bash',
+    'shell',
+    'regex',
+    'json',
+    'yaml',
+    'xml',
+    'html',
+    'css',
+    'script',
+    'fonction',
+    'snippet',
+)
 
 
 def _text(value: Any) -> str:
@@ -33,6 +64,15 @@ def _stable_string_list(value: Any) -> list[str]:
         seen.add(normalized)
         ordered.append(normalized)
     return ordered
+
+
+def _normalized_lower_text(value: Any) -> str:
+    return _text(value).lower()
+
+
+def _contains_any_marker(value: Any, markers: tuple[str, ...]) -> bool:
+    haystack = _normalized_lower_text(value)
+    return any(marker in haystack for marker in markers)
 
 
 def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
@@ -84,6 +124,46 @@ def inject_hermeneutic_judgment_block(
     hermeneutic_judgment_block: str,
 ) -> str:
     block = _text(hermeneutic_judgment_block)
+    if not block:
+        return str(augmented_system or '')
+    return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
+
+
+def build_plain_text_guard_block(
+    *,
+    user_msg: str,
+) -> str:
+    wants_list = _contains_any_marker(user_msg, _LIST_REQUEST_MARKERS)
+    wants_code = _contains_any_marker(user_msg, _CODE_REQUEST_MARKERS)
+
+    lines = [
+        '[CONTRAT TEXTE BRUT]',
+        'Réponds pour cette surface en texte brut strict, lisible sans rendu Markdown.',
+        'Interdit: titres Markdown, gras/italique Markdown, règles horizontales, blockquotes, tableaux Markdown.',
+    ]
+    if wants_list:
+        lines.append(
+            "L'utilisateur demande explicitement un plan, des étapes ou une liste: une structure textuelle minimale est autorisée, sans décoration Markdown."
+        )
+    else:
+        lines.append(
+            "Pour ce tour, n'utilise ni puces, ni listes numérotées, ni lignes commençant par `-`, `*`, `•`, `1)` ou `1.`."
+        )
+        lines.append('Réponds en courts paragraphes continus.')
+
+    if wants_code:
+        lines.append("L'utilisateur demande explicitement du code: un bloc de code est autorisé seulement si c'est vraiment utile.")
+    else:
+        lines.append("Pour ce tour, n'utilise pas de code fences ni de blocs de code.")
+
+    return '\n'.join(lines)
+
+
+def inject_plain_text_guard_block(
+    augmented_system: str,
+    plain_text_guard_block: str,
+) -> str:
+    block = _text(plain_text_guard_block)
     if not block:
         return str(augmented_system or '')
     return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)

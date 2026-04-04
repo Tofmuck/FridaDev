@@ -1445,6 +1445,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         prompt_messages = observed_state['payload_messages']
         self.assertEqual(prompt_messages[0]['role'], 'system')
         self.assertIn('[GARDE DE LECTURE WEB]', prompt_messages[0]['content'])
+        self.assertIn('[CONTRAT TEXTE BRUT]', prompt_messages[0]['content'])
+        self.assertIn("n'utilise ni puces, ni listes numérotées", prompt_messages[0]['content'])
+        self.assertIn("n'utilise pas de code fences", prompt_messages[0]['content'])
         self.assertIn('read_state: page_not_read_snippet_fallback.', prompt_messages[0]['content'])
         self.assertIn("La page cible n'a pas ete lue directement.", prompt_messages[0]['content'])
         self.assertIn("je l'ai sous les yeux", prompt_messages[0]['content'])
