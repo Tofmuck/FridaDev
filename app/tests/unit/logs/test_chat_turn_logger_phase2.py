@@ -1352,7 +1352,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         observed: list[dict[str, Any]] = []
         explicit_url = 'https://example.com/article'
         original_insert = log_store.insert_chat_log_event
-        original_crawl_with_status = web_search.crawl_with_status
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
         original_reformulate = web_search.reformulate
         original_search = web_search.search
         original_runtime_services_value = web_search._runtime_services_value
@@ -1362,10 +1362,11 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             return True
 
         log_store.insert_chat_log_event = fake_insert
-        web_search.crawl_with_status = lambda url: {
+        web_search._crawl_markdown_with_status = lambda url, *, filter_type='fit', query=None: {
             'status': 'success',
             'markdown': 'contenu primaire',
             'error_class': None,
+            'filter': filter_type,
         }
         web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
             AssertionError('generic search should not run on explicit URL direct success')
@@ -1388,7 +1389,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
-            web_search.crawl_with_status = original_crawl_with_status
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
             web_search.reformulate = original_reformulate
             web_search.search = original_search
             web_search._runtime_services_value = original_runtime_services_value
@@ -1412,6 +1413,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['primary_source_kind'], 'explicit_url')
         self.assertTrue(web_event['payload_json']['primary_read_attempted'])
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'success')
+        self.assertEqual(web_event['payload_json']['primary_read_filter'], 'fit')
+        self.assertFalse(web_event['payload_json']['primary_read_raw_fallback_used'])
         self.assertFalse(web_event['payload_json']['fallback_used'])
         self.assertEqual(web_event['payload_json']['collection_path'], 'explicit_url_direct')
         self.assertEqual(web_event['payload_json']['used_content_kinds'], ['crawl_markdown'])
@@ -1430,7 +1433,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         observed: list[dict[str, Any]] = []
         explicit_url = 'https://example.com/article'
         original_insert = log_store.insert_chat_log_event
-        original_crawl_with_status = web_search.crawl_with_status
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
         original_reformulate = web_search.reformulate
         original_search = web_search.search
         original_runtime_services_value = web_search._runtime_services_value
@@ -1440,10 +1443,11 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             return True
 
         log_store.insert_chat_log_event = fake_insert
-        web_search.crawl_with_status = lambda _url: {
+        web_search._crawl_markdown_with_status = lambda _url, *, filter_type='fit', query=None: {
             'status': 'empty',
             'markdown': '',
             'error_class': None,
+            'filter': filter_type,
         }
         web_search.reformulate = lambda _msg: 'requete fallback'
         web_search.search = lambda _query: [
@@ -1468,7 +1472,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
-            web_search.crawl_with_status = original_crawl_with_status
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
             web_search.reformulate = original_reformulate
             web_search.search = original_search
             web_search._runtime_services_value = original_runtime_services_value
@@ -1478,6 +1482,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['read_state'], 'page_not_read_snippet_fallback')
         self.assertEqual(web_event['payload_json']['collection_path'], 'explicit_url_fallback_search')
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'empty')
+        self.assertEqual(web_event['payload_json']['primary_read_filter'], 'raw')
+        self.assertTrue(web_event['payload_json']['primary_read_raw_fallback_used'])
         self.assertEqual(web_event['payload_json']['used_content_kinds'], ['search_snippet'])
         self.assertEqual(web_event['payload_json']['injected_chars'], payload['injected_chars'])
         self.assertEqual(web_event['payload_json']['context_chars'], len(payload['context_block']))

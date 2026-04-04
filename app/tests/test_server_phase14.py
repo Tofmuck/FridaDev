@@ -1420,6 +1420,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': 'empty',
+            'primary_read_filter': 'raw',
+            'primary_read_raw_fallback_used': True,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
             'runtime': {
@@ -1489,6 +1491,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['primary_source_kind'], 'explicit_url')
         self.assertTrue(observed['web_input']['primary_read_attempted'])
         self.assertEqual(observed['web_input']['primary_read_status'], 'empty')
+        self.assertEqual(observed['web_input']['primary_read_filter'], 'raw')
+        self.assertTrue(observed['web_input']['primary_read_raw_fallback_used'])
         self.assertTrue(observed['web_input']['fallback_used'])
         self.assertEqual(observed['web_input']['collection_path'], 'explicit_url_fallback_search')
         self.assertEqual(observed['web_input']['runtime']['searxng_results'], 5)
@@ -1561,6 +1565,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': 'empty',
+            'primary_read_filter': 'raw',
+            'primary_read_raw_fallback_used': True,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
             'runtime': {
@@ -1653,6 +1659,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': 'empty',
+            'primary_read_filter': 'raw',
+            'primary_read_raw_fallback_used': True,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
             'runtime': {
@@ -1838,6 +1846,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': 'empty',
+            'primary_read_filter': 'raw',
+            'primary_read_raw_fallback_used': True,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
             'runtime': {
@@ -1928,6 +1938,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(web_payload['explicit_url'], 'https://example.com/article')
         self.assertEqual(web_payload['read_state'], 'page_not_read_snippet_fallback')
         self.assertEqual(web_payload['primary_read_status'], 'empty')
+        self.assertEqual(web_payload['primary_read_filter'], 'raw')
+        self.assertTrue(web_payload['primary_read_raw_fallback_used'])
         self.assertTrue(web_payload['fallback_used'])
         self.assertEqual(web_payload['collection_path'], 'explicit_url_fallback_search')
         self.assertEqual(web_payload['used_content_kinds'], ['search_snippet'])

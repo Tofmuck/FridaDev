@@ -20,6 +20,8 @@ READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
 READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
 READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
 READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
+CRAWL4AI_FILTER_FIT = 'fit'
+CRAWL4AI_FILTER_RAW = 'raw'
 
 
 def _runtime_main_model_name() -> str:
@@ -120,6 +122,94 @@ def _truncate_crawl_markdown(content: str, max_chars: int) -> tuple[str, bool]:
     if len(markdown) <= max_chars:
         return markdown, False
     return markdown[:max_chars] + "\n[...contenu tronqué]", True
+
+
+def _build_crawl4ai_md_payload(
+    url: str,
+    *,
+    filter_type: str = CRAWL4AI_FILTER_FIT,
+    query: str | None = None,
+    cache_mode: str = '0',
+) -> dict[str, str]:
+    payload = {
+        'url': str(url or ''),
+        'f': str(filter_type or CRAWL4AI_FILTER_FIT),
+        'c': str(cache_mode or '0'),
+    }
+    if query:
+        payload['q'] = str(query)
+    return payload
+
+
+def _crawl_markdown_with_status(
+    url: str,
+    *,
+    filter_type: str = CRAWL4AI_FILTER_FIT,
+    query: str | None = None,
+) -> dict[str, Any]:
+    """Récupère le markdown via /md avec le contrat OpenAPI Crawl4AI."""
+    try:
+        crawl4ai_url = str(_runtime_services_value('crawl4ai_url')).rstrip('/')
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {_runtime_crawl4ai_token()}",
+        }
+        payload = _build_crawl4ai_md_payload(
+            url,
+            filter_type=filter_type,
+            query=query,
+            cache_mode='0',
+        )
+        resp = requests.post(
+            f"{crawl4ai_url}/md",
+            json=payload,
+            headers=headers,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        actual_filter = str(data.get('filter') or filter_type or CRAWL4AI_FILTER_FIT)
+        if not data.get("success"):
+            return {
+                'status': 'error',
+                'markdown': '',
+                'error_class': 'crawl_unsuccessful',
+                'filter': actual_filter,
+            }
+        markdown = (data.get("markdown") or "").strip()
+        if not markdown:
+            return {
+                'status': 'empty',
+                'markdown': '',
+                'error_class': None,
+                'filter': actual_filter,
+            }
+        return {
+            'status': 'success',
+            'markdown': markdown,
+            'error_class': None,
+            'filter': actual_filter,
+        }
+    except Exception as e:
+        logger.warning("crawl_error url=%s filter=%s err=%s", url, filter_type, e)
+        return {
+            'status': 'error',
+            'markdown': '',
+            'error_class': e.__class__.__name__,
+            'filter': str(filter_type or CRAWL4AI_FILTER_FIT),
+        }
+
+
+def _crawl_explicit_url_primary_with_status(url: str) -> dict[str, Any]:
+    """Lecture primaire d'une URL explicite: fit d'abord, raw seulement si fit est vide."""
+    fit_result = _crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_FIT)
+    fit_result['raw_fallback_used'] = False
+    if str(fit_result.get('status') or '') != 'empty':
+        return fit_result
+
+    raw_result = _crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_RAW)
+    raw_result['raw_fallback_used'] = True
+    return raw_result
 
 
 def _build_source_payload(
@@ -488,42 +578,7 @@ def search(query: str, max_results: int | None = None) -> list[dict[str, str]]:
 
 def crawl_with_status(url: str) -> dict[str, Any]:
     """Récupère le contenu markdown d'une URL via Crawl4AI avec statut explicite."""
-    try:
-        crawl4ai_url = str(_runtime_services_value('crawl4ai_url')).rstrip('/')
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {_runtime_crawl4ai_token()}",
-        }
-        resp = requests.post(f"{crawl4ai_url}/md",
-                             json={"url": url, "only_text": True, "cache": "0"},
-                             headers=headers, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        if not data.get("success"):
-            return {
-                'status': 'error',
-                'markdown': '',
-                'error_class': 'crawl_unsuccessful',
-            }
-        markdown = (data.get("markdown") or "").strip()
-        if not markdown:
-            return {
-                'status': 'empty',
-                'markdown': '',
-                'error_class': None,
-            }
-        return {
-            'status': 'success',
-            'markdown': markdown,
-            'error_class': None,
-        }
-    except Exception as e:
-        logger.warning("crawl_error url=%s err=%s", url, e)
-        return {
-            'status': 'error',
-            'markdown': '',
-            'error_class': e.__class__.__name__,
-        }
+    return _crawl_markdown_with_status(url, filter_type=CRAWL4AI_FILTER_FIT)
 
 
 def crawl(url: str) -> str:
@@ -560,6 +615,8 @@ def _emit_web_search_runtime_event(
     primary_source_kind: str = 'search',
     primary_read_attempted: bool = False,
     primary_read_status: str | None = None,
+    primary_read_filter: str | None = None,
+    primary_read_raw_fallback_used: bool = False,
     fallback_used: bool = False,
     collection_path: str = 'search_only',
     used_content_kinds: list[str] | None = None,
@@ -591,6 +648,8 @@ def _emit_web_search_runtime_event(
         'primary_source_kind': str(primary_source_kind or 'search'),
         'primary_read_attempted': bool(primary_read_attempted),
         'primary_read_status': str(primary_read_status or ''),
+        'primary_read_filter': str(primary_read_filter or ''),
+        'primary_read_raw_fallback_used': bool(primary_read_raw_fallback_used),
         'fallback_used': bool(fallback_used),
         'collection_path': str(collection_path or 'search_only'),
         'used_content_kinds': list(used_content_kinds or []),
@@ -626,8 +685,10 @@ def _build_payload_from_collection(
     explicit_url: str | None,
 ) -> dict[str, Any]:
     if explicit_url:
-        primary_crawl = crawl_with_status(explicit_url)
+        primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
+        primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
+        primary_read_raw_fallback_used = bool(primary_crawl.get('raw_fallback_used', False))
         if primary_read_status == 'success':
             material = _build_explicit_url_context_material(
                 explicit_url,
@@ -655,6 +716,8 @@ def _build_payload_from_collection(
                 'primary_source_kind': 'explicit_url',
                 'primary_read_attempted': True,
                 'primary_read_status': primary_read_status,
+                'primary_read_filter': primary_read_filter,
+                'primary_read_raw_fallback_used': primary_read_raw_fallback_used,
                 'fallback_used': False,
                 'collection_path': 'explicit_url_direct',
             }
@@ -691,6 +754,8 @@ def _build_payload_from_collection(
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': primary_read_status,
+            'primary_read_filter': primary_read_filter,
+            'primary_read_raw_fallback_used': primary_read_raw_fallback_used,
             'fallback_used': True,
             'collection_path': 'explicit_url_fallback_search',
         }
@@ -716,6 +781,8 @@ def _build_payload_from_collection(
         'primary_source_kind': 'search',
         'primary_read_attempted': False,
         'primary_read_status': 'not_attempted',
+        'primary_read_filter': None,
+        'primary_read_raw_fallback_used': False,
         'fallback_used': False,
         'collection_path': 'search_only',
     }
@@ -743,6 +810,8 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             primary_source_kind=str(payload['primary_source_kind']),
             primary_read_attempted=bool(payload['primary_read_attempted']),
             primary_read_status=str(payload['primary_read_status'] or ''),
+            primary_read_filter=str(payload.get('primary_read_filter') or ''),
+            primary_read_raw_fallback_used=bool(payload.get('primary_read_raw_fallback_used', False)),
             fallback_used=bool(payload['fallback_used']),
             collection_path=str(payload['collection_path']),
             used_content_kinds=list(payload.get('used_content_kinds') or []),
@@ -769,6 +838,8 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             'primary_source_kind': 'explicit_url' if explicit_url else 'search',
             'primary_read_attempted': bool(explicit_url),
             'primary_read_status': 'error' if explicit_url else 'not_attempted',
+            'primary_read_filter': CRAWL4AI_FILTER_FIT if explicit_url else None,
+            'primary_read_raw_fallback_used': False,
             'fallback_used': bool(explicit_url),
             'collection_path': 'explicit_url_fallback_search' if explicit_url else 'search_only',
         })
@@ -789,6 +860,8 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             primary_source_kind=str(error_payload['primary_source_kind']),
             primary_read_attempted=bool(error_payload['primary_read_attempted']),
             primary_read_status=str(error_payload['primary_read_status'] or ''),
+            primary_read_filter=str(error_payload.get('primary_read_filter') or ''),
+            primary_read_raw_fallback_used=bool(error_payload.get('primary_read_raw_fallback_used', False)),
             fallback_used=bool(error_payload['fallback_used']),
             collection_path=str(error_payload['collection_path']),
             used_content_kinds=list(error_payload.get('used_content_kinds') or []),

@@ -77,7 +77,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         self.assertEqual(len(results), 2)
 
     def test_crawl_uses_runtime_services_settings_and_env_token_fallback(self) -> None:
-        observed = {'url': None, 'auth': None}
+        observed = {'url': None, 'auth': None, 'json': None}
         original_get_settings = web_search.runtime_settings.get_services_settings
         original_get_secret = web_search.runtime_settings.get_runtime_secret_value
         original_post = web_search.requests.post
@@ -92,6 +92,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         def fake_post(url, json, headers, timeout):
             observed['url'] = url
             observed['auth'] = headers['Authorization']
+            observed['json'] = dict(json)
             return FakeResponse()
 
         def fake_get_runtime_secret_value(section: str, field: str):
@@ -117,6 +118,12 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         self.assertEqual(content, 'contenu crawl')
         self.assertEqual(observed['url'], 'https://crawl.override.example/md')
         self.assertEqual(observed['auth'], 'Bearer crawl-db-token')
+        self.assertEqual(
+            observed['json'],
+            {'url': 'https://source.example', 'f': 'fit', 'c': '0'},
+        )
+        self.assertNotIn('only_text', observed['json'])
+        self.assertNotIn('cache', observed['json'])
 
     def test_format_context_uses_runtime_crawl_limits(self) -> None:
         original_get_settings = web_search.runtime_settings.get_services_settings
@@ -186,6 +193,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
         self.assertEqual(result['status'], 'empty')
         self.assertEqual(result['markdown'], '')
         self.assertIsNone(result['error_class'])
+        self.assertEqual(result['filter'], 'fit')
 
     def test_runtime_crawl4ai_token_uses_env_fallback_when_runtime_layer_returns_it(self) -> None:
         original_get_secret = web_search.runtime_settings.get_runtime_secret_value

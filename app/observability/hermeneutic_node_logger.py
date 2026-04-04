@@ -176,6 +176,8 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'primary_source_kind': str(data.get('primary_source_kind') or ''),
         'primary_read_attempted': bool(data.get('primary_read_attempted', False)),
         'primary_read_status': str(data.get('primary_read_status') or ''),
+        'primary_read_filter': str(data.get('primary_read_filter') or ''),
+        'primary_read_raw_fallback_used': bool(data.get('primary_read_raw_fallback_used', False)),
         'fallback_used': bool(data.get('fallback_used', False)),
         'collection_path': str(data.get('collection_path') or ''),
         'used_content_kinds': [str(value) for value in _sequence(data.get('used_content_kinds')) if str(value)],
