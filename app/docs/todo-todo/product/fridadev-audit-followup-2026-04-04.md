@@ -40,6 +40,12 @@ Sources de travail retenues:
 - [ ] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final.
 - [ ] Ajouter dans le dashboard hermeneutique une indication `mode depuis` / `derniere bascule` pour rendre le rollout lisible sans replay documentaire manuel.
 
+## 4bis. Travaux documentaires de consolidation
+
+- [ ] Produire une note de cloture lisible pour le chantier `lecture web URL explicite / Crawl4AI`, couvrant au minimum: bon contrat `/md`, strategie `fit -> raw if empty` pour URL explicite, budget explicite `25000`, fin de la troncature artificielle sur le cas Mediapart, et statut final honnete du comportement produit.
+- [ ] Produire une note de cloture lisible pour le mini-lot `dialogique / identite`, couvrant au minimum: reduction de la surclarification sur les gestes evidents, meilleure classification des questions fictionnelles/speculatives, revelation identitaire utilisateur plus operatoire, filtrage de certaines ecritures durables Frida meta/pipeline, et fermeture du reliquat de couture `logs/identity`.
+- [ ] Verifier si les docs actives ou archives liees a ces deux chantiers doivent recevoir un lien croise vers leur note de cloture, une mise a jour minimale de coherence, ou une mention d'archivage explicite.
+
 ## 5. Condition de cloture de ce TODO
 
 - [ ] Les points confirmes de la section 1 sont traites ou explicitement reclasses.
