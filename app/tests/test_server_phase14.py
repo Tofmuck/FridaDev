@@ -203,6 +203,111 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             response.headers.get('X-Conversation-Updated-At'),
         )
 
+    def test_api_chat_stream_normalizes_ordinary_turn_for_first_party_surface(self) -> None:
+        conversation = {
+            'id': 'conv-stream-plain-text-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"JSON est un format.\\n\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"- Lisible.\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"1) Portable."}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': "Explique simplement ce qu'est JSON.", 'stream': True},
+                buffered=True,
+            )
+        finally:
+            restore()
+
+        text = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertNotIn('\n- ', text)
+        self.assertNotIn('\n1) ', text)
+        self.assertIn('Lisible.', text)
+        self.assertIn('Portable.', text)
+        self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
+        self.assertEqual(conversation['messages'][-1]['content'], text)
+        self.assertEqual(
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            response.headers.get('X-Conversation-Updated-At'),
+        )
+
+    def test_api_chat_stream_preserves_explicit_plan_structure_for_first_party_surface(self) -> None:
+        conversation = {
+            'id': 'conv-stream-structured-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"1) Comprendre\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"2) Structurer"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Donne-moi un plan simple en trois étapes.', 'stream': True},
+                buffered=True,
+            )
+        finally:
+            restore()
+
+        text = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('1) Comprendre', text)
+        self.assertIn('2) Structurer', text)
+        self.assertEqual(conversation['messages'][-1]['content'], text)
+        self.assertEqual(
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            response.headers.get('X-Conversation-Updated-At'),
+        )
+
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})
 

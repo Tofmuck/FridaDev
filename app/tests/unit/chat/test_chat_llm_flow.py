@@ -17,6 +17,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core import assistant_output_contract
 from core import chat_llm_flow
 
 
@@ -406,6 +407,209 @@ class ChatLlmFlowTests(unittest.TestCase):
                 )
             ],
         )
+
+    def test_run_llm_exchange_stream_buffers_and_normalizes_ordinary_turn_output(self) -> None:
+        conversation = {
+            'id': 'conv-stream-plain-text',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"JSON est un format.\\n\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"- Lisible.\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"1) Portable."}}]}'
+                yield 'data: [DONE]'
+
+        def fake_post(_url, *, json, headers, timeout, stream=False):
+            return FakeStreamResponse()
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
+            RuntimeSettingsSecretRequiredError=RuntimeError,
+            RuntimeSettingsSecretResolutionError=ValueError,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=lambda _conversation: None,
+            reactivate_identities=lambda _identity_ids: None,
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp}
+            ),
+            save_conversation=lambda *_args, **_kwargs: None,
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
+                'provider_generation_id': payload.get('id'),
+                'provider_model': payload.get('model') or requested_model,
+                'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                'provider_title': f'FridaDev/{caller}',
+                **dict(provider_metadata),
+            },
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
+                key: value
+                for key, value in {
+                    'provider_generation_id': payload.get('id'),
+                    'provider_model': payload.get('model') or requested_model,
+                    'provider_prompt_tokens': (payload.get('usage') or {}).get('prompt_tokens'),
+                    'provider_completion_tokens': (payload.get('usage') or {}).get('completion_tokens'),
+                    'provider_total_tokens': (payload.get('usage') or {}).get('total_tokens'),
+                }.items()
+                if value is not None
+            }),
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            _sanitize_encoding=lambda text: text,
+        )
+        requests_module = SimpleNamespace(
+            post=fake_post,
+            exceptions=SimpleNamespace(RequestException=_RequestException),
+        )
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=True,
+            current_mode='shadow',
+            identity_ids=[],
+            web_input=None,
+            assistant_output_policy=assistant_output_contract.AssistantOutputPolicy(),
+            runtime_settings_module=runtime_settings_module,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            llm_module=llm_module,
+            requests_module=requests_module,
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
+            admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-03-26T00:11:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: None,
+            mode_enforces_identity=lambda _mode: False,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+        )
+
+        streamed = ''.join(part for part in result['stream'])
+        self.assertNotIn('\n- ', streamed)
+        self.assertNotIn('\n1) ', streamed)
+        self.assertIn('Lisible.', streamed)
+        self.assertIn('Portable.', streamed)
+        self.assertEqual(conversation['messages'][-1]['content'], streamed)
+
+    def test_run_llm_exchange_stream_preserves_structure_for_explicit_plan_requests(self) -> None:
+        conversation = {
+            'id': 'conv-stream-structured',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"1) Comprendre\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"2) Structurer"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_post(_url, *, json, headers, timeout, stream=False):
+            return FakeStreamResponse()
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
+            RuntimeSettingsSecretRequiredError=RuntimeError,
+            RuntimeSettingsSecretResolutionError=ValueError,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=lambda _conversation: None,
+            reactivate_identities=lambda _identity_ids: None,
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp}
+            ),
+            save_conversation=lambda *_args, **_kwargs: None,
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {},
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {},
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}),
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            _sanitize_encoding=lambda text: text,
+        )
+        requests_module = SimpleNamespace(
+            post=fake_post,
+            exceptions=SimpleNamespace(RequestException=_RequestException),
+        )
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=True,
+            current_mode='shadow',
+            identity_ids=[],
+            web_input=None,
+            assistant_output_policy=assistant_output_contract.AssistantOutputPolicy(allow_structure=True),
+            runtime_settings_module=runtime_settings_module,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            llm_module=llm_module,
+            requests_module=requests_module,
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
+            admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-03-26T00:11:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: None,
+            mode_enforces_identity=lambda _mode: False,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+        )
+
+        streamed = ''.join(part for part in result['stream'])
+        self.assertIn('1) Comprendre', streamed)
+        self.assertIn('2) Structurer', streamed)
+        self.assertEqual(conversation['messages'][-1]['content'], streamed)
 
     def test_run_llm_exchange_returns_502_on_request_exception(self) -> None:
         events = []

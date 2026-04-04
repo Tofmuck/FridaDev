@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
+from core import assistant_output_contract
 from core import chat_llm_flow
 from core import chat_memory_flow
 from core import chat_prompt_context
@@ -565,8 +566,10 @@ def chat_response(
         augmented_system,
         web_reading_guard_block,
     )
+    assistant_output_policy = assistant_output_contract.resolve_assistant_output_policy(user_msg)
     plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
         user_msg=user_msg,
+        output_policy=assistant_output_policy,
     )
     augmented_system = chat_prompt_context.inject_plain_text_guard_block(
         augmented_system,
@@ -604,6 +607,7 @@ def chat_response(
         runtime_settings_module=runtime_settings_module,
         memory_store_module=memory_store_module,
         conv_store_module=conv_store_module,
+        assistant_output_policy=assistant_output_policy,
         llm_module=llm_module,
         requests_module=requests_module,
         token_utils_module=token_utils_module,

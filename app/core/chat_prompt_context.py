@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import re
 from typing import Any, Mapping
 
+from core import assistant_output_contract
 from core.hermeneutic_node.inputs import time_input
 
 _FINAL_JUDGMENT_INSTRUCTIONS = {
@@ -15,32 +15,6 @@ _READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
 _READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
 _READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
 _READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
-_EXPLICIT_LIST_REQUEST_PATTERNS = (
-    re.compile(
-        r'\b(?:donne(?:-moi)?|fais(?:-moi)?|fournis(?:-moi)?|propose|présente|presente|organise|structure|rédige|redige|montre(?:-moi)?)\b'
-        r'[^.\n:;!?]{0,60}\b(?:plan|liste|list|étape|etape|étapes|etapes|puces|bullet)\b'
-    ),
-    re.compile(
-        r'\b(?:donne(?:-moi)?|fais(?:-moi)?|fournis(?:-moi)?|propose|présente|presente|organise|structure|rédige|redige|montre(?:-moi)?)\b'
-        r'[^.\n:;!?]{0,60}\bpoints?\b'
-        r'[^.\n:;!?]{0,30}\b(?:liste|énumère|enumere|résume|resume|présente|presente|donne|fais)\b'
-    ),
-    re.compile(
-        r'\b(?:fais|donne(?:-moi)?|propose|présente|presente)\b'
-        r'[^.\n:;!?]{0,20}\bune?\b'
-        r'[^.\n:;!?]{0,20}\bliste\b'
-    ),
-)
-_EXPLICIT_CODE_REQUEST_PATTERNS = (
-    re.compile(
-        r'\b(?:donne(?:-moi)?|fais(?:-moi)?|fournis(?:-moi)?|montre(?:-moi)?|écris|ecris|génère|genere|propose)\b'
-        r'[^.\n:;!?]{0,60}\b(?:exemple de code|code|snippet|commande|script)\b'
-    ),
-    re.compile(
-        r'\b(?:commande|snippet|code|script)\b'
-        r'[^.\n:;!?]{0,20}\b(?:bash|shell|python|javascript|typescript|js|sql|regex)\b'
-    ),
-)
 
 
 def _text(value: Any) -> str:
@@ -60,15 +34,6 @@ def _stable_string_list(value: Any) -> list[str]:
         seen.add(normalized)
         ordered.append(normalized)
     return ordered
-
-
-def _normalized_lower_text(value: Any) -> str:
-    return _text(value).lower()
-
-
-def _contains_any_pattern(value: Any, patterns: tuple[re.Pattern[str], ...]) -> bool:
-    haystack = _normalized_lower_text(value)
-    return any(pattern.search(haystack) for pattern in patterns)
 
 
 def resolve_backend_prompts(prompt_loader_module: Any) -> tuple[str, str]:
@@ -128,31 +93,10 @@ def inject_hermeneutic_judgment_block(
 def build_plain_text_guard_block(
     *,
     user_msg: str,
+    output_policy: assistant_output_contract.AssistantOutputPolicy | None = None,
 ) -> str:
-    wants_list = _contains_any_pattern(user_msg, _EXPLICIT_LIST_REQUEST_PATTERNS)
-    wants_code = _contains_any_pattern(user_msg, _EXPLICIT_CODE_REQUEST_PATTERNS)
-
-    lines = [
-        '[CONTRAT TEXTE BRUT]',
-        'Réponds pour cette surface en texte brut strict, lisible sans rendu Markdown.',
-        'Interdit: titres Markdown, gras/italique Markdown, règles horizontales, blockquotes, tableaux Markdown.',
-    ]
-    if wants_list:
-        lines.append(
-            "L'utilisateur demande explicitement un plan, des étapes ou une liste: une structure textuelle minimale est autorisée, sans décoration Markdown."
-        )
-    else:
-        lines.append(
-            "Pour ce tour, n'utilise ni puces, ni listes numérotées, ni lignes commençant par `-`, `*`, `•`, `1)` ou `1.`."
-        )
-        lines.append('Réponds en courts paragraphes continus.')
-
-    if wants_code:
-        lines.append("L'utilisateur demande explicitement du code: un bloc de code est autorisé seulement si c'est vraiment utile.")
-    else:
-        lines.append("Pour ce tour, n'utilise pas de code fences ni de blocs de code.")
-
-    return '\n'.join(lines)
+    policy = output_policy or assistant_output_contract.resolve_assistant_output_policy(user_msg)
+    return assistant_output_contract.build_plain_text_guard_block(policy)
 
 
 def inject_plain_text_guard_block(

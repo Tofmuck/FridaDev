@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Mapping, Sequence
 
+from core import assistant_output_contract
+
 
 def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] | None = None) -> dict[str, Any]:
     return {
@@ -33,6 +35,7 @@ def run_llm_exchange(
     current_mode: str,
     identity_ids: Sequence[str],
     web_input: Mapping[str, Any] | None,
+    assistant_output_policy: assistant_output_contract.AssistantOutputPolicy | None = None,
     runtime_settings_module: Any,
     memory_store_module: Any,
     conv_store_module: Any,
@@ -103,7 +106,11 @@ def run_llm_exchange(
                 conversation_id=conversation['id'],
                 **provider_fields,
             )
-            text = llm_module.extract_openrouter_text(obj)
+            raw_text = llm_module.extract_openrouter_text(obj)
+            text = assistant_output_contract.normalize_assistant_output(
+                raw_text,
+                assistant_output_policy,
+            )
             updated_at = now_iso_func()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
             estimated_assistant_tokens = token_utils_module.estimate_tokens([{'content': text}], runtime_main_model)
@@ -149,6 +156,10 @@ def run_llm_exchange(
             assistant_chunks: list[str] = []
             provider_metadata: dict[str, object] = {}
             provider_response_open = False
+            buffered_output = ''
+            buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
+                assistant_output_policy,
+            )
             try:
                 with requests_module.post(
                     url,
@@ -182,8 +193,10 @@ def run_llm_exchange(
                         delta = chunk.get('choices', [{}])[0].get('delta', {})
                         content = delta.get('content')
                         if content:
-                            assistant_chunks.append(content)
-                            yield llm_module._sanitize_encoding(content)
+                            sanitized_content = llm_module._sanitize_encoding(content)
+                            assistant_chunks.append(sanitized_content)
+                            if not buffer_stream_output:
+                                yield sanitized_content
             except requests_module.exceptions.RequestException as exc:
                 logger.error('llm_stream_error id=%s err=%s', conversation['id'], exc)
                 admin_logs_module.log_event(
@@ -206,7 +219,13 @@ def run_llm_exchange(
                         **provider_fields,
                     )
                 assistant_text = llm_module._sanitize_encoding(''.join(assistant_chunks)).strip()
+                if buffer_stream_output:
+                    assistant_text = assistant_output_contract.normalize_assistant_output(
+                        assistant_text,
+                        assistant_output_policy,
+                    )
                 if assistant_text:
+                    buffered_output = assistant_text if buffer_stream_output else ''
                     conv_store_module.append_message(
                         conversation,
                         'assistant',
@@ -241,6 +260,8 @@ def run_llm_exchange(
                 if identity_ids and mode_enforces_identity(current_mode):
                     memory_store_module.reactivate_identities(identity_ids)
                 conv_store_module.save_conversation(conversation, updated_at=response_updated_at)
+            if buffered_output:
+                yield buffered_output
 
         logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))
         admin_logs_module.log_event(
