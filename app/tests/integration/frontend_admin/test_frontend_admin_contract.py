@@ -787,6 +787,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminServicesForm"', source)
         self.assertIn('id="adminServicesSave"', source)
         self.assertIn('id="adminServicesReadonlyInfo"', source)
+        self.assertIn("crawl4ai_explicit_url_max_chars", source)
         self.assertIn('id="adminResourcesForm"', source)
         self.assertIn('id="adminResourcesSave"', source)
         self.assertIn("/api/admin/settings/main-model", source)

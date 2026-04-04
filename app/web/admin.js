@@ -574,6 +574,15 @@
       min: "1",
       autocomplete: "off",
     },
+    {
+      key: "crawl4ai_explicit_url_max_chars",
+      label: "Crawl4AI explicit URL max chars",
+      hint: "Budget maximal de caracteres injectes pour une URL explicite utilisateur.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
   ];
   const servicesCheckFieldMap = {
     crawl4ai_token_runtime: "crawl4ai_token",

@@ -88,7 +88,7 @@ Schema global de base a date (lecture rapide):
 - impact si indisponible: web search inactive/degradee quand `web_search=true`.
 
 3. Crawl4AI
-- source: `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`, `CRAWL4AI_TOP_N`, `CRAWL4AI_MAX_CHARS`
+- source: `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`, `CRAWL4AI_TOP_N`, `CRAWL4AI_MAX_CHARS`, `CRAWL4AI_EXPLICIT_URL_MAX_CHARS`
 - impact si indisponible: enrichissement web degrade.
 
 ## 4.3 Point reseau critique en mode Docker

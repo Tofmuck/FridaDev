@@ -217,6 +217,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('services', 'crawl4ai_token'): config.CRAWL4AI_TOKEN,
         ('services', 'crawl4ai_top_n'): config.CRAWL4AI_TOP_N,
         ('services', 'crawl4ai_max_chars'): config.CRAWL4AI_MAX_CHARS,
+        ('services', 'crawl4ai_explicit_url_max_chars'): config.CRAWL4AI_EXPLICIT_URL_MAX_CHARS,
         ('resources', 'llm_identity_path'): config.FRIDA_LLM_IDENTITY_PATH,
         ('resources', 'user_identity_path'): config.FRIDA_USER_IDENTITY_PATH,
     }

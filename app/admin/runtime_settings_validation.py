@@ -289,6 +289,7 @@ def validate_runtime_section(
         crawl4ai_url = _runtime_text_value(view, 'crawl4ai_url')
         crawl4ai_top_n = _runtime_int_value(view, 'crawl4ai_top_n')
         crawl4ai_max_chars = _runtime_int_value(view, 'crawl4ai_max_chars')
+        crawl4ai_explicit_url_max_chars = _runtime_int_value(view, 'crawl4ai_explicit_url_max_chars')
         try:
             crawl4ai_token_secret = resolve_runtime_secret_from_view(view, 'crawl4ai_token')
             crawl4ai_token_ok = bool(str(crawl4ai_token_secret.value).strip())
@@ -314,6 +315,20 @@ def validate_runtime_section(
                     'crawl4ai_max_chars',
                     crawl4ai_max_chars is not None and crawl4ai_max_chars > 0,
                     f'crawl4ai_max_chars={crawl4ai_max_chars!r}',
+                ),
+                _validation_check(
+                    'crawl4ai_explicit_url_max_chars',
+                    crawl4ai_explicit_url_max_chars is not None
+                    and crawl4ai_explicit_url_max_chars > 0
+                    and (
+                        crawl4ai_max_chars is None
+                        or crawl4ai_explicit_url_max_chars >= crawl4ai_max_chars
+                    ),
+                    (
+                        'crawl4ai_explicit_url_max_chars='
+                        f'{crawl4ai_explicit_url_max_chars!r}; '
+                        f'crawl4ai_max_chars={crawl4ai_max_chars!r}'
+                    ),
                 ),
                 _validation_check('crawl4ai_token_runtime', crawl4ai_token_ok, crawl4ai_token_detail),
             )

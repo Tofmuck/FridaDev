@@ -221,7 +221,7 @@
         draft: state.services.draft,
         emptyDraft: emptyServicesDraft,
         fieldSpecs: servicesFieldSpecs,
-        integerFields: ["searxng_results", "crawl4ai_top_n", "crawl4ai_max_chars"],
+        integerFields: ["searxng_results", "crawl4ai_top_n", "crawl4ai_max_chars", "crawl4ai_explicit_url_max_chars"],
         secretKey: "crawl4ai_token",
       });
     };

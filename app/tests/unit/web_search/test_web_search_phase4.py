@@ -262,6 +262,91 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['used_content_kinds'], ['crawl_markdown'])
         self.assertTrue(payload['source_material_summary'][0]['truncated'])
 
+    def test_build_context_payload_uses_explicit_url_budget_distinct_from_search_budget(self) -> None:
+        url = 'https://example.com/article'
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 5000,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+        web_search._crawl_markdown_with_status = lambda _url, *, filter_type='fit', query=None: {
+            'status': 'success',
+            'markdown': 'x' * 18000,
+            'error_class': None,
+            'filter': filter_type,
+        }
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
+            AssertionError('generic search should not run when explicit URL crawl succeeds')
+        )
+        web_search.search = lambda _query: (_ for _ in ()).throw(
+            AssertionError('search should not run when explicit URL crawl succeeds')
+        )
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['collection_path'], 'explicit_url_direct')
+        self.assertEqual(payload['read_state'], 'page_read')
+        self.assertFalse(payload['sources'][0]['truncated'])
+        self.assertEqual(len(payload['sources'][0]['content_used']), 18000)
+
+    def test_build_context_payload_keeps_explicit_url_partially_read_when_content_exceeds_explicit_budget(self) -> None:
+        url = 'https://example.com/article'
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 5000,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+        web_search._crawl_markdown_with_status = lambda _url, *, filter_type='fit', query=None: {
+            'status': 'success',
+            'markdown': 'x' * 26000,
+            'error_class': None,
+            'filter': filter_type,
+        }
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
+            AssertionError('generic search should not run when explicit URL crawl succeeds')
+        )
+        web_search.search = lambda _query: (_ for _ in ()).throw(
+            AssertionError('search should not run when explicit URL crawl succeeds')
+        )
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['collection_path'], 'explicit_url_direct')
+        self.assertEqual(payload['read_state'], 'page_partially_read')
+        self.assertTrue(payload['sources'][0]['truncated'])
+        self.assertEqual(
+            payload['sources'][0]['content_used'],
+            ('x' * 25000) + "\n[...contenu tronqué]",
+        )
+
     def test_build_context_payload_tries_fit_then_raw_before_search_fallback(self) -> None:
         url = 'https://example.com/article'
         observed_calls: list[tuple[str, str]] = []
@@ -612,13 +697,14 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
             'searxng_results': 5,
             'crawl4ai_top_n': 1,
             'crawl4ai_max_chars': 80,
+            'crawl4ai_explicit_url_max_chars': 25000,
         }[field]
 
         def fake_crawl_markdown_with_status(url: str, *, filter_type: str = 'fit', query: str | None = None):
             observed_calls.append((filter_type, url))
             return {
                 'status': 'success',
-                'markdown': 'contenu search only',
+                'markdown': 'contenu search only ' * 10,
                 'error_class': None,
                 'filter': filter_type,
             }
@@ -643,6 +729,8 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['collection_path'], 'search_only')
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
+        self.assertTrue(payload['sources'][0]['truncated'])
+        self.assertEqual(payload['read_state'], None)
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
 
 

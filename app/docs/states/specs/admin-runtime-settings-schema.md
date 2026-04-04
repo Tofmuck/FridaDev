@@ -189,6 +189,7 @@ Regle de transition :
 | `crawl4ai_token` | `text` | oui | `CRAWL4AI_TOKEN` |
 | `crawl4ai_top_n` | `int` | non | `CRAWL4AI_TOP_N` |
 | `crawl4ai_max_chars` | `int` | non | `CRAWL4AI_MAX_CHARS` |
+| `crawl4ai_explicit_url_max_chars` | `int` | non | `CRAWL4AI_EXPLICIT_URL_MAX_CHARS` |
 
 ### `resources`
 

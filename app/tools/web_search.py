@@ -64,6 +64,7 @@ def _runtime_collection_settings() -> dict[str, int | None]:
         'searxng_results': _safe_runtime_services_value('searxng_results'),
         'crawl4ai_top_n': _safe_runtime_services_value('crawl4ai_top_n'),
         'crawl4ai_max_chars': _safe_runtime_services_value('crawl4ai_max_chars'),
+        'crawl4ai_explicit_url_max_chars': _safe_runtime_services_value('crawl4ai_explicit_url_max_chars'),
     }
 
 
@@ -122,6 +123,13 @@ def _truncate_crawl_markdown(content: str, max_chars: int) -> tuple[str, bool]:
     if len(markdown) <= max_chars:
         return markdown, False
     return markdown[:max_chars] + "\n[...contenu tronqué]", True
+
+
+def _explicit_url_max_chars(runtime: dict[str, int | None]) -> int:
+    explicit_budget = int(runtime.get('crawl4ai_explicit_url_max_chars') or 0)
+    if explicit_budget > 0:
+        return explicit_budget
+    return int(runtime.get('crawl4ai_max_chars') or 0)
 
 
 def _build_crawl4ai_md_payload(
@@ -364,7 +372,7 @@ def _build_explicit_url_fallback_source(
 
 def _build_explicit_url_context_material(url: str, crawled_markdown: str) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
-    crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
+    crawl4ai_max_chars = _explicit_url_max_chars(runtime)
     today = datetime.now(timezone.utc).strftime("%d %B %Y")
     content_used, truncated = _truncate_crawl_markdown(crawled_markdown, crawl4ai_max_chars)
     source = {

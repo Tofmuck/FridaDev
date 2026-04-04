@@ -37,6 +37,7 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
                     'crawl4ai_token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                     'crawl4ai_top_n': {'value': 1, 'origin': 'db'},
                     'crawl4ai_max_chars': {'value': 10, 'origin': 'db'},
+                    'crawl4ai_explicit_url_max_chars': {'value': 25, 'origin': 'db'},
                 },
             ),
             source='db',

@@ -157,6 +157,7 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('crawl4ai_token', 'text', is_secret=True, env_var='CRAWL4AI_TOKEN'),
             FieldSpec('crawl4ai_top_n', 'int', env_var='CRAWL4AI_TOP_N'),
             FieldSpec('crawl4ai_max_chars', 'int', env_var='CRAWL4AI_MAX_CHARS'),
+            FieldSpec('crawl4ai_explicit_url_max_chars', 'int', env_var='CRAWL4AI_EXPLICIT_URL_MAX_CHARS'),
         ),
     ),
     'resources': SectionSpec(

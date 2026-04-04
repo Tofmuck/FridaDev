@@ -640,6 +640,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                     'crawl4ai_token': {'value_encrypted': 'cipher-crawl', 'origin': 'db'},
                     'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
                     'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+                    'crawl4ai_explicit_url_max_chars': {'value': 25000, 'origin': 'db'},
                 },
             ),
         }
@@ -1278,6 +1279,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 payload={
                     'searxng_url': {'value': 'http://127.0.0.1:8093', 'is_secret': False, 'origin': 'admin_ui'},
                     'crawl4ai_max_chars': {'value': 6000, 'is_secret': False, 'origin': 'admin_ui'},
+                    'crawl4ai_explicit_url_max_chars': {'value': 25000, 'is_secret': False, 'origin': 'admin_ui'},
                     'crawl4ai_token': {'is_secret': True, 'is_set': True, 'origin': 'env_seed'},
                 },
                 source='db',
@@ -1293,6 +1295,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                     'payload': {
                         'searxng_url': {'value': 'http://127.0.0.1:8093'},
                         'crawl4ai_max_chars': {'value': 6000},
+                        'crawl4ai_explicit_url_max_chars': {'value': 25000},
                     },
                 },
             )
@@ -1307,12 +1310,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             {
                 'searxng_url': {'value': 'http://127.0.0.1:8093'},
                 'crawl4ai_max_chars': {'value': 6000},
+                'crawl4ai_explicit_url_max_chars': {'value': 25000},
             },
         )
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8093')
+        self.assertEqual(data['payload']['crawl4ai_explicit_url_max_chars']['value'], 25000)
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'env_seed'})
         self.assertEqual(data['secret_sources']['crawl4ai_token'], 'env_fallback')
 

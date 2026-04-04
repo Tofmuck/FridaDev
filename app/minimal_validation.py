@@ -945,6 +945,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "adminServicesSave",
         "adminServicesCrawl4aiTokenReplace",
         "adminServicesReadonlyInfo",
+        "crawl4ai_explicit_url_max_chars",
         "adminResourcesSave",
         "adminSectionGrid",
     ]

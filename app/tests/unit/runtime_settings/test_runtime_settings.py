@@ -189,6 +189,14 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(description['name'], 'services')
         self.assertIn('fields', description)
         self.assertTrue(any(field['key'] == 'crawl4ai_token' and field['is_secret'] for field in description['fields']))
+        self.assertTrue(
+            any(
+                field['key'] == 'crawl4ai_explicit_url_max_chars'
+                and field['value_type'] == 'int'
+                and field.get('env_var') == 'CRAWL4AI_EXPLICIT_URL_MAX_CHARS'
+                for field in description['fields']
+            )
+        )
 
     def test_normalize_stored_payload_rejects_plain_secret_value(self) -> None:
         with self.assertRaisesRegex(ValueError, 'secret field does not accept plain value'):
@@ -268,6 +276,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'crawl4ai_token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                 'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
                 'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+                'crawl4ai_explicit_url_max_chars': {'value': 25000, 'origin': 'db'},
             },
         )
         self.assertEqual(secret_sources['crawl4ai_token'], 'db_encrypted')
@@ -317,6 +326,17 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(bundle.payload['dimensions']['value'], config.EMBED_DIM)
         self.assertEqual(bundle.payload['top_k']['value'], config.MEMORY_TOP_K)
         self.assertEqual(bundle.payload['token']['is_set'], bool(config.EMBED_TOKEN))
+
+    def test_build_env_seed_bundle_uses_explicit_url_budget_seed_for_services(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('services')
+        self.assertEqual(
+            bundle.payload['crawl4ai_explicit_url_max_chars']['value'],
+            config.CRAWL4AI_EXPLICIT_URL_MAX_CHARS,
+        )
+        self.assertEqual(
+            bundle.payload['crawl4ai_explicit_url_max_chars']['origin'],
+            'env_seed',
+        )
 
     def test_build_env_seed_bundle_marks_seed_default_fields_with_seed_default_origin(self) -> None:
         main_model_bundle = runtime_settings.build_env_seed_bundle('main_model')
@@ -642,6 +662,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                         'crawl4ai_token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'crawl4ai_top_n': {'value': 2, 'origin': 'db'},
                         'crawl4ai_max_chars': {'value': 5000, 'origin': 'db'},
+                        'crawl4ai_explicit_url_max_chars': {'value': 25000, 'origin': 'db'},
                     },
                 )
             }
@@ -2155,6 +2176,21 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['crawl4ai_token_runtime']['ok'])
         self.assertIn('db_encrypted', checks['crawl4ai_token_runtime']['detail'])
+
+    def test_validate_runtime_section_rejects_services_explicit_url_budget_below_default_crawl_budget(self) -> None:
+        result = runtime_settings.validate_runtime_section(
+            'services',
+            {
+                'crawl4ai_max_chars': {'value': 5000},
+                'crawl4ai_explicit_url_max_chars': {'value': 4000},
+            },
+            fetcher=lambda: {},
+        )
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['crawl4ai_explicit_url_max_chars']['ok'])
+        self.assertIn('crawl4ai_explicit_url_max_chars=4000', checks['crawl4ai_explicit_url_max_chars']['detail'])
 
     def test_validate_runtime_section_does_not_echo_secret_value_when_encrypt_fails(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value
