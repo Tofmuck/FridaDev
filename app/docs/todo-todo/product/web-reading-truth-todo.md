@@ -137,14 +137,15 @@ Contraintes de vocabulaire:
 ## Sous-chantier 4 - Garde anti-mensonge en memoire durable
 
 - [x] Empecher qu'une pretention de lecture non soutenue devienne une evidence identitaire durable cote Frida.
-- [ ] Decider ou le filtrage minimal doit vivre:
-  - validation amont de l'assertion;
-  - non-retention en memoire;
-  - ou les deux.
+- [x] Decider ou le filtrage minimal doit vivre:
+  - decision retenue: non-retention en memoire durable avant preview/persist;
+  - branchement applicatif dans `chat_memory_flow.py`;
+  - regle ciblee portee par `memory/hermeneutics_policy.py`.
 - [x] Ajouter une preuve cible:
   - le cas Mediapart ne doit plus produire de trace durable du type "claims to have the linked article open and read it".
-- [ ] Garder le perimetre strictement borne a la verite de lecture web, sans reouvrir la gouvernance memoire generale.
+- [x] Garder le perimetre strictement borne a la verite de lecture web, sans reouvrir la gouvernance memoire generale.
 - garde memoire appliquee:
+  - perimetre borne aux entrees `llm`, au signal runtime `read_state` et aux sur-pretentions de lecture web;
   - filtre cible sur les sorties `extract_identities(...)` avant preview/persist durable;
   - regle pilotee par `web_input.read_state`, pas par une heuristique de texte seule;
   - `page_not_read_snippet_fallback`, `page_not_read_crawl_empty` et `page_not_read_error` rejettent les pretentions de lecture directe non soutenues;
