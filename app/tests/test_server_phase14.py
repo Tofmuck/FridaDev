@@ -1432,6 +1432,108 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(prompt_messages[1]['role'], 'user')
         self.assertEqual(prompt_messages[1]['content'], 'WEB CONTEXT\n\nQuestion : Bonjour')
 
+    def test_api_chat_passes_web_input_read_state_to_identity_write_callback(self) -> None:
+        observed = {'identity_call': None}
+        conversation = {
+            'id': 'conv-web-memory-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok web memory'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
+        self.server.ws.build_context_payload = lambda _user_msg: {
+            'enabled': True,
+            'status': 'ok',
+            'reason_code': None,
+            'original_user_message': 'Bonjour',
+            'query': 'query test',
+            'results_count': 1,
+            'explicit_url_detected': True,
+            'explicit_url': 'https://example.com/article',
+            'read_state': 'page_not_read_snippet_fallback',
+            'primary_source_kind': 'explicit_url',
+            'primary_read_attempted': True,
+            'primary_read_status': 'empty',
+            'fallback_used': True,
+            'collection_path': 'explicit_url_fallback_search',
+            'runtime': {
+                'searxng_results': 5,
+                'crawl4ai_top_n': 2,
+                'crawl4ai_max_chars': 1500,
+            },
+            'sources': [
+                {
+                    'rank': 1,
+                    'title': 'Titre source',
+                    'url': 'https://example.com/article',
+                    'source_domain': 'example.com',
+                    'search_snippet': 'Snippet source',
+                    'used_in_prompt': True,
+                    'used_content_kind': 'search_snippet',
+                    'content_used': 'Snippet source',
+                    'truncated': False,
+                    'source_origin': 'explicit_url',
+                    'is_primary_source': True,
+                    'crawl_status': 'empty',
+                }
+            ],
+            'context_block': 'WEB CONTEXT',
+        }
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.chat_service._record_identity_entries_for_mode = (
+            lambda conversation_id, recent_turns, mode, **kwargs: observed.update(
+                {
+                    'identity_call': {
+                        'conversation_id': conversation_id,
+                        'recent_turns': list(recent_turns),
+                        'mode': mode,
+                        'web_input': kwargs.get('web_input'),
+                    }
+                }
+            )
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'web_search': True})
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertIsNotNone(observed['identity_call'])
+        self.assertEqual(observed['identity_call']['conversation_id'], 'conv-web-memory-phase14')
+        self.assertEqual(observed['identity_call']['mode'], 'enforced_all')
+        self.assertEqual(
+            observed['identity_call']['web_input']['read_state'],
+            'page_not_read_snippet_fallback',
+        )
+        self.assertTrue(observed['identity_call']['web_input']['explicit_url_detected'])
+        self.assertEqual(
+            observed['identity_call']['web_input']['sources'][0]['source_origin'],
+            'explicit_url',
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_emits_hermeneutic_node_insertion_observability_payload(self) -> None:
         observed_events: list[dict] = []
         conversation = {

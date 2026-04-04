@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 from memory import memory_arbiter_audit
 from memory import memory_context_read
+from memory import hermeneutics_policy
 from memory import memory_identity_dynamics
 from memory import memory_identity_write
 from memory import memory_store_infra
@@ -274,6 +275,56 @@ class MemoryIdentityDynamicsBlockTests(unittest.TestCase):
         self.assertEqual(processed[0]["confidence"], 0.9)
         self.assertIn("llm:llm-signal", processed[0]["reason"])
         self.assertIn("policy:policy-accepted", processed[0]["reason"])
+
+
+class HermeneuticsPolicyWebReadingGuardTests(unittest.TestCase):
+    def test_filter_unsupported_web_reading_identities_rejects_direct_claim_for_snippet_fallback(self) -> None:
+        kept, filtered = hermeneutics_policy.filter_unsupported_web_reading_identities(
+            [
+                {
+                    'subject': 'llm',
+                    'content': 'Claims to have the linked article open and read it',
+                }
+            ],
+            web_input={'read_state': 'page_not_read_snippet_fallback'},
+        )
+
+        self.assertEqual(kept, [])
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]['subject'], 'llm')
+        self.assertEqual(
+            filtered[0]['reason'],
+            'web_reading_claim_unsupported_for_page_not_read_snippet_fallback',
+        )
+
+    def test_filter_unsupported_web_reading_identities_keeps_prudent_limitation_statement(self) -> None:
+        prudent_entry = {
+            'subject': 'llm',
+            'content': "Frida n'a pas accès au contenu complet d'un article via un lien direct dans ce contexte",
+        }
+
+        kept, filtered = hermeneutics_policy.filter_unsupported_web_reading_identities(
+            [prudent_entry],
+            web_input={'read_state': 'page_not_read_crawl_empty'},
+        )
+
+        self.assertEqual(kept, [prudent_entry])
+        self.assertEqual(filtered, [])
+
+    def test_filter_unsupported_web_reading_identities_blocks_full_read_claim_when_page_partially_read(self) -> None:
+        kept, filtered = hermeneutics_policy.filter_unsupported_web_reading_identities(
+            [
+                {
+                    'subject': 'llm',
+                    'content': 'Claims to have read the full article in detail',
+                }
+            ],
+            web_input={'read_state': 'page_partially_read'},
+        )
+
+        self.assertEqual(kept, [])
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(filtered[0]['reason'], 'web_reading_claim_requires_partial_nuance')
 
 
 if __name__ == "__main__":

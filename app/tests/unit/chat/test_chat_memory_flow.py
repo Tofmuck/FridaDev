@@ -665,6 +665,168 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(branch_events, [('not_applicable', 'identity_write_shadow_mode')])
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'record_evidence_shadow')
 
+    def test_record_identity_entries_for_mode_filters_unsupported_web_reading_claim_in_enforced_mode(self) -> None:
+        events = []
+        observed = {'persisted': None}
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [
+                {
+                    'subject': 'llm',
+                    'content': 'Claims to have the linked article open and read it',
+                    'confidence': 0.91,
+                    'stability': 'durable',
+                    'utterance_mode': 'self_description',
+                    'recurrence': 'repeated',
+                    'scope': 'llm',
+                    'evidence_kind': 'explicit',
+                }
+            ],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-identity-guard-enforced',
+            [{'role': 'assistant', 'content': 'bad claim'}],
+            mode='enforced_all',
+            web_input={'read_state': 'page_not_read_snippet_fallback'},
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed['persisted'], ('conv-identity-guard-enforced', []))
+        event = _event_payloads(events, 'identity_mode_apply')[0]
+        self.assertEqual(event['action'], 'persist_enforced')
+        self.assertEqual(event['entries'], 0)
+        self.assertEqual(event['extracted_entries'], 1)
+        self.assertEqual(event['guard_filtered_count'], 1)
+        self.assertEqual(
+            event['guard_filtered_preview']['frida'],
+            ['Claims to have the linked article open and read it'],
+        )
+
+    def test_record_identity_entries_for_mode_keeps_prudent_web_limitation_statement(self) -> None:
+        events = []
+        observed = {'persisted': None}
+        prudent_entry = {
+            'subject': 'llm',
+            'content': "Frida n'a pas accès au contenu complet d'un article via un lien direct dans ce contexte",
+            'confidence': 0.82,
+            'stability': 'episodic',
+            'utterance_mode': 'self_description',
+            'recurrence': 'first_seen',
+            'scope': 'llm',
+            'evidence_kind': 'explicit',
+        }
+
+        arbiter_module = SimpleNamespace(extract_identities=lambda _turns: [dict(prudent_entry)])
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-identity-prudent',
+            [{'role': 'assistant', 'content': 'prudent claim'}],
+            mode='enforced_all',
+            web_input={'read_state': 'page_not_read_crawl_empty'},
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed['persisted'], ('conv-identity-prudent', [prudent_entry]))
+        event = _event_payloads(events, 'identity_mode_apply')[0]
+        self.assertEqual(event['guard_filtered_count'], 0)
+
+    def test_record_identity_entries_for_mode_keeps_supported_direct_reading_claim_when_page_read(self) -> None:
+        events = []
+        observed = {'persisted': None}
+        direct_read_entry = {
+            'subject': 'llm',
+            'content': 'Claims to have the linked article open and read it',
+            'confidence': 0.91,
+            'stability': 'durable',
+            'utterance_mode': 'self_description',
+            'recurrence': 'repeated',
+            'scope': 'llm',
+            'evidence_kind': 'explicit',
+        }
+
+        arbiter_module = SimpleNamespace(extract_identities=lambda _turns: [dict(direct_read_entry)])
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-identity-page-read',
+            [{'role': 'assistant', 'content': 'supported claim'}],
+            mode='enforced_all',
+            web_input={'read_state': 'page_read'},
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed['persisted'], ('conv-identity-page-read', [direct_read_entry]))
+        event = _event_payloads(events, 'identity_mode_apply')[0]
+        self.assertEqual(event['guard_filtered_count'], 0)
+
+    def test_record_identity_entries_for_mode_filters_overclaim_when_page_partially_read(self) -> None:
+        observed = {'persisted': None}
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [
+                {
+                    'subject': 'llm',
+                    'content': 'Claims to have read the full article in detail',
+                    'confidence': 0.88,
+                    'stability': 'durable',
+                    'utterance_mode': 'self_description',
+                    'recurrence': 'repeated',
+                    'scope': 'llm',
+                    'evidence_kind': 'explicit',
+                }
+            ],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            'conv-identity-partial',
+            [{'role': 'assistant', 'content': 'overclaim'}],
+            mode='enforced_all',
+            web_input={'read_state': 'page_partially_read'},
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed['persisted'], ('conv-identity-partial', []))
+
 
 if __name__ == '__main__':
     unittest.main()

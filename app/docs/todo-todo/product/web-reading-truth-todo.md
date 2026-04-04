@@ -69,7 +69,7 @@ Hors scope de ce mini-chantier:
 - [x] Le runtime produit un `read_state` veridique pour la page cible.
 - [x] Un `search_snippet` n'est plus confondu avec une lecture de page.
 - [x] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
-- [ ] Une pretention de lecture non soutenue ne devient plus une trace durable cote Frida.
+- [x] Une pretention de lecture non soutenue ne devient plus une trace durable cote Frida.
 - [ ] Les logs de production permettent de diagnostiquer le cas sans replay manuel du code.
 
 ## Vocabulaire runtime a introduire
@@ -136,14 +136,20 @@ Contraintes de vocabulaire:
 
 ## Sous-chantier 4 - Garde anti-mensonge en memoire durable
 
-- [ ] Empecher qu'une pretention de lecture non soutenue devienne une evidence identitaire durable cote Frida.
+- [x] Empecher qu'une pretention de lecture non soutenue devienne une evidence identitaire durable cote Frida.
 - [ ] Decider ou le filtrage minimal doit vivre:
   - validation amont de l'assertion;
   - non-retention en memoire;
   - ou les deux.
-- [ ] Ajouter une preuve cible:
+- [x] Ajouter une preuve cible:
   - le cas Mediapart ne doit plus produire de trace durable du type "claims to have the linked article open and read it".
 - [ ] Garder le perimetre strictement borne a la verite de lecture web, sans reouvrir la gouvernance memoire generale.
+- garde memoire appliquee:
+  - filtre cible sur les sorties `extract_identities(...)` avant preview/persist durable;
+  - regle pilotee par `web_input.read_state`, pas par une heuristique de texte seule;
+  - `page_not_read_snippet_fallback`, `page_not_read_crawl_empty` et `page_not_read_error` rejettent les pretentions de lecture directe non soutenues;
+  - `page_partially_read` bloque les sur-pretentions de lecture integrale et laisse passer les formulations prudentes;
+  - `page_read` laisse passer une affirmation de lecture directe coherentement soutenue.
 
 ## Sous-chantier 5 - Observability suffisante
 

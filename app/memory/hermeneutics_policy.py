@@ -17,6 +17,84 @@ NEGATION_HINTS = {
     'plus',
     'pas',
 }
+READ_STATE_PAGE_READ = 'page_read'
+READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
+READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
+READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
+READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
+_WEB_DIRECT_READING_PHRASES = (
+    'open and read',
+    'read the article',
+    'read the linked article',
+    'read the page',
+    'read the text',
+    'has the article open',
+    'has the text open',
+    'has the text in front of',
+    'has the linked article open',
+    "a lu l'article",
+    'a lu le texte',
+    'a lu la page',
+    'a le texte sous les yeux',
+    "a l'article sous les yeux",
+    'texte sous les yeux',
+    'article sous les yeux',
+    'lu en detail',
+    'lu en détail',
+    'lecture detaillee',
+    'lecture détaillée',
+    'read it in detail',
+    'read the full article',
+    'read the full text',
+)
+_WEB_DIRECT_READING_VERBS = (
+    'read',
+    'reading',
+    'lu',
+    'lire',
+    'lecture',
+    'sous les yeux',
+)
+_WEB_DIRECT_READING_OBJECTS = (
+    'article',
+    'page',
+    'text',
+    'texte',
+    'post',
+    'billet',
+    'linked',
+    'lien',
+)
+_WEB_READING_MITIGATION_HINTS = (
+    'not read',
+    "didn't read",
+    'did not read',
+    'no access',
+    'not access',
+    'cannot access',
+    "can't access",
+    'not possible',
+    'impossible',
+    "n'a pas accès",
+    "n’a pas accès",
+    "n'a pas lu",
+    "n’a pas lu",
+    'pas accès',
+    'pas lu',
+    'partial',
+    'partially',
+    'partiel',
+    'partielle',
+    'snippet',
+    'extrait',
+    'excerpt',
+    'tronqu',
+    'truncat',
+    'incomplete',
+    'incomplet',
+    'not full',
+    'pas complet',
+)
 
 
 @dataclass
@@ -218,3 +296,84 @@ def conflict_resolution_action(confidence_conflict: float) -> str:
     if confidence_conflict >= 0.6:
         return 'downweight_both'
     return 'ignore'
+
+
+def _contains_web_reading_mitigation(text: str) -> bool:
+    normalized = str(text or '').strip().lower()
+    if not normalized:
+        return False
+    return any(hint in normalized for hint in _WEB_READING_MITIGATION_HINTS)
+
+
+def _contains_direct_web_reading_claim(text: str) -> bool:
+    normalized = str(text or '').strip().lower()
+    if not normalized:
+        return False
+    if any(phrase in normalized for phrase in _WEB_DIRECT_READING_PHRASES):
+        return True
+    has_verb = any(token in normalized for token in _WEB_DIRECT_READING_VERBS)
+    has_object = any(token in normalized for token in _WEB_DIRECT_READING_OBJECTS)
+    return has_verb and has_object
+
+
+def unsupported_web_reading_claim_reason(
+    entry: Mapping[str, Any],
+    *,
+    web_input: Mapping[str, Any] | None,
+) -> str | None:
+    payload = web_input if isinstance(web_input, Mapping) else {}
+    read_state = str(payload.get('read_state') or '').strip()
+    if not read_state:
+        return None
+
+    subject = str(entry.get('subject') or '').strip().lower()
+    if subject != 'llm':
+        return None
+
+    content = str(entry.get('content') or '').strip()
+    if not content or not _contains_direct_web_reading_claim(content):
+        return None
+
+    if read_state == READ_STATE_PAGE_READ:
+        return None
+
+    if _contains_web_reading_mitigation(content):
+        return None
+
+    if read_state == READ_STATE_PAGE_PARTIALLY_READ:
+        return 'web_reading_claim_requires_partial_nuance'
+
+    if read_state in {
+        READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK,
+        READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY,
+        READ_STATE_PAGE_NOT_READ_ERROR,
+    }:
+        return f'web_reading_claim_unsupported_for_{read_state}'
+
+    return None
+
+
+def filter_unsupported_web_reading_identities(
+    entries: Sequence[Mapping[str, Any]],
+    *,
+    web_input: Mapping[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    kept: list[dict[str, Any]] = []
+    filtered: list[dict[str, Any]] = []
+    for entry in entries:
+        canonical_entry = dict(entry or {})
+        reason = unsupported_web_reading_claim_reason(
+            canonical_entry,
+            web_input=web_input,
+        )
+        if reason:
+            filtered.append(
+                {
+                    'subject': str(canonical_entry.get('subject') or ''),
+                    'content': str(canonical_entry.get('content') or ''),
+                    'reason': reason,
+                }
+            )
+            continue
+        kept.append(canonical_entry)
+    return kept, filtered

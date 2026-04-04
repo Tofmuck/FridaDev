@@ -6,6 +6,7 @@ from typing import Any, Mapping, Sequence
 
 from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
+from memory import hermeneutics_policy
 from observability import chat_turn_logger
 
 
@@ -85,6 +86,35 @@ def _emit_identity_write_skipped_by_side(
         reason_code=reason_code,
         reason_short=reason_short,
     )
+
+
+def _guard_filtered_entries_by_side(
+    filtered_entries: Sequence[Mapping[str, Any]],
+) -> dict[str, list[dict[str, str]]]:
+    by_side: dict[str, list[dict[str, str]]] = {'frida': [], 'user': []}
+    for entry in filtered_entries:
+        subject = str(entry.get('subject') or '').strip().lower()
+        side = 'frida' if subject == 'llm' else 'user' if subject == 'user' else None
+        if side is None:
+            continue
+        by_side[side].append(
+            {
+                'content': str(entry.get('content') or ''),
+                'reason': str(entry.get('reason') or ''),
+            }
+        )
+    return by_side
+
+
+def _guard_filtered_summary(
+    filtered_entries: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, int], dict[str, list[str]]]:
+    by_side = _guard_filtered_entries_by_side(filtered_entries)
+    counts = {side: len(entries) for side, entries in by_side.items()}
+    previews: dict[str, list[str]] = {}
+    for side, entries in by_side.items():
+        previews[side] = [entry['content'] for entry in entries[:3]]
+    return counts, previews
 
 
 def _log_stage_latency(
@@ -326,6 +356,7 @@ def record_identity_entries_for_mode(
     recent_turns: Sequence[Mapping[str, Any]],
     *,
     mode: str,
+    web_input: Mapping[str, Any] | None = None,
     arbiter_module: Any,
     memory_store_module: Any,
     admin_logs_module: Any,
@@ -355,19 +386,28 @@ def record_identity_entries_for_mode(
         extract_t0,
         admin_logs_module=admin_logs_module,
     )
+    filtered_entries, guard_filtered_entries = hermeneutics_policy.filter_unsupported_web_reading_identities(
+        id_entries,
+        web_input=web_input,
+    )
+    guard_filtered_count = len(guard_filtered_entries)
+    guard_counts_by_side, guard_preview_by_side = _guard_filtered_summary(guard_filtered_entries)
 
     if mode_enforces_identity(mode):
-        memory_store_module.persist_identity_entries(conversation_id, id_entries)
+        memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
         admin_logs_module.log_event(
             'identity_mode_apply',
             conversation_id=conversation_id,
             mode=mode,
             action='persist_enforced',
-            entries=len(id_entries),
+            entries=len(filtered_entries),
+            extracted_entries=len(id_entries),
+            guard_filtered_count=guard_filtered_count,
+            guard_filtered_preview=guard_preview_by_side,
         )
         return
 
-    preview_entries = memory_store_module.preview_identity_entries(id_entries)
+    preview_entries = memory_store_module.preview_identity_entries(filtered_entries)
     memory_store_module.record_identity_evidence(conversation_id, preview_entries)
     side_counts = {'frida': 0, 'user': 0}
     for entry in preview_entries:
@@ -390,4 +430,8 @@ def record_identity_entries_for_mode(
         mode=mode,
         action='record_evidence_shadow',
         entries=len(preview_entries),
+        extracted_entries=len(id_entries),
+        guard_filtered_count=guard_filtered_count,
+        guard_filtered_by_side=guard_counts_by_side,
+        guard_filtered_preview=guard_preview_by_side,
     )
