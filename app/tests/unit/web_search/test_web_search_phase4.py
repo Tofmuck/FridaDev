@@ -337,6 +337,49 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
             1,
         )
 
+    def test_build_context_payload_keeps_explicit_url_trace_without_false_success_when_fallback_is_empty(self) -> None:
+        url = 'https://example.com/article'
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 80,
+        }[field]
+        web_search.crawl_with_status = lambda _url: {
+            'status': 'empty',
+            'markdown': '',
+            'error_class': None,
+        }
+        web_search.reformulate = lambda _msg: 'requete vide'
+        web_search.search = lambda _query: []
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Lis: {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(payload['status'], 'skipped')
+        self.assertEqual(payload['reason_code'], 'no_data')
+        self.assertEqual(payload['results_count'], 0)
+        self.assertTrue(payload['fallback_used'])
+        self.assertEqual(payload['collection_path'], 'explicit_url_fallback_search')
+        self.assertEqual(payload['context_block'], '')
+        self.assertEqual(len(payload['sources']), 1)
+        self.assertEqual(payload['sources'][0]['url'], url)
+        self.assertEqual(payload['sources'][0]['source_origin'], 'explicit_url')
+        self.assertTrue(payload['sources'][0]['is_primary_source'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'empty')
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'none')
+
 
 if __name__ == '__main__':
     unittest.main()

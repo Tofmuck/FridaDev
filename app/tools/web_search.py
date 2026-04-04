@@ -279,11 +279,24 @@ def _build_search_context_material(
         )
         fallback_results = deduped_results
 
+    primary_source_has_content = bool(
+        primary_source
+        and str(primary_source.get('used_content_kind') or 'none') != 'none'
+    )
+
     if not fallback_results and not primary_source:
         return {
             'runtime': runtime,
             'results_count': 0,
             'sources': [],
+            'context_block': '',
+        }
+
+    if explicit_url and not fallback_results and primary_source and not primary_source_has_content:
+        return {
+            'runtime': runtime,
+            'results_count': 0,
+            'sources': [primary_source],
             'context_block': '',
         }
 
