@@ -101,7 +101,7 @@ Contraintes de vocabulaire:
   - `page_not_read_crawl_empty` = crawl vide sur la page cible sans snippet fallback utilise;
   - `page_not_read_error` = erreur de crawl sur la page cible sans snippet fallback utilise.
 - [ ] Ne plus laisser `status=ok` porter a lui seul une promesse implicite de lecture.
-- [ ] Garder ce cadrage petit et borne: pas de taxonomie web generale au-dela de ce qui sert la verite de lecture.
+- rappel de cadrage: garder ce vocabulaire petit et borne, sans taxonomie web generale au-dela de ce qui sert la verite de lecture.
 
 ## Sous-chantier 2 - Traitement prioritaire des URLs explicites
 
