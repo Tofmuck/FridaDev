@@ -15,6 +15,11 @@ from observability import chat_turn_logger
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
+READ_STATE_PAGE_READ = 'page_read'
+READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
+READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
+READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
+READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
 
 
 def _runtime_main_model_name() -> str:
@@ -245,6 +250,35 @@ def _build_explicit_url_context_material(url: str, crawled_markdown: str) -> dic
     }
 
 
+def _derive_read_state(
+    *,
+    explicit_url: str | None,
+    primary_read_status: str,
+    sources: list[dict[str, Any]],
+) -> str | None:
+    if not explicit_url:
+        return None
+
+    normalized_primary_status = str(primary_read_status or 'not_attempted')
+    primary_source = next((source for source in sources if bool(source.get('is_primary_source'))), None)
+    if normalized_primary_status == 'success':
+        if primary_source and bool(primary_source.get('truncated')):
+            return READ_STATE_PAGE_PARTIALLY_READ
+        return READ_STATE_PAGE_READ
+
+    if any(
+        bool(source.get('used_in_prompt'))
+        and str(source.get('used_content_kind') or 'none') == 'search_snippet'
+        for source in sources
+    ):
+        return READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK
+
+    if normalized_primary_status == 'empty':
+        return READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY
+
+    return READ_STATE_PAGE_NOT_READ_ERROR
+
+
 def _build_search_context_material(
     query: str,
     results: list[dict[str, str]],
@@ -462,6 +496,7 @@ def _emit_web_search_runtime_event(
     prompt_kind: str = 'chat_web_reformulation',
     explicit_url_detected: bool = False,
     explicit_url: str | None = None,
+    read_state: str | None = None,
     primary_source_kind: str = 'search',
     primary_read_attempted: bool = False,
     primary_read_status: str | None = None,
@@ -480,6 +515,7 @@ def _emit_web_search_runtime_event(
         'truncated': bool(truncated),
         'explicit_url_detected': bool(explicit_url_detected),
         'explicit_url': str(explicit_url or ''),
+        'read_state': read_state,
         'primary_source_kind': str(primary_source_kind or 'search'),
         'primary_read_attempted': bool(primary_read_attempted),
         'primary_read_status': str(primary_read_status or ''),
@@ -521,6 +557,11 @@ def _build_payload_from_collection(
                 explicit_url,
                 str(primary_crawl.get('markdown') or ''),
             )
+            read_state = _derive_read_state(
+                explicit_url=explicit_url,
+                primary_read_status=primary_read_status,
+                sources=list(material['sources']),
+            )
             return {
                 'enabled': True,
                 'status': 'ok',
@@ -534,6 +575,7 @@ def _build_payload_from_collection(
                 'prompt_kind': 'chat_web_explicit_url',
                 'explicit_url_detected': True,
                 'explicit_url': str(explicit_url),
+                'read_state': read_state,
                 'primary_source_kind': 'explicit_url',
                 'primary_read_attempted': True,
                 'primary_read_status': primary_read_status,
@@ -551,6 +593,11 @@ def _build_payload_from_collection(
             preloaded_crawl_results={explicit_url: primary_crawl},
         )
         has_results = int(material['results_count']) > 0
+        read_state = _derive_read_state(
+            explicit_url=explicit_url,
+            primary_read_status=primary_read_status,
+            sources=list(material['sources']),
+        )
         return {
             'enabled': True,
             'status': 'ok' if has_results else 'skipped',
@@ -564,6 +611,7 @@ def _build_payload_from_collection(
             'prompt_kind': 'chat_web_explicit_url_fallback',
             'explicit_url_detected': True,
             'explicit_url': str(explicit_url),
+            'read_state': read_state,
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': primary_read_status,
@@ -588,6 +636,7 @@ def _build_payload_from_collection(
         'prompt_kind': 'chat_web_reformulation',
         'explicit_url_detected': False,
         'explicit_url': '',
+        'read_state': None,
         'primary_source_kind': 'search',
         'primary_read_attempted': False,
         'primary_read_status': 'not_attempted',
@@ -614,6 +663,7 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             prompt_kind=str(payload['prompt_kind']),
             explicit_url_detected=bool(payload['explicit_url_detected']),
             explicit_url=str(payload['explicit_url'] or ''),
+            read_state=payload.get('read_state'),
             primary_source_kind=str(payload['primary_source_kind']),
             primary_read_attempted=bool(payload['primary_read_attempted']),
             primary_read_status=str(payload['primary_read_status'] or ''),
@@ -635,6 +685,7 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             'prompt_kind': 'chat_web_explicit_url_fallback' if explicit_url else 'chat_web_reformulation',
             'explicit_url_detected': bool(explicit_url),
             'explicit_url': str(explicit_url or ''),
+            'read_state': READ_STATE_PAGE_NOT_READ_ERROR if explicit_url else None,
             'primary_source_kind': 'explicit_url' if explicit_url else 'search',
             'primary_read_attempted': bool(explicit_url),
             'primary_read_status': 'error' if explicit_url else 'not_attempted',
@@ -654,6 +705,7 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
             prompt_kind=str(error_payload['prompt_kind']),
             explicit_url_detected=bool(error_payload['explicit_url_detected']),
             explicit_url=str(error_payload['explicit_url'] or ''),
+            read_state=error_payload.get('read_state'),
             primary_source_kind=str(error_payload['primary_source_kind']),
             primary_read_attempted=bool(error_payload['primary_read_attempted']),
             primary_read_status=str(error_payload['primary_read_status'] or ''),
@@ -693,6 +745,7 @@ def build_context(user_msg: str) -> tuple[str, str, int]:
             prompt_kind='chat_web_reformulation',
             explicit_url_detected=False,
             explicit_url='',
+            read_state=None,
             primary_source_kind='search',
             primary_read_attempted=False,
             primary_read_status='not_attempted',
@@ -714,6 +767,7 @@ def build_context(user_msg: str) -> tuple[str, str, int]:
             prompt_kind='chat_web_reformulation',
             explicit_url_detected=False,
             explicit_url='',
+            read_state=None,
             primary_source_kind='search',
             primary_read_attempted=False,
             primary_read_status='not_attempted',

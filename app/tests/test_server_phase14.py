@@ -1255,6 +1255,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'results_count': 1,
             'explicit_url_detected': True,
             'explicit_url': 'https://example.com/article',
+            'read_state': 'page_not_read_snippet_fallback',
             'primary_source_kind': 'explicit_url',
             'primary_read_attempted': True,
             'primary_read_status': 'empty',
@@ -1323,6 +1324,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['results_count'], 1)
         self.assertTrue(observed['web_input']['explicit_url_detected'])
         self.assertEqual(observed['web_input']['explicit_url'], 'https://example.com/article')
+        self.assertEqual(observed['web_input']['read_state'], 'page_not_read_snippet_fallback')
         self.assertEqual(observed['web_input']['primary_source_kind'], 'explicit_url')
         self.assertTrue(observed['web_input']['primary_read_attempted'])
         self.assertEqual(observed['web_input']['primary_read_status'], 'empty')

@@ -65,8 +65,8 @@ Hors scope de ce mini-chantier:
 ## Definition of done
 
 - [x] Une URL explicite fournie par l'utilisateur est traitee comme source primaire prioritaire.
-- [ ] Le runtime produit un `read_state` veridique pour la page cible.
-- [ ] Un `search_snippet` n'est plus confondu avec une lecture de page.
+- [x] Le runtime produit un `read_state` veridique pour la page cible.
+- [x] Un `search_snippet` n'est plus confondu avec une lecture de page.
 - [ ] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
 - [ ] Une pretention de lecture non soutenue ne devient plus une trace durable cote Frida.
 - [ ] Les logs de production permettent de diagnostiquer le cas sans replay manuel du code.
@@ -74,11 +74,11 @@ Hors scope de ce mini-chantier:
 ## Vocabulaire runtime a introduire
 
 Statuts cibles minimaux a cadrer:
-- [ ] `page_read`
-- [ ] `page_partially_read`
-- [ ] `page_not_read_crawl_empty`
-- [ ] `page_not_read_error`
-- [ ] `page_not_read_snippet_fallback`
+- [x] `page_read`
+- [x] `page_partially_read`
+- [x] `page_not_read_crawl_empty`
+- [x] `page_not_read_error`
+- [x] `page_not_read_snippet_fallback`
 
 Contraintes de vocabulaire:
 - [ ] definir ce qui autorise une formulation du type "j'ai lu la page";
@@ -87,12 +87,18 @@ Contraintes de vocabulaire:
 
 ## Sous-chantier 1 - Statut de lecture web veridique
 
-- [ ] Introduire un `read_state` explicite pour la source cible issue du message utilisateur.
-- [ ] Faire apparaitre la difference entre:
+- [x] Introduire un `read_state` explicite pour la source cible issue du message utilisateur.
+- [x] Faire apparaitre la difference entre:
   - lecture primaire reussie;
   - lecture partielle;
   - echec silencieux avec markdown vide;
   - fallback snippet.
+- read_state runtime current:
+  - `page_read` = lecture directe explicite reussie non tronquee;
+  - `page_partially_read` = lecture directe explicite reussie mais tronquee au `crawl4ai_max_chars`;
+  - `page_not_read_snippet_fallback` = aucune lecture de page cible, mais un snippet fallback a ete utilise pour repondre;
+  - `page_not_read_crawl_empty` = crawl vide sur la page cible sans snippet fallback utilise;
+  - `page_not_read_error` = erreur de crawl sur la page cible sans snippet fallback utilise.
 - [ ] Ne plus laisser `status=ok` porter a lui seul une promesse implicite de lecture.
 - [ ] Garder ce cadrage petit et borne: pas de taxonomie web generale au-dela de ce qui sert la verite de lecture.
 

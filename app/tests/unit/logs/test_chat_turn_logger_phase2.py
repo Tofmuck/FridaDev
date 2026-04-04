@@ -1303,6 +1303,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['query'], 'query structuree')
         self.assertEqual(payload['results_count'], 2)
         self.assertFalse(payload['explicit_url_detected'])
+        self.assertIsNone(payload['read_state'])
         self.assertEqual(payload['primary_source_kind'], 'search')
         self.assertFalse(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'not_attempted')
@@ -1325,6 +1326,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['results_count'], 2)
         self.assertTrue(web_event['payload_json']['truncated'])
         self.assertFalse(web_event['payload_json']['explicit_url_detected'])
+        self.assertIsNone(web_event['payload_json']['read_state'])
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'not_attempted')
         self.assertFalse(web_event['payload_json']['fallback_used'])
         self.assertEqual(web_event['payload_json']['collection_path'], 'search_only')
@@ -1375,6 +1377,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             web_search._runtime_services_value = original_runtime_services_value
 
         self.assertTrue(payload['explicit_url_detected'])
+        self.assertEqual(payload['read_state'], 'page_read')
         self.assertEqual(payload['primary_source_kind'], 'explicit_url')
         self.assertTrue(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'success')
@@ -1388,6 +1391,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['payload_json']['prompt_kind'], 'chat_web_explicit_url')
         self.assertTrue(web_event['payload_json']['explicit_url_detected'])
         self.assertEqual(web_event['payload_json']['explicit_url'], explicit_url)
+        self.assertEqual(web_event['payload_json']['read_state'], 'page_read')
         self.assertEqual(web_event['payload_json']['primary_source_kind'], 'explicit_url')
         self.assertTrue(web_event['payload_json']['primary_read_attempted'])
         self.assertEqual(web_event['payload_json']['primary_read_status'], 'success')
