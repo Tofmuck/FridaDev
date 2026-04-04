@@ -1260,7 +1260,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         original_insert = log_store.insert_chat_log_event
         original_reformulate = web_search.reformulate
         original_search = web_search.search
-        original_crawl = web_search.crawl
+        original_crawl_with_status = web_search.crawl_with_status
         original_runtime_services_value = web_search._runtime_services_value
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
@@ -1273,7 +1273,11 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             {'title': 'Source A', 'url': 'https://a.example/article', 'content': 'snippet a'},
             {'title': 'Source B', 'url': 'https://b.example/article', 'content': 'snippet b' * 200},
         ]
-        web_search.crawl = lambda url: 'markdown a' if 'a.example' in url else ''
+        web_search.crawl_with_status = (
+            lambda url: {'status': 'success', 'markdown': 'markdown a', 'error_class': None}
+            if 'a.example' in url
+            else {'status': 'empty', 'markdown': '', 'error_class': None}
+        )
         web_search._runtime_services_value = lambda field: {
             'searxng_results': 5,
             'crawl4ai_top_n': 1,
@@ -1291,13 +1295,19 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             log_store.insert_chat_log_event = original_insert
             web_search.reformulate = original_reformulate
             web_search.search = original_search
-            web_search.crawl = original_crawl
+            web_search.crawl_with_status = original_crawl_with_status
             web_search._runtime_services_value = original_runtime_services_value
 
         self.assertTrue(payload['enabled'])
         self.assertEqual(payload['status'], 'ok')
         self.assertEqual(payload['query'], 'query structuree')
         self.assertEqual(payload['results_count'], 2)
+        self.assertFalse(payload['explicit_url_detected'])
+        self.assertEqual(payload['primary_source_kind'], 'search')
+        self.assertFalse(payload['primary_read_attempted'])
+        self.assertEqual(payload['primary_read_status'], 'not_attempted')
+        self.assertFalse(payload['fallback_used'])
+        self.assertEqual(payload['collection_path'], 'search_only')
         self.assertEqual(payload['runtime']['searxng_results'], 5)
         self.assertEqual(payload['runtime']['crawl4ai_top_n'], 1)
         self.assertEqual(payload['runtime']['crawl4ai_max_chars'], 20)
@@ -1305,6 +1315,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['sources'][0]['source_domain'], 'a.example')
         self.assertEqual(payload['sources'][0]['used_content_kind'], 'crawl_markdown')
         self.assertTrue(payload['sources'][0]['used_in_prompt'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'success')
         self.assertEqual(payload['sources'][1]['used_content_kind'], 'search_snippet')
         self.assertTrue(payload['sources'][1]['truncated'])
         self.assertTrue(payload['context_block'].startswith('[RECHERCHE WEB'))
@@ -1313,6 +1324,75 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(web_event['status'], 'ok')
         self.assertEqual(web_event['payload_json']['results_count'], 2)
         self.assertTrue(web_event['payload_json']['truncated'])
+        self.assertFalse(web_event['payload_json']['explicit_url_detected'])
+        self.assertEqual(web_event['payload_json']['primary_read_status'], 'not_attempted')
+        self.assertFalse(web_event['payload_json']['fallback_used'])
+        self.assertEqual(web_event['payload_json']['collection_path'], 'search_only')
+
+    def test_web_search_build_context_payload_logs_explicit_url_primary_path(self) -> None:
+        observed: list[dict[str, Any]] = []
+        explicit_url = 'https://example.com/article'
+        original_insert = log_store.insert_chat_log_event
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_runtime_services_value = web_search._runtime_services_value
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        web_search.crawl_with_status = lambda url: {
+            'status': 'success',
+            'markdown': 'contenu primaire',
+            'error_class': None,
+        }
+        web_search.reformulate = lambda _msg: (_ for _ in ()).throw(
+            AssertionError('generic search should not run on explicit URL direct success')
+        )
+        web_search.search = lambda _query: (_ for _ in ()).throw(
+            AssertionError('search should not run on explicit URL direct success')
+        )
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 50,
+        }[field]
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-web-explicit-url',
+            user_msg='bonjour',
+            web_search_enabled=True,
+        )
+        try:
+            payload = web_search.build_context_payload(f'lis cette page: {explicit_url}')
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._runtime_services_value = original_runtime_services_value
+
+        self.assertTrue(payload['explicit_url_detected'])
+        self.assertEqual(payload['primary_source_kind'], 'explicit_url')
+        self.assertTrue(payload['primary_read_attempted'])
+        self.assertEqual(payload['primary_read_status'], 'success')
+        self.assertFalse(payload['fallback_used'])
+        self.assertEqual(payload['collection_path'], 'explicit_url_direct')
+        self.assertEqual(payload['sources'][0]['source_origin'], 'explicit_url')
+        self.assertTrue(payload['sources'][0]['is_primary_source'])
+
+        web_event = next(event for event in observed if event['stage'] == 'web_search')
+        self.assertEqual(web_event['status'], 'ok')
+        self.assertEqual(web_event['payload_json']['prompt_kind'], 'chat_web_explicit_url')
+        self.assertTrue(web_event['payload_json']['explicit_url_detected'])
+        self.assertEqual(web_event['payload_json']['explicit_url'], explicit_url)
+        self.assertEqual(web_event['payload_json']['primary_source_kind'], 'explicit_url')
+        self.assertTrue(web_event['payload_json']['primary_read_attempted'])
+        self.assertEqual(web_event['payload_json']['primary_read_status'], 'success')
+        self.assertFalse(web_event['payload_json']['fallback_used'])
+        self.assertEqual(web_event['payload_json']['collection_path'], 'explicit_url_direct')
 
     def test_web_search_build_context_emits_error_event(self) -> None:
         observed: list[dict[str, Any]] = []

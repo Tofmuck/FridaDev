@@ -120,15 +120,19 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
 
     def test_format_context_uses_runtime_crawl_limits(self) -> None:
         original_get_settings = web_search.runtime_settings.get_services_settings
-        original_crawl = web_search.crawl
+        original_crawl_with_status = web_search.crawl_with_status
         calls = {'count': 0}
 
-        def fake_crawl(url):
+        def fake_crawl_with_status(url):
             calls['count'] += 1
-            return 'abcdefghijklmnopqrstuvwxyz'
+            return {
+                'status': 'success',
+                'markdown': 'abcdefghijklmnopqrstuvwxyz',
+                'error_class': None,
+            }
 
         web_search.runtime_settings.get_services_settings = self._db_services_view
-        web_search.crawl = fake_crawl
+        web_search.crawl_with_status = fake_crawl_with_status
         try:
             text = web_search._format_context(
                 'frida',
@@ -139,10 +143,49 @@ class WebSearchPhase4ServicesTests(unittest.TestCase):
             )
         finally:
             web_search.runtime_settings.get_services_settings = original_get_settings
-            web_search.crawl = original_crawl
+            web_search.crawl_with_status = original_crawl_with_status
 
         self.assertEqual(calls['count'], 1)
         self.assertIn('abcdefghij\n[...contenu tronqué]', text)
+
+    def test_crawl_with_status_reports_empty_when_markdown_is_blank(self) -> None:
+        original_get_settings = web_search.runtime_settings.get_services_settings
+        original_get_secret = web_search.runtime_settings.get_runtime_secret_value
+        original_post = web_search.requests.post
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'success': True, 'markdown': '   '}
+
+        def fake_post(_url, json=None, headers=None, timeout=None):
+            return FakeResponse()
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('services', 'crawl4ai_token'))
+            return runtime_settings.RuntimeSecretValue(
+                section='services',
+                field='crawl4ai_token',
+                value='crawl-db-token',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        web_search.runtime_settings.get_services_settings = self._db_services_view
+        web_search.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        web_search.requests.post = fake_post
+        try:
+            result = web_search.crawl_with_status('https://source.example')
+        finally:
+            web_search.runtime_settings.get_services_settings = original_get_settings
+            web_search.runtime_settings.get_runtime_secret_value = original_get_secret
+            web_search.requests.post = original_post
+
+        self.assertEqual(result['status'], 'empty')
+        self.assertEqual(result['markdown'], '')
+        self.assertIsNone(result['error_class'])
 
     def test_runtime_crawl4ai_token_uses_env_fallback_when_runtime_layer_returns_it(self) -> None:
         original_get_secret = web_search.runtime_settings.get_runtime_secret_value

@@ -2,7 +2,7 @@
 
 Objectif: cadrer un mini-chantier runtime/user-facing pour que Frida dise vrai sur ce qu'elle a reellement lu sur le web, n'assimile plus un snippet a une lecture de page, et n'enfouisse plus une lecture fictive en memoire durable.
 
-## Etat apres tranche docs (2026-04-04)
+## Etat apres tranche 1 - URL explicite primaire (2026-04-04)
 
 Cas de reference verifie:
 - conversation: `28756d17-061b-4058-8199-cfebfe46075f`
@@ -10,7 +10,7 @@ Cas de reference verifie:
 - URL fournie par l'utilisateur:
   - `https://blogs.mediapart.fr/christophe-muck/blog/030426/apres-la-garde-vue-de-rima-hassan-ce-que-l-occident-refuse-de-voir`
 
-Constats runtime/code deja revalides:
+Constats initiaux revalides avant cette tranche:
 - l'URL explicite fournie par l'utilisateur n'est pas traitee comme source primaire a lire avant la recherche generique;
 - le pipeline fait d'abord `reformulate(user_msg)` puis `search(query)`;
 - `crawl(url)` peut renvoyer un markdown vide sans faire echouer le tour;
@@ -22,6 +22,20 @@ Constats runtime/code deja revalides:
 Point de cadrage central:
 - le probleme principal n'est pas seulement la troncature;
 - le probleme principal est la verite de lecture web.
+
+Etat de cette tranche:
+- l'URL explicite du message utilisateur est maintenant detectee explicitement dans `app/tools/web_search.py`;
+- une lecture directe de cette URL est tentee avant `reformulate(user_msg)` puis `search(query)`;
+- si cette lecture directe reussit, le contexte web s'appuie d'abord sur cette lecture primaire;
+- si cette lecture directe echoue, le fallback de recherche reste possible mais le payload/runtime garde la trace:
+  - `explicit_url_detected`
+  - `explicit_url`
+  - `primary_source_kind`
+  - `primary_read_attempted`
+  - `primary_read_status`
+  - `fallback_used`
+  - `collection_path`
+- les autres sous-chantiers restent ouverts: `read_state` complet, garde anti-mensonge reponse, garde memoire durable, observability complete.
 
 ## Objectif produit
 
@@ -49,7 +63,7 @@ Hors scope de ce mini-chantier:
 
 ## Definition of done
 
-- [ ] Une URL explicite fournie par l'utilisateur est traitee comme source primaire prioritaire.
+- [x] Une URL explicite fournie par l'utilisateur est traitee comme source primaire prioritaire.
 - [ ] Le runtime produit un `read_state` veridique pour la page cible.
 - [ ] Un `search_snippet` n'est plus confondu avec une lecture de page.
 - [ ] Frida ne peut plus affirmer avoir lu une page quand `read_state` ne le soutient pas.
@@ -83,11 +97,11 @@ Contraintes de vocabulaire:
 
 ## Sous-chantier 2 - Traitement prioritaire des URLs explicites
 
-- [ ] Detecter de maniere explicite la presence d'une URL fournie par l'utilisateur.
-- [ ] Tenter une lecture directe de cette URL avant toute recherche generique.
-- [ ] Conserver cette URL comme source primaire nominale, meme si une recherche complementaire est ensuite necessaire.
-- [ ] N'utiliser la recherche generique qu'en fallback ou en enrichissement borne.
-- [ ] Rendre visible dans les preuves runtime si le tour a suivi le chemin:
+- [x] Detecter de maniere explicite la presence d'une URL fournie par l'utilisateur.
+- [x] Tenter une lecture directe de cette URL avant toute recherche generique.
+- [x] Conserver cette URL comme source primaire nominale, meme si une recherche complementaire est ensuite necessaire.
+- [x] N'utiliser la recherche generique qu'en fallback ou en enrichissement borne.
+- [x] Rendre visible dans les preuves runtime si le tour a suivi le chemin:
   - URL explicite -> lecture directe -> reponse;
   - URL explicite -> lecture vide/erreur -> fallback;
   - pas d'URL explicite -> recherche generique.

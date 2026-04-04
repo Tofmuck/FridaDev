@@ -152,6 +152,130 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(query, 'query tronquee')
         self.assertEqual(result_count, 1)
 
+    def test_build_context_payload_reads_explicit_url_before_generic_search_when_crawl_succeeds(self) -> None:
+        url = 'https://example.com/article'
+        observed_calls: list[tuple[str, str]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 2,
+            'crawl4ai_max_chars': 40,
+        }[field]
+
+        def fake_crawl_with_status(input_url: str):
+            observed_calls.append(('crawl', input_url))
+            return {
+                'status': 'success',
+                'markdown': 'contenu primaire ' * 10,
+                'error_class': None,
+            }
+
+        def fail_reformulate(_user_msg: str) -> str:
+            raise AssertionError('generic search should not run when explicit URL crawl succeeds')
+
+        def fail_search(_query: str):
+            raise AssertionError('search() should not run when explicit URL crawl succeeds')
+
+        web_search.crawl_with_status = fake_crawl_with_status
+        web_search.reformulate = fail_reformulate
+        web_search.search = fail_search
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(observed_calls, [('crawl', url)])
+        self.assertTrue(payload['explicit_url_detected'])
+        self.assertEqual(payload['explicit_url'], url)
+        self.assertEqual(payload['primary_source_kind'], 'explicit_url')
+        self.assertTrue(payload['primary_read_attempted'])
+        self.assertEqual(payload['primary_read_status'], 'success')
+        self.assertFalse(payload['fallback_used'])
+        self.assertEqual(payload['collection_path'], 'explicit_url_direct')
+        self.assertEqual(payload['query'], '')
+        self.assertEqual(payload['results_count'], 1)
+        self.assertEqual(payload['sources'][0]['source_origin'], 'explicit_url')
+        self.assertTrue(payload['sources'][0]['is_primary_source'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'success')
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'crawl_markdown')
+        self.assertIn('URL explicite fournie par l\'utilisateur', payload['context_block'])
+
+    def test_build_context_payload_tries_explicit_url_before_search_fallback(self) -> None:
+        url = 'https://example.com/article'
+        observed_calls: list[tuple[str, str]] = []
+        original_runtime_services_value = web_search._runtime_services_value
+        original_crawl_with_status = web_search.crawl_with_status
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 80,
+        }[field]
+
+        def fake_crawl_with_status(input_url: str):
+            observed_calls.append(('crawl', input_url))
+            return {
+                'status': 'empty',
+                'markdown': '',
+                'error_class': None,
+            }
+
+        def fake_reformulate(user_msg: str) -> str:
+            observed_calls.append(('reformulate', user_msg))
+            return 'requete fallback'
+
+        def fake_search(query: str):
+            observed_calls.append(('search', query))
+            return [
+                {
+                    'title': 'Source fallback',
+                    'url': 'https://fallback.example/article',
+                    'content': 'resume fallback',
+                }
+            ]
+
+        web_search.crawl_with_status = fake_crawl_with_status
+        web_search.reformulate = fake_reformulate
+        web_search.search = fake_search
+        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        try:
+            payload = web_search.build_context_payload(f'Tu peux lire ceci : {url}')
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.crawl_with_status = original_crawl_with_status
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual([step[0] for step in observed_calls], ['crawl', 'reformulate', 'search'])
+        self.assertTrue(payload['explicit_url_detected'])
+        self.assertEqual(payload['explicit_url'], url)
+        self.assertEqual(payload['primary_source_kind'], 'explicit_url')
+        self.assertTrue(payload['primary_read_attempted'])
+        self.assertEqual(payload['primary_read_status'], 'empty')
+        self.assertTrue(payload['fallback_used'])
+        self.assertEqual(payload['collection_path'], 'explicit_url_fallback_search')
+        self.assertEqual(payload['query'], 'requete fallback')
+        self.assertEqual(payload['results_count'], 1)
+        self.assertEqual(payload['sources'][0]['source_origin'], 'search_result')
+        self.assertFalse(payload['sources'][0]['is_primary_source'])
+        self.assertEqual(payload['sources'][0]['crawl_status'], 'not_attempted')
+        self.assertEqual(payload['sources'][0]['used_content_kind'], 'search_snippet')
+        self.assertIn("Lecture directe tentee d'abord : empty.", payload['context_block'])
+
 
 if __name__ == '__main__':
     unittest.main()

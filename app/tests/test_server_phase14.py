@@ -1253,6 +1253,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'original_user_message': 'Bonjour',
             'query': 'query test',
             'results_count': 1,
+            'explicit_url_detected': True,
+            'explicit_url': 'https://example.com/article',
+            'primary_source_kind': 'explicit_url',
+            'primary_read_attempted': True,
+            'primary_read_status': 'empty',
+            'fallback_used': True,
+            'collection_path': 'explicit_url_fallback_search',
             'runtime': {
                 'searxng_results': 5,
                 'crawl4ai_top_n': 2,
@@ -1269,6 +1276,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'used_content_kind': 'search_snippet',
                     'content_used': 'Snippet source',
                     'truncated': False,
+                    'source_origin': 'search_result',
+                    'is_primary_source': False,
+                    'crawl_status': 'not_attempted',
                 }
             ],
             'context_block': 'WEB CONTEXT',
@@ -1311,10 +1321,20 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['status'], 'ok')
         self.assertEqual(observed['web_input']['query'], 'query test')
         self.assertEqual(observed['web_input']['results_count'], 1)
+        self.assertTrue(observed['web_input']['explicit_url_detected'])
+        self.assertEqual(observed['web_input']['explicit_url'], 'https://example.com/article')
+        self.assertEqual(observed['web_input']['primary_source_kind'], 'explicit_url')
+        self.assertTrue(observed['web_input']['primary_read_attempted'])
+        self.assertEqual(observed['web_input']['primary_read_status'], 'empty')
+        self.assertTrue(observed['web_input']['fallback_used'])
+        self.assertEqual(observed['web_input']['collection_path'], 'explicit_url_fallback_search')
         self.assertEqual(observed['web_input']['runtime']['searxng_results'], 5)
         self.assertEqual(observed['web_input']['sources'][0]['source_domain'], 'example.com')
         self.assertTrue(observed['web_input']['sources'][0]['used_in_prompt'])
         self.assertEqual(observed['web_input']['sources'][0]['used_content_kind'], 'search_snippet')
+        self.assertEqual(observed['web_input']['sources'][0]['source_origin'], 'search_result')
+        self.assertFalse(observed['web_input']['sources'][0]['is_primary_source'])
+        self.assertEqual(observed['web_input']['sources'][0]['crawl_status'], 'not_attempted')
         self.assertEqual(observed['web_input']['context_block'], 'WEB CONTEXT')
         self.assertEqual(
             observed['prompt_messages'],
