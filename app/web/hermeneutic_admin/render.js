@@ -377,12 +377,34 @@
     });
   };
 
-  const renderIdentityCandidates = (target, items) => {
-    renderReadonlyCollection(target, items, {
-      emptyMessage: "Aucune identite candidate disponible.",
+  const renderIdentityCandidates = (target, payload) => {
+    if (!target) return;
+    target.innerHTML = "";
+    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+    const items = Array.isArray(safePayload.items) ? safePayload.items : [];
+
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    if (safePayload.legacy_only) meta.appendChild(createChip("legacy_only"));
+    if (safePayload.evidence_only) meta.appendChild(createChip("evidence_only"));
+    if (safePayload.drives_active_injection === false) meta.appendChild(createChip("injection_active=false"));
+    if (toText(safePayload.active_identity_source)) {
+      meta.appendChild(createChip(`active=${toText(safePayload.active_identity_source)}`));
+    }
+    if (toText(safePayload.active_prompt_contract)) {
+      meta.appendChild(createChip(`prompt=${toText(safePayload.active_prompt_contract)}`));
+    }
+    if (meta.childNodes.length) {
+      target.appendChild(meta);
+    }
+
+    const listHost = document.createElement("div");
+    target.appendChild(listHost);
+    renderReadonlyCollection(listHost, items, {
+      emptyMessage: "Aucun fragment legacy d'identite disponible.",
       source: "identity",
       identifyTitle: (item, index) => {
-        return toText(item?.identity_id) || toText(item?.content) || `Identite ${index + 1}`;
+        return toText(item?.identity_id) || toText(item?.content) || `Fragment legacy ${index + 1}`;
       },
     });
   };

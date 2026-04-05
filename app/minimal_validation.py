@@ -885,7 +885,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Vue d'ensemble",
         "Inspection par tour",
         "Decisions arbitre",
-        "Identites candidates",
+        "Fragments legacy d'identite",
+        "static + mutable narrative",
         "Corrections recentes",
     ]
     for marker in hermeneutic_admin_markers:

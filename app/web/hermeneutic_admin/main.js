@@ -129,7 +129,7 @@
       status: state.identityStatus,
       limit: 20,
     });
-    render.renderIdentityCandidates(elements.identityList, payload.items);
+    render.renderIdentityCandidates(elements.identityList, payload);
   };
 
   const loadCorrections = async () => {
@@ -191,7 +191,7 @@
     void loadIdentityCandidates().catch((error) => {
       render.setStatusBanner(
         elements.statusBanner,
-        `Lecture identites indisponible: ${error?.message || error}`,
+        `Lecture fragments legacy d'identite indisponible: ${error?.message || error}`,
         "error",
       );
     });
@@ -201,7 +201,7 @@
     void loadIdentityCandidates().catch((error) => {
       render.setStatusBanner(
         elements.statusBanner,
-        `Lecture identites indisponible: ${error?.message || error}`,
+        `Lecture fragments legacy d'identite indisponible: ${error?.message || error}`,
         "error",
       );
     });

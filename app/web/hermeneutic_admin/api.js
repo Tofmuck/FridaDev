@@ -66,7 +66,7 @@
         status,
         limit,
       })}`,
-      "Echec lecture identites candidates.",
+      "Echec lecture fragments legacy d'identite.",
     );
   };
 

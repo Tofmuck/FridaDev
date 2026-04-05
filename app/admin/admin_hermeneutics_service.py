@@ -81,7 +81,17 @@ def identity_candidates_response(
 
     entries.sort(key=lambda e: float(e.get('weight') or 0.0), reverse=True)
     entries = entries[:limit]
-    return {'ok': True, 'items': entries, 'count': len(entries)}, 200
+    return {
+        'ok': True,
+        'items': entries,
+        'count': len(entries),
+        'legacy_only': True,
+        'evidence_only': True,
+        'drives_active_injection': False,
+        'active_identity_source': 'identity_mutables',
+        'active_prompt_contract': 'static + mutable narrative',
+        'legacy_mutators_disabled': True,
+    }, 200
 
 
 def arbiter_decisions_response(
@@ -100,36 +110,18 @@ def arbiter_decisions_response(
     return {'ok': True, 'items': decisions, 'count': len(decisions)}, 200
 
 
-def _identity_override_response(
-    *,
-    action: str,
-    override_state: str,
-    data: Mapping[str, Any],
-    memory_store_module: Any,
-    admin_logs_module: Any,
-) -> Tuple[Dict[str, Any], int]:
-    identity_id = str(data.get('identity_id') or '').strip()
-    reason = str(data.get('reason') or '').strip()
-    actor = str(data.get('actor') or 'admin').strip() or 'admin'
-    if not identity_id:
-        return {'ok': False, 'error': 'identity_id manquant'}, 400
-
-    ok = memory_store_module.set_identity_override(
-        identity_id,
-        action,
-        reason=reason,
-        actor=actor,
-    )
-    if not ok:
-        return {'ok': False, 'error': 'identity introuvable'}, 404
-
-    admin_logs_module.log_event(
-        'identity_override',
-        action=action,
-        identity_id=identity_id,
-        actor=actor,
-    )
-    return {'ok': True, 'identity_id': identity_id, 'override_state': override_state}, 200
+def _legacy_identity_control_disabled_response(control: str) -> Tuple[Dict[str, Any], int]:
+    return {
+        'ok': False,
+        'error': 'controle identity legacy desactive',
+        'error_code': 'legacy_identity_control_disabled',
+        'control': control,
+        'legacy_only': True,
+        'evidence_only': True,
+        'drives_active_injection': False,
+        'active_identity_source': 'identity_mutables',
+        'active_prompt_contract': 'static + mutable narrative',
+    }, 409
 
 
 def identity_force_accept_response(
@@ -138,13 +130,7 @@ def identity_force_accept_response(
     memory_store_module: Any,
     admin_logs_module: Any,
 ) -> Tuple[Dict[str, Any], int]:
-    return _identity_override_response(
-        action='force_accept',
-        override_state='force_accept',
-        data=data,
-        memory_store_module=memory_store_module,
-        admin_logs_module=admin_logs_module,
-    )
+    return _legacy_identity_control_disabled_response('force_accept')
 
 
 def identity_force_reject_response(
@@ -153,13 +139,7 @@ def identity_force_reject_response(
     memory_store_module: Any,
     admin_logs_module: Any,
 ) -> Tuple[Dict[str, Any], int]:
-    return _identity_override_response(
-        action='force_reject',
-        override_state='force_reject',
-        data=data,
-        memory_store_module=memory_store_module,
-        admin_logs_module=admin_logs_module,
-    )
+    return _legacy_identity_control_disabled_response('force_reject')
 
 
 def identity_relabel_response(
@@ -168,56 +148,7 @@ def identity_relabel_response(
     memory_store_module: Any,
     admin_logs_module: Any,
 ) -> Tuple[Dict[str, Any], int]:
-    identity_id = str(data.get('identity_id') or '').strip()
-    if not identity_id:
-        return {'ok': False, 'error': 'identity_id manquant'}, 400
-
-    stability = data.get('stability')
-    utterance_mode = data.get('utterance_mode')
-    scope = data.get('scope')
-    reason = str(data.get('reason') or '').strip()
-    actor = str(data.get('actor') or 'admin').strip() or 'admin'
-
-    allowed_stability = {'durable', 'episodic', 'unknown'}
-    allowed_utterance_mode = {
-        'self_description',
-        'projection',
-        'role_play',
-        'irony',
-        'speculation',
-        'unknown',
-    }
-    allowed_scope = {'user', 'llm', 'situation', 'mixed', 'unknown'}
-
-    if stability is not None and str(stability).strip() not in allowed_stability:
-        return {'ok': False, 'error': 'stability invalide'}, 400
-    if utterance_mode is not None and str(utterance_mode).strip() not in allowed_utterance_mode:
-        return {'ok': False, 'error': 'utterance_mode invalide'}, 400
-    if scope is not None and str(scope).strip() not in allowed_scope:
-        return {'ok': False, 'error': 'scope invalide'}, 400
-    if stability is None and utterance_mode is None and scope is None:
-        return {'ok': False, 'error': 'aucun champ a relabel'}, 400
-
-    ok = memory_store_module.relabel_identity(
-        identity_id,
-        stability=str(stability).strip() if stability is not None else None,
-        utterance_mode=str(utterance_mode).strip() if utterance_mode is not None else None,
-        scope=str(scope).strip() if scope is not None else None,
-        reason=reason,
-        actor=actor,
-    )
-    if not ok:
-        return {'ok': False, 'error': 'identity introuvable'}, 404
-
-    admin_logs_module.log_event(
-        'identity_relabel',
-        identity_id=identity_id,
-        actor=actor,
-        stability=stability,
-        utterance_mode=utterance_mode,
-        scope=scope,
-    )
-    return {'ok': True, 'identity_id': identity_id}, 200
+    return _legacy_identity_control_disabled_response('relabel')
 
 
 def dashboard_response(

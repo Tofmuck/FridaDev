@@ -57,7 +57,7 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         finally:
             response.close()
 
-    def test_identity_candidates_limit_fallback_and_sort_by_weight(self) -> None:
+    def test_identity_candidates_limit_fallback_sort_by_weight_and_mark_legacy_surface(self) -> None:
         observed = {'calls': []}
         original_get_identities = self.server.memory_store.get_identities
 
@@ -91,6 +91,12 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
             ['u-high', 'l-mid', 'u-low', 'l-zero'],
         )
         self.assertEqual(data['count'], 4)
+        self.assertTrue(data['legacy_only'])
+        self.assertTrue(data['evidence_only'])
+        self.assertFalse(data['drives_active_injection'])
+        self.assertEqual(data['active_identity_source'], 'identity_mutables')
+        self.assertEqual(data['active_prompt_contract'], 'static + mutable narrative')
+        self.assertTrue(data['legacy_mutators_disabled'])
 
     def test_identity_candidates_rejects_invalid_subject(self) -> None:
         response = self.client.get('/api/admin/hermeneutics/identity-candidates?subject=robot')
@@ -134,23 +140,55 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(observed['conversation_id'], 'conv-42')
         self.assertEqual(data['count'], 1)
 
-    def test_identity_force_reject_requires_identity_id(self) -> None:
-        response = self.client.post('/api/admin/hermeneutics/identity/force-reject', json={})
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.get_json(),
-            {'ok': False, 'error': 'identity_id manquant'},
-        )
-
-    def test_identity_force_reject_returns_404_when_identity_not_found(self) -> None:
-        observed = {'args': None, 'log_called': False}
+    def test_identity_force_accept_is_disabled_as_legacy_control(self) -> None:
+        observed = {'override_called': False, 'log_called': False}
         original_set_override = self.server.memory_store.set_identity_override
         original_log_event = self.server.admin_logs.log_event
 
-        def fake_set_identity_override(identity_id: str, action: str, *, reason: str, actor: str):
-            observed['args'] = (identity_id, action, reason, actor)
-            return False
+        def fake_set_identity_override(*_args, **_kwargs):
+            observed['override_called'] = True
+            return True
+
+        def fake_log_event(*_args, **_kwargs):
+            observed['log_called'] = True
+
+        self.server.memory_store.set_identity_override = fake_set_identity_override
+        self.server.admin_logs.log_event = fake_log_event
+        try:
+            response = self.client.post(
+                '/api/admin/hermeneutics/identity/force-accept',
+                json={'identity_id': 'id-1', 'reason': '  because  '},
+            )
+        finally:
+            self.server.memory_store.set_identity_override = original_set_override
+            self.server.admin_logs.log_event = original_log_event
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'controle identity legacy desactive',
+                'error_code': 'legacy_identity_control_disabled',
+                'control': 'force_accept',
+                'legacy_only': True,
+                'evidence_only': True,
+                'drives_active_injection': False,
+                'active_identity_source': 'identity_mutables',
+                'active_prompt_contract': 'static + mutable narrative',
+            },
+        )
+        self.assertFalse(observed['override_called'])
+        self.assertFalse(observed['log_called'])
+
+    def test_identity_force_reject_is_disabled_as_legacy_control(self) -> None:
+        observed = {'override_called': False, 'log_called': False}
+        original_set_override = self.server.memory_store.set_identity_override
+        original_log_event = self.server.admin_logs.log_event
+
+        def fake_set_identity_override(*_args, **_kwargs):
+            observed['override_called'] = True
+            return True
 
         def fake_log_event(*_args, **_kwargs):
             observed['log_called'] = True
@@ -160,46 +198,79 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         try:
             response = self.client.post(
                 '/api/admin/hermeneutics/identity/force-reject',
-                json={'identity_id': 'id-missing', 'reason': '  because  '},
+                json={'identity_id': 'id-1', 'reason': '  because  '},
             )
         finally:
             self.server.memory_store.set_identity_override = original_set_override
             self.server.admin_logs.log_event = original_log_event
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.get_json(),
-            {'ok': False, 'error': 'identity introuvable'},
+            {
+                'ok': False,
+                'error': 'controle identity legacy desactive',
+                'error_code': 'legacy_identity_control_disabled',
+                'control': 'force_reject',
+                'legacy_only': True,
+                'evidence_only': True,
+                'drives_active_injection': False,
+                'active_identity_source': 'identity_mutables',
+                'active_prompt_contract': 'static + mutable narrative',
+            },
         )
-        self.assertEqual(
-            observed['args'],
-            ('id-missing', 'force_reject', 'because', 'admin'),
-        )
+        self.assertFalse(observed['override_called'])
         self.assertFalse(observed['log_called'])
 
-    def test_identity_relabel_rejects_when_no_field_is_provided(self) -> None:
+    def test_identity_relabel_is_disabled_as_legacy_control(self) -> None:
+        observed = {'relabel_called': False, 'log_called': False}
+        original_relabel_identity = self.server.memory_store.relabel_identity
+        original_log_event = self.server.admin_logs.log_event
+
+        def fake_relabel_identity(*_args, **_kwargs):
+            observed['relabel_called'] = True
+            return True
+
+        def fake_log_event(*_args, **_kwargs):
+            observed['log_called'] = True
+
+        self.server.memory_store.relabel_identity = fake_relabel_identity
+        self.server.admin_logs.log_event = fake_log_event
+        try:
+            response = self.client.post(
+                '/api/admin/hermeneutics/identity/relabel',
+                json={'identity_id': 'id-1', 'stability': 'durable'},
+            )
+        finally:
+            self.server.memory_store.relabel_identity = original_relabel_identity
+            self.server.admin_logs.log_event = original_log_event
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'controle identity legacy desactive',
+                'error_code': 'legacy_identity_control_disabled',
+                'control': 'relabel',
+                'legacy_only': True,
+                'evidence_only': True,
+                'drives_active_injection': False,
+                'active_identity_source': 'identity_mutables',
+                'active_prompt_contract': 'static + mutable narrative',
+            },
+        )
+        self.assertFalse(observed['relabel_called'])
+        self.assertFalse(observed['log_called'])
+
+    def test_identity_relabel_route_stays_guarded_even_when_disabled(self) -> None:
         response = self.client.post(
             '/api/admin/hermeneutics/identity/relabel',
             json={'identity_id': 'id-1'},
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.get_json(),
-            {'ok': False, 'error': 'aucun champ a relabel'},
-        )
-
-    def test_identity_relabel_rejects_invalid_stability(self) -> None:
-        response = self.client.post(
-            '/api/admin/hermeneutics/identity/relabel',
-            json={'identity_id': 'id-1', 'stability': 'permanent'},
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.get_json(),
-            {'ok': False, 'error': 'stability invalide'},
-        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()['error_code'], 'legacy_identity_control_disabled')
 
     def test_dashboard_computes_rates_and_alerts_with_contract_fallbacks(self) -> None:
         observed = {'window_days': None, 'log_limit': None}

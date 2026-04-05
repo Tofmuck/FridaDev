@@ -33,7 +33,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("Vue d'ensemble", source)
         self.assertIn("Inspection par tour", source)
         self.assertIn("Decisions arbitre", source)
-        self.assertIn("Identites candidates", source)
+        self.assertIn("Fragments legacy d'identite", source)
+        self.assertIn("static + mutable narrative", source)
+        self.assertIn("identity_mutables", source)
         self.assertIn("Corrections recentes", source)
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
@@ -81,6 +83,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertNotIn("/api/admin/hermeneutics/dashboard", admin_source)
         self.assertNotIn("/api/admin/hermeneutics/dashboard", log_source)
         self.assertNotIn("/api/admin/logs/chat/metadata", admin_source)
+        self.assertNotIn("/api/admin/hermeneutics/identity/force-accept", combined)
+        self.assertNotIn("/api/admin/hermeneutics/identity/force-reject", combined)
+        self.assertNotIn("/api/admin/hermeneutics/identity/relabel", combined)
 
     def test_page_exposes_read_only_pipeline_inspection_hooks(self) -> None:
         source = (APP_DIR / "web" / "hermeneutic-admin.html").read_text(encoding="utf-8")
@@ -95,6 +100,10 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("hermeneutic_node_insertion", source)
         self.assertIn("primary_node", source)
         self.assertIn("validation_agent", source)
+        self.assertIn('id="hermeneuticIdentityLegacyNote"', source)
+        self.assertNotIn("force_accept", source)
+        self.assertNotIn("force_reject", source)
+        self.assertNotIn("relabel", source)
 
 
 if __name__ == "__main__":
