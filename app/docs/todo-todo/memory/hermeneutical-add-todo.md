@@ -274,11 +274,11 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [ ] Verifier sur une fenetre post-stabilisation qu'aucun fallback global "garder tout" n'apparait; le dashboard live retourne actuellement `fallback_rate=0.0`, `runtime_fallback_rate=0.0` et `parse_error_rate=0.0`, mais ce n'est pas encore une preuve de cloture durable.
 - [ ] Verifier sur un echantillon post-rollout que chaque souvenir/trait injecte reste explicable via les logs admin existants.
 - [ ] Revalider en conditions reelles que les overrides humains sont bien pris en compte au tour suivant, et pas seulement journalises; des routes/tests existent deja, mais la preuve finale n'est pas encore consolidee ici.
+- [ ] Revalider sur echantillon post-rollout / post-stabilisation que le bloc `[Contexte du souvenir]` injecte est effectivement exploite dans la reponse et n'ajoute pas de bruit.
 
-## Reliquats fusionnes depuis `memory-todo.md`
-- [ ] Verifier en conditions reelles que le bloc `[Contexte du souvenir]` est effectivement exploite dans la reponse et n'ajoute pas de bruit.
-- [ ] Monitorer le surcout tokens + latence du pipeline memoire complet (resume actif + contexte + RAG + arbitre), en complement des KPIs arbitre/extracteur deja suivis.
-- Note: la comparaison qualite avec/sans arbitre et la latence arbitre restent rattachees au Step 2 requalifie et aux criteres d'acceptation finaux; elles ne sont pas closes par le seul constat runtime `enforced_all`.
+## Suivis post-rollout / post-stabilisation issus de `memory-todo.md`
+- [ ] Consolider un suivi post-stabilisation du surcout tokens + latence du pipeline memoire complet (resume actif + contexte + RAG + arbitre), en complement des KPIs runtime deja exposes pour `retrieve`, `arbiter` et `identity_extractor`.
+- Note: ces points ne sont plus des gates de rollout pre-activation; la validation qualitative du bloc `[Contexte du souvenir]` est rattachee aux criteres d'acceptation finaux, tandis que le surcout global reste un suivi post-stabilisation distinct.
 
 ## Notes de pilotage
 - [ ] Toujours preferer une erreur explicable a une heuristique opaque.
