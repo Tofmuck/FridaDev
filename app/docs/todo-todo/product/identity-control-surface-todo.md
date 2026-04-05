@@ -33,10 +33,13 @@ Ce TODO doit piloter deux besoins a la fois:
   - des conflits;
   - des statuts `accepted|deferred|rejected`;
   - des overrides.
-- Le prompt runtime ne consomme pas tout ce qui est stocke:
-  - il lit un statique;
-  - il selectionne ensuite un sous-ensemble dynamique accepte, filtre et budgete;
-  - il repasse ensuite les `identity_ids` effectivement injectes dans le flux de reactivation.
+- Depuis `1B-C`, le prompt runtime actif repose sur:
+  - `static + mutable narrative` pour `llm` et `user`;
+  - un canon `identity_input` `v2` en `static + mutable`;
+  - des `used_identity_ids` honnetement vides dans le flux de reactivation.
+- Le legacy fragmentaire reste present dans le repo:
+  - evidences, conflits, statuts `accepted|deferred|rejected` et overrides existent encore;
+  - mais ils ne pilotent plus l'injection active du prompt runtime.
 - Les surfaces admin actuelles ne donnent qu'une lecture partielle:
   - `GET /api/admin/hermeneutics/identity-candidates`
   - `POST /api/admin/hermeneutics/identity/force-accept`
