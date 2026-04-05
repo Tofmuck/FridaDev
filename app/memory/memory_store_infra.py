@@ -123,6 +123,21 @@ def init_db(
                     '''
                 )
 
+                cur.execute(
+                    '''
+                    CREATE TABLE IF NOT EXISTS identity_mutables (
+                        subject         TEXT PRIMARY KEY,
+                        content         TEXT        NOT NULL,
+                        source_trace_id UUID,
+                        updated_by      TEXT,
+                        update_reason   TEXT,
+                        created_ts      TIMESTAMPTZ DEFAULT now(),
+                        updated_ts      TIMESTAMPTZ DEFAULT now(),
+                        CONSTRAINT identity_mutables_subject_chk CHECK (subject IN ('llm', 'user'))
+                    );
+                    '''
+                )
+
                 # identities migration (idempotent)
                 cur.execute("ALTER TABLE identities ADD COLUMN IF NOT EXISTS conversation_id TEXT;")
                 cur.execute("ALTER TABLE identities ADD COLUMN IF NOT EXISTS stability TEXT DEFAULT 'unknown';")
@@ -221,6 +236,12 @@ def init_db(
                 )
 
                 # identities indexes
+                cur.execute(
+                    '''
+                    CREATE INDEX IF NOT EXISTS identity_mutables_updated_ts_idx
+                    ON identity_mutables (updated_ts DESC);
+                    '''
+                )
                 cur.execute(
                     '''
                     CREATE INDEX IF NOT EXISTS identities_subject_weight_idx

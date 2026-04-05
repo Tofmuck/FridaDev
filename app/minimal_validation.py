@@ -213,6 +213,15 @@ def _check_db_schema() -> Dict[str, Any]:
             "content",
             "embedding",
         },
+        "identity_mutables": {
+            "subject",
+            "content",
+            "source_trace_id",
+            "updated_by",
+            "update_reason",
+            "created_ts",
+            "updated_ts",
+        },
         "identities": {
             "id",
             "conversation_id",

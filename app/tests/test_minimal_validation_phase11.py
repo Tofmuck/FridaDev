@@ -63,6 +63,7 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
 
     def test_check_db_schema_raises_when_runtime_settings_table_is_missing(self) -> None:
         required_tables = _required_tables_schema()
+        self.assertIn("identity_mutables", required_tables)
         all_columns = sorted({column for columns in required_tables.values() for column in columns})
         observed_tables: list[str] = []
 

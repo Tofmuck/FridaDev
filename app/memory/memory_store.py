@@ -24,6 +24,7 @@ from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
 from memory import memory_identity_dynamics
+from memory import memory_identity_mutables
 from memory import memory_identity_write
 from memory import memory_store_infra
 from memory import memory_traces_summaries
@@ -39,6 +40,9 @@ __all__ = [
     'update_traces_summary_id',
     'get_summary_for_trace',
     'enrich_traces_with_summaries',
+    'get_mutable_identity',
+    'list_mutable_identities',
+    'upsert_mutable_identity',
     'get_identities',
     'get_recent_context_hints',
     'get_hermeneutic_kpis',
@@ -267,6 +271,42 @@ def enrich_traces_with_summaries(traces: list[dict[str, Any]]) -> list[dict[str,
 
 
 # Identity retrieval
+
+def get_mutable_identity(subject: str) -> dict[str, Any] | None:
+    return memory_identity_mutables.get_mutable_identity(
+        subject,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def list_mutable_identities() -> list[dict[str, Any]]:
+    return memory_identity_mutables.list_mutable_identities(
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def upsert_mutable_identity(
+    subject: str,
+    content: str,
+    source_trace_id: Optional[str] = None,
+    *,
+    updated_by: str = 'system',
+    update_reason: str = '',
+) -> dict[str, Any] | None:
+    return memory_identity_mutables.upsert_mutable_identity(
+        subject,
+        content,
+        source_trace_id=source_trace_id,
+        updated_by=updated_by,
+        update_reason=update_reason,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+# Legacy fragment retrieval
 
 def get_identities(
     subject: str,

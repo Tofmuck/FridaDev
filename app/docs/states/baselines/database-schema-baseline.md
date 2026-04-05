@@ -43,7 +43,8 @@ Schemas:
 | Conversations | `public` | `conversation_messages` | Messages ordonnes par conversation | `app/core/conv_store.py` |
 | Memoire | `public` | `traces` | Traces dialogue avec embedding | `app/memory/memory_store_infra.py` |
 | Memoire | `public` | `summaries` | Resumes periodiques avec embedding | `app/memory/memory_store_infra.py` |
-| Identite | `public` | `identities` | Etat identitaire durable/dynamique | `app/memory/memory_store_infra.py` |
+| Identite | `public` | `identity_mutables` | Source canonique mutable narrative, une ligne par sujet | `app/memory/memory_store_infra.py` |
+| Identite | `public` | `identities` | Etat identitaire durable/dynamique fragmentaire (legacy) | `app/memory/memory_store_infra.py` |
 | Identite | `public` | `identity_evidence` | Evidences identitaires horodatees | `app/memory/memory_store_infra.py` |
 | Arbitrage memoire | `public` | `arbiter_decisions` | Decisions keep/reject sur traces | `app/memory/memory_store_infra.py` |
 | Identite | `public` | `identity_conflicts` | Conflits inter-identites detectes | `app/memory/memory_store_infra.py` |
@@ -97,6 +98,16 @@ Table `public.summaries`
 - `embedding` (`vector(dim)`)
 - Index notable:
 - `summaries_embedding_hnsw` (HNSW cosine)
+
+Table `public.identity_mutables`
+- Champs principaux:
+- `subject` (TEXT, PK, restreint a `llm|user`)
+- `content`
+- `source_trace_id` (UUID, non FK)
+- `updated_by`, `update_reason`
+- `created_ts`, `updated_ts`
+- Index notable:
+- `identity_mutables_updated_ts_idx`
 
 Table `public.identities`
 - Champs principaux:
@@ -196,6 +207,7 @@ Relations SQL explicites:
 
 Relations metier non forcees en FK (etat actuel):
 - `traces.summary_id` reference logiquement `summaries.id`.
+- `identity_mutables.source_trace_id` reference logiquement `traces.id`.
 - `identities.source_trace_id` reference logiquement `traces.id`.
 - `identity_evidence.source_trace_id` reference logiquement `traces.id`.
 - `arbiter_decisions.conversation_id` reference logiquement une conversation.
