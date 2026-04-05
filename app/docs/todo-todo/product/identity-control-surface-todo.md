@@ -12,6 +12,15 @@ Ce TODO doit piloter deux besoins a la fois:
 - retablir d'abord la verite runtime de l'identity statique;
 - puis sequencer une vraie surface `Identity` capable de montrer ce qui est charge, stocke, injecte, modifiable et limite.
 
+## Pilotage
+
+- [ ] Lot 1 - Retablir la verite runtime de l'identity statique
+- [ ] Lot 2 - Construire un mode de lecture identity unifie et honnete
+- [ ] Lot 3 - Ouvrir une edition controlee du dynamique
+- [ ] Lot 4 - Ouvrir une edition controlee du statique
+- [ ] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
+- [ ] Lot 6 - Assembler la surface `Identity` et sa navigation globale
+
 ## Structure reelle revalidee
 
 - Le modele actuel n'est pas "deux identity par personne".
@@ -71,21 +80,19 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
 
+Priorite: bloqueur avant la grande surface `Identity`
+
 But:
 - faire en sorte que l'identity statique `llm` et `user` atteigne reellement:
   - le bloc prompt injecte;
   - le payload canonique `identity_input`;
   - les preuves de lecture operateur associees.
 
-Travail attendu:
-- trancher la source de verite effective des chemins `llm_identity_path` / `user_identity_path`;
-- fermer l'ecart entre chemins runtime, resolution relative et emplacement reel des fichiers;
-- verifier la semantique attendue pour chemins relatifs vs absolus;
-- confirmer que le contenu statique charge est bien celui expose a l'operateur;
-- ajouter la preuve de non-regression minimale sur:
-  - `load_llm_identity()` / `load_user_identity()`;
-  - `build_identity_block()`;
-  - `build_identity_input()`.
+- [ ] Trancher la source de verite effective des chemins `llm_identity_path` / `user_identity_path`
+- [ ] Fermer l'ecart entre chemins runtime, resolution relative et emplacement reel des fichiers
+- [ ] Verifier la semantique attendue pour chemins relatifs vs absolus
+- [ ] Confirmer que le contenu statique charge est bien celui expose a l'operateur
+- [ ] Ajouter la preuve de non-regression minimale sur `load_llm_identity()` / `load_user_identity()`, `build_identity_block()` et `build_identity_input()`
 
 Sortie attendue:
 - le statique est present dans la verite runtime du prompt et du payload, sans ambiguite de chemin;
@@ -102,16 +109,9 @@ Hors scope du lot:
 But:
 - donner a l'operateur une lecture unique de la structure reelle du systeme identity.
 
-Travail attendu:
-- separer clairement:
-  - statique;
-  - dynamique durable;
-  - evidences;
-  - conflits;
-  - accepte / differe / rejete;
-  - stocke vs effectivement injecte;
-- definir un contrat read-only compact et stable pour la future surface `Identity`;
-- montrer les sources, dates, ids et etats sans reconstitutions manuelles disperses.
+- [ ] Separer clairement statique, dynamique durable, evidences, conflits, accepte / differe / rejete et stocke vs effectivement injecte
+- [ ] Definir un contrat read-only compact et stable pour la future surface `Identity`
+- [ ] Montrer les sources, dates, ids et etats sans reconstitutions manuelles dispersees
 
 Sortie attendue:
 - une vue read-only qui explique le modele reel sans retomber dans la formule "deux identity par personne";
@@ -122,16 +122,9 @@ Sortie attendue:
 But:
 - permettre a l'operateur de corriger les identities dynamiques sans toucher encore au statique.
 
-Travail attendu:
-- etendre le perimetre au-dela de `force_accept`, `force_reject` et `relabel`;
-- trancher ce qui est vraiment editable en direct:
-  - contenu;
-  - statut;
-  - override;
-  - champs de qualification;
-  - gestion de conflits;
-  - reactivation ou operations voisines si elles doivent etre exposees;
-- expliciter les bornes de securite et d'audit des actions operateur.
+- [ ] Etendre le perimetre au-dela de `force_accept`, `force_reject` et `relabel`
+- [ ] Trancher ce qui est vraiment editable en direct: contenu, statut, override, champs de qualification, gestion de conflits et reactivation ou operations voisines si elles doivent etre exposees
+- [ ] Expliciter les bornes de securite et d'audit des actions operateur
 
 Sortie attendue:
 - une edition dynamique utile, comprehensible et journalisee;
@@ -142,14 +135,10 @@ Sortie attendue:
 But:
 - permettre l'edition du contenu static lui-meme, pas seulement de ses chemins.
 
-Travail attendu:
-- trancher la source de verite durable du contenu statique apres Lot 1;
-- definir comment l'operateur lit, modifie, valide et sauvegarde `llm` / `user` statiques;
-- expliciter la place des fichiers statiques dans le produit:
-  - ressource repo;
-  - ressource state;
-  - ressource runtime referencee;
-- garder une separation claire entre edition static et dynamique.
+- [ ] Trancher la source de verite durable du contenu statique apres Lot 1
+- [ ] Definir comment l'operateur lit, modifie, valide et sauvegarde `llm` / `user` statiques
+- [ ] Expliciter la place des fichiers statiques dans le produit: ressource repo, ressource state ou ressource runtime referencee
+- [ ] Garder une separation claire entre edition static et dynamique
 
 Sortie attendue:
 - une edition statique explicite et non ambigue;
@@ -160,22 +149,9 @@ Sortie attendue:
 But:
 - rendre visibles les limites reelles du systeme identity et trancher ce qui doit devenir gouvernable.
 
-Travail attendu:
-- inventorier proprement et exposer:
-  - `IDENTITY_TOP_N`;
-  - `IDENTITY_MAX_TOKENS`;
-  - `IDENTITY_MIN_CONFIDENCE`;
-  - `IDENTITY_DEFER_MIN_CONFIDENCE`;
-  - seuils de recurrence et de promotion;
-  - budget d'extraction identity distinct;
-  - autres caps reels du pipeline;
-- distinguer:
-  - visible;
-  - editable;
-  - code en dur;
-  - config/env;
-  - runtime settings/admin;
-- dire explicitement s'il n'existe toujours pas de cap caracteres identity distinct.
+- [ ] Inventorier proprement et exposer `IDENTITY_TOP_N`, `IDENTITY_MAX_TOKENS`, `IDENTITY_MIN_CONFIDENCE`, `IDENTITY_DEFER_MIN_CONFIDENCE`, les seuils de recurrence et de promotion, le budget d'extraction identity distinct et les autres caps reels du pipeline
+- [ ] Distinguer ce qui est visible, editable, code en dur, en config/env et en runtime settings/admin
+- [ ] Dire explicitement s'il n'existe toujours pas de cap caracteres identity distinct
 
 Sortie attendue:
 - une gouvernance operateur honnete des limites;
@@ -186,18 +162,9 @@ Sortie attendue:
 But:
 - finir le chantier par une surface `Identity` vraiment utile, accessible depuis les surfaces clefs.
 
-Travail attendu:
-- ajouter une page dediee `Identity`;
-- lier cette page:
-  - depuis toutes les pages admin utiles;
-  - depuis la surface principale LLM;
-- garder un ordre de lecture qui aide l'operateur a tout comprendre:
-  - structure reelle;
-  - etat courant;
-  - injection effective;
-  - edition;
-  - caps et seuils;
-  - observabilite.
+- [ ] Ajouter une page dediee `Identity`
+- [ ] Lier cette page depuis toutes les pages admin utiles et depuis la surface principale LLM
+- [ ] Garder un ordre de lecture qui aide l'operateur a tout comprendre: structure reelle, etat courant, injection effective, edition, caps et seuils, observabilite
 
 Sortie attendue:
 - un point d'entree unique `Identity`;
@@ -205,21 +172,16 @@ Sortie attendue:
 
 ## Observabilite attendue a travers les lots
 
-- Conserver et clarifier les coutures deja presentes sur `identities_read`, `identity_write` et `hermeneutic_node_insertion`.
-- Faire apparaitre ce qui manque encore pour l'operateur:
-  - presence du statique;
-  - identities effectivement injectees;
-  - ecart entre stockage et injection;
-  - actions operateur identity;
-  - etat des conflits ouverts.
+- [ ] Conserver et clarifier les coutures deja presentes sur `identities_read`, `identity_write` et `hermeneutic_node_insertion`
+- [ ] Faire apparaitre pour l'operateur la presence du statique, les identities effectivement injectees, l'ecart entre stockage et injection, les actions operateur identity et l'etat des conflits ouverts
 
 ## Preuves attendues futures
 
-- tests cibles sur le chargement static et l'injection runtime;
-- preuves backend sur les contrats read-only et editables exposes;
-- preuves frontend/admin sur la lisibilite de la future surface `Identity`;
-- verification live minimale de ce que voit vraiment l'operateur;
-- verification documentaire de la source de verite retenue.
+- [ ] Tests cibles sur le chargement static et l'injection runtime
+- [ ] Preuves backend sur les contrats read-only et editables exposes
+- [ ] Preuves frontend/admin sur la lisibilite de la future surface `Identity`
+- [ ] Verification live minimale de ce que voit vraiment l'operateur
+- [ ] Verification documentaire de la source de verite retenue
 
 ## Hors scope global
 
