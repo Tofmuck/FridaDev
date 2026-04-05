@@ -35,7 +35,7 @@ Sources de travail retenues:
 - [x] Realigner le comptage stale des fichiers `test_*.py` sur la valeur courante `60` dans `app/docs/states/project/Frida-State-french-03-04-26.md`, `app/docs/states/project/Frida-State-english-03-04-26.md` et `app/docs/todo-done/audits/fridadev_repo_audit.md`.
 - [x] Requalifier les reliquats ouverts `Verifier en conditions reelles...` et `Monitorer le surcout tokens + latence...` dans `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: validation du bloc `[Contexte du souvenir]` rattachee aux criteres finaux post-rollout, et surcout global maintenu comme suivi post-stabilisation explicite.
 - [x] Qualifier le bruit `admin_log_write_error err=[Errno 13] Permission denied: '/app'` observe pendant `unittest discover`: le bruit venait principalement d'un vrai probleme de chemin/logs hors conteneur, le fallback admin logs restant fixe sur `/app/logs/admin.log.jsonl`; `admin_logs.py` garde maintenant ce chemin quand `/app` est reellement inscriptible, et bascule sinon sur un path repo-local sur pour les tests host-side.
-- [ ] Verifier le `ResourceWarning` sur `app/web/hermeneutic-admin.html` observe pendant la suite complete, puis corriger la fermeture de ressource ou recadrer le test qui la laisse ouverte.
+- [x] Qualifier le `ResourceWarning` sur `app/web/hermeneutic-admin.html` observe pendant la suite complete: il venait principalement du test `test_hermeneutic_admin_route_serves_dedicated_static_page` qui consommait une reponse `send_from_directory(...)` sans fermer explicitement le handle; le runtime est reste intact et le test ferme maintenant la reponse proprement.
 
 ## 4. Idees alignees avec Frida a arbitrer apres stabilisation
 
