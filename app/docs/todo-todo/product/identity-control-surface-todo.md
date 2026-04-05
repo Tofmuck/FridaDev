@@ -10,11 +10,13 @@ Ouvrir un chantier unique pour rendre le systeme identity lisible, controlable e
 
 Ce TODO doit piloter deux besoins a la fois:
 - retablir d'abord la verite runtime de l'identity statique;
-- puis sequencer une vraie surface `Identity` capable de montrer ce qui est charge, stocke, injecte, modifiable et limite.
+- puis sequencer la requalification doctrinale des identities mutables;
+- puis ouvrir une vraie surface `Identity` capable de montrer ce qui est charge, stocke, injecte, modifiable et limite.
 
 ## Pilotage
 
 - [x] Lot 1 - Retablir la verite runtime de l'identity statique
+- [ ] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
 - [ ] Lot 2 - Construire un mode de lecture identity unifie et honnete
 - [ ] Lot 3 - Ouvrir une edition controlee du dynamique
 - [ ] Lot 4 - Ouvrir une edition controlee du statique
@@ -75,8 +77,9 @@ Ce TODO doit piloter deux besoins a la fois:
 ## Ordre retenu
 
 - Le Lot 1 est prioritaire et bloque la suite.
-- Les Lots 2 a 6 ne doivent pas masquer ou contourner le Lot 1.
-- La future page `Identity` doit arriver apres retablissement de la verite runtime, pas avant.
+- Le Lot 1B est maintenant prioritaire avant le Lot 2.
+- Les Lots 2 a 6 ne doivent pas masquer ou contourner le Lot 1B.
+- La future page `Identity` doit arriver apres retablissement de la verite runtime et apres requalification doctrinale des mutables, pas avant.
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
 
@@ -109,6 +112,41 @@ Hors scope du lot:
 - nouvelle page `Identity`;
 - edition du contenu static depuis l'admin;
 - refonte des endpoints identity.
+
+## Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
+
+Priorite: bloqueur avant le Lot 2
+
+But:
+- faire apparaitre clairement les 4 identities de travail:
+  - `llm` statique;
+  - `llm` mutable;
+  - `user` statique;
+  - `user` mutable;
+- preparer une verite canonique ou chaque mutable devient un texte narratif unique par sujet, stocke puis injecte;
+- documenter que la discipline de taille ne concerne que les mutables:
+  - cible `1500` caracteres;
+  - plafond dur `1650` caracteres;
+  - aucune troncature runtime;
+  - aucun plafond doctrinal equivalent sur les statiques.
+
+Etat revalide avant implementation:
+- l'extracteur reste encore fragmentaire avec une sortie `entries[]`;
+- le payload canonique reste encore `dynamic[]`;
+- l'injection active reste encore pilotee par ranking, `IDENTITY_TOP_N`, `IDENTITY_MAX_TOKENS` et troncature;
+- la persistance durable et l'admin legacy restent encore centres sur `accepted|deferred|rejected`, `force_accept`, `force_reject` et `relabel`;
+- l'observabilite identity transporte encore des previews textuelles.
+
+- [ ] `1B-A` Introduire une source de verite canonique durable, une mutable narrative par sujet, distincte des evidences et du legacy fragmentaire
+- [ ] `1B-B` Requalifier l'extracteur et son contrat pour relire contexte recent + mutable courante et produire `no_change` ou une reecriture narrative validee dans le budget mutable `1500/1650`
+- [ ] `1B-C` Basculer l'injection active et `identity_input` vers `static + mutable narrative`, sans ranking, sans `IDENTITY_TOP_N`, sans `IDENTITY_MAX_TOKENS` et sans troncature runtime sur la partie mutable
+- [ ] `1B-D` Reclasser ou neutraliser honnetement le legacy (`accepted|deferred|rejected`, `force_accept`, `force_reject`, `relabel`, controles admin) pour qu'il ne raconte plus la verite d'injection active
+- [ ] `1B-E` Refaire l'observabilite identity en mode compact, sans previews de contenu brut, avec seulement longueurs, presence/absence, flags d'update et validation budget/shape
+
+Sortie attendue:
+- une doctrine mutable narrative sequencee sans pretendre qu'elle est deja fermee;
+- une suite de sous-lots qui permet de basculer sans laisser deux verites concurrentes;
+- une base honnete avant l'ouverture de la future surface `Identity`.
 
 ## Lot 2 - Construire un mode de lecture identity unifie et honnete
 
