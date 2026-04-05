@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -57,6 +58,27 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]['event'], 'phase4_admin_logs_test')
         self.assertEqual(entries[0]['foo'], 'bar')
+
+    def test_admin_logs_resolve_log_path_keeps_explicit_env_override(self) -> None:
+        explicit = APP_DIR / 'tmp-admin-override.log.jsonl'
+        with mock.patch.dict('os.environ', {'FRIDA_ADMIN_LOG_PATH': str(explicit)}, clear=False):
+            resolved = admin_logs._resolve_log_path()
+
+        self.assertEqual(resolved, explicit.resolve())
+
+    def test_admin_logs_resolve_log_path_falls_back_to_repo_logs_when_container_parent_not_writable(self) -> None:
+        with mock.patch.dict('os.environ', {'FRIDA_ADMIN_LOG_PATH': ''}, clear=False):
+            with mock.patch.object(admin_logs, '_parent_is_writable', return_value=False):
+                resolved = admin_logs._resolve_log_path()
+
+        self.assertEqual(resolved, (APP_DIR / 'logs' / 'admin.log.jsonl').resolve())
+
+    def test_admin_logs_resolve_log_path_keeps_container_path_when_parent_is_writable(self) -> None:
+        with mock.patch.dict('os.environ', {'FRIDA_ADMIN_LOG_PATH': ''}, clear=False):
+            with mock.patch.object(admin_logs, '_parent_is_writable', return_value=True):
+                resolved = admin_logs._resolve_log_path()
+
+        self.assertEqual(resolved, Path('/app/logs/admin.log.jsonl'))
 
     def test_run_and_compose_runtime_binding_contract_is_unchanged(self) -> None:
         run_sh = (APP_DIR / 'run.sh').read_text(encoding='utf-8')

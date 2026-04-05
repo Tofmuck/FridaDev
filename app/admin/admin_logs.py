@@ -19,7 +19,39 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-LOG_PATH = Path(os.environ.get('FRIDA_ADMIN_LOG_PATH', '/app/logs/admin.log.jsonl')).resolve()
+def _repo_log_path() -> Path:
+    return Path(__file__).resolve().parents[1] / 'logs' / 'admin.log.jsonl'
+
+
+def _container_log_path() -> Path:
+    return Path('/app/logs/admin.log.jsonl')
+
+
+def _nearest_existing_parent(path: Path) -> Path:
+    candidate = path.parent
+    while not candidate.exists() and candidate != candidate.parent:
+        candidate = candidate.parent
+    return candidate
+
+
+def _parent_is_writable(path: Path) -> bool:
+    parent = _nearest_existing_parent(path)
+    return os.access(parent, os.W_OK | os.X_OK)
+
+
+def _resolve_log_path() -> Path:
+    raw = os.environ.get('FRIDA_ADMIN_LOG_PATH')
+    if raw:
+        return Path(raw).resolve()
+
+    container_path = _container_log_path().resolve()
+    if _parent_is_writable(container_path):
+        return container_path
+
+    return _repo_log_path().resolve()
+
+
+LOG_PATH = _resolve_log_path()
 MAX_LOG_BYTES = _env_int('FRIDA_ADMIN_LOG_MAX_BYTES', 5 * 1024 * 1024)
 MAX_ROTATED_FILES = _env_int('FRIDA_ADMIN_LOG_MAX_FILES', 14)
 
