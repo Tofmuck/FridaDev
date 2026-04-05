@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
 from memory import hermeneutics_policy
+from memory import memory_identity_mutable_rewriter
 from observability import chat_turn_logger
 
 
@@ -132,6 +133,62 @@ def _log_stage_latency(
         duration_ms=round(duration_ms, 3),
     )
     return duration_ms
+
+
+def _refresh_mutable_identities(
+    conversation_id: str,
+    recent_turns: Sequence[Mapping[str, Any]],
+    *,
+    arbiter_module: Any,
+    memory_store_module: Any,
+    admin_logs_module: Any,
+) -> None:
+    rewrite_t0 = time.perf_counter()
+    try:
+        summary = memory_identity_mutable_rewriter.refresh_mutable_identities(
+            recent_turns,
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+        )
+    except Exception as exc:
+        summary = {
+            'status': 'skipped',
+            'reason_code': 'rewriter_flow_error',
+            'outcomes': [],
+        }
+        admin_logs_module.log_event(
+            'identity_mutable_rewrite_apply',
+            conversation_id=conversation_id,
+            status='skipped',
+            reason_code='rewriter_flow_error',
+            outcomes=[],
+        )
+        chat_turn_logger.emit(
+            'identity_mutable_rewrite',
+            status='skipped',
+            reason_code='rewriter_flow_error',
+            payload={
+                'request_status': 'skipped',
+                'reason_code': 'rewriter_flow_error',
+                'outcomes': [],
+                'error_class': exc.__class__.__name__,
+            },
+            prompt_kind='identity_mutable_rewriter',
+        )
+    else:
+        admin_logs_module.log_event(
+            'identity_mutable_rewrite_apply',
+            conversation_id=conversation_id,
+            status=str(summary.get('status') or 'ok'),
+            reason_code=str(summary.get('reason_code') or ''),
+            outcomes=list(summary.get('outcomes') or []),
+        )
+    _log_stage_latency(
+        conversation_id,
+        'identity_mutable_rewriter',
+        rewrite_t0,
+        admin_logs_module=admin_logs_module,
+    )
 
 
 def _safe_int(value: Any) -> int | None:
@@ -395,6 +452,13 @@ def record_identity_entries_for_mode(
 
     if mode_enforces_identity(mode):
         memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
+        _refresh_mutable_identities(
+            conversation_id,
+            recent_turns,
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
         admin_logs_module.log_event(
             'identity_mode_apply',
             conversation_id=conversation_id,

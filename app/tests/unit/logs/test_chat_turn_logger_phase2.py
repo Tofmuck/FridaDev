@@ -174,6 +174,59 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
         self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
 
+    def test_identity_mutable_rewrite_event_stays_compact_without_content_preview(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-mutable-rewrite',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            chat_turn_logger.emit(
+                'identity_mutable_rewrite',
+                status='ok',
+                payload={
+                    'request_status': 'ok',
+                    'reason_code': 'processed',
+                    'outcomes': [
+                        {
+                            'subject': 'llm',
+                            'action': 'rewrite',
+                            'old_len': 10,
+                            'new_len': 42,
+                            'validation_ok': True,
+                            'reason_code': 'rewrite_applied',
+                        },
+                        {
+                            'subject': 'user',
+                            'action': 'no_change',
+                            'old_len': 20,
+                            'new_len': 20,
+                            'validation_ok': True,
+                            'reason_code': 'no_change',
+                        },
+                    ],
+                },
+                prompt_kind='identity_mutable_rewriter',
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        rewrite_event = next(event for event in observed if event['stage'] == 'identity_mutable_rewrite')
+        payload = rewrite_event['payload_json']
+        self.assertEqual(payload['prompt_kind'], 'identity_mutable_rewriter')
+        self.assertNotIn('preview', payload)
+        self.assertEqual(len(payload['outcomes']), 2)
+        self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))
+
     def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event

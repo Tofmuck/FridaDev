@@ -75,7 +75,13 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}',
                     generation_id='gen-1',
                 )
-            return FakeResponse('{"entries":[]}', generation_id='gen-2')
+            if len(observed_models) == 2:
+                return FakeResponse('{"entries":[]}', generation_id='gen-2')
+            return FakeResponse(
+                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
+                '"user":{"action":"no_change","content":"","reason":"no update"}}',
+                generation_id='gen-3',
+            )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
@@ -92,6 +98,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             entries = arbiter.extract_identities(
                 [{'role': 'user', 'content': 'je suis chercheur'}],
             )
+            rewrite = arbiter.rewrite_identity_mutables(
+                {
+                    'recent_turns': [{'role': 'user', 'content': 'bonjour'}],
+                    'identities': {
+                        'llm': {'static': 'Frida statique', 'mutable_current': ''},
+                        'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
+                    },
+                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                }
+            )
         finally:
             arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
             arbiter._load_prompt = original_load_prompt
@@ -102,12 +118,23 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(kept, [])
         self.assertEqual(len(decisions), 1)
         self.assertEqual(entries, [])
-        self.assertEqual(observed_models, ['openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'])
+        self.assertEqual(
+            rewrite,
+            {
+                'llm': {'action': 'no_change', 'content': '', 'reason': 'no update'},
+                'user': {'action': 'no_change', 'content': '', 'reason': 'no update'},
+            },
+        )
+        self.assertEqual(
+            observed_models,
+            ['openai/gpt-5.4-mini', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'],
+        )
         self.assertEqual(
             observed_headers,
             [
                 {'Authorization': 'caller=arbiter'},
                 {'Authorization': 'caller=identity_extractor'},
+                {'Authorization': 'caller=identity_mutable_rewriter'},
             ],
         )
         self.assertEqual(
@@ -127,6 +154,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     'identity_extractor_provider_response',
                     {
                         'provider_generation_id': 'gen-2',
+                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_prompt_tokens': 10,
+                        'provider_completion_tokens': 3,
+                        'provider_total_tokens': 13,
+                    },
+                ),
+                (
+                    'identity_mutable_rewriter_provider_response',
+                    {
+                        'provider_generation_id': 'gen-3',
                         'provider_model': 'openai/gpt-5.4-mini',
                         'provider_prompt_tokens': 10,
                         'provider_completion_tokens': 3,
@@ -166,7 +203,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 return FakeResponse(
                     '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}'
                 )
-            return FakeResponse('{"entries":[]}')
+            if len(observed_models) == 2:
+                return FakeResponse('{"entries":[]}')
+            return FakeResponse(
+                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
+                '"user":{"action":"no_change","content":"","reason":"no update"}}'
+            )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
@@ -179,12 +221,22 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.extract_identities(
                 [{'role': 'user', 'content': 'je suis chercheur'}],
             )
+            arbiter.rewrite_identity_mutables(
+                {
+                    'recent_turns': [{'role': 'user', 'content': 'bonjour'}],
+                    'identities': {
+                        'llm': {'static': 'Frida statique', 'mutable_current': ''},
+                        'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
+                    },
+                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                }
+            )
         finally:
             arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
 
-        self.assertEqual(observed_models, [config.ARBITER_MODEL, config.ARBITER_MODEL])
+        self.assertEqual(observed_models, [config.ARBITER_MODEL, config.ARBITER_MODEL, config.ARBITER_MODEL])
 
 
 if __name__ == '__main__':

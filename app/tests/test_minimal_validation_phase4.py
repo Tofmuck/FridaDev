@@ -68,6 +68,10 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['web_reformulation_prompt']['path'],
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
+        self.assertEqual(
+            details['identity_mutable_rewriter_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+        )
         self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
         self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
         self.assertIn('id="system"', details['forbidden_inline_markers']['index_html'])
@@ -129,6 +133,10 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['web_reformulation_prompt']['path'],
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
+        self.assertEqual(
+            details['identity_mutable_rewriter_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+        )
         self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
         self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
 
@@ -182,6 +190,10 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         self.assertEqual(details['user_identity']['resolved_path'], str(user_file.resolve()))
         self.assertEqual(details['llm_identity']['resolution'], 'host_state_mirror')
         self.assertEqual(details['user_identity']['resolution'], 'host_state_mirror')
+        self.assertEqual(
+            details['identity_mutable_rewriter_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+        )
 
 
 class MinimalValidationPhase4DatabaseTests(unittest.TestCase):

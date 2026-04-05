@@ -596,6 +596,105 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'skip_mode_off')
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[1]['action'], 'persist_enforced')
 
+    def test_record_identity_entries_for_mode_enforced_runs_mutable_rewriter_after_legacy_persist(self) -> None:
+        events = []
+        order: list[str] = []
+        observed = {'rewrite_turns': None}
+        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [{'identity_id': 'id-1'}],
+            rewrite_identity_mutables=lambda _payload: None,
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: order.append(
+                f'persist:{conversation_id}:{len(list(entries))}'
+            ),
+            get_mutable_identity=lambda _subject: None,
+            upsert_mutable_identity=lambda *_args, **_kwargs: None,
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        def fake_refresh(recent_turns, **_kwargs):
+            order.append('rewrite')
+            observed['rewrite_turns'] = list(recent_turns)
+            return {
+                'status': 'ok',
+                'reason_code': 'processed',
+                'outcomes': [
+                    {
+                        'subject': 'llm',
+                        'action': 'no_change',
+                        'old_len': 0,
+                        'new_len': 0,
+                        'validation_ok': True,
+                        'reason_code': 'no_change',
+                    }
+                ],
+            }
+
+        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = fake_refresh
+        try:
+            chat_memory_flow.record_identity_entries_for_mode(
+                'conv-identity-enforced',
+                [{'role': 'assistant', 'content': 'y'}],
+                mode='enforced_all',
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+
+        self.assertEqual(order, ['persist:conv-identity-enforced:1', 'rewrite'])
+        self.assertEqual(observed['rewrite_turns'], [{'role': 'assistant', 'content': 'y'}])
+        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
+        self.assertEqual(rewrite_event['status'], 'ok')
+        self.assertEqual(rewrite_event['reason_code'], 'processed')
+        self.assertEqual(rewrite_event['outcomes'][0]['subject'], 'llm')
+        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced')
+
+    def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_mutable_rewriter_raises(self) -> None:
+        events = []
+        observed = {'persisted': None}
+        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [{'identity_id': 'id-1'}],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        def boom(*_args, **_kwargs):
+            raise RuntimeError('rewrite exploded')
+
+        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = boom
+        try:
+            chat_memory_flow.record_identity_entries_for_mode(
+                'conv-identity-enforced',
+                [{'role': 'assistant', 'content': 'y'}],
+                mode='enforced_all',
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+
+        self.assertEqual(observed['persisted'], ('conv-identity-enforced', [{'identity_id': 'id-1'}]))
+        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
+        self.assertEqual(rewrite_event['status'], 'skipped')
+        self.assertEqual(rewrite_event['reason_code'], 'rewriter_flow_error')
+        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced')
+
     def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self) -> None:
         events = []
         observed = {
