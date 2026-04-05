@@ -245,10 +245,14 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [x] Tests non regression cout/latence.
 
 ## Phase 13 - Rollout progressif
+- Note de realignement 2026-04-05: le runtime live est deja verifie en `mode=enforced_all` via `GET /api/admin/hermeneutics/dashboard`. Cette phase ne decrit donc plus un rollout a venir; les Steps 2-4 ci-dessous sont requalifies comme absorbes ou depasses par le rollout reel, sans pretendre qu'ils ont ete observes retrospectivement exactement tels qu'ecrits.
 - [x] Step 1: deploy `HERMENEUTIC_MODE=shadow` (aucune decision bloquante).
-- [ ] Step 2: observer 3 a 7 jours, comparer baseline vs shadow.
-- [ ] Step 3: activer `enforced` pour identites uniquement.
-- [ ] Step 4: activer `enforced` memoire + identites si KPIs stables.
+- [x] Step 2: observer 3 a 7 jours, comparer baseline vs shadow.
+  Requalification 2026-04-05: cette fenetre d'observation n'est pas documentee a posteriori comme une sequence 3-7 jours menee exactement selon le plan initial; l'etape est fermee comme depassee par le runtime reel deja en `enforced_all`.
+- [x] Step 3: activer `enforced` pour identites uniquement.
+  Requalification 2026-04-05: ce jalon intermediaire n'est plus un rollout actif a executer; il est absorbe par le passage runtime reel a `enforced_all`.
+- [x] Step 4: activer `enforced` memoire + identites si KPIs stables.
+  Requalification 2026-04-05: le runtime live est deja passe en `enforced_all`; l'etape est fermee comme etat reel atteint, sans pretendre que le chemin documentaire initial a ete suivi point par point.
 - [x] Step 5: garder rollback instantane `HERMENEUTIC_MODE=off`.
 
 ## Mapping concret des fichiers a modifier
@@ -273,7 +277,7 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 ## Reliquats fusionnes depuis `memory-todo.md`
 - [ ] Verifier en conditions reelles que le bloc `[Contexte du souvenir]` est effectivement exploite dans la reponse et n'ajoute pas de bruit.
 - [ ] Monitorer le surcout tokens + latence du pipeline memoire complet (resume actif + contexte + RAG + arbitre), en complement des KPIs arbitre/extracteur deja suivis.
-- Note: la comparaison qualite avec/sans arbitre et la latence arbitre sont deja couvertes par la Phase 13 (Step 2) et les criteres d'acceptation.
+- Note: la comparaison qualite avec/sans arbitre et la latence arbitre restent rattachees au Step 2 requalifie et aux criteres d'acceptation finaux; elles ne sont pas closes par le seul constat runtime `enforced_all`.
 
 ## Notes de pilotage
 - [ ] Toujours preferer une erreur explicable a une heuristique opaque.
