@@ -9,6 +9,7 @@ from core.hermeneutic_node.inputs import memory_retrieved_input
 from memory import hermeneutics_policy
 from memory import memory_identity_mutable_rewriter
 from observability import chat_turn_logger
+from observability import identity_observability
 
 
 _HERMENEUTIC_MODE_OFF = 'off'
@@ -71,17 +72,19 @@ def _emit_identity_write_skipped_by_side(
             'identity_write',
             status='skipped',
             reason_code=reason_code,
-            payload={
-                'target_side': side,
-                'mode': mode,
-                'write_mode': write_mode,
-                'write_effect': write_effect,
-                'persisted_count': 0,
-                'retained_count': 0,
-                'evidence_count': entry_count,
-                'preview_count': entry_count,
-                'actions_count': _empty_identity_actions(),
-            },
+            payload=identity_observability.build_identity_write_payload(
+                target_side=side,
+                mode=mode,
+                write_mode=write_mode,
+                write_effect=write_effect,
+                persisted_count=0,
+                evidence_count=entry_count,
+                observed_count=entry_count,
+                retained_count=0,
+                actions_count=_empty_identity_actions(),
+                observed_values=(),
+                content_present=entry_count > 0,
+            ),
         )
     chat_turn_logger.emit_branch_skipped(
         reason_code=reason_code,
@@ -89,33 +92,10 @@ def _emit_identity_write_skipped_by_side(
     )
 
 
-def _guard_filtered_entries_by_side(
-    filtered_entries: Sequence[Mapping[str, Any]],
-) -> dict[str, list[dict[str, str]]]:
-    by_side: dict[str, list[dict[str, str]]] = {'frida': [], 'user': []}
-    for entry in filtered_entries:
-        subject = str(entry.get('subject') or '').strip().lower()
-        side = 'frida' if subject == 'llm' else 'user' if subject == 'user' else None
-        if side is None:
-            continue
-        by_side[side].append(
-            {
-                'content': str(entry.get('content') or ''),
-                'reason': str(entry.get('reason') or ''),
-            }
-        )
-    return by_side
-
-
 def _guard_filtered_summary(
     filtered_entries: Sequence[Mapping[str, Any]],
 ) -> tuple[dict[str, int], dict[str, list[str]]]:
-    by_side = _guard_filtered_entries_by_side(filtered_entries)
-    counts = {side: len(entries) for side, entries in by_side.items()}
-    previews: dict[str, list[str]] = {}
-    for side, entries in by_side.items():
-        previews[side] = [entry['content'] for entry in entries[:3]]
-    return counts, previews
+    return identity_observability.summarize_guard_filtered_entries(filtered_entries)
 
 
 def _sanitize_recent_turns_for_mutable_rewriter(
@@ -470,7 +450,7 @@ def record_identity_entries_for_mode(
         web_input=web_input,
     )
     guard_filtered_count = len(guard_filtered_entries)
-    guard_counts_by_side, guard_preview_by_side = _guard_filtered_summary(guard_filtered_entries)
+    guard_counts_by_side, guard_reason_codes_by_side = _guard_filtered_summary(guard_filtered_entries)
     mutable_rewriter_turns = _sanitize_recent_turns_for_mutable_rewriter(
         recent_turns,
         web_input=web_input,
@@ -493,7 +473,8 @@ def record_identity_entries_for_mode(
             entries=len(filtered_entries),
             extracted_entries=len(id_entries),
             guard_filtered_count=guard_filtered_count,
-            guard_filtered_preview=guard_preview_by_side,
+            guard_filtered_by_side=guard_counts_by_side,
+            guard_reason_codes_by_side=guard_reason_codes_by_side,
         )
         return
 
@@ -523,5 +504,5 @@ def record_identity_entries_for_mode(
         extracted_entries=len(id_entries),
         guard_filtered_count=guard_filtered_count,
         guard_filtered_by_side=guard_counts_by_side,
-        guard_filtered_preview=guard_preview_by_side,
+        guard_reason_codes_by_side=guard_reason_codes_by_side,
     )

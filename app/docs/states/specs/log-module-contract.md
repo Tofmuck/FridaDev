@@ -106,18 +106,21 @@ Minimum event-specific details:
   - `active_summary_present`, `summary_count_used`
 
 - `identities_read`
-  - `frida_count`, `user_count`, `selected_count`, `truncated`
-  - `keys` (short identity keys), `preview` (short excerpts)
+  - `frida_count`, `user_count`, `selected_count`, `content_present`
+  - `total_chars`, `max_chars`
+  - optional selection cap metadata: `requested_limit`, `truncated`
   - side mapping is explicit: `frida` side includes assistant/LLM identity material, `user` side includes user identity material
+  - forbidden for identity: `preview`, `keys`, raw excerpts, raw identity ids
 
 - `identity_write`
   - `target_side` (mandatory): `frida` | `user`
   - one event is emitted per side; if both sides are written in one turn, emit two `identity_write` events
-  - `retained_count`
+  - `persisted_count`, `evidence_count`, `observed_count`, `retained_count`
+  - `content_present`, `observed_total_chars`, `observed_max_chars`
   - `actions_count` map with stable action keys:
     - `add`, `update`, `override`, `reject`, `defer`
-  - `preview` (short retained items only), `truncated`
   - goal: visibility on what arbiter/identity policy effectively retained for write-path, without raw dump
+  - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
 - `web_search`
   - dedicated event (not only a boolean in `turn_start`)
@@ -167,6 +170,11 @@ Forbidden by default:
 - full LLM request/response payload dumps
 - full identity blocks/evidence dumps
 - embedding vectors
+
+Identity exception:
+- `identities_read`, `identity_write`, `identity_mutable_rewrite_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
+- allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
+- forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts
 
 `preview` contract (all events):
 - list of max 3 items

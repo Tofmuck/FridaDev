@@ -136,13 +136,13 @@ Etat revalide avant implementation:
 - l'injection active repose maintenant sur `static + mutable narrative`; le legacy fragmentaire reste dans le repo mais ne gouverne plus le chemin actif;
 - la persistance legacy reste visible via `accepted|deferred|rejected`, mais l'admin identity la presente maintenant comme legacy/evidence-only hors injection active;
 - les controles `force_accept`, `force_reject` et `relabel` sont maintenant neutralises cote admin legacy;
-- l'observabilite identity transporte encore des previews textuelles.
+- l'observabilite identity est maintenant compacte: longueurs, presence/absence, counts, flags d'update et validation budget/shape, sans previews textuelles ni excerpts bruts.
 
 - [x] `1B-A` Introduire une source de verite canonique durable, une mutable narrative par sujet, distincte des evidences et du legacy fragmentaire
 - [x] `1B-B` Requalifier l'extracteur et son contrat pour relire contexte recent + mutable courante et produire `no_change` ou une reecriture narrative validee dans le budget mutable `1500/1650`
 - [x] `1B-C` Basculer l'injection active et `identity_input` vers `static + mutable narrative`, sans ranking, sans `IDENTITY_TOP_N`, sans `IDENTITY_MAX_TOKENS` et sans troncature runtime sur la partie mutable
 - [x] `1B-D` Reclasser ou neutraliser honnetement le legacy (`accepted|deferred|rejected`, `force_accept`, `force_reject`, `relabel`, controles admin) pour qu'il ne raconte plus la verite d'injection active
-- [ ] `1B-E` Refaire l'observabilite identity en mode compact, sans previews de contenu brut, avec seulement longueurs, presence/absence, flags d'update et validation budget/shape
+- [x] `1B-E` Refaire l'observabilite identity en mode compact, sans previews de contenu brut, avec seulement longueurs, presence/absence, flags d'update et validation budget/shape
 
 Sortie attendue:
 - une table canonique `identity_mutables` existe, une ligne par sujet mutable, distincte du legacy `identities` / `identity_evidence` / `identity_conflicts`;

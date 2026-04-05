@@ -4,16 +4,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from observability import chat_turn_logger
-
-
-def _preview_items(values: list[str], *, max_items: int = 3, max_chars: int = 120) -> tuple[list[str], bool]:
-    preview: list[str] = []
-    for value in values[:max_items]:
-        text = str(value or '').strip().replace('\n', ' ')
-        if len(text) > max_chars:
-            text = text[: max_chars - 1].rstrip() + '…'
-        preview.append(text)
-    return preview, len(values) > max_items
+from observability import identity_observability
 
 
 def get_identities(
@@ -92,27 +83,18 @@ def get_identities(
         ]
         if chat_turn_logger.is_active():
             side = 'frida' if str(subject) == 'llm' else 'user'
-            keys, keys_truncated = _preview_items([entry['id'] for entry in out], max_chars=64)
-            previews, previews_truncated = _preview_items([entry['content'] for entry in out])
             selected_count = len(out)
             requested_top_n = max(0, int(top_n))
             chat_turn_logger.emit(
                 'identities_read',
                 status='ok',
-                payload={
-                    'target_side': side,
-                    'source_kind': 'durable',
-                    'frida_count': selected_count if side == 'frida' else 0,
-                    'user_count': selected_count if side == 'user' else 0,
-                    'selected_count': selected_count,
-                    'truncated': bool(
-                        selected_count >= requested_top_n
-                        or keys_truncated
-                        or previews_truncated
-                    ),
-                    'keys': keys,
-                    'preview': previews,
-                },
+                payload=identity_observability.build_identities_read_payload(
+                    target_side=side,
+                    source_kind='durable',
+                    selected_count=selected_count,
+                    content_values=[entry['content'] for entry in out],
+                    requested_limit=requested_top_n,
+                ),
             )
         return out
     except Exception as exc:
@@ -235,25 +217,16 @@ def get_recent_context_hints(
                 break
 
         if chat_turn_logger.is_active():
-            previews, previews_truncated = _preview_items([hint['content'] for hint in hints])
-            keys, keys_truncated = _preview_items([hint['conversation_id'] for hint in hints], max_chars=64)
             chat_turn_logger.emit(
                 'identities_read',
                 status='ok',
-                payload={
-                    'target_side': 'user',
-                    'source_kind': 'context_hint',
-                    'frida_count': 0,
-                    'user_count': len(hints),
-                    'selected_count': len(hints),
-                    'truncated': bool(
-                        len(hints) >= max_items
-                        or previews_truncated
-                        or keys_truncated
-                    ),
-                    'keys': keys,
-                    'preview': previews,
-                },
+                payload=identity_observability.build_identities_read_payload(
+                    target_side='user',
+                    source_kind='context_hint',
+                    selected_count=len(hints),
+                    content_values=[hint['content'] for hint in hints],
+                    requested_limit=max_items,
+                ),
             )
         return hints
     except Exception as exc:

@@ -4,6 +4,7 @@ import math
 from typing import Any, Callable, Sequence
 
 from observability import chat_turn_logger
+from observability import identity_observability
 
 
 def _empty_identity_actions() -> dict[str, int]:
@@ -482,16 +483,17 @@ def persist_identity_entries(
                 'identity_write',
                 status='skipped',
                 reason_code='no_data',
-                payload={
-                    'target_side': side,
-                    'write_mode': 'durable',
-                    'write_effect': 'none',
-                    'persisted_count': 0,
-                    'evidence_count': 0,
-                    'preview_count': 0,
-                    'retained_count': 0,
-                    'actions_count': _empty_identity_actions(),
-                },
+                payload=identity_observability.build_identity_write_payload(
+                    target_side=side,
+                    write_mode='durable',
+                    write_effect='none',
+                    persisted_count=0,
+                    evidence_count=0,
+                    observed_count=0,
+                    retained_count=0,
+                    actions_count=_empty_identity_actions(),
+                    observed_values=(),
+                ),
             )
         chat_turn_logger.emit_branch_skipped(
             reason_code='no_data',
@@ -508,14 +510,14 @@ def persist_identity_entries(
             'persisted_count': 0,
             'evidence_count': 0,
             'actions_count': _empty_identity_actions(),
-            'preview': [],
+            'observed_texts': [],
         },
         'user': {
             'retained_count': 0,
             'persisted_count': 0,
             'evidence_count': 0,
             'actions_count': _empty_identity_actions(),
-            'preview': [],
+            'observed_texts': [],
         },
     }
 
@@ -555,8 +557,7 @@ def persist_identity_entries(
             side_counters[side]['actions_count']['update'] += 1
             side_counters[side]['retained_count'] += 1
 
-        if len(side_counters[side]['preview']) < 3:
-            side_counters[side]['preview'].append(str(entry.get('content') or ''))
+        side_counters[side]['observed_texts'].append(str(entry.get('content') or ''))
 
     for subject, content_norm in impacted_keys:
         apply_defer_policy_for_content_fn(subject, content_norm)
@@ -571,18 +572,17 @@ def persist_identity_entries(
             'identity_write',
             status=status,
             reason_code=reason_code,
-            payload={
-                'target_side': side,
-                'write_mode': 'durable',
-                'write_effect': 'durable_write' if int(summary['persisted_count']) > 0 else 'none',
-                'persisted_count': int(summary['persisted_count']),
-                'evidence_count': int(summary['evidence_count']),
-                'preview_count': len(summary['preview']),
-                'retained_count': int(summary['retained_count']),
-                'actions_count': dict(summary['actions_count']),
-                'preview': list(summary['preview']),
-                'truncated': len(summary['preview']) >= 3 and len(processed) > 3,
-            },
+            payload=identity_observability.build_identity_write_payload(
+                target_side=side,
+                write_mode='durable',
+                write_effect='durable_write' if int(summary['persisted_count']) > 0 else 'none',
+                persisted_count=int(summary['persisted_count']),
+                evidence_count=int(summary['evidence_count']),
+                observed_count=int(summary['evidence_count']),
+                retained_count=int(summary['retained_count']),
+                actions_count=dict(summary['actions_count']),
+                observed_values=summary['observed_texts'],
+            ),
         )
 
 

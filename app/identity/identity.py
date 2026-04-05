@@ -14,6 +14,7 @@ from core import token_utils
 from identity import active_identity_projection
 from identity import static_identity_paths
 from observability import chat_turn_logger
+from observability import identity_observability
 
 logger = logging.getLogger('frida.identity')
 
@@ -330,16 +331,12 @@ def _emit_static_identity_read(*, target_side: str, static_text: str) -> None:
     chat_turn_logger.emit(
         'identities_read',
         status='ok',
-        payload={
-            'target_side': side,
-            'source_kind': 'static',
-            'frida_count': selected_count if side == 'frida' else 0,
-            'user_count': selected_count if side == 'user' else 0,
-            'selected_count': selected_count,
-            'truncated': bool(cleaned and len(cleaned) > 120),
-            'keys': [f'static_{side}_identity'] if cleaned else [],
-            'preview': [cleaned] if cleaned else [],
-        },
+        payload=identity_observability.build_identities_read_payload(
+            target_side=side,
+            source_kind='static',
+            selected_count=selected_count,
+            content_values=[cleaned] if cleaned else [],
+        ),
     )
 
 

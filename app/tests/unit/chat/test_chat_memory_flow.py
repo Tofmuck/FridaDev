@@ -828,11 +828,12 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(by_side['frida']['payload']['write_mode'], 'shadow')
         self.assertEqual(by_side['frida']['payload']['write_effect'], 'evidence_only')
         self.assertEqual(by_side['frida']['payload']['evidence_count'], 1)
-        self.assertEqual(by_side['frida']['payload']['preview_count'], 1)
+        self.assertEqual(by_side['frida']['payload']['observed_count'], 1)
         self.assertEqual(by_side['user']['payload']['evidence_count'], 2)
-        self.assertEqual(by_side['user']['payload']['preview_count'], 2)
+        self.assertEqual(by_side['user']['payload']['observed_count'], 2)
         self.assertTrue(all(event['payload']['persisted_count'] == 0 for event in identity_events))
         self.assertTrue(all(event['payload']['retained_count'] == 0 for event in identity_events))
+        self.assertTrue(all(event['payload']['content_present'] for event in identity_events))
         self.assertTrue(all('preview' not in event['payload'] for event in identity_events))
         self.assertTrue(all('entries' not in event['payload'] for event in identity_events))
         self.assertEqual(branch_events, [('not_applicable', 'identity_write_shadow_mode')])
@@ -881,10 +882,13 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(event['entries'], 0)
         self.assertEqual(event['extracted_entries'], 1)
         self.assertEqual(event['guard_filtered_count'], 1)
+        self.assertEqual(event['guard_filtered_by_side'], {'frida': 1, 'user': 0})
         self.assertEqual(
-            event['guard_filtered_preview']['frida'],
-            ['Claims to have the linked article open and read it'],
+            event['guard_reason_codes_by_side']['frida'],
+            ['web_reading_claim_unsupported_for_page_not_read_snippet_fallback'],
         )
+        self.assertEqual(event['guard_reason_codes_by_side']['user'], [])
+        self.assertNotIn('guard_filtered_preview', event)
 
     def test_record_identity_entries_for_mode_filters_frida_pipeline_meta_identity_in_enforced_mode(self) -> None:
         events = []
@@ -925,10 +929,13 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(observed['persisted'], ('conv-identity-meta-filter', []))
         event = _event_payloads(events, 'identity_mode_apply')[0]
         self.assertEqual(event['guard_filtered_count'], 1)
+        self.assertEqual(event['guard_filtered_by_side'], {'frida': 1, 'user': 0})
         self.assertEqual(
-            event['guard_filtered_preview']['frida'],
-            ['Unable to provide a substantive answer on that turn because the rules did not allow it'],
+            event['guard_reason_codes_by_side']['frida'],
+            ['llm_identity_pipeline_meta'],
         )
+        self.assertEqual(event['guard_reason_codes_by_side']['user'], [])
+        self.assertNotIn('guard_filtered_preview', event)
 
     def test_record_identity_entries_for_mode_keeps_prudent_web_limitation_statement(self) -> None:
         events = []

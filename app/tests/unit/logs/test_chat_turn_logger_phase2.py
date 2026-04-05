@@ -154,7 +154,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         )
         try:
             chat_turn_logger.emit(
-                'identities_read',
+                'preview_stage',
                 status='ok',
                 payload={
                     'preview': ['x' * 300, 'y' * 300, 'z' * 300, 'w' * 300],
@@ -166,8 +166,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         finally:
             log_store.insert_chat_log_event = original_insert
 
-        identities_event = next(event for event in observed if event['stage'] == 'identities_read')
-        payload = identities_event['payload_json']
+        preview_event = next(event for event in observed if event['stage'] == 'preview_stage')
+        payload = preview_event['payload_json']
         self.assertEqual(len(payload['preview']), 3)
         self.assertEqual(len(payload['keys']), 3)
         self.assertTrue(payload['truncated'])
@@ -724,6 +724,14 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['source_kind'], 'durable')
         self.assertEqual(payload['frida_count'], 1)
         self.assertEqual(payload['user_count'], 0)
+        self.assertEqual(payload['selected_count'], 1)
+        self.assertTrue(payload['content_present'])
+        self.assertEqual(payload['total_chars'], len('Frida style identity'))
+        self.assertEqual(payload['max_chars'], len('Frida style identity'))
+        self.assertEqual(payload['requested_limit'], 5)
+        self.assertFalse(payload['truncated'])
+        self.assertNotIn('preview', payload)
+        self.assertNotIn('keys', payload)
 
     def test_build_identity_block_emits_identities_read_for_static_sources(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -765,8 +773,12 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         for event in static_events:
             payload = event['payload_json']
             self.assertEqual(payload['selected_count'], 1)
-            self.assertEqual(len(payload.get('preview', [])), 1)
-            self.assertLessEqual(len(payload.get('preview', [''])[0]), 120)
+            self.assertTrue(payload['content_present'])
+            self.assertGreater(payload['total_chars'], 0)
+            self.assertEqual(payload['total_chars'], payload['max_chars'])
+            self.assertFalse(payload['truncated'])
+            self.assertNotIn('preview', payload)
+            self.assertNotIn('keys', payload)
 
     def test_persist_identity_entries_emits_identity_write_for_both_sides(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -851,21 +863,26 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         identity_write_events = [event for event in observed if event['stage'] == 'identity_write']
         self.assertEqual({event['payload_json']['target_side'] for event in identity_write_events}, {'frida', 'user'})
         user_payload = next(event['payload_json'] for event in identity_write_events if event['payload_json']['target_side'] == 'user')
-        self.assertTrue(user_payload['truncated'])
         self.assertEqual(user_payload.get('persisted_count'), 3)
         self.assertEqual(user_payload.get('retained_count'), 2)
+        self.assertEqual(user_payload.get('observed_count'), 3)
+        self.assertTrue(user_payload.get('content_present'))
+        self.assertGreater(user_payload.get('observed_total_chars', 0), 0)
+        self.assertGreater(user_payload.get('observed_max_chars', 0), 0)
         for event in identity_write_events:
             payload = event['payload_json']
             self.assertEqual(payload.get('write_mode'), 'durable')
             self.assertEqual(payload.get('write_effect'), 'durable_write')
             self.assertGreaterEqual(int(payload.get('persisted_count') or 0), int(payload.get('retained_count') or 0))
             self.assertIn('evidence_count', payload)
-            self.assertIn('preview_count', payload)
+            self.assertIn('observed_count', payload)
             self.assertIn('actions_count', payload)
             self.assertIn('retained_count', payload)
             self.assertSetEqual(set(payload['actions_count'].keys()), {'add', 'update', 'override', 'reject', 'defer'})
-            self.assertLessEqual(len(payload.get('preview', [])), 3)
-            self.assertTrue(all(len(item) <= 120 for item in payload.get('preview', [])))
+            self.assertEqual(payload.get('observed_count'), payload.get('evidence_count'))
+            self.assertNotIn('preview', payload)
+            self.assertNotIn('keys', payload)
+            self.assertNotIn('truncated', payload)
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 
@@ -933,9 +950,12 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(user_event['payload_json']['write_effect'], 'none')
         self.assertEqual(user_event['payload_json']['persisted_count'], 0)
         self.assertEqual(user_event['payload_json']['evidence_count'], 0)
-        self.assertEqual(user_event['payload_json']['preview_count'], 0)
+        self.assertEqual(user_event['payload_json']['observed_count'], 0)
         self.assertEqual(user_event['payload_json']['retained_count'], 0)
-        self.assertEqual(user_event['payload_json']['preview'], [])
+        self.assertFalse(user_event['payload_json']['content_present'])
+        self.assertEqual(user_event['payload_json']['observed_total_chars'], 0)
+        self.assertEqual(user_event['payload_json']['observed_max_chars'], 0)
+        self.assertNotIn('preview', user_event['payload_json'])
 
         for event in identity_write_events:
             payload = event['payload_json']
@@ -1002,6 +1022,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(by_side['user']['status'], 'skipped')
         self.assertEqual(user_payload.get('persisted_count'), 0)
         self.assertEqual(user_payload.get('retained_count'), 0)
+        self.assertEqual(user_payload.get('observed_count'), 0)
+        self.assertNotIn('preview', user_payload)
 
     def test_get_recent_context_hints_emits_identities_read_for_user_side(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -1068,10 +1090,13 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['frida_count'], 0)
         self.assertEqual(payload['user_count'], 2)
         self.assertEqual(payload['selected_count'], 2)
-        self.assertLessEqual(len(payload['keys']), 3)
-        self.assertLessEqual(len(payload['preview']), 3)
-        self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
-        self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
+        self.assertTrue(payload['content_present'])
+        self.assertGreater(payload['total_chars'], 0)
+        self.assertGreater(payload['max_chars'], 0)
+        self.assertEqual(payload['requested_limit'], 2)
+        self.assertTrue(payload['truncated'])
+        self.assertNotIn('keys', payload)
+        self.assertNotIn('preview', payload)
         self.assertNotIn('content', payload)
         self.assertNotIn('raw_identities', payload)
 
