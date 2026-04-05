@@ -65,6 +65,11 @@ def _sanitize_encoding(text: str) -> str:
     return repaired
 
 
+def sanitize_provider_text(text: str) -> str:
+    """API publique et stable pour la sanitation du texte provider."""
+    return _sanitize_encoding(text)
+
+
 def _runtime_main_api_key() -> str:
     secret = runtime_settings.get_runtime_secret_value('main_model', 'api_key')
     return str(secret.value)
@@ -199,7 +204,7 @@ def read_openrouter_response_payload(response: Any) -> dict[str, Any]:
 
 def extract_openrouter_text(payload: Any) -> str:
     data = _mapping(payload)
-    return _sanitize_encoding(data['choices'][0]['message']['content']).strip()
+    return sanitize_provider_text(data['choices'][0]['message']['content']).strip()
 
 
 def extract_openrouter_provider_metadata(

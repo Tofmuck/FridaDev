@@ -15,7 +15,7 @@ Sources de travail retenues:
 - [x] Corriger la verite temporelle du stream dans `app/core/chat_llm_flow.py`: en chemin stream, `updated_at` ne doit plus etre capture avant la fin effective de la reponse.
 - [x] Donner a `app/tools/web_search.py` un caller transport dedie pour la reformulation web, distinct du caller principal `llm`, afin de separer proprement observabilite, tokens et couts provider.
 - [x] Extraire les constantes `READ_STATE_*` dans une source de verite unique puis migrer `app/tools/web_search.py`, `app/core/chat_prompt_context.py` et `app/memory/hermeneutics_policy.py` vers cet import commun.
-- [ ] Remplacer le couplage prive a `llm_module._sanitize_encoding(...)` dans `app/core/chat_llm_flow.py` par une API publique explicite ou un wrapper stable.
+- [x] Remplacer le couplage prive a `llm_module._sanitize_encoding(...)` dans `app/core/chat_llm_flow.py` par une API publique explicite ou un wrapper stable.
 - [ ] Verifier sur au moins une conversation longue reelle si l'arbiter memoire garde parfois des traces utiles, ou si le pattern recent `raw>0, kept=0` traduit un probleme de reglage, de produit, ou seulement d'echantillon de test.
 
 ## 2. Ce que l'audit Claude a vu trop legerement ou trop globalement

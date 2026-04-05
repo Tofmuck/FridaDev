@@ -40,6 +40,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'save_calls': [],
             'secret_calls': 0,
             'provider_log_calls': [],
+            'sanitize_calls': [],
         }
         conversation = {
             'id': 'conv-sync',
@@ -119,7 +120,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             }),
             log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: observed['sanitize_calls'].append(text) or text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -177,6 +178,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['headers_called_with'], 'llm')
         self.assertFalse(observed['payload_stream_flag'])
         self.assertEqual(observed['secret_calls'], 1)
+        self.assertEqual(observed['sanitize_calls'], [])
         self.assertTrue(observed['identity_callback_called'])
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:10:00Z')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
@@ -236,6 +238,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'provider_log_calls': [],
             'stream_completed': False,
             'now_iso_flags': [],
+            'sanitize_calls': [],
         }
         conversation = {
             'id': 'conv-stream',
@@ -311,7 +314,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             }),
             log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: observed['sanitize_calls'].append(text) or text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -377,6 +380,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:11:59Z')
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:59Z')
         self.assertEqual(observed['now_iso_flags'], [True])
+        self.assertEqual(observed['sanitize_calls'], ['Bon', 'jour', 'Bonjour'])
         self.assertTrue(observed['identity_callback_called'])
         self.assertTrue(observed['reactivate_called'])
         self.assertEqual(
@@ -494,7 +498,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             }),
             log_provider_metadata=lambda *_args, **_kwargs: None,
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -586,7 +590,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}),
             log_provider_metadata=lambda *_args, **_kwargs: None,
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -679,7 +683,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}),
             log_provider_metadata=lambda *_args, **_kwargs: None,
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -741,7 +745,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             or_headers=lambda **_kwargs: {},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: text,
         )
         requests_module = SimpleNamespace(
             post=fake_post,
@@ -802,7 +806,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             or_headers=lambda **_kwargs: {},
             resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
             build_payload=lambda *_args, **_kwargs: observed.update({'build_payload_called': True}) or {},
-            _sanitize_encoding=lambda text: text,
+            sanitize_provider_text=lambda text: text,
         )
 
         result = chat_llm_flow.run_llm_exchange(

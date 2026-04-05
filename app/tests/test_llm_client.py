@@ -524,5 +524,24 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         )
 
 
+class LlmClientTextSanitizationTests(unittest.TestCase):
+    def test_sanitize_provider_text_repairs_double_encoded_text(self) -> None:
+        self.assertEqual(llm_client.sanitize_provider_text('FranÃ§ais'), 'Français')
+        self.assertEqual(llm_client.sanitize_provider_text('Bonjour'), 'Bonjour')
+
+    def test_extract_openrouter_text_uses_public_sanitizer(self) -> None:
+        payload = {
+            'choices': [
+                {
+                    'message': {
+                        'content': ' CafÃ© ',
+                    }
+                }
+            ]
+        }
+
+        self.assertEqual(llm_client.extract_openrouter_text(payload), 'Café')
+
+
 if __name__ == '__main__':
     unittest.main()

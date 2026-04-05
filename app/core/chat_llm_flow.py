@@ -206,7 +206,7 @@ def run_llm_exchange(
                         delta = chunk.get('choices', [{}])[0].get('delta', {})
                         content = delta.get('content')
                         if content:
-                            sanitized_content = llm_module._sanitize_encoding(content)
+                            sanitized_content = llm_module.sanitize_provider_text(content)
                             assistant_chunks.append(sanitized_content)
                             if not buffer_stream_output:
                                 yield sanitized_content
@@ -231,7 +231,7 @@ def run_llm_exchange(
                         conversation_id=conversation['id'],
                         **provider_fields,
                     )
-                assistant_text = llm_module._sanitize_encoding(''.join(assistant_chunks)).strip()
+                assistant_text = llm_module.sanitize_provider_text(''.join(assistant_chunks)).strip()
                 if buffer_stream_output:
                     assistant_text = assistant_output_contract.normalize_assistant_output(
                         assistant_text,
