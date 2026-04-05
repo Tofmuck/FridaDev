@@ -1511,46 +1511,51 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         original_build_context = self.server.ws.build_context
         original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
         original_build_payload = self.server.llm.build_payload
-        self.server.ws.build_context_payload = lambda _user_msg: {
-            'enabled': True,
-            'status': 'ok',
-            'reason_code': None,
-            'original_user_message': 'Bonjour',
-            'query': 'query test',
-            'results_count': 1,
-            'explicit_url_detected': True,
-            'explicit_url': 'https://example.com/article',
-            'read_state': 'page_not_read_snippet_fallback',
-            'primary_source_kind': 'explicit_url',
-            'primary_read_attempted': True,
-            'primary_read_status': 'empty',
-            'primary_read_filter': 'raw',
-            'primary_read_raw_fallback_used': True,
-            'fallback_used': True,
-            'collection_path': 'explicit_url_fallback_search',
-            'runtime': {
-                'searxng_results': 5,
-                'crawl4ai_top_n': 2,
-                'crawl4ai_max_chars': 1500,
-            },
-            'sources': [
-                {
-                    'rank': 1,
-                    'title': 'Titre source',
-                    'url': 'https://example.com/article',
-                    'source_domain': 'example.com',
-                    'search_snippet': 'Snippet source',
-                    'used_in_prompt': True,
-                    'used_content_kind': 'search_snippet',
-                    'content_used': 'Snippet source',
-                    'truncated': False,
-                    'source_origin': 'search_result',
-                    'is_primary_source': False,
-                    'crawl_status': 'not_attempted',
-                }
-            ],
-            'context_block': 'WEB CONTEXT',
-        }
+        def fake_build_context_payload(_user_msg, **kwargs):
+            observed['web_requests_module'] = kwargs.get('requests_module')
+            observed['web_llm_module'] = kwargs.get('llm_module')
+            return {
+                'enabled': True,
+                'status': 'ok',
+                'reason_code': None,
+                'original_user_message': 'Bonjour',
+                'query': 'query test',
+                'results_count': 1,
+                'explicit_url_detected': True,
+                'explicit_url': 'https://example.com/article',
+                'read_state': 'page_not_read_snippet_fallback',
+                'primary_source_kind': 'explicit_url',
+                'primary_read_attempted': True,
+                'primary_read_status': 'empty',
+                'primary_read_filter': 'raw',
+                'primary_read_raw_fallback_used': True,
+                'fallback_used': True,
+                'collection_path': 'explicit_url_fallback_search',
+                'runtime': {
+                    'searxng_results': 5,
+                    'crawl4ai_top_n': 2,
+                    'crawl4ai_max_chars': 1500,
+                },
+                'sources': [
+                    {
+                        'rank': 1,
+                        'title': 'Titre source',
+                        'url': 'https://example.com/article',
+                        'source_domain': 'example.com',
+                        'search_snippet': 'Snippet source',
+                        'used_in_prompt': True,
+                        'used_content_kind': 'search_snippet',
+                        'content_used': 'Snippet source',
+                        'truncated': False,
+                        'source_origin': 'search_result',
+                        'is_primary_source': False,
+                        'crawl_status': 'not_attempted',
+                    }
+                ],
+                'context_block': 'WEB CONTEXT',
+            }
+
+        self.server.ws.build_context_payload = fake_build_context_payload
 
         def legacy_build_context_should_not_run(_user_msg):
             observed['legacy_build_context_called'] = True
@@ -1630,6 +1635,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             observed['prompt_messages'],
             [{'role': 'user', 'content': 'WEB CONTEXT\n\nQuestion : Bonjour'}],
         )
+        self.assertIsInstance(observed['web_requests_module'], self.server._RequestsChatLogProxy)
+        self.assertIsInstance(observed['web_llm_module'], self.server._LlmChatLogProxy)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_runtime_derived_web_reading_guard_into_system_prompt(self) -> None:
@@ -1656,7 +1663,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         original_build_context_payload = self.server.ws.build_context_payload
         original_build_context = self.server.ws.build_context
         original_build_prompt_messages = self.server.conv_store.build_prompt_messages
-        self.server.ws.build_context_payload = lambda _user_msg: {
+        self.server.ws.build_context_payload = lambda _user_msg, **_kwargs: {
             'enabled': True,
             'status': 'ok',
             'reason_code': None,
@@ -1750,7 +1757,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         original_build_context_payload = self.server.ws.build_context_payload
         original_build_context = self.server.ws.build_context
         original_record_identity = self.server.chat_service._record_identity_entries_for_mode
-        self.server.ws.build_context_payload = lambda _user_msg: {
+        self.server.ws.build_context_payload = lambda _user_msg, **_kwargs: {
             'enabled': True,
             'status': 'ok',
             'reason_code': None,
@@ -1937,7 +1944,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             observed_events.append(event)
             return True
 
-        self.server.ws.build_context_payload = lambda _user_msg: {
+        self.server.ws.build_context_payload = lambda _user_msg, **_kwargs: {
             'enabled': True,
             'status': 'ok',
             'reason_code': None,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import re
+import inspect
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
@@ -538,9 +539,44 @@ def _build_search_context_material(
     }
 
 
-def reformulate(user_msg: str) -> str:
+def _call_reformulate(
+    user_msg: str,
+    *,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
+) -> str:
+    reformulate_func = reformulate
+    try:
+        signature = inspect.signature(reformulate_func)
+    except (TypeError, ValueError):
+        signature = None
+
+    if signature is not None:
+        params = signature.parameters
+        supports_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in params.values()
+        )
+        if supports_kwargs or ('requests_module' in params and 'llm_module' in params):
+            return reformulate_func(
+                user_msg,
+                requests_module=requests_module,
+                llm_module=llm_module,
+            )
+    return reformulate_func(user_msg)
+
+
+def reformulate(
+    user_msg: str,
+    *,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
+) -> str:
     """Reformule le message utilisateur en requête de recherche web concise."""
     try:
+        if llm_module is None:
+            from core import llm_client as llm_module
+
         today = datetime.now(timezone.utc).strftime("%d %B %Y")
         system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
         payload = {
@@ -555,11 +591,15 @@ def reformulate(user_msg: str) -> str:
             "max_tokens": 40,
             "temperature": 0.2,
         }
-        from core.llm_client import or_headers
-        r = requests.post(f"{config.OR_BASE}/chat/completions", json=payload,
-                          headers=or_headers(caller='llm'), timeout=10)
+        r = requests_module.post(
+            llm_module.or_chat_completions_url(),
+            json=payload,
+            headers=llm_module.or_headers(caller='web_reformulation'),
+            timeout=10,
+        )
         r.raise_for_status()
-        query = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        response_payload = llm_module.read_openrouter_response_payload(r)
+        query = llm_module.extract_openrouter_text(response_payload).strip().strip('"').strip("'")
         logger.info("reformulate original=%s query=%s", user_msg[:60], query)
         return query or user_msg
     except Exception as e:
@@ -691,6 +731,8 @@ def _build_payload_from_collection(
     *,
     user_msg: str,
     explicit_url: str | None,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
@@ -730,7 +772,11 @@ def _build_payload_from_collection(
                 'collection_path': 'explicit_url_direct',
             }
 
-        query = reformulate(user_msg)
+        query = _call_reformulate(
+            user_msg,
+            requests_module=requests_module,
+            llm_module=llm_module,
+        )
         results = search(query)
         material = _build_search_context_material(
             query,
@@ -768,7 +814,11 @@ def _build_payload_from_collection(
             'collection_path': 'explicit_url_fallback_search',
         }
 
-    query = reformulate(user_msg)
+    query = _call_reformulate(
+        user_msg,
+        requests_module=requests_module,
+        llm_module=llm_module,
+    )
     results = search(query)
     material = _build_search_context_material(query, results)
     has_results = int(material['results_count']) > 0
@@ -796,12 +846,19 @@ def _build_payload_from_collection(
     }
 
 
-def build_context_payload(user_msg: str) -> dict[str, Any]:
+def build_context_payload(
+    user_msg: str,
+    *,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
+) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     try:
         payload = _augment_payload_observability(_build_payload_from_collection(
             user_msg=user_msg,
             explicit_url=explicit_url,
+            requests_module=requests_module,
+            llm_module=llm_module,
         ))
         _emit_web_search_runtime_event(
             enabled=True,
@@ -880,18 +937,31 @@ def build_context_payload(user_msg: str) -> dict[str, Any]:
         return error_payload
 
 
-def build_context(user_msg: str) -> tuple[str, str, int]:
+def build_context(
+    user_msg: str,
+    *,
+    requests_module: Any = requests,
+    llm_module: Any | None = None,
+) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
     Retourne (contexte, query_reformulee, nb_resultats_web).
     """
     explicit_url = _extract_explicit_url(user_msg)
     if explicit_url:
-        payload = build_context_payload(user_msg)
+        payload = build_context_payload(
+            user_msg,
+            requests_module=requests_module,
+            llm_module=llm_module,
+        )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
     try:
-        query = reformulate(user_msg)
+        query = _call_reformulate(
+            user_msg,
+            requests_module=requests_module,
+            llm_module=llm_module,
+        )
         results = search(query)
         ctx_parts = []
         if results:

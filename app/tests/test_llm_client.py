@@ -112,6 +112,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             caller: llm_client.or_headers(caller=caller)['HTTP-Referer']
             for caller in (
                 'llm',
+                'web_reformulation',
                 'arbiter',
                 'identity_extractor',
                 'resumer',
@@ -124,6 +125,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             observed,
             {
                 'llm': config.OR_REFERER_LLM,
+                'web_reformulation': config.OR_REFERER_WEB_REFORMULATION,
                 'arbiter': config.OR_REFERER_ARBITER,
                 'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
                 'resumer': config.OR_REFERER_RESUMER,
@@ -131,6 +133,50 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 'validation_agent': config.OR_REFERER_VALIDATION_AGENT,
             },
         )
+
+    def test_or_headers_uses_dedicated_web_reformulation_identity_without_runtime_field(self) -> None:
+        original_secret = llm_client.runtime_settings.get_runtime_secret_value
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('main_model', 'api_key'))
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-db-runtime-key',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://shared.frida-system.fr/', 'origin': 'db'},
+                        'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            headers = llm_client.or_headers(caller='web_reformulation')
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original_secret
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+        self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'web_reformulation')
+        self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_WEB_REFORMULATION)
+        self.assertEqual(headers['X-Title'], config.OR_TITLE_WEB_REFORMULATION)
+        self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_WEB_REFORMULATION)
 
     def test_or_headers_keeps_env_fallback_when_db_secret_is_missing(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value

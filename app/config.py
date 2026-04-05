@@ -66,6 +66,10 @@ OR_REFERER_LLM = os.environ.get(
     'OPENROUTER_REFERER_LLM',
     _default_openrouter_component_referer('llm'),
 ).strip() or _default_openrouter_component_referer('llm')
+OR_REFERER_WEB_REFORMULATION = os.environ.get(
+    'OPENROUTER_REFERER_WEB_REFORMULATION',
+    _default_openrouter_component_referer('web-reformulation'),
+).strip() or _default_openrouter_component_referer('web-reformulation')
 OR_REFERER_ARBITER = os.environ.get(
     'OPENROUTER_REFERER_ARBITER',
     _default_openrouter_component_referer('arbiter'),
@@ -88,6 +92,10 @@ OR_REFERER_VALIDATION_AGENT = os.environ.get(
 ).strip() or _default_openrouter_component_referer('validation-agent')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE}/LLM').strip() or f'{OR_TITLE_BASE}/LLM'
+OR_TITLE_WEB_REFORMULATION = os.environ.get(
+    'OPENROUTER_TITLE_WEB_REFORMULATION',
+    f'{OR_TITLE_BASE}/WebReformulation',
+).strip() or f'{OR_TITLE_BASE}/WebReformulation'
 OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE}/Arbiter').strip() or f'{OR_TITLE_BASE}/Arbiter'
 OR_TITLE_IDENTITY_EXTRACTOR = os.environ.get(
     'OPENROUTER_TITLE_IDENTITY_EXTRACTOR',

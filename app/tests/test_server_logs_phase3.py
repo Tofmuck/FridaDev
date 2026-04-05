@@ -398,6 +398,58 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('provider_generation_id'), 'gen-validation')
         self.assertEqual(payload.get('provider_total_tokens'), 12)
 
+    def test_requests_proxy_non_stream_web_reformulation_uses_dedicated_provider_identity(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        class FakeJsonResponse:
+            def json(self) -> dict[str, object]:
+                return {
+                    'id': 'gen-web-reformulation',
+                    'model': 'openai/gpt-5.4-mini',
+                    'usage': {
+                        'prompt_tokens': 9,
+                        'completion_tokens': 3,
+                        'total_tokens': 12,
+                    },
+                    'choices': [
+                        {'message': {'content': 'requete reformulee'}},
+                    ],
+                }
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-web-reformulation-json',
+            user_msg='bonjour',
+            web_search_enabled=True,
+        )
+        try:
+            proxy = self.server._RequestsChatLogProxy(
+                base_module=SimpleNamespace(post=lambda *_args, **_kwargs: FakeJsonResponse()),
+            )
+            proxy.post(
+                'https://openrouter.example/chat/completions',
+                json={'model': 'openai/gpt-5.4-mini'},
+                headers=self.server.llm.or_headers(caller='web_reformulation'),
+                timeout=30,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        llm_events = [event for event in observed if event.get('stage') == 'llm_call']
+        self.assertEqual(len(llm_events), 1)
+        payload = llm_events[0]['payload_json']
+        self.assertEqual(payload.get('provider_caller'), 'web_reformulation')
+        self.assertEqual(payload.get('provider_title'), self.server.config.OR_TITLE_WEB_REFORMULATION)
+        self.assertEqual(payload.get('provider_generation_id'), 'gen-web-reformulation')
+        self.assertEqual(payload.get('provider_total_tokens'), 12)
+
     def test_requests_proxy_strips_internal_caller_header_before_upstream_request(self) -> None:
         observed: list[dict[str, object]] = []
         forwarded_headers: dict[str, object] = {}

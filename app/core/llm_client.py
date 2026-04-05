@@ -7,6 +7,7 @@ from admin import runtime_settings
 INTERNAL_PROVIDER_CALLER_HEADER = 'X-Frida-Caller'
 _KNOWN_PROVIDER_CALLERS = (
     'llm',
+    'web_reformulation',
     'arbiter',
     'identity_extractor',
     'resumer',
@@ -15,6 +16,7 @@ _KNOWN_PROVIDER_CALLERS = (
 )
 _PROVIDER_TITLE_FIELD_MAP = {
     'llm': 'title_llm',
+    'web_reformulation': '',
     'arbiter': 'title_arbiter',
     'identity_extractor': 'title_identity_extractor',
     'resumer': 'title_resumer',
@@ -23,6 +25,7 @@ _PROVIDER_TITLE_FIELD_MAP = {
 }
 _PROVIDER_DEFAULT_TITLE_MAP = {
     'llm': config.OR_TITLE_LLM,
+    'web_reformulation': config.OR_TITLE_WEB_REFORMULATION,
     'arbiter': config.OR_TITLE_ARBITER,
     'identity_extractor': config.OR_TITLE_IDENTITY_EXTRACTOR,
     'resumer': config.OR_TITLE_RESUMER,
@@ -31,6 +34,7 @@ _PROVIDER_DEFAULT_TITLE_MAP = {
 }
 _PROVIDER_REFERER_FIELD_MAP = {
     'llm': 'referer_llm',
+    'web_reformulation': '',
     'arbiter': 'referer_arbiter',
     'identity_extractor': 'referer_identity_extractor',
     'resumer': 'referer_resumer',
@@ -39,6 +43,7 @@ _PROVIDER_REFERER_FIELD_MAP = {
 }
 _PROVIDER_DEFAULT_REFERER_MAP = {
     'llm': config.OR_REFERER_LLM,
+    'web_reformulation': config.OR_REFERER_WEB_REFORMULATION,
     'arbiter': config.OR_REFERER_ARBITER,
     'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
     'resumer': config.OR_REFERER_RESUMER,
@@ -88,19 +93,22 @@ def _runtime_main_referer(caller: str) -> str:
     caller_key = normalize_provider_caller(caller)
     view = _runtime_main_view()
     field_name = _PROVIDER_REFERER_FIELD_MAP.get(caller_key, 'referer_llm')
-    component_payload = view.payload.get(field_name)
+    component_payload = view.payload.get(field_name) if field_name else None
     component_referer = str((component_payload or {}).get('value') or '').strip()
     if component_referer:
         return component_referer
+
+    default_component_referer = str(
+        _PROVIDER_DEFAULT_REFERER_MAP.get(caller_key, config.OR_REFERER_LLM) or ''
+    ).strip()
+    if not field_name:
+        return default_component_referer or str(config.OR_REFERER or '').strip()
 
     legacy_payload = view.payload.get('referer') or {}
     legacy_referer = str(legacy_payload.get('value') or '').strip()
     if legacy_referer:
         return legacy_referer
 
-    default_component_referer = str(
-        _PROVIDER_DEFAULT_REFERER_MAP.get(caller_key, config.OR_REFERER_LLM) or ''
-    ).strip()
     return default_component_referer or str(config.OR_REFERER or '').strip()
 
 

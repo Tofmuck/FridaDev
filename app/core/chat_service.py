@@ -251,6 +251,8 @@ def _resolve_web_runtime_payload(
     user_msg: str,
     web_search_on: bool,
     web_search_module: Any,
+    requests_module: Any,
+    llm_module: Any,
 ) -> dict[str, Any]:
     if not web_search_on:
         return {
@@ -266,9 +268,19 @@ def _resolve_web_runtime_payload(
         }
     build_context_payload = getattr(web_search_module, 'build_context_payload', None)
     if callable(build_context_payload):
-        return dict(build_context_payload(user_msg))
+        return dict(
+            build_context_payload(
+                user_msg,
+                requests_module=requests_module,
+                llm_module=llm_module,
+            )
+        )
 
-    ctx, query, n_results = web_search_module.build_context(user_msg)
+    ctx, query, n_results = web_search_module.build_context(
+        user_msg,
+        requests_module=requests_module,
+        llm_module=llm_module,
+    )
     return {
         'enabled': True,
         'status': 'ok' if ctx else 'skipped',
@@ -525,6 +537,8 @@ def chat_response(
         user_msg=user_msg,
         web_search_on=web_search_on,
         web_search_module=web_search_module,
+        requests_module=requests_module,
+        llm_module=llm_module,
     )
     web_payload = canonical_web_input.build_web_input_from_runtime_payload(web_runtime_payload)
 

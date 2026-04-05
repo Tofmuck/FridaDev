@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def _resolve_app_dir() -> Path:
@@ -108,6 +109,58 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
 
         self.assertEqual(query, 'requete fallback')
         self.assertEqual(observed['model'], config.OR_MODEL)
+
+    def test_reformulate_uses_dedicated_web_reformulation_caller(self) -> None:
+        observed = {
+            'url': None,
+            'headers': None,
+            'timeout': None,
+            'caller': None,
+        }
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {"choices": [{"message": {"content": "requete web"}}]}
+
+        def fake_post(url, json, headers, timeout):
+            observed['url'] = url
+            observed['headers'] = dict(headers)
+            observed['timeout'] = timeout
+            observed['model'] = json['model']
+            return FakeResponse()
+
+        def fake_or_headers(*, caller='llm'):
+            observed['caller'] = caller
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer sk-runtime',
+                'X-Frida-Caller': caller,
+                'X-Title': 'FridaDev/WebReformulation',
+                'X-OpenRouter-Title': 'FridaDev/WebReformulation',
+            }
+
+        fake_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers=fake_or_headers,
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+        )
+
+        query = web_search.reformulate(
+            'actualites ia',
+            requests_module=SimpleNamespace(post=fake_post),
+            llm_module=fake_llm_module,
+        )
+
+        self.assertEqual(query, 'requete web')
+        self.assertEqual(observed['url'], 'https://openrouter.example/chat/completions')
+        self.assertEqual(observed['timeout'], 10)
+        self.assertEqual(observed['caller'], 'web_reformulation')
+        self.assertEqual(observed['headers']['X-Frida-Caller'], 'web_reformulation')
+        self.assertEqual(observed['headers']['X-Title'], 'FridaDev/WebReformulation')
 
     def test_build_context_keeps_context_query_and_result_count_contract(self) -> None:
         original_reformulate = web_search.reformulate

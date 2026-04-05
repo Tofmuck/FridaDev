@@ -49,8 +49,13 @@ OR_BASE = os.environ.get('OPENROUTER_BASE', 'https://openrouter.ai/api/v1').rstr
 OR_MODEL = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-5.1')
 OR_KEY = os.environ.get('OPENROUTER_API_KEY', '').strip()
 OR_REFERER = os.environ.get('OPENROUTER_REFERER', os.environ.get('OPENROUTER_SITE_URL', '')).strip()
+OR_REFERER_WEB_REFORMULATION = os.environ.get('OPENROUTER_REFERER_WEB_REFORMULATION', OR_REFERER).strip() or OR_REFERER
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE}/LLM').strip() or f'{OR_TITLE_BASE}/LLM'
+OR_TITLE_WEB_REFORMULATION = os.environ.get(
+    'OPENROUTER_TITLE_WEB_REFORMULATION',
+    f'{OR_TITLE_BASE}/WebReformulation',
+).strip() or f'{OR_TITLE_BASE}/WebReformulation'
 OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE}/Arbiter').strip() or f'{OR_TITLE_BASE}/Arbiter'
 OR_TITLE_RESUMER = os.environ.get('OPENROUTER_TITLE_RESUMER', f'{OR_TITLE_BASE}/Resumer').strip() or f'{OR_TITLE_BASE}/Resumer'
 OR_TITLE_STIMMUNG_AGENT = os.environ.get(
