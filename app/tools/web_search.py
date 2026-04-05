@@ -11,16 +11,18 @@ import requests
 import config
 from admin import runtime_settings
 from core import prompt_loader
+from core.web_read_state import (
+    READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY,
+    READ_STATE_PAGE_NOT_READ_ERROR,
+    READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK,
+    READ_STATE_PAGE_PARTIALLY_READ,
+    READ_STATE_PAGE_READ,
+)
 from observability import chat_turn_logger
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
-READ_STATE_PAGE_READ = 'page_read'
-READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
-READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
-READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
-READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
 

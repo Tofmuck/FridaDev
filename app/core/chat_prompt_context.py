@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from core import assistant_output_contract
+from core.web_read_state import (
+    READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY,
+    READ_STATE_PAGE_NOT_READ_ERROR,
+    READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK,
+    READ_STATE_PAGE_PARTIALLY_READ,
+    READ_STATE_PAGE_READ,
+)
 from core.hermeneutic_node.inputs import time_input
 
 _FINAL_JUDGMENT_INSTRUCTIONS = {
@@ -10,11 +17,6 @@ _FINAL_JUDGMENT_INSTRUCTIONS = {
     'clarify': 'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite',
     'suspend': 'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente',
 }
-_READ_STATE_PAGE_READ = 'page_read'
-_READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
-_READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
-_READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
-_READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
 _EXPLICIT_IDENTITY_REVELATION_PREFIXES = (
     'je suis ',
     'moi c est ',
@@ -174,22 +176,22 @@ def build_web_reading_guard_block(
         lines.append(f'URL cible: {explicit_url}')
     lines.append(f'read_state: {read_state}.')
 
-    if read_state == _READ_STATE_PAGE_READ:
+    if read_state == READ_STATE_PAGE_READ:
         lines.append("La lecture directe de cette page est soutenue par le runtime.")
         lines.append("Tu peux parler de lecture directe si tu restes fidele au contenu reellement injecte.")
-    elif read_state == _READ_STATE_PAGE_PARTIALLY_READ:
+    elif read_state == READ_STATE_PAGE_PARTIALLY_READ:
         lines.append("La lecture directe est seulement partielle: le contenu injecte a ete tronque.")
         lines.append("Tu peux parler d'une lecture partielle ou d'un extrait tronque.")
         lines.append("N'affirme pas une lecture integrale, exhaustive ou detaillee de toute la page.")
-    elif read_state == _READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK:
+    elif read_state == READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK:
         lines.append("La page cible n'a pas ete lue directement. La reponse repose au mieux sur un snippet ou un extrait fallback.")
         lines.append('Interdit: "je l\'ai sous les yeux", "j\'ai lu l\'article", "dans le texte tu dis ...".')
         lines.append('Autorise seulement des formulations comme: "j\'ai trouve des elements via les resultats", "je n\'ai qu\'un extrait/snippet", "je n\'ai pas acces au texte complet".')
-    elif read_state == _READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY:
+    elif read_state == READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY:
         lines.append("La lecture directe de la page a echoue avec un crawl vide.")
         lines.append('Interdit: "je l\'ai sous les yeux", "j\'ai lu l\'article", "dans le texte tu dis ...".')
         lines.append("Tu dois assumer explicitement que tu n'as pas pu lire directement la page.")
-    elif read_state == _READ_STATE_PAGE_NOT_READ_ERROR:
+    elif read_state == READ_STATE_PAGE_NOT_READ_ERROR:
         lines.append("La lecture directe de la page a echoue a cause d'une erreur de crawl.")
         lines.append('Interdit: "je l\'ai sous les yeux", "j\'ai lu l\'article", "dans le texte tu dis ...".')
         lines.append("Tu dois assumer explicitement que tu n'as pas pu lire directement la page.")

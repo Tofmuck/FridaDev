@@ -5,6 +5,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from core.web_read_state import (
+    READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY,
+    READ_STATE_PAGE_NOT_READ_ERROR,
+    READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK,
+    READ_STATE_PAGE_PARTIALLY_READ,
+    READ_STATE_PAGE_READ,
+)
 
 NEGATION_HINTS = {
     'ne',
@@ -17,11 +24,6 @@ NEGATION_HINTS = {
     'plus',
     'pas',
 }
-READ_STATE_PAGE_READ = 'page_read'
-READ_STATE_PAGE_PARTIALLY_READ = 'page_partially_read'
-READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY = 'page_not_read_crawl_empty'
-READ_STATE_PAGE_NOT_READ_ERROR = 'page_not_read_error'
-READ_STATE_PAGE_NOT_READ_SNIPPET_FALLBACK = 'page_not_read_snippet_fallback'
 _WEB_DIRECT_READING_PHRASES = (
     'open and read',
     'read the article',
