@@ -96,24 +96,25 @@ def _recent_context(*, message_count: int = 0) -> dict[str, object]:
     }
 
 
-def _identity(*, static: bool = False, dynamic_count: int = 0) -> dict[str, object]:
+def _identity(*, static: bool = False, mutable: bool = False) -> dict[str, object]:
     static_block = {"content": "known", "source": "repo"} if static else {"content": "", "source": None}
-    dynamic_entries = [
-        {
-            "id": f"dyn-{index}",
-            "content": "episodic",
-            "stability": "low",
-            "recurrence": "low",
-            "confidence": 0.6,
-            "last_seen_ts": "2026-04-01T10:00:00Z",
-            "scope": "conversation",
-        }
-        for index in range(dynamic_count)
-    ]
+    mutable_block = {
+        "content": "identity mutable",
+        "source_trace_id": "11111111-1111-1111-1111-111111111111",
+        "updated_by": "identity_mutable_rewriter",
+        "update_reason": "rewrite",
+        "updated_ts": "2026-04-01T10:00:00Z",
+    } if mutable else {
+        "content": "",
+        "source_trace_id": None,
+        "updated_by": None,
+        "update_reason": None,
+        "updated_ts": None,
+    }
     return {
-        "schema_version": "v1",
-        "frida": {"static": static_block, "dynamic": list(dynamic_entries)},
-        "user": {"static": static_block, "dynamic": list(dynamic_entries)},
+        "schema_version": "v2",
+        "frida": {"static": static_block, "mutable": dict(mutable_block)},
+        "user": {"static": static_block, "mutable": dict(mutable_block)},
     }
 
 
@@ -276,7 +277,7 @@ class SourcePriorityTests(unittest.TestCase):
         payload = source_priority.build_source_priority(
             user_turn_input=_user_turn(gesture="adresse_relationnelle"),
             time_input=_time(),
-            identity_input=_identity(static=True, dynamic_count=2),
+            identity_input=_identity(static=True, mutable=True),
         )
 
         self.assertEqual(payload["source_priority"][2], ["identity"])
@@ -287,9 +288,27 @@ class SourcePriorityTests(unittest.TestCase):
             user_turn_input=_user_turn(gesture="adresse_relationnelle"),
             time_input=_time(),
             identity_input={
-                "schema_version": "v1",
-                "frida": {"static": {"content": "", "source": "repo"}, "dynamic": []},
-                "user": {"static": {"content": "", "source": None}, "dynamic": []},
+                "schema_version": "v2",
+                "frida": {
+                    "static": {"content": "", "source": "repo"},
+                    "mutable": {
+                        "content": "",
+                        "source_trace_id": None,
+                        "updated_by": None,
+                        "update_reason": None,
+                        "updated_ts": None,
+                    },
+                },
+                "user": {
+                    "static": {"content": "", "source": None},
+                    "mutable": {
+                        "content": "",
+                        "source_trace_id": None,
+                        "updated_by": None,
+                        "update_reason": None,
+                        "updated_ts": None,
+                    },
+                },
             },
         )
 
@@ -307,11 +326,11 @@ class SourcePriorityTests(unittest.TestCase):
             },
         )
 
-    def test_build_source_priority_does_not_promote_identity_from_dynamic_only(self) -> None:
+    def test_build_source_priority_does_not_promote_identity_from_mutable_only(self) -> None:
         payload = source_priority.build_source_priority(
             user_turn_input=_user_turn(gesture="adresse_relationnelle"),
             time_input=_time(),
-            identity_input=_identity(static=False, dynamic_count=2),
+            identity_input=_identity(static=False, mutable=True),
         )
 
         self.assertEqual(
@@ -382,7 +401,7 @@ class SourcePriorityTests(unittest.TestCase):
             time_input=_time(),
             memory_retrieved=_memory_retrieved(retrieved_count=1),
             recent_context_input=_recent_context(message_count=1),
-            identity_input=_identity(static=True, dynamic_count=1),
+            identity_input=_identity(static=True, mutable=True),
             summary_input=_summary(available=True),
             web_input=_web(status="ok", results_count=4),
         )

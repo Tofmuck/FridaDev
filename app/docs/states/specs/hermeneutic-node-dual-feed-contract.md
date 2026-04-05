@@ -38,6 +38,13 @@ Leur forme canonique est actuellement portee par:
 - `app/core/hermeneutic_node/inputs/recent_context_input.py`
 - `app/core/hermeneutic_node/inputs/web_input.py`
 
+Pour `identity`, le canon actif a bascule en `v2`:
+
+- `static`
+- `mutable`
+
+Le dual feed ne relit donc plus `dynamic[]` comme forme canonique active pour l'identite.
+
 ## Flow
 
 Le contrat de dual feed impose le flux suivant:

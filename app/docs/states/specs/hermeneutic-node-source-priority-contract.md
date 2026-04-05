@@ -12,7 +12,7 @@ Elle tranche:
 - la nature exacte de `source_priority`
 - l'ordre par defaut retenu entre les familles de sources
 - le statut particulier de `tour_utilisateur` et `temps`
-- la regle interne `static > dynamic` pour `identity`
+- la regle interne `static > mutable` pour `identity`
 - les renversements minimaux de priorite
 - les cas minimaux de cohabitation sans fusion abusive
 - le format compact de sortie
@@ -137,7 +137,7 @@ Elle ne doit pas etre separee en deux sources doctrinales distinctes du type:
 
 Regle interne minimale retenue:
 
-- `static > dynamic`
+- `static > mutable`
 
 Cette regle vaut pour les deux cotes deja exposes par `identity_input.py`:
 
@@ -146,9 +146,9 @@ Cette regle vaut pour les deux cotes deja exposes par `identity_input.py`:
 
 Effets minimaux:
 
-- une constante `static` prime sur une entree `dynamic` si les deux divergent
-- une entree `dynamic` peut nuancer, contextualiser ou actualiser
-- une entree `dynamic` ne doit pas a elle seule renverser une constante `static` sans autre appui
+- une constante `static` prime sur une entree `mutable` si les deux divergent
+- une entree `mutable` peut nuancer, contextualiser ou actualiser
+- une entree `mutable` ne doit pas a elle seule renverser une constante `static` sans autre appui
 
 ## 6. Minimal Conditional Reversals
 

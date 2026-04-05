@@ -305,8 +305,26 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'status': 'available',
                 },
                 identity_input={
-                    'frida': {'static': {'content': 'Frida'}, 'dynamic': [{'id': 'f1'}]},
-                    'user': {'static': {'content': ''}, 'dynamic': [{'id': 'u1'}, {'id': 'u2'}]},
+                    'frida': {
+                        'static': {'content': 'Frida'},
+                        'mutable': {
+                            'content': 'Frida mutable',
+                            'source_trace_id': '11111111-1111-1111-1111-111111111111',
+                            'updated_by': 'identity_mutable_rewriter',
+                            'update_reason': 'rewrite',
+                            'updated_ts': '2026-03-30T12:00:00Z',
+                        },
+                    },
+                    'user': {
+                        'static': {'content': ''},
+                        'mutable': {
+                            'content': 'Utilisateur mutable',
+                            'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                            'updated_by': 'identity_mutable_rewriter',
+                            'update_reason': 'rewrite',
+                            'updated_ts': '2026-03-30T12:30:00Z',
+                        },
+                    },
                 },
                 recent_context_input={
                     'messages': [{'role': 'user'}, {'role': 'assistant'}],
@@ -376,8 +394,12 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['summary']['status'], 'available')
         self.assertTrue(payload['inputs']['identity']['frida']['static_present'])
         self.assertFalse(payload['inputs']['identity']['user']['static_present'])
-        self.assertEqual(payload['inputs']['identity']['frida']['dynamic_count'], 1)
-        self.assertEqual(payload['inputs']['identity']['user']['dynamic_count'], 2)
+        self.assertTrue(payload['inputs']['identity']['frida']['mutable_present'])
+        self.assertTrue(payload['inputs']['identity']['user']['mutable_present'])
+        self.assertEqual(payload['inputs']['identity']['frida']['mutable_len'], len('Frida mutable'))
+        self.assertEqual(payload['inputs']['identity']['user']['mutable_len'], len('Utilisateur mutable'))
+        self.assertNotIn('dynamic_count', payload['inputs']['identity']['frida'])
+        self.assertNotIn('dynamic_count', payload['inputs']['identity']['user'])
         self.assertEqual(payload['inputs']['recent_context']['messages_count'], 2)
         self.assertEqual(payload['inputs']['recent_window']['turn_count'], 1)
         self.assertFalse(payload['inputs']['recent_window']['has_in_progress_turn'])
@@ -708,8 +730,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         original_insert = log_store.insert_chat_log_event
         original_load_llm_identity = identity.load_llm_identity
         original_load_user_identity = identity.load_user_identity
-        original_estimate_tokens = identity._estimate_tokens
-        original_select_ranked_entries = identity._select_ranked_entries
+        original_get_mutable_identity = identity._get_mutable_identity
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
             observed.append(event)
@@ -717,8 +738,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         identity.load_llm_identity = lambda: 'Frida static identity'
         identity.load_user_identity = lambda: 'User static identity'
-        identity._estimate_tokens = lambda _text: 1
-        identity._select_ranked_entries = lambda _subject: []
+        identity._get_mutable_identity = lambda _subject: None
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
             conversation_id='conv-static-identities',
@@ -735,8 +755,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             log_store.insert_chat_log_event = original_insert
             identity.load_llm_identity = original_load_llm_identity
             identity.load_user_identity = original_load_user_identity
-            identity._estimate_tokens = original_estimate_tokens
-            identity._select_ranked_entries = original_select_ranked_entries
+            identity._get_mutable_identity = original_get_mutable_identity
 
         identities_events = [event for event in observed if event['stage'] == 'identities_read']
         static_events = [event for event in identities_events if event['payload_json'].get('source_kind') == 'static']

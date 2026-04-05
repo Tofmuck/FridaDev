@@ -314,9 +314,27 @@ class ServerPhase13Tests(unittest.TestCase):
         self.server.summarizer.maybe_summarize = lambda *args, **kwargs: False
         self.server.identity.build_identity_block = lambda: ("[IDENTITÉ DU MODÈLE]\\nbloc identite", [])
         self.server.identity.build_identity_input = lambda: {
-            'schema_version': 'v1',
-            'frida': {'static': {'content': 'bloc identite', 'source': 'test'}, 'dynamic': []},
-            'user': {'static': {'content': '', 'source': 'test'}, 'dynamic': []},
+            'schema_version': 'v2',
+            'frida': {
+                'static': {'content': 'bloc identite', 'source': 'test'},
+                'mutable': {
+                    'content': '',
+                    'source_trace_id': None,
+                    'updated_by': None,
+                    'update_reason': None,
+                    'updated_ts': None,
+                },
+            },
+            'user': {
+                'static': {'content': '', 'source': 'test'},
+                'mutable': {
+                    'content': '',
+                    'source_trace_id': None,
+                    'updated_by': None,
+                    'update_reason': None,
+                    'updated_ts': None,
+                },
+            },
         }
         self.server.memory_store.retrieve = lambda *_args, **_kwargs: []
         self.server.memory_store.get_recent_context_hints = lambda **_kwargs: []

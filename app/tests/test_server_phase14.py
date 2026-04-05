@@ -105,9 +105,27 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             self.server.identity,
             'build_identity_input',
             lambda: {
-                'schema_version': 'v1',
-                'frida': {'static': {'content': '', 'source': None}, 'dynamic': []},
-                'user': {'static': {'content': '', 'source': None}, 'dynamic': []},
+                'schema_version': 'v2',
+                'frida': {
+                    'static': {'content': '', 'source': None},
+                    'mutable': {
+                        'content': '',
+                        'source_trace_id': None,
+                        'updated_by': None,
+                        'update_reason': None,
+                        'updated_ts': None,
+                    },
+                },
+                'user': {
+                    'static': {'content': '', 'source': None},
+                    'mutable': {
+                        'content': '',
+                        'source_trace_id': None,
+                        'updated_by': None,
+                        'update_reason': None,
+                        'updated_ts': None,
+                    },
+                },
             },
         )
         patch_attr(self.server.memory_store, 'retrieve', lambda *_args, **_kwargs: [])
@@ -701,34 +719,26 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         original_build_identity_input = self.server.identity.build_identity_input
         original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
         self.server.identity.build_identity_input = lambda: {
-            'schema_version': 'v1',
+            'schema_version': 'v2',
             'frida': {
                 'static': {'content': 'Frida statique', 'source': '/runtime/llm_identity.txt'},
-                'dynamic': [
-                    {
-                        'id': 'frida-dyn-1',
-                        'content': 'Frida aime les raisonnements structurés',
-                        'stability': 'durable',
-                        'recurrence': 'habitual',
-                        'confidence': 0.91,
-                        'last_seen_ts': '2026-03-24T12:00:00Z',
-                        'scope': 'llm',
-                    }
-                ],
+                'mutable': {
+                    'content': 'Frida aime les raisonnements structurés',
+                    'source_trace_id': '11111111-1111-1111-1111-111111111111',
+                    'updated_by': 'identity_mutable_rewriter',
+                    'update_reason': 'new durable preference',
+                    'updated_ts': '2026-03-24T12:00:00Z',
+                },
             },
             'user': {
                 'static': {'content': 'Utilisateur statique', 'source': '/runtime/user_identity.txt'},
-                'dynamic': [
-                    {
-                        'id': 'user-dyn-1',
-                        'content': 'Utilisateur prefere les réponses concises',
-                        'stability': 'durable',
-                        'recurrence': 'repeated',
-                        'confidence': 0.88,
-                        'last_seen_ts': '2026-03-25T09:30:00Z',
-                        'scope': 'user',
-                    }
-                ],
+                'mutable': {
+                    'content': 'Utilisateur prefere les réponses concises',
+                    'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                    'updated_by': 'identity_mutable_rewriter',
+                    'update_reason': 'new durable preference',
+                    'updated_ts': '2026-03-25T09:30:00Z',
+                },
             },
         }
 
@@ -746,84 +756,64 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
-        self.assertEqual(observed['identity_input']['schema_version'], 'v1')
+        self.assertEqual(observed['identity_input']['schema_version'], 'v2')
         self.assertEqual(observed['identity_input']['frida']['static']['content'], 'Frida statique')
-        self.assertEqual(observed['identity_input']['frida']['dynamic'][0]['id'], 'frida-dyn-1')
-        self.assertEqual(observed['identity_input']['frida']['dynamic'][0]['scope'], 'llm')
+        self.assertEqual(
+            observed['identity_input']['frida']['mutable']['source_trace_id'],
+            '11111111-1111-1111-1111-111111111111',
+        )
+        self.assertEqual(
+            observed['identity_input']['frida']['mutable']['updated_by'],
+            'identity_mutable_rewriter',
+        )
         self.assertEqual(observed['identity_input']['user']['static']['content'], 'Utilisateur statique')
-        self.assertEqual(observed['identity_input']['user']['dynamic'][0]['id'], 'user-dyn-1')
-        self.assertEqual(observed['identity_input']['user']['dynamic'][0]['scope'], 'user')
+        self.assertEqual(
+            observed['identity_input']['user']['mutable']['source_trace_id'],
+            '22222222-2222-2222-2222-222222222222',
+        )
+        self.assertEqual(
+            observed['identity_input']['user']['mutable']['updated_by'],
+            'identity_mutable_rewriter',
+        )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
-    def test_identity_input_uses_same_effective_dynamic_selection_as_prompt_block(self) -> None:
+    def test_identity_block_and_payload_use_same_canonical_mutables_without_legacy_ids(self) -> None:
         identity = self.server.identity
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_get_identities = self.server.memory_store.get_identities
         originals = {
             'load_llm_identity': identity.load_llm_identity,
             'load_user_identity': identity.load_user_identity,
             '_safe_static_identity_source': identity._safe_static_identity_source,
-            '_select_ranked_entries': identity._select_ranked_entries,
-            '_estimate_tokens': identity._estimate_tokens,
             'identity_top_n': identity.config.IDENTITY_TOP_N,
             'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
         }
-        ranked_entries = {
-            'llm': [
-                {
-                    'id': 'frida-kept',
-                    'content': 'Frida dynamique retenue',
-                    'stability': 'durable',
-                    'recurrence': 'habitual',
-                    'confidence': 0.95,
-                    'last_seen_ts': '2026-03-24T12:00:00Z',
-                    'scope': 'llm',
-                },
-                {
-                    'id': 'frida-dropped',
-                    'content': 'Frida dynamique hors budget',
-                    'stability': 'durable',
-                    'recurrence': 'repeated',
-                    'confidence': 0.90,
-                    'last_seen_ts': '2026-03-23T10:00:00Z',
-                    'scope': 'llm',
-                },
-            ],
-            'user': [
-                {
-                    'id': 'user-kept',
-                    'content': 'User dynamique retenue',
-                    'stability': 'durable',
-                    'recurrence': 'repeated',
-                    'confidence': 0.88,
-                    'last_seen_ts': '2026-03-25T09:30:00Z',
-                    'scope': 'user',
-                },
-                {
-                    'id': 'user-dropped',
-                    'content': 'User dynamique hors budget',
-                    'stability': 'durable',
-                    'recurrence': 'repeated',
-                    'confidence': 0.83,
-                    'last_seen_ts': '2026-03-22T09:30:00Z',
-                    'scope': 'user',
-                },
-            ],
+        mutable_entries = {
+            'llm': {
+                'content': 'Frida mutable narrative retenue',
+                'source_trace_id': '11111111-1111-1111-1111-111111111111',
+                'updated_by': 'identity_mutable_rewriter',
+                'update_reason': 'rewrite',
+                'updated_ts': '2026-03-24T12:00:00Z',
+            },
+            'user': {
+                'content': 'User mutable narrative retenue',
+                'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                'updated_by': 'identity_mutable_rewriter',
+                'update_reason': 'rewrite',
+                'updated_ts': '2026-03-25T09:30:00Z',
+            },
         }
 
-        identity.load_llm_identity = lambda: ''
-        identity.load_user_identity = lambda: ''
-        identity._safe_static_identity_source = lambda _field: None
-        identity._select_ranked_entries = lambda subject: list(ranked_entries[subject])
+        identity.load_llm_identity = lambda: 'Frida static baseline'
+        identity.load_user_identity = lambda: 'User static baseline'
+        identity._safe_static_identity_source = lambda field: f'data/identity/{field}.txt'
+        self.server.memory_store.get_mutable_identity = lambda subject: dict(mutable_entries[subject])
+        self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
+            'legacy get_identities should not govern active identity path'
+        )
         identity.config.IDENTITY_TOP_N = 2
         identity.config.IDENTITY_MAX_TOKENS = 4
-
-        def fake_estimate_tokens(text: str) -> int:
-            if not text:
-                return 0
-            if text.startswith('- ['):
-                return 2
-            return 0
-
-        identity._estimate_tokens = fake_estimate_tokens
         try:
             block, used_ids = identity.build_identity_block()
             payload = identity.build_identity_input()
@@ -831,31 +821,32 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             identity.load_llm_identity = originals['load_llm_identity']
             identity.load_user_identity = originals['load_user_identity']
             identity._safe_static_identity_source = originals['_safe_static_identity_source']
-            identity._select_ranked_entries = originals['_select_ranked_entries']
-            identity._estimate_tokens = originals['_estimate_tokens']
             identity.config.IDENTITY_TOP_N = originals['identity_top_n']
             identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.get_identities = original_get_identities
 
-        self.assertIn('Frida dynamique retenue', block)
-        self.assertNotIn('Frida dynamique hors budget', block)
-        self.assertIn('User dynamique retenue', block)
-        self.assertNotIn('User dynamique hors budget', block)
-        self.assertEqual(used_ids, ['frida-kept', 'user-kept'])
-        self.assertEqual(
-            [entry['id'] for entry in payload['frida']['dynamic']],
-            ['frida-kept'],
-        )
-        self.assertEqual(
-            [entry['id'] for entry in payload['user']['dynamic']],
-            ['user-kept'],
-        )
+        self.assertIn('Frida mutable narrative retenue', block)
+        self.assertIn('User mutable narrative retenue', block)
+        self.assertIn('Frida static baseline', block)
+        self.assertIn('User static baseline', block)
+        self.assertIn('[STATIQUE]', block)
+        self.assertIn('[MUTABLE]', block)
+        self.assertNotIn('stability=', block)
+        self.assertEqual(used_ids, [])
+        self.assertEqual(payload['schema_version'], 'v2')
+        self.assertNotIn('dynamic', payload['frida'])
+        self.assertNotIn('dynamic', payload['user'])
+        self.assertEqual(payload['frida']['static']['content'], 'Frida static baseline')
+        self.assertEqual(payload['user']['static']['content'], 'User static baseline')
+        self.assertEqual(payload['frida']['mutable']['content'], 'Frida mutable narrative retenue')
+        self.assertEqual(payload['user']['mutable']['content'], 'User mutable narrative retenue')
 
     def test_identity_input_loads_static_content_from_host_state_mirror_while_keeping_runtime_source(self) -> None:
         identity = self.server.identity
         originals = {
             'get_resources_settings': identity.runtime_settings.get_resources_settings,
-            '_select_ranked_entries': identity._select_ranked_entries,
-            '_estimate_tokens': identity._estimate_tokens,
+            '_get_mutable_identity': identity._get_mutable_identity,
             'app_root': identity.static_identity_paths.APP_ROOT,
             'repo_root': identity.static_identity_paths.REPO_ROOT,
             'host_state_root': identity.static_identity_paths.HOST_STATE_ROOT,
@@ -889,15 +880,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             identity.static_identity_paths.APP_ROOT = tmp_path / 'app'
             identity.static_identity_paths.REPO_ROOT = tmp_path
             identity.static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
-            identity._select_ranked_entries = lambda _subject: []
-            identity._estimate_tokens = lambda text: len(str(text or '').split())
+            identity._get_mutable_identity = lambda _subject: None
             try:
                 block, used_ids = identity.build_identity_block()
                 payload = identity.build_identity_input()
             finally:
                 identity.runtime_settings.get_resources_settings = originals['get_resources_settings']
-                identity._select_ranked_entries = originals['_select_ranked_entries']
-                identity._estimate_tokens = originals['_estimate_tokens']
+                identity._get_mutable_identity = originals['_get_mutable_identity']
                 identity.static_identity_paths.APP_ROOT = originals['app_root']
                 identity.static_identity_paths.REPO_ROOT = originals['repo_root']
                 identity.static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
@@ -909,40 +898,40 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['user']['static']['content'], user_text)
         self.assertEqual(payload['frida']['static']['source'], 'data/identity/llm_identity.txt')
         self.assertEqual(payload['user']['static']['source'], 'data/identity/user_identity.txt')
-        self.assertEqual(payload['frida']['dynamic'], [])
-        self.assertEqual(payload['user']['dynamic'], [])
+        self.assertNotIn('dynamic', payload['frida'])
+        self.assertNotIn('dynamic', payload['user'])
+        self.assertEqual(payload['frida']['mutable']['content'], '')
+        self.assertEqual(payload['user']['mutable']['content'], '')
 
-    def test_identity_input_keeps_explicit_user_identity_revelation_available_for_next_turn(self) -> None:
+    def test_identity_input_keeps_explicit_user_mutable_revelation_available_for_next_turn(self) -> None:
         identity = self.server.identity
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_get_identities = self.server.memory_store.get_identities
         originals = {
             'load_llm_identity': identity.load_llm_identity,
             'load_user_identity': identity.load_user_identity,
             '_safe_static_identity_source': identity._safe_static_identity_source,
-            '_select_ranked_entries': identity._select_ranked_entries,
-            '_estimate_tokens': identity._estimate_tokens,
             'identity_top_n': identity.config.IDENTITY_TOP_N,
             'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
-        }
-        ranked_entries = {
-            'llm': [],
-            'user': [
-                {
-                    'id': 'user-christophe',
-                    'content': 'Je suis Christophe Muck',
-                    'stability': 'durable',
-                    'recurrence': 'first_seen',
-                    'confidence': 0.93,
-                    'last_seen_ts': '2026-04-04T19:00:00Z',
-                    'scope': 'user',
-                },
-            ],
         }
 
         identity.load_llm_identity = lambda: ''
         identity.load_user_identity = lambda: ''
         identity._safe_static_identity_source = lambda _field: None
-        identity._select_ranked_entries = lambda subject: list(ranked_entries[subject])
-        identity._estimate_tokens = lambda _text: 1 if _text else 0
+        self.server.memory_store.get_mutable_identity = lambda subject: (
+            {
+                'content': 'Je suis Christophe Muck',
+                'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                'updated_by': 'identity_mutable_rewriter',
+                'update_reason': 'rewrite',
+                'updated_ts': '2026-04-04T19:00:00Z',
+            }
+            if subject == 'user'
+            else None
+        )
+        self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
+            'legacy get_identities should not govern active identity path'
+        )
         identity.config.IDENTITY_TOP_N = 2
         identity.config.IDENTITY_MAX_TOKENS = 32
         try:
@@ -951,47 +940,42 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             identity.load_llm_identity = originals['load_llm_identity']
             identity.load_user_identity = originals['load_user_identity']
             identity._safe_static_identity_source = originals['_safe_static_identity_source']
-            identity._select_ranked_entries = originals['_select_ranked_entries']
-            identity._estimate_tokens = originals['_estimate_tokens']
             identity.config.IDENTITY_TOP_N = originals['identity_top_n']
             identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.get_identities = original_get_identities
 
-        self.assertEqual(
-            [entry['content'] for entry in payload['user']['dynamic']],
-            ['Je suis Christophe Muck'],
-        )
+        self.assertEqual(payload['user']['mutable']['content'], 'Je suis Christophe Muck')
 
-    def test_identity_input_reserves_dynamic_budget_when_static_identity_is_large(self) -> None:
+    def test_identity_active_path_keeps_mutable_present_when_static_identity_is_large(self) -> None:
         identity = self.server.identity
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_get_identities = self.server.memory_store.get_identities
         originals = {
             'load_llm_identity': identity.load_llm_identity,
             'load_user_identity': identity.load_user_identity,
             '_safe_static_identity_source': identity._safe_static_identity_source,
-            '_select_ranked_entries': identity._select_ranked_entries,
-            '_estimate_tokens': identity._estimate_tokens,
             'identity_top_n': identity.config.IDENTITY_TOP_N,
             'identity_max_tokens': identity.config.IDENTITY_MAX_TOKENS,
-        }
-        ranked_entries = {
-            'llm': [],
-            'user': [
-                {
-                    'id': 'user-christophe',
-                    'content': 'Je suis Christophe Muck',
-                    'stability': 'durable',
-                    'recurrence': 'first_seen',
-                    'confidence': 0.93,
-                    'last_seen_ts': '2026-04-04T19:00:00Z',
-                    'scope': 'user',
-                },
-            ],
         }
 
         identity.load_llm_identity = lambda: 'Profil statique Frida ' * 120
         identity.load_user_identity = lambda: 'Profil statique utilisateur ' * 120
         identity._safe_static_identity_source = lambda _field: None
-        identity._select_ranked_entries = lambda subject: list(ranked_entries[subject])
-        identity._estimate_tokens = lambda text: len(str(text or '').split())
+        self.server.memory_store.get_mutable_identity = lambda subject: (
+            {
+                'content': 'Je suis Christophe Muck',
+                'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                'updated_by': 'identity_mutable_rewriter',
+                'update_reason': 'rewrite',
+                'updated_ts': '2026-04-04T19:00:00Z',
+            }
+            if subject == 'user'
+            else None
+        )
+        self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
+            'legacy get_identities should not govern active identity path'
+        )
         identity.config.IDENTITY_TOP_N = 2
         identity.config.IDENTITY_MAX_TOKENS = 80
         try:
@@ -1001,17 +985,14 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             identity.load_llm_identity = originals['load_llm_identity']
             identity.load_user_identity = originals['load_user_identity']
             identity._safe_static_identity_source = originals['_safe_static_identity_source']
-            identity._select_ranked_entries = originals['_select_ranked_entries']
-            identity._estimate_tokens = originals['_estimate_tokens']
             identity.config.IDENTITY_TOP_N = originals['identity_top_n']
             identity.config.IDENTITY_MAX_TOKENS = originals['identity_max_tokens']
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.get_identities = original_get_identities
 
         self.assertIn('Je suis Christophe Muck', block)
-        self.assertEqual(used_ids, ['user-christophe'])
-        self.assertEqual(
-            [entry['content'] for entry in payload['user']['dynamic']],
-            ['Je suis Christophe Muck'],
-        )
+        self.assertEqual(used_ids, [])
+        self.assertEqual(payload['user']['mutable']['content'], 'Je suis Christophe Muck')
 
     def test_api_chat_exposes_canonical_recent_context_to_hermeneutic_insertion_point(self) -> None:
         observed = {'recent_context_input': None}
@@ -1948,8 +1929,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'skipped')
         self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 0)
         self.assertEqual(payload['inputs']['summary']['status'], 'missing')
-        self.assertEqual(payload['inputs']['identity']['frida']['dynamic_count'], 0)
-        self.assertEqual(payload['inputs']['identity']['user']['dynamic_count'], 0)
+        self.assertFalse(payload['inputs']['identity']['frida']['mutable_present'])
+        self.assertFalse(payload['inputs']['identity']['user']['mutable_present'])
         self.assertEqual(payload['inputs']['recent_context']['messages_count'], 1)
         self.assertEqual(payload['inputs']['recent_window']['turn_count'], 1)
         self.assertTrue(payload['inputs']['recent_window']['has_in_progress_turn'])

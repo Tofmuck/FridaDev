@@ -137,10 +137,11 @@ def _identity_static_present(identity_input: Mapping[str, Any]) -> bool:
     return False
 
 
-def _identity_dynamic_present(identity_input: Mapping[str, Any]) -> bool:
+def _identity_mutable_present(identity_input: Mapping[str, Any]) -> bool:
     for side_name in ("frida", "user"):
         side = _mapping(identity_input.get(side_name))
-        if len(_sequence(side.get("dynamic"))) > 0:
+        mutable_block = _mapping(side.get("mutable"))
+        if _text(mutable_block.get("content")):
             return True
     return False
 
@@ -224,7 +225,7 @@ def build_source_priority(
 
     if _gesture(user_turn_payload) in _STATIC_PRIORITY_GESTURES and _identity_static_present(identity_payload):
         _promote(rank_map, "identity", 2)
-    elif _identity_dynamic_present(identity_payload):
+    elif _identity_mutable_present(identity_payload):
         rank_map["identity"] = max(rank_map["identity"], _BASE_RANKS["identity"])
 
     if (

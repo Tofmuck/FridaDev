@@ -64,9 +64,12 @@ def _summarize_summary(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 def _side_summary(side_payload: Mapping[str, Any] | None) -> dict[str, Any]:
     side = _mapping(side_payload)
     static_payload = _mapping(side.get('static'))
+    mutable_payload = _mapping(side.get('mutable'))
+    mutable_content = _text(mutable_payload.get('content'))
     return {
         'static_present': _bool_str(static_payload.get('content')),
-        'dynamic_count': len(_sequence(side.get('dynamic'))),
+        'mutable_present': bool(mutable_content),
+        'mutable_len': len(mutable_content),
     }
 
 

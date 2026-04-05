@@ -115,24 +115,25 @@ def _recent_context(*, message_count: int = 0) -> dict[str, object]:
     }
 
 
-def _identity(*, static: bool = False, dynamic_count: int = 0) -> dict[str, object]:
+def _identity(*, static: bool = False, mutable: bool = False) -> dict[str, object]:
     static_block = {"content": "known", "source": "repo"} if static else {"content": "", "source": None}
-    dynamic_entries = [
-        {
-            "id": f"dyn-{index}",
-            "content": "episodic",
-            "stability": "low",
-            "recurrence": "low",
-            "confidence": 0.6,
-            "last_seen_ts": "2026-04-01T10:00:00Z",
-            "scope": "conversation",
-        }
-        for index in range(dynamic_count)
-    ]
+    mutable_block = {
+        "content": "identity mutable",
+        "source_trace_id": "11111111-1111-1111-1111-111111111111",
+        "updated_by": "identity_mutable_rewriter",
+        "update_reason": "rewrite",
+        "updated_ts": "2026-04-01T10:00:00Z",
+    } if mutable else {
+        "content": "",
+        "source_trace_id": None,
+        "updated_by": None,
+        "update_reason": None,
+        "updated_ts": None,
+    }
     return {
-        "schema_version": "v1",
-        "frida": {"static": static_block, "dynamic": list(dynamic_entries)},
-        "user": {"static": static_block, "dynamic": list(dynamic_entries)},
+        "schema_version": "v2",
+        "frida": {"static": static_block, "mutable": dict(mutable_block)},
+        "user": {"static": static_block, "mutable": dict(mutable_block)},
     }
 
 
@@ -264,7 +265,7 @@ class SourceConflictsTests(unittest.TestCase):
             },
         )
 
-    def test_build_source_conflicts_does_not_emit_anchor_conflict_from_dynamic_only_identity(self) -> None:
+    def test_build_source_conflicts_does_not_emit_anchor_conflict_from_mutable_only_identity(self) -> None:
         payload = source_conflicts.build_source_conflicts(
             source_priority=_source_priority(),
             user_turn_input=_user_turn(gesture="adresse_relationnelle"),
@@ -272,7 +273,7 @@ class SourceConflictsTests(unittest.TestCase):
                 underdetermination=True,
                 families=["ancrage_de_source"],
             ),
-            identity_input=_identity(static=False, dynamic_count=1),
+            identity_input=_identity(static=False, mutable=True),
             memory_retrieved=_memory_retrieved(retrieved_count=1),
             memory_arbitration=_memory_arbitration(kept_count=1),
         )

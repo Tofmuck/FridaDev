@@ -215,8 +215,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         original_app_root = static_identity_paths.APP_ROOT
         original_repo_root = static_identity_paths.REPO_ROOT
         original_host_state_root = static_identity_paths.HOST_STATE_ROOT
-        original_select_ranked_entries = identity._select_ranked_entries
-        original_estimate_tokens = identity._estimate_tokens
+        original_get_mutable_identity = identity._get_mutable_identity
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -246,8 +245,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
             static_identity_paths.APP_ROOT = tmp_path / 'app'
             static_identity_paths.REPO_ROOT = tmp_path
             static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
-            identity._select_ranked_entries = lambda _subject: []
-            identity._estimate_tokens = lambda text: len(str(text or '').split())
+            identity._get_mutable_identity = lambda _subject: None
             try:
                 block, used_ids = identity.build_identity_block()
                 payload = identity.build_identity_input()
@@ -256,18 +254,20 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 static_identity_paths.APP_ROOT = original_app_root
                 static_identity_paths.REPO_ROOT = original_repo_root
                 static_identity_paths.HOST_STATE_ROOT = original_host_state_root
-                identity._select_ranked_entries = original_select_ranked_entries
-                identity._estimate_tokens = original_estimate_tokens
+                identity._get_mutable_identity = original_get_mutable_identity
 
         self.assertIn(llm_text, block)
         self.assertIn(user_text, block)
         self.assertEqual(used_ids, [])
+        self.assertEqual(payload['schema_version'], 'v2')
         self.assertEqual(payload['frida']['static']['content'], llm_text)
         self.assertEqual(payload['user']['static']['content'], user_text)
         self.assertEqual(payload['frida']['static']['source'], 'data/identity/llm_identity.txt')
         self.assertEqual(payload['user']['static']['source'], 'data/identity/user_identity.txt')
-        self.assertEqual(payload['frida']['dynamic'], [])
-        self.assertEqual(payload['user']['dynamic'], [])
+        self.assertNotIn('dynamic', payload['frida'])
+        self.assertNotIn('dynamic', payload['user'])
+        self.assertEqual(payload['frida']['mutable']['content'], '')
+        self.assertEqual(payload['user']['mutable']['content'], '')
 
 
 if __name__ == '__main__':

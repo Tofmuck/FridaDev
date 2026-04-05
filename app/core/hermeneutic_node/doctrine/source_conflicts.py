@@ -131,7 +131,8 @@ def _identity_available(identity_input: Mapping[str, Any]) -> bool:
         static_block = _mapping(side.get("static"))
         if _text(static_block.get("content")):
             return True
-        if len(_sequence(side.get("dynamic"))) > 0:
+        mutable_block = _mapping(side.get("mutable"))
+        if _text(mutable_block.get("content")):
             return True
     return False
 

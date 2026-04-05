@@ -11,6 +11,7 @@ import config
 from admin import runtime_settings
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core import token_utils
+from identity import active_identity_projection
 from identity import static_identity_paths
 from observability import chat_turn_logger
 
@@ -28,8 +29,8 @@ class _DynamicSelection:
 class _IdentityRuntimeSelection:
     block: str
     used_identity_ids: list[str]
-    frida_dynamic_entries: list[dict[str, Any]]
-    user_dynamic_entries: list[dict[str, Any]]
+    frida_mutable: dict[str, Any]
+    user_mutable: dict[str, Any]
 
 
 def _runtime_main_model_name() -> str:
@@ -93,6 +94,16 @@ def _get_identities(subject: str, top_n: int) -> list[dict[str, Any]]:
     except Exception as exc:
         logger.warning('identity_get_identities_error subject=%s err=%s', subject, exc)
         return []
+
+
+def _get_mutable_identity(subject: str) -> dict[str, Any] | None:
+    try:
+        from memory import memory_store
+
+        return memory_store.get_mutable_identity(subject)
+    except Exception as exc:
+        logger.warning('identity_get_mutable_identity_error subject=%s err=%s', subject, exc)
+        return None
 
 
 def _parse_ts(value: Any) -> datetime:
@@ -337,89 +348,16 @@ def _resolve_identity_runtime_selection(
     llm_static: str,
     user_static: str,
 ) -> _IdentityRuntimeSelection:
-    budget = max(1, config.IDENTITY_MAX_TOKENS)
-    llm_dynamic_candidates = _select_ranked_entries('llm')
-    user_dynamic_candidates = _select_ranked_entries('user')
-
-    llm_static_for_budget = llm_static
-    user_static_for_budget = user_static
-    llm_dynamic_budget = 0
-    user_dynamic_budget = 0
-
-    static_block = _build_identity_block_text(
-        llm_static=llm_static_for_budget,
-        user_static=user_static_for_budget,
-        llm_dynamic_lines=[],
-        user_dynamic_lines=[],
+    projection = active_identity_projection.resolve_active_identity_projection(
+        llm_static=llm_static,
+        user_static=user_static,
+        get_mutable_identity_fn=_get_mutable_identity,
     )
-    static_tokens = _estimate_tokens(static_block)
-    has_dynamic_candidates = bool(llm_dynamic_candidates or user_dynamic_candidates)
-
-    if has_dynamic_candidates:
-        reserved_dynamic_budget = max(1, budget // 4)
-        static_budget = max(0, budget - reserved_dynamic_budget)
-        if static_tokens > static_budget:
-            llm_static_for_budget, user_static_for_budget = _truncate_static_identity_texts(
-                llm_static=llm_static,
-                user_static=user_static,
-                max_tokens=static_budget,
-            )
-
-        dynamic_budget = max(0, budget - _estimate_tokens(
-            _build_identity_block_text(
-                llm_static=llm_static_for_budget,
-                user_static=user_static_for_budget,
-                llm_dynamic_lines=[],
-                user_dynamic_lines=[],
-            )
-        ))
-        if not dynamic_budget and reserved_dynamic_budget > 0:
-            dynamic_budget = reserved_dynamic_budget
-        if dynamic_budget > 0:
-            if llm_dynamic_candidates and user_dynamic_candidates:
-                llm_dynamic_budget = dynamic_budget // 2
-                user_dynamic_budget = dynamic_budget - llm_dynamic_budget
-            elif llm_dynamic_candidates:
-                llm_dynamic_budget = dynamic_budget
-            else:
-                user_dynamic_budget = dynamic_budget
-
-    llm_selection = _select_effective_dynamic_entries('llm', llm_dynamic_budget)
-    user_selection = _select_effective_dynamic_entries('user', user_dynamic_budget)
-
-    if llm_dynamic_budget > 0 and llm_selection.lines and not user_selection.lines and not user_dynamic_candidates:
-        llm_selection = _select_effective_dynamic_entries('llm', llm_dynamic_budget)
-    elif user_dynamic_budget > 0 and user_selection.lines and not llm_selection.lines and not llm_dynamic_candidates:
-        user_selection = _select_effective_dynamic_entries('user', user_dynamic_budget)
-
-    fallback_static_block = _build_identity_block_text(
-        llm_static=llm_static_for_budget,
-        user_static=user_static_for_budget,
-        llm_dynamic_lines=[],
-        user_dynamic_lines=[],
-    )
-    block = _build_identity_block_text(
-        llm_static=llm_static_for_budget,
-        user_static=user_static_for_budget,
-        llm_dynamic_lines=llm_selection.lines,
-        user_dynamic_lines=user_selection.lines,
-    )
-    used_identity_ids = llm_selection.ids + user_selection.ids
-
-    # Hard guardrail on identity budget.
-    if _estimate_tokens(block) > budget:
-        block = fallback_static_block
-        used_identity_ids = []
-        llm_selection = _DynamicSelection(entries=[], lines=[], ids=[])
-        user_selection = _DynamicSelection(entries=[], lines=[], ids=[])
-    if _estimate_tokens(block) > budget:
-        block = _truncate_to_words(block, budget)
-
     return _IdentityRuntimeSelection(
-        block=block,
-        used_identity_ids=used_identity_ids,
-        frida_dynamic_entries=llm_selection.entries,
-        user_dynamic_entries=user_selection.entries,
+        block=projection.block,
+        used_identity_ids=projection.used_identity_ids,
+        frida_mutable=projection.frida_mutable,
+        user_mutable=projection.user_mutable,
     )
 
 
@@ -449,8 +387,8 @@ def build_identity_input() -> dict[str, Any]:
     return canonical_identity_input.build_identity_input(
         frida_static_content=llm_static,
         frida_static_source=_safe_static_identity_source('llm_identity_path'),
-        frida_dynamic_entries=selection.frida_dynamic_entries,
+        frida_mutable=selection.frida_mutable,
         user_static_content=user_static,
         user_static_source=_safe_static_identity_source('user_identity_path'),
-        user_dynamic_entries=selection.user_dynamic_entries,
+        user_mutable=selection.user_mutable,
     )

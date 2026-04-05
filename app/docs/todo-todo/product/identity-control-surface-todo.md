@@ -103,7 +103,7 @@ Cloture du lot:
 - le contrat visible reste `data/identity/...`;
 - hors conteneur, la resolution host-side retrouve le mirror `state/data/identity/...` sans changer le path expose a l'operateur;
 - le payload canonique garde le statique complet et sa source;
-- le bloc prompt reintegre bien le statique, mais reste soumis au budget `IDENTITY_MAX_TOKENS` deja en place.
+- le bloc prompt reintegre bien le statique; depuis `1B-C`, le chemin actif repose sur `static + mutable narrative` sans budget runtime legacy.
 
 Hors scope du lot:
 - nouvelle page `Identity`;
@@ -129,14 +129,14 @@ But:
 
 Etat revalide avant implementation:
 - l'extracteur reste encore fragmentaire avec une sortie `entries[]`;
-- le payload canonique reste encore `dynamic[]`;
-- l'injection active reste encore pilotee par ranking, `IDENTITY_TOP_N`, `IDENTITY_MAX_TOKENS` et troncature;
+- le payload canonique actif est maintenant `static + mutable` en `v2`;
+- l'injection active repose maintenant sur `static + mutable narrative`; le legacy fragmentaire reste dans le repo mais ne gouverne plus le chemin actif;
 - la persistance durable et l'admin legacy restent encore centres sur `accepted|deferred|rejected`, `force_accept`, `force_reject` et `relabel`;
 - l'observabilite identity transporte encore des previews textuelles.
 
 - [x] `1B-A` Introduire une source de verite canonique durable, une mutable narrative par sujet, distincte des evidences et du legacy fragmentaire
 - [x] `1B-B` Requalifier l'extracteur et son contrat pour relire contexte recent + mutable courante et produire `no_change` ou une reecriture narrative validee dans le budget mutable `1500/1650`
-- [ ] `1B-C` Basculer l'injection active et `identity_input` vers `static + mutable narrative`, sans ranking, sans `IDENTITY_TOP_N`, sans `IDENTITY_MAX_TOKENS` et sans troncature runtime sur la partie mutable
+- [x] `1B-C` Basculer l'injection active et `identity_input` vers `static + mutable narrative`, sans ranking, sans `IDENTITY_TOP_N`, sans `IDENTITY_MAX_TOKENS` et sans troncature runtime sur la partie mutable
 - [ ] `1B-D` Reclasser ou neutraliser honnetement le legacy (`accepted|deferred|rejected`, `force_accept`, `force_reject`, `relabel`, controles admin) pour qu'il ne raconte plus la verite d'injection active
 - [ ] `1B-E` Refaire l'observabilite identity en mode compact, sans previews de contenu brut, avec seulement longueurs, presence/absence, flags d'update et validation budget/shape
 
