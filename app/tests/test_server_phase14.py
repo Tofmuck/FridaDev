@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -848,6 +849,68 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             [entry['id'] for entry in payload['user']['dynamic']],
             ['user-kept'],
         )
+
+    def test_identity_input_loads_static_content_from_host_state_mirror_while_keeping_runtime_source(self) -> None:
+        identity = self.server.identity
+        originals = {
+            'get_resources_settings': identity.runtime_settings.get_resources_settings,
+            '_select_ranked_entries': identity._select_ranked_entries,
+            '_estimate_tokens': identity._estimate_tokens,
+            'app_root': identity.static_identity_paths.APP_ROOT,
+            'repo_root': identity.static_identity_paths.REPO_ROOT,
+            'host_state_root': identity.static_identity_paths.HOST_STATE_ROOT,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / 'app').mkdir()
+            identity_dir = tmp_path / 'state' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            llm_text = 'Frida statique host mirror'
+            user_text = 'Utilisateur statique host mirror'
+            (identity_dir / 'llm_identity.txt').write_text(llm_text, encoding='utf-8')
+            (identity_dir / 'user_identity.txt').write_text(user_text, encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'origin': 'db'},
+                            'user_identity_path': {'value': 'data/identity/user_identity.txt', 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            identity.static_identity_paths.APP_ROOT = tmp_path / 'app'
+            identity.static_identity_paths.REPO_ROOT = tmp_path
+            identity.static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            identity._select_ranked_entries = lambda _subject: []
+            identity._estimate_tokens = lambda text: len(str(text or '').split())
+            try:
+                block, used_ids = identity.build_identity_block()
+                payload = identity.build_identity_input()
+            finally:
+                identity.runtime_settings.get_resources_settings = originals['get_resources_settings']
+                identity._select_ranked_entries = originals['_select_ranked_entries']
+                identity._estimate_tokens = originals['_estimate_tokens']
+                identity.static_identity_paths.APP_ROOT = originals['app_root']
+                identity.static_identity_paths.REPO_ROOT = originals['repo_root']
+                identity.static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
+
+        self.assertIn(llm_text, block)
+        self.assertIn(user_text, block)
+        self.assertEqual(used_ids, [])
+        self.assertEqual(payload['frida']['static']['content'], llm_text)
+        self.assertEqual(payload['user']['static']['content'], user_text)
+        self.assertEqual(payload['frida']['static']['source'], 'data/identity/llm_identity.txt')
+        self.assertEqual(payload['user']['static']['source'], 'data/identity/user_identity.txt')
+        self.assertEqual(payload['frida']['dynamic'], [])
+        self.assertEqual(payload['user']['dynamic'], [])
 
     def test_identity_input_keeps_explicit_user_identity_revelation_available_for_next_turn(self) -> None:
         identity = self.server.identity

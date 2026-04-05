@@ -23,6 +23,7 @@ if str(APP_DIR) not in sys.path:
 from admin import runtime_settings, runtime_settings_repo, runtime_settings_spec, runtime_settings_validation
 import config
 from core import prompt_loader
+from identity import static_identity_paths
 
 
 class RuntimeSettingsSchemaTests(unittest.TestCase):
@@ -2237,6 +2238,45 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertTrue(checks['llm_identity_path']['ok'])
         self.assertFalse(checks['user_identity_path']['ok'])
         self.assertIn(str(missing), checks['user_identity_path']['detail'])
+
+    def test_validate_runtime_section_accepts_runtime_data_resource_files_via_host_state_mirror(self) -> None:
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            (tmp_path / 'app').mkdir()
+            identity_dir = tmp_path / 'state' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            (identity_dir / 'llm_identity.txt').write_text('llm identity mirror', encoding='utf-8')
+            (identity_dir / 'user_identity.txt').write_text('user identity mirror', encoding='utf-8')
+
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                result = runtime_settings.validate_runtime_section(
+                    'resources',
+                    {
+                        'llm_identity_path': {'value': 'data/identity/llm_identity.txt'},
+                        'user_identity_path': {'value': 'data/identity/user_identity.txt'},
+                    },
+                    fetcher=lambda: {},
+                )
+            finally:
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['llm_identity_path']['ok'])
+        self.assertTrue(checks['user_identity_path']['ok'])
+        self.assertIn('data/identity/llm_identity.txt', checks['llm_identity_path']['detail'])
+        self.assertIn('resolution=host_state_mirror', checks['llm_identity_path']['detail'])
+        self.assertIn('data/identity/user_identity.txt', checks['user_identity_path']['detail'])
+        self.assertIn('resolution=host_state_mirror', checks['user_identity_path']['detail'])
 
     def test_validate_runtime_section_requires_bootstrap_dsn_during_transition(self) -> None:
         original_dsn = config.FRIDA_MEMORY_DB_DSN

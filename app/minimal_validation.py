@@ -21,6 +21,7 @@ import config
 from admin import runtime_settings
 from core import conv_store
 from core import runtime_db_bootstrap
+from identity import static_identity_paths
 
 
 def _resolve_app_path(raw: str) -> Path:
@@ -30,16 +31,16 @@ def _resolve_app_path(raw: str) -> Path:
     return path
 
 
-def _runtime_resource_path(field: str) -> Path:
+def _runtime_resource_resolution(field: str) -> static_identity_paths.StaticIdentityPathResolution:
     view = runtime_settings.get_resources_settings()
     payload = view.payload.get(field) or {}
     if 'value' in payload:
-        return _resolve_app_path(str(payload['value']))
+        return static_identity_paths.resolve_static_identity_path(str(payload['value']))
 
     env_bundle = runtime_settings.build_env_seed_bundle('resources')
     fallback = env_bundle.payload.get(field) or {}
     if 'value' in fallback:
-        return _resolve_app_path(str(fallback['value']))
+        return static_identity_paths.resolve_static_identity_path(str(fallback['value']))
 
     raise KeyError(f'missing resources runtime value: {field}')
 
@@ -343,9 +344,11 @@ def _check_db_schema() -> Dict[str, Any]:
 
 
 def _check_prompt_files() -> Dict[str, Any]:
+    required_identity_files = {
+        "llm_identity": _runtime_resource_resolution('llm_identity_path'),
+        "user_identity": _runtime_resource_resolution('user_identity_path'),
+    }
     required_files = {
-        "llm_identity": _runtime_resource_path('llm_identity_path'),
-        "user_identity": _runtime_resource_path('user_identity_path'),
         "main_system_prompt": _resolve_app_path(config.MAIN_SYSTEM_PROMPT_PATH),
         "main_hermeneutical_prompt": _resolve_app_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH),
         "summary_system_prompt": _resolve_app_path(config.SUMMARY_SYSTEM_PROMPT_PATH),
@@ -392,6 +395,20 @@ def _check_prompt_files() -> Dict[str, Any]:
     details: Dict[str, Any] = {
         "forbidden_inline_markers": forbidden_inline_markers,
     }
+    for name, resolution in required_identity_files.items():
+        path = resolution.resolved_path
+        if path is None or not path.exists():
+            raise RuntimeError(f"fichier prompt/identity absent: {resolution.validation_detail(name)}")
+        content = path.read_text(encoding="utf-8").strip()
+        if len(content) < 20:
+            raise RuntimeError(f"fichier trop court ou vide: {path}")
+        details[name] = {
+            "path": str(path),
+            "configured_path": resolution.configured_path,
+            "resolved_path": str(path),
+            "resolution": resolution.resolution_kind,
+            "chars": len(content),
+        }
     for name, path in required_files.items():
         if not path.exists():
             raise RuntimeError(f"fichier prompt/identity absent: {path}")

@@ -12,6 +12,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 import config
+from identity import static_identity_paths
 import minimal_validation
 
 
@@ -130,6 +131,57 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         )
         self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
         self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
+
+    def test_check_prompt_files_resolves_standard_runtime_data_paths_via_host_state_mirror(self) -> None:
+        original_get_resources = minimal_validation.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / 'app').mkdir()
+            identity_dir = tmp_path / 'state' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            llm_file = identity_dir / 'llm_identity.txt'
+            user_file = identity_dir / 'user_identity.txt'
+            llm_file.write_text('identite llm host mirror minimale suffisamment longue', encoding='utf-8')
+            user_file.write_text('identite user host mirror minimale suffisamment longue', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'origin': 'db'},
+                            'user_identity_path': {'value': 'data/identity/user_identity.txt', 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            minimal_validation.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                details = minimal_validation._check_prompt_files()
+            finally:
+                minimal_validation.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+
+        self.assertEqual(details['llm_identity']['configured_path'], 'data/identity/llm_identity.txt')
+        self.assertEqual(details['user_identity']['configured_path'], 'data/identity/user_identity.txt')
+        self.assertEqual(details['llm_identity']['path'], str(llm_file.resolve()))
+        self.assertEqual(details['user_identity']['path'], str(user_file.resolve()))
+        self.assertEqual(details['llm_identity']['resolved_path'], str(llm_file.resolve()))
+        self.assertEqual(details['user_identity']['resolved_path'], str(user_file.resolve()))
+        self.assertEqual(details['llm_identity']['resolution'], 'host_state_mirror')
+        self.assertEqual(details['user_identity']['resolution'], 'host_state_mirror')
 
 
 class MinimalValidationPhase4DatabaseTests(unittest.TestCase):

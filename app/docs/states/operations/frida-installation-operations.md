@@ -123,6 +123,8 @@ Option identites statiques (sinon bloc identite vide):
 - `FRIDA_LLM_IDENTITY_PATH` (defaut: `data/identity/llm_identity.txt`);
 - `FRIDA_USER_IDENTITY_PATH` (defaut: `data/identity/user_identity.txt`).
 - en exploitation Docker standard, ces fichiers sont alimentes via `state/data/identity/*` cote hote.
+- le contrat visible reste `data/identity/...` car le runtime applicatif lit ces chemins sous `/app`.
+- hors conteneur, les chargeurs et validations host-side resolvent le mirror `state/data/identity/...` si `app/data/identity/...` est absent.
 
 ## 5.3 Bootstrap state local recommande
 

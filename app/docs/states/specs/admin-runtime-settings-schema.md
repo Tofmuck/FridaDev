@@ -198,6 +198,12 @@ Regle de transition :
 | `llm_identity_path` | `text` | non | `FRIDA_LLM_IDENTITY_PATH` |
 | `user_identity_path` | `text` | non | `FRIDA_USER_IDENTITY_PATH` |
 
+Convention explicite:
+
+- la valeur visible cote admin reste un chemin runtime du type `data/identity/...`;
+- en deploiement Docker standard, cette convention pointe vers `/app/data/...`, alimente par le volume hote `state/data/...`;
+- les validations et lectures host-side reutilisent cette meme convention et resolvent le mirror `state/data/...` quand le chemin relatif `app/data/...` n'existe pas localement.
+
 ## API de lecture cible
 
 Forme de lecture admin attendue :

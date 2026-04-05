@@ -14,7 +14,7 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ## Pilotage
 
-- [ ] Lot 1 - Retablir la verite runtime de l'identity statique
+- [x] Lot 1 - Retablir la verite runtime de l'identity statique
 - [ ] Lot 2 - Construire un mode de lecture identity unifie et honnete
 - [ ] Lot 3 - Ouvrir une edition controlee du dynamique
 - [ ] Lot 4 - Ouvrir une edition controlee du statique
@@ -88,16 +88,22 @@ But:
   - le payload canonique `identity_input`;
   - les preuves de lecture operateur associees.
 
-- [ ] Trancher la source de verite effective des chemins `llm_identity_path` / `user_identity_path`
-- [ ] Fermer l'ecart entre chemins runtime, resolution relative et emplacement reel des fichiers
-- [ ] Verifier la semantique attendue pour chemins relatifs vs absolus
-- [ ] Confirmer que le contenu statique charge est bien celui expose a l'operateur
-- [ ] Ajouter la preuve de non-regression minimale sur `load_llm_identity()` / `load_user_identity()`, `build_identity_block()` et `build_identity_input()`
+- [x] Trancher la source de verite effective des chemins `llm_identity_path` / `user_identity_path`
+- [x] Fermer l'ecart entre chemins runtime, resolution relative et emplacement reel des fichiers
+- [x] Verifier la semantique attendue pour chemins relatifs vs absolus
+- [x] Confirmer que le contenu statique charge est bien celui expose a l'operateur
+- [x] Ajouter la preuve de non-regression minimale sur `load_llm_identity()` / `load_user_identity()`, `build_identity_block()` et `build_identity_input()`
 
 Sortie attendue:
 - le statique est present dans la verite runtime du prompt et du payload, sans ambiguite de chemin;
 - la source de verite documentaire du statique est explicite et stable;
 - le chantier peut ensuite ouvrir une surface `Identity` sans raconter une contre-verite.
+
+Cloture du lot:
+- le contrat visible reste `data/identity/...`;
+- hors conteneur, la resolution host-side retrouve le mirror `state/data/identity/...` sans changer le path expose a l'operateur;
+- le payload canonique garde le statique complet et sa source;
+- le bloc prompt reintegre bien le statique, mais reste soumis au budget `IDENTITY_MAX_TOKENS` deja en place.
 
 Hors scope du lot:
 - nouvelle page `Identity`;

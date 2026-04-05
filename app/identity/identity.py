@@ -11,6 +11,7 @@ import config
 from admin import runtime_settings
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core import token_utils
+from identity import static_identity_paths
 from observability import chat_turn_logger
 
 logger = logging.getLogger('frida.identity')
@@ -51,15 +52,20 @@ def _runtime_resource_path(field: str) -> str:
 
 
 def _load_file(path_str: str) -> str:
-    path = Path(path_str)
-    if not path.is_absolute():
-        path = Path(__file__).resolve().parent.parent / path
-    if not path.exists():
+    resolution = static_identity_paths.resolve_static_identity_path(path_str)
+    path = resolution.resolved_path
+    if path is None:
         return ''
     try:
         return path.read_text(encoding='utf-8').strip()
     except Exception as exc:
-        logger.warning('identity_load_error path=%s err=%s', path, exc)
+        logger.warning(
+            'identity_load_error configured_path=%s resolved_path=%s resolution=%s err=%s',
+            resolution.configured_path,
+            path,
+            resolution.resolution_kind,
+            exc,
+        )
         return ''
 
 

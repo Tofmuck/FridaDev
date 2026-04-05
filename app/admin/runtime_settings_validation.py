@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlparse
 
+from identity import static_identity_paths
+
 
 def _validation_check(name: str, ok: bool, detail: str) -> dict[str, Any]:
     return {
@@ -334,19 +336,23 @@ def validate_runtime_section(
             )
         )
     elif section == 'resources':
-        llm_identity_path = _resolve_app_path(_runtime_text_value(view, 'llm_identity_path'))
-        user_identity_path = _resolve_app_path(_runtime_text_value(view, 'user_identity_path'))
+        llm_identity_path = static_identity_paths.resolve_static_identity_path(
+            _runtime_text_value(view, 'llm_identity_path')
+        )
+        user_identity_path = static_identity_paths.resolve_static_identity_path(
+            _runtime_text_value(view, 'user_identity_path')
+        )
         checks.extend(
             (
                 _validation_check(
                     'llm_identity_path',
-                    llm_identity_path.is_file(),
-                    f'llm_identity_path={llm_identity_path}',
+                    llm_identity_path.exists,
+                    llm_identity_path.validation_detail('llm_identity_path'),
                 ),
                 _validation_check(
                     'user_identity_path',
-                    user_identity_path.is_file(),
-                    f'user_identity_path={user_identity_path}',
+                    user_identity_path.exists,
+                    user_identity_path.validation_detail('user_identity_path'),
                 ),
             )
         )
