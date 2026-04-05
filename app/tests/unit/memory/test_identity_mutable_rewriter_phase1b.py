@@ -95,6 +95,46 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         self.assertEqual(rejections[0]['reason_code'], 'mutable_content_too_long')
         self.assertEqual(rejections[0]['new_len'], 1651)
 
+    def test_validate_rewriter_contract_rejects_subject_without_explicit_content_key(self) -> None:
+        validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
+            {
+                'llm': {
+                    'action': 'no_change',
+                    'reason': 'no durable update',
+                },
+                'user': {
+                    'action': 'no_change',
+                    'content': '',
+                    'reason': 'no durable update',
+                },
+            }
+        )
+
+        self.assertIn('user', validated)
+        self.assertEqual(len(rejections), 1)
+        self.assertEqual(rejections[0]['subject'], 'llm')
+        self.assertEqual(rejections[0]['reason_code'], 'contract_content_missing')
+
+    def test_validate_rewriter_contract_rejects_subject_without_explicit_reason_key(self) -> None:
+        validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
+            {
+                'llm': {
+                    'action': 'no_change',
+                    'content': '',
+                },
+                'user': {
+                    'action': 'no_change',
+                    'content': '',
+                    'reason': 'no durable update',
+                },
+            }
+        )
+
+        self.assertIn('user', validated)
+        self.assertEqual(len(rejections), 1)
+        self.assertEqual(rejections[0]['subject'], 'llm')
+        self.assertEqual(rejections[0]['reason_code'], 'contract_reason_missing')
+
     def test_refresh_mutable_identities_applies_valid_rewrite_and_logs_compact_outcomes(self) -> None:
         observed_events: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event

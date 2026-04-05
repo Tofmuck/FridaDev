@@ -43,5 +43,6 @@ Contract:
   - `action`: `no_change` or `rewrite`
   - `content`: string; must be empty when `action=no_change`
   - `reason`: short string
+- Do not omit any of these three keys, even for `no_change`.
 - When `action=rewrite`, `content` must be one coherent narrative text, not bullet fragments.
 - Do not wrap the JSON in markdown fences.

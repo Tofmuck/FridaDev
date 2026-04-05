@@ -695,6 +695,78 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(rewrite_event['reason_code'], 'rewriter_flow_error')
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced')
 
+    def test_record_identity_entries_for_mode_does_not_pass_partial_read_overclaim_to_mutable_rewriter(self) -> None:
+        events = []
+        observed = {
+            'persisted': None,
+            'rewrite_turns': None,
+        }
+        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda _turns: [
+                {
+                    'subject': 'llm',
+                    'content': 'Claims to have read the full article in detail',
+                    'confidence': 0.88,
+                    'stability': 'durable',
+                    'utterance_mode': 'self_description',
+                    'recurrence': 'repeated',
+                    'scope': 'llm',
+                    'evidence_kind': 'explicit',
+                }
+            ],
+        )
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {'persisted': (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        def fake_refresh(recent_turns, **_kwargs):
+            observed['rewrite_turns'] = list(recent_turns)
+            return {
+                'status': 'ok',
+                'reason_code': 'processed',
+                'outcomes': [
+                    {
+                        'subject': 'llm',
+                        'action': 'no_change',
+                        'old_len': 0,
+                        'new_len': 0,
+                        'validation_ok': True,
+                        'reason_code': 'no_change',
+                    }
+                ],
+            }
+
+        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = fake_refresh
+        try:
+            chat_memory_flow.record_identity_entries_for_mode(
+                'conv-identity-partial-guard',
+                [
+                    {'role': 'user', 'content': 'Peux-tu le lire ?'},
+                    {'role': 'assistant', 'content': 'Claims to have read the full article in detail'},
+                ],
+                mode='enforced_all',
+                web_input={'read_state': 'page_partially_read'},
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+
+        self.assertEqual(observed['persisted'], ('conv-identity-partial-guard', []))
+        self.assertEqual(observed['rewrite_turns'], [{'role': 'user', 'content': 'Peux-tu le lire ?'}])
+        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
+        self.assertEqual(rewrite_event['status'], 'ok')
+        self.assertEqual(rewrite_event['reason_code'], 'processed')
+        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['guard_filtered_count'], 1)
+
     def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self) -> None:
         events = []
         observed = {

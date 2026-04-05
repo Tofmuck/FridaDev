@@ -118,6 +118,28 @@ def _guard_filtered_summary(
     return counts, previews
 
 
+def _sanitize_recent_turns_for_mutable_rewriter(
+    recent_turns: Sequence[Mapping[str, Any]],
+    *,
+    web_input: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+    for turn in recent_turns:
+        canonical_turn = dict(turn or {})
+        role = str(canonical_turn.get('role') or '').strip().lower()
+        content = str(canonical_turn.get('content') or '').strip()
+        if role == 'assistant' and content:
+            reason = hermeneutics_policy.unsupported_web_reading_claim_reason(
+                {'subject': 'llm', 'content': content},
+                web_input=web_input,
+            )
+            if reason:
+                canonical_turn['content'] = ''
+        if str(canonical_turn.get('content') or '').strip():
+            sanitized.append(canonical_turn)
+    return sanitized
+
+
 def _log_stage_latency(
     conversation_id: str,
     stage: str,
@@ -449,12 +471,16 @@ def record_identity_entries_for_mode(
     )
     guard_filtered_count = len(guard_filtered_entries)
     guard_counts_by_side, guard_preview_by_side = _guard_filtered_summary(guard_filtered_entries)
+    mutable_rewriter_turns = _sanitize_recent_turns_for_mutable_rewriter(
+        recent_turns,
+        web_input=web_input,
+    )
 
     if mode_enforces_identity(mode):
         memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
         _refresh_mutable_identities(
             conversation_id,
-            recent_turns,
+            mutable_rewriter_turns,
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
             admin_logs_module=admin_logs_module,

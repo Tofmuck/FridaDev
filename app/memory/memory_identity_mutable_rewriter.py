@@ -98,7 +98,19 @@ def _validate_subject_contract(subject: str, raw: Any) -> tuple[dict[str, Any] |
     if not isinstance(raw, dict):
         return None, {'action': 'rejected', 'content': '', 'reason_code': 'contract_subject_not_object'}
 
-    unexpected_keys = sorted(set(raw.keys()) - {'action', 'content', 'reason'})
+    required_keys = {'action', 'content', 'reason'}
+    present_keys = set(raw.keys())
+    missing_keys = sorted(required_keys - present_keys)
+    if missing_keys:
+        if 'action' in missing_keys:
+            reason_code = 'contract_action_missing'
+        elif 'content' in missing_keys:
+            reason_code = 'contract_content_missing'
+        else:
+            reason_code = 'contract_reason_missing'
+        return None, {'action': 'rejected', 'content': '', 'reason_code': reason_code}
+
+    unexpected_keys = sorted(present_keys - required_keys)
     if unexpected_keys:
         return None, {'action': 'rejected', 'content': '', 'reason_code': 'contract_subject_extra_keys'}
 
