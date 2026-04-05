@@ -266,13 +266,14 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [x] `docs/states/hermeneutic-judgment-spec.md`: spec normative.
 
 ## Criteres d'acceptation finaux
-- [ ] Reduction >= 50% des identites circonstancielles sur corpus test.
-- [ ] 0 entree `irony|role_play` en identite durable sans override humain explicite.
-- [ ] Rappel memoire utile stable (pas de chute > 10%).
-- [ ] p95 latence additionnelle arbitre+extracteur dans la cible definie Phase 0.
-- [ ] 0 cas de fallback "garder tout".
-- [ ] Chaque souvenir/trait injecte est explicable via logs admin.
-- [ ] Overrides humains pris en compte au tour suivant (pas seulement journalises).
+- Note de realignement 2026-04-05: le runtime live est deja en `enforced_all`; ces criteres ne sont donc plus des portes de rollout a franchir avant activation. Ils servent desormais de preuves post-rollout / post-stabilisation a consolider honnetement, et ne doivent etre coches qu'avec une mesure ou une revalidation explicite.
+- [ ] Mesurer a posteriori sur corpus de stabilisation si les identites circonstancielles baissent d'au moins `50%` par rapport a la baseline de reference.
+- [ ] Verifier sur corpus de stabilisation qu'aucune entree `irony|role_play` n'arrive en identite durable sans override humain explicite.
+- [ ] Mesurer sur conversations longues / corpus de stabilisation si le rappel memoire utile reste stable (pas de chute > `10%`).
+- [ ] Consolider la comparaison a la cible Phase 0 pour le `p95` de latence additionnelle arbitre+extracteur; le dashboard live expose deja des `p95` runtime, mais pas encore la conclusion cible/non-cible.
+- [ ] Verifier sur une fenetre post-stabilisation qu'aucun fallback global "garder tout" n'apparait; le dashboard live retourne actuellement `fallback_rate=0.0`, `runtime_fallback_rate=0.0` et `parse_error_rate=0.0`, mais ce n'est pas encore une preuve de cloture durable.
+- [ ] Verifier sur un echantillon post-rollout que chaque souvenir/trait injecte reste explicable via les logs admin existants.
+- [ ] Revalider en conditions reelles que les overrides humains sont bien pris en compte au tour suivant, et pas seulement journalises; des routes/tests existent deja, mais la preuve finale n'est pas encore consolidee ici.
 
 ## Reliquats fusionnes depuis `memory-todo.md`
 - [ ] Verifier en conditions reelles que le bloc `[Contexte du souvenir]` est effectivement exploite dans la reponse et n'ajoute pas de bruit.
