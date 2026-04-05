@@ -57,7 +57,7 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ### Ce qui manque encore
 
-- une verite runtime honnete du statique;
+- une requalification doctrinale honnete des identities mutables avant le Lot 2;
 - une vue unifiee statique + dynamique + evidences + conflits + caps;
 - la lisibilite de ce qui est injecte vs seulement stocke;
 - l'edition directe du contenu dynamique;
@@ -67,12 +67,9 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ### Point critique prioritaire
 
-- Dans le runtime audite, `app/identity/identity.py` resout actuellement `llm_identity_path` et `user_identity_path` vers `data/identity/...`.
-- Dans le meme audit, les fichiers statiques reels vus localement se trouvent sous `state/data/identity/...`.
-- Resultat revalide:
-  - le dynamique continue d'alimenter `build_identity_block()`;
-  - le statique n'atteint pas effectivement le prompt/payload runtime dans l'etat courant audite.
-- Tant que ce point reste ouvert, une future surface `Identity` resterait trompeuse pour l'operateur.
+- Le Lot 1 a ferme la verite runtime du statique: les identities statiques atteignent maintenant bien le prompt et le payload.
+- Le prochain bloqueur n'est plus le statique mais le chantier doctrinal `Lot 1B` sur les mutables.
+- Tant que `Lot 1B` reste ouvert, une future surface `Identity` raconterait encore un melange trompeur entre le monde fragmentaire actuel et la doctrine narrative cible.
 
 ## Ordre retenu
 
