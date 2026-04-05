@@ -12,7 +12,7 @@ Sources de travail retenues:
 
 - [x] Realigner `app/docs/todo-todo/memory/hermeneutical-add-todo.md` avec le runtime live deja en `mode=enforced_all`, au minimum sur les Steps 2-4 de la Phase 13.
 - [x] Decider quoi faire des criteres d'acceptation finaux encore ouverts dans `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: les mesurer a posteriori, les reformuler, ou les deplacer si le rollout reel a deja saute l'etape progressive documentee.
-- [ ] Corriger la verite temporelle du stream dans `app/core/chat_llm_flow.py`: en chemin stream, `updated_at` ne doit plus etre capture avant la fin effective de la reponse.
+- [x] Corriger la verite temporelle du stream dans `app/core/chat_llm_flow.py`: en chemin stream, `updated_at` ne doit plus etre capture avant la fin effective de la reponse.
 - [ ] Donner a `app/tools/web_search.py` un caller transport dedie pour la reformulation web, distinct du caller principal `llm`, afin de separer proprement observabilite, tokens et couts provider.
 - [ ] Extraire les constantes `READ_STATE_*` dans une source de verite unique puis migrer `app/tools/web_search.py`, `app/core/chat_prompt_context.py` et `app/memory/hermeneutics_policy.py` vers cet import commun.
 - [ ] Remplacer le couplage prive a `llm_module._sanitize_encoding(...)` dans `app/core/chat_llm_flow.py` par une API publique explicite ou un wrapper stable.

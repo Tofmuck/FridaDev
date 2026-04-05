@@ -234,6 +234,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             'identity_callback_called': False,
             'reactivate_called': False,
             'provider_log_calls': [],
+            'stream_completed': False,
+            'now_iso_flags': [],
         }
         conversation = {
             'id': 'conv-stream',
@@ -257,6 +259,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 yield 'data: {"id":"gen-stream","model":"openrouter/runtime-main-model","choices":[{"delta":{"content":"Bon"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
                 yield 'data: {"usage":{"prompt_tokens":40,"completion_tokens":2,"total_tokens":42},"choices":[{"delta":{}}]}'
+                observed['stream_completed'] = True
                 yield 'data: [DONE]'
 
         def fake_post(_url, *, json, headers, timeout, stream=False):
@@ -319,6 +322,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
 
+        def fake_now_iso():
+            observed['now_iso_flags'].append(observed['stream_completed'])
+            return '2026-03-26T00:11:59Z'
+
         result = chat_llm_flow.run_llm_exchange(
             conversation=conversation,
             prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
@@ -340,7 +347,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             config_module=config_module,
             logger=logger,
             arbiter_module=SimpleNamespace(),
-            now_iso_func=lambda: '2026-03-26T00:11:00Z',
+            now_iso_func=fake_now_iso,
             record_identity_entries_for_mode=lambda *_args, **_kwargs: observed.update({'identity_callback_called': True}),
             mode_enforces_identity=lambda mode: mode == 'enforced_all',
             conversation_headers_func=lambda _conversation, updated_at: {
@@ -348,11 +355,16 @@ class ChatLlmFlowTests(unittest.TestCase):
                 'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
                 'X-Conversation-Updated-At': updated_at,
             },
+            conversation_stream_headers_func=lambda _conversation: {
+                'X-Conversation-Id': 'conv-stream',
+                'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
+            },
         )
 
         self.assertEqual(result['kind'], 'stream')
         self.assertEqual(result['headers']['X-Conversation-Id'], 'conv-stream')
-        self.assertEqual(result['headers']['X-Conversation-Updated-At'], '2026-03-26T00:11:00Z')
+        self.assertEqual(result['headers']['X-Conversation-Created-At'], '2026-03-26T00:00:00Z')
+        self.assertNotIn('X-Conversation-Updated-At', result['headers'])
         self.assertTrue(_event_payloads(events, 'llm_call')[0]['stream'])
         self.assertEqual(_event_payloads(events, 'llm_call')[0]['provider_caller'], 'llm')
         self.assertEqual(_event_payloads(events, 'llm_call')[0]['provider_title'], 'FridaDev/llm')
@@ -362,7 +374,9 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertTrue(observed['request_stream_flag'])
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], 'Bonjour')
-        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
+        self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:11:59Z')
+        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:59Z')
+        self.assertEqual(observed['now_iso_flags'], [True])
         self.assertTrue(observed['identity_callback_called'])
         self.assertTrue(observed['reactivate_called'])
         self.assertEqual(
@@ -386,7 +400,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 {
                     'conversation_id': 'conv-stream',
                     'estimated_assistant_tokens': 3,
-                    'message_timestamp': '2026-03-26T00:11:00Z',
+                    'message_timestamp': '2026-03-26T00:11:59Z',
                 }
             ],
         )

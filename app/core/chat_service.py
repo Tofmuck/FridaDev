@@ -629,4 +629,5 @@ def chat_response(
         record_identity_entries_for_mode=_record_identity_entries_for_mode,
         mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
         conversation_headers_func=chat_session_flow.conversation_headers,
+        conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
     )

@@ -626,18 +626,6 @@
       })
     });
 
-    const convId = res.headers.get("X-Conversation-Id");
-    const createdAt = res.headers.get("X-Conversation-Created-At");
-    const updatedAt = res.headers.get("X-Conversation-Updated-At");
-    if (threadId && (convId || createdAt || updatedAt)) {
-      setThreadMeta(threadId, {
-        conversation_id: convId || (thread ? thread.conversation_id : null),
-        created_at: createdAt || (thread ? thread.created_at : null),
-        updated_at: updatedAt || (thread ? thread.updated_at : null),
-      });
-      renderThreads();
-    }
-
     if (!res.ok) {
       let errText = "";
       try {
@@ -647,7 +635,18 @@
     }
 
     const contentType = res.headers.get("content-type") || "";
+    const convId = res.headers.get("X-Conversation-Id");
+    const createdAt = res.headers.get("X-Conversation-Created-At");
+    const updatedAt = res.headers.get("X-Conversation-Updated-At");
     if (contentType.includes("application/json")) {
+      if (threadId && (convId || createdAt || updatedAt)) {
+        setThreadMeta(threadId, {
+          conversation_id: convId || (thread ? thread.conversation_id : null),
+          created_at: createdAt || (thread ? thread.created_at : null),
+          updated_at: updatedAt || (thread ? thread.updated_at : null),
+        });
+        renderThreads();
+      }
       const data = await res.json();
       if (!data.ok) {
         throw new Error(data.error || "Réponse serveur invalide");
@@ -663,6 +662,14 @@
       }
       if (typeof onChunk === "function" && text) onChunk(text);
       return text;
+    }
+
+    if (threadId && (convId || createdAt)) {
+      setThreadMeta(threadId, {
+        conversation_id: convId || (thread ? thread.conversation_id : null),
+        created_at: createdAt || (thread ? thread.created_at : null),
+      });
+      renderThreads();
     }
 
     if (!res.body) return "";

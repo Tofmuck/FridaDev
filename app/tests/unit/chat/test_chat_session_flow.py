@@ -141,6 +141,23 @@ class ChatSessionFlowTests(unittest.TestCase):
             },
         )
 
+    def test_conversation_stream_headers_omit_updated_at_until_stream_completion(self) -> None:
+        headers = chat_session_flow.conversation_stream_headers(
+            {
+                'id': 'conv-stream-headers',
+                'created_at': '2026-03-26T00:00:00Z',
+                'updated_at': '2026-03-26T00:10:00Z',
+            }
+        )
+
+        self.assertEqual(
+            headers,
+            {
+                'X-Conversation-Id': 'conv-stream-headers',
+                'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
+            },
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

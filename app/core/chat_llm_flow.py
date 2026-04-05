@@ -23,6 +23,18 @@ def _stream_result(stream: Any, headers: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def _build_stream_headers(
+    conversation: Mapping[str, Any],
+    conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None,
+) -> dict[str, str]:
+    if conversation_stream_headers_func is not None:
+        return dict(conversation_stream_headers_func(conversation))
+    return {
+        'X-Conversation-Id': str(conversation['id']),
+        'X-Conversation-Created-At': str(conversation['created_at']),
+    }
+
+
 def run_llm_exchange(
     *,
     conversation: dict[str, Any],
@@ -50,6 +62,7 @@ def run_llm_exchange(
     record_identity_entries_for_mode: Callable[..., None],
     mode_enforces_identity: Callable[[str], bool],
     conversation_headers_func: Callable[[Mapping[str, Any], str], dict[str, str]],
+    conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     try:
         runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
@@ -150,7 +163,7 @@ def run_llm_exchange(
                 conversation_headers_func(conversation, updated_at),
             )
 
-        response_updated_at = now_iso_func()
+        stream_headers = _build_stream_headers(conversation, conversation_stream_headers_func)
 
         def event_stream():
             assistant_chunks: list[str] = []
@@ -224,13 +237,14 @@ def run_llm_exchange(
                         assistant_text,
                         assistant_output_policy,
                     )
+                final_updated_at = now_iso_func()
                 if assistant_text:
                     buffered_output = assistant_text if buffer_stream_output else ''
                     conv_store_module.append_message(
                         conversation,
                         'assistant',
                         assistant_text,
-                        timestamp=response_updated_at,
+                        timestamp=final_updated_at,
                     )
                     estimated_assistant_tokens = token_utils_module.estimate_tokens(
                         [{'content': assistant_text}],
@@ -240,7 +254,7 @@ def run_llm_exchange(
                         'AssistantText',
                         conversation_id=conversation['id'],
                         estimated_assistant_tokens=estimated_assistant_tokens,
-                        message_timestamp=response_updated_at,
+                        message_timestamp=final_updated_at,
                     )
                 memory_store_module.save_new_traces(conversation)
                 recent_2 = [
@@ -259,7 +273,7 @@ def run_llm_exchange(
                 )
                 if identity_ids and mode_enforces_identity(current_mode):
                     memory_store_module.reactivate_identities(identity_ids)
-                conv_store_module.save_conversation(conversation, updated_at=response_updated_at)
+                conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
             if buffered_output:
                 yield buffered_output
 
@@ -275,7 +289,7 @@ def run_llm_exchange(
         )
         return _stream_result(
             event_stream(),
-            conversation_headers_func(conversation, response_updated_at),
+            stream_headers,
         )
 
     except requests_module.exceptions.RequestException as exc:

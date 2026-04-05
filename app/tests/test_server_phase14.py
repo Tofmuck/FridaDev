@@ -154,7 +154,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         return observed, restore
 
     def test_api_chat_stream_keeps_content_type_and_conversation_headers(self) -> None:
-        observed = {'stream_kw': None}
+        observed = {'stream_kw': None, 'stream_completed': False, 'now_iso_flags': []}
         conversation = {
             'id': 'conv-stream-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -176,6 +176,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             def iter_lines(self, decode_unicode=True, delimiter='\n'):
                 yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
+                observed['stream_completed'] = True
                 yield 'data: [DONE]'
 
         def fake_requests_post(*_args, **kwargs):
@@ -186,22 +187,30 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             conversation=conversation,
             requests_post=fake_requests_post,
         )
+        original_now_iso = self.server.chat_service._now_iso
+        now_values = iter(['2026-03-26T00:00:10Z', '2026-03-26T00:00:20Z'])
+
+        def fake_now_iso():
+            observed['now_iso_flags'].append(observed['stream_completed'])
+            return next(now_values)
+
+        self.server.chat_service._now_iso = fake_now_iso
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
         finally:
+            self.server.chat_service._now_iso = original_now_iso
             restore()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
         self.assertEqual(response.headers.get('X-Conversation-Id'), 'conv-stream-phase14')
         self.assertEqual(response.headers.get('X-Conversation-Created-At'), '2026-03-26T00:00:00Z')
-        self.assertTrue(response.headers.get('X-Conversation-Updated-At'))
+        self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertEqual(response.get_data(as_text=True), 'Bonjour')
         self.assertTrue(observed['stream_kw'])
-        self.assertEqual(
-            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
-            response.headers.get('X-Conversation-Updated-At'),
-        )
+        self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:00:20Z')
+        self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), '2026-03-26T00:00:20Z')
+        self.assertEqual(observed['now_iso_flags'], [False, True])
 
     def test_api_chat_stream_normalizes_ordinary_turn_for_first_party_surface(self) -> None:
         conversation = {
@@ -247,16 +256,14 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         text = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertNotIn('\n- ', text)
         self.assertNotIn('\n1) ', text)
         self.assertIn('Lisible.', text)
         self.assertIn('Portable.', text)
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], text)
-        self.assertEqual(
-            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
-            response.headers.get('X-Conversation-Updated-At'),
-        )
+        self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
     def test_api_chat_stream_preserves_explicit_plan_structure_for_first_party_surface(self) -> None:
         conversation = {
@@ -300,13 +307,11 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
 
         text = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertIn('1) Comprendre', text)
         self.assertIn('2) Structurer', text)
         self.assertEqual(conversation['messages'][-1]['content'], text)
-        self.assertEqual(
-            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
-            response.headers.get('X-Conversation-Updated-At'),
-        )
+        self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
     def test_api_chat_stream_removes_unrequested_fenced_code_blocks_for_first_party_surface(self) -> None:
         conversation = {
@@ -354,15 +359,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         text = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertIn('Voici JSON :', text)
         self.assertIn('C’est un format texte.', text)
         self.assertNotIn('```', text)
         self.assertNotIn('"nom"', text)
         self.assertEqual(conversation['messages'][-1]['content'], text)
-        self.assertEqual(
-            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
-            response.headers.get('X-Conversation-Updated-At'),
-        )
+        self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})

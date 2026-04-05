@@ -56,3 +56,10 @@ def conversation_headers(conversation: Mapping[str, Any], updated_at: str) -> di
         'X-Conversation-Created-At': str(conversation['created_at']),
         'X-Conversation-Updated-At': str(updated_at),
     }
+
+
+def conversation_stream_headers(conversation: Mapping[str, Any]) -> dict[str, str]:
+    return {
+        'X-Conversation-Id': str(conversation['id']),
+        'X-Conversation-Created-At': str(conversation['created_at']),
+    }

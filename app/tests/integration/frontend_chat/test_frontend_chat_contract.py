@@ -93,6 +93,17 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("marked(", app_source)
         self.assertNotIn("markdown-it", app_source)
 
+    def test_streaming_front_no_longer_uses_pre_body_updated_at_header_as_final_metadata(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('if (contentType.includes("application/json")) {', app_source)
+        self.assertIn('updated_at: updatedAt || (thread ? thread.updated_at : null),', app_source)
+        self.assertIn('if (threadId && (convId || createdAt)) {', app_source)
+        self.assertIn(
+            'setThreadMeta(threadId, {\n        conversation_id: convId || (thread ? thread.conversation_id : null),\n        created_at: createdAt || (thread ? thread.created_at : null),\n      });',
+            app_source,
+        )
+
     def test_session_panel_points_main_llm_response_budget_to_admin_runtime(self) -> None:
         source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
 
