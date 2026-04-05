@@ -144,5 +144,7 @@ Point important:
 - state precedent FR: `app/docs/states/project/Frida-State-french-28-03-26.md`
 - equivalent EN courant: `app/docs/states/project/Frida-State-english-03-04-26.md`
 - audit canonique: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- note de cloture lecture web URL explicite / Crawl4AI: `app/docs/todo-done/notes/web-reading-truth-todo.md`
+- note de cloture mini-lot dialogique / identite: `app/docs/todo-done/notes/dialogic-identity-closure.md`
 - archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - operations rollout hermeneutique: `app/docs/states/operations/hermeneutic-full-rollout-preconditions.md`

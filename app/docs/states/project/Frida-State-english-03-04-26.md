@@ -144,5 +144,7 @@ Important note:
 - previous EN state: `app/docs/states/project/Frida-State-english-28-03-26.md`
 - same-date FR counterpart: `app/docs/states/project/Frida-State-french-03-04-26.md`
 - canonical audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- closure note for explicit-URL web reading / Crawl4AI: `app/docs/todo-done/notes/web-reading-truth-todo.md`
+- closure note for the dialogic / identity mini-batch: `app/docs/todo-done/notes/dialogic-identity-closure.md`
 - closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - hermeneutic rollout operations note: `app/docs/states/operations/hermeneutic-full-rollout-preconditions.md`
