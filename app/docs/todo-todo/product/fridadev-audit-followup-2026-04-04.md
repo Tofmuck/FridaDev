@@ -32,7 +32,7 @@ Sources de travail retenues:
 
 ## 3. Restes d'audit importants a ne pas perdre
 
-- [ ] Corriger le comptage stale `58` -> `59` fichiers `test_*.py` dans `app/docs/states/project/Frida-State-french-03-04-26.md`, `app/docs/states/project/Frida-State-english-03-04-26.md` et `app/docs/todo-done/audits/fridadev_repo_audit.md`.
+- [x] Realigner le comptage stale des fichiers `test_*.py` sur la valeur courante `60` dans `app/docs/states/project/Frida-State-french-03-04-26.md`, `app/docs/states/project/Frida-State-english-03-04-26.md` et `app/docs/todo-done/audits/fridadev_repo_audit.md`.
 - [ ] Verifier si les reliquats ouverts `Verifier en conditions reelles...` et `Monitorer le surcout tokens + latence...` dans `app/docs/todo-todo/memory/hermeneutical-add-todo.md` doivent rester dans la roadmap active, etre requalifies, ou etre deplaces dans un suivi post-rollout plus honnete.
 - [ ] Verifier le bruit `admin_log_write_error err=[Errno 13] Permission denied: '/app'` observe pendant `unittest discover`, et decider s'il s'agit d'un bruit acceptable de test, d'une mauvaise isolation, ou d'un vrai probleme de chemin/logs.
 - [ ] Verifier le `ResourceWarning` sur `app/web/hermeneutic-admin.html` observe pendant la suite complete, puis corriger la fermeture de ressource ou recadrer le test qui la laisse ouverte.

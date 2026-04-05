@@ -39,7 +39,7 @@ Date de reference: 2026-04-03
   - logs: `app/web/log.html`, `app/web/log/log.js`
   - hermeneutic admin: `app/web/hermeneutic-admin.html`, `app/web/hermeneutic-admin.js`
 - [Constate] Tests:
-  - `58` fichiers `test_*.py` sous `app/tests/`
+  - `60` fichiers `test_*.py` sous `app/tests/`
   - couverture explicite pour runtime settings, logs, OpenRouter provider metadata, pipeline hermeneutique, surfaces frontend admin/logs/hermeneutic-admin
 - [Constate] Documentation:
   - `app/docs/states/`: references stables

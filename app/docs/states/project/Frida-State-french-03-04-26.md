@@ -110,7 +110,7 @@ Le chemin runtime de haut niveau est:
 - `main_hermeneutical.txt` fixe l'ordre de priorite des briques runtime et la place du bloc `[JUGEMENT HERMENEUTIQUE]`
 
 ### 4.5 Tests
-- `58` fichiers `test_*.py` sont presents sous `app/tests/`
+- `60` fichiers `test_*.py` sont presents sous `app/tests/`
 - la couverture inclut les logs applicatifs, la surface hermeneutique, les transports OpenRouter et les flux `stimmung_agent` / `validation_agent`
 
 ## 5. Chantiers integres et verifies

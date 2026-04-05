@@ -110,7 +110,7 @@ The high-level runtime path is now:
 - `main_hermeneutical.txt` defines runtime brick priority and the place of `[JUGEMENT HERMENEUTIQUE]`
 
 ### 4.5 Tests
-- `58` `test_*.py` files are present under `app/tests/`
+- `60` `test_*.py` files are present under `app/tests/`
 - coverage includes application logs, hermeneutic surfaces, OpenRouter transport metadata, and `stimmung_agent` / `validation_agent` flows
 
 ## 5. Integrated and verified workstreams
