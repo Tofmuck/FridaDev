@@ -45,7 +45,7 @@ Sources de travail retenues:
 ## 4bis. Travaux documentaires de consolidation
 
 - [x] Produire une note de cloture lisible pour le chantier `lecture web URL explicite / Crawl4AI`, couvrant au minimum: bon contrat `/md`, strategie `fit -> raw if empty` pour URL explicite, budget explicite `25000`, fin de la troncature artificielle sur le cas Mediapart, et statut final honnete du comportement produit, maintenant consolidee dans `app/docs/todo-done/notes/web-reading-truth-todo.md`.
-- [ ] Produire une note de cloture lisible pour le mini-lot `dialogique / identite`, couvrant au minimum: reduction de la surclarification sur les gestes evidents, meilleure classification des questions fictionnelles/speculatives, revelation identitaire utilisateur plus operatoire, filtrage de certaines ecritures durables Frida meta/pipeline, et fermeture du reliquat de couture `logs/identity`.
+- [x] Produire une note de cloture lisible pour le mini-lot `dialogique / identite`, couvrant au minimum: reduction de la surclarification sur les gestes evidents, meilleure classification des questions fictionnelles/speculatives, revelation identitaire utilisateur plus operatoire, filtrage de certaines ecritures durables Frida meta/pipeline, et fermeture du reliquat de couture `logs/identity`, maintenant consolidee dans `app/docs/todo-done/notes/dialogic-identity-closure.md`.
 - [ ] Verifier si les docs actives ou archives liees a ces deux chantiers doivent recevoir un lien croise vers leur note de cloture, une mise a jour minimale de coherence, ou une mention d'archivage explicite.
 
 ## 5. Condition de cloture de ce TODO
