@@ -39,6 +39,36 @@ Etat de cette tranche:
 - le runtime produit maintenant un `read_state` explicite pour la page cible;
 - ce mini-chantier est maintenant clos: source primaire, `read_state`, garde de reponse, garde memoire et observability compacte ont ete fermee dans le meme cycle.
 
+## Addendum de cloture finale - URL explicite / Crawl4AI
+
+Cette note de cloture couvre aussi la consolidation finale du sous-chantier `URL explicite / Crawl4AI`, refermee par les commits:
+- `b3df359` - correction du contrat `/md` et de la lecture primaire URL explicite;
+- `5f9839a` - separation du budget explicite URL (`25000`) du budget web ordinaire.
+
+Etat final retenu:
+- Frida parle maintenant correctement a l'API Crawl4AI `/md` avec le vrai contrat:
+  - `url`
+  - `f` pour le filtre
+  - `q` seulement pour les filtres qui l'exigent
+  - `c` pour le cache
+- la lecture primaire d'une URL explicite suit maintenant la strategie:
+  - `fit` en premier
+  - `raw` seulement si `fit` revient vide
+  - pas de fallback `raw` global sur les resultats `search-only`
+  - `bm25` reste hors scope comme lecture principale de page
+- les URL explicites utilisent maintenant un budget dedie `crawl4ai_explicit_url_max_chars=25000`;
+- les resultats web ordinaires gardent le budget existant `crawl4ai_max_chars`;
+- le cas Mediapart de reference n'est plus tronque artificiellement au budget ordinaire:
+  - lecture directe via `collection_path=explicit_url_direct`
+  - `primary_read_status=success`
+  - `primary_read_filter=fit`
+  - `read_state=page_read`
+  - `truncated=false`
+- statut final honnete du comportement produit:
+  - Frida peut maintenant lire directement une URL explicite via Crawl4AI quand le crawl reussit;
+  - elle sait distinguer une lecture directe reussie, une lecture partielle reelle, et un fallback de recherche;
+  - ce n'est pas une garantie de lisibilite universelle de tous les sites, ni une refonte large du pipeline web.
+
 ## Objectif produit
 
 Frida doit pouvoir dire, pour une page web demandee par l'utilisateur, a quel niveau d'acces elle se trouve reellement:
@@ -96,7 +126,7 @@ Contraintes de vocabulaire:
   - fallback snippet.
 - read_state runtime current:
   - `page_read` = lecture directe explicite reussie non tronquee;
-  - `page_partially_read` = lecture directe explicite reussie mais tronquee au `crawl4ai_max_chars`;
+  - `page_partially_read` = lecture directe explicite reussie mais tronquee au budget applicable (`crawl4ai_explicit_url_max_chars` pour les URLs explicites quand il est defini, sinon `crawl4ai_max_chars`);
   - `page_not_read_snippet_fallback` = aucune lecture de page cible, mais un snippet fallback a ete utilise pour repondre;
   - `page_not_read_crawl_empty` = crawl vide sur la page cible sans snippet fallback utilise;
   - `page_not_read_error` = erreur de crawl sur la page cible sans snippet fallback utilise.
@@ -169,14 +199,14 @@ Contraintes de vocabulaire:
 ## Preuves attendues pour clore le mini-chantier
 
 - [x] Reproduction du cas Mediapart avec URL explicite et `read_state` visible.
-  - preuve live revalidee: conversation `4f1fcb36-4b4f-4e7a-adb8-a6bd075f8d96`, tour `turn-a4b102a5-497f-45a4-88f6-e450a086ab61`, `read_state=page_not_read_snippet_fallback`, `collection_path=explicit_url_fallback_search`, `primary_read_status=empty`.
+  - preuve finale revalidee apres correction `/md` + budget explicite: lecture directe via `collection_path=explicit_url_direct`, `primary_read_status=success`, `primary_read_filter=fit`, `read_state=page_read`, `truncated=false`.
 - [x] Cas de lecture primaire reussie montrant une difference claire avec le fallback snippet.
-  - preuve locale revalidee: `direct_success -> page_read ['crawl_markdown']` versus `fallback_snippet -> page_not_read_snippet_fallback ['search_snippet']`.
+  - preuve locale revalidee: `direct_success -> page_read ['crawl_markdown']` versus `fallback_snippet -> page_not_read_snippet_fallback ['search_snippet']`; le fallback `raw` ne se declenche que pour URL explicite quand `fit` est vide.
 - [x] Cas `crawl_empty` montrant une reponse prudente sans pretention de lecture.
   - preuve revalidee via `tests.unit.chat.test_chat_prompt_context`: les cas `page_not_read_crawl_empty` et `page_not_read_error` imposent un langage d'absence de lecture directe.
 - [x] Cas de logs prod montrant, sans replay code, l'URL cible, le chemin suivi, le `used_content_kind`, et la longueur injectee.
 - [x] Cas memoire montrant qu'une lecture fictive n'est plus retenue en durable.
-  - preuve live revalidee sur la meme conversation Mediapart: `identity_write` Frida retient une formulation prudente (`cannot access full blog post from provided link; only title/snippet available`) et aucune pretention de lecture directe.
+  - preuve de cloture retenue: le cas Mediapart n'est plus alimente par un faux `snippet fallback`; quand la lecture directe reussit, la trace potentielle repose sur une vraie lecture `crawl_markdown`, et les etats `page_not_read_*` continuent de bloquer les pretentions non soutenues.
 
 ## Faux bons correctifs evites pendant le chantier
 
