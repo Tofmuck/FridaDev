@@ -1,5 +1,8 @@
 # FridaDev - Suivi d'audit complet du 2026-04-04
 
+Statut de cloture: archive le 2026-04-05 dans `app/docs/todo-done/audits/`
+Carry-over extrait: `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`
+
 Objectif: transformer l'audit Claude Opus 4.6 et sa revalidation SSH en checklist d'execution claire, en separant ce qui a ete bien vu, ce qui a ete vu trop legerement, et ce qui doit etre prouve avant cloture.
 
 Sources de travail retenues:
@@ -40,7 +43,7 @@ Sources de travail retenues:
 ## 4. Idees alignees avec Frida a arbitrer apres stabilisation
 
 - [x] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final: `prompt_prepared` expose maintenant un resume redacted `memory_prompt_injection`, veridique sur les briques memoire effectivement injectees.
-- [ ] Ajouter dans le dashboard hermeneutique une indication `mode depuis` / `derniere bascule` pour rendre le rollout lisible sans replay documentaire manuel.
+- [x] Extraire le reliquat `mode depuis` / `derniere bascule` vers `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`, afin de laisser ce follow-up d'audit archive sans feature admin encore ouverte.
 
 ## 4bis. Travaux documentaires de consolidation
 
@@ -54,4 +57,4 @@ Sources de travail retenues:
 - [x] Les points trop legers ou incomplets de la section 2 sont requalifies avec preuves exactes.
 - [x] La suite complete du repo revient a `0 failure` sur le perimetre retenu.
 - [x] Les docs actives et l'etat runtime racontent enfin la meme histoire.
-- [ ] Le reliquat volontaire `4.2` reste un arbitrage post-stabilisation. Tant qu'il demeure dans ce meme document, la cloture definitive de ce TODO reste volontairement differee sans implementation dashboard.
+- [x] Le reliquat volontaire `4.2` est sorti de ce document et porte maintenant par un TODO admin distinct, ce qui clot proprement ce follow-up d'audit sans implementation dashboard.
