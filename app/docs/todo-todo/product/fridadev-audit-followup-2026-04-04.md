@@ -50,7 +50,8 @@ Sources de travail retenues:
 
 ## 5. Condition de cloture de ce TODO
 
-- [ ] Les points confirmes de la section 1 sont traites ou explicitement reclasses.
-- [ ] Les points trop legers ou incomplets de la section 2 sont requalifies avec preuves exactes.
-- [ ] La suite complete du repo revient a `0 failure` sur le perimetre retenu.
-- [ ] Les docs actives et l'etat runtime racontent enfin la meme histoire.
+- [x] Les points confirmes de la section 1 sont traites ou explicitement reclasses.
+- [x] Les points trop legers ou incomplets de la section 2 sont requalifies avec preuves exactes.
+- [x] La suite complete du repo revient a `0 failure` sur le perimetre retenu.
+- [x] Les docs actives et l'etat runtime racontent enfin la meme histoire.
+- [ ] Le reliquat volontaire `4.2` reste un arbitrage post-stabilisation. Tant qu'il demeure dans ce meme document, la cloture definitive de ce TODO reste volontairement differee sans implementation dashboard.

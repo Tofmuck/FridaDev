@@ -26,5 +26,7 @@ class WebSearchPhase13Tests(unittest.TestCase):
             'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
             source,
         )
-        self.assertIn('def build_context(user_msg: str) -> tuple[str, str, int]:', source)
+        self.assertIn('def build_context(', source)
+        self.assertIn('requests_module: Any = requests', source)
+        self.assertIn('llm_module: Any | None = None', source)
         self.assertNotIn('ticketmaster', source)
