@@ -39,7 +39,7 @@ Sources de travail retenues:
 
 ## 4. Idees alignees avec Frida a arbitrer apres stabilisation
 
-- [ ] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final.
+- [x] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final: `prompt_prepared` expose maintenant un resume redacted `memory_prompt_injection`, veridique sur les briques memoire effectivement injectees.
 - [ ] Ajouter dans le dashboard hermeneutique une indication `mode depuis` / `derniere bascule` pour rendre le rollout lisible sans replay documentaire manuel.
 
 ## 4bis. Travaux documentaires de consolidation

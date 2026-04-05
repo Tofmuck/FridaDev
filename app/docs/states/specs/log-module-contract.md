@@ -129,6 +129,10 @@ Minimum event-specific details:
 
 - `prompt_prepared`
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`
+  - `memory_prompt_injection`:
+    - compact redacted summary of what memory-related blocks really reached the final prompt
+    - allowed fields: booleans, counts, block presence/absence only
+    - forbidden: raw memory content, raw context hints, raw prompt excerpts
 
 - `llm_call`
   - `model`, `mode`, `timeout_s`, `response_chars`

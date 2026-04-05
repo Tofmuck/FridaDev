@@ -305,6 +305,17 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn("Date.parse(toText(right?.ts))", source)
         self.assertIn("group.events.sort(compareEventsChronoAsc)", source)
 
+    def test_log_js_formats_memory_prompt_injection_compactly_without_raw_content(self) -> None:
+        source = (APP_DIR / "web" / "log" / "log.js").read_text(encoding="utf-8")
+
+        self.assertIn("const formatMemoryPromptInjection", source)
+        self.assertIn('key === "memory_prompt_injection"', source)
+        self.assertIn("memory_traces_injected_count", source)
+        self.assertIn("memory_context_summary_count", source)
+        self.assertIn("context_hints_injected_count", source)
+        self.assertNotIn("memory_trace_content", source)
+        self.assertNotIn("context_hint_content", source)
+
     def test_server_exposes_log_static_route(self) -> None:
         source = (APP_DIR / "server.py").read_text(encoding="utf-8")
 

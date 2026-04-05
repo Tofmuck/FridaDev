@@ -7,6 +7,11 @@ from psycopg.rows import dict_row
 
 from core.hermeneutic_node.inputs import time_input
 
+CONTEXT_HINTS_BLOCK_HEADER = "[Indices contextuels recents]"
+CONTEXT_HINTS_COUNT_MARKER = "(confidence: "
+MEMORY_CONTEXT_BLOCK_HEADER_PREFIX = "[Contexte du souvenir"
+MEMORY_TRACES_BLOCK_HEADER = "[Mémoire — souvenirs pertinents]"
+
 
 def delta_t_label(ts_msg: str, ts_now: str, *, timezone_name: str) -> str:
     """Retourne un label Delta-T lisible entre deux timestamps ISO."""
@@ -95,7 +100,7 @@ def make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dic
             period = f"du {start}"
         else:
             period = ""
-        header = f"[Contexte du souvenir — résumé {period}]" if period else "[Contexte du souvenir]"
+        header = f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX} — résumé {period}]" if period else f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX}]"
         lines.append(f"{header}\n{summary['content']}")
     return {"role": "system", "content": "\n\n".join(lines)}
 
@@ -142,7 +147,7 @@ def make_memory_message(
     """Formate les traces mémoire en un slot système avec Delta-T."""
     if not traces:
         return None
-    lines = ["[Mémoire — souvenirs pertinents]"]
+    lines = [MEMORY_TRACES_BLOCK_HEADER]
     for trace in traces:
         role = "Utilisateur" if trace.get("role") == "user" else "Assistant"
         ts = trace.get("timestamp") or ""
@@ -166,7 +171,7 @@ def make_context_hints_message(
     if not hints:
         return None
 
-    lines = ["[Indices contextuels recents]"]
+    lines = [CONTEXT_HINTS_BLOCK_HEADER]
     kept = 0
     for hint in hints:
         content = str(hint.get("content") or "").strip()

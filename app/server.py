@@ -31,6 +31,7 @@ from memory import arbiter
 from observability import chat_turn_logger
 from observability import log_store
 from observability import log_markdown_export
+from observability import prompt_injection_summary
 
 
 def _sha256_file(path: Path) -> str:
@@ -227,8 +228,13 @@ class _ConvStoreChatLogProxy:
         except Exception:
             estimated_context_tokens = 0
 
-        memory_traces = kwargs.get('memory_traces') or []
-        memory_items_used = len(memory_traces) if isinstance(memory_traces, list) else 0
+        memory_prompt_injection = prompt_injection_summary.build_memory_prompt_injection_summary(
+            prompt_messages,
+            memory_traces=kwargs.get('memory_traces'),
+            context_hints=kwargs.get('context_hints'),
+        )
+        memory_items_used = int(memory_prompt_injection.get('memory_traces_injected_count') or 0)
+        chat_turn_logger.set_state('memory_prompt_injection', memory_prompt_injection)
         chat_turn_logger.set_state('memory_items_used', memory_items_used)
 
         token_limit = int(config.MAX_TOKENS)
@@ -316,6 +322,9 @@ class _LlmChatLogProxy:
             estimated_prompt_tokens = int(self._token_utils.estimate_tokens(messages, model))
         except Exception:
             estimated_prompt_tokens = 0
+        memory_prompt_injection = chat_turn_logger.get_state('memory_prompt_injection')
+        if not isinstance(memory_prompt_injection, dict):
+            memory_prompt_injection = prompt_injection_summary.empty_memory_prompt_injection_summary()
         chat_turn_logger.emit(
             'prompt_prepared',
             status='ok',
@@ -325,6 +334,7 @@ class _LlmChatLogProxy:
                 'messages_count': len(messages),
                 'estimated_prompt_tokens': estimated_prompt_tokens,
                 'memory_items_used': int(chat_turn_logger.get_state('memory_items_used', 0) or 0),
+                'memory_prompt_injection': dict(memory_prompt_injection),
             },
         )
         return payload

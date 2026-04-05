@@ -1914,6 +1914,68 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['web']['results_count'], 0)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_emits_prompt_prepared_memory_prompt_injection_without_raw_content(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-prompt-injection-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok prompt injection'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        prompt_event = next(item for item in observed_events if item['stage'] == 'prompt_prepared')
+        payload = prompt_event['payload_json']
+        self.assertEqual(payload['prompt_kind'], 'chat_system_augmented')
+        self.assertEqual(payload['messages_count'], 1)
+        self.assertEqual(payload['memory_items_used'], 0)
+        self.assertEqual(
+            payload['memory_prompt_injection'],
+            {
+                'injected': False,
+                'prompt_block_count': 0,
+                'memory_traces_injected': False,
+                'memory_traces_injected_count': 0,
+                'memory_context_injected': False,
+                'memory_context_summary_count': 0,
+                'context_hints_injected': False,
+                'context_hints_injected_count': 0,
+            },
+        )
+        self.assertNotIn('messages', payload)
+        self.assertNotIn('prompt', payload)
+        self.assertNotIn('content', payload)
+        self.assertNotIn('memory_traces', payload)
+        self.assertNotIn('context_hints', payload)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_emits_web_observability_payload_without_raw_web_content(self) -> None:
         observed_events: list[dict] = []
         conversation = {

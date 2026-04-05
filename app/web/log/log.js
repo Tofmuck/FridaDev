@@ -75,12 +75,30 @@
     return String(value);
   };
 
+  const formatMemoryPromptInjection = (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return compactValue(value);
+    }
+    const injected = Boolean(value.injected);
+    const traces = toBoundedInt(value.memory_traces_injected_count, 0, 0, 9999);
+    const memoryContext = toBoundedInt(value.memory_context_summary_count, 0, 0, 9999);
+    const hints = toBoundedInt(value.context_hints_injected_count, 0, 0, 9999);
+    const blocks = toBoundedInt(value.prompt_block_count, 0, 0, 9999);
+    return `injected=${injected} traces=${traces} memory_context=${memoryContext} hints=${hints} blocks=${blocks}`;
+  };
+
   const payloadEntries = (payload) => {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
     return Object.keys(payload)
       .sort()
       .slice(0, 12)
-      .map((key) => `${key}=${compactValue(payload[key])}`);
+      .map((key) =>
+        `${key}=${
+          key === "memory_prompt_injection"
+            ? formatMemoryPromptInjection(payload[key])
+            : compactValue(payload[key])
+        }`
+      );
   };
 
   const compareEventsChronoAsc = (left, right) => {

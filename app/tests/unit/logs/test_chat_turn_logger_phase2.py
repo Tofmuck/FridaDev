@@ -22,6 +22,7 @@ if str(APP_DIR) not in sys.path:
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 from observability import log_store
+from observability import prompt_injection_summary
 from identity import identity
 from memory import memory_arbiter_audit
 from memory import memory_context_read
@@ -361,6 +362,49 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)
+
+    def test_memory_prompt_injection_summary_counts_effective_prompt_blocks_without_raw_content(self) -> None:
+        prompt_messages = [
+            {
+                'role': 'system',
+                'content': '[Indices contextuels recents]\n- Utilisateur: Christophe Muck (confidence: 0.91)\n- Situation: projet FridaDev (confidence: 0.62)',
+            },
+            {
+                'role': 'system',
+                'content': '[Contexte du souvenir — résumé du 2026-04-01 au 2026-04-02]\nRésumé 1\n\n[Contexte du souvenir — résumé du 2026-04-03]\nRésumé 2',
+            },
+            {
+                'role': 'system',
+                'content': '[Mémoire — souvenirs pertinents]\n[il y a 2 jours] Utilisateur : Je suis Christophe Muck\n[il y a 1 jour] Assistant : Nous travaillons sur FridaDev',
+            },
+        ]
+        summary = prompt_injection_summary.build_memory_prompt_injection_summary(
+            prompt_messages,
+            memory_traces=[
+                {'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
+                {'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
+            ],
+            context_hints=[
+                {'content': 'Christophe Muck'},
+                {'content': 'projet FridaDev'},
+            ],
+        )
+
+        self.assertEqual(
+            summary,
+            {
+                'injected': True,
+                'prompt_block_count': 3,
+                'memory_traces_injected': True,
+                'memory_traces_injected_count': 2,
+                'memory_context_injected': True,
+                'memory_context_summary_count': 2,
+                'context_hints_injected': True,
+                'context_hints_injected_count': 2,
+            },
+        )
+        self.assertNotIn('content', summary)
+        self.assertNotIn('preview', summary)
 
     def test_stimmung_agent_stage_emits_compact_upstream_payload(self) -> None:
         observed: list[dict[str, Any]] = []

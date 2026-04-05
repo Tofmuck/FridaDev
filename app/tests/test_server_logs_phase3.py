@@ -283,9 +283,112 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertIn(prompt_payload.get('prompt_kind'), {'chat_system_augmented', 'chat_web_reformulation'})
         self.assertEqual(prompt_payload.get('messages_count'), 1)
         self.assertEqual(prompt_payload.get('estimated_prompt_tokens'), 321)
+        self.assertEqual(prompt_payload.get('memory_items_used'), 0)
+        self.assertEqual(
+            prompt_payload.get('memory_prompt_injection'),
+            {
+                'injected': False,
+                'prompt_block_count': 0,
+                'memory_traces_injected': False,
+                'memory_traces_injected_count': 0,
+                'memory_context_injected': False,
+                'memory_context_summary_count': 0,
+                'context_hints_injected': False,
+                'context_hints_injected_count': 0,
+            },
+        )
         self.assertNotIn('messages', prompt_payload)
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)
+
+    def test_prompt_prepared_exposes_effective_memory_prompt_injection_summary(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-prompt-memory-injection',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            conv_proxy = self.server._ConvStoreChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_prompt_messages=lambda conversation, model, **kwargs: [
+                        {
+                            'role': 'system',
+                            'content': '[Indices contextuels recents]\n- Utilisateur: Christophe Muck (confidence: 0.91)\n- Situation: projet FridaDev (confidence: 0.62)',
+                        },
+                        {
+                            'role': 'system',
+                            'content': '[Contexte du souvenir — résumé du 2026-04-01 au 2026-04-02]\nRésumé 1\n\n[Contexte du souvenir — résumé du 2026-04-03]\nRésumé 2',
+                        },
+                        {
+                            'role': 'system',
+                            'content': '[Mémoire — souvenirs pertinents]\n[il y a 2 jours] Utilisateur : Je suis Christophe Muck\n[il y a 1 jour] Assistant : Nous travaillons sur FridaDev',
+                        },
+                        {'role': 'user', 'content': 'bonjour'},
+                    ]
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 88),
+            )
+            prompt_messages = conv_proxy.build_prompt_messages(
+                {'id': 'conv-prompt-memory-injection', 'messages': []},
+                'openrouter/runtime-main-model',
+                memory_traces=[
+                    {'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
+                    {'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
+                ],
+                context_hints=[
+                    {'content': 'Christophe Muck'},
+                    {'content': 'projet FridaDev'},
+                ],
+            )
+            llm_proxy = self.server._LlmChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                        'model': 'openrouter/runtime-main-model',
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'max_tokens': max_tokens,
+                        'stream': stream,
+                    }
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 321),
+            )
+            llm_proxy.build_payload(prompt_messages, 0.7, 0.9, 400, stream=False)
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        prompt_event = next(event for event in observed if event.get('stage') == 'prompt_prepared')
+        payload = prompt_event['payload_json']
+        self.assertEqual(payload.get('messages_count'), 4)
+        self.assertEqual(payload.get('estimated_prompt_tokens'), 321)
+        self.assertEqual(payload.get('memory_items_used'), 2)
+        self.assertEqual(
+            payload.get('memory_prompt_injection'),
+            {
+                'injected': True,
+                'prompt_block_count': 3,
+                'memory_traces_injected': True,
+                'memory_traces_injected_count': 2,
+                'memory_context_injected': True,
+                'memory_context_summary_count': 2,
+                'context_hints_injected': True,
+                'context_hints_injected_count': 2,
+            },
+        )
+        self.assertNotIn('messages', payload)
+        self.assertNotIn('prompt', payload)
+        self.assertNotIn('content', payload)
+        self.assertNotIn('memory_traces', payload)
+        self.assertNotIn('context_hints', payload)
 
     def test_requests_proxy_non_stream_llm_call_keeps_response_chars(self) -> None:
         observed: list[dict[str, object]] = []
