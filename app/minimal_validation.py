@@ -539,6 +539,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin/api.js",
         "hermeneutic_admin/render.js",
         "hermeneutic_admin/render_identity_read_model.js",
+        "hermeneutic_admin/render_identity_mutable_editor.js",
         "hermeneutic_admin/main.js",
     ]
     hermeneutic_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', hermeneutic_admin_html)
@@ -876,12 +877,15 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="hermeneutic_admin/api.js"',
         'script src="hermeneutic_admin/render.js"',
         'script src="hermeneutic_admin/render_identity_read_model.js"',
+        'script src="hermeneutic_admin/render_identity_mutable_editor.js"',
         'script src="hermeneutic_admin/main.js"',
         'id="hermeneuticAdminRefresh"',
         'id="hermeneuticConversationId"',
         'id="hermeneuticTurnId"',
         'id="hermeneuticTurnStages"',
         'id="hermeneuticArbiterList"',
+        'id="hermeneuticIdentityMutableEditStatus"',
+        'id="hermeneuticIdentityMutableEditors"',
         'id="hermeneuticIdentityReadModel"',
         'id="hermeneuticIdentityList"',
         'id="hermeneuticCorrectionsList"',
@@ -891,6 +895,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Vue unifiee identity",
         "Fragments legacy d'identite",
         "static + mutable narrative",
+        "mutable canonique",
         "Corrections recentes",
     ]
     for marker in hermeneutic_admin_markers:
@@ -900,6 +905,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     expected_hermeneutic_admin_endpoints = {
         "/api/admin/hermeneutics/dashboard",
         "/api/admin/identity/read-model",
+        "/api/admin/identity/mutable",
         "/api/admin/hermeneutics/identity-candidates",
         "/api/admin/hermeneutics/arbiter-decisions",
         "/api/admin/hermeneutics/corrections-export",
@@ -908,7 +914,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     }
     found_hermeneutic_admin_endpoints = set(
         re.findall(
-            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/read-model|logs/chat(?:/metadata)?)",
+            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable)|logs/chat(?:/metadata)?)",
             hermeneutic_admin_front_js,
         )
     )

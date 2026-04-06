@@ -2,8 +2,9 @@
   const adminApi = window.FridaAdminApi;
   const api = window.FridaHermeneuticAdminApi;
   const render = window.FridaHermeneuticAdminRender;
+  const mutableEditor = window.FridaHermeneuticIdentityMutableEditor;
 
-  if (!adminApi || !api || !render) {
+  if (!adminApi || !api || !render || !mutableEditor) {
     throw new Error("Hermeneutic admin dependencies are missing");
   }
 
@@ -23,6 +24,8 @@
     turnStages: document.getElementById("hermeneuticTurnStages"),
     arbiterMeta: document.getElementById("hermeneuticArbiterMeta"),
     arbiterList: document.getElementById("hermeneuticArbiterList"),
+    identityMutableEditStatus: document.getElementById("hermeneuticIdentityMutableEditStatus"),
+    identityMutableEditors: document.getElementById("hermeneuticIdentityMutableEditors"),
     identityReadModelMeta: document.getElementById("hermeneuticIdentityReadModelMeta"),
     identityReadModel: document.getElementById("hermeneuticIdentityReadModel"),
     identitySubject: document.getElementById("hermeneuticIdentitySubject"),
@@ -125,11 +128,82 @@
 
   const loadIdentityReadModel = async () => {
     const payload = await api.fetchIdentityReadModel({ limit: 20 });
+    mutableEditor.renderIdentityMutableEditors(
+      elements.identityMutableEditors,
+      payload,
+    );
     render.renderIdentityReadModel(
       elements.identityReadModelMeta,
       elements.identityReadModel,
       payload,
     );
+    return payload;
+  };
+
+  const handleIdentityMutableEdit = async (event) => {
+    const requestPayload = mutableEditor.readIdentityMutableDraft(event.target);
+    if (!requestPayload) {
+      return;
+    }
+    const actionLabel = requestPayload.action === "clear" ? "Effacement" : "Edition";
+    mutableEditor.setIdentityMutableEditStatus(
+      elements.identityMutableEditStatus,
+      {
+        ok: true,
+        subject: requestPayload.subject,
+        action: requestPayload.action,
+        changed: false,
+        old_len: 0,
+        new_len: requestPayload.action === "clear" ? 0 : requestPayload.content.length,
+        stored_after: false,
+        reason_code: "pending",
+      },
+      "",
+    );
+    render.setStatusBanner(
+      elements.statusBanner,
+      `${actionLabel} mutable canonique en cours...`,
+      "",
+    );
+    try {
+      const response = await api.updateIdentityMutable(requestPayload);
+      mutableEditor.setIdentityMutableEditStatus(
+        elements.identityMutableEditStatus,
+        response,
+        response.changed ? "ok" : "",
+      );
+      await loadIdentityReadModel();
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Edition mutable canonique ${response.reason_code}.`,
+        "ok",
+      );
+    } catch (error) {
+      const errorPayload = error?.data && typeof error.data === "object"
+        ? error.data
+        : {
+            ok: false,
+            subject: requestPayload.subject,
+            action: requestPayload.action,
+            changed: false,
+            old_len: 0,
+            new_len: requestPayload.action === "clear" ? 0 : requestPayload.content.length,
+            stored_after: false,
+            reason_code: "request_failed",
+            validation_error: "request_failed",
+            error: error?.message || String(error),
+          };
+      mutableEditor.setIdentityMutableEditStatus(
+        elements.identityMutableEditStatus,
+        errorPayload,
+        "error",
+      );
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Edition mutable canonique indisponible: ${error?.message || error}`,
+        "error",
+      );
+    }
   };
 
   const loadIdentityCandidates = async () => {
@@ -217,6 +291,10 @@
         "error",
       );
     });
+  });
+
+  elements.identityMutableEditors.addEventListener("click", (event) => {
+    void handleIdentityMutableEdit(event);
   });
 
   syncMeta();

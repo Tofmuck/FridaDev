@@ -18,7 +18,7 @@ Ce TODO a deja ferme deux besoins structurants:
 - [x] Lot 1 - Retablir la verite runtime de l'identity statique
 - [x] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
 - [x] Lot 2 - Construire un mode de lecture identity unifie et honnete
-- [ ] Lot 3 - Ouvrir une edition controlee du dynamique
+- [x] Lot 3 - Ouvrir une edition controlee du dynamique
 - [ ] Lot 4 - Ouvrir une edition controlee du statique
 - [ ] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
 - [ ] Lot 6 - Assembler la surface `Identity` et sa navigation globale
@@ -41,10 +41,11 @@ Ce TODO a deja ferme deux besoins structurants:
   - evidences, conflits, statuts `accepted|deferred|rejected` et overrides existent encore;
   - mais ils ne pilotent plus l'injection active du prompt runtime.
 - Les surfaces admin actuelles ne donnent qu'une lecture partielle:
-  - `GET /api/admin/hermeneutics/identity-candidates`
-  - `POST /api/admin/hermeneutics/identity/force-accept`
-  - `POST /api/admin/hermeneutics/identity/force-reject`
-  - `POST /api/admin/hermeneutics/identity/relabel`
+- `GET /api/admin/hermeneutics/identity-candidates`
+- `POST /api/admin/hermeneutics/identity/force-accept`
+- `POST /api/admin/hermeneutics/identity/force-reject`
+- `POST /api/admin/hermeneutics/identity/relabel`
+- `POST /api/admin/identity/mutable`
 - Il n'existe pas encore de vraie surface `Identity`, ni de bouton `Identity` global.
 
 ## Etat revalide qui fixe l'ordre des lots
@@ -61,21 +62,20 @@ Ce TODO a deja ferme deux besoins structurants:
 ### Ce qui manque encore
 
 - la lisibilite de ce qui est injecte vs seulement stocke;
-- l'edition directe du contenu dynamique;
 - l'edition directe du contenu statique;
 - la gouvernance operateur des caps et seuils;
 - une navigation `Identity` coherente depuis les surfaces utiles.
 
 ### Point critique prioritaire
 
-- Le Lot 1, le Lot 1B et le Lot 2 sont maintenant fermes.
-- Le prochain chantier prioritaire est maintenant le `Lot 3`: ouvrir une edition controlee du dynamique sur la base du read-model unifie.
+- Le Lot 1, le Lot 1B, le Lot 2 et le Lot 3 sont maintenant fermes.
+- Le prochain chantier prioritaire est maintenant le `Lot 4`: ouvrir une edition controlee du statique sur la base du read-model et de la mutable canonique deja clarifies.
 - La future surface `Identity` peut maintenant s'appuyer sur une lecture stable, mais elle ne doit toujours pas court-circuiter les lots d'edition et de gouvernance restants.
 
 ## Ordre retenu
 
-- Le Lot 1, le Lot 1B et le Lot 2 sont maintenant fermes.
-- Le Lot 3 est maintenant le prochain lot prioritaire.
+- Le Lot 1, le Lot 1B, le Lot 2 et le Lot 3 sont maintenant fermes.
+- Le Lot 4 est maintenant le prochain lot prioritaire.
 - Les Lots 4 a 6 doivent suivre sans masquer ou contourner les lots d'edition et de gouvernance restants.
 - La future page `Identity` doit arriver apres lecture unifiee, editions controlees et gouvernance lisible, pas avant.
 
@@ -166,16 +166,20 @@ Sortie attendue:
 
 ## Lot 3 - Ouvrir une edition controlee du dynamique
 
-But:
-- permettre a l'operateur de corriger les identities dynamiques sans toucher encore au statique.
+Statut: ferme; edition mutable canonique bornee avant l'edition du statique
 
-- [ ] Etendre le perimetre au-dela de `force_accept`, `force_reject` et `relabel`
-- [ ] Trancher ce qui est vraiment editable en direct: contenu, statut, override, champs de qualification, gestion de conflits et reactivation ou operations voisines si elles doivent etre exposees
-- [ ] Expliciter les bornes de securite et d'audit des actions operateur
+But:
+- permettre a l'operateur de corriger la mutable canonique active sans toucher encore au statique.
+
+- [x] Trancher que `dynamique` = mutable canonique narrative dans `identity_mutables`, et non plus le legacy fragmentaire
+- [x] Ouvrir une edition operateur explicite `set` / `clear` de la mutable canonique `llm` / `user`
+- [x] Garder le statique, le legacy, les evidences et les conflits en lecture seule
+- [x] Appliquer la validation doctrinale `1500 / 1650` sans troncature et journaliser l'audit admin en mode compact
+- [x] Exposer cette edition minimale dans `Vue unifiee identity` sans lancer encore la page `Identity`
 
 Sortie attendue:
-- une edition dynamique utile, comprehensible et journalisee;
-- aucune confusion entre correction operateur et simple lecture.
+- une edition de la mutable canonique utile, comprehensible et journalisee;
+- aucune confusion entre correction operateur, lecture read-only et legacy fragmentaire.
 
 ## Lot 4 - Ouvrir une edition controlee du statique
 

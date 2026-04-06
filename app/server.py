@@ -20,7 +20,13 @@ from tools import web_search as ws
 from core import conv_store
 from core import chat_service
 from core import conversations_service
-from admin import admin_identity_read_model_service, admin_logs, admin_hermeneutics_service, admin_settings_service
+from admin import (
+    admin_identity_mutable_edit_service,
+    admin_identity_read_model_service,
+    admin_logs,
+    admin_hermeneutics_service,
+    admin_settings_service,
+)
 from admin import admin_actions
 from admin import runtime_settings
 from core import token_utils
@@ -959,6 +965,17 @@ def api_admin_identity_read_model():
         request.args,
         memory_store_module=memory_store,
         identity_module=identity,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/admin/identity/mutable')
+def api_admin_identity_mutable_edit():
+    data = request.get_json(force=True, silent=True) or {}
+    payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+        data,
+        memory_store_module=memory_store,
+        admin_logs_module=admin_logs,
     )
     return jsonify(payload), status
 

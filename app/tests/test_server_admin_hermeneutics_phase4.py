@@ -54,6 +54,7 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
             self.assertIn('Hermeneutic admin', html)
             self.assertIn('href="admin.css"', html)
             self.assertIn('script src="hermeneutic_admin/render_identity_read_model.js"', html)
+            self.assertIn('script src="hermeneutic_admin/render_identity_mutable_editor.js"', html)
             self.assertIn('script src="hermeneutic_admin/main.js"', html)
         finally:
             response.close()

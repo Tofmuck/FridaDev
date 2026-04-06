@@ -159,3 +159,39 @@ def upsert_mutable_identity(
     except Exception as exc:
         logger.error('upsert_mutable_identity_error subject=%s err=%s', canonical_subject, exc)
         return None
+
+
+def clear_mutable_identity(
+    subject: str,
+    *,
+    conn_factory: Callable[[], Any],
+    logger: Any,
+) -> dict[str, Any] | None:
+    canonical_subject = _canonical_subject(subject)
+    if not canonical_subject:
+        return None
+
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    DELETE FROM identity_mutables
+                    WHERE subject = %s
+                    RETURNING
+                        subject,
+                        content,
+                        source_trace_id,
+                        updated_by,
+                        update_reason,
+                        created_ts,
+                        updated_ts
+                    ''',
+                    (canonical_subject,),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        return _row_to_mutable_identity(row)
+    except Exception as exc:
+        logger.error('clear_mutable_identity_error subject=%s err=%s', canonical_subject, exc)
+        return None

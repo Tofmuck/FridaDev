@@ -19,7 +19,26 @@
     const response = await adminApi.fetchAdmin(url);
     const data = await adminApi.readJson(response);
     if (!response.ok || !data.ok) {
-      throw new Error(adminApi.errorMessage(data, fallbackMessage));
+      const error = new Error(adminApi.errorMessage(data, fallbackMessage));
+      error.status = response.status;
+      error.data = data;
+      throw error;
+    }
+    return data;
+  };
+
+  const writeAdminJson = async (url, payload, fallbackMessage) => {
+    const response = await adminApi.fetchAdmin(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await adminApi.readJson(response);
+    if (!response.ok || !data.ok) {
+      const error = new Error(adminApi.errorMessage(data, fallbackMessage));
+      error.status = response.status;
+      error.data = data;
+      throw error;
     }
     return data;
   };
@@ -66,6 +85,19 @@
     );
   };
 
+  const updateIdentityMutable = ({ subject = "", action = "", content = "", reason = "" } = {}) => {
+    return writeAdminJson(
+      "/api/admin/identity/mutable",
+      {
+        subject,
+        action,
+        content,
+        reason,
+      },
+      "Echec edition mutable canonique.",
+    );
+  };
+
   const fetchIdentityCandidates = ({ subject = "all", status = "all", limit = 25 } = {}) => {
     return readAdminJson(
       `/api/admin/hermeneutics/identity-candidates${buildQuery({
@@ -93,6 +125,7 @@
     fetchTurnLogs,
     fetchArbiterDecisions,
     fetchIdentityReadModel,
+    updateIdentityMutable,
     fetchIdentityCandidates,
     fetchCorrectionsExport,
   });

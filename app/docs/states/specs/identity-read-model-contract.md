@@ -141,10 +141,9 @@ Champs minimaux:
 
 ## Affichage operateur minimal
 
-Avant la future page `Identity`, la surface `/hermeneutic-admin` expose une section read-only minimale:
+Avant la future page `Identity`, la surface `/hermeneutic-admin` expose une section minimale:
 - `Vue unifiee identity`
 - au-dessus de `Fragments legacy d'identite`
-- sans mutateur
 - sans navigation globale nouvelle
 
 Cette surface montre:
@@ -152,6 +151,11 @@ Cette surface montre:
 - la lecture par sujet `llm` / `user`;
 - les couches stockees legacy/evidence/conflicts;
 - la separation `stored` vs `actively_injected`.
+
+Depuis `Lot 3`, cette meme section peut aussi porter une edition controlee de la mutable canonique:
+- distincte du contrat read-only `GET /api/admin/identity/read-model`;
+- bornee a `set` / `clear` de la mutable active;
+- sans rendre editable le statique ni le legacy.
 
 Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un module dedie:
 - `app/web/hermeneutic_admin/render_identity_read_model.js`

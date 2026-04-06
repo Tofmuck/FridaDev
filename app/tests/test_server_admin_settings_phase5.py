@@ -1590,6 +1590,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             identity_routes,
             {
                 '/api/admin/identity/read-model',
+                '/api/admin/identity/mutable',
             },
         )
         self.assertTrue(settings_routes)

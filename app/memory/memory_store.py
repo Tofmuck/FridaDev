@@ -44,6 +44,7 @@ __all__ = [
     'get_mutable_identity',
     'list_mutable_identities',
     'upsert_mutable_identity',
+    'clear_mutable_identity',
     'list_identity_fragments',
     'list_identity_evidence',
     'list_identity_conflicts',
@@ -305,6 +306,14 @@ def upsert_mutable_identity(
         source_trace_id=source_trace_id,
         updated_by=updated_by,
         update_reason=update_reason,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def clear_mutable_identity(subject: str) -> dict[str, Any] | None:
+    return memory_identity_mutables.clear_mutable_identity(
+        subject,
         conn_factory=_conn,
         logger=logger,
     )
