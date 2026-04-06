@@ -1937,11 +1937,18 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['recent_window']['max_recent_turns'], 5)
         self.assertTrue(payload['inputs']['user_turn']['present'])
         self.assertEqual(payload['inputs']['user_turn']['geste_dialogique_dominant'], 'adresse_relationnelle')
-        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['principe'], 'maximal_possible')
-        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['types_de_preuve_attendus'], [])
-        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['regime_de_vigilance'], 'standard')
+        self.assertEqual(
+            payload['inputs']['user_turn']['regime_probatoire'],
+            {
+                'principe': 'maximal_possible',
+                'types_de_preuve_attendus': [],
+                'provenances': [],
+                'regime_de_vigilance': 'standard',
+            },
+        )
         self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['portee_temporelle'], 'atemporale')
         self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['ancrage_temporel'], 'non_ancre')
+        self.assertNotIn('content', payload['inputs']['user_turn'])
         self.assertTrue(payload['inputs']['user_turn_signals']['present'])
         self.assertFalse(payload['inputs']['user_turn_signals']['ambiguity_present'])
         self.assertFalse(payload['inputs']['user_turn_signals']['underdetermination_present'])
@@ -2266,6 +2273,18 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertIn('hermeneutic_node_insertion', stages)
         self.assertIn('primary_node', stages)
         self.assertIn('validation_agent', stages)
+
+        insertion_event = next(item for item in observed_events if item['stage'] == 'hermeneutic_node_insertion')
+        self.assertEqual(
+            insertion_event['payload_json']['inputs']['user_turn']['regime_probatoire'],
+            {
+                'principe': 'maximal_possible',
+                'types_de_preuve_attendus': [],
+                'provenances': [],
+                'regime_de_vigilance': 'standard',
+            },
+        )
+        self.assertNotIn('content', insertion_event['payload_json']['inputs']['user_turn'])
 
         primary_event = next(item for item in observed_events if item['stage'] == 'primary_node')
         self.assertEqual(primary_event['status'], 'ok')

@@ -406,17 +406,22 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['recent_window']['max_recent_turns'], 5)
         self.assertTrue(payload['inputs']['user_turn']['present'])
         self.assertEqual(payload['inputs']['user_turn']['geste_dialogique_dominant'], 'interrogation')
-        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['principe'], 'maximal_possible')
         self.assertEqual(
-            payload['inputs']['user_turn']['regime_probatoire']['types_de_preuve_attendus'],
-            ['factuelle', 'dialogique'],
+            payload['inputs']['user_turn']['regime_probatoire'],
+            {
+                'principe': 'maximal_possible',
+                'types_de_preuve_attendus': ['factuelle', 'dialogique'],
+                'provenances': ['dialogue_trace'],
+                'regime_de_vigilance': 'standard',
+            },
         )
-        self.assertEqual(payload['inputs']['user_turn']['regime_probatoire']['regime_de_vigilance'], 'standard')
         self.assertEqual(payload['inputs']['user_turn']['qualification_temporelle']['portee_temporelle'], 'passee')
         self.assertEqual(
             payload['inputs']['user_turn']['qualification_temporelle']['ancrage_temporel'],
             'dialogue_trace',
         )
+        self.assertNotIn('content', payload['inputs']['user_turn'])
+        self.assertNotIn('content', payload['inputs']['user_turn']['regime_probatoire'])
         self.assertTrue(payload['inputs']['user_turn_signals']['present'])
         self.assertFalse(payload['inputs']['user_turn_signals']['ambiguity_present'])
         self.assertTrue(payload['inputs']['user_turn_signals']['underdetermination_present'])

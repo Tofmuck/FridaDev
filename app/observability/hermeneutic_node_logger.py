@@ -110,6 +110,7 @@ def _summarize_user_turn(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'regime_probatoire': {
             'principe': str(regime.get('principe') or ''),
             'types_de_preuve_attendus': [str(value) for value in _sequence(regime.get('types_de_preuve_attendus')) if str(value)],
+            'provenances': [str(value) for value in _sequence(regime.get('provenances')) if str(value)],
             'regime_de_vigilance': str(regime.get('regime_de_vigilance') or ''),
         },
         'qualification_temporelle': {

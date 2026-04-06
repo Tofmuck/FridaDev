@@ -67,6 +67,14 @@ Tours voisins compares:
 - [x] Le premier levier confirme a bien ete traite en amont dans `app/core/hermeneutic_node/inputs/user_turn_input.py`
 - [x] Les faux positifs lexicaux `preuve` et `lien` du cas diagnostique ne remontent plus artificiellement `factuelle` et `web`
 - [x] Les demandes explicites de verification, de source, de reference et de lien restent classables comme `factuelle` et/ou `web`
+
+## Etat apres deuxieme pas runtime
+
+- [x] Le resume compact `hermeneutic_node_insertion.inputs.user_turn.regime_probatoire` expose maintenant `provenances`
+- [x] La cause de bascule vers une verification externe devient plus lisible quand elle depend d'une provenance `web`
+- [x] Cette exposition reste compacte:
+  - pas de texte brut utilisateur
+  - pas de dump du payload `user_turn_input`
 - [ ] Le chantier reste ouvert pour le levier suivant:
   - verifier si d'autres faux positifs amont du meme type subsistent
   - puis arbitrer separement le besoin ou non d'un auto-web backend borne
@@ -83,10 +91,14 @@ Ce qui est confirme:
 - le tour critique est sur-route vers `verification_externe_requise` a cause de marqueurs lexicaux trop larges;
 - la vraie cause immediate est la provenance `web`, pas le simple fait que le tour soit conceptuel ou atemporel.
 
-Ce qui manque aujourd'hui dans l'observabilite resumee:
-- la carte `hermeneutic_node_insertion.inputs.user_turn.regime_probatoire` expose `types_de_preuve_attendus` et `regime_de_vigilance`;
-- mais elle n'expose pas `provenances`;
-- l'operateur voit donc `renforce` et `["factuelle"]` sans voir explicitement le `["web"]` qui declenche `_needs_external_verification(...)`.
+Ce qui manquait avant ce deuxieme pas dans l'observabilite resumee:
+- la carte `hermeneutic_node_insertion.inputs.user_turn.regime_probatoire` exposait `types_de_preuve_attendus` et `regime_de_vigilance`;
+- mais elle n'exposait pas `provenances`;
+- l'operateur pouvait donc voir `renforce` et `["factuelle"]` sans voir explicitement le `["web"]` qui declenchait `_needs_external_verification(...)`.
+
+Etat apres ce pas:
+- `provenances` est maintenant visible compactement dans ce resume;
+- le manque diagnostique sur la lisibilite immediate de la cause de bascule est donc traite, sans modifier la doctrine.
 
 ## Ancrages code reellement impliques
 
@@ -107,7 +119,7 @@ Ce qui manque aujourd'hui dans l'observabilite resumee:
 - `app/core/hermeneutic_node/validation/validation_agent.py`
   - le mapping final conserve ici une posture `suspend` deja produite en amont
 - `app/observability/hermeneutic_node_logger.py`
-  - `_summarize_user_turn(...)` masque aujourd'hui `provenances` dans le resume observable
+  - `_summarize_user_turn(...)` expose maintenant `provenances` dans le resume observable compact
 
 ## Probleme a traiter
 
@@ -122,7 +134,7 @@ Ce qui manque aujourd'hui dans l'observabilite resumee:
 - [ ] Faut-il revoir seulement la notion de provenance `web`, ou aussi la notion de `factuelle` pour les tours conceptuels longs ?
 - [ ] Un auto-web backend borne est-il vraiment necessaire pour ce chantier, ou seulement pour les cas qui restent legitimement `verification_externe_requise` apres nettoyage des faux positifs ?
 - [ ] La combinaison `verification_externe_requise -> suspend` est-elle trop dure en general, ou seulement problematique quand l'etiquetage amont est faux ?
-- [ ] Faut-il traiter le manque d'observabilite (`provenances` non exposees) dans le meme cycle que la correction doctrinale, ou en pas separe ?
+- [ ] `provenances` suffit-il comme observabilite compacte de premier niveau, ou faudra-t-il plus tard un indicateur causal supplementaire tout aussi compact ?
 
 ## Pistes de travail a comparer, sans solution deja figee
 
@@ -140,7 +152,8 @@ Ce qui manque aujourd'hui dans l'observabilite resumee:
 - [ ] Preuve qu'un tour reellement factuel / source / citationnel reste bien classable comme necessitant une verification externe
 - [ ] Si l'auto-web est retenu: preuve qu'il ne se declenche pas sur les faux positifs nettoyes, mais seulement sur des cas reellement dependants du web
 - [ ] Si la suspension reste necessaire: preuve qu'elle n'arrive plus avant les marches intermediaires retenues
-- [ ] Preuve d'observabilite: les traces exposent suffisamment la cause de bascule (`provenances`, raison de verification externe, ou equivalent stable)
+- [x] Preuve d'observabilite: les traces exposent maintenant `provenances` dans le resume compact `user_turn.regime_probatoire`
+- [ ] Si un manque subsiste: preuve qu'un indicateur causal supplementaire est necessaire, compact et non sensible
 - [ ] Non-regression: pas d'exceptions codees par contenu ou par mots-cles metier
 
 ## Cadre doctrinal du chantier
