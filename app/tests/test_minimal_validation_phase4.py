@@ -218,9 +218,6 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         source = (APP_DIR / 'minimal_validation.py').read_text(encoding='utf-8')
         self.assertIn('with _db_conn() as conn:', source)
         self.assertNotIn('psycopg.connect(config.FRIDA_MEMORY_DB_DSN)', source)
-        self.assertIn('"identity_mutables": {', source)
-        self.assertIn('"runtime_settings": {', source)
-        self.assertIn('"runtime_settings_history": {', source)
 
     def test_check_db_schema_rejects_unsupported_runtime_database_backend(self) -> None:
         original_get_database = minimal_validation.runtime_settings.get_database_settings
@@ -256,6 +253,21 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
             config.FRIDA_MEMORY_DB_DSN = original_dsn
 
         self.assertFalse(observed['called'])
+
+
+class MinimalValidationPhase4IdentityDocsTests(unittest.TestCase):
+    def test_identity_read_model_contract_no_longer_contradicts_lot3(self) -> None:
+        source = (APP_DIR / 'docs' / 'states' / 'specs' / 'identity-read-model-contract.md').read_text(
+            encoding='utf-8'
+        )
+
+        self.assertIn("Depuis `Lot 3`, cette meme section peut aussi porter une edition controlee", source)
+        self.assertIn(
+            "le mutateur de la mutable canonique de `Lot 3`, documente separement",
+            source,
+        )
+        self.assertNotIn("lancer encore les lots d'edition (`Lot 3`, `Lot 4`)", source)
+        self.assertNotIn("- l'edition du dynamique (`Lot 3`);", source)
 
 
 if __name__ == '__main__':

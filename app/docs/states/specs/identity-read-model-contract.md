@@ -6,7 +6,9 @@ Lot ferme: `Lot 2`
 
 ## But
 
-Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif ni lancer encore les lots d'edition (`Lot 3`, `Lot 4`) ou de gouvernance des caps (`Lot 5`).
+Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
+
+Le read-model lui-meme reste read-only, meme si la meme section operator-facing peut aussi porter, depuis `Lot 3`, une edition mutable bornee documentee a part.
 
 Il sert a :
 - montrer la verite active runtime;
@@ -164,7 +166,7 @@ Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un mo
 ## Hors scope
 
 Ce contrat ne couvre pas encore:
-- l'edition du dynamique (`Lot 3`);
+- le mutateur de la mutable canonique de `Lot 3`, documente separement dans `identity-mutable-edit-contract.md`;
 - l'edition du statique (`Lot 4`);
 - la gouvernance UI/backend des caps et seuils (`Lot 5`);
 - la future page dediee `Identity` et sa navigation globale (`Lot 6`).

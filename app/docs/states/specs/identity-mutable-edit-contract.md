@@ -125,6 +125,10 @@ Interdits:
 - preview textuelle
 - excerpt du texte operateur
 
+Cet event alimente aussi `Corrections recentes` via:
+- `GET /api/admin/hermeneutics/corrections-export`
+- sans requalifier le legacy ni exposer de contenu brut
+
 ## Surface operateur minimale
 
 Avant la future page `Identity`, `/hermeneutic-admin` expose:

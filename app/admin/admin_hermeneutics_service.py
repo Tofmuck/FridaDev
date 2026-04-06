@@ -249,7 +249,7 @@ def corrections_export_response(
     entries = []
     for item in admin_logs_module.read_logs(limit=limit):
         event = str(item.get('event') or '')
-        if event not in {'identity_override', 'identity_relabel'}:
+        if event not in {'identity_override', 'identity_relabel', 'identity_mutable_admin_edit'}:
             continue
 
         ts_raw = str(item.get('timestamp') or '').strip()

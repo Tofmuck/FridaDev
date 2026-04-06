@@ -61,6 +61,12 @@ class _MutableStore:
 
 
 class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
+    def test_service_module_stays_below_repo_size_limit(self) -> None:
+        service_path = APP_DIR / 'admin' / 'admin_identity_mutable_edit_service.py'
+        with service_path.open('r', encoding='utf-8') as handle:
+            line_count = sum(1 for _ in handle)
+        self.assertLess(line_count, 500)
+
     def test_set_valid_updates_canonical_mutable_and_logs_without_raw_content(self) -> None:
         store = _MutableStore({'llm': 'Frida reste sobre.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
