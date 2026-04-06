@@ -1,7 +1,7 @@
 # Identity Control Surface TODO
 
 Statut: ferme
-Classement: `app/docs/todo-todo/product/`
+Classement: `app/docs/todo-done/refactors/`
 Origine: audit identity read-only revalide le `2026-04-05`
 
 ## Objectif
