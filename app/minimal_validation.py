@@ -538,6 +538,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_ui_common.js",
         "hermeneutic_admin/api.js",
         "hermeneutic_admin/render.js",
+        "hermeneutic_admin/render_identity_read_model.js",
         "hermeneutic_admin/main.js",
     ]
     hermeneutic_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', hermeneutic_admin_html)
@@ -874,6 +875,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="admin_ui_common.js"',
         'script src="hermeneutic_admin/api.js"',
         'script src="hermeneutic_admin/render.js"',
+        'script src="hermeneutic_admin/render_identity_read_model.js"',
         'script src="hermeneutic_admin/main.js"',
         'id="hermeneuticAdminRefresh"',
         'id="hermeneuticConversationId"',

@@ -29,6 +29,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('script src="admin_ui_common.js"', source)
         self.assertIn('script src="hermeneutic_admin/api.js"', source)
         self.assertIn('script src="hermeneutic_admin/render.js"', source)
+        self.assertIn('script src="hermeneutic_admin/render_identity_read_model.js"', source)
         self.assertIn('script src="hermeneutic_admin/main.js"', source)
         self.assertIn("Vue d'ensemble", source)
         self.assertIn("Inspection par tour", source)
@@ -47,6 +48,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         html = (APP_DIR / "web" / "hermeneutic-admin.html").read_text(encoding="utf-8")
         api_source = (APP_DIR / "web" / "hermeneutic_admin" / "api.js").read_text(encoding="utf-8")
         render_source = (APP_DIR / "web" / "hermeneutic_admin" / "render.js").read_text(encoding="utf-8")
+        identity_render_source = (
+            APP_DIR / "web" / "hermeneutic_admin" / "render_identity_read_model.js"
+        ).read_text(encoding="utf-8")
         main_source = (APP_DIR / "web" / "hermeneutic_admin" / "main.js").read_text(encoding="utf-8")
         admin_source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
         log_source = (APP_DIR / "web" / "log" / "log.js").read_text(encoding="utf-8")
@@ -59,11 +63,12 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
                 "admin_ui_common.js",
                 "hermeneutic_admin/api.js",
                 "hermeneutic_admin/render.js",
+                "hermeneutic_admin/render_identity_read_model.js",
                 "hermeneutic_admin/main.js",
             ],
         )
 
-        combined = f"{api_source}\n{render_source}\n{main_source}"
+        combined = f"{api_source}\n{render_source}\n{identity_render_source}\n{main_source}"
         found_endpoints = set(
             re.findall(
                 r"/api/admin/(?:hermeneutics/[a-z-]+|identity/read-model|logs/chat(?:/metadata)?)",
@@ -88,6 +93,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertNotIn("/api/admin/hermeneutics/identity/force-accept", combined)
         self.assertNotIn("/api/admin/hermeneutics/identity/force-reject", combined)
         self.assertNotIn("/api/admin/hermeneutics/identity/relabel", combined)
+        self.assertIn("FridaHermeneuticIdentityReadModelRender", identity_render_source)
+        self.assertIn("FridaHermeneuticIdentityReadModelRender", render_source)
+        self.assertLessEqual(len(render_source.splitlines()), 499)
 
     def test_page_exposes_read_only_pipeline_inspection_hooks(self) -> None:
         source = (APP_DIR / "web" / "hermeneutic-admin.html").read_text(encoding="utf-8")

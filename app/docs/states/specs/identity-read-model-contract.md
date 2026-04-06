@@ -153,6 +153,10 @@ Cette surface montre:
 - les couches stockees legacy/evidence/conflicts;
 - la separation `stored` vs `actively_injected`.
 
+Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un module dedie:
+- `app/web/hermeneutic_admin/render_identity_read_model.js`
+- distinct de `app/web/hermeneutic_admin/render.js`, qui reste la facade hermeneutique generale.
+
 ## Hors scope
 
 Ce contrat ne couvre pas encore:
