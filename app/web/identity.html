@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Identity</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Identity</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <button id="identityTokenButton" class="admin-btn admin-btn-secondary" type="button">Token admin</button>
+        <button id="identityClearToken" class="admin-btn admin-btn-secondary" type="button">Effacer</button>
+        <button id="identityRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="admin-hero">
+      <div class="admin-copy">
+        <p class="admin-lead">
+          Cette page montre comment l'identite circule vraiment dans Frida: une fiche structuree pour le jugement
+          hermeneutique, puis un texte identity injecte au modele final qui repond.
+        </p>
+        <p class="admin-sublead">
+          La base reste la meme pour les deux usages: un statique file-backed charge depuis une ressource runtime
+          referencee, une mutable canonique stockee dans <code>identity_mutables</code>, et un legacy visible
+          sans piloter l'injection active.
+        </p>
+      </div>
+
+      <div class="admin-meta">
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Contrat actif</span>
+          <strong id="identityPromptContractMeta">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Fiche jugement</span>
+          <strong id="identitySchemaVersionMeta">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Bloc injecte</span>
+          <strong id="identityInjectedMeta">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Cle admin</span>
+          <strong id="identityTokenState">Session vide</strong>
+        </article>
+      </div>
+    </section>
+
+    <p id="identityStatusBanner" class="admin-status" role="status" aria-live="polite">
+      Chargement de la surface Identity...
+    </p>
+
+    <section class="admin-section-block" aria-labelledby="identity-structure-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Structure reelle</p>
+          <h2 id="identity-structure-title">Comment l'identite circule</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Ici, on distingue la meme base identity projetee en deux formes: une fiche structuree pour le jugement
+        hermeneutique, puis un texte identity injecte dans le prompt systeme du modele final.
+      </p>
+
+      <div class="admin-section-grid">
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Base commune</h3>
+          </div>
+          <p>Le statique vient d'une ressource file-backed referencee par les runtime settings. La mutable vient de <code>identity_mutables</code>.</p>
+          <div class="admin-card-meta">
+            <span class="admin-chip">statique=file-backed</span>
+            <span class="admin-chip">mutable=canonique</span>
+            <span class="admin-chip">legacy=visible seulement</span>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Ce qui sert au jugement</h3>
+          </div>
+          <p>Le noeud hermeneutique lit une fiche structuree <code>identity_input</code>, par sujet, avec statique et mutable separes.</p>
+          <div class="admin-card-meta">
+            <span class="admin-chip">fiche structuree</span>
+            <span class="admin-chip">jugement hermeneutique</span>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Ce qui sert a la reponse finale</h3>
+          </div>
+          <p>Le modele final lit un texte identity injecte dans le prompt systeme augmente. Ce n'est pas une seconde verite, c'est la meme base recomposee en texte.</p>
+          <div class="admin-card-meta">
+            <span class="admin-chip">texte injecte</span>
+            <span class="admin-chip">reponse finale</span>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Ce que l'operateur pilote ici</h3>
+          </div>
+          <p>Lecture du systeme, edition du statique, edition de la mutable, seuils et limites, puis observabilite utile et corrections recentes.</p>
+          <div class="admin-card-meta">
+            <span class="admin-chip">lecture</span>
+            <span class="admin-chip">edition</span>
+            <span class="admin-chip">limites</span>
+            <span class="admin-chip">observabilite</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-current-state-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Etat courant</p>
+          <h2 id="identity-current-state-title">Etat courant par sujet</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Cette lecture unifiee dit vrai sur ce qui est stocke, charge, injecte et legacy. Le statique reste la ressource
+        file-backed active; la mutable reste canonique; legacy, evidences et conflits restent visibles sans piloter
+        l'injection active.
+      </p>
+
+      <div id="identityCurrentStateMeta" class="admin-inline-meta"></div>
+      <div id="identityCurrentState" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-runtime-representations-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Deux formes, deux usages</p>
+          <h2 id="identity-runtime-representations-title">Ce qui sert au jugement et a la reponse finale</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        La fiche structuree sert au jugement hermeneutique. Le texte identity sert au prompt du modele final.
+        Les deux viennent de la meme base identity, mais n'ont pas la meme forme ni le meme role.
+      </p>
+
+      <div id="identityRuntimeRepresentationsMeta" class="admin-inline-meta"></div>
+      <div class="admin-readonly-stack">
+        <section class="admin-readonly-panel" aria-labelledby="identity-structured-title">
+          <div class="admin-readonly-head">
+            <div>
+              <p class="admin-kicker">Lecture seule</p>
+              <h3 id="identity-structured-title">Fiche identite pour le jugement</h3>
+            </div>
+            <span class="admin-readonly-badge">Judgment</span>
+          </div>
+          <div id="identityStructuredRepresentation"></div>
+        </section>
+
+        <section class="admin-readonly-panel" aria-labelledby="identity-injected-title">
+          <div class="admin-readonly-head">
+            <div>
+              <p class="admin-kicker">Lecture seule</p>
+              <h3 id="identity-injected-title">Texte identity injecte au modele</h3>
+            </div>
+            <span class="admin-readonly-badge">Prompt</span>
+          </div>
+          <div id="identityInjectedRepresentation"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-static-edit-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Edition controlee</p>
+          <h2 id="identity-static-edit-title">Editer le statique canonique</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        L'edition porte sur le vrai contenu statique actif de la ressource referencee par les runtime settings.
+        On n'edite pas seulement un path.
+      </p>
+
+      <div id="identityStaticEditStatus"></div>
+      <div id="identityStaticEditors" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-mutable-edit-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Edition controlee</p>
+          <h2 id="identity-mutable-edit-title">Editer la mutable canonique</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        La mutable canonique reste la forme dynamique active, injectee avec le statique dans le contrat
+        <code>static + mutable narrative</code>.
+      </p>
+
+      <div id="identityMutableEditStatus"></div>
+      <div id="identityMutableEditors" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-governance-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Seuils et limites</p>
+          <h2 id="identity-governance-title">Seuils et limites</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Cette section montre les caps, seuils et budgets reels du systeme identity, avec distinction explicite entre
+        editable, verrouille doctrinalement et legacy inactif.
+      </p>
+
+      <div id="identityGovernanceStatus"></div>
+      <div id="identityGovernanceMeta" class="admin-inline-meta"></div>
+      <div id="identityGovernance" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-legacy-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Legacy / evidence-only</p>
+          <h2 id="identity-legacy-title">Legacy, evidences et conflits</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Ces couches restent visibles pour l'operateur, mais elles ne pilotent plus l'injection active. Elles servent
+        a comprendre l'historique, les evidences et les contradictions encore presentes dans le systeme.
+      </p>
+
+      <div id="identityLegacyLayers" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="identity-observability-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Observabilite utile</p>
+          <h2 id="identity-observability-title">Corrections recentes et sorties utiles</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Les corrections recentes restent compactes. Pour l'inspection tour par tour et les logs applicatifs complets,
+        utilisez aussi <a href="/hermeneutic-admin">Hermeneutic admin</a> et <a href="/log">Logs applicatifs</a>.
+      </p>
+
+      <div id="identityCorrectionsList" class="admin-readonly-stack"></div>
+    </section>
+  </main>
+
+  <script src="admin_api.js"></script>
+  <script src="admin_ui_common.js"></script>
+  <script src="hermeneutic_admin/api.js"></script>
+  <script src="hermeneutic_admin/render.js"></script>
+  <script src="hermeneutic_admin/render_identity_read_model.js"></script>
+  <script src="hermeneutic_admin/render_identity_static_editor.js"></script>
+  <script src="hermeneutic_admin/render_identity_mutable_editor.js"></script>
+  <script src="hermeneutic_admin/render_identity_governance.js"></script>
+  <script src="identity/api.js"></script>
+  <script src="identity/render_identity_runtime_representations.js"></script>
+  <script src="identity/main.js"></script>
+</body>
+</html>

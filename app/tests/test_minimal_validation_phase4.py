@@ -251,12 +251,15 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
 
-    def test_identity_governance_docs_and_todo_are_aligned_for_lot5(self) -> None:
+    def test_identity_surface_docs_and_todo_are_aligned_for_lot6(self) -> None:
         governance_spec = (
             APP_DIR / 'docs' / 'states' / 'specs' / 'identity-governance-contract.md'
         ).read_text(encoding='utf-8')
         read_model_spec = (
             APP_DIR / 'docs' / 'states' / 'specs' / 'identity-read-model-contract.md'
+        ).read_text(encoding='utf-8')
+        surface_spec = (
+            APP_DIR / 'docs' / 'states' / 'specs' / 'identity-surface-contract.md'
         ).read_text(encoding='utf-8')
         todo = (
             APP_DIR / 'docs' / 'todo-todo' / 'product' / 'identity-control-surface-todo.md'
@@ -266,9 +269,14 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         self.assertIn('GET /api/admin/identity/governance', governance_spec)
         self.assertIn('POST /api/admin/identity/governance', governance_spec)
         self.assertIn('identity-governance-contract.md', read_model_spec)
+        self.assertIn('Lot ferme: `Lot 6`', surface_spec)
+        self.assertIn('GET /identity', surface_spec)
+        self.assertIn('GET /api/admin/identity/runtime-representations', surface_spec)
+        self.assertIn('identity-surface-contract.md', read_model_spec)
         self.assertIn('- [x] Lot 4 - Ouvrir une edition controlee du statique', todo)
         self.assertIn('- [x] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables', todo)
-        self.assertIn('Le Lot 6 est maintenant le prochain lot prioritaire.', todo)
+        self.assertIn('- [x] Lot 6 - Assembler la surface `Identity` et sa navigation globale', todo)
+        self.assertIn('Statut: ferme', todo)
 
     def _db_database_view(self, *, backend: str = 'postgresql'):
         return runtime_settings.RuntimeSectionView(

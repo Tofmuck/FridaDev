@@ -150,7 +150,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         details = minimal_validation._check_ui_assets()
 
         self.assertIn("admin_html", details["files"])
+        self.assertIn("log_html", details["files"])
         self.assertIn("hermeneutic_admin_html", details["files"])
+        self.assertIn("identity_html", details["files"])
         self.assertIn("admin_ui_common_js", details["files"])
         self.assertIn("admin_state_js", details["files"])
         self.assertIn("admin_section_main_model_js", details["files"])
@@ -167,6 +169,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("hermeneutic_admin_render_js", details["files"])
         self.assertIn("hermeneutic_admin_render_identity_governance_js", details["files"])
         self.assertIn("hermeneutic_admin_main_js", details["files"])
+        self.assertIn("identity_api_js", details["files"])
+        self.assertIn("identity_render_runtime_representations_js", details["files"])
+        self.assertIn("identity_main_js", details["files"])
         self.assertEqual(details["admin_script_srcs"], details["admin_script_order"])
         self.assertEqual(
             details["admin_settings_endpoints_found"],
@@ -179,6 +184,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(
             details["hermeneutic_admin_endpoints_found"],
             details["hermeneutic_admin_endpoints_expected"],
+        )
+        self.assertEqual(
+            details["identity_script_srcs"],
+            details["identity_script_order"],
+        )
+        self.assertEqual(
+            details["identity_endpoints_found"],
+            details["identity_endpoints_expected"],
         )
         self.assertIn("adminMainModelSave", details["admin_dom_hook_ids_checked"])
         self.assertIn("adminEmbeddingSecretCard", details["admin_dom_hook_ids_checked"])
@@ -207,7 +220,10 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("adminStimmungAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn("adminValidationAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn('target="_blank"', details["index_hermeneutic_markers"])
+        self.assertIn('href="/identity"', details["index_markers"])
         self.assertIn("Hermeneutic admin", details["hermeneutic_admin_markers"])
+        self.assertIn("Logs applicatifs", details["log_markers"])
+        self.assertIn("Fiche identite pour le jugement", details["identity_markers"])
         self.assertIn("admin_old_html", details["legacy_admin_assets_absent"])
         self.assertIn("admin_old_js", details["legacy_admin_assets_absent"])
         self.assertIn('id="rows"', details["admin_html_forbidden_markers"])
@@ -225,8 +241,12 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
                 return _FakeResponse(200, text="Admin de configuration")
+            if url.endswith("/log"):
+                return _FakeResponse(200, text="Logs applicatifs")
             if url.endswith("/hermeneutic-admin"):
                 return _FakeResponse(200, text="Hermeneutic admin")
+            if url.endswith("/identity"):
+                return _FakeResponse(200, text="Fiche identite pour le jugement")
             if url.endswith("/admin-old"):
                 return _FakeResponse(404, text="not found")
             if url.endswith("/api/conversations?limit=1"):
@@ -264,6 +284,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                             "validation_error": "governance_key_readonly",
                         },
                     )
+            if url.endswith("/api/admin/identity/runtime-representations"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "representations_version": "v1",
+                    },
+                )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -278,7 +306,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
 
         self.assertEqual(details["root_status"], 200)
         self.assertEqual(details["admin_status"], 200)
+        self.assertEqual(details["log_status"], 200)
         self.assertEqual(details["hermeneutic_admin_status"], 200)
+        self.assertEqual(details["identity_status"], 200)
         self.assertEqual(details["admin_old_status"], 404)
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_status"], 200)
@@ -286,14 +316,18 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
         self.assertEqual(details["identity_governance_status"], 200)
         self.assertEqual(details["identity_governance_invalid_patch_status"], 400)
+        self.assertEqual(details["identity_runtime_representations_status"], 200)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
+        self.assertIn(("GET", "http://frida.test/log"), calls)
         self.assertIn(("GET", "http://frida.test/hermeneutic-admin"), calls)
+        self.assertIn(("GET", "http://frida.test/identity"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings/resources"), calls)
         self.assertIn(("PATCH", "http://frida.test/api/admin/settings/resources"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/identity/governance"), calls)
         self.assertIn(("POST", "http://frida.test/api/admin/identity/governance"), calls)
+        self.assertIn(("GET", "http://frida.test/api/admin/identity/runtime-representations"), calls)
 
     def test_check_api_smoke_forwards_admin_token_to_admin_endpoints(self) -> None:
         original_http_json = minimal_validation._http_json
@@ -311,8 +345,12 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
                 return _FakeResponse(200, text="Admin de configuration")
+            if url.endswith("/log"):
+                return _FakeResponse(200, text="Logs applicatifs")
             if url.endswith("/hermeneutic-admin"):
                 return _FakeResponse(200, text="Hermeneutic admin")
+            if url.endswith("/identity"):
+                return _FakeResponse(200, text="Fiche identite pour le jugement")
             if url.endswith("/admin-old"):
                 return _FakeResponse(404, text="not found")
             if url.endswith("/api/conversations?limit=1"):
@@ -350,6 +388,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                             "validation_error": "governance_key_readonly",
                         },
                     )
+            if url.endswith("/api/admin/identity/runtime-representations"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "representations_version": "v1",
+                    },
+                )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -367,7 +413,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
-        self.assertEqual(len(admin_headers), 7)
+        self.assertEqual(details["identity_runtime_representations_status"], 200)
+        self.assertEqual(len(admin_headers), 8)
         self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[2], {"X-Admin-Token": "phase9-admin-token"})
@@ -375,6 +422,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(admin_headers[4], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[5], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[6], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[7], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(
             patch_payloads,
             [

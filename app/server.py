@@ -22,6 +22,7 @@ from core import chat_service
 from core import conversations_service
 from admin import (
     admin_identity_governance_service,
+    admin_identity_runtime_representations_service,
     admin_identity_static_edit_service,
     admin_identity_mutable_edit_service,
     admin_identity_read_model_service,
@@ -973,6 +974,14 @@ def api_admin_identity_read_model():
     return jsonify(payload), status
 
 
+@app.get('/api/admin/identity/runtime-representations')
+def api_admin_identity_runtime_representations():
+    payload, status = admin_identity_runtime_representations_service.identity_runtime_representations_response(
+        identity_module=identity,
+    )
+    return jsonify(payload), status
+
+
 @app.post('/api/admin/identity/mutable')
 def api_admin_identity_mutable_edit():
     data = request.get_json(force=True, silent=True) or {}
@@ -1162,6 +1171,11 @@ def log_root():
 @app.get("/hermeneutic-admin")
 def hermeneutic_admin_root():
     return send_from_directory(app.static_folder, "hermeneutic-admin.html")
+
+
+@app.get("/identity")
+def identity_root():
+    return send_from_directory(app.static_folder, "identity.html")
 
 
 if __name__ == "__main__":

@@ -49,6 +49,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("Corrections recentes", source)
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
+        self.assertIn('href="/identity"', source)
         self.assertNotIn('href="/admin" target="_blank"', source)
         self.assertNotIn('href="/log" target="_blank"', source)
 

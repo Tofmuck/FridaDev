@@ -9,6 +9,7 @@ ACTIVE_PROMPT_CONTRACT = 'static + mutable narrative'
 DEFAULT_LAYER_LIMIT = 20
 MAX_LAYER_LIMIT = 100
 GOVERNANCE_ROUTE = '/api/admin/identity/governance'
+RUNTIME_REPRESENTATIONS_ROUTE = '/api/admin/identity/runtime-representations'
 
 
 def _optional_text(value: Any) -> str | None:
@@ -180,10 +181,11 @@ def identity_read_model_response(
                 'mutable_editable_via': '/api/admin/identity/mutable',
                 'governance_read_via': GOVERNANCE_ROUTE,
                 'governance_editable_via': GOVERNANCE_ROUTE,
+                'runtime_representations_read_via': RUNTIME_REPRESENTATIONS_ROUTE,
                 'used_identity_ids': used_identity_ids_list,
                 'used_identity_ids_count': len(used_identity_ids_list),
                 'legacy_drives_active_injection': False,
-                'read_surface_stage': 'lot_5_governance_visible',
+                'read_surface_stage': 'lot_6_identity_surface_live',
             },
             'subjects': subjects,
         },

@@ -1639,6 +1639,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             identity_routes,
             {
                 '/api/admin/identity/read-model',
+                '/api/admin/identity/runtime-representations',
                 '/api/admin/identity/mutable',
                 '/api/admin/identity/static',
                 '/api/admin/identity/governance',

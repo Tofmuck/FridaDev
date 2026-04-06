@@ -1,6 +1,6 @@
 # Identity Control Surface TODO
 
-Statut: actif
+Statut: ferme
 Classement: `app/docs/todo-todo/product/`
 Origine: audit identity read-only revalide le `2026-04-05`
 
@@ -21,7 +21,7 @@ Ce TODO a deja ferme deux besoins structurants:
 - [x] Lot 3 - Ouvrir une edition controlee du dynamique
 - [x] Lot 4 - Ouvrir une edition controlee du statique
 - [x] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
-- [ ] Lot 6 - Assembler la surface `Identity` et sa navigation globale
+- [x] Lot 6 - Assembler la surface `Identity` et sa navigation globale
 
 ## Structure reelle revalidee
 
@@ -46,7 +46,7 @@ Ce TODO a deja ferme deux besoins structurants:
 - `POST /api/admin/hermeneutics/identity/force-reject`
 - `POST /api/admin/hermeneutics/identity/relabel`
 - `POST /api/admin/identity/mutable`
-- Il n'existe pas encore de vraie surface `Identity`, ni de bouton `Identity` global.
+- Une vraie surface `Identity` existe maintenant, avec navigation dediee depuis les surfaces clefs.
 
 ## Etat revalide qui fixe l'ordre des lots
 
@@ -61,20 +61,19 @@ Ce TODO a deja ferme deux besoins structurants:
 
 ### Ce qui manque encore
 
-- une navigation `Identity` coherente depuis les surfaces utiles.
+- aucun lot identity ouvert dans ce chantier; la surface `Identity` et sa navigation globale existent maintenant.
 
 ### Point critique prioritaire
 
-- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4 et le Lot 5 sont maintenant fermes.
-- Le prochain chantier prioritaire est maintenant le `Lot 6`: assembler la surface `Identity` et sa navigation globale sur la base des contrats read-only, edition et gouvernance deja stabilises.
-- La future surface `Identity` peut maintenant s'appuyer sur une lecture, une edition et une gouvernance honnetes, sans ressusciter le legacy comme verite active.
+- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4, le Lot 5 et le Lot 6 sont maintenant fermes.
+- La surface `Identity` existe maintenant comme point d'entree dedie, aligne sur les contrats read-only, edition et gouvernance deja stabilises.
+- Le chantier est ferme sans ressusciter le legacy comme verite active.
 
 ## Ordre retenu
 
-- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4 et le Lot 5 sont maintenant fermes.
-- Le Lot 6 est maintenant le prochain lot prioritaire.
-- Le Lot 6 doit assembler la surface `Identity` sans requalifier a nouveau les lots d'edition et de gouvernance deja fermes.
-- La future page `Identity` doit arriver apres lecture unifiee, editions controlees et gouvernance lisible, pas avant.
+- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4, le Lot 5 et le Lot 6 sont maintenant fermes.
+- La page `Identity` arrive bien apres lecture unifiee, editions controlees et gouvernance lisible, sans requalifier les lots precedents.
+- Le chantier est maintenant ferme.
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
 
@@ -211,33 +210,40 @@ Sortie attendue:
 
 ## Lot 6 - Assembler la surface `Identity` et sa navigation globale
 
+Statut: ferme; surface `Identity` dediee et navigation globale ajoutees
+
 But:
 - finir le chantier par une surface `Identity` vraiment utile, accessible depuis les surfaces clefs.
 
-- [ ] Ajouter une page dediee `Identity`
-- [ ] Lier cette page depuis toutes les pages admin utiles et depuis la surface principale LLM
-- [ ] Garder un ordre de lecture qui aide l'operateur a tout comprendre: structure reelle, etat courant, injection effective, edition, caps et seuils, observabilite
+- [x] Ajouter une page dediee `Identity`
+- [x] Lier cette page depuis toutes les pages admin utiles et depuis la surface principale LLM
+- [x] Garder un ordre de lecture qui aide l'operateur a tout comprendre: structure reelle, etat courant, injection effective, edition, caps et seuils, observabilite
 
 Sortie attendue:
 - un point d'entree unique `Identity`;
 - une navigation coherente a l'echelle du produit.
 
-## Observabilite attendue a travers les lots
+Cloture du lot:
+- `GET /identity` sert une page dediee alignee sur `admin.css`;
+- la page explique clairement la difference entre la fiche structuree pour le jugement et le texte identity injecte au modele;
+- la navigation `Identity` existe depuis `/`, `/admin`, `/log` et `/hermeneutic-admin`;
+- les contrats Lots 2 a 5 sont reemployes sans rouvrir la doctrine `static + mutable narrative`.
 
-- [ ] Conserver et clarifier les coutures deja presentes sur `identities_read`, `identity_write` et `hermeneutic_node_insertion`
-- [ ] Faire apparaitre pour l'operateur la presence du statique, les identities effectivement injectees, l'ecart entre stockage et injection, les actions operateur identity et l'etat des conflits ouverts
+## Observabilite de cloture
 
-## Preuves attendues futures
+- [x] Conserver et clarifier les coutures deja presentes sur `identities_read`, `identity_write` et `hermeneutic_node_insertion`
+- [x] Faire apparaitre pour l'operateur la presence du statique, les identities effectivement injectees, l'ecart entre stockage et injection, les actions operateur identity et l'etat des conflits ouverts
 
-- [ ] Tests cibles sur le chargement static et l'injection runtime
-- [ ] Preuves backend sur les contrats read-only et editables exposes
-- [ ] Preuves frontend/admin sur la lisibilite de la future surface `Identity`
-- [ ] Verification live minimale de ce que voit vraiment l'operateur
-- [ ] Verification documentaire de la source de verite retenue
+## Preuves de cloture
+
+- [x] Tests cibles sur le chargement static et l'injection runtime
+- [x] Preuves backend sur les contrats read-only et editables exposes
+- [x] Preuves frontend/admin sur la lisibilite de la surface `Identity`
+- [x] Verification live minimale de ce que voit vraiment l'operateur
+- [x] Verification documentaire de la source de verite retenue
 
 ## Hors scope global
 
-- implementation immediate de la page `Identity`;
 - refonte large du systeme identity en une seule passe;
 - mutation opportuniste d'autres surfaces admin sans lien direct;
 - changements runtime hors besoin direct du chantier identity;

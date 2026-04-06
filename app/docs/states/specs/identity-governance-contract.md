@@ -1,7 +1,7 @@
 # Identity Governance Contract
 
 Statut: spec vivante  
-Portee: caps, seuils et budgets identity visibles avant la future surface `Identity`  
+Portee: caps, seuils et budgets identity visibles dans `/hermeneutic-admin` puis reemployes par `/identity`
 Lot ferme: `Lot 5`
 
 ## But
@@ -199,9 +199,9 @@ Cet event alimente aussi `Corrections recentes` via:
 - `GET /api/admin/hermeneutics/corrections-export`
 - avec payload compact seulement
 
-## Surface operateur minimale
+## Surface operateur
 
-Avant la future page `Identity`, `/hermeneutic-admin` expose:
+`/hermeneutic-admin` expose:
 - `Vue unifiee identity`
 - `Gouvernance identity`
 - `Fragments legacy d'identite`
@@ -211,10 +211,14 @@ Avant la future page `Identity`, `/hermeneutic-admin` expose:
 - rendre editable uniquement le sous-ensemble runtime-safe retenu;
 - rester distincte du read-model et des editeurs static/mutable.
 
+Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
+- sans changer les routes `GET/POST /api/admin/identity/governance`;
+- avec une lecture plus explicite pour l'operateur final;
+- sans requalifier les knobs legacy inactifs.
+
 ## Hors scope
 
-Ce contrat ne couvre pas encore:
-- la page `Identity` dediee (`Lot 6`);
-- la navigation globale `Identity`;
+Ce contrat ne couvre pas:
+- la composition de la page `Identity`, documentee separement dans `identity-surface-contract.md`;
 - une refonte large du systeme runtime settings admin;
 - la resurrection du legacy comme source active.

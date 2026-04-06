@@ -1,14 +1,13 @@
 # Identity Static Edit Contract
 
 Statut: spec vivante  
-Portee: edition operateur controlee du statique canonique avant la future surface `Identity`  
+Portee: edition operateur controlee du statique canonique, exposee dans `/hermeneutic-admin` puis reemployee dans `/identity`
 Lot ferme: `Lot 4`
 
 ## But
 
 Ce contrat ouvre une edition controlee du statique canonique actif, sans rouvrir:
 - la gouvernance des caps et seuils (`Lot 5`);
-- la future page `Identity` et sa navigation globale (`Lot 6`);
 - le legacy fragmentaire comme source active;
 - la doctrine runtime `static + mutable narrative`.
 
@@ -163,9 +162,9 @@ Cet event alimente aussi `Corrections recentes` via:
 - `GET /api/admin/hermeneutics/corrections-export`
 - sans exposer de contenu brut
 
-## Surface operateur minimale
+## Surface operateur
 
-Avant la future page `Identity`, `/hermeneutic-admin` expose:
+`/hermeneutic-admin` expose:
 - la section `Vue unifiee identity`
 - une edition controlee bornee au statique canonique `llm` / `user`
 - le read-model unifie en dessous
@@ -175,8 +174,13 @@ Les runtime settings `resources.*_identity_path` restent visibles sur `/admin`:
 - comme references de ressource;
 - pas comme pseudo-editeur de contenu.
 
+Depuis `Lot 6`, la page `/identity` reemploie le meme contrat:
+- sans changer la route `POST /api/admin/identity/static`;
+- en rappelant explicitement qu'on edite le contenu reel de la ressource active;
+- sans transformer `/admin` en editeur de contenu.
+
 ## Hors scope
 
-Ce contrat ne couvre pas encore:
+Ce contrat ne couvre pas:
 - la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
-- la future page `Identity` et sa navigation globale (`Lot 6`).
+- la composition de la page `Identity`, documentee separement dans `identity-surface-contract.md`.

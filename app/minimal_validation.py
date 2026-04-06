@@ -435,7 +435,9 @@ def _check_ui_assets() -> Dict[str, Any]:
     required_files = {
         "index_html": web_dir / "index.html",
         "admin_html": web_dir / "admin.html",
+        "log_html": web_dir / "log.html",
         "hermeneutic_admin_html": web_dir / "hermeneutic-admin.html",
+        "identity_html": web_dir / "identity.html",
         "admin_css": web_dir / "admin.css",
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
@@ -454,10 +456,24 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_js": web_dir / "admin.js",
         "hermeneutic_admin_api_js": web_dir / "hermeneutic_admin" / "api.js",
         "hermeneutic_admin_render_js": web_dir / "hermeneutic_admin" / "render.js",
+        "hermeneutic_admin_render_identity_read_model_js": (
+            web_dir / "hermeneutic_admin" / "render_identity_read_model.js"
+        ),
+        "hermeneutic_admin_render_identity_static_editor_js": (
+            web_dir / "hermeneutic_admin" / "render_identity_static_editor.js"
+        ),
+        "hermeneutic_admin_render_identity_mutable_editor_js": (
+            web_dir / "hermeneutic_admin" / "render_identity_mutable_editor.js"
+        ),
         "hermeneutic_admin_render_identity_governance_js": (
             web_dir / "hermeneutic_admin" / "render_identity_governance.js"
         ),
         "hermeneutic_admin_main_js": web_dir / "hermeneutic_admin" / "main.js",
+        "identity_api_js": web_dir / "identity" / "api.js",
+        "identity_render_runtime_representations_js": (
+            web_dir / "identity" / "render_identity_runtime_representations.js"
+        ),
+        "identity_main_js": web_dir / "identity" / "main.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
     forbidden_files = {
@@ -476,7 +492,9 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     index_html = required_files["index_html"].read_text(encoding="utf-8")
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
+    log_html = required_files["log_html"].read_text(encoding="utf-8")
     hermeneutic_admin_html = required_files["hermeneutic_admin_html"].read_text(encoding="utf-8")
+    identity_html = required_files["identity_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
     admin_state_js = required_files["admin_state_js"].read_text(encoding="utf-8")
@@ -492,10 +510,24 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
     hermeneutic_admin_api_js = required_files["hermeneutic_admin_api_js"].read_text(encoding="utf-8")
     hermeneutic_admin_render_js = required_files["hermeneutic_admin_render_js"].read_text(encoding="utf-8")
+    hermeneutic_admin_render_identity_read_model_js = required_files[
+        "hermeneutic_admin_render_identity_read_model_js"
+    ].read_text(encoding="utf-8")
+    hermeneutic_admin_render_identity_static_editor_js = required_files[
+        "hermeneutic_admin_render_identity_static_editor_js"
+    ].read_text(encoding="utf-8")
+    hermeneutic_admin_render_identity_mutable_editor_js = required_files[
+        "hermeneutic_admin_render_identity_mutable_editor_js"
+    ].read_text(encoding="utf-8")
     hermeneutic_admin_render_identity_governance_js = required_files[
         "hermeneutic_admin_render_identity_governance_js"
     ].read_text(encoding="utf-8")
     hermeneutic_admin_main_js = required_files["hermeneutic_admin_main_js"].read_text(encoding="utf-8")
+    identity_api_js = required_files["identity_api_js"].read_text(encoding="utf-8")
+    identity_render_runtime_representations_js = required_files[
+        "identity_render_runtime_representations_js"
+    ].read_text(encoding="utf-8")
+    identity_main_js = required_files["identity_main_js"].read_text(encoding="utf-8")
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
@@ -514,8 +546,22 @@ def _check_ui_assets() -> Dict[str, Any]:
     hermeneutic_admin_front_js = (
         f"{hermeneutic_admin_api_js}\n"
         f"{hermeneutic_admin_render_js}\n"
+        f"{hermeneutic_admin_render_identity_read_model_js}\n"
+        f"{hermeneutic_admin_render_identity_static_editor_js}\n"
+        f"{hermeneutic_admin_render_identity_mutable_editor_js}\n"
         f"{hermeneutic_admin_render_identity_governance_js}\n"
         f"{hermeneutic_admin_main_js}"
+    )
+    identity_front_js = (
+        f"{hermeneutic_admin_api_js}\n"
+        f"{hermeneutic_admin_render_js}\n"
+        f"{hermeneutic_admin_render_identity_read_model_js}\n"
+        f"{hermeneutic_admin_render_identity_static_editor_js}\n"
+        f"{hermeneutic_admin_render_identity_mutable_editor_js}\n"
+        f"{hermeneutic_admin_render_identity_governance_js}\n"
+        f"{identity_api_js}\n"
+        f"{identity_render_runtime_representations_js}\n"
+        f"{identity_main_js}"
     )
 
     admin_script_order = [
@@ -556,6 +602,26 @@ def _check_ui_assets() -> Dict[str, Any]:
         raise RuntimeError(
             "ordre scripts hermeneutic admin invalide: "
             f"attendu={hermeneutic_admin_script_order}, trouve={hermeneutic_admin_script_srcs}"
+        )
+
+    identity_script_order = [
+        "admin_api.js",
+        "admin_ui_common.js",
+        "hermeneutic_admin/api.js",
+        "hermeneutic_admin/render.js",
+        "hermeneutic_admin/render_identity_read_model.js",
+        "hermeneutic_admin/render_identity_static_editor.js",
+        "hermeneutic_admin/render_identity_mutable_editor.js",
+        "hermeneutic_admin/render_identity_governance.js",
+        "identity/api.js",
+        "identity/render_identity_runtime_representations.js",
+        "identity/main.js",
+    ]
+    identity_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', identity_html)
+    if identity_script_srcs != identity_script_order:
+        raise RuntimeError(
+            "ordre scripts identity invalide: "
+            f"attendu={identity_script_order}, trouve={identity_script_srcs}"
         )
 
     expected_admin_settings_endpoints = {
@@ -780,6 +846,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="threads"',
         'id="log"',
         'id="message"',
+        'id="btnIdentity"',
+        'href="/identity"',
     ]
     for marker in index_markers:
         if marker not in index_html:
@@ -797,6 +865,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_markers = [
         "Admin de configuration",
         'href="admin.css"',
+        'href="/identity"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
         'script src="admin_state.js"',
@@ -878,9 +947,22 @@ def _check_ui_assets() -> Dict[str, Any]:
         if marker in admin_html:
             raise RuntimeError(f"marker admin.html legacy inattendu: {marker}")
 
+    log_markers = [
+        "Logs applicatifs",
+        'href="admin.css"',
+        'href="/identity"',
+        'href="/admin"',
+        'href="/hermeneutic-admin"',
+        'id="logRefresh"',
+    ]
+    for marker in log_markers:
+        if marker not in log_html:
+            raise RuntimeError(f"marker log.html manquant: {marker}")
+
     hermeneutic_admin_markers = [
         "Hermeneutic admin",
         'href="admin.css"',
+        'href="/identity"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
         'script src="hermeneutic_admin/api.js"',
@@ -942,6 +1024,51 @@ def _check_ui_assets() -> Dict[str, Any]:
         extra = sorted(found_hermeneutic_admin_endpoints - expected_hermeneutic_admin_endpoints)
         raise RuntimeError(
             "endpoints hermeneutic admin invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    identity_markers = [
+        "Identity",
+        'href="admin.css"',
+        'href="/admin"',
+        'href="/log"',
+        'href="/hermeneutic-admin"',
+        "Comment l'identite circule",
+        "Etat courant par sujet",
+        "Fiche identite pour le jugement",
+        "Texte identity injecte au modele",
+        "Editer le statique canonique",
+        "Editer la mutable canonique",
+        "Seuils et limites",
+        "Legacy, evidences et conflits",
+        "Corrections recentes et sorties utiles",
+        'script src="identity/api.js"',
+        'script src="identity/render_identity_runtime_representations.js"',
+        'script src="identity/main.js"',
+    ]
+    for marker in identity_markers:
+        if marker not in identity_html:
+            raise RuntimeError(f"marker identity.html manquant: {marker}")
+
+    expected_identity_endpoints = {
+        "/api/admin/identity/read-model",
+        "/api/admin/identity/runtime-representations",
+        "/api/admin/identity/mutable",
+        "/api/admin/identity/static",
+        "/api/admin/identity/governance",
+        "/api/admin/hermeneutics/corrections-export",
+    }
+    found_identity_endpoints = set(
+        re.findall(
+            r"/api/admin/(?:identity/(?:read-model|runtime-representations|mutable|static|governance)|hermeneutics/corrections-export)",
+            identity_front_js,
+        )
+    )
+    if found_identity_endpoints != expected_identity_endpoints:
+        missing = sorted(expected_identity_endpoints - found_identity_endpoints)
+        extra = sorted(found_identity_endpoints - expected_identity_endpoints)
+        raise RuntimeError(
+            "endpoints identity invalides: "
             f"missing={missing}, extra={extra}"
         )
 
@@ -1032,6 +1159,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin_script_srcs": hermeneutic_admin_script_srcs,
         "hermeneutic_admin_endpoints_expected": sorted(expected_hermeneutic_admin_endpoints),
         "hermeneutic_admin_endpoints_found": sorted(found_hermeneutic_admin_endpoints),
+        "identity_script_order": identity_script_order,
+        "identity_script_srcs": identity_script_srcs,
+        "identity_endpoints_expected": sorted(expected_identity_endpoints),
+        "identity_endpoints_found": sorted(found_identity_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
         "admin_dynamic_getelement_templates_expected": sorted(expected_dynamic_getelement_templates),
         "admin_dynamic_getelement_templates_found": dynamic_getelement_templates,
@@ -1047,7 +1178,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         "index_markers": index_markers,
         "index_hermeneutic_markers": index_hermeneutic_markers,
         "admin_markers": admin_markers,
+        "log_markers": log_markers,
         "hermeneutic_admin_markers": hermeneutic_admin_markers,
+        "identity_markers": identity_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,
         "admin_js_markers": admin_js_markers,
         "admin_js_forbidden_markers": admin_js_forbidden_markers,
@@ -1063,9 +1196,17 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if admin.status_code != 200 or "Admin de configuration" not in admin.text:
         raise RuntimeError("admin invalide")
 
+    log = _http_json("GET", f"{base_url}/log")
+    if log.status_code != 200 or "Logs applicatifs" not in log.text:
+        raise RuntimeError("log invalide")
+
     hermeneutic_admin = _http_json("GET", f"{base_url}/hermeneutic-admin")
     if hermeneutic_admin.status_code != 200 or "Hermeneutic admin" not in hermeneutic_admin.text:
         raise RuntimeError("hermeneutic-admin invalide")
+
+    identity_page = _http_json("GET", f"{base_url}/identity")
+    if identity_page.status_code != 200 or "Fiche identite pour le jugement" not in identity_page.text:
+        raise RuntimeError("identity invalide")
 
     admin_old = _http_json("GET", f"{base_url}/admin-old")
     if admin_old.status_code != 404:
@@ -1152,6 +1293,15 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if governance_invalid_patch_result.get("validation_error") != "governance_key_readonly":
         raise RuntimeError("api admin identity governance invalid patch error invalide")
 
+    runtime_representations_get = _http_json(
+        "GET",
+        f"{base_url}/api/admin/identity/runtime-representations",
+        **_admin_request_kwargs(),
+    )
+    runtime_representations_payload = runtime_representations_get.json()
+    if runtime_representations_get.status_code != 200 or runtime_representations_payload.get("ok") is not True:
+        raise RuntimeError("api admin identity runtime representations invalide")
+
     admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1", **_admin_request_kwargs())
     admin_logs_payload = admin_logs.json()
     if admin_logs.status_code != 200 or admin_logs_payload.get("ok") is not True:
@@ -1170,7 +1320,9 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     return {
         "root_status": root.status_code,
         "admin_status": admin.status_code,
+        "log_status": log.status_code,
         "hermeneutic_admin_status": hermeneutic_admin.status_code,
+        "identity_status": identity_page.status_code,
         "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
         "admin_settings_status": admin_settings.status_code,
@@ -1179,6 +1331,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "admin_resources_invalid_patch_status": resources_invalid_patch.status_code,
         "identity_governance_status": governance_get.status_code,
         "identity_governance_invalid_patch_status": governance_invalid_patch.status_code,
+        "identity_runtime_representations_status": runtime_representations_get.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
     }

@@ -1,7 +1,7 @@
 # Identity Mutable Edit Contract
 
 Statut: spec vivante  
-Portee: edition operateur controlee de la mutable canonique avant la future surface `Identity`  
+Portee: edition operateur controlee de la mutable canonique, exposee dans `/hermeneutic-admin` puis reemployee dans `/identity`
 Lot ferme: `Lot 3`
 
 ## But
@@ -9,7 +9,6 @@ Lot ferme: `Lot 3`
 Ce contrat ouvre une edition controlee de la mutable canonique active, sans rouvrir:
 - l'edition du statique (`Lot 4`);
 - la gouvernance des caps et seuils (`Lot 5`);
-- la future page `Identity` et sa navigation globale (`Lot 6`);
 - les vieux mutateurs legacy `force_accept`, `force_reject`, `relabel`.
 
 Ici, `dynamique` veut dire:
@@ -134,18 +133,23 @@ Cet event alimente aussi `Corrections recentes` via:
 - `GET /api/admin/hermeneutics/corrections-export`
 - sans requalifier le legacy ni exposer de contenu brut
 
-## Surface operateur minimale
+## Surface operateur
 
-Avant la future page `Identity`, `/hermeneutic-admin` expose:
+`/hermeneutic-admin` expose:
 - la section `Vue unifiee identity`
 - une edition controlee bornee a la mutable canonique `llm` / `user`
 - un editeur statique canonique distinct, documente a part pour `Lot 4`
 - le read-model unifie en dessous
 - la section `Fragments legacy d'identite` toujours read-only / legacy-only
 
+Depuis `Lot 6`, la page `/identity` reemploie le meme contrat d'edition:
+- sans changer la route `POST /api/admin/identity/mutable`;
+- avec un cadrage humain plus explicite sur la difference entre jugement et reponse finale;
+- sans requalifier le legacy.
+
 ## Hors scope
 
-Ce contrat ne couvre pas encore:
+Ce contrat ne couvre pas:
 - l'edition du statique (`Lot 4`);
 - la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
-- la future page `Identity` et sa navigation globale (`Lot 6`).
+- la composition de la page `Identity`, documentee separement dans `identity-surface-contract.md`.

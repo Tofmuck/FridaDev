@@ -166,7 +166,11 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['active_runtime']['mutable_editable_via'], '/api/admin/identity/mutable')
         self.assertEqual(data['active_runtime']['governance_read_via'], '/api/admin/identity/governance')
         self.assertEqual(data['active_runtime']['governance_editable_via'], '/api/admin/identity/governance')
-        self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_5_governance_visible')
+        self.assertEqual(
+            data['active_runtime']['runtime_representations_read_via'],
+            '/api/admin/identity/runtime-representations',
+        )
+        self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_6_identity_surface_live')
         self.assertEqual(observed['fragments'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])

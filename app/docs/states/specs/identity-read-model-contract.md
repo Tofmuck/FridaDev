@@ -1,19 +1,19 @@
 # Identity Read Model Contract
 
 Statut: spec vivante  
-Portee: lecture operator-facing read-only avant la future surface `Identity`  
+Portee: lecture operator-facing read-only reemployee par `/hermeneutic-admin` et `/identity`
 Lot ferme: `Lot 2`
 
 ## But
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
 
-Le read-model lui-meme reste read-only, meme si la meme section operator-facing peut aussi porter, depuis `Lot 3` et `Lot 4`, des editions bornees documentees a part.
+Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4`, `Lot 5` et `Lot 6`, des editions ou lectures distinctes documentees a part.
 
 Il sert a :
 - montrer la verite active runtime;
 - distinguer clairement ce qui est charge, stocke, injecte, legacy, evidence et conflit;
-- fournir une base stable pour la future surface `Identity`.
+- fournir une base stable pour la surface `Identity` dediee.
 
 ## Route
 
@@ -23,7 +23,8 @@ Cette route est:
 - read-only;
 - protegee par la meme garde admin que les autres routes `/api/admin/*`;
 - distincte de `/api/admin/hermeneutics/identity-candidates`, qui reste legacy / evidence-only;
-- distincte de `GET /api/admin/identity/governance`, qui porte la lecture des caps/seuils/budgets identity.
+- distincte de `GET /api/admin/identity/governance`, qui porte la lecture des caps/seuils/budgets identity;
+- distincte de `GET /api/admin/identity/runtime-representations`, qui porte la fiche structuree pour le jugement et le texte identity injecte au modele.
 
 ## Verite active exposee
 
@@ -36,6 +37,7 @@ Le read-model doit exposer explicitement:
 - `used_identity_ids_count = 0`
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
+- `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
@@ -155,18 +157,23 @@ Champs minimaux:
 - `limit`
 - `items[]`
 
-## Affichage operateur minimal
+## Affichage operateur
 
-Avant la future page `Identity`, la surface `/hermeneutic-admin` expose une section minimale:
+La surface `/hermeneutic-admin` expose une section minimale:
 - `Vue unifiee identity`
 - au-dessus de `Fragments legacy d'identite`
-- sans navigation globale nouvelle
+- sans pretendre devenir la page `Identity` complete
 
 Cette surface montre:
 - la verite active runtime;
 - la lecture par sujet `llm` / `user`;
 - les couches stockees legacy/evidence/conflicts;
 - la separation `stored` vs `actively_injected`.
+
+Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
+- pour l'etat courant par sujet;
+- sans le surcharger avec le texte injecte ni la fiche structuree de jugement;
+- en le combinant avec `GET /api/admin/identity/runtime-representations`.
 
 Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:
 - via `GET /api/admin/identity/governance` et `POST /api/admin/identity/governance`;
@@ -189,8 +196,8 @@ Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un mo
 
 ## Hors scope
 
-Ce contrat ne couvre pas encore:
+Ce contrat ne couvre pas:
 - le mutateur de la mutable canonique de `Lot 3`, documente separement dans `identity-mutable-edit-contract.md`;
 - le mutateur du statique canonique de `Lot 4`, documente separement dans `identity-static-edit-contract.md`;
 - la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
-- la future page dediee `Identity` et sa navigation globale (`Lot 6`).
+- la composition de la page dediee `Identity`, documentee separement dans `identity-surface-contract.md`.
