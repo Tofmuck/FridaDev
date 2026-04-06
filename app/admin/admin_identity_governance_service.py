@@ -57,6 +57,7 @@ def _audit_and_return(
     old_values: Mapping[str, Any],
     new_values: Mapping[str, Any],
     reason_len: int,
+    status_code: int | None = None,
 ) -> Tuple[dict[str, Any], int]:
     audit.log_compact_edit(
         admin_logs_module,
@@ -69,7 +70,10 @@ def _audit_and_return(
         reason_len=reason_len,
         source_of_truth=response['source_of_truth'],
     )
-    return _response_with_runtime(response, identity_module=identity_module), 200 if response['ok'] else 400
+    resolved_status = status_code
+    if resolved_status is None:
+        resolved_status = 200 if response['ok'] else 400
+    return _response_with_runtime(response, identity_module=identity_module), resolved_status
 
 
 def identity_governance_response(
@@ -301,6 +305,7 @@ def identity_governance_update_response(
             old_values={},
             new_values={},
             reason_len=reason_len,
+            status_code=500,
         )
 
     persisted_values = identity_governance.editable_values_from_view(updated_view)

@@ -161,6 +161,67 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         self.assertFalse(payload['ok'])
         self.assertEqual(payload['validation_error'], 'governance_key_readonly')
 
+    def test_identity_governance_route_maps_store_unavailable_to_http_500(self) -> None:
+        current_payload = self._governance_view({'CONTEXT_HINTS_MAX_ITEMS': 2})
+        observed_logs = []
+        original_get_runtime_section = self.server.runtime_settings.get_runtime_section
+        original_get_identity_governance_settings = self.server.runtime_settings.get_identity_governance_settings
+        original_validate_runtime_section = self.server.runtime_settings.validate_runtime_section
+        original_update_runtime_section = self.server.runtime_settings.update_runtime_section
+        original_log_event = self.server.admin_logs.log_event
+        original_build_identity_input = self.server.identity.build_identity_input
+
+        def fake_get_runtime_section(section: str, *, fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            return current_payload
+
+        def fake_get_identity_governance_settings(*, fetcher=None):
+            return current_payload
+
+        def fake_validate_runtime_section(section: str, patch_payload=None, *, fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            return {
+                'section': section,
+                'source': 'candidate',
+                'source_reason': 'validate_payload',
+                'valid': True,
+                'checks': [{'name': 'CONTEXT_HINTS_MAX_ITEMS', 'ok': True, 'detail': 'ok'}],
+            }
+
+        def failing_update_runtime_section(section: str, patch_payload, *, updated_by='admin_api', fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            raise self.server.runtime_settings.RuntimeSettingsDbUnavailableError('db unavailable for governance patch')
+
+        self.server.runtime_settings.get_runtime_section = fake_get_runtime_section
+        self.server.runtime_settings.get_identity_governance_settings = fake_get_identity_governance_settings
+        self.server.runtime_settings.validate_runtime_section = fake_validate_runtime_section
+        self.server.runtime_settings.update_runtime_section = failing_update_runtime_section
+        self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+        self.server.identity.build_identity_input = lambda: {'schema_version': 'v2'}
+        try:
+            response = self.client.post(
+                '/api/admin/identity/governance',
+                json={
+                    'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3},
+                    'reason': 'store unavailable test',
+                },
+            )
+        finally:
+            self.server.runtime_settings.get_runtime_section = original_get_runtime_section
+            self.server.runtime_settings.get_identity_governance_settings = original_get_identity_governance_settings
+            self.server.runtime_settings.validate_runtime_section = original_validate_runtime_section
+            self.server.runtime_settings.update_runtime_section = original_update_runtime_section
+            self.server.admin_logs.log_event = original_log_event
+            self.server.identity.build_identity_input = original_build_identity_input
+
+        self.assertEqual(response.status_code, 500)
+        payload = response.get_json()
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'governance_store_unavailable')
+        self.assertEqual(payload['validation_error'], 'governance_store_unavailable')
+        self.assertEqual(observed_logs[0][0], 'identity_governance_admin_edit')
+        self.assertNotIn('content', observed_logs[0][1])
+
     def test_identity_governance_routes_are_guarded_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
         original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY

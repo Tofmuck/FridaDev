@@ -247,6 +247,37 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(payload['validation_error'], 'governance_key_readonly')
         self.assertEqual(observed_logs[0][1]['validation_error'], 'governance_key_readonly')
 
+    def test_update_response_maps_store_unavailable_to_http_500_with_compact_audit(self) -> None:
+        runtime_module = _FakeRuntimeSettings()
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+
+        def failing_update_runtime_section(section: str, patch_payload, *, updated_by='admin_api', fetcher=None):
+            runtime_module._assert_section(section)
+            raise runtime_settings.RuntimeSettingsDbUnavailableError('db unavailable for governance patch')
+
+        runtime_module.update_runtime_section = failing_update_runtime_section
+
+        payload, status = admin_identity_governance_service.identity_governance_update_response(
+            {
+                'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3},
+                'reason': 'store unavailable test',
+            },
+            runtime_settings_module=runtime_module,
+            admin_logs_module=SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs))),
+            identity_module=SimpleNamespace(build_identity_input=lambda: {'schema_version': 'v2'}),
+        )
+
+        self.assertEqual(status, 500)
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'governance_store_unavailable')
+        self.assertEqual(payload['validation_error'], 'governance_store_unavailable')
+        event_name, event_payload = observed_logs[0]
+        self.assertEqual(event_name, 'identity_governance_admin_edit')
+        self.assertEqual(event_payload['reason_code'], 'governance_store_unavailable')
+        self.assertEqual(event_payload['validation_error'], 'governance_store_unavailable')
+        self.assertNotIn('content', event_payload)
+        self.assertNotIn('reason', event_payload)
+
 
 if __name__ == '__main__':
     unittest.main()

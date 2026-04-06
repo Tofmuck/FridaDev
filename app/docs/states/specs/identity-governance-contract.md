@@ -172,6 +172,10 @@ Reponse attendue:
 - `active_prompt_contract = "static + mutable narrative"`
 - `identity_input_schema_version = "v2"`
 
+Mapping HTTP:
+- rejets contrat / readonly / invariant / validation: `400`
+- indisponibilite runtime-settings store (`reason_code = governance_store_unavailable`): `500`
+
 ## Audit compact
 
 Chaque tentative d'update produit:
