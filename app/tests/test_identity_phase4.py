@@ -11,7 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
-from identity import identity, static_identity_paths
+from identity import identity, static_identity_content, static_identity_paths
 import config
 
 
@@ -268,6 +268,100 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertNotIn('dynamic', payload['user'])
         self.assertEqual(payload['frida']['mutable']['content'], '')
         self.assertEqual(payload['user']['mutable']['content'], '')
+
+    def test_static_identity_content_snapshot_exposes_runtime_resource_metadata(self) -> None:
+        original_get_resources = static_identity_content.runtime_settings.get_resources_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'llm.txt'
+            llm_file.write_text('Frida statique courante', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            static_identity_content.runtime_settings.get_resources_settings = fake_get_resources_settings
+            try:
+                snapshot = static_identity_content.read_static_identity_snapshot('llm')
+            finally:
+                static_identity_content.runtime_settings.get_resources_settings = original_get_resources
+
+        self.assertEqual(snapshot.subject, 'llm')
+        self.assertEqual(snapshot.resource_field, 'llm_identity_path')
+        self.assertEqual(snapshot.configured_path, str(llm_file))
+        self.assertEqual(snapshot.resolution_kind, 'absolute')
+        self.assertEqual(snapshot.resolved_path, llm_file.resolve())
+        self.assertEqual(snapshot.content, 'Frida statique courante')
+        self.assertEqual(snapshot.source_kind, 'resource_path_content')
+        self.assertEqual(snapshot.editable_via, '/api/admin/identity/static')
+
+    def test_static_identity_content_write_updates_active_runtime_loader_and_clear_keeps_file(self) -> None:
+        original_get_resources = static_identity_content.runtime_settings.get_resources_settings
+        original_identity_get_resources = identity.runtime_settings.get_resources_settings
+        original_get_mutable_identity = identity._get_mutable_identity
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'llm.txt'
+            user_file = tmp_path / 'user.txt'
+            llm_file.write_text('Frida statique initiale', encoding='utf-8')
+            user_file.write_text('Utilisateur statique initial', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(user_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            static_identity_content.runtime_settings.get_resources_settings = fake_get_resources_settings
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            identity._get_mutable_identity = lambda _subject: None
+            try:
+                set_snapshot = static_identity_content.write_static_identity_content(
+                    'llm',
+                    'Frida statique revisee\n',
+                )
+                cleared_snapshot = static_identity_content.write_static_identity_content(
+                    'user',
+                    '',
+                )
+                payload = identity.build_identity_input()
+                llm_text_after = llm_file.read_text(encoding='utf-8')
+                user_exists_after = user_file.exists()
+                user_text_after = user_file.read_text(encoding='utf-8')
+            finally:
+                static_identity_content.runtime_settings.get_resources_settings = original_get_resources
+                identity.runtime_settings.get_resources_settings = original_identity_get_resources
+                identity._get_mutable_identity = original_get_mutable_identity
+
+        self.assertEqual(set_snapshot.content, 'Frida statique revisee')
+        self.assertFalse(cleared_snapshot.content)
+        self.assertTrue(user_exists_after)
+        self.assertEqual(llm_text_after, 'Frida statique revisee\n')
+        self.assertEqual(user_text_after, '')
+        self.assertEqual(payload['frida']['static']['content'], 'Frida statique revisee')
+        self.assertEqual(payload['user']['static']['content'], '')
+        self.assertEqual(payload['frida']['static']['source'], str(llm_file))
+        self.assertEqual(payload['user']['static']['source'], str(user_file))
 
 
 if __name__ == '__main__':

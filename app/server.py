@@ -21,6 +21,7 @@ from core import conv_store
 from core import chat_service
 from core import conversations_service
 from admin import (
+    admin_identity_static_edit_service,
     admin_identity_mutable_edit_service,
     admin_identity_read_model_service,
     admin_logs,
@@ -31,6 +32,7 @@ from admin import admin_actions
 from admin import runtime_settings
 from core import token_utils
 from identity import identity
+from identity import static_identity_content
 from memory import summarizer
 from memory import memory_store
 from memory import arbiter
@@ -965,6 +967,7 @@ def api_admin_identity_read_model():
         request.args,
         memory_store_module=memory_store,
         identity_module=identity,
+        static_identity_content_module=static_identity_content,
     )
     return jsonify(payload), status
 
@@ -975,6 +978,17 @@ def api_admin_identity_mutable_edit():
     payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
         data,
         memory_store_module=memory_store,
+        admin_logs_module=admin_logs,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/admin/identity/static')
+def api_admin_identity_static_edit():
+    data = request.get_json(force=True, silent=True) or {}
+    payload, status = admin_identity_static_edit_service.identity_static_edit_response(
+        data,
+        static_identity_content_module=static_identity_content,
         admin_logs_module=admin_logs,
     )
     return jsonify(payload), status

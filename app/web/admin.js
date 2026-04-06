@@ -590,15 +590,15 @@
   const resourcesFieldSpecs = [
     {
       key: "llm_identity_path",
-      label: "LLM identity path",
-      hint: "Chemin du fichier d'identite charge cote modele.",
+      label: "LLM static resource path",
+      hint: "Reference de ressource du statique actif cote modele. Le contenu s'edite depuis Hermeneutic admin.",
       inputType: "text",
       autocomplete: "off",
     },
     {
       key: "user_identity_path",
-      label: "User identity path",
-      hint: "Chemin du fichier d'identite utilisateur.",
+      label: "User static resource path",
+      hint: "Reference de ressource du statique actif cote utilisateur. Le contenu s'edite depuis Hermeneutic admin.",
       inputType: "text",
       autocomplete: "off",
     },

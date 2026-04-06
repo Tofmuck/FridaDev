@@ -2,15 +2,14 @@
   const adminUi = window.FridaAdminUiCommon;
   if (!adminUi) {
     throw new Error(
-      "admin_ui_common.js must be loaded before hermeneutic_admin/render_identity_mutable_editor.js",
+      "admin_ui_common.js must be loaded before hermeneutic_admin/render_identity_static_editor.js",
     );
   }
 
-  const TARGET_CHARS = 1500;
-  const MAX_CHARS = 1650;
   const SUBJECTS = ["llm", "user"];
 
   const toText = (value) => String(value == null ? "" : value).trim();
+  const toRawText = (value) => String(value == null ? "" : value);
 
   const createChip = (text, options = {}) => {
     const chip = document.createElement("span");
@@ -35,7 +34,7 @@
     adminUi.renderReadonlyInfoEntries(target, entries);
   };
 
-  const mappingToEntries = (mapping, source = "identity_mutable_editor") => {
+  const mappingToEntries = (mapping, source = "identity_static_editor") => {
     const data = mapping && typeof mapping === "object" && !Array.isArray(mapping) ? mapping : {};
     return Object.keys(data)
       .sort()
@@ -56,13 +55,13 @@
       ]);
   };
 
-  const subjectMutableLayer = (payload, subject) => {
+  const subjectStaticLayer = (payload, subject) => {
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
     const subjectBlock = subjects[subject];
     if (!subjectBlock || typeof subjectBlock !== "object" || Array.isArray(subjectBlock)) {
       return {};
     }
-    const layer = subjectBlock.mutable;
+    const layer = subjectBlock.static;
     if (!layer || typeof layer !== "object" || Array.isArray(layer)) {
       return {};
     }
@@ -70,38 +69,37 @@
   };
 
   const renderSubjectEditor = (target, payload, subject) => {
-    const mutableLayer = subjectMutableLayer(payload, subject);
-    const currentContent = toText(mutableLayer.content);
+    const staticLayer = subjectStaticLayer(payload, subject);
+    const currentContent = toText(staticLayer.content);
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
-    card.dataset.identityMutableSubject = subject;
+    card.dataset.identityStaticSubject = subject;
 
     const head = document.createElement("div");
     head.className = "admin-readonly-group-head";
     const title = document.createElement("h4");
-    title.textContent = `${subject} mutable canonique`;
+    title.textContent = `${subject} statique canonique`;
     head.appendChild(title);
     card.appendChild(head);
 
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
     note.textContent =
-      "Edition controlee de la mutable canonique injectee activement. Le statique dispose d'un editeur distinct; le legacy, les evidences et les conflits restent read-only.";
+      "Edition controlee du contenu statique reel charge par le runtime. Les runtime settings conservent seulement la reference de ressource; la mutable et le legacy restent separes.";
     card.appendChild(note);
 
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
-    meta.appendChild(createChip(`stored=${Boolean(mutableLayer.stored)}`));
-    meta.appendChild(createChip(`injected=${Boolean(mutableLayer.actively_injected)}`));
+    meta.appendChild(createChip(`stored=${Boolean(staticLayer.stored)}`));
+    meta.appendChild(createChip(`loaded=${Boolean(staticLayer.loaded_for_runtime)}`));
+    meta.appendChild(createChip(`injected=${Boolean(staticLayer.actively_injected)}`));
     meta.appendChild(createChip(`len=${currentContent.length}`));
-    meta.appendChild(createChip(`target=${TARGET_CHARS}`));
-    meta.appendChild(createChip(`max=${MAX_CHARS}`));
-    if (toText(mutableLayer.updated_by)) {
-      meta.appendChild(createChip(`updated_by=${toText(mutableLayer.updated_by)}`));
+    if (toText(staticLayer.resource_field)) {
+      meta.appendChild(createChip(`field=${toText(staticLayer.resource_field)}`));
     }
-    if (toText(mutableLayer.updated_ts)) {
-      meta.appendChild(createChip(`updated_ts=${toText(mutableLayer.updated_ts)}`));
+    if (toText(staticLayer.resolution_kind)) {
+      meta.appendChild(createChip(`resolution=${toText(staticLayer.resolution_kind)}`));
     }
     card.appendChild(meta);
 
@@ -111,23 +109,22 @@
       summary,
       mappingToEntries(
         {
-          storage_kind: toText(mutableLayer.storage_kind) || "identity_mutables",
-          stored: Boolean(mutableLayer.stored),
-          loaded_for_runtime: Boolean(mutableLayer.loaded_for_runtime),
-          actively_injected: Boolean(mutableLayer.actively_injected),
-          source_trace_id: toText(mutableLayer.source_trace_id),
-          updated_by: toText(mutableLayer.updated_by),
-          update_reason: toText(mutableLayer.update_reason),
-          updated_ts: toText(mutableLayer.updated_ts),
+          storage_kind: toText(staticLayer.storage_kind) || "resource_path",
+          source_kind: toText(staticLayer.source_kind) || "resource_path_content",
+          resource_field: toText(staticLayer.resource_field),
+          configured_path: toText(staticLayer.configured_path),
+          resolution_kind: toText(staticLayer.resolution_kind),
+          resolved_path: toText(staticLayer.resolved_path),
+          editable_via: toText(staticLayer.editable_via),
         },
-        "identity_mutable_editor",
+        "identity_static_editor",
       ),
     );
     card.appendChild(summary);
 
     const form = document.createElement("form");
     form.className = "admin-form";
-    form.dataset.identityMutableSubject = subject;
+    form.dataset.identityStaticSubject = subject;
     form.addEventListener("submit", (event) => event.preventDefault());
 
     const grid = document.createElement("div");
@@ -136,7 +133,7 @@
     const contentField = document.createElement("label");
     contentField.className = "admin-field admin-field-wide";
     const contentLabel = document.createElement("span");
-    contentLabel.textContent = "Mutable canonique";
+    contentLabel.textContent = "Contenu statique actif";
     contentField.appendChild(contentLabel);
     const textarea = document.createElement("textarea");
     textarea.className = "admin-readonly-textarea";
@@ -145,7 +142,8 @@
     textarea.value = currentContent;
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
-    contentMeta.textContent = `Cible ${TARGET_CHARS} caracteres, plafond dur ${MAX_CHARS}, aucune troncature.`;
+    contentMeta.textContent =
+      "Enregistre exactement le contenu demande dans la ressource resolue. Aucun plafond Lot 5 ni troncature cachee.";
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);
 
@@ -158,7 +156,7 @@
     reasonInput.type = "text";
     reasonInput.name = "reason";
     reasonInput.maxLength = 240;
-    reasonInput.placeholder = "Pourquoi modifier ou effacer cette mutable ?";
+    reasonInput.placeholder = "Pourquoi modifier ou vider ce statique ?";
     reasonField.appendChild(reasonInput);
     const reasonMeta = document.createElement("small");
     reasonMeta.textContent = "Obligatoire pour `set` et `clear`.";
@@ -173,17 +171,17 @@
     const saveButton = document.createElement("button");
     saveButton.type = "button";
     saveButton.className = "admin-btn";
-    saveButton.dataset.identityMutableAction = "set";
-    saveButton.dataset.identityMutableSubject = subject;
-    saveButton.textContent = "Enregistrer mutable";
+    saveButton.dataset.identityStaticAction = "set";
+    saveButton.dataset.identityStaticSubject = subject;
+    saveButton.textContent = "Enregistrer statique";
     actions.appendChild(saveButton);
 
     const clearButton = document.createElement("button");
     clearButton.type = "button";
     clearButton.className = "admin-btn";
-    clearButton.dataset.identityMutableAction = "clear";
-    clearButton.dataset.identityMutableSubject = subject;
-    clearButton.textContent = "Effacer mutable";
+    clearButton.dataset.identityStaticAction = "clear";
+    clearButton.dataset.identityStaticSubject = subject;
+    clearButton.textContent = "Vider statique";
     actions.appendChild(clearButton);
 
     form.appendChild(actions);
@@ -191,37 +189,37 @@
     target.appendChild(card);
   };
 
-  const renderIdentityMutableEditors = (target, payload) => {
+  const renderIdentityStaticEditors = (target, payload) => {
     if (!target) return;
     target.innerHTML = "";
     const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
     const subjects = safePayload.subjects && typeof safePayload.subjects === "object" ? safePayload.subjects : {};
     const available = SUBJECTS.filter((subject) => subjects[subject] && typeof subjects[subject] === "object");
     if (!available.length) {
-      renderEmpty(target, "Aucune mutable canonique editable disponible.");
+      renderEmpty(target, "Aucune ressource statique editable disponible.");
       return;
     }
     available.forEach((subject) => renderSubjectEditor(target, safePayload, subject));
   };
 
-  const readIdentityMutableDraft = (trigger) => {
-    const button = trigger?.closest?.("[data-identity-mutable-action]");
+  const readIdentityStaticDraft = (trigger) => {
+    const button = trigger?.closest?.("[data-identity-static-action]");
     if (!button) return null;
-    const subject = toText(button.dataset.identityMutableSubject).toLowerCase();
-    const action = toText(button.dataset.identityMutableAction).toLowerCase();
-    const form = button.closest("form[data-identity-mutable-subject]");
+    const subject = toText(button.dataset.identityStaticSubject).toLowerCase();
+    const action = toText(button.dataset.identityStaticAction).toLowerCase();
+    const form = button.closest("form[data-identity-static-subject]");
     if (!form) return null;
     const contentField = form.querySelector('textarea[name="content"]');
     const reasonField = form.querySelector('input[name="reason"]');
     return {
       subject,
       action,
-      content: action === "clear" ? "" : toText(contentField?.value),
+      content: action === "clear" ? "" : toRawText(contentField?.value),
       reason: toText(reasonField?.value),
     };
   };
 
-  const setIdentityMutableEditStatus = (target, payload, state = "") => {
+  const setIdentityStaticEditStatus = (target, payload, state = "") => {
     if (!target) return;
     target.innerHTML = "";
     if (!payload) return;
@@ -237,16 +235,16 @@
 
     if (safePayload.ok) {
       if (safePayload.reason_code === "set_applied") {
-        message.textContent = `Mutable ${toText(safePayload.subject)} mise a jour.`;
+        message.textContent = `Statique ${toText(safePayload.subject)} mis a jour.`;
       } else if (safePayload.reason_code === "clear_applied") {
-        message.textContent = `Mutable ${toText(safePayload.subject)} effacee.`;
+        message.textContent = `Statique ${toText(safePayload.subject)} vide.`;
       } else if (safePayload.reason_code === "already_cleared") {
-        message.textContent = `Mutable ${toText(safePayload.subject)} deja absente.`;
+        message.textContent = `Statique ${toText(safePayload.subject)} deja vide.`;
       } else {
-        message.textContent = `Mutable ${toText(safePayload.subject)} deja identique.`;
+        message.textContent = `Statique ${toText(safePayload.subject)} deja identique.`;
       }
     } else {
-      message.textContent = toText(safePayload.error) || "Edition mutable indisponible.";
+      message.textContent = toText(safePayload.error) || "Edition statique indisponible.";
     }
     target.appendChild(message);
 
@@ -259,6 +257,8 @@
     meta.appendChild(createChip(`old_len=${Number(safePayload.old_len) || 0}`, { status }));
     meta.appendChild(createChip(`new_len=${Number(safePayload.new_len) || 0}`, { status }));
     meta.appendChild(createChip(`stored_after=${Boolean(safePayload.stored_after)}`, { status }));
+    meta.appendChild(createChip(`field=${toText(safePayload.resource_field) || "n/a"}`, { status }));
+    meta.appendChild(createChip(`resolution=${toText(safePayload.resolution_kind) || "n/a"}`, { status }));
     meta.appendChild(createChip(`reason_code=${toText(safePayload.reason_code) || "n/a"}`, { status }));
     if (toText(safePayload.validation_error)) {
       meta.appendChild(createChip(`validation=${toText(safePayload.validation_error)}`, { status }));
@@ -266,9 +266,9 @@
     target.appendChild(meta);
   };
 
-  window.FridaHermeneuticIdentityMutableEditor = Object.freeze({
-    renderIdentityMutableEditors,
-    readIdentityMutableDraft,
-    setIdentityMutableEditStatus,
+  window.FridaHermeneuticIdentityStaticEditor = Object.freeze({
+    renderIdentityStaticEditors,
+    readIdentityStaticDraft,
+    setIdentityStaticEditStatus,
   });
 })();

@@ -1591,6 +1591,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             {
                 '/api/admin/identity/read-model',
                 '/api/admin/identity/mutable',
+                '/api/admin/identity/static',
             },
         )
         self.assertTrue(settings_routes)
@@ -1601,6 +1602,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertTrue(hermeneutics_routes.isdisjoint(identity_routes))
         self.assertFalse(any('hermeneutics' in route for route in settings_routes))
         self.assertFalse(any('/settings' in route for route in hermeneutics_routes))
+
+    def test_admin_resources_ui_keeps_paths_as_resource_references(self) -> None:
+        source = (APP_DIR / 'web' / 'admin.js').read_text(encoding='utf-8')
+        self.assertIn('LLM static resource path', source)
+        self.assertIn('User static resource path', source)
+        self.assertIn("Reference de ressource du statique actif cote modele.", source)
+        self.assertIn("Reference de ressource du statique actif cote utilisateur.", source)
+        self.assertIn("Le contenu s'edite depuis Hermeneutic admin.", source)
 
     def test_all_admin_settings_validate_routes_are_registered(self) -> None:
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}

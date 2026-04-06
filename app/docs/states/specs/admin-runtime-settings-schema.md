@@ -203,6 +203,7 @@ Convention explicite:
 - la valeur visible cote admin reste un chemin runtime du type `data/identity/...`;
 - en deploiement Docker standard, cette convention pointe vers `/app/data/...`, alimente par le volume hote `state/data/...`;
 - les validations et lectures host-side reutilisent cette meme convention et resolvent le mirror `state/data/...` quand le chemin relatif `app/data/...` n'existe pas localement.
+- depuis `Lot 4`, ces champs restent des references de ressource; l'edition du contenu statique actif passe par `POST /api/admin/identity/static` et la section `Vue unifiee identity` de `/hermeneutic-admin`.
 
 ## API de lecture cible
 

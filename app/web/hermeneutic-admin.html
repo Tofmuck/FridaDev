@@ -147,15 +147,17 @@
     <section class="admin-section-block" aria-labelledby="hermeneutic-identity-read-model-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Lecture + edition mutable</p>
+          <p class="admin-kicker">Lecture + edition mutable + statique</p>
           <h2 id="hermeneutic-identity-read-model-title">Vue unifiee identity</h2>
         </div>
       </div>
 
       <p class="admin-section-note admin-section-note-left">
-        Lecture operator-friendly de la verite active runtime, du stocke canonique et des couches legacy/evidence/conflicts. L'edition est strictement bornee a la mutable canonique injectee activement; le statique et le legacy restent read-only.
+        Lecture operator-friendly de la verite active runtime, du stocke canonique et des couches legacy/evidence/conflicts. Le statique s'edite maintenant via le contenu reel de la ressource referencee par les runtime settings; la mutable s'edite via `identity_mutables`; le legacy reste read-only.
       </p>
 
+      <div id="hermeneuticIdentityStaticEditStatus"></div>
+      <div id="hermeneuticIdentityStaticEditors" class="admin-readonly-stack"></div>
       <div id="hermeneuticIdentityMutableEditStatus"></div>
       <div id="hermeneuticIdentityMutableEditors" class="admin-readonly-stack"></div>
       <div id="hermeneuticIdentityReadModelMeta" class="admin-inline-meta"></div>
@@ -221,6 +223,7 @@
   <script src="hermeneutic_admin/api.js"></script>
   <script src="hermeneutic_admin/render.js"></script>
   <script src="hermeneutic_admin/render_identity_read_model.js"></script>
+  <script src="hermeneutic_admin/render_identity_static_editor.js"></script>
   <script src="hermeneutic_admin/render_identity_mutable_editor.js"></script>
   <script src="hermeneutic_admin/main.js"></script>
 </body>

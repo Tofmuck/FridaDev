@@ -183,13 +183,15 @@ Sortie attendue:
 
 ## Lot 4 - Ouvrir une edition controlee du statique
 
+Statut: ferme; statique canonique file-backed editable via ressource runtime referencee
+
 But:
 - permettre l'edition du contenu static lui-meme, pas seulement de ses chemins.
 
-- [ ] Trancher la source de verite durable du contenu statique apres Lot 1
-- [ ] Definir comment l'operateur lit, modifie, valide et sauvegarde `llm` / `user` statiques
-- [ ] Expliciter la place des fichiers statiques dans le produit: ressource repo, ressource state ou ressource runtime referencee
-- [ ] Garder une separation claire entre edition static et dynamique
+- [x] Trancher la source de verite durable du contenu statique apres Lot 1
+- [x] Definir comment l'operateur lit, modifie, valide et sauvegarde `llm` / `user` statiques
+- [x] Expliciter la place des fichiers statiques dans le produit: ressource repo, ressource state ou ressource runtime referencee
+- [x] Garder une separation claire entre edition static et dynamique
 
 Sortie attendue:
 - une edition statique explicite et non ambigue;

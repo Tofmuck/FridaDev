@@ -539,6 +539,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin/api.js",
         "hermeneutic_admin/render.js",
         "hermeneutic_admin/render_identity_read_model.js",
+        "hermeneutic_admin/render_identity_static_editor.js",
         "hermeneutic_admin/render_identity_mutable_editor.js",
         "hermeneutic_admin/main.js",
     ]
@@ -877,6 +878,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="hermeneutic_admin/api.js"',
         'script src="hermeneutic_admin/render.js"',
         'script src="hermeneutic_admin/render_identity_read_model.js"',
+        'script src="hermeneutic_admin/render_identity_static_editor.js"',
         'script src="hermeneutic_admin/render_identity_mutable_editor.js"',
         'script src="hermeneutic_admin/main.js"',
         'id="hermeneuticAdminRefresh"',
@@ -884,6 +886,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="hermeneuticTurnId"',
         'id="hermeneuticTurnStages"',
         'id="hermeneuticArbiterList"',
+        'id="hermeneuticIdentityStaticEditStatus"',
+        'id="hermeneuticIdentityStaticEditors"',
         'id="hermeneuticIdentityMutableEditStatus"',
         'id="hermeneuticIdentityMutableEditors"',
         'id="hermeneuticIdentityReadModel"',
@@ -895,7 +899,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Vue unifiee identity",
         "Fragments legacy d'identite",
         "static + mutable narrative",
-        "mutable canonique",
+        "Lecture + edition mutable + statique",
         "Corrections recentes",
     ]
     for marker in hermeneutic_admin_markers:
@@ -906,6 +910,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/hermeneutics/dashboard",
         "/api/admin/identity/read-model",
         "/api/admin/identity/mutable",
+        "/api/admin/identity/static",
         "/api/admin/hermeneutics/identity-candidates",
         "/api/admin/hermeneutics/arbiter-decisions",
         "/api/admin/hermeneutics/corrections-export",
@@ -914,7 +919,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     }
     found_hermeneutic_admin_endpoints = set(
         re.findall(
-            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable)|logs/chat(?:/metadata)?)",
+            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable|static)|logs/chat(?:/metadata)?)",
             hermeneutic_admin_front_js,
         )
     )

@@ -8,7 +8,7 @@ Lot ferme: `Lot 2`
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
 
-Le read-model lui-meme reste read-only, meme si la meme section operator-facing peut aussi porter, depuis `Lot 3`, une edition mutable bornee documentee a part.
+Le read-model lui-meme reste read-only, meme si la meme section operator-facing peut aussi porter, depuis `Lot 3` et `Lot 4`, des editions bornees documentees a part.
 
 Il sert a :
 - montrer la verite active runtime;
@@ -28,6 +28,7 @@ Cette route est:
 
 Le read-model doit exposer explicitement:
 - `active_identity_source = "identity_mutables"`
+- `active_static_source = "resource_path_content"`
 - `active_prompt_contract = "static + mutable narrative"`
 - `identity_input_schema_version = "v2"`
 - `used_identity_ids = []`
@@ -69,14 +70,22 @@ Bloc read-only du contenu statique actuellement charge puis injecte.
 
 Champs minimaux:
 - `storage_kind`
+- `source_kind`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
 - `content`
 - `source`
+- `resource_field`
+- `configured_path`
+- `resolution_kind`
+- `resolved_path`
+- `editable_via`
 
 Semantique:
-- source physique: ressource statique referencee par le runtime;
+- source physique: contenu du fichier reference par `resources.llm_identity_path` / `resources.user_identity_path`;
+- les runtime settings conservent la reference de ressource, pas l'edition du contenu;
+- `stored`, `loaded_for_runtime` et `actively_injected` passent a `false` quand le contenu est vide, meme si la reference de ressource reste configuree;
 - verite active: oui, si `content` est present.
 
 ### `mutable`
@@ -159,6 +168,11 @@ Depuis `Lot 3`, cette meme section peut aussi porter une edition controlee de la
 - bornee a `set` / `clear` de la mutable active;
 - sans rendre editable le statique ni le legacy.
 
+Depuis `Lot 4`, cette meme section peut aussi porter une edition controlee du statique canonique:
+- distincte du contrat read-only `GET /api/admin/identity/read-model`;
+- bornee a `set` / `clear` du contenu statique reel;
+- sans transformer les runtime settings `resources.*_identity_path` en pseudo-editeur de contenu.
+
 Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un module dedie:
 - `app/web/hermeneutic_admin/render_identity_read_model.js`
 - distinct de `app/web/hermeneutic_admin/render.js`, qui reste la facade hermeneutique generale.
@@ -167,6 +181,6 @@ Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un mo
 
 Ce contrat ne couvre pas encore:
 - le mutateur de la mutable canonique de `Lot 3`, documente separement dans `identity-mutable-edit-contract.md`;
-- l'edition du statique (`Lot 4`);
+- le mutateur du statique canonique de `Lot 4`, documente separement dans `identity-static-edit-contract.md`;
 - la gouvernance UI/backend des caps et seuils (`Lot 5`);
 - la future page dediee `Identity` et sa navigation globale (`Lot 6`).

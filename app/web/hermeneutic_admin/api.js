@@ -98,6 +98,19 @@
     );
   };
 
+  const updateIdentityStatic = ({ subject = "", action = "", content = "", reason = "" } = {}) => {
+    return writeAdminJson(
+      "/api/admin/identity/static",
+      {
+        subject,
+        action,
+        content,
+        reason,
+      },
+      "Echec edition statique canonique.",
+    );
+  };
+
   const fetchIdentityCandidates = ({ subject = "all", status = "all", limit = 25 } = {}) => {
     return readAdminJson(
       `/api/admin/hermeneutics/identity-candidates${buildQuery({
@@ -126,6 +139,7 @@
     fetchArbiterDecisions,
     fetchIdentityReadModel,
     updateIdentityMutable,
+    updateIdentityStatic,
     fetchIdentityCandidates,
     fetchCorrectionsExport,
   });

@@ -57,6 +57,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         original_list_identity_evidence = self.server.memory_store.list_identity_evidence
         original_list_identity_conflicts = self.server.memory_store.list_identity_conflicts
         original_get_identities = self.server.memory_store.get_identities
+        original_read_static_identity_snapshot = self.server.static_identity_content.read_static_identity_snapshot
 
         def fake_list_identity_fragments(subject: str, limit: int | None = None):
             observed['fragments'].append((subject, limit))
@@ -128,6 +129,14 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.server.memory_store.list_identity_fragments = fake_list_identity_fragments
         self.server.memory_store.list_identity_evidence = fake_list_identity_evidence
         self.server.memory_store.list_identity_conflicts = fake_list_identity_conflicts
+        self.server.static_identity_content.read_static_identity_snapshot = lambda subject: self.server.static_identity_content.StaticIdentitySnapshot(
+            subject=subject,
+            resource_field='llm_identity_path' if subject == 'llm' else 'user_identity_path',
+            configured_path=f'data/identity/{subject}_identity.txt',
+            resolution_kind='absolute',
+            resolved_path=Path(f'/tmp/{subject}_identity.txt'),
+            content='Frida static canonique' if subject == 'llm' else 'User static canonique',
+        )
         self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
             'legacy get_identities should not define active runtime truth for the unified read model'
         )
@@ -140,21 +149,30 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             self.server.memory_store.list_identity_evidence = original_list_identity_evidence
             self.server.memory_store.list_identity_conflicts = original_list_identity_conflicts
             self.server.memory_store.get_identities = original_get_identities
+            self.server.static_identity_content.read_static_identity_snapshot = original_read_static_identity_snapshot
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['read_model_version'], 'v1')
         self.assertEqual(data['active_runtime']['active_identity_source'], 'identity_mutables')
+        self.assertEqual(data['active_runtime']['active_static_source'], 'resource_path_content')
         self.assertEqual(data['active_runtime']['active_prompt_contract'], 'static + mutable narrative')
         self.assertEqual(data['active_runtime']['identity_input_schema_version'], 'v2')
         self.assertEqual(data['active_runtime']['used_identity_ids'], [])
         self.assertEqual(data['active_runtime']['used_identity_ids_count'], 0)
+        self.assertEqual(data['active_runtime']['static_editable_via'], '/api/admin/identity/static')
+        self.assertEqual(data['active_runtime']['mutable_editable_via'], '/api/admin/identity/mutable')
+        self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_4_static_and_mutable_edit')
         self.assertEqual(observed['fragments'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])
         self.assertEqual(data['subjects']['llm']['static']['content'], 'Frida static canonique')
         self.assertTrue(data['subjects']['llm']['static']['actively_injected'])
+        self.assertEqual(data['subjects']['llm']['static']['resource_field'], 'llm_identity_path')
+        self.assertEqual(data['subjects']['llm']['static']['configured_path'], 'data/identity/llm_identity.txt')
+        self.assertEqual(data['subjects']['llm']['static']['resolution_kind'], 'absolute')
+        self.assertEqual(data['subjects']['llm']['static']['editable_via'], '/api/admin/identity/static')
         self.assertEqual(data['subjects']['llm']['mutable']['content'], 'Frida mutable canonique')
         self.assertTrue(data['subjects']['llm']['mutable']['actively_injected'])
         self.assertFalse(data['subjects']['llm']['legacy_fragments']['actively_injected'])

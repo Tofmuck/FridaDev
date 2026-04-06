@@ -134,6 +134,7 @@ Cet event alimente aussi `Corrections recentes` via:
 Avant la future page `Identity`, `/hermeneutic-admin` expose:
 - la section `Vue unifiee identity`
 - une edition controlee bornee a la mutable canonique `llm` / `user`
+- un editeur statique canonique distinct, documente a part pour `Lot 4`
 - le read-model unifie en dessous
 - la section `Fragments legacy d'identite` toujours read-only / legacy-only
 

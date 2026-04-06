@@ -30,13 +30,16 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('script src="hermeneutic_admin/api.js"', source)
         self.assertIn('script src="hermeneutic_admin/render.js"', source)
         self.assertIn('script src="hermeneutic_admin/render_identity_read_model.js"', source)
+        self.assertIn('script src="hermeneutic_admin/render_identity_static_editor.js"', source)
         self.assertIn('script src="hermeneutic_admin/render_identity_mutable_editor.js"', source)
         self.assertIn('script src="hermeneutic_admin/main.js"', source)
         self.assertIn("Vue d'ensemble", source)
         self.assertIn("Inspection par tour", source)
         self.assertIn("Decisions arbitre", source)
         self.assertIn("Vue unifiee identity", source)
+        self.assertIn("edition mutable + statique", source)
         self.assertIn("edition mutable", source)
+        self.assertIn("referencee par les runtime settings", source)
         self.assertIn("Fragments legacy d'identite", source)
         self.assertIn("static + mutable narrative", source)
         self.assertIn("identity_mutables", source)
@@ -52,6 +55,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         render_source = (APP_DIR / "web" / "hermeneutic_admin" / "render.js").read_text(encoding="utf-8")
         identity_render_source = (
             APP_DIR / "web" / "hermeneutic_admin" / "render_identity_read_model.js"
+        ).read_text(encoding="utf-8")
+        identity_static_source = (
+            APP_DIR / "web" / "hermeneutic_admin" / "render_identity_static_editor.js"
         ).read_text(encoding="utf-8")
         identity_edit_source = (
             APP_DIR / "web" / "hermeneutic_admin" / "render_identity_mutable_editor.js"
@@ -69,15 +75,19 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
                 "hermeneutic_admin/api.js",
                 "hermeneutic_admin/render.js",
                 "hermeneutic_admin/render_identity_read_model.js",
+                "hermeneutic_admin/render_identity_static_editor.js",
                 "hermeneutic_admin/render_identity_mutable_editor.js",
                 "hermeneutic_admin/main.js",
             ],
         )
 
-        combined = f"{api_source}\n{render_source}\n{identity_render_source}\n{identity_edit_source}\n{main_source}"
+        combined = (
+            f"{api_source}\n{render_source}\n{identity_render_source}\n"
+            f"{identity_static_source}\n{identity_edit_source}\n{main_source}"
+        )
         found_endpoints = set(
             re.findall(
-                r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable)|logs/chat(?:/metadata)?)",
+                r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable|static)|logs/chat(?:/metadata)?)",
                 combined,
             )
         )
@@ -87,6 +97,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
                 "/api/admin/hermeneutics/dashboard",
                 "/api/admin/identity/read-model",
                 "/api/admin/identity/mutable",
+                "/api/admin/identity/static",
                 "/api/admin/hermeneutics/identity-candidates",
                 "/api/admin/hermeneutics/arbiter-decisions",
                 "/api/admin/hermeneutics/corrections-export",
@@ -101,12 +112,14 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertNotIn("/api/admin/hermeneutics/identity/force-reject", combined)
         self.assertNotIn("/api/admin/hermeneutics/identity/relabel", combined)
         self.assertIn("FridaHermeneuticIdentityReadModelRender", identity_render_source)
+        self.assertIn("FridaHermeneuticIdentityStaticEditor", identity_static_source)
         self.assertIn("FridaHermeneuticIdentityMutableEditor", identity_edit_source)
         self.assertIn("FridaHermeneuticIdentityReadModelRender", render_source)
         self.assertLessEqual(len(render_source.splitlines()), 499)
         self.assertLessEqual(len(api_source.splitlines()), 499)
         self.assertLessEqual(len(main_source.splitlines()), 499)
         self.assertLessEqual(len(identity_render_source.splitlines()), 499)
+        self.assertLessEqual(len(identity_static_source.splitlines()), 499)
         self.assertLessEqual(len(identity_edit_source.splitlines()), 499)
 
     def test_page_exposes_read_only_pipeline_inspection_hooks(self) -> None:
@@ -116,6 +129,8 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('id="hermeneuticTurnId"', source)
         self.assertIn('id="hermeneuticTurnStages"', source)
         self.assertIn('id="hermeneuticArbiterList"', source)
+        self.assertIn('id="hermeneuticIdentityStaticEditStatus"', source)
+        self.assertIn('id="hermeneuticIdentityStaticEditors"', source)
         self.assertIn('id="hermeneuticIdentityMutableEditStatus"', source)
         self.assertIn('id="hermeneuticIdentityMutableEditors"', source)
         self.assertIn('id="hermeneuticIdentityReadModel"', source)

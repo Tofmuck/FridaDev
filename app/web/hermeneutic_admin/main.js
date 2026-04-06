@@ -2,9 +2,10 @@
   const adminApi = window.FridaAdminApi;
   const api = window.FridaHermeneuticAdminApi;
   const render = window.FridaHermeneuticAdminRender;
+  const staticEditor = window.FridaHermeneuticIdentityStaticEditor;
   const mutableEditor = window.FridaHermeneuticIdentityMutableEditor;
 
-  if (!adminApi || !api || !render || !mutableEditor) {
+  if (!adminApi || !api || !render || !staticEditor || !mutableEditor) {
     throw new Error("Hermeneutic admin dependencies are missing");
   }
 
@@ -24,6 +25,8 @@
     turnStages: document.getElementById("hermeneuticTurnStages"),
     arbiterMeta: document.getElementById("hermeneuticArbiterMeta"),
     arbiterList: document.getElementById("hermeneuticArbiterList"),
+    identityStaticEditStatus: document.getElementById("hermeneuticIdentityStaticEditStatus"),
+    identityStaticEditors: document.getElementById("hermeneuticIdentityStaticEditors"),
     identityMutableEditStatus: document.getElementById("hermeneuticIdentityMutableEditStatus"),
     identityMutableEditors: document.getElementById("hermeneuticIdentityMutableEditors"),
     identityReadModelMeta: document.getElementById("hermeneuticIdentityReadModelMeta"),
@@ -128,6 +131,10 @@
 
   const loadIdentityReadModel = async () => {
     const payload = await api.fetchIdentityReadModel({ limit: 20 });
+    staticEditor.renderIdentityStaticEditors(
+      elements.identityStaticEditors,
+      payload,
+    );
     mutableEditor.renderIdentityMutableEditors(
       elements.identityMutableEditors,
       payload,
@@ -138,6 +145,76 @@
       payload,
     );
     return payload;
+  };
+
+  const handleIdentityStaticEdit = async (event) => {
+    const requestPayload = staticEditor.readIdentityStaticDraft(event.target);
+    if (!requestPayload) {
+      return;
+    }
+    const actionLabel = requestPayload.action === "clear" ? "Vidage" : "Edition";
+    staticEditor.setIdentityStaticEditStatus(
+      elements.identityStaticEditStatus,
+      {
+        ok: true,
+        subject: requestPayload.subject,
+        action: requestPayload.action,
+        changed: false,
+        old_len: 0,
+        new_len: requestPayload.action === "clear" ? 0 : requestPayload.content.length,
+        stored_after: false,
+        resource_field: requestPayload.subject === "llm" ? "llm_identity_path" : "user_identity_path",
+        resolution_kind: "pending",
+        reason_code: "pending",
+      },
+      "",
+    );
+    render.setStatusBanner(
+      elements.statusBanner,
+      `${actionLabel} statique canonique en cours...`,
+      "",
+    );
+    try {
+      const response = await api.updateIdentityStatic(requestPayload);
+      staticEditor.setIdentityStaticEditStatus(
+        elements.identityStaticEditStatus,
+        response,
+        response.changed ? "ok" : "",
+      );
+      await loadIdentityReadModel();
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Edition statique canonique ${response.reason_code}.`,
+        "ok",
+      );
+    } catch (error) {
+      const errorPayload = error?.data && typeof error.data === "object"
+        ? error.data
+        : {
+            ok: false,
+            subject: requestPayload.subject,
+            action: requestPayload.action,
+            changed: false,
+            old_len: 0,
+            new_len: requestPayload.action === "clear" ? 0 : requestPayload.content.length,
+            stored_after: false,
+            resource_field: requestPayload.subject === "llm" ? "llm_identity_path" : "user_identity_path",
+            resolution_kind: "request_failed",
+            reason_code: "request_failed",
+            validation_error: "request_failed",
+            error: error?.message || String(error),
+          };
+      staticEditor.setIdentityStaticEditStatus(
+        elements.identityStaticEditStatus,
+        errorPayload,
+        "error",
+      );
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Edition statique canonique indisponible: ${error?.message || error}`,
+        "error",
+      );
+    }
   };
 
   const handleIdentityMutableEdit = async (event) => {
@@ -291,6 +368,10 @@
         "error",
       );
     });
+  });
+
+  elements.identityStaticEditors.addEventListener("click", (event) => {
+    void handleIdentityStaticEdit(event);
   });
 
   elements.identityMutableEditors.addEventListener("click", (event) => {

@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import config
@@ -12,6 +11,7 @@ from admin import runtime_settings
 from core.hermeneutic_node.inputs import identity_input as canonical_identity_input
 from core import token_utils
 from identity import active_identity_projection
+from identity import static_identity_content
 from identity import static_identity_paths
 from observability import chat_turn_logger
 from observability import identity_observability
@@ -39,49 +39,29 @@ def _runtime_main_model_name() -> str:
     return str(view.payload['model']['value'])
 
 
-def _runtime_resource_path(field: str) -> str:
-    view = runtime_settings.get_resources_settings()
-    payload = view.payload.get(field) or {}
-    if 'value' in payload:
-        return str(payload['value'])
-
-    env_bundle = runtime_settings.build_env_seed_bundle('resources')
-    fallback = env_bundle.payload.get(field) or {}
-    if 'value' in fallback:
-        return str(fallback['value'])
-
-    raise KeyError(f'missing resources runtime value: {field}')
-
-
-def _load_file(path_str: str) -> str:
-    resolution = static_identity_paths.resolve_static_identity_path(path_str)
-    path = resolution.resolved_path
-    if path is None:
-        return ''
-    try:
-        return path.read_text(encoding='utf-8').strip()
-    except Exception as exc:
-        logger.warning(
-            'identity_load_error configured_path=%s resolved_path=%s resolution=%s err=%s',
-            resolution.configured_path,
-            path,
-            resolution.resolution_kind,
-            exc,
-        )
-        return ''
+def _static_subject_for_field(field: str) -> str | None:
+    if field == 'llm_identity_path':
+        return 'llm'
+    if field == 'user_identity_path':
+        return 'user'
+    return None
 
 
 def load_llm_identity() -> str:
-    return _load_file(_runtime_resource_path('llm_identity_path'))
+    return static_identity_content.read_static_identity_text('llm')
 
 
 def load_user_identity() -> str:
-    return _load_file(_runtime_resource_path('user_identity_path'))
+    return static_identity_content.read_static_identity_text('user')
 
 
 def _safe_static_identity_source(field: str) -> str | None:
+    subject = _static_subject_for_field(field)
+    if not subject:
+        return None
     try:
-        return _runtime_resource_path(field)
+        snapshot = static_identity_content.resolve_active_static_identity(subject)
+        return snapshot.configured_path or None
     except Exception as exc:
         logger.warning('identity_resource_path_error field=%s err=%s', field, exc)
         return None
