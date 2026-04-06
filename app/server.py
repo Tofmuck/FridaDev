@@ -493,23 +493,6 @@ def api_chat():
         user_msg=user_msg,
         web_search_enabled=web_search_on,
     )
-    if not web_search_on:
-        chat_turn_logger.emit(
-            'web_search',
-            status='skipped',
-            reason_code='feature_disabled',
-            payload={
-                'enabled': False,
-                'query_preview': '',
-                'results_count': 0,
-                'context_injected': False,
-                'truncated': False,
-            },
-        )
-        chat_turn_logger.emit_branch_skipped(
-            reason_code='feature_disabled',
-            reason_short='web_search_disabled',
-        )
 
     conv_proxy = _ConvStoreChatLogProxy(conv_store, token_utils)
     llm_proxy = _LlmChatLogProxy(llm, token_utils)

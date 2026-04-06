@@ -261,6 +261,12 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         surface_spec = (
             APP_DIR / 'docs' / 'states' / 'specs' / 'identity-surface-contract.md'
         ).read_text(encoding='utf-8')
+        dual_feed_spec = (
+            APP_DIR / 'docs' / 'states' / 'specs' / 'hermeneutic-node-dual-feed-contract.md'
+        ).read_text(encoding='utf-8')
+        operations_doc = (
+            APP_DIR / 'docs' / 'states' / 'operations' / 'frida-installation-operations.md'
+        ).read_text(encoding='utf-8')
         archived_identity_todo = (
             APP_DIR / 'docs' / 'todo-done' / 'refactors' / 'identity-control-surface-todo.md'
         ).read_text(encoding='utf-8')
@@ -276,6 +282,10 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         self.assertIn('GET /identity', surface_spec)
         self.assertIn('GET /api/admin/identity/runtime-representations', surface_spec)
         self.assertIn('identity-surface-contract.md', read_model_spec)
+        self.assertIn('activation_mode = manual|auto|not_requested', dual_feed_spec)
+        self.assertIn("l'injection web dans le prompt principal depend du runtime web reel", dual_feed_spec)
+        self.assertIn('web search manuelle et auto-bornee degradees', operations_doc)
+        self.assertIn("`web_search=false` ne bloque plus absolument le web", operations_doc)
         self.assertIn('- [x] Lot 4 - Ouvrir une edition controlee du statique', archived_identity_todo)
         self.assertIn('- [x] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables', archived_identity_todo)
         self.assertIn('- [x] Lot 6 - Assembler la surface `Identity` et sa navigation globale', archived_identity_todo)
@@ -288,16 +298,19 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         self.assertIn('## Diagnostic confirme sur le cas observe', suspension_todo)
         self.assertIn('## Etat apres premier patch runtime', suspension_todo)
         self.assertIn('## Etat apres deuxieme pas runtime', suspension_todo)
+        self.assertIn('## Etat apres troisieme pas runtime', suspension_todo)
         self.assertIn('## Contradiction apparente: verdict', suspension_todo)
         self.assertIn('## Ce qui reste hypothese a ce stade', suspension_todo)
         self.assertIn('## Preuves attendues avant implementation', suspension_todo)
         self.assertIn('`decision_source = primary`', suspension_todo)
         self.assertIn('`provenances`', suspension_todo)
+        self.assertIn('`activation_mode = manual|auto|not_requested`', suspension_todo)
         self.assertIn('`preuve`', suspension_todo)
         self.assertIn('`lien`', suspension_todo)
         self.assertIn('Les demandes explicites de verification, de source, de reference et de lien restent classables', suspension_todo)
         self.assertIn('La cause de bascule vers une verification externe devient plus lisible', suspension_todo)
         self.assertIn('Preuve d\'observabilite: les traces exposent maintenant `provenances`', suspension_todo)
+        self.assertIn('`web_search=false` ne vaut plus interdiction absolue', suspension_todo)
         self.assertNotIn('Promethee', suspension_todo)
         self.assertNotIn('Jonas', suspension_todo)
         self.assertNotIn('techne', suspension_todo)

@@ -185,6 +185,17 @@ def _needs_external_verification(
     return False
 
 
+def requires_external_verification(
+    *,
+    user_turn_input: Mapping[str, Any] | None = None,
+    web_input: Mapping[str, Any] | None = None,
+) -> bool:
+    return _needs_external_verification(
+        user_turn_input=_mapping(user_turn_input),
+        web_input=_mapping(web_input),
+    )
+
+
 def _support_sources(
     *,
     memory_retrieved: Mapping[str, Any],
@@ -273,7 +284,7 @@ def build_epistemic_regime(
     ):
         return _build_result("contradictoire", "arbitrage_requis", "bloquante")
 
-    if _needs_external_verification(
+    if requires_external_verification(
         user_turn_input=user_turn_input_payload,
         web_input=web_input_payload,
     ):

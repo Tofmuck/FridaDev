@@ -10,6 +10,7 @@ from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
 from core import stimmung_agent
+from core.hermeneutic_node.doctrine import epistemic_regime as doctrinal_epistemic_regime
 from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
@@ -250,15 +251,46 @@ def _resolve_web_runtime_payload(
     *,
     user_msg: str,
     web_search_on: bool,
+    user_turn_input: Mapping[str, Any] | None,
     web_search_module: Any,
     requests_module: Any,
     llm_module: Any,
 ) -> dict[str, Any]:
-    if not web_search_on:
+    activation_mode = 'manual' if web_search_on else 'not_requested'
+    if activation_mode == 'not_requested' and doctrinal_epistemic_regime.requires_external_verification(
+        user_turn_input=user_turn_input,
+        web_input=canonical_web_input.build_web_input(
+            enabled=False,
+            status='skipped',
+            activation_mode='not_requested',
+            reason_code='not_applicable',
+        ),
+    ):
+        activation_mode = 'auto'
+
+    if activation_mode == 'not_requested':
+        chat_turn_logger.emit(
+            'web_search',
+            status='skipped',
+            reason_code='not_applicable',
+            payload={
+                'enabled': False,
+                'activation_mode': 'not_requested',
+                'query_preview': '',
+                'results_count': 0,
+                'context_injected': False,
+                'truncated': False,
+            },
+        )
+        chat_turn_logger.emit_branch_skipped(
+            reason_code='not_applicable',
+            reason_short='web_search_not_requested',
+        )
         return {
             'enabled': False,
             'status': 'skipped',
-            'reason_code': 'feature_disabled',
+            'activation_mode': 'not_requested',
+            'reason_code': 'not_applicable',
             'original_user_message': str(user_msg or ''),
             'query': None,
             'results_count': 0,
@@ -268,13 +300,15 @@ def _resolve_web_runtime_payload(
         }
     build_context_payload = getattr(web_search_module, 'build_context_payload', None)
     if callable(build_context_payload):
-        return dict(
+        payload = dict(
             build_context_payload(
                 user_msg,
                 requests_module=requests_module,
                 llm_module=llm_module,
             )
         )
+        payload['activation_mode'] = activation_mode
+        return payload
 
     ctx, query, n_results = web_search_module.build_context(
         user_msg,
@@ -284,6 +318,7 @@ def _resolve_web_runtime_payload(
     return {
         'enabled': True,
         'status': 'ok' if ctx else 'skipped',
+        'activation_mode': activation_mode,
         'reason_code': None if ctx else 'no_data',
         'original_user_message': str(user_msg or ''),
         'query': str(query or ''),
@@ -536,6 +571,7 @@ def chat_response(
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,
         web_search_on=web_search_on,
+        user_turn_input=user_turn_payload,
         web_search_module=web_search_module,
         requests_module=requests_module,
         llm_module=llm_module,
@@ -608,7 +644,7 @@ def chat_response(
         context_hints=context_hints or None,
     )
 
-    if web_search_on:
+    if str(web_runtime_payload.get('activation_mode') or '') in {'manual', 'auto'}:
         chat_prompt_context.inject_web_context(
             prompt_messages,
             user_msg=user_msg,

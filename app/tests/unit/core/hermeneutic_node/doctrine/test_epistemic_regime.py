@@ -269,6 +269,33 @@ class EpistemicRegimeTests(unittest.TestCase):
         self.assertNotEqual(payload["epistemic_regime"], "a_verifier")
         self.assertNotEqual(payload["proof_regime"], "verification_externe_requise")
 
+    def test_requires_external_verification_returns_true_for_explicit_source_request_without_web_evidence(self) -> None:
+        self.assertTrue(
+            epistemic_regime.requires_external_verification(
+                user_turn_input=user_turn_input.build_user_turn_input(
+                    user_message='Donne-moi la source de cette affirmation.',
+                    recent_window_input_payload=None,
+                    time_input_payload={"now_utc_iso": "2026-04-06T10:00:00Z"},
+                ),
+                web_input=_web(status="skipped", results_count=0, reason_code="not_applicable"),
+            )
+        )
+
+    def test_requires_external_verification_returns_false_for_cleaned_conceptual_turn_without_web_evidence(self) -> None:
+        self.assertFalse(
+            epistemic_regime.requires_external_verification(
+                user_turn_input=user_turn_input.build_user_turn_input(
+                    user_message=(
+                        "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve "
+                        "de patience dans une lecture atemporelle ?"
+                    ),
+                    recent_window_input_payload=None,
+                    time_input_payload={"now_utc_iso": "2026-04-06T10:00:00Z"},
+                ),
+                web_input=_web(status="skipped", results_count=0, reason_code="not_applicable"),
+            )
+        )
+
     def test_build_epistemic_regime_returns_suspendu_when_no_responsible_reading_can_be_held(self) -> None:
         payload = epistemic_regime.build_epistemic_regime(
             user_turn_input=_user_turn(provenances=["dialogue_trace"]),

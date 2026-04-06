@@ -85,7 +85,7 @@ Schema global de base a date (lecture rapide):
 
 2. SearXNG
 - source: `SEARXNG_URL`, `SEARXNG_RESULTS`
-- impact si indisponible: web search inactive/degradee quand `web_search=true`.
+- impact si indisponible: web search manuelle et auto-bornee degradees; les tours explicitement dependants du web peuvent alors rester sans evidence externe.
 
 3. Crawl4AI
 - source: `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`, `CRAWL4AI_TOP_N`, `CRAWL4AI_MAX_CHARS`, `CRAWL4AI_EXPLICIT_URL_MAX_CHARS`
@@ -187,6 +187,7 @@ curl -sS -X POST http://127.0.0.1:8093/api/chat \
 Attendu:
 - `ok=true` si les secrets/services requis sont disponibles;
 - erreur explicite sinon (secret manquant, dependance indisponible).
+- `web_search=false` ne bloque plus absolument le web: une demande explicite de source, de lien, de reference ou de verification peut encore auto-activer un passage web borne cote backend.
 
 ## 8. Points de friction connus (clone neuf)
 

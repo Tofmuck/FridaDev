@@ -4,6 +4,7 @@ from typing import Any, Mapping, Sequence
 
 
 SCHEMA_VERSION = "v1"
+ACTIVATION_MODES = ("manual", "auto", "not_requested")
 
 
 def _optional_str(value: Any) -> str | None:
@@ -18,6 +19,13 @@ def _optional_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _activation_mode(value: Any, *, enabled: bool) -> str:
+    text = str(value or '').strip()
+    if text in ACTIVATION_MODES:
+        return text
+    return 'manual' if enabled else 'not_requested'
 
 
 def _canonical_runtime(runtime_payload: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -135,6 +143,7 @@ def build_web_input(
     *,
     enabled: bool,
     status: str,
+    activation_mode: str | None = None,
     reason_code: str | None = None,
     original_user_message: str = '',
     query: str | None = None,
@@ -177,10 +186,12 @@ def build_web_input(
     canonical_context_chars = _optional_int(context_chars)
     if canonical_context_chars is None:
         canonical_context_chars = len(canonical_context_block)
+    canonical_enabled = bool(enabled)
     return {
         'schema_version': SCHEMA_VERSION,
-        'enabled': bool(enabled),
+        'enabled': canonical_enabled,
         'status': str(status),
+        'activation_mode': _activation_mode(activation_mode, enabled=canonical_enabled),
         'reason_code': _optional_str(reason_code),
         'original_user_message': str(original_user_message or ''),
         'query': _optional_str(query),
@@ -210,6 +221,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
     return build_web_input(
         enabled=bool(payload.get('enabled', False)),
         status=str(payload.get('status') or 'skipped'),
+        activation_mode=_optional_str(payload.get('activation_mode')),
         reason_code=_optional_str(payload.get('reason_code')),
         original_user_message=str(payload.get('original_user_message') or ''),
         query=_optional_str(payload.get('query')),

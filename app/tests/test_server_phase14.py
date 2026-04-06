@@ -1636,6 +1636,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['schema_version'], 'v1')
         self.assertTrue(observed['web_input']['enabled'])
         self.assertEqual(observed['web_input']['status'], 'ok')
+        self.assertEqual(observed['web_input']['activation_mode'], 'manual')
         self.assertEqual(observed['web_input']['query'], 'query test')
         self.assertEqual(observed['web_input']['results_count'], 1)
         self.assertTrue(observed['web_input']['explicit_url_detected'])
@@ -1681,6 +1682,281 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertIsInstance(observed['web_requests_module'], self.server._RequestsChatLogProxy)
         self.assertIsInstance(observed['web_llm_module'], self.server._LlmChatLogProxy)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_auto_activates_web_for_explicit_source_request_without_manual_flag(self) -> None:
+        observed = {'web_input': None, 'prompt_messages': None, 'build_context_calls': 0}
+        conversation = {
+            'id': 'conv-web-auto-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok web auto'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_payload = self.server.llm.build_payload
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+
+        def fake_build_context_payload(_user_msg, **_kwargs):
+            observed['build_context_calls'] += 1
+            return {
+                'enabled': True,
+                'status': 'ok',
+                'reason_code': None,
+                'original_user_message': 'Donne-moi la source de cette affirmation.',
+                'query': 'source test',
+                'results_count': 1,
+                'runtime': {},
+                'sources': [
+                    {
+                        'rank': 1,
+                        'title': 'Titre source',
+                        'url': 'https://example.com/source',
+                        'source_domain': 'example.com',
+                        'search_snippet': 'Source utile',
+                        'used_in_prompt': True,
+                        'used_content_kind': 'search_snippet',
+                        'content_used': 'Source utile',
+                        'truncated': False,
+                        'source_origin': 'search_result',
+                        'is_primary_source': False,
+                        'crawl_status': 'not_attempted',
+                    }
+                ],
+                'context_block': 'WEB CONTEXT AUTO',
+            }
+
+        def fake_insertion(**kwargs):
+            observed['web_input'] = kwargs.get('web_input')
+            return None
+
+        def fake_build_payload(messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['prompt_messages'] = messages
+            return {
+                'model': 'openrouter/runtime-main-model',
+                'messages': messages,
+                'max_tokens': max_tokens,
+                'stream': stream,
+            }
+
+        self.server.ws.build_context_payload = fake_build_context_payload
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.llm.build_payload = fake_build_payload
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Donne-moi la source de cette affirmation.'},
+            ]
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Donne-moi la source de cette affirmation.', 'web_search': False},
+            )
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.llm.build_payload = original_build_payload
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['build_context_calls'], 1)
+        self.assertTrue(observed['web_input']['enabled'])
+        self.assertEqual(observed['web_input']['status'], 'ok')
+        self.assertEqual(observed['web_input']['activation_mode'], 'auto')
+        self.assertEqual(
+            observed['prompt_messages'],
+            [
+                {'role': 'system', 'content': conversation['messages'][0]['content']},
+                {'role': 'user', 'content': 'WEB CONTEXT AUTO\n\nQuestion : Donne-moi la source de cette affirmation.'},
+            ],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_does_not_auto_activate_web_for_clean_conceptual_turn_without_manual_flag(self) -> None:
+        observed = {'web_input': None, 'prompt_messages': None, 'build_context_calls': 0}
+        conversation = {
+            'id': 'conv-web-not-requested-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok no auto web'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_payload = self.server.llm.build_payload
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+
+        def unexpected_build_context_payload(_user_msg, **_kwargs):
+            observed['build_context_calls'] += 1
+            raise AssertionError('auto web should not run on cleaned conceptual turn')
+
+        def fake_insertion(**kwargs):
+            observed['web_input'] = kwargs.get('web_input')
+            return None
+
+        def fake_build_payload(messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['prompt_messages'] = messages
+            return {
+                'model': 'openrouter/runtime-main-model',
+                'messages': messages,
+                'max_tokens': max_tokens,
+                'stream': stream,
+            }
+
+        self.server.ws.build_context_payload = unexpected_build_context_payload
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.llm.build_payload = fake_build_payload
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {
+                    'role': 'user',
+                    'content': (
+                        "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve "
+                        "de patience dans une lecture atemporelle ?"
+                    ),
+                },
+            ]
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': (
+                        "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve "
+                        "de patience dans une lecture atemporelle ?"
+                    ),
+                    'web_search': False,
+                },
+            )
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.llm.build_payload = original_build_payload
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['build_context_calls'], 0)
+        self.assertFalse(observed['web_input']['enabled'])
+        self.assertEqual(observed['web_input']['status'], 'skipped')
+        self.assertEqual(observed['web_input']['activation_mode'], 'not_requested')
+        self.assertEqual(observed['web_input']['reason_code'], 'not_applicable')
+        self.assertEqual(
+            observed['prompt_messages'][1]['content'],
+            "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve de patience dans une lecture atemporelle ?",
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_auto_web_no_data_keeps_external_verification_path_honest(self) -> None:
+        observed = {'web_input': None, 'primary_payload': None}
+        conversation = {
+            'id': 'conv-web-auto-no-data-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok no data'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+
+        def fake_build_context_payload(_user_msg, **_kwargs):
+            return {
+                'enabled': True,
+                'status': 'skipped',
+                'reason_code': 'no_data',
+                'original_user_message': 'Donne-moi la source de cette affirmation.',
+                'query': 'source test',
+                'results_count': 0,
+                'runtime': {},
+                'sources': [],
+                'context_block': '',
+            }
+
+        def capture_insertion(**kwargs):
+            observed['web_input'] = kwargs.get('web_input')
+            result = original_insertion(**kwargs)
+            observed['primary_payload'] = result['primary_payload']
+            return result
+
+        self.server.ws.build_context_payload = fake_build_context_payload
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = capture_insertion
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Donne-moi la source de cette affirmation.', 'web_search': False},
+            )
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['web_input']['activation_mode'], 'auto')
+        self.assertEqual(observed['web_input']['status'], 'skipped')
+        self.assertEqual(observed['web_input']['reason_code'], 'no_data')
+        self.assertEqual(observed['primary_payload']['primary_verdict']['proof_regime'], 'verification_externe_requise')
+        self.assertEqual(observed['primary_payload']['primary_verdict']['judgment_posture'], 'suspend')
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_runtime_derived_web_reading_guard_into_system_prompt(self) -> None:
@@ -1962,6 +2238,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['inputs']['stimmung']['turns_considered'], 1)
         self.assertFalse(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'skipped')
+        self.assertEqual(payload['inputs']['web']['activation_mode'], 'not_requested')
+        self.assertEqual(payload['inputs']['web']['reason_code'], 'not_applicable')
         self.assertEqual(payload['inputs']['web']['results_count'], 0)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
@@ -2157,6 +2435,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         web_payload = insertion_event['payload_json']['inputs']['web']
         self.assertTrue(web_payload['enabled'])
         self.assertEqual(web_payload['status'], 'ok')
+        self.assertEqual(web_payload['activation_mode'], 'manual')
+        self.assertEqual(web_payload['reason_code'], '')
         self.assertEqual(web_payload['results_count'], 2)
         self.assertTrue(web_payload['explicit_url_detected'])
         self.assertEqual(web_payload['explicit_url'], 'https://example.com/article')

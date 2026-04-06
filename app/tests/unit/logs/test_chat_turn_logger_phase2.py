@@ -371,6 +371,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                 web_input={
                     'enabled': True,
                     'status': 'ok',
+                    'activation_mode': 'manual',
+                    'reason_code': None,
                     'results_count': 3,
                 },
             )
@@ -441,6 +443,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['inputs']['stimmung']['turns_considered'], 4)
         self.assertTrue(payload['inputs']['web']['enabled'])
         self.assertEqual(payload['inputs']['web']['status'], 'ok')
+        self.assertEqual(payload['inputs']['web']['activation_mode'], 'manual')
+        self.assertEqual(payload['inputs']['web']['reason_code'], '')
         self.assertEqual(payload['inputs']['web']['results_count'], 3)
 
     def test_memory_prompt_injection_summary_counts_effective_prompt_blocks_without_raw_content(self) -> None:
