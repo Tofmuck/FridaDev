@@ -106,6 +106,55 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(payload['regime_probatoire']['provenances'], [])
         self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], [])
 
+    def test_build_user_turn_input_does_not_treat_faire_preuve_de_as_factuelle(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='Il faut faire preuve de patience pour comprendre ce texte.',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], [])
+        self.assertEqual(payload['regime_probatoire']['provenances'], [])
+
+    def test_build_user_turn_input_does_not_treat_lien_a_l_autre_as_web_provenance(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message="Ce passage travaille le lien a l'autre dans une lecture atemporelle.",
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['provenances'], [])
+        self.assertEqual(payload['regime_probatoire']['regime_de_vigilance'], 'standard')
+
+    def test_build_user_turn_input_keeps_explicit_link_request_as_web_provenance(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='As-tu un lien ?',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['provenances'], ['web'])
+        self.assertEqual(payload['regime_probatoire']['regime_de_vigilance'], 'renforce')
+
+    def test_build_user_turn_input_keeps_explicit_source_request_as_factuelle_and_web(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='Donne-moi la source.',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], ['factuelle'])
+        self.assertEqual(payload['regime_probatoire']['provenances'], ['web'])
+
+    def test_build_user_turn_input_keeps_explicit_verification_request_as_factuelle(self) -> None:
+        payload = user_turn_input.build_user_turn_input(
+            user_message='Tu peux verifier cette affirmation ?',
+            recent_window_input_payload=None,
+            time_input_payload={'now_utc_iso': '2026-04-01T10:00:00Z'},
+        )
+
+        self.assertEqual(payload['regime_probatoire']['types_de_preuve_attendus'], ['factuelle'])
+
     def test_build_user_turn_input_does_not_fall_back_to_exposition_for_est_ce_que_request(self) -> None:
         payload = user_turn_input.build_user_turn_input(
             user_message="Est-ce que tu peux vérifier ça",

@@ -35,6 +35,93 @@ _PROVENANCE_ORDER = (
     "dialogue_resume",
     "web",
 )
+_FACTUAL_VERIFICATION_REQUEST_MARKERS = (
+    "tu peux verifier",
+    "peux tu verifier",
+    "pourrais tu verifier",
+    "est ce que tu peux verifier",
+    "merci de verifier",
+    "verifie ca",
+    "verifie ceci",
+    "verifie ce point",
+    "verifie cette affirmation",
+    "verifie cette information",
+    "tu peux confirmer",
+    "peux tu confirmer",
+    "pourrais tu confirmer",
+    "est ce que tu peux confirmer",
+    "merci de confirmer",
+    "confirme ca",
+    "confirme ceci",
+    "confirme ce point",
+    "tu peux prouver",
+    "peux tu prouver",
+    "pourrais tu prouver",
+    "est ce que tu peux prouver",
+    "merci de prouver",
+)
+_SOURCE_REQUEST_MARKERS = (
+    "quelle source",
+    "quelles sources",
+    "quelle reference",
+    "quelles references",
+    "quelle citation",
+    "quelles citations",
+    "as tu une source",
+    "as tu des sources",
+    "as tu une reference",
+    "as tu des references",
+    "as tu une citation",
+    "as tu des citations",
+    "donne moi la source",
+    "donne moi les sources",
+    "donne moi la reference",
+    "donne moi les references",
+    "donne moi la citation",
+    "donne moi les citations",
+    "donne la source",
+    "donne les sources",
+    "donne la reference",
+    "donne les references",
+    "donne la citation",
+    "donne les citations",
+    "cite la source",
+    "cite les sources",
+    "cite la reference",
+    "cite les references",
+    "cite la citation",
+    "cite les citations",
+    "cite tes sources",
+    "cite tes references",
+)
+_WEB_REQUEST_MARKERS = (
+    "sur le web",
+    "sur internet",
+    "via le web",
+    "via internet",
+    "depuis le web",
+    "depuis internet",
+    "cherche sur le web",
+    "cherche sur internet",
+    "verifie sur le web",
+    "verifie sur internet",
+    "quel lien",
+    "quels liens",
+    "as tu un lien",
+    "as tu des liens",
+    "donne moi un lien",
+    "donne moi des liens",
+    "donne un lien",
+    "donne des liens",
+    "quel site",
+    "quels sites",
+    "quel article",
+    "quels articles",
+    "sur quel site",
+    "sur quels sites",
+    "dans quel article",
+    "dans quels articles",
+)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -278,23 +365,58 @@ def _summary_markers(text: str) -> bool:
     return _contains_any(text, ("resume", "dans le resume", "selon le resume"))
 
 
+def _short_direct_request(text: str, terms: Sequence[str]) -> bool:
+    normalized_text = _normalize_text(text)
+    tokens = [token for token in normalized_text.split() if token]
+    if not 1 <= len(tokens) <= 2:
+        return False
+    allowed_terms = {token for token in terms if token}
+    return any(token in allowed_terms for token in tokens)
+
+
+def _factuelle_markers(text: str) -> bool:
+    return (
+        _contains_any(text, _FACTUAL_VERIFICATION_REQUEST_MARKERS)
+        or _contains_any(text, _SOURCE_REQUEST_MARKERS)
+        or _short_direct_request(
+            text,
+            (
+                "verifie",
+                "verifier",
+                "confirme",
+                "confirmer",
+                "source",
+                "sources",
+                "reference",
+                "references",
+                "citation",
+                "citations",
+                "preuve",
+                "preuves",
+            ),
+        )
+    )
+
+
 def _web_markers(text: str) -> bool:
-    return _contains_any(
-        text,
-        (
-            "web",
-            "internet",
-            "site",
-            "article",
-            "source",
-            "sources",
-            "reference",
-            "references",
-            "citation",
-            "citations",
-            "lien",
-            "liens",
-        ),
+    return (
+        _contains_any(text, _SOURCE_REQUEST_MARKERS)
+        or _contains_any(text, _WEB_REQUEST_MARKERS)
+        or _short_direct_request(
+            text,
+            (
+                "web",
+                "internet",
+                "source",
+                "sources",
+                "reference",
+                "references",
+                "citation",
+                "citations",
+                "lien",
+                "liens",
+            ),
+        )
     )
 
 
@@ -302,7 +424,7 @@ def _resolve_regime_probatoire(text: str) -> dict[str, Any]:
     types: list[str] = []
     provenances: list[str] = []
 
-    if _contains_any(text, ("preuve", "prouve", "verifie", "source", "sources", "reference", "references")):
+    if _factuelle_markers(text):
         types.append("factuelle")
     if _contains_any(text, ("scientifique", "etude", "etudes", "paper", "publication", "publie")):
         types.append("scientifique")

@@ -62,6 +62,15 @@ Tours voisins compares:
   - apres: `types_de_preuve_attendus = []`, `regime_de_vigilance = standard`, `judgment_posture = answer`
   - plus loin: `types_de_preuve_attendus = ["argumentative"]`, `regime_de_vigilance = standard`, `judgment_posture = answer`
 
+## Etat apres premier patch runtime
+
+- [x] Le premier levier confirme a bien ete traite en amont dans `app/core/hermeneutic_node/inputs/user_turn_input.py`
+- [x] Les faux positifs lexicaux `preuve` et `lien` du cas diagnostique ne remontent plus artificiellement `factuelle` et `web`
+- [x] Les demandes explicites de verification, de source, de reference et de lien restent classables comme `factuelle` et/ou `web`
+- [ ] Le chantier reste ouvert pour le levier suivant:
+  - verifier si d'autres faux positifs amont du meme type subsistent
+  - puis arbitrer separement le besoin ou non d'un auto-web backend borne
+
 ## Contradiction apparente: verdict
 
 Verdict provisoirement retenu:
@@ -109,7 +118,7 @@ Ce qui manque aujourd'hui dans l'observabilite resumee:
 
 ## Ce qui reste hypothese a ce stade
 
-- [ ] La meilleure correction est-elle surtout amont, dans `_resolve_regime_probatoire(...)`, plutot qu'aval ?
+- [ ] Le nettoyage lexical amont suffit-il a lui seul a faire disparaitre la majeure partie des suspensions indues, ou seulement le cas diagnostique ?
 - [ ] Faut-il revoir seulement la notion de provenance `web`, ou aussi la notion de `factuelle` pour les tours conceptuels longs ?
 - [ ] Un auto-web backend borne est-il vraiment necessaire pour ce chantier, ou seulement pour les cas qui restent legitimement `verification_externe_requise` apres nettoyage des faux positifs ?
 - [ ] La combinaison `verification_externe_requise -> suspend` est-elle trop dure en general, ou seulement problematique quand l'etiquetage amont est faux ?

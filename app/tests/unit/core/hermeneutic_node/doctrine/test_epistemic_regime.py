@@ -17,6 +17,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.hermeneutic_node.doctrine import epistemic_regime
+from core.hermeneutic_node.inputs import user_turn_input
 
 
 def _user_turn(
@@ -245,6 +246,24 @@ class EpistemicRegimeTests(unittest.TestCase):
             user_turn_signals=_signals(),
             stimmung_input=_stimmung(),
             web_input=_web(status="skipped", results_count=0, reason_code="no_data"),
+        )
+
+        self.assertNotEqual(payload["epistemic_regime"], "a_verifier")
+        self.assertNotEqual(payload["proof_regime"], "verification_externe_requise")
+
+    def test_build_epistemic_regime_does_not_require_external_verification_for_diagnosed_conceptual_false_positive_after_upstream_cleanup(self) -> None:
+        payload = epistemic_regime.build_epistemic_regime(
+            user_turn_input=user_turn_input.build_user_turn_input(
+                user_message=(
+                    "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve "
+                    "de patience dans une lecture atemporelle ?"
+                ),
+                recent_window_input_payload=None,
+                time_input_payload={"now_utc_iso": "2026-04-01T10:00:00Z"},
+            ),
+            user_turn_signals=_signals(),
+            stimmung_input=_stimmung(),
+            web_input=_web(status="skipped", results_count=0, reason_code="feature_disabled"),
         )
 
         self.assertNotEqual(payload["epistemic_regime"], "a_verifier")
