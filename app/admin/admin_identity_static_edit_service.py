@@ -34,6 +34,8 @@ def _audit_and_return(
         status = 500
     if response.get('error_code') == 'static_resource_unresolved':
         status = 409
+    if response.get('error_code') == 'static_resource_outside_allowed_roots':
+        status = 409
     return response, status
 
 
@@ -113,7 +115,8 @@ def identity_static_edit_response(
         )
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
-    old_len = len(current_snapshot.content)
+    current_raw_content = str(getattr(current_snapshot, 'raw_content', current_snapshot.content or ''))
+    old_len = len(current_raw_content)
     resource_field = current_snapshot.resource_field
     resolution_kind = current_snapshot.resolution_kind
 
@@ -134,6 +137,23 @@ def identity_static_edit_response(
             error='ressource statique active introuvable',
         )
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
+    if not bool(getattr(current_snapshot, 'within_allowed_roots', False)):
+        response = contract.response_payload(
+            ok=False,
+            subject=subject,
+            action=action or raw_action,
+            old_len=0,
+            new_len=new_len,
+            changed=False,
+            stored_after=False,
+            validation_ok=False,
+            validation_error='static_resource_outside_allowed_roots',
+            reason_code='static_resource_outside_allowed_roots',
+            resource_field=resource_field,
+            resolution_kind=resolution_kind,
+            error='ressource statique active hors perimetre autorise',
+        )
+        return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
     if not action:
         response = contract.response_payload(
@@ -143,7 +163,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=new_len,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error='contract_action_invalid',
             reason_code='contract_action_invalid',
@@ -161,7 +181,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=new_len,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error='contract_reason_missing',
             reason_code='contract_reason_missing',
@@ -179,7 +199,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=new_len,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error='contract_reason_too_long',
             reason_code='contract_reason_too_long',
@@ -197,7 +217,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=0,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error='contract_clear_has_content',
             reason_code='contract_clear_has_content',
@@ -215,7 +235,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=0,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error='contract_set_missing_content',
             reason_code='contract_set_missing_content',
@@ -225,7 +245,7 @@ def identity_static_edit_response(
         )
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
-    if action == 'set' and current_snapshot.content == content:
+    if action == 'set' and current_raw_content == content:
         response = contract.response_payload(
             ok=True,
             subject=subject,
@@ -233,7 +253,7 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=len(content),
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=True,
             validation_error=None,
             reason_code='unchanged',
@@ -242,7 +262,7 @@ def identity_static_edit_response(
         )
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
-    if action == 'clear' and not current_snapshot.content:
+    if action == 'clear' and not current_raw_content:
         response = contract.response_payload(
             ok=True,
             subject=subject,
@@ -270,24 +290,31 @@ def identity_static_edit_response(
             old_len=old_len,
             new_len=new_len,
             changed=False,
-            stored_after=bool(current_snapshot.content),
+            stored_after=bool(current_raw_content),
             validation_ok=False,
             validation_error=error_code,
             reason_code=error_code,
             resource_field=resource_field,
             resolution_kind=resolution_kind,
-            error='ressource statique active introuvable' if error_code == 'static_resource_unresolved' else 'ecriture statique indisponible',
+            error=(
+                'ressource statique active hors perimetre autorise'
+                if error_code == 'static_resource_outside_allowed_roots'
+                else 'ressource statique active introuvable'
+                if error_code == 'static_resource_unresolved'
+                else 'ecriture statique indisponible'
+            ),
         )
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
+    next_raw_content = str(getattr(next_snapshot, 'raw_content', next_snapshot.content or ''))
     response = contract.response_payload(
         ok=True,
         subject=subject,
         action=action,
         old_len=old_len,
-        new_len=len(next_snapshot.content),
+        new_len=len(next_raw_content),
         changed=True,
-        stored_after=bool(next_snapshot.content),
+        stored_after=bool(next_raw_content),
         validation_ok=True,
         validation_error=None,
         reason_code='clear_applied' if action == 'clear' else 'set_applied',

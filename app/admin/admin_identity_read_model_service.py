@@ -36,14 +36,15 @@ def _build_static_layer(
 ) -> dict[str, Any]:
     payload = _mapping(active_side.get('static'))
     content = str(payload.get('content') or '')
+    raw_content = str(static_snapshot.get('raw_content') or '')
     source = _optional_text(payload.get('source'))
-    present = bool(content)
+    runtime_present = bool(content)
     return {
         'storage_kind': 'resource_path',
         'source_kind': str(static_snapshot.get('source_kind') or 'resource_path_content'),
-        'stored': present,
-        'loaded_for_runtime': present,
-        'actively_injected': present,
+        'stored': bool(raw_content),
+        'loaded_for_runtime': runtime_present,
+        'actively_injected': runtime_present,
         'content': content,
         'source': source,
         'resource_field': _optional_text(static_snapshot.get('resource_field')),

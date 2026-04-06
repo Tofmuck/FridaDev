@@ -14,6 +14,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import admin_logs, runtime_settings
 from core import conv_store
+from identity import static_identity_paths
 from memory import memory_store
 
 
@@ -1410,6 +1411,45 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['section'], 'resources')
         self.assertEqual(data['payload']['llm_identity_path']['value'], 'data/identity/llm_identity.next.txt')
         self.assertEqual(data['payload']['user_identity_path']['value'], 'data/identity/user_identity.next.txt')
+
+    def test_post_admin_settings_resources_validate_rejects_existing_file_outside_allowed_roots(self) -> None:
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            allowed_user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            outside_file = tmp_path / 'outside.txt'
+            allowed_user_file.parent.mkdir(parents=True)
+            allowed_user_file.write_text('user identity allowed', encoding='utf-8')
+            outside_file.write_text('outside identity path', encoding='utf-8')
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                response = self.client.post(
+                    '/api/admin/settings/resources/validate',
+                    json={
+                        'payload': {
+                            'llm_identity_path': {'value': str(outside_file)},
+                            'user_identity_path': {'value': str(allowed_user_file)},
+                        },
+                    },
+                )
+            finally:
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertFalse(data['valid'])
+        checks = {check['name']: check for check in data['checks']}
+        self.assertFalse(checks['llm_identity_path']['ok'])
+        self.assertTrue(checks['user_identity_path']['ok'])
+        self.assertIn('resolution=absolute_outside_allowed_roots', checks['llm_identity_path']['detail'])
+        self.assertIn('within_allowed_roots=False', checks['llm_identity_path']['detail'])
 
     def test_patch_admin_settings_secret_values_are_not_logged_in_clear(self) -> None:
         class CaptureHandler(logging.Handler):

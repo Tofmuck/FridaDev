@@ -136,6 +136,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             resolution_kind='absolute',
             resolved_path=Path(f'/tmp/{subject}_identity.txt'),
             content='Frida static canonique' if subject == 'llm' else 'User static canonique',
+            raw_content='Frida static canonique' if subject == 'llm' else 'User static canonique',
         )
         self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
             'legacy get_identities should not define active runtime truth for the unified read model'
@@ -180,6 +181,48 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['subjects']['llm']['evidence']['storage_kind'], 'identity_evidence')
         self.assertEqual(data['subjects']['llm']['conflicts']['storage_kind'], 'identity_conflicts')
         self.assertEqual(data['subjects']['user']['mutable']['content'], 'User mutable canonique')
+
+    def test_identity_read_model_static_layer_distinguishes_raw_storage_from_runtime_trimmed_content(self) -> None:
+        original_build_identity_input = self.server.identity.build_identity_input
+        original_build_identity_block = self.server.identity.build_identity_block
+        original_list_identity_fragments = self.server.memory_store.list_identity_fragments
+        original_list_identity_evidence = self.server.memory_store.list_identity_evidence
+        original_list_identity_conflicts = self.server.memory_store.list_identity_conflicts
+        original_read_static_identity_snapshot = self.server.static_identity_content.read_static_identity_snapshot
+        try:
+            self.server.identity.build_identity_input = lambda: {
+                'schema_version': 'v2',
+                'frida': {'static': {'content': '', 'source': 'data/identity/llm_identity.txt'}, 'mutable': {}},
+                'user': {'static': {'content': '', 'source': 'data/identity/user_identity.txt'}, 'mutable': {}},
+            }
+            self.server.identity.build_identity_block = lambda: ('ignored', [])
+            self.server.memory_store.list_identity_fragments = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
+            self.server.memory_store.list_identity_evidence = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
+            self.server.memory_store.list_identity_conflicts = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
+            self.server.static_identity_content.read_static_identity_snapshot = lambda subject: self.server.static_identity_content.StaticIdentitySnapshot(
+                subject=subject,
+                resource_field='llm_identity_path' if subject == 'llm' else 'user_identity_path',
+                configured_path=f'data/identity/{subject}_identity.txt',
+                resolution_kind='host_state_mirror',
+                resolved_path=Path(f'/tmp/{subject}_identity.txt'),
+                content='',
+                raw_content='\n',
+                within_allowed_roots=True,
+            )
+            response = self.client.get('/api/admin/identity/read-model')
+        finally:
+            self.server.identity.build_identity_input = original_build_identity_input
+            self.server.identity.build_identity_block = original_build_identity_block
+            self.server.memory_store.list_identity_fragments = original_list_identity_fragments
+            self.server.memory_store.list_identity_evidence = original_list_identity_evidence
+            self.server.memory_store.list_identity_conflicts = original_list_identity_conflicts
+            self.server.static_identity_content.read_static_identity_snapshot = original_read_static_identity_snapshot
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['subjects']['llm']['static']['stored'])
+        self.assertFalse(data['subjects']['llm']['static']['loaded_for_runtime'])
+        self.assertFalse(data['subjects']['llm']['static']['actively_injected'])
 
     def test_identity_read_model_route_is_guarded_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN

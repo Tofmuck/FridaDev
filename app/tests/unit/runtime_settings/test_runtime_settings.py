@@ -2219,25 +2219,39 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertNotIn(secret_value, str(ctx.exception))
 
     def test_validate_runtime_section_reports_missing_resource_file(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            existing = Path(tmpdir) / 'llm.txt'
-            existing.write_text('llm identity', encoding='utf-8')
-            missing = Path(tmpdir) / 'missing.txt'
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
-            result = runtime_settings.validate_runtime_section(
-                'resources',
-                {
-                    'llm_identity_path': {'value': str(existing)},
-                    'user_identity_path': {'value': str(missing)},
-                },
-                fetcher=lambda: {},
-            )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            existing = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            missing = tmp_path / 'app' / 'data' / 'identity' / 'missing.txt'
+            existing.parent.mkdir(parents=True)
+            existing.write_text('llm identity', encoding='utf-8')
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                result = runtime_settings.validate_runtime_section(
+                    'resources',
+                    {
+                        'llm_identity_path': {'value': str(existing)},
+                        'user_identity_path': {'value': str(missing)},
+                    },
+                    fetcher=lambda: {},
+                )
+            finally:
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertFalse(result['valid'])
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['llm_identity_path']['ok'])
         self.assertFalse(checks['user_identity_path']['ok'])
         self.assertIn(str(missing), checks['user_identity_path']['detail'])
+        self.assertIn('within_allowed_roots=False', checks['user_identity_path']['detail'])
 
     def test_validate_runtime_section_accepts_runtime_data_resource_files_via_host_state_mirror(self) -> None:
         original_app_root = static_identity_paths.APP_ROOT
@@ -2277,6 +2291,28 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('resolution=host_state_mirror', checks['llm_identity_path']['detail'])
         self.assertIn('data/identity/user_identity.txt', checks['user_identity_path']['detail'])
         self.assertIn('resolution=host_state_mirror', checks['user_identity_path']['detail'])
+
+    def test_validate_runtime_section_rejects_existing_resource_file_outside_allowed_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            outside = tmp_path / 'outside.txt'
+            outside.write_text('outside identity file', encoding='utf-8')
+
+            result = runtime_settings.validate_runtime_section(
+                'resources',
+                {
+                    'llm_identity_path': {'value': str(outside)},
+                    'user_identity_path': {'value': str(outside)},
+                },
+                fetcher=lambda: {},
+            )
+
+        self.assertFalse(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertFalse(checks['llm_identity_path']['ok'])
+        self.assertFalse(checks['user_identity_path']['ok'])
+        self.assertIn('resolution=absolute_outside_allowed_roots', checks['llm_identity_path']['detail'])
+        self.assertIn('within_allowed_roots=False', checks['llm_identity_path']['detail'])
 
     def test_validate_runtime_section_requires_bootstrap_dsn_during_transition(self) -> None:
         original_dsn = config.FRIDA_MEMORY_DB_DSN

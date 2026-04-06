@@ -13,6 +13,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from core import conv_store
+from identity import static_identity_paths
 from memory import memory_store
 
 
@@ -53,12 +54,16 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             'get_resources_settings': self.server.runtime_settings.get_resources_settings,
             'log_event': self.server.admin_logs.log_event,
             '_get_mutable_identity': self.server.identity._get_mutable_identity,
+            'app_root': static_identity_paths.APP_ROOT,
+            'repo_root': static_identity_paths.REPO_ROOT,
+            'host_state_root': static_identity_paths.HOST_STATE_ROOT,
         }
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('Frida initiale', encoding='utf-8')
             user_file.write_text('Utilisateur initial', encoding='utf-8')
 
@@ -79,6 +84,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
             self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
             self.server.identity._get_mutable_identity = lambda _subject: None
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 response = self.client.post(
                     '/api/admin/identity/static',
@@ -95,6 +103,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
                 self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
                 self.server.admin_logs.log_event = originals['log_event']
                 self.server.identity._get_mutable_identity = originals['_get_mutable_identity']
+                static_identity_paths.APP_ROOT = originals['app_root']
+                static_identity_paths.REPO_ROOT = originals['repo_root']
+                static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -115,12 +126,16 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             'get_resources_settings': self.server.runtime_settings.get_resources_settings,
             'log_event': self.server.admin_logs.log_event,
             '_get_mutable_identity': self.server.identity._get_mutable_identity,
+            'app_root': static_identity_paths.APP_ROOT,
+            'repo_root': static_identity_paths.REPO_ROOT,
+            'host_state_root': static_identity_paths.HOST_STATE_ROOT,
         }
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('Frida initiale', encoding='utf-8')
             user_file.write_text('Utilisateur initial', encoding='utf-8')
 
@@ -141,6 +156,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
             self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
             self.server.identity._get_mutable_identity = lambda _subject: None
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 response = self.client.post(
                     '/api/admin/identity/static',
@@ -158,6 +176,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
                 self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
                 self.server.admin_logs.log_event = originals['log_event']
                 self.server.identity._get_mutable_identity = originals['_get_mutable_identity']
+                static_identity_paths.APP_ROOT = originals['app_root']
+                static_identity_paths.REPO_ROOT = originals['repo_root']
+                static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -173,12 +194,16 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         originals = {
             'get_resources_settings': self.server.runtime_settings.get_resources_settings,
             'log_event': self.server.admin_logs.log_event,
+            'app_root': static_identity_paths.APP_ROOT,
+            'repo_root': static_identity_paths.REPO_ROOT,
+            'host_state_root': static_identity_paths.HOST_STATE_ROOT,
         }
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('Frida initiale', encoding='utf-8')
             user_file.write_text('Utilisateur initial', encoding='utf-8')
 
@@ -198,6 +223,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
 
             self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
             self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 response = self.client.post(
                     '/api/admin/identity/static',
@@ -212,6 +240,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             finally:
                 self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
                 self.server.admin_logs.log_event = originals['log_event']
+                static_identity_paths.APP_ROOT = originals['app_root']
+                static_identity_paths.REPO_ROOT = originals['repo_root']
+                static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
 
         self.assertEqual(response.status_code, 400)
         data = response.get_json()
@@ -225,6 +256,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         originals = {
             'get_resources_settings': self.server.runtime_settings.get_resources_settings,
             'log_event': self.server.admin_logs.log_event,
+            'app_root': static_identity_paths.APP_ROOT,
+            'repo_root': static_identity_paths.REPO_ROOT,
+            'host_state_root': static_identity_paths.HOST_STATE_ROOT,
         }
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -249,6 +283,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
 
             self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
             self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 response = self.client.post(
                     '/api/admin/identity/static',
@@ -262,6 +299,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             finally:
                 self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
                 self.server.admin_logs.log_event = originals['log_event']
+                static_identity_paths.APP_ROOT = originals['app_root']
+                static_identity_paths.REPO_ROOT = originals['repo_root']
+                static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
 
         self.assertEqual(response.status_code, 409)
         data = response.get_json()
@@ -269,6 +309,56 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         self.assertEqual(data['validation_error'], 'static_resource_unresolved')
         self.assertEqual(data['resource_field'], 'llm_identity_path')
         self.assertFalse(unresolved_path.exists())
+        self.assertNotIn('content', observed_logs[0][1])
+
+    def test_identity_static_edit_route_fails_closed_when_runtime_resource_is_outside_allowed_roots(self) -> None:
+        observed_logs = []
+        originals = {
+            'get_resources_settings': self.server.runtime_settings.get_resources_settings,
+            'log_event': self.server.admin_logs.log_event,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            outside_file = tmp_path / 'outside.txt'
+            outside_file.write_text('Hors perimetre', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(outside_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(outside_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
+            self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+            try:
+                response = self.client.post(
+                    '/api/admin/identity/static',
+                    json={
+                        'subject': 'llm',
+                        'action': 'set',
+                        'content': 'Ne doit pas passer',
+                        'reason': 'manual correction',
+                    },
+                )
+                stored_text = outside_file.read_text(encoding='utf-8')
+            finally:
+                self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
+                self.server.admin_logs.log_event = originals['log_event']
+
+        self.assertEqual(response.status_code, 409)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['validation_error'], 'static_resource_outside_allowed_roots')
+        self.assertEqual(stored_text, 'Hors perimetre')
         self.assertNotIn('content', observed_logs[0][1])
 
     def test_identity_static_edit_route_is_guarded_by_existing_admin_guard(self) -> None:

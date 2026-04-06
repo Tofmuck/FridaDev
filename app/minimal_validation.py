@@ -407,7 +407,7 @@ def _check_prompt_files() -> Dict[str, Any]:
     }
     for name, resolution in required_identity_files.items():
         path = resolution.resolved_path
-        if path is None or not path.exists():
+        if not resolution.exists or path is None:
             raise RuntimeError(f"fichier prompt/identity absent: {resolution.validation_detail(name)}")
         content = path.read_text(encoding="utf-8").strip()
         if len(content) < 20:

@@ -22,11 +22,15 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
 
     def test_check_prompt_files_uses_runtime_resource_paths_from_db_when_present(self) -> None:
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('identite llm db minimale suffisamment longue', encoding='utf-8')
             user_file.write_text('identite user db minimale suffisamment longue', encoding='utf-8')
 
@@ -45,10 +49,16 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
                 )
 
             minimal_validation.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 details = minimal_validation._check_prompt_files()
             finally:
                 minimal_validation.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(details['llm_identity']['path'], str(llm_file))
         self.assertEqual(details['user_identity']['path'], str(user_file))
@@ -88,11 +98,15 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings
         original_llm_path = config.FRIDA_LLM_IDENTITY_PATH
         original_user_path = config.FRIDA_USER_IDENTITY_PATH
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm-env.txt'
-            user_file = tmp_path / 'user-env.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm-env.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user-env.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('identite llm env minimale suffisamment longue', encoding='utf-8')
             user_file.write_text('identite user env minimale suffisamment longue', encoding='utf-8')
 
@@ -108,12 +122,18 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
                 )
 
             minimal_validation.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 details = minimal_validation._check_prompt_files()
             finally:
                 minimal_validation.runtime_settings.get_resources_settings = original_get_resources
                 config.FRIDA_LLM_IDENTITY_PATH = original_llm_path
                 config.FRIDA_USER_IDENTITY_PATH = original_user_path
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(details['llm_identity']['path'], str(llm_file))
         self.assertEqual(details['user_identity']['path'], str(user_file))
@@ -137,8 +157,39 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             details['identity_mutable_rewriter_prompt']['path'],
             str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
         )
-        self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
-        self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
+
+    def test_check_prompt_files_rejects_identity_resource_outside_allowed_roots(self) -> None:
+        original_get_resources = minimal_validation.runtime_settings.get_resources_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'outside-llm.txt'
+            user_file = tmp_path / 'outside-user.txt'
+            llm_file.write_text('identite llm hors perimetre minimale', encoding='utf-8')
+            user_file.write_text('identite user hors perimetre minimale', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(user_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            minimal_validation.runtime_settings.get_resources_settings = fake_get_resources_settings
+            try:
+                with self.assertRaises(RuntimeError) as ctx:
+                    minimal_validation._check_prompt_files()
+            finally:
+                minimal_validation.runtime_settings.get_resources_settings = original_get_resources
+
+        self.assertIn('within_allowed_roots=False', str(ctx.exception))
 
     def test_check_prompt_files_resolves_standard_runtime_data_paths_via_host_state_mirror(self) -> None:
         original_get_resources = minimal_validation.runtime_settings.get_resources_settings

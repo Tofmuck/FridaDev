@@ -30,6 +30,10 @@ class StaticIdentityResourceUnresolvedError(StaticIdentityContentError):
     error_code = 'static_identity_resource_unresolved'
 
 
+class StaticIdentityResourceOutsideAllowedRootsError(StaticIdentityContentError):
+    error_code = 'static_identity_resource_outside_allowed_roots'
+
+
 class StaticIdentityWriteError(StaticIdentityContentError):
     error_code = 'static_identity_write_failed'
 
@@ -42,6 +46,8 @@ class StaticIdentitySnapshot:
     resolution_kind: str
     resolved_path: Path | None
     content: str
+    raw_content: str = ''
+    within_allowed_roots: bool = False
     storage_kind: str = STATIC_STORAGE_KIND
     source_kind: str = ACTIVE_STATIC_SOURCE
     editable_via: str = STATIC_EDIT_ROUTE
@@ -54,11 +60,15 @@ class StaticIdentitySnapshot:
 
     @property
     def stored(self) -> bool:
-        return bool(self.content)
+        return bool(self.raw_content)
 
 
 def resource_field_for_subject(subject: str) -> str:
     return _SUBJECT_RESOURCE_FIELDS.get(str(subject or '').strip().lower(), '')
+
+
+def normalize_runtime_static_content(raw_content: str) -> str:
+    return str(raw_content or '').strip()
 
 
 def _runtime_resource_path(field: str, *, runtime_settings_module: Any = runtime_settings) -> str:
@@ -90,6 +100,8 @@ def resolve_active_static_identity(subject: str, *, runtime_settings_module: Any
         resolution_kind=resolution.resolution_kind,
         resolved_path=resolution.resolved_path,
         content='',
+        raw_content='',
+        within_allowed_roots=resolution.within_allowed_roots,
     )
 
 
@@ -99,10 +111,12 @@ def read_static_identity_snapshot(
     runtime_settings_module: Any = runtime_settings,
 ) -> StaticIdentitySnapshot:
     resolved = resolve_active_static_identity(subject, runtime_settings_module=runtime_settings_module)
+    raw_content = ''
     content = ''
-    if resolved.resolved_path is not None:
+    if resolved.resolved_path is not None and resolved.within_allowed_roots:
         try:
-            content = resolved.resolved_path.read_text(encoding='utf-8').strip()
+            raw_content = resolved.resolved_path.read_text(encoding='utf-8')
+            content = normalize_runtime_static_content(raw_content)
         except Exception as exc:
             logger.warning(
                 'static_identity_read_error subject=%s configured_path=%s resolved_path=%s resolution=%s err=%s',
@@ -112,7 +126,16 @@ def read_static_identity_snapshot(
                 resolved.resolution_kind,
                 exc,
             )
+            raw_content = ''
             content = ''
+    elif resolved.resolved_path is not None:
+        logger.warning(
+            'static_identity_outside_allowed_roots subject=%s configured_path=%s resolved_path=%s resolution=%s',
+            resolved.subject,
+            resolved.configured_path,
+            resolved.resolved_path,
+            resolved.resolution_kind,
+        )
     return StaticIdentitySnapshot(
         subject=resolved.subject,
         resource_field=resolved.resource_field,
@@ -120,6 +143,8 @@ def read_static_identity_snapshot(
         resolution_kind=resolved.resolution_kind,
         resolved_path=resolved.resolved_path,
         content=content,
+        raw_content=raw_content,
+        within_allowed_roots=resolved.within_allowed_roots,
     )
 
 
@@ -142,6 +167,10 @@ def write_static_identity_content(
     if path is None or not path.is_file():
         raise StaticIdentityResourceUnresolvedError(
             f'unresolved static identity resource for {resolved.resource_field}: {resolved.configured_path}'
+        )
+    if not resolved.within_allowed_roots:
+        raise StaticIdentityResourceOutsideAllowedRootsError(
+            f'static identity resource outside allowed roots for {resolved.resource_field}: {resolved.configured_path}'
         )
 
     temp_path: Path | None = None

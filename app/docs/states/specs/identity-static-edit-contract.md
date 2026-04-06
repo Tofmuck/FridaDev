@@ -35,6 +35,12 @@ La verite durable du statique reste file-backed:
 - l'edition operateur agit sur le contenu du fichier resolu par ces references;
 - aucune deuxieme verite DB du statique n'est introduite.
 
+Le perimetre autorise reste borne aux racines identity canoniques:
+- `app/data/identity/...`;
+- et son mirror host-side `state/data/identity/...` quand la ressource runtime relative est resolue hors conteneur;
+- un chemin absolu n'est accepte que s'il resolve dans une de ces racines;
+- tout fichier existant hors de ce perimetre est refuse fail-closed.
+
 `clear` ne supprime pas le fichier:
 - il conserve la ressource referencee;
 - il ecrit un contenu vide;
@@ -80,8 +86,8 @@ Regles:
 - aucun plafond Lot 5 n'est introduit ici
 
 No-op explicites:
-- `set` avec contenu identique -> `changed = false`, `reason_code = "unchanged"`
-- `clear` alors que le contenu est deja vide -> `changed = false`, `reason_code = "already_cleared"`
+- `set` avec contenu fichier brut identique -> `changed = false`, `reason_code = "unchanged"`
+- `clear` alors que le contenu fichier brut est deja vide -> `changed = false`, `reason_code = "already_cleared"`
 
 ## Effets de bord autorises
 
@@ -95,6 +101,7 @@ La route ne doit pas:
 - modifier `identity_mutables`;
 - modifier le legacy fragmentaire comme verite active;
 - requalifier `resources.*_identity_path` en editeur de contenu.
+- ecrire dans un fichier existant hors des racines identity autorisees.
 
 ## Reponse
 
@@ -119,7 +126,8 @@ Reponse compacte attendue:
 
 Convention:
 - le fichier recoit exactement le contenu demande pour `set`;
-- `old_len` et `new_len` refletent la longueur du contenu recharge puis lu par le runtime actif.
+- `old_len` et `new_len` refletent la longueur du contenu fichier brut avant/apres ecriture;
+- la normalisation runtime (`strip`) reste reservee a l'injection active et ne doit pas fausser `clear`, `unchanged` ou `stored_after`.
 
 ## Audit compact
 

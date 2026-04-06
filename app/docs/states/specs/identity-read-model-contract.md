@@ -84,8 +84,10 @@ Champs minimaux:
 
 Semantique:
 - source physique: contenu du fichier reference par `resources.llm_identity_path` / `resources.user_identity_path`;
+- cette ressource doit rester dans les racines identity canoniques autorisees (`app/data/identity/...` ou mirror `state/data/identity/...`);
 - les runtime settings conservent la reference de ressource, pas l'edition du contenu;
-- `stored`, `loaded_for_runtime` et `actively_injected` passent a `false` quand le contenu est vide, meme si la reference de ressource reste configuree;
+- `stored` reflete la presence de contenu fichier brut;
+- `loaded_for_runtime` et `actively_injected` refletent le contenu runtime normalise, une fois la ressource chargee puis trimmee;
 - verite active: oui, si `content` est present.
 
 ### `mutable`

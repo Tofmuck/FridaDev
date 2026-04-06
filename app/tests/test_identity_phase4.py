@@ -91,11 +91,15 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
 
     def test_identity_loaders_use_runtime_resource_paths_from_db_when_present(self) -> None:
         original_get_resources = identity.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('identite llm db', encoding='utf-8')
             user_file.write_text('identite user db', encoding='utf-8')
 
@@ -114,11 +118,17 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 )
 
             identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 llm_text = identity.load_llm_identity()
                 user_text = identity.load_user_identity()
             finally:
                 identity.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(llm_text, 'identite llm db')
         self.assertEqual(user_text, 'identite user db')
@@ -127,11 +137,15 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         original_get_resources = identity.runtime_settings.get_resources_settings
         original_llm_path = config.FRIDA_LLM_IDENTITY_PATH
         original_user_path = config.FRIDA_USER_IDENTITY_PATH
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm-env.txt'
-            user_file = tmp_path / 'user-env.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm-env.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user-env.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('identite llm env', encoding='utf-8')
             user_file.write_text('identite user env', encoding='utf-8')
 
@@ -147,6 +161,9 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 )
 
             identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 llm_text = identity.load_llm_identity()
                 user_text = identity.load_user_identity()
@@ -154,6 +171,9 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 identity.runtime_settings.get_resources_settings = original_get_resources
                 config.FRIDA_LLM_IDENTITY_PATH = original_llm_path
                 config.FRIDA_USER_IDENTITY_PATH = original_user_path
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(llm_text, 'identite llm env')
         self.assertEqual(user_text, 'identite user env')
@@ -271,10 +291,14 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
 
     def test_static_identity_content_snapshot_exposes_runtime_resource_metadata(self) -> None:
         original_get_resources = static_identity_content.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('Frida statique courante', encoding='utf-8')
 
             def fake_get_resources_settings():
@@ -292,10 +316,16 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 )
 
             static_identity_content.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 snapshot = static_identity_content.read_static_identity_snapshot('llm')
             finally:
                 static_identity_content.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(snapshot.subject, 'llm')
         self.assertEqual(snapshot.resource_field, 'llm_identity_path')
@@ -303,6 +333,8 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(snapshot.resolution_kind, 'absolute')
         self.assertEqual(snapshot.resolved_path, llm_file.resolve())
         self.assertEqual(snapshot.content, 'Frida statique courante')
+        self.assertEqual(snapshot.raw_content, 'Frida statique courante')
+        self.assertTrue(snapshot.within_allowed_roots)
         self.assertEqual(snapshot.source_kind, 'resource_path_content')
         self.assertEqual(snapshot.editable_via, '/api/admin/identity/static')
 
@@ -310,11 +342,15 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         original_get_resources = static_identity_content.runtime_settings.get_resources_settings
         original_identity_get_resources = identity.runtime_settings.get_resources_settings
         original_get_mutable_identity = identity._get_mutable_identity
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            llm_file = tmp_path / 'llm.txt'
-            user_file = tmp_path / 'user.txt'
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
             llm_file.write_text('Frida statique initiale', encoding='utf-8')
             user_file.write_text('Utilisateur statique initial', encoding='utf-8')
 
@@ -335,6 +371,9 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
             static_identity_content.runtime_settings.get_resources_settings = fake_get_resources_settings
             identity.runtime_settings.get_resources_settings = fake_get_resources_settings
             identity._get_mutable_identity = lambda _subject: None
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
             try:
                 set_snapshot = static_identity_content.write_static_identity_content(
                     'llm',
@@ -352,9 +391,14 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 static_identity_content.runtime_settings.get_resources_settings = original_get_resources
                 identity.runtime_settings.get_resources_settings = original_identity_get_resources
                 identity._get_mutable_identity = original_get_mutable_identity
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
 
         self.assertEqual(set_snapshot.content, 'Frida statique revisee')
+        self.assertEqual(set_snapshot.raw_content, 'Frida statique revisee\n')
         self.assertFalse(cleared_snapshot.content)
+        self.assertEqual(cleared_snapshot.raw_content, '')
         self.assertTrue(user_exists_after)
         self.assertEqual(llm_text_after, 'Frida statique revisee\n')
         self.assertEqual(user_text_after, '')
@@ -362,6 +406,46 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['user']['static']['content'], '')
         self.assertEqual(payload['frida']['static']['source'], str(llm_file))
         self.assertEqual(payload['user']['static']['source'], str(user_file))
+
+    def test_identity_loaders_refuse_outside_allowed_static_resource_paths(self) -> None:
+        original_get_resources = identity.runtime_settings.get_resources_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'outside-llm.txt'
+            user_file = tmp_path / 'outside-user.txt'
+            llm_file.write_text('hors perimetre llm', encoding='utf-8')
+            user_file.write_text('hors perimetre user', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(user_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            try:
+                llm_text = identity.load_llm_identity()
+                user_text = identity.load_user_identity()
+                llm_resolution = static_identity_paths.resolve_static_identity_path(str(llm_file))
+                user_resolution = static_identity_paths.resolve_static_identity_path(str(user_file))
+            finally:
+                identity.runtime_settings.get_resources_settings = original_get_resources
+
+        self.assertEqual(llm_text, '')
+        self.assertEqual(user_text, '')
+        self.assertEqual(llm_resolution.resolution_kind, 'absolute_outside_allowed_roots')
+        self.assertEqual(user_resolution.resolution_kind, 'absolute_outside_allowed_roots')
+        self.assertFalse(llm_resolution.within_allowed_roots)
+        self.assertFalse(user_resolution.within_allowed_roots)
 
 
 if __name__ == '__main__':
