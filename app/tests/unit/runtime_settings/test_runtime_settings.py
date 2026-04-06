@@ -43,6 +43,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'database',
                 'services',
                 'resources',
+                'identity_governance',
             ),
         )
 
@@ -394,6 +395,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'embedding',
                 'database',
                 'resources',
+                'identity_governance',
             ),
         )
 
@@ -557,6 +559,15 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         )
         self.assertIn('Maximum 8 mots.', readonly_info['web_reformulation_system_prompt']['value'])
 
+    def test_get_section_readonly_info_identity_governance_points_to_hermeneutic_admin_surface(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('identity_governance')
+
+        self.assertEqual(readonly_info['surface_route']['value'], '/hermeneutic-admin')
+        self.assertEqual(readonly_info['read_route']['value'], '/api/admin/identity/governance')
+        self.assertEqual(readonly_info['update_route']['value'], '/api/admin/identity/governance')
+        self.assertIn('/hermeneutic-admin', readonly_info['operator_scope']['value'])
+        self.assertFalse(readonly_info['surface_route']['is_editable'])
+
     def test_get_section_readonly_info_other_sections_stays_empty_in_fourth_phase12_slice(self) -> None:
         self.assertEqual(runtime_settings.get_section_readonly_info('database'), {})
 
@@ -568,6 +579,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             'stimmung_agent_model',
             'validation_agent_model',
             'services',
+            'identity_governance',
         }
         expected_empty = {
             'embedding',
@@ -596,6 +608,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'validation_agent_model',
                 'database',
                 'resources',
+                'identity_governance',
             ),
         )
 
@@ -610,6 +623,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'validation_agent_model',
                 'database',
                 'resources',
+                'identity_governance',
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
@@ -1084,6 +1098,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'database',
                 'services',
                 'resources',
+                'identity_governance',
             ),
         )
         self.assertEqual(result['updated_sections'], ())
@@ -1094,10 +1109,11 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             for query, params in zip(observed['queries'], observed['params'])
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
-        self.assertEqual(len(runtime_payloads), 7)
+        self.assertEqual(len(runtime_payloads), 8)
         self.assertEqual(runtime_payloads[0]['model']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[0]['timeout_s']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[2]['primary_model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[-1]['CONTEXT_HINTS_MAX_ITEMS']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[3]['fallback_model']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[4]['backend']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[5]['searxng_url']['origin'], 'db_seed')
@@ -2326,6 +2342,36 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['backend']['ok'])
         self.assertFalse(checks['dsn_transition']['ok'])
+
+    def test_validate_runtime_section_identity_governance_enforces_core_invariants(self) -> None:
+        valid = runtime_settings.validate_runtime_section(
+            'identity_governance',
+            {
+                'IDENTITY_MIN_CONFIDENCE': {'value': 0.8},
+                'IDENTITY_DEFER_MIN_CONFIDENCE': {'value': 0.6},
+                'IDENTITY_MIN_RECURRENCE_FOR_DURABLE': {'value': 3},
+                'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS': {'value': 2},
+                'CONTEXT_HINTS_MAX_ITEMS': {'value': 3},
+                'CONTEXT_HINTS_MAX_TOKENS': {'value': 256},
+                'CONTEXT_HINTS_MAX_AGE_DAYS': {'value': 14},
+                'CONTEXT_HINTS_MIN_CONFIDENCE': {'value': 0.7},
+                'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS': {'value': 12},
+            },
+            fetcher=lambda: {},
+        )
+        invalid = runtime_settings.validate_runtime_section(
+            'identity_governance',
+            {
+                'IDENTITY_MIN_CONFIDENCE': {'value': 0.7},
+                'IDENTITY_DEFER_MIN_CONFIDENCE': {'value': 0.8},
+            },
+            fetcher=lambda: {},
+        )
+
+        self.assertTrue(valid['valid'])
+        self.assertFalse(invalid['valid'])
+        invalid_checks = {check['name']: check for check in invalid['checks']}
+        self.assertFalse(invalid_checks['IDENTITY_DEFER_MIN_CONFIDENCE']['ok'])
 
 
 if __name__ == '__main__':

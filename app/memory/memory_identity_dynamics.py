@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any, Callable, Sequence
 
+import config as default_config
+from identity import identity_governance
 from observability import chat_turn_logger
 from observability import identity_observability
 
@@ -20,6 +22,15 @@ def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
     if norm_a == 0.0 or norm_b == 0.0:
         return 0.0
     return max(0.0, min(1.0, dot / (norm_a * norm_b)))
+
+
+def _governed_config_value(config_module: Any, key: str) -> Any:
+    if config_module is not default_config:
+        return getattr(config_module, key)
+    return identity_governance.governed_value_for_runtime(
+        key,
+        config_module=config_module,
+    )
 
 
 def _embedding_similarity_safe(
@@ -302,7 +313,22 @@ def _apply_defer_policy_for_content(
     if not subject or not content_norm:
         return
 
-    events_rows = list_recent_evidence_fn(subject, content_norm, config_module.IDENTITY_RECURRENCE_WINDOW_DAYS)
+    recurrence_window_days = _governed_config_value(config_module, 'IDENTITY_RECURRENCE_WINDOW_DAYS')
+    promotion_min_time_gap_hours = _governed_config_value(
+        config_module,
+        'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
+    )
+    min_recurrence_for_durable = _governed_config_value(
+        config_module,
+        'IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
+    )
+    min_distinct_conversations = _governed_config_value(
+        config_module,
+        'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
+    )
+    min_confidence = _governed_config_value(config_module, 'IDENTITY_MIN_CONFIDENCE')
+
+    events_rows = list_recent_evidence_fn(subject, content_norm, recurrence_window_days)
     events = policy_module.build_evidence_events(events_rows)
 
     try:
@@ -340,14 +366,14 @@ def _apply_defer_policy_for_content(
 
                 stats = policy_module.compute_recurrence_stats(
                     events,
-                    min_time_gap_hours=config_module.IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS,
+                    min_time_gap_hours=promotion_min_time_gap_hours,
                 )
                 has_strong_conflict = has_open_strong_conflict_fn(subject, content_norm)
                 can_promote = policy_module.should_promote_deferred(
                     stats=stats,
-                    min_recurrence_for_durable=config_module.IDENTITY_MIN_RECURRENCE_FOR_DURABLE,
-                    min_distinct_conversations=config_module.IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS,
-                    min_confidence=config_module.IDENTITY_MIN_CONFIDENCE,
+                    min_recurrence_for_durable=min_recurrence_for_durable,
+                    min_distinct_conversations=min_distinct_conversations,
+                    min_confidence=min_confidence,
                     has_strong_conflict=has_strong_conflict,
                 )
 
@@ -382,7 +408,7 @@ def _apply_defer_policy_for_content(
                     (
                         subject,
                         content_norm,
-                        max(1, config_module.IDENTITY_RECURRENCE_WINDOW_DAYS),
+                        max(1, recurrence_window_days),
                     ),
                 )
             conn.commit()
@@ -396,6 +422,7 @@ def _expire_stale_deferred_global(
     config_module: Any,
     logger: Any,
 ) -> None:
+    recurrence_window_days = _governed_config_value(config_module, 'IDENTITY_RECURRENCE_WINDOW_DAYS')
     try:
         with conn_factory() as conn:
             with conn.cursor() as cur:
@@ -408,7 +435,7 @@ def _expire_stale_deferred_global(
                       AND created_ts < (now() - make_interval(days => %s))
                       AND COALESCE(override_state, 'none') NOT IN ('force_accept', 'force_reject')
                     ''',
-                    (max(1, config_module.IDENTITY_RECURRENCE_WINDOW_DAYS),),
+                    (max(1, recurrence_window_days),),
                 )
             conn.commit()
     except Exception as exc:
@@ -426,6 +453,8 @@ def preview_identity_entries(
     if not entries:
         return []
 
+    min_confidence = _governed_config_value(config_module, 'IDENTITY_MIN_CONFIDENCE')
+    defer_min_confidence = _governed_config_value(config_module, 'IDENTITY_DEFER_MIN_CONFIDENCE')
     processed: list[dict[str, Any]] = []
     for entry in entries:
         subject = str(entry.get('subject', '')).strip()
@@ -435,8 +464,8 @@ def preview_identity_entries(
 
         decision = policy_module.should_accept_identity(
             entry,
-            min_confidence=config_module.IDENTITY_MIN_CONFIDENCE,
-            defer_min_confidence=config_module.IDENTITY_DEFER_MIN_CONFIDENCE,
+            min_confidence=min_confidence,
+            defer_min_confidence=defer_min_confidence,
         )
         status = decision['status']
         policy_reason = decision['reason']

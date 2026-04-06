@@ -4,8 +4,10 @@ from dataclasses import dataclass
 import time
 from typing import Any, Mapping, Sequence
 
+import config as default_config
 from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
+from identity import identity_governance
 from memory import hermeneutics_policy
 from memory import memory_identity_mutable_rewriter
 from observability import chat_turn_logger
@@ -54,6 +56,15 @@ def _mode_runs_identity(mode: str) -> bool:
 
 def _empty_identity_actions() -> dict[str, int]:
     return {'add': 0, 'update': 0, 'override': 0, 'reject': 0, 'defer': 0}
+
+
+def _governed_config_value(config_module: Any, key: str) -> Any:
+    if config_module is not default_config:
+        return getattr(config_module, key)
+    return identity_governance.governed_value_for_runtime(
+        key,
+        config_module=config_module,
+    )
 
 
 def _emit_identity_write_skipped_by_side(
@@ -390,9 +401,9 @@ def prepare_memory_context(
         )
 
     context_hints = memory_store_module.get_recent_context_hints(
-        max_items=config_module.CONTEXT_HINTS_MAX_ITEMS,
-        max_age_days=config_module.CONTEXT_HINTS_MAX_AGE_DAYS,
-        min_confidence=config_module.CONTEXT_HINTS_MIN_CONFIDENCE,
+        max_items=_governed_config_value(config_module, 'CONTEXT_HINTS_MAX_ITEMS'),
+        max_age_days=_governed_config_value(config_module, 'CONTEXT_HINTS_MAX_AGE_DAYS'),
+        min_confidence=_governed_config_value(config_module, 'CONTEXT_HINTS_MIN_CONFIDENCE'),
     )
     if context_hints:
         admin_logs_module.log_event(

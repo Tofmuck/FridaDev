@@ -206,6 +206,28 @@ Convention explicite:
 - un chemin absolu ne reste acceptable que s'il resolve dans ces racines identity canoniques; un fichier arbitraire existant hors perimetre est refuse.
 - depuis `Lot 4`, ces champs restent des references de ressource; l'edition du contenu statique actif passe par `POST /api/admin/identity/static` et la section `Vue unifiee identity` de `/hermeneutic-admin`.
 
+### `identity_governance`
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `IDENTITY_MIN_CONFIDENCE` | `float` | non | `config.IDENTITY_MIN_CONFIDENCE` |
+| `IDENTITY_DEFER_MIN_CONFIDENCE` | `float` | non | `config.IDENTITY_DEFER_MIN_CONFIDENCE` |
+| `IDENTITY_MIN_RECURRENCE_FOR_DURABLE` | `int` | non | `config.IDENTITY_MIN_RECURRENCE_FOR_DURABLE` |
+| `IDENTITY_RECURRENCE_WINDOW_DAYS` | `int` | non | `config.IDENTITY_RECURRENCE_WINDOW_DAYS` |
+| `IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS` | `int` | non | `config.IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS` |
+| `IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS` | `int` | non | `config.IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS` |
+| `CONTEXT_HINTS_MAX_ITEMS` | `int` | non | `config.CONTEXT_HINTS_MAX_ITEMS` |
+| `CONTEXT_HINTS_MAX_TOKENS` | `int` | non | `config.CONTEXT_HINTS_MAX_TOKENS` |
+| `CONTEXT_HINTS_MAX_AGE_DAYS` | `int` | non | `config.CONTEXT_HINTS_MAX_AGE_DAYS` |
+| `CONTEXT_HINTS_MIN_CONFIDENCE` | `float` | non | `config.CONTEXT_HINTS_MIN_CONFIDENCE` |
+
+Convention explicite:
+
+- cette section runtime porte seulement le sous-ensemble identity gouvernable en live;
+- elle ne remplace ni le read-model identity, ni les editeurs static/mutable;
+- la surface operateur de lecture/edition reste `/hermeneutic-admin`;
+- `/admin` generique peut exposer cette section comme metadonnee runtime, mais ce n'est pas la surface produit de gouvernance identity.
+
 ## API de lecture cible
 
 Forme de lecture admin attendue :

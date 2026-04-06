@@ -85,6 +85,13 @@
     );
   };
 
+  const fetchIdentityGovernance = () => {
+    return readAdminJson(
+      "/api/admin/identity/governance",
+      "Echec lecture gouvernance identity.",
+    );
+  };
+
   const updateIdentityMutable = ({ subject = "", action = "", content = "", reason = "" } = {}) => {
     return writeAdminJson(
       "/api/admin/identity/mutable",
@@ -108,6 +115,17 @@
         reason,
       },
       "Echec edition statique canonique.",
+    );
+  };
+
+  const updateIdentityGovernance = ({ updates = {}, reason = "" } = {}) => {
+    return writeAdminJson(
+      "/api/admin/identity/governance",
+      {
+        updates,
+        reason,
+      },
+      "Echec gouvernance identity.",
     );
   };
 
@@ -138,8 +156,10 @@
     fetchTurnLogs,
     fetchArbiterDecisions,
     fetchIdentityReadModel,
+    fetchIdentityGovernance,
     updateIdentityMutable,
     updateIdentityStatic,
+    updateIdentityGovernance,
     fetchIdentityCandidates,
     fetchCorrectionsExport,
   });

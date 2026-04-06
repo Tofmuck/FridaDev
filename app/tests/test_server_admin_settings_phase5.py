@@ -143,6 +143,14 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             data['sections']['arbiter_model']['readonly_info']['identity_extractor_max_tokens']['value'],
             700,
         )
+        self.assertEqual(
+            data['sections']['identity_governance']['readonly_info']['surface_route']['value'],
+            '/hermeneutic-admin',
+        )
+        self.assertEqual(
+            data['sections']['identity_governance']['readonly_info']['update_route']['value'],
+            '/api/admin/identity/governance',
+        )
         self.assertIn(
             'You are a conversational memory arbiter.',
             data['sections']['arbiter_model']['readonly_info']['arbiter_prompt']['value'],
@@ -225,6 +233,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             'stimmung_agent_model',
             'validation_agent_model',
             'services',
+            'identity_governance',
         ):
             readonly_info = data['sections'][section]['readonly_info']
             self.assertTrue(readonly_info, section)
@@ -1632,6 +1641,7 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 '/api/admin/identity/read-model',
                 '/api/admin/identity/mutable',
                 '/api/admin/identity/static',
+                '/api/admin/identity/governance',
             },
         )
         self.assertTrue(settings_routes)

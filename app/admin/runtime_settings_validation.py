@@ -356,6 +356,105 @@ def validate_runtime_section(
                 ),
             )
         )
+    elif section == 'identity_governance':
+        identity_min_confidence = _runtime_float_value(view, 'IDENTITY_MIN_CONFIDENCE')
+        identity_defer_min_confidence = _runtime_float_value(view, 'IDENTITY_DEFER_MIN_CONFIDENCE')
+        identity_min_recurrence = _runtime_int_value(view, 'IDENTITY_MIN_RECURRENCE_FOR_DURABLE')
+        identity_recurrence_window_days = _runtime_int_value(view, 'IDENTITY_RECURRENCE_WINDOW_DAYS')
+        identity_min_distinct_conversations = _runtime_int_value(
+            view,
+            'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
+        )
+        identity_min_time_gap_hours = _runtime_int_value(view, 'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS')
+        context_hints_max_items = _runtime_int_value(view, 'CONTEXT_HINTS_MAX_ITEMS')
+        context_hints_max_tokens = _runtime_int_value(view, 'CONTEXT_HINTS_MAX_TOKENS')
+        context_hints_max_age_days = _runtime_int_value(view, 'CONTEXT_HINTS_MAX_AGE_DAYS')
+        context_hints_min_confidence = _runtime_float_value(view, 'CONTEXT_HINTS_MIN_CONFIDENCE')
+        max_context_tokens = int(getattr(config_module, 'MAX_TOKENS', 0) or 0)
+        checks.extend(
+            (
+                _validation_check(
+                    'IDENTITY_MIN_CONFIDENCE',
+                    identity_min_confidence is not None and 0.0 <= identity_min_confidence <= 1.0,
+                    f'IDENTITY_MIN_CONFIDENCE={identity_min_confidence!r}',
+                ),
+                _validation_check(
+                    'IDENTITY_DEFER_MIN_CONFIDENCE',
+                    identity_defer_min_confidence is not None
+                    and 0.0 <= identity_defer_min_confidence <= 1.0
+                    and (
+                        identity_min_confidence is None
+                        or identity_defer_min_confidence <= identity_min_confidence
+                    ),
+                    (
+                        'IDENTITY_DEFER_MIN_CONFIDENCE='
+                        f'{identity_defer_min_confidence!r}; '
+                        f'IDENTITY_MIN_CONFIDENCE={identity_min_confidence!r}'
+                    ),
+                ),
+                _validation_check(
+                    'IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
+                    identity_min_recurrence is not None
+                    and 1 <= identity_min_recurrence <= 10
+                    and (
+                        identity_min_distinct_conversations is None
+                        or identity_min_recurrence >= identity_min_distinct_conversations
+                    ),
+                    (
+                        'IDENTITY_MIN_RECURRENCE_FOR_DURABLE='
+                        f'{identity_min_recurrence!r}; '
+                        'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS='
+                        f'{identity_min_distinct_conversations!r}'
+                    ),
+                ),
+                _validation_check(
+                    'IDENTITY_RECURRENCE_WINDOW_DAYS',
+                    identity_recurrence_window_days is not None and 1 <= identity_recurrence_window_days <= 365,
+                    f'IDENTITY_RECURRENCE_WINDOW_DAYS={identity_recurrence_window_days!r}',
+                ),
+                _validation_check(
+                    'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
+                    identity_min_distinct_conversations is not None
+                    and 1 <= identity_min_distinct_conversations <= 10
+                    and (
+                        identity_min_recurrence is None
+                        or identity_min_distinct_conversations <= identity_min_recurrence
+                    ),
+                    (
+                        'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS='
+                        f'{identity_min_distinct_conversations!r}; '
+                        'IDENTITY_MIN_RECURRENCE_FOR_DURABLE='
+                        f'{identity_min_recurrence!r}'
+                    ),
+                ),
+                _validation_check(
+                    'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
+                    identity_min_time_gap_hours is not None and 1 <= identity_min_time_gap_hours <= 168,
+                    f'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS={identity_min_time_gap_hours!r}',
+                ),
+                _validation_check(
+                    'CONTEXT_HINTS_MAX_ITEMS',
+                    context_hints_max_items is not None and 1 <= context_hints_max_items <= 10,
+                    f'CONTEXT_HINTS_MAX_ITEMS={context_hints_max_items!r}',
+                ),
+                _validation_check(
+                    'CONTEXT_HINTS_MAX_TOKENS',
+                    context_hints_max_tokens is not None
+                    and 1 <= context_hints_max_tokens <= max_context_tokens,
+                    f'CONTEXT_HINTS_MAX_TOKENS={context_hints_max_tokens!r}; max_allowed={max_context_tokens}',
+                ),
+                _validation_check(
+                    'CONTEXT_HINTS_MAX_AGE_DAYS',
+                    context_hints_max_age_days is not None and 1 <= context_hints_max_age_days <= 365,
+                    f'CONTEXT_HINTS_MAX_AGE_DAYS={context_hints_max_age_days!r}',
+                ),
+                _validation_check(
+                    'CONTEXT_HINTS_MIN_CONFIDENCE',
+                    context_hints_min_confidence is not None and 0.0 <= context_hints_min_confidence <= 1.0,
+                    f'CONTEXT_HINTS_MIN_CONFIDENCE={context_hints_min_confidence!r}',
+                ),
+            )
+        )
     else:  # pragma: no cover - SECTION_NAMES locks known values
         raise KeyError(f'unknown runtime settings section: {section}')
 

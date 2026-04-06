@@ -18,6 +18,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from identity import identity_governance
 from observability import chat_turn_logger
 from observability import log_store
 from memory import memory_arbiter_audit
@@ -373,9 +374,9 @@ def get_recent_context_hints(
         max_age_days=max_age_days,
         min_confidence=min_confidence,
         conn_factory=_conn,
-        default_max_items=config.CONTEXT_HINTS_MAX_ITEMS,
-        default_max_age_days=config.CONTEXT_HINTS_MAX_AGE_DAYS,
-        default_min_confidence=config.CONTEXT_HINTS_MIN_CONFIDENCE,
+        default_max_items=identity_governance.context_hints_max_items(),
+        default_max_age_days=identity_governance.context_hints_max_age_days(),
+        default_min_confidence=identity_governance.context_hints_min_confidence(),
         logger=logger,
     )
 

@@ -42,6 +42,7 @@ class RuntimeSettingsSqlTests(unittest.TestCase):
             "'database'",
             "'services'",
             "'resources'",
+            "'identity_governance'",
         ):
             self.assertIn(section, self.sql)
 

@@ -21,6 +21,7 @@ from core import conv_store
 from core import chat_service
 from core import conversations_service
 from admin import (
+    admin_identity_governance_service,
     admin_identity_static_edit_service,
     admin_identity_mutable_edit_service,
     admin_identity_read_model_service,
@@ -990,6 +991,28 @@ def api_admin_identity_static_edit():
         data,
         static_identity_content_module=static_identity_content,
         admin_logs_module=admin_logs,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/admin/identity/governance')
+def api_admin_identity_governance():
+    payload, status = admin_identity_governance_service.identity_governance_response(
+        request.args,
+        runtime_settings_module=runtime_settings,
+        identity_module=identity,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/admin/identity/governance')
+def api_admin_identity_governance_update():
+    data = request.get_json(force=True, silent=True) or {}
+    payload, status = admin_identity_governance_service.identity_governance_update_response(
+        data,
+        runtime_settings_module=runtime_settings,
+        admin_logs_module=admin_logs,
+        identity_module=identity,
     )
     return jsonify(payload), status
 

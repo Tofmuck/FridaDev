@@ -89,6 +89,10 @@ No-op explicites:
 - `set` avec contenu fichier brut identique -> `changed = false`, `reason_code = "unchanged"`
 - `clear` alors que le contenu fichier brut est deja vide -> `changed = false`, `reason_code = "already_cleared"`
 
+Depuis `Lot 5`:
+- aucun budget caracteres statique distinct n'est introduit;
+- la gouvernance identity expose explicitement cette absence de cap doctrinal pour le statique.
+
 ## Effets de bord autorises
 
 La route peut seulement:
@@ -174,5 +178,5 @@ Les runtime settings `resources.*_identity_path` restent visibles sur `/admin`:
 ## Hors scope
 
 Ce contrat ne couvre pas encore:
-- la gouvernance UI/backend des caps et seuils (`Lot 5`);
+- la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
 - la future page `Identity` et sa navigation globale (`Lot 6`).

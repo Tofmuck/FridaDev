@@ -19,8 +19,8 @@ Ce TODO a deja ferme deux besoins structurants:
 - [x] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
 - [x] Lot 2 - Construire un mode de lecture identity unifie et honnete
 - [x] Lot 3 - Ouvrir une edition controlee du dynamique
-- [ ] Lot 4 - Ouvrir une edition controlee du statique
-- [ ] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
+- [x] Lot 4 - Ouvrir une edition controlee du statique
+- [x] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
 - [ ] Lot 6 - Assembler la surface `Identity` et sa navigation globale
 
 ## Structure reelle revalidee
@@ -61,22 +61,19 @@ Ce TODO a deja ferme deux besoins structurants:
 
 ### Ce qui manque encore
 
-- la lisibilite de ce qui est injecte vs seulement stocke;
-- l'edition directe du contenu statique;
-- la gouvernance operateur des caps et seuils;
 - une navigation `Identity` coherente depuis les surfaces utiles.
 
 ### Point critique prioritaire
 
-- Le Lot 1, le Lot 1B, le Lot 2 et le Lot 3 sont maintenant fermes.
-- Le prochain chantier prioritaire est maintenant le `Lot 4`: ouvrir une edition controlee du statique sur la base du read-model et de la mutable canonique deja clarifies.
-- La future surface `Identity` peut maintenant s'appuyer sur une lecture stable, mais elle ne doit toujours pas court-circuiter les lots d'edition et de gouvernance restants.
+- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4 et le Lot 5 sont maintenant fermes.
+- Le prochain chantier prioritaire est maintenant le `Lot 6`: assembler la surface `Identity` et sa navigation globale sur la base des contrats read-only, edition et gouvernance deja stabilises.
+- La future surface `Identity` peut maintenant s'appuyer sur une lecture, une edition et une gouvernance honnetes, sans ressusciter le legacy comme verite active.
 
 ## Ordre retenu
 
-- Le Lot 1, le Lot 1B, le Lot 2 et le Lot 3 sont maintenant fermes.
-- Le Lot 4 est maintenant le prochain lot prioritaire.
-- Les Lots 4 a 6 doivent suivre sans masquer ou contourner les lots d'edition et de gouvernance restants.
+- Le Lot 1, le Lot 1B, le Lot 2, le Lot 3, le Lot 4 et le Lot 5 sont maintenant fermes.
+- Le Lot 6 est maintenant le prochain lot prioritaire.
+- Le Lot 6 doit assembler la surface `Identity` sans requalifier a nouveau les lots d'edition et de gouvernance deja fermes.
 - La future page `Identity` doit arriver apres lecture unifiee, editions controlees et gouvernance lisible, pas avant.
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
@@ -199,12 +196,14 @@ Sortie attendue:
 
 ## Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
 
+Statut: ferme; gouvernance identity minimale stabilisee avant la page `Identity`
+
 But:
 - rendre visibles les limites reelles du systeme identity et trancher ce qui doit devenir gouvernable.
 
-- [ ] Inventorier proprement et exposer `IDENTITY_TOP_N`, `IDENTITY_MAX_TOKENS`, `IDENTITY_MIN_CONFIDENCE`, `IDENTITY_DEFER_MIN_CONFIDENCE`, les seuils de recurrence et de promotion, le budget d'extraction identity distinct et les autres caps reels du pipeline
-- [ ] Distinguer ce qui est visible, editable, code en dur, en config/env et en runtime settings/admin
-- [ ] Dire explicitement s'il n'existe toujours pas de cap caracteres identity distinct
+- [x] Inventorier proprement et exposer `IDENTITY_TOP_N`, `IDENTITY_MAX_TOKENS`, `IDENTITY_MIN_CONFIDENCE`, `IDENTITY_DEFER_MIN_CONFIDENCE`, les seuils de recurrence et de promotion, le budget d'extraction identity distinct et les autres caps reels du pipeline
+- [x] Distinguer ce qui est visible, editable, code en dur, en config/env et en runtime settings/admin
+- [x] Dire explicitement s'il n'existe toujours pas de cap caracteres identity distinct
 
 Sortie attendue:
 - une gouvernance operateur honnete des limites;

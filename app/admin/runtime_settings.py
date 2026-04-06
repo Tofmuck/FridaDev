@@ -7,6 +7,7 @@ from typing import Any, Callable, Iterable, Mapping
 
 import config
 from admin import runtime_secrets, runtime_settings_repo, runtime_settings_validation
+from identity import identity_governance
 from admin.runtime_settings_spec import (
     FieldSpec,
     SECRET_V1_FIELDS,
@@ -220,6 +221,25 @@ def _seed_value(section: str, field: str) -> Any:
         ('services', 'crawl4ai_explicit_url_max_chars'): config.CRAWL4AI_EXPLICIT_URL_MAX_CHARS,
         ('resources', 'llm_identity_path'): config.FRIDA_LLM_IDENTITY_PATH,
         ('resources', 'user_identity_path'): config.FRIDA_USER_IDENTITY_PATH,
+        ('identity_governance', 'IDENTITY_MIN_CONFIDENCE'): config.IDENTITY_MIN_CONFIDENCE,
+        ('identity_governance', 'IDENTITY_DEFER_MIN_CONFIDENCE'): config.IDENTITY_DEFER_MIN_CONFIDENCE,
+        (
+            'identity_governance',
+            'IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
+        ): config.IDENTITY_MIN_RECURRENCE_FOR_DURABLE,
+        ('identity_governance', 'IDENTITY_RECURRENCE_WINDOW_DAYS'): config.IDENTITY_RECURRENCE_WINDOW_DAYS,
+        (
+            'identity_governance',
+            'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
+        ): config.IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS,
+        (
+            'identity_governance',
+            'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
+        ): config.IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS,
+        ('identity_governance', 'CONTEXT_HINTS_MAX_ITEMS'): config.CONTEXT_HINTS_MAX_ITEMS,
+        ('identity_governance', 'CONTEXT_HINTS_MAX_TOKENS'): config.CONTEXT_HINTS_MAX_TOKENS,
+        ('identity_governance', 'CONTEXT_HINTS_MAX_AGE_DAYS'): config.CONTEXT_HINTS_MAX_AGE_DAYS,
+        ('identity_governance', 'CONTEXT_HINTS_MIN_CONFIDENCE'): config.CONTEXT_HINTS_MIN_CONFIDENCE,
     }
     spec = get_field_spec(section, field)
     return values.get((section, field), spec.seed_default)
@@ -707,6 +727,37 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'prompt_file',
             },
         }
+    if section == 'identity_governance':
+        return {
+            'surface_route': {
+                'label': 'IDENTITY_GOVERNANCE_SURFACE',
+                'value': '/hermeneutic-admin',
+                'is_editable': False,
+                'source': 'surface_contract',
+            },
+            'read_route': {
+                'label': 'IDENTITY_GOVERNANCE_READ_ROUTE',
+                'value': identity_governance.READ_ROUTE,
+                'is_editable': False,
+                'source': 'surface_contract',
+            },
+            'update_route': {
+                'label': 'IDENTITY_GOVERNANCE_UPDATE_ROUTE',
+                'value': identity_governance.UPDATE_ROUTE,
+                'is_editable': False,
+                'source': 'surface_contract',
+            },
+            'operator_scope': {
+                'label': 'IDENTITY_GOVERNANCE_OPERATOR_SCOPE',
+                'value': (
+                    "Section runtime dediee aux seuils identity gouvernables. "
+                    "La lecture/edition operateur reste portee par /hermeneutic-admin, "
+                    "pas par la facade /admin generique."
+                ),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+        }
     return {}
 
 
@@ -744,6 +795,13 @@ def get_services_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str,
 
 def get_resources_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('resources', fetcher=fetcher)
+
+
+def get_identity_governance_settings(
+    *,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    return get_runtime_section('identity_governance', fetcher=fetcher)
 
 
 def get_runtime_status(

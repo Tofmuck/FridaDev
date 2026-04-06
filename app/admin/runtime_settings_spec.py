@@ -14,6 +14,7 @@ SECTION_NAMES: tuple[str, ...] = (
     'database',
     'services',
     'resources',
+    'identity_governance',
 )
 
 
@@ -165,6 +166,21 @@ SECTION_SPECS: dict[str, SectionSpec] = {
         fields=(
             FieldSpec('llm_identity_path', 'text', env_var='FRIDA_LLM_IDENTITY_PATH'),
             FieldSpec('user_identity_path', 'text', env_var='FRIDA_USER_IDENTITY_PATH'),
+        ),
+    ),
+    'identity_governance': SectionSpec(
+        name='identity_governance',
+        fields=(
+            FieldSpec('IDENTITY_MIN_CONFIDENCE', 'float', seed_from_env=False, seed_default=0.72),
+            FieldSpec('IDENTITY_DEFER_MIN_CONFIDENCE', 'float', seed_from_env=False, seed_default=0.58),
+            FieldSpec('IDENTITY_MIN_RECURRENCE_FOR_DURABLE', 'int', seed_from_env=False, seed_default=2),
+            FieldSpec('IDENTITY_RECURRENCE_WINDOW_DAYS', 'int', seed_from_env=False, seed_default=30),
+            FieldSpec('IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS', 'int', seed_from_env=False, seed_default=2),
+            FieldSpec('IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS', 'int', seed_from_env=False, seed_default=6),
+            FieldSpec('CONTEXT_HINTS_MAX_ITEMS', 'int', seed_from_env=False, seed_default=2),
+            FieldSpec('CONTEXT_HINTS_MAX_TOKENS', 'int', seed_from_env=False, seed_default=120),
+            FieldSpec('CONTEXT_HINTS_MAX_AGE_DAYS', 'int', seed_from_env=False, seed_default=7),
+            FieldSpec('CONTEXT_HINTS_MIN_CONFIDENCE', 'float', seed_from_env=False, seed_default=0.60),
         ),
     ),
 }

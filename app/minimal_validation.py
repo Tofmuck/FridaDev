@@ -454,6 +454,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_js": web_dir / "admin.js",
         "hermeneutic_admin_api_js": web_dir / "hermeneutic_admin" / "api.js",
         "hermeneutic_admin_render_js": web_dir / "hermeneutic_admin" / "render.js",
+        "hermeneutic_admin_render_identity_governance_js": (
+            web_dir / "hermeneutic_admin" / "render_identity_governance.js"
+        ),
         "hermeneutic_admin_main_js": web_dir / "hermeneutic_admin" / "main.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
@@ -489,6 +492,9 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
     hermeneutic_admin_api_js = required_files["hermeneutic_admin_api_js"].read_text(encoding="utf-8")
     hermeneutic_admin_render_js = required_files["hermeneutic_admin_render_js"].read_text(encoding="utf-8")
+    hermeneutic_admin_render_identity_governance_js = required_files[
+        "hermeneutic_admin_render_identity_governance_js"
+    ].read_text(encoding="utf-8")
     hermeneutic_admin_main_js = required_files["hermeneutic_admin_main_js"].read_text(encoding="utf-8")
     admin_front_js = (
         f"{admin_api_js}\n"
@@ -508,6 +514,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     hermeneutic_admin_front_js = (
         f"{hermeneutic_admin_api_js}\n"
         f"{hermeneutic_admin_render_js}\n"
+        f"{hermeneutic_admin_render_identity_governance_js}\n"
         f"{hermeneutic_admin_main_js}"
     )
 
@@ -541,6 +548,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin/render_identity_read_model.js",
         "hermeneutic_admin/render_identity_static_editor.js",
         "hermeneutic_admin/render_identity_mutable_editor.js",
+        "hermeneutic_admin/render_identity_governance.js",
         "hermeneutic_admin/main.js",
     ]
     hermeneutic_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', hermeneutic_admin_html)
@@ -880,6 +888,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="hermeneutic_admin/render_identity_read_model.js"',
         'script src="hermeneutic_admin/render_identity_static_editor.js"',
         'script src="hermeneutic_admin/render_identity_mutable_editor.js"',
+        'script src="hermeneutic_admin/render_identity_governance.js"',
         'script src="hermeneutic_admin/main.js"',
         'id="hermeneuticAdminRefresh"',
         'id="hermeneuticConversationId"',
@@ -890,6 +899,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="hermeneuticIdentityStaticEditors"',
         'id="hermeneuticIdentityMutableEditStatus"',
         'id="hermeneuticIdentityMutableEditors"',
+        'id="hermeneuticIdentityGovernanceStatus"',
+        'id="hermeneuticIdentityGovernanceMeta"',
+        'id="hermeneuticIdentityGovernance"',
         'id="hermeneuticIdentityReadModel"',
         'id="hermeneuticIdentityList"',
         'id="hermeneuticCorrectionsList"',
@@ -897,6 +909,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Inspection par tour",
         "Decisions arbitre",
         "Vue unifiee identity",
+        "Gouvernance identity",
         "Fragments legacy d'identite",
         "static + mutable narrative",
         "Lecture + edition mutable + statique",
@@ -911,6 +924,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/identity/read-model",
         "/api/admin/identity/mutable",
         "/api/admin/identity/static",
+        "/api/admin/identity/governance",
         "/api/admin/hermeneutics/identity-candidates",
         "/api/admin/hermeneutics/arbiter-decisions",
         "/api/admin/hermeneutics/corrections-export",
@@ -919,7 +933,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     }
     found_hermeneutic_admin_endpoints = set(
         re.findall(
-            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable|static)|logs/chat(?:/metadata)?)",
+            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable|static|governance)|logs/chat(?:/metadata)?)",
             hermeneutic_admin_front_js,
         )
     )
@@ -1119,6 +1133,25 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if "invalid text value for resources.llm_identity_path" not in str(resources_invalid_patch_result.get("error") or ""):
         raise RuntimeError("api admin resources invalid patch error invalide")
 
+    governance_get = _http_json("GET", f"{base_url}/api/admin/identity/governance", **_admin_request_kwargs())
+    governance_get_result = governance_get.json()
+    if governance_get.status_code != 200 or governance_get_result.get("ok") is not True:
+        raise RuntimeError("api admin identity governance invalide")
+    governance_invalid_patch = _http_json(
+        "POST",
+        f"{base_url}/api/admin/identity/governance",
+        json={
+            "updates": {"IDENTITY_TOP_N": 7},
+            "reason": "minimal validation readonly guard",
+        },
+        **_admin_request_kwargs(),
+    )
+    governance_invalid_patch_result = governance_invalid_patch.json()
+    if governance_invalid_patch.status_code != 400 or governance_invalid_patch_result.get("ok") is not False:
+        raise RuntimeError("api admin identity governance invalid patch should fail with 400")
+    if governance_invalid_patch_result.get("validation_error") != "governance_key_readonly":
+        raise RuntimeError("api admin identity governance invalid patch error invalide")
+
     admin_logs = _http_json("GET", f"{base_url}/api/admin/logs?limit=1", **_admin_request_kwargs())
     admin_logs_payload = admin_logs.json()
     if admin_logs.status_code != 200 or admin_logs_payload.get("ok") is not True:
@@ -1144,6 +1177,8 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "admin_resources_status": resources_get.status_code,
         "admin_resources_patch_status": resources_patch.status_code,
         "admin_resources_invalid_patch_status": resources_invalid_patch.status_code,
+        "identity_governance_status": governance_get.status_code,
+        "identity_governance_invalid_patch_status": governance_invalid_patch.status_code,
         "admin_logs_status": admin_logs.status_code,
         "missing_conversation_status": missing.status_code,
     }

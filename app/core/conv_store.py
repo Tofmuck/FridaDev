@@ -21,6 +21,7 @@ from . import runtime_db_bootstrap
 from .token_utils import count_tokens
 import config
 from admin import admin_logs, runtime_settings
+from identity import identity_governance
 
 CONV_DIR = Path(__file__).resolve().parent.parent / "conv"
 
@@ -511,8 +512,8 @@ def _make_context_hints_message(
         model,
         delta_t_label_func=delta_t_label,
         count_tokens_func=count_tokens,
-        context_hints_max_tokens=config.CONTEXT_HINTS_MAX_TOKENS,
-        context_hints_max_items=config.CONTEXT_HINTS_MAX_ITEMS,
+        context_hints_max_tokens=identity_governance.context_hints_max_tokens(),
+        context_hints_max_items=identity_governance.context_hints_max_items(),
     )
 
 def build_prompt_messages(

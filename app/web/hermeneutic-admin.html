@@ -164,6 +164,23 @@
       <div id="hermeneuticIdentityReadModel" class="admin-readonly-stack"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="hermeneutic-identity-governance-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Caps, seuils, budgets</p>
+          <h2 id="hermeneutic-identity-governance-title">Gouvernance identity</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Inventaire honnete des knobs identity actifs, readonly doctrinaux et survivances legacy. Seul le sous-ensemble runtime/settings explicitement gouvernable s'edite ici; `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent visibles sans etre ressuscites.
+      </p>
+
+      <div id="hermeneuticIdentityGovernanceStatus"></div>
+      <div id="hermeneuticIdentityGovernanceMeta" class="admin-inline-meta"></div>
+      <div id="hermeneuticIdentityGovernance" class="admin-readonly-stack"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="hermeneutic-identities-title">
       <div class="admin-section-head">
         <div>
@@ -225,6 +242,7 @@
   <script src="hermeneutic_admin/render_identity_read_model.js"></script>
   <script src="hermeneutic_admin/render_identity_static_editor.js"></script>
   <script src="hermeneutic_admin/render_identity_mutable_editor.js"></script>
+  <script src="hermeneutic_admin/render_identity_governance.js"></script>
   <script src="hermeneutic_admin/main.js"></script>
 </body>
 </html>

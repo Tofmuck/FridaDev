@@ -81,6 +81,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                     "source_reason": "empty_table",
                 },
                 "resources": {"section": "resources", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                "identity_governance": {
+                    "section": "identity_governance",
+                    "payload": {
+                        "CONTEXT_HINTS_MAX_ITEMS": {"value": 2, "origin": "env_seed"},
+                    },
+                    "source": "env",
+                    "source_reason": "empty_table",
+                },
             },
         }
 
@@ -116,6 +124,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "db"},
             },
             "resources": {},
+            "identity_governance": {},
         }
 
         minimal_validation._assert_masked_secret_fields(section_payloads)
@@ -156,6 +165,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("admin_js", details["files"])
         self.assertIn("hermeneutic_admin_api_js", details["files"])
         self.assertIn("hermeneutic_admin_render_js", details["files"])
+        self.assertIn("hermeneutic_admin_render_identity_governance_js", details["files"])
         self.assertIn("hermeneutic_admin_main_js", details["files"])
         self.assertEqual(details["admin_script_srcs"], details["admin_script_order"])
         self.assertEqual(
@@ -236,6 +246,24 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                             },
                         )
                     return _FakeResponse(200, payload=self._fake_resources_payload("admin_ui"))
+            if url.endswith("/api/admin/identity/governance"):
+                if method == "GET":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "governance_version": "v1",
+                            "items": [],
+                        },
+                    )
+                if method == "POST":
+                    return _FakeResponse(
+                        400,
+                        payload={
+                            "ok": False,
+                            "validation_error": "governance_key_readonly",
+                        },
+                    )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -256,12 +284,16 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_resources_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
+        self.assertEqual(details["identity_governance_status"], 200)
+        self.assertEqual(details["identity_governance_invalid_patch_status"], 400)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
         self.assertIn(("GET", "http://frida.test/hermeneutic-admin"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings/resources"), calls)
         self.assertIn(("PATCH", "http://frida.test/api/admin/settings/resources"), calls)
+        self.assertIn(("GET", "http://frida.test/api/admin/identity/governance"), calls)
+        self.assertIn(("POST", "http://frida.test/api/admin/identity/governance"), calls)
 
     def test_check_api_smoke_forwards_admin_token_to_admin_endpoints(self) -> None:
         original_http_json = minimal_validation._http_json
@@ -300,6 +332,24 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                             },
                         )
                     return _FakeResponse(200, payload=self._fake_resources_payload("admin_ui"))
+            if url.endswith("/api/admin/identity/governance"):
+                if method == "GET":
+                    return _FakeResponse(
+                        200,
+                        payload={
+                            "ok": True,
+                            "governance_version": "v1",
+                            "item_count": 15,
+                        },
+                    )
+                if method == "POST":
+                    return _FakeResponse(
+                        400,
+                        payload={
+                            "ok": False,
+                            "validation_error": "governance_key_readonly",
+                        },
+                    )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
             if "/api/conversations/" in url and url.endswith("/messages"):
@@ -317,12 +367,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
-        self.assertEqual(len(admin_headers), 5)
+        self.assertEqual(len(admin_headers), 7)
         self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[2], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[3], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(admin_headers[4], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[5], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers[6], {"X-Admin-Token": "phase9-admin-token"})
         self.assertEqual(
             patch_payloads,
             [

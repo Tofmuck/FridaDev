@@ -2,10 +2,11 @@
   const adminApi = window.FridaAdminApi;
   const api = window.FridaHermeneuticAdminApi;
   const render = window.FridaHermeneuticAdminRender;
+  const governance = window.FridaHermeneuticIdentityGovernance;
   const staticEditor = window.FridaHermeneuticIdentityStaticEditor;
   const mutableEditor = window.FridaHermeneuticIdentityMutableEditor;
 
-  if (!adminApi || !api || !render || !staticEditor || !mutableEditor) {
+  if (!adminApi || !api || !render || !governance || !staticEditor || !mutableEditor) {
     throw new Error("Hermeneutic admin dependencies are missing");
   }
 
@@ -29,6 +30,9 @@
     identityStaticEditors: document.getElementById("hermeneuticIdentityStaticEditors"),
     identityMutableEditStatus: document.getElementById("hermeneuticIdentityMutableEditStatus"),
     identityMutableEditors: document.getElementById("hermeneuticIdentityMutableEditors"),
+    identityGovernanceStatus: document.getElementById("hermeneuticIdentityGovernanceStatus"),
+    identityGovernanceMeta: document.getElementById("hermeneuticIdentityGovernanceMeta"),
+    identityGovernance: document.getElementById("hermeneuticIdentityGovernance"),
     identityReadModelMeta: document.getElementById("hermeneuticIdentityReadModelMeta"),
     identityReadModel: document.getElementById("hermeneuticIdentityReadModel"),
     identitySubject: document.getElementById("hermeneuticIdentitySubject"),
@@ -142,6 +146,16 @@
     render.renderIdentityReadModel(
       elements.identityReadModelMeta,
       elements.identityReadModel,
+      payload,
+    );
+    return payload;
+  };
+
+  const loadIdentityGovernance = async () => {
+    const payload = await api.fetchIdentityGovernance();
+    governance.renderIdentityGovernance(
+      elements.identityGovernanceMeta,
+      elements.identityGovernance,
       payload,
     );
     return payload;
@@ -283,6 +297,65 @@
     }
   };
 
+  const handleIdentityGovernanceEdit = async (event) => {
+    const requestPayload = governance.readIdentityGovernanceDraft(event.target);
+    if (!requestPayload) {
+      return;
+    }
+    governance.setIdentityGovernanceStatus(
+      elements.identityGovernanceStatus,
+      {
+        ok: true,
+        changed_count: 0,
+        changed_keys: [requestPayload.key],
+        reason_code: "pending",
+        validation_ok: true,
+      },
+      "",
+    );
+    render.setStatusBanner(
+      elements.statusBanner,
+      "Gouvernance identity en cours...",
+      "",
+    );
+    try {
+      const response = await api.updateIdentityGovernance(requestPayload);
+      governance.setIdentityGovernanceStatus(
+        elements.identityGovernanceStatus,
+        response,
+        response.changed_count ? "ok" : "",
+      );
+      await Promise.all([loadIdentityGovernance(), loadIdentityReadModel()]);
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Gouvernance identity ${response.reason_code}.`,
+        "ok",
+      );
+    } catch (error) {
+      const errorPayload = error?.data && typeof error.data === "object"
+        ? error.data
+        : {
+            ok: false,
+            changed_count: 0,
+            changed_keys: [requestPayload.key],
+            reason_code: "request_failed",
+            validation_ok: false,
+            validation_error: "request_failed",
+            error: error?.message || String(error),
+          };
+      governance.setIdentityGovernanceStatus(
+        elements.identityGovernanceStatus,
+        errorPayload,
+        "error",
+      );
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Gouvernance identity indisponible: ${error?.message || error}`,
+        "error",
+      );
+    }
+  };
+
   const loadIdentityCandidates = async () => {
     state.identitySubject = toText(elements.identitySubject.value) || "all";
     state.identityStatus = toText(elements.identityStatus.value) || "all";
@@ -307,6 +380,7 @@
       await Promise.all([
         loadArbiterDecisions(),
         loadIdentityReadModel(),
+        loadIdentityGovernance(),
         loadIdentityCandidates(),
         loadCorrections(),
       ]);
@@ -376,6 +450,10 @@
 
   elements.identityMutableEditors.addEventListener("click", (event) => {
     void handleIdentityMutableEdit(event);
+  });
+
+  elements.identityGovernance.addEventListener("click", (event) => {
+    void handleIdentityGovernanceEdit(event);
   });
 
   syncMeta();

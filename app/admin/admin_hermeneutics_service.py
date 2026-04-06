@@ -254,6 +254,7 @@ def corrections_export_response(
             'identity_relabel',
             'identity_mutable_admin_edit',
             'identity_static_admin_edit',
+            'identity_governance_admin_edit',
         }:
             continue
 

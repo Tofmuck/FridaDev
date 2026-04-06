@@ -22,7 +22,8 @@ Il sert a :
 Cette route est:
 - read-only;
 - protegee par la meme garde admin que les autres routes `/api/admin/*`;
-- distincte de `/api/admin/hermeneutics/identity-candidates`, qui reste legacy / evidence-only.
+- distincte de `/api/admin/hermeneutics/identity-candidates`, qui reste legacy / evidence-only;
+- distincte de `GET /api/admin/identity/governance`, qui porte la lecture des caps/seuils/budgets identity.
 
 ## Verite active exposee
 
@@ -33,6 +34,8 @@ Le read-model doit exposer explicitement:
 - `identity_input_schema_version = "v2"`
 - `used_identity_ids = []`
 - `used_identity_ids_count = 0`
+- `governance_read_via = "/api/admin/identity/governance"`
+- `governance_editable_via = "/api/admin/identity/governance"`
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
@@ -165,6 +168,11 @@ Cette surface montre:
 - les couches stockees legacy/evidence/conflicts;
 - la separation `stored` vs `actively_injected`.
 
+Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:
+- via `GET /api/admin/identity/governance` et `POST /api/admin/identity/governance`;
+- avec inventaire honnete des caps/seuils/budgets;
+- sans surcharger le contrat read-only du read-model lui-meme.
+
 Depuis `Lot 3`, cette meme section peut aussi porter une edition controlee de la mutable canonique:
 - distincte du contrat read-only `GET /api/admin/identity/read-model`;
 - bornee a `set` / `clear` de la mutable active;
@@ -184,5 +192,5 @@ Le rendu frontend de cette section dans `/hermeneutic-admin` est porte par un mo
 Ce contrat ne couvre pas encore:
 - le mutateur de la mutable canonique de `Lot 3`, documente separement dans `identity-mutable-edit-contract.md`;
 - le mutateur du statique canonique de `Lot 4`, documente separement dans `identity-static-edit-contract.md`;
-- la gouvernance UI/backend des caps et seuils (`Lot 5`);
+- la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
 - la future page dediee `Identity` et sa navigation globale (`Lot 6`).

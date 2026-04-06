@@ -66,6 +66,11 @@ La mutable canonique editee par l'operateur suit la meme discipline doctrinale q
 - aucune troncature cachee
 - si `content > 1650`: rejet, aucune ecriture
 
+Depuis `Lot 5`, ces deux caps restent visibles dans la gouvernance identity:
+- `IDENTITY_MUTABLE_TARGET_CHARS`
+- `IDENTITY_MUTABLE_MAX_CHARS`
+- mais ils restent `doctrine_locked_readonly` et ne sont pas reouverts a l'edition.
+
 No-op explicites:
 - `set` avec contenu identique -> `changed = false`, `reason_code = "unchanged"`
 - `clear` alors qu'aucune mutable n'est stockee -> `changed = false`, `reason_code = "already_cleared"`
@@ -142,5 +147,5 @@ Avant la future page `Identity`, `/hermeneutic-admin` expose:
 
 Ce contrat ne couvre pas encore:
 - l'edition du statique (`Lot 4`);
-- la gouvernance UI/backend des caps et seuils (`Lot 5`);
+- la gouvernance identity `Lot 5`, documentee separement dans `identity-governance-contract.md`;
 - la future page `Identity` et sa navigation globale (`Lot 6`).

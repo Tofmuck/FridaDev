@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS runtime_settings (
             'embedding',
             'database',
             'services',
-            'resources'
+            'resources',
+            'identity_governance'
         )
     ),
     CONSTRAINT runtime_settings_payload_object_chk CHECK (
@@ -50,7 +51,8 @@ ALTER TABLE runtime_settings
             'embedding',
             'database',
             'services',
-            'resources'
+            'resources',
+            'identity_governance'
         )
     ),
     ADD CONSTRAINT runtime_settings_payload_object_chk CHECK (
@@ -78,7 +80,8 @@ CREATE TABLE IF NOT EXISTS runtime_settings_history (
             'embedding',
             'database',
             'services',
-            'resources'
+            'resources',
+            'identity_governance'
         )
     ),
     CONSTRAINT runtime_settings_history_before_object_chk CHECK (
@@ -108,7 +111,8 @@ ALTER TABLE runtime_settings_history
             'embedding',
             'database',
             'services',
-            'resources'
+            'resources',
+            'identity_governance'
         )
     ),
     ADD CONSTRAINT runtime_settings_history_before_object_chk CHECK (

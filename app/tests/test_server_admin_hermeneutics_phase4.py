@@ -366,6 +366,13 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
                     'new_len': 0,
                     'resource_field': 'user_identity_path',
                 },
+                {
+                    'event': 'identity_governance_admin_edit',
+                    'timestamp': recent_ts,
+                    'id': 'keep-governance-edit',
+                    'changed_keys': ['CONTEXT_HINTS_MAX_ITEMS'],
+                    'reason_code': 'update_applied',
+                },
                 {'event': 'identity_override', 'timestamp': old_ts, 'id': 'drop-old'},
                 {'event': 'identity_override', 'timestamp': 'not-a-date', 'id': 'drop-invalid-ts'},
                 {'event': 'other_event', 'timestamp': recent_ts, 'id': 'drop-event'},
@@ -382,10 +389,10 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertTrue(data['ok'])
         self.assertEqual(observed['limit'], 500)
         self.assertEqual(data['window_days'], 7)
-        self.assertEqual(data['count'], 4)
+        self.assertEqual(data['count'], 5)
         self.assertEqual(
             [item['id'] for item in data['items']],
-            ['keep-override', 'keep-relabel', 'keep-mutable-edit', 'keep-static-edit'],
+            ['keep-override', 'keep-relabel', 'keep-mutable-edit', 'keep-static-edit', 'keep-governance-edit'],
         )
         mutable_item = next(item for item in data['items'] if item['event'] == 'identity_mutable_admin_edit')
         self.assertEqual(mutable_item['subject'], 'llm')
@@ -395,6 +402,9 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(static_item['subject'], 'user')
         self.assertEqual(static_item['resource_field'], 'user_identity_path')
         self.assertNotIn('content', static_item)
+        governance_item = next(item for item in data['items'] if item['event'] == 'identity_governance_admin_edit')
+        self.assertEqual(governance_item['changed_keys'], ['CONTEXT_HINTS_MAX_ITEMS'])
+        self.assertNotIn('content', governance_item)
 
     def test_corrections_export_keeps_identity_mutable_admin_edit_visible(self) -> None:
         original_read_logs = self.server.admin_logs.read_logs
@@ -452,6 +462,30 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual([item['event'] for item in data['items']], ['identity_static_admin_edit'])
         self.assertEqual(data['items'][0]['resource_field'], 'llm_identity_path')
         self.assertNotIn('content', data['items'][0])
+
+    def test_corrections_export_keeps_identity_governance_admin_edit_visible(self) -> None:
+        original_read_logs = self.server.admin_logs.read_logs
+        recent_ts = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        self.server.admin_logs.read_logs = lambda *, limit: [
+            {
+                'event': 'identity_governance_admin_edit',
+                'timestamp': recent_ts,
+                'id': 'governance-only',
+                'changed_keys': ['CONTEXT_HINTS_MAX_ITEMS'],
+                'reason_code': 'update_applied',
+            }
+        ]
+        try:
+            response = self.client.get('/api/admin/hermeneutics/corrections-export?window_days=7&limit=500')
+        finally:
+            self.server.admin_logs.read_logs = original_read_logs
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual([item['event'] for item in data['items']], ['identity_governance_admin_edit'])
+        self.assertEqual(data['items'][0]['changed_keys'], ['CONTEXT_HINTS_MAX_ITEMS'])
 
     def test_all_admin_hermeneutics_routes_are_protected_by_existing_admin_guard(self) -> None:
         original_token = self.server.config.FRIDA_ADMIN_TOKEN
