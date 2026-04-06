@@ -23,6 +23,8 @@
     turnStages: document.getElementById("hermeneuticTurnStages"),
     arbiterMeta: document.getElementById("hermeneuticArbiterMeta"),
     arbiterList: document.getElementById("hermeneuticArbiterList"),
+    identityReadModelMeta: document.getElementById("hermeneuticIdentityReadModelMeta"),
+    identityReadModel: document.getElementById("hermeneuticIdentityReadModel"),
     identitySubject: document.getElementById("hermeneuticIdentitySubject"),
     identityStatus: document.getElementById("hermeneuticIdentityStatus"),
     identityList: document.getElementById("hermeneuticIdentityList"),
@@ -121,6 +123,15 @@
     );
   };
 
+  const loadIdentityReadModel = async () => {
+    const payload = await api.fetchIdentityReadModel({ limit: 20 });
+    render.renderIdentityReadModel(
+      elements.identityReadModelMeta,
+      elements.identityReadModel,
+      payload,
+    );
+  };
+
   const loadIdentityCandidates = async () => {
     state.identitySubject = toText(elements.identitySubject.value) || "all";
     state.identityStatus = toText(elements.identityStatus.value) || "all";
@@ -144,6 +155,7 @@
       await loadInspection({ keepTurn });
       await Promise.all([
         loadArbiterDecisions(),
+        loadIdentityReadModel(),
         loadIdentityCandidates(),
         loadCorrections(),
       ]);

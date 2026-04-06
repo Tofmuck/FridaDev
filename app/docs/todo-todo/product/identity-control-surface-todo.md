@@ -17,7 +17,7 @@ Ce TODO a deja ferme deux besoins structurants:
 
 - [x] Lot 1 - Retablir la verite runtime de l'identity statique
 - [x] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
-- [ ] Lot 2 - Construire un mode de lecture identity unifie et honnete
+- [x] Lot 2 - Construire un mode de lecture identity unifie et honnete
 - [ ] Lot 3 - Ouvrir une edition controlee du dynamique
 - [ ] Lot 4 - Ouvrir une edition controlee du statique
 - [ ] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables
@@ -60,7 +60,6 @@ Ce TODO a deja ferme deux besoins structurants:
 
 ### Ce qui manque encore
 
-- une vue unifiee statique + dynamique + evidences + conflits + caps;
 - la lisibilite de ce qui est injecte vs seulement stocke;
 - l'edition directe du contenu dynamique;
 - l'edition directe du contenu statique;
@@ -69,16 +68,16 @@ Ce TODO a deja ferme deux besoins structurants:
 
 ### Point critique prioritaire
 
-- Le Lot 1 et le Lot 1B sont maintenant fermes.
-- Le prochain chantier prioritaire est maintenant le `Lot 2`: construire un mode de lecture identity unifie et honnete.
-- Cette lecture unifiee doit preceder la future surface `Identity`, pour qu'elle n'ait pas a reconstituer manuellement le systeme reel.
+- Le Lot 1, le Lot 1B et le Lot 2 sont maintenant fermes.
+- Le prochain chantier prioritaire est maintenant le `Lot 3`: ouvrir une edition controlee du dynamique sur la base du read-model unifie.
+- La future surface `Identity` peut maintenant s'appuyer sur une lecture stable, mais elle ne doit toujours pas court-circuiter les lots d'edition et de gouvernance restants.
 
 ## Ordre retenu
 
-- Le Lot 1 et le Lot 1B sont maintenant fermes.
-- Le Lot 2 est maintenant le prochain lot prioritaire.
-- Les Lots 3 a 6 doivent suivre sans masquer ou contourner le Lot 2.
-- La future page `Identity` doit arriver apres construction d'une lecture identity unifiee et honnete, pas avant.
+- Le Lot 1, le Lot 1B et le Lot 2 sont maintenant fermes.
+- Le Lot 3 est maintenant le prochain lot prioritaire.
+- Les Lots 4 a 6 doivent suivre sans masquer ou contourner les lots d'edition et de gouvernance restants.
+- La future page `Identity` doit arriver apres lecture unifiee, editions controlees et gouvernance lisible, pas avant.
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
 
@@ -151,12 +150,15 @@ Sortie attendue:
 
 ## Lot 2 - Construire un mode de lecture identity unifie et honnete
 
+Statut: ferme; base read-only stable avant les lots d'edition
+
 But:
 - donner a l'operateur une lecture unique de la structure reelle du systeme identity.
 
-- [ ] Separer clairement statique, dynamique durable, evidences, conflits, accepte / differe / rejete et stocke vs effectivement injecte
-- [ ] Definir un contrat read-only compact et stable pour la future surface `Identity`
-- [ ] Montrer les sources, dates, ids et etats sans reconstitutions manuelles dispersees
+- [x] Separer clairement `static`, `mutable`, `legacy_fragments`, `evidence`, `conflicts` et `stored` vs effectivement injecte
+- [x] Definir un contrat read-only compact et stable pour la future surface `Identity`
+- [x] Montrer les sources, dates, ids et etats sans reconstitutions manuelles dispersees
+- [x] Exposer une lecture operator-facing minimale dans `/hermeneutic-admin` sans lancer encore la page `Identity`
 
 Sortie attendue:
 - une vue read-only qui explique le modele reel sans retomber dans la formule "deux identity par personne";

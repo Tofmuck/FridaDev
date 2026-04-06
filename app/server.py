@@ -20,7 +20,7 @@ from tools import web_search as ws
 from core import conv_store
 from core import chat_service
 from core import conversations_service
-from admin import admin_logs, admin_hermeneutics_service, admin_settings_service
+from admin import admin_identity_read_model_service, admin_logs, admin_hermeneutics_service, admin_settings_service
 from admin import admin_actions
 from admin import runtime_settings
 from core import token_utils
@@ -951,6 +951,16 @@ def api_admin_chat_logs_export_markdown():
 def api_admin_restart():
     admin_actions.restart_runtime_async("FridaDev")
     return jsonify({"ok": True, "target": "FridaDev", "mode": "container_self_exit"})
+
+
+@app.get('/api/admin/identity/read-model')
+def api_admin_identity_read_model():
+    payload, status = admin_identity_read_model_service.identity_read_model_response(
+        request.args,
+        memory_store_module=memory_store,
+        identity_module=identity,
+    )
+    return jsonify(payload), status
 
 
 

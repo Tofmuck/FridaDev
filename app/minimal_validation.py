@@ -880,11 +880,13 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="hermeneuticTurnId"',
         'id="hermeneuticTurnStages"',
         'id="hermeneuticArbiterList"',
+        'id="hermeneuticIdentityReadModel"',
         'id="hermeneuticIdentityList"',
         'id="hermeneuticCorrectionsList"',
         "Vue d'ensemble",
         "Inspection par tour",
         "Decisions arbitre",
+        "Vue unifiee identity",
         "Fragments legacy d'identite",
         "static + mutable narrative",
         "Corrections recentes",
@@ -895,6 +897,7 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     expected_hermeneutic_admin_endpoints = {
         "/api/admin/hermeneutics/dashboard",
+        "/api/admin/identity/read-model",
         "/api/admin/hermeneutics/identity-candidates",
         "/api/admin/hermeneutics/arbiter-decisions",
         "/api/admin/hermeneutics/corrections-export",
@@ -903,7 +906,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     }
     found_hermeneutic_admin_endpoints = set(
         re.findall(
-            r"/api/admin/(?:hermeneutics/[a-z-]+|logs/chat(?:/metadata)?)",
+            r"/api/admin/(?:hermeneutics/[a-z-]+|identity/read-model|logs/chat(?:/metadata)?)",
             hermeneutic_admin_front_js,
         )
     )

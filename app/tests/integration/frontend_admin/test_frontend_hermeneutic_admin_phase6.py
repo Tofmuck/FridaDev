@@ -33,6 +33,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("Vue d'ensemble", source)
         self.assertIn("Inspection par tour", source)
         self.assertIn("Decisions arbitre", source)
+        self.assertIn("Vue unifiee identity", source)
         self.assertIn("Fragments legacy d'identite", source)
         self.assertIn("static + mutable narrative", source)
         self.assertIn("identity_mutables", source)
@@ -65,7 +66,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         combined = f"{api_source}\n{render_source}\n{main_source}"
         found_endpoints = set(
             re.findall(
-                r"/api/admin/(?:hermeneutics/[a-z-]+|logs/chat(?:/metadata)?)",
+                r"/api/admin/(?:hermeneutics/[a-z-]+|identity/read-model|logs/chat(?:/metadata)?)",
                 combined,
             )
         )
@@ -73,6 +74,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
             found_endpoints,
             {
                 "/api/admin/hermeneutics/dashboard",
+                "/api/admin/identity/read-model",
                 "/api/admin/hermeneutics/identity-candidates",
                 "/api/admin/hermeneutics/arbiter-decisions",
                 "/api/admin/hermeneutics/corrections-export",
@@ -94,6 +96,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('id="hermeneuticTurnId"', source)
         self.assertIn('id="hermeneuticTurnStages"', source)
         self.assertIn('id="hermeneuticArbiterList"', source)
+        self.assertIn('id="hermeneuticIdentityReadModel"', source)
         self.assertIn('id="hermeneuticIdentityList"', source)
         self.assertIn('id="hermeneuticCorrectionsList"', source)
         self.assertIn("stimmung_agent", source)

@@ -24,6 +24,7 @@ from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
 from memory import memory_identity_dynamics
+from memory import memory_identity_read_model
 from memory import memory_identity_mutables
 from memory import memory_identity_write
 from memory import memory_store_infra
@@ -43,6 +44,9 @@ __all__ = [
     'get_mutable_identity',
     'list_mutable_identities',
     'upsert_mutable_identity',
+    'list_identity_fragments',
+    'list_identity_evidence',
+    'list_identity_conflicts',
     'get_identities',
     'get_recent_context_hints',
     'get_hermeneutic_kpis',
@@ -301,6 +305,33 @@ def upsert_mutable_identity(
         source_trace_id=source_trace_id,
         updated_by=updated_by,
         update_reason=update_reason,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def list_identity_fragments(subject: str, limit: Optional[int] = None) -> dict[str, Any]:
+    return memory_identity_read_model.list_identity_fragments(
+        subject,
+        limit=limit,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def list_identity_evidence(subject: str, limit: Optional[int] = None) -> dict[str, Any]:
+    return memory_identity_read_model.list_identity_evidence(
+        subject,
+        limit=limit,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def list_identity_conflicts(subject: str, limit: Optional[int] = None) -> dict[str, Any]:
+    return memory_identity_read_model.list_identity_conflicts(
+        subject,
+        limit=limit,
         conn_factory=_conn,
         logger=logger,
     )

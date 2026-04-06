@@ -59,6 +59,13 @@
     );
   };
 
+  const fetchIdentityReadModel = ({ limit = 20 } = {}) => {
+    return readAdminJson(
+      `/api/admin/identity/read-model${buildQuery({ limit })}`,
+      "Echec lecture vue unifiee identity.",
+    );
+  };
+
   const fetchIdentityCandidates = ({ subject = "all", status = "all", limit = 25 } = {}) => {
     return readAdminJson(
       `/api/admin/hermeneutics/identity-candidates${buildQuery({
@@ -85,6 +92,7 @@
     fetchLogMetadata,
     fetchTurnLogs,
     fetchArbiterDecisions,
+    fetchIdentityReadModel,
     fetchIdentityCandidates,
     fetchCorrectionsExport,
   });

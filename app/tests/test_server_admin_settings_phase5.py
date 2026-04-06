@@ -1569,6 +1569,10 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             route for route in routes
             if route.startswith('/api/admin/hermeneutics')
         }
+        identity_routes = {
+            route for route in routes
+            if route.startswith('/api/admin/identity')
+        }
 
         self.assertEqual(
             hermeneutics_routes,
@@ -1582,9 +1586,18 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 '/api/admin/hermeneutics/corrections-export',
             },
         )
+        self.assertEqual(
+            identity_routes,
+            {
+                '/api/admin/identity/read-model',
+            },
+        )
         self.assertTrue(settings_routes)
         self.assertTrue(hermeneutics_routes)
+        self.assertTrue(identity_routes)
         self.assertTrue(settings_routes.isdisjoint(hermeneutics_routes))
+        self.assertTrue(settings_routes.isdisjoint(identity_routes))
+        self.assertTrue(hermeneutics_routes.isdisjoint(identity_routes))
         self.assertFalse(any('hermeneutics' in route for route in settings_routes))
         self.assertFalse(any('/settings' in route for route in hermeneutics_routes))
 
