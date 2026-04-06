@@ -108,6 +108,15 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertLessEqual(len(main_source.splitlines()), 499)
         self.assertLessEqual(len(render_source.splitlines()), 499)
 
+    def test_identity_injected_meta_describes_injection_state_not_legacy_reactivation_count(self) -> None:
+        main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
+
+        self.assertIn("Texte injecte present", main_source)
+        self.assertIn("Aucun bloc injecte", main_source)
+        self.assertIn("elements.injectedMeta.textContent = injectedMetaText(injectedBlock);", main_source)
+        self.assertNotIn("id(s) legacy reactivés", main_source)
+        self.assertNotIn("id(s) legacy reactives", main_source)
+
 
 if __name__ == "__main__":
     unittest.main()

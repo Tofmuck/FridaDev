@@ -51,6 +51,10 @@
   };
 
   const toText = (value) => String(value == null ? "" : value).trim();
+  const injectedMetaText = (injectedBlock) =>
+    injectedBlock && injectedBlock.present
+      ? "Texte injecte present"
+      : "Aucun bloc injecte";
 
   const syncMeta = () => {
     const runtimePayload =
@@ -83,9 +87,7 @@
       toText(runtimePayload.identity_input_schema_version) ||
       toText(activeRuntime.identity_input_schema_version) ||
       "n/a";
-    elements.injectedMeta.textContent = injectedBlock.present
-      ? `${Number(runtimePayload.used_identity_ids_count) || 0} id(s) legacy reactivés`
-      : "Aucun bloc injecte";
+    elements.injectedMeta.textContent = injectedMetaText(injectedBlock);
     elements.tokenState.textContent = adminApi.readToken() ? "Session active" : "Session vide";
   };
 
