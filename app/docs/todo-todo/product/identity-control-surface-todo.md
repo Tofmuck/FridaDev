@@ -6,17 +6,17 @@ Origine: audit identity read-only revalide le `2026-04-05`
 
 ## Objectif
 
-Ouvrir un chantier unique pour rendre le systeme identity lisible, controlable et gouvernable par l'operateur, sans lancer encore l'implementation runtime.
+Ouvrir un chantier unique pour rendre le systeme identity lisible, controlable et gouvernable par l'operateur, maintenant que la requalification runtime doctrinale est fermee.
 
-Ce TODO doit piloter deux besoins a la fois:
-- retablir d'abord la verite runtime de l'identity statique;
-- puis sequencer la requalification doctrinale des identities mutables;
-- puis ouvrir une vraie surface `Identity` capable de montrer ce qui est charge, stocke, injecte, modifiable et limite.
+Ce TODO a deja ferme deux besoins structurants:
+- retablir la verite runtime de l'identity statique;
+- requalifier la doctrine des identities mutables autour de `static + mutable narrative`;
+- il doit maintenant ouvrir une vraie surface `Identity` capable de montrer ce qui est charge, stocke, injecte, modifiable et limite.
 
 ## Pilotage
 
 - [x] Lot 1 - Retablir la verite runtime de l'identity statique
-- [ ] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
+- [x] Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
 - [ ] Lot 2 - Construire un mode de lecture identity unifie et honnete
 - [ ] Lot 3 - Ouvrir une edition controlee du dynamique
 - [ ] Lot 4 - Ouvrir une edition controlee du statique
@@ -60,7 +60,6 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ### Ce qui manque encore
 
-- une requalification doctrinale honnete des identities mutables avant le Lot 2;
 - une vue unifiee statique + dynamique + evidences + conflits + caps;
 - la lisibilite de ce qui est injecte vs seulement stocke;
 - l'edition directe du contenu dynamique;
@@ -70,16 +69,16 @@ Ce TODO doit piloter deux besoins a la fois:
 
 ### Point critique prioritaire
 
-- Le Lot 1 a ferme la verite runtime du statique: les identities statiques atteignent maintenant bien le prompt et le payload.
-- Le prochain bloqueur n'est plus le statique mais le chantier doctrinal `Lot 1B` sur les mutables.
-- Tant que `Lot 1B` reste ouvert, une future surface `Identity` raconterait encore un melange trompeur entre le monde fragmentaire actuel et la doctrine narrative cible.
+- Le Lot 1 et le Lot 1B sont maintenant fermes.
+- Le prochain chantier prioritaire est maintenant le `Lot 2`: construire un mode de lecture identity unifie et honnete.
+- Cette lecture unifiee doit preceder la future surface `Identity`, pour qu'elle n'ait pas a reconstituer manuellement le systeme reel.
 
 ## Ordre retenu
 
-- Le Lot 1 est prioritaire et bloque la suite.
-- Le Lot 1B est maintenant prioritaire avant le Lot 2.
-- Les Lots 2 a 6 ne doivent pas masquer ou contourner le Lot 1B.
-- La future page `Identity` doit arriver apres retablissement de la verite runtime et apres requalification doctrinale des mutables, pas avant.
+- Le Lot 1 et le Lot 1B sont maintenant fermes.
+- Le Lot 2 est maintenant le prochain lot prioritaire.
+- Les Lots 3 a 6 doivent suivre sans masquer ou contourner le Lot 2.
+- La future page `Identity` doit arriver apres construction d'une lecture identity unifiee et honnete, pas avant.
 
 ## Lot 1 - Retablir la verite runtime de l'identity statique
 
@@ -115,7 +114,7 @@ Hors scope du lot:
 
 ## Lot 1B - Requalifier la doctrine identity mutable avant la surface `Identity`
 
-Priorite: bloqueur avant le Lot 2
+Statut: ferme; ancien bloqueur doctrinal avant le Lot 2
 
 But:
 - faire apparaitre clairement les 4 identities de travail:
@@ -146,8 +145,8 @@ Etat revalide avant implementation:
 
 Sortie attendue:
 - une table canonique `identity_mutables` existe, une ligne par sujet mutable, distincte du legacy `identities` / `identity_evidence` / `identity_conflicts`;
-- une doctrine mutable narrative sequencee sans pretendre qu'elle est deja fermee;
-- une suite de sous-lots qui permet de basculer sans laisser deux verites concurrentes;
+- une doctrine mutable narrative maintenant fermee autour de `static + mutable narrative`;
+- des sous-lots `1B-A` a `1B-E` fermes sans laisser deux verites concurrentes;
 - une base honnete avant l'ouverture de la future surface `Identity`.
 
 ## Lot 2 - Construire un mode de lecture identity unifie et honnete
