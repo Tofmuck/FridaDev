@@ -515,6 +515,21 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - hostnames `sslip.io` valides pour ce lot, mais pas encore le DNS final `frida-system.fr`
 - aucune synchronisation continue automatique entre `tofnas` et OVH: un futur dump de fraicheur restera un snapshot ponctuel, pas une replication
 
+### Mode operatoire vacances - travailler depuis OVH
+
+- Si OVH devient l'environnement de travail temporaire pendant les vacances, commencer chaque session dans `/opt/platform/fridadev` par:
+  - `git pull --ff-only origin main`
+  - `git status --short`
+- Coder, committer et pousser depuis `/opt/platform/fridadev` tant que cette working copy reste l'environnement actif temporaire.
+- Apres une modification de code runtime, rebuild uniquement la sous-stack app OVH:
+  - `cd /opt/platform/fridadev-app && docker compose up -d --build`
+- Verifier ensuite au minimum:
+  - le conteneur `platform-fridadev`
+  - l'acces protege par Authelia
+  - les smoke tests applicatifs utiles pour le lot modifie
+- Ne pas croire que `tofnas` et OVH se synchronisent automatiquement.
+- Au retour a la maison, repuller d'abord sur `tofnas`, puis decider explicitement s'il faut resynchroniser la DB et/ou `state/`.
+
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
