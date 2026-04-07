@@ -1,14 +1,16 @@
-# Migration FridaDev `tofnas` -> `frida-system.fr` TODO
+# Migration FridaDev `tofnas` -> `frida-system.fr`
 
-Statut: ouvert
-Classement: `app/docs/todo-todo/migration/`
+Statut: valide / clos
+Classement: `app/docs/todo-done/migrations/`
 Date: `2026-04-07`
+Cloture: `2026-04-07`
 
 ## Contexte
 
 - Depart en vacances lundi prochain.
 - Besoin vise: une instance OVH utilisable sur `frida-system.fr`.
-- Ce document ne migre rien: il cadre seulement le travail a faire.
+- Ce document trace le clonage OVH execute et valide le `2026-04-07`.
+- `tofnas` reste vivant; OVH est maintenant une instance utilisable qui peut diverger ensuite.
 
 ## Source / destination
 
@@ -19,19 +21,19 @@ Date: `2026-04-07`
 
 ## Objectif
 
-Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
-- l'application FridaDev
-- sa base Postgres/pgvector migree depuis `tofnas` sans perte de donnees
-- son `state/`
-- et les dependances web necessaires
+Resultat obtenu:
+- l'application FridaDev accessible sur OVH via `https://fridadev.frida-system.fr`
+- sa base Postgres/pgvector clonee puis resynchronisee ponctuellement depuis `tofnas`
+- son `state/` final resynchronise
+- et les dependances web necessaires validees
 
 ## Non-objectifs
 
-- pas de migration faite dans ce pas
 - pas de secrets en Git
 - pas de remplacement definitif de `tofnas`
 - pas de suppression de l'instance locale
-- pas de bascule applicative finale ni de restart destructif sur `tofnas`, Caddy ou Homepage dans ce pas
+- pas de synchronisation continue automatique entre `tofnas` et OVH
+- pas de suppression du fallback `sslip.io` dans cette cloture
 
 ## Etat constate sur `tofnas`
 
@@ -721,6 +723,72 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucune synchronisation continue automatique n'existe entre `tofnas` et OVH
   - OVH peut diverger a nouveau des qu'on retravaille dessus apres ce snapshot final de clone
 
+### Validation finale reelle - deux tours LLM
+
+- Date:
+  - `2026-04-07`
+- Fenetre de logs du test:
+  - `TEST_STARTED_AT=2026-04-07T19:00:17Z`
+- Marqueur demande:
+  - `VALIDATION_FRIDADEV_OVH_FINAL_20260407`
+- Baseline DB avant cette validation:
+  - `before_conversations=56`
+  - `before_conversation_messages=262`
+  - `before_traces=208`
+  - `before_chat_log_events=53772`
+- Validation dependances avant dialogue:
+  - `SEARXNG_URL=http://searxng:8080` -> `200`, reponse JSON
+  - `CRAWL4AI_URL=http://crawl4ai:11235/health` -> `200`
+  - `EMBED_BASE_URL=https://embed.frida-system.fr/embed` -> `200`
+  - `EMBED_DIM=384` confirme
+- UI / Homepage / Authelia:
+  - `https://fridadev.frida-system.fr/` -> `302` Authelia
+  - `https://fridadev.frida-system.fr/admin` -> `302` Authelia
+  - `https://fridadev.frida-system.fr/api/admin` -> `302` Authelia
+  - `https://fridadev-db.frida-system.fr/` -> `302` Authelia
+  - Homepage pointe vers `https://fridadev.frida-system.fr` et `https://fridadev-db.frida-system.fr`
+  - routes internes validees: `/`, `/admin`, `/hermeneutic-admin`, `/log`
+- Dialogue reel en deux tours:
+  - une premiere sonde interne non stream a bien cree une conversation et des ecritures, mais le champ JSON `response` etait vide; le contenu assistant etait recuperable via `/api/conversations/<id>/messages`
+  - la validation finale autoritative a donc ete refaite sur le mode reel du frontend (`stream=true`)
+  - conversation finale retenue:
+    - `bab9f23a-ec9d-4257-8229-abed138fbf37`
+  - tour 1:
+    - `HTTP 200`
+    - reponse non vide
+    - texte observe: `Peux-tu préciser si tu veux une simple confirmation formelle de disponibilité des outils (DB, embeddings, web) ou une mention explicite de tests réalisés sur OVH, tout en conservant le jeton VALIDATIONFRIDADEVOVHFINAL20260407 dans la phrase ?`
+  - tour 2:
+    - `HTTP 200`
+    - meme `conversation_id`
+    - reponse non vide
+    - texte observe: `VALIDATIONFRIDADEVOVHFINAL20260407 : DB, embeddings et web tools sont vérifiés et opérationnels côté OVH.`
+  - le modele a encore altere la forme exacte du marqueur en retirant les underscores, mais le jeton attendu reste clairement identifiable dans les deux tours
+  - conversation finale verifiee via `/api/conversations/bab9f23a-ec9d-4257-8229-abed138fbf37/messages`:
+    - `stream_messages_count=5`
+    - `user`, `assistant`, `user`, `assistant` bien presents apres le system prompt
+- Ecritures DB observees apres la fenetre complete de validation:
+  - `after_conversations=58`
+  - `after_conversation_messages=272`
+  - `after_traces=216`
+  - `after_chat_log_events=54282`
+  - `stream_validation_conversation_messages=5` pour la conversation finale retenue
+  - OVH diverge donc volontairement de `tofnas` a partir de cette validation reelle
+- Logs consultes sur la fenetre exacte:
+  - `platform-fridadev`
+  - `platform-caddy`
+  - `platform-crawl4ai`
+  - `platform-searxng`
+  - `platform-embeddings`
+  - `platform-fridadev-postgres`
+  - `platform-fridadev` montre les `POST /api/chat` et le `GET /api/conversations/.../messages` attendus en `200`
+  - aucune nouvelle erreur critique observee dans `platform-fridadev`, `platform-caddy`, `platform-crawl4ai` ou `platform-embeddings`
+  - `platform-searxng` montre encore un bruit moteur externe non bloquant (`google` 403)
+  - `platform-fridadev-postgres` ne montre pas de nouveau `role \"$\\tof\" does not exist`; la seule erreur vue sur cette fenetre est une erreur SQL de validation provoquee pendant l'audit (`syntax error at or near \")\"`), pas une erreur runtime du clone
+- Bornes:
+  - `tofnas` reste vivant
+  - aucune resynchronisation automatique n'existe ensuite
+  - le fallback `sslip.io` reste encore actif temporairement
+
 ### Mode operatoire vacances - travailler depuis OVH
 
 - Si OVH devient l'environnement de travail temporaire pendant les vacances, commencer chaque session dans `/opt/platform/fridadev` par:
@@ -736,8 +804,8 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - Ne pas croire que `tofnas` et OVH se synchronisent automatiquement.
 - Au retour a la maison, repuller d'abord sur `tofnas`, puis decider explicitement s'il faut resynchroniser la DB et/ou `state/`.
 
-## Decision recommandee
+## Post-cloture
 
-- Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: utiliser humainement le clone OVH sur `fridadev.frida-system.fr`, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
+- Clone OVH valide et utilisable sur `fridadev.frida-system.fr`.
+- Prochain pas recommande: utiliser humainement le clone OVH, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
 - `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.
