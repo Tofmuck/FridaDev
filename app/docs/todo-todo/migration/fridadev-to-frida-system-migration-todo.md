@@ -627,6 +627,34 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucun dump final / restore final n'a ete fait
   - aucune synchronisation continue automatique n'existe entre `tofnas` et OVH
 
+### Correction logs Postgres OVH - healthcheck
+
+- Date:
+  - `2026-04-07`
+- Cause confirmee:
+  - le healthcheck de `/opt/platform/fridadev-db/docker-compose.yml` sur-echappait `POSTGRES_USER` et `POSTGRES_DB`, ce qui produisait des appels de type `role \"$\\tof\" does not exist`
+  - `TZ` etait aussi sur-echappe en `\\${TZ:-Europe/Paris}`
+- Correction appliquee cote OVH:
+  - `TZ: ${TZ:-Europe/Paris}`
+  - healthcheck `pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"`
+- Application:
+  - backup du compose OVH DB avant modification
+  - validation par `docker compose config --quiet`
+  - recreation ciblee de `platform-fridadev-postgres` via `docker compose up -d --no-deps fridadev-postgres`
+- Revalidation:
+  - `platform-fridadev-postgres` revenu `healthy`
+  - `platform-fridadev` est reste `healthy`
+  - `pg_isready -U tof -d fridadev` repond correctement dans le conteneur Postgres
+  - connexion DB depuis `platform-fridadev` toujours validee: `current_database() = fridadev`, `current_user = tof`, `conversations = 57`
+  - `TZ=Europe/Paris` confirme dans le conteneur recree
+- Logs Postgres recents:
+  - aucune nouvelle ligne `role \"$\\tof\" does not exist` observee sur les fenetres de verification apres recreation
+  - aucune nouvelle erreur critique Postgres observee sur ces fenetres
+- Bornes:
+  - `tofnas` n'a pas ete modifie
+  - aucun dump/restore n'a ete fait dans ce lot
+  - aucune migration `state/` n'a ete faite dans ce lot
+
 ### Mode operatoire vacances - travailler depuis OVH
 
 - Si OVH devient l'environnement de travail temporaire pendant les vacances, commencer chaque session dans `/opt/platform/fridadev` par:
@@ -645,5 +673,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: corriger d'abord le bruit recurrent `platform-fridadev-postgres` (`role \"$\\tof\" does not exist`) pour nettoyer la supervision DB OVH, puis seulement decider s'il faut faire un fresh snapshot final DB / `state/` avant une utilisation durable, sans couper `tofnas`.
+- Prochain pas recommande: valider humainement l'usage sur `fridadev.frida-system.fr`, puis decider s'il faut faire un fresh snapshot final DB / `state/` et/ou retirer plus tard le fallback `sslip.io`, sans couper `tofnas`.
 - Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
