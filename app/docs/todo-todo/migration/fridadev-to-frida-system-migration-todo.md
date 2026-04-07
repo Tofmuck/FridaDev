@@ -554,6 +554,79 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - fallback `sslip.io` encore conserve temporairement: il faudra decider plus tard quand le retirer apres validation humaine des hostnames finaux
 - aucune synchronisation continue automatique entre `tofnas` et OVH: un futur dump de fraicheur restera un snapshot ponctuel, pas une replication
 
+### Validation globale OVH - pipeline effectif
+
+- Date:
+  - `2026-04-07`
+- DB source/cible avant validation applicative:
+  - source `tofnas`: `conversations=56`, `conversation_messages=262`, `traces=208`, `runtime_settings=10`, `runtime_settings_history=25`, `identities=88`, `identity_mutables=1`, `chat_log_events=53772`
+  - cible OVH avant test applicatif: memes comptages et memes extensions `pgcrypto`, `plpgsql`, `vector`
+  - aucun fresh dump/restore n'a ete juge necessaire dans ce lot, car la cible OVH etait deja alignee sur la source avant le test global
+- DB source/cible apres validation applicative:
+  - source `tofnas` reste inchangée: `conversations=56`, `conversation_messages=262`, `traces=208`, `chat_log_events=53772`
+  - cible OVH apres le tour de validation: `conversations=57`, `conversation_messages=265`, `traces=210`, `chat_log_events=53803`
+  - la derive observee cote OVH vient du tour de validation reel de ce lot; elle ne traduit pas une perte de donnees cote source
+- `state/`:
+  - aucun rsync final n'a ete fait dans ce lot
+  - aucun backup/restauration `state/` n'a ete juge necessaire pour faire booter et tester le clone
+  - l'inventaire `state/logs` n'est pas strictement identique entre `tofnas` et OVH: OVH a deja diverge sur les fichiers de logs admin (`admin.log.jsonl` plus petit et rotation supplementaire `admin-20260406-171252.log.jsonl`)
+  - `state/` ne peut donc pas etre marque comme migration finale validee
+- UI finale:
+  - `https://fridadev.frida-system.fr/` -> `302` Authelia
+  - `https://fridadev.frida-system.fr/admin` -> `302` Authelia
+  - `https://fridadev.frida-system.fr/api/admin` -> `302` Authelia
+  - `https://fridadev-db.frida-system.fr/` -> `302` Authelia
+  - verification interne sans Authelia depuis `platform-fridadev`:
+    - `/` -> `200`, HTML present
+    - `/admin` -> `200`, HTML present
+    - `/hermeneutic-admin` -> `200`, HTML present
+    - `/log` -> `200`, HTML present
+    - `/logs` -> `404`, route non exposee; le point d'entree logs reel est `/log`
+- Homepage:
+  - `FridaDev` pointe vers `https://fridadev.frida-system.fr`
+  - `FridaDev DB Admin` pointe vers `https://fridadev-db.frida-system.fr`
+  - les cards Docker restent associees a `platform-fridadev` et `platform-frida-adminer`
+- DB depuis l'app OVH:
+  - `FRIDA_MEMORY_DB_DSN` resolu vers `platform-fridadev-postgres:5432/fridadev`
+  - connexion `psycopg` validee depuis `platform-fridadev`
+  - `current_database() = fridadev`, `current_user = tof`
+  - comptages lus depuis l'app conformes a la cible OVH
+- Services dependants depuis l'app OVH:
+  - `SEARXNG_URL=http://searxng:8080` -> `200`, reponse JSON
+  - `CRAWL4AI_URL=http://crawl4ai:11235/health` -> `200`
+  - `EMBED_BASE_URL=https://embed.frida-system.fr/embed` -> `200`
+  - `EMBED_DIM=384` confirme
+- Dialogue reel LLM:
+  - appel reel a `POST /api/chat` depuis `platform-fridadev`
+  - requete de test: message court demandant la balise `VALIDATION_FRIDADEV_OVH`
+  - resultat: `HTTP 200`, `ok=true`, conversation creee `62cb11f6-0767-4778-b6d1-369c456276c9`
+  - texte retourne: `VALIDATIONFRIDADEVOVH : le smoke test OVH du 07/04/2026 est correctement reçu et traité.`
+  - la balise est presente mais sans underscores; le modele a donc respecte l'intention, pas la forme exacte
+  - insertion DB prouvee sur cette conversation:
+    - 3 messages ecrits (`system`, `user`, `assistant`)
+    - `conversation_messages` OVH `+3`
+    - `conversations` OVH `+1`
+    - `traces` OVH `+2`
+    - `chat_log_events` OVH `+31`
+- Logs consultes:
+  - `platform-fridadev`
+  - `platform-caddy`
+  - `platform-crawl4ai`
+  - `platform-searxng`
+  - `platform-embeddings`
+  - `platform-fridadev-postgres`
+- Erreurs / alertes observees:
+  - aucune erreur critique constatee dans `platform-fridadev`, `platform-caddy`, `platform-crawl4ai` ou `platform-embeddings` pour ce lot
+  - `platform-searxng` presente des erreurs moteurs externes non bloquantes pendant le test (`google` 403, `startpage` captcha), alors que l'endpoint SearXNG global repond quand meme `200`
+  - `platform-fridadev-postgres` presente en revanche un bruit recurrent de logs:
+    - `FATAL: role \"$\\tof\" does not exist`
+    - ce bruit semble coherer avec le healthcheck/escape utilisateur actuellement deployee dans la sous-stack OVH
+    - cette anomalie n'a pas empeche la validation fonctionnelle du clone, mais elle empeche de declarer la plateforme \"propre\" cote logs
+- Bornes de ce lot:
+  - `tofnas` n'a pas ete desactive
+  - aucun dump final / restore final n'a ete fait
+  - aucune synchronisation continue automatique n'existe entre `tofnas` et OVH
+
 ### Mode operatoire vacances - travailler depuis OVH
 
 - Si OVH devient l'environnement de travail temporaire pendant les vacances, commencer chaque session dans `/opt/platform/fridadev` par:
@@ -572,5 +645,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: valider en usage humain le clone OVH sur `fridadev.frida-system.fr` et `fridadev-db.frida-system.fr`, puis ouvrir plus tard un lot de retrait du fallback `sslip.io` si ce secours ne sert plus, sans couper `tofnas`.
+- Prochain pas recommande: corriger d'abord le bruit recurrent `platform-fridadev-postgres` (`role \"$\\tof\" does not exist`) pour nettoyer la supervision DB OVH, puis seulement decider s'il faut faire un fresh snapshot final DB / `state/` avant une utilisation durable, sans couper `tofnas`.
 - Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
