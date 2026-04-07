@@ -187,7 +187,8 @@ curl -sS -X POST http://127.0.0.1:8093/api/chat \
 Attendu:
 - `ok=true` si les secrets/services requis sont disponibles;
 - erreur explicite sinon (secret manquant, dependance indisponible).
-- `web_search=false` ne bloque plus absolument le web: une demande explicite de source, de lien, de reference ou de verification peut encore auto-activer un passage web borne cote backend.
+- `web_search=false` ne bloque plus absolument le web: une demande explicite de source, de lien ou de reference peut encore auto-activer un passage web borne cote backend.
+- les demandes pures de verification restent traitees a part: le vrai rattrapage anti-suspension no-web -> web reste un pas doctrinal distinct.
 
 ## 8. Points de friction connus (clone neuf)
 

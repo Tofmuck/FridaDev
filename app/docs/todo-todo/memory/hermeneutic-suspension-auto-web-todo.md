@@ -81,17 +81,21 @@ Tours voisins compares:
 
 ## Etat apres troisieme pas runtime
 
-- [x] Un auto-web backend borne est maintenant en place pour les tours qui restent legitimement dependants d'une verification externe
+- [x] Un auto-web backend borne est maintenant en place pour les tours deja classes comme dependants du web ou d'une verification externe explicitement raccordee a ce besoin
 - [x] `web_search=true` reste un forcage explicite du web
 - [x] `web_search=false` ne vaut plus interdiction absolue:
   - il signifie seulement absence de demande manuelle explicite
-  - le backend peut encore auto-activer le web si la doctrine exige reellement une verification externe
+  - le backend peut encore auto-activer le web si la doctrine exige deja reellement une verification externe raccordee au web
 - [x] Les tours conceptuels / interpretatifs / atemporels deja nettoyes n'auto-declenchent pas le web
 - [x] L'injection web dans le prompt final depend maintenant du runtime web reel, pas du seul booleen manuel
 - [x] L'observabilite compacte du `web_input` expose maintenant:
   - `activation_mode = manual|auto|not_requested`
   - `reason_code` sur les skips utiles
 - [x] Si l'auto-web ne produit pas d'evidence, le pipeline peut rester honnetement en `verification_externe_requise` puis `suspend`
+- [x] La branche trop large `factuelle + atemporale + sans provenance => web` a ete retiree
+- [ ] Le vrai rattrapage anti-suspension pour les demandes pures de verification reste a implementer a une couture plus aval:
+  - apres une evaluation no-web suffisamment doctrinale
+  - sans transformer l'auto-web en heuristique semantique autonome
 - [ ] Le chantier reste ouvert pour calibrer la couverture exacte du web auto borne et surveiller les cas `no_data` encore legitimement suspendus
 
 ## Contradiction apparente: verdict

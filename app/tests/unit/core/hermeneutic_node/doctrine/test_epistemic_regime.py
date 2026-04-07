@@ -281,8 +281,8 @@ class EpistemicRegimeTests(unittest.TestCase):
             )
         )
 
-    def test_requires_external_verification_returns_true_for_pure_verification_request_without_web_evidence(self) -> None:
-        self.assertTrue(
+    def test_requires_external_verification_returns_false_for_pure_verification_request_without_web_evidence(self) -> None:
+        self.assertFalse(
             epistemic_regime.requires_external_verification(
                 user_turn_input=user_turn_input.build_user_turn_input(
                     user_message='Tu peux verifier cette affirmation ?',
@@ -292,6 +292,24 @@ class EpistemicRegimeTests(unittest.TestCase):
                 web_input=_web(status="skipped", results_count=0, reason_code="not_applicable"),
             )
         )
+
+    def test_requires_external_verification_returns_false_for_conversational_confirmation_without_web_evidence(self) -> None:
+        for message in (
+            "Tu peux confirmer que tu m'entends ?",
+            'Peux-tu confirmer que tu as compris ?',
+            'Merci de confirmer la reception.',
+        ):
+            with self.subTest(message=message):
+                self.assertFalse(
+                    epistemic_regime.requires_external_verification(
+                        user_turn_input=user_turn_input.build_user_turn_input(
+                            user_message=message,
+                            recent_window_input_payload=None,
+                            time_input_payload={"now_utc_iso": "2026-04-07T10:00:00Z"},
+                        ),
+                        web_input=_web(status="skipped", results_count=0, reason_code="not_applicable"),
+                    )
+                )
 
     def test_requires_external_verification_does_not_expand_to_atemporal_factuelle_with_non_web_provenance(self) -> None:
         self.assertFalse(
