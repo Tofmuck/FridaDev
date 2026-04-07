@@ -125,11 +125,39 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - routage du hostname final vers le service FridaDev OVH
   - smoke test HTTP du frontend via le nom de domaine retenu
 
+## Exigence critique: embedding FridaDev
+
+- FridaDev utilise actuellement le modele d'embedding `intfloat/multilingual-e5-small` en `384` dimensions.
+- L'endpoint actuel cote FridaDev est `EMBED_BASE_URL=https://embed.frida-system.fr`.
+- Le token d'acces embedding est present mais reste secret et ne doit jamais etre affiche dans la doc, les logs ou les scripts de migration.
+- Le service OVH existe deja dans le conteneur `platform-embeddings`.
+- Image actuelle:
+  - `ghcr.io/huggingface/text-embeddings-inference:cpu-latest`
+- Cache/modele cote OVH:
+  - `/opt/platform/data/embeddings/models--intfloat--multilingual-e5-small`
+- Routage existant:
+  - Caddy route `embed.frida-system.fr` vers `embeddings:8080`
+- Reseau Docker cible:
+  - conteneur sur `platform_platform_net`
+  - alias Docker `embeddings`
+  - alias Docker `platform-embeddings`
+- Le lot d'integration OVH devra choisir explicitement entre:
+  - option simple/stable: garder `EMBED_BASE_URL=https://embed.frida-system.fr`
+  - option interne Docker: utiliser `http://embeddings:8080` ou `http://platform-embeddings:8080`
+- Si l'option interne est retenue, le conteneur FridaDev OVH devra rejoindre `platform_platform_net`.
+- Ce choix doit rester ouvert dans ce TODO: il ne doit pas etre tranche avant le lot d'integration OVH.
+- Avant bascule, il faudra verifier:
+  - que le modele reste `intfloat/multilingual-e5-small`
+  - que `EMBED_DIM=384`
+  - que le token est present mais non expose
+  - et qu'un smoke test embedding reussit depuis le futur conteneur FridaDev OVH
+
 ## Reutilisable cote OVH
 
 - SearXNG deja present, meme image que sur `tofnas`
 - Crawl4AI deja present, meme image que sur `tofnas`
 - Valkey browsing deja present
+- Embedding deja present via `platform-embeddings`
 - Caddy deja present pour routage HTTP/TLS
 - Plateforme Docker deja stable et vivante
 
@@ -195,12 +223,18 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Secrets / `.env` / tokens
 - [ ] Branchement SearXNG OVH
 - [ ] Branchement Crawl4AI OVH
+- [ ] Decider le mode d'acces embedding OVH: `https://embed.frida-system.fr` via Caddy ou `http://embeddings:8080` en interne Docker
+- [ ] Verifier que FridaDev OVH rejoint `platform_platform_net` si l'option embedding interne est retenue
+- [ ] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
+- [ ] Verifier que `EMBED_DIM=384`
+- [ ] Verifier que le token embedding est present mais non expose
 - [ ] Choisir le hostname / alias frontend FridaDev OVH
 - [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
 - [ ] Router le hostname final vers le service FridaDev OVH
 - [ ] Build FridaDev
 - [ ] Migration DB sans perte avec verification avant bascule
 - [ ] Migration `state/`
+- [ ] Smoke test embedding depuis le futur conteneur FridaDev OVH
 - [ ] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
 - [ ] Documentation finale
@@ -219,6 +253,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - instance OVH fonctionnelle mais inaccessible faute d'alias ou de routage
 - collision avec les hotes Caddy deja en place
 - TLS / Auth / Authelia mal alignes sur le hostname final
+- embedding casse si FridaDev OVH n'a pas acces au bon endpoint
+- confusion entre route publique Caddy et route interne Docker pour l'embedding
+- bypass involontaire de la protection Caddy/token si l'endpoint interne est retenu
+- mismatch modele/dimensions avec les vecteurs existants
 
 ## Decision recommandee
 
