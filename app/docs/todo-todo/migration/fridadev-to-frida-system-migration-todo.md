@@ -72,8 +72,13 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - `platform-crawl4ai` present, non publie directement
   - `platform-valkey-browsing` present
   - `platform-doc-pipeline-db` present en `postgres:16-alpine`
+- Sous-stack DB Frida dediee creee pour test sous:
+  - `/opt/platform/fridadev-db`
+  - conteneur `platform-fridadev-postgres`
+  - image `pgvector/pgvector:pg17`
+  - reseau dedie `platform_fridadev_db_net`
+  - aucun port Postgres publie sur l'hote
 - Pas de conteneur FridaDev detecte.
-- Pas de conteneur pgvector/Frida detecte.
 - Caddy route deja:
   - `frida-system.fr` et `www.frida-system.fr`
   - hote search via `{$SEARCH_HOST}` vers `searxng:8080`
@@ -88,7 +93,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Ecarts a resoudre
 
 - FridaDev existe sur `tofnas`, pas sur `frida-system.fr`.
-- La base Frida locale utilise `pgvector/pgvector:pg17`; OVH n'a aujourd'hui qu'un Postgres `doc-pipeline` en `postgres:16-alpine`.
+- La base Frida locale utilise `pgvector/pgvector:pg17`; OVH dispose maintenant d'une cible test dediee `platform-fridadev-postgres`, mais aucune app FridaDev OVH ne l'utilise encore.
 - `tofnas` publie SearXNG et Crawl4AI en ports host; OVH les expose via Caddy et reseaux Docker internes.
 - `tofnas` a trois stacks separees (`fridadev`, `database`, `browsing`); OVH a une plateforme centralisee sous `/opt/platform`.
 - Les reseaux Docker ne sont pas alignes:
@@ -159,10 +164,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - `frida` ne contient pas `public.identity_mutables`
   - `frida` ne doit donc pas etre migree par reflexe
 - Etat cible OVH confirme:
-  - aucun conteneur Postgres/pgvector dedie a Frida n'est present
+  - avant le lot 2, aucun conteneur Postgres/pgvector dedie a Frida n'etait present
   - `platform-doc-pipeline-db` existe en `postgres:16-alpine`
   - `platform-doc-pipeline-db` ne doit pas etre reutilise par defaut pour Frida
-  - aucune restauration ne doit etre tentee sur OVH tant que la cible pgvector dediee n'est pas definie
+  - avant le lot 2, aucune restauration ne devait etre tentee sur OVH tant que la cible pgvector dediee n'etait pas definie
 
 ### Plan technique DB sans perte
 
@@ -186,6 +191,45 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - Ne basculer qu'apres validation complete des checks DB et applicatifs.
 - Garder le dump de rollback et la DB source `tofnas` comme reference tant que la bascule n'est pas validee.
 - Definir une fenetre de gel des ecritures avant le dump final servant a la bascule.
+
+### Lot 2 DB - sous-stack cible + dump/restore test
+
+- Sous-stack cible creee sur OVH:
+  - chemin: `/opt/platform/fridadev-db`
+  - compose: `/opt/platform/fridadev-db/docker-compose.yml`
+  - env_file: `/opt/platform/fridadev-db/.env`
+  - data dir: `/opt/platform/fridadev-db/data`
+  - imports dir: `/opt/platform/fridadev-db/imports`
+- Conteneur cible cree:
+  - `platform-fridadev-postgres`
+  - image `pgvector/pgvector:pg17`
+  - statut observe: `healthy`
+  - aucun port public publie
+- Reseau cible cree:
+  - `platform_fridadev_db_net`
+- Mot de passe cible genere cote OVH et garde hors Git:
+  - present dans `.env`
+  - non affiche
+- Dump source de test cree hors Git sur `tofnas`:
+  - dossier `/home/tof/docker-stacks/fridadev-migration-dumps`
+  - format custom `pg_dump -Fc --no-owner --no-acl`
+  - verification de structure realisee via `pg_restore --list` depuis le conteneur source `postgres` car l'hote local n'a pas `pg_restore`
+- Dump de test transfere hors Git vers OVH:
+  - dossier `/opt/platform/fridadev-db/imports`
+- Restore test effectue dans la cible dediee OVH:
+  - aucune restauration dans `platform-doc-pipeline-db`
+  - aucune reutilisation de la DB doc-pipeline
+  - methode retenue: montage `./imports:/imports:ro` puis `pg_restore --clean --if-exists --no-owner --no-acl`
+- Verification cible apres restore:
+  - extensions `pgcrypto`, `plpgsql`, `vector`
+  - schemas `public`, `observability`
+  - tables runtime recentes presentes
+  - comptages observes coherents avec l'inventaire source capture avant dump
+- Aucun changement applicatif dans ce lot:
+  - aucune bascule
+  - aucun FridaDev OVH demarre
+  - aucun runtime ne pointe vers la DB OVH
+  - `tofnas` reste la source autoritaire
 
 ## Exigence critique: alias frontend / Caddy
 
@@ -306,14 +350,15 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Audit Docker source
 - [x] Audit Docker destination
 - [x] Identifier la base source autoritaire via `FRIDA_MEMORY_DB_DSN`
+- [x] Creer une sous-stack DB Frida dediee sous `/opt/platform/fridadev-db`
 - [ ] Definir dump source + sauvegarde de rollback avant toute bascule
 - [ ] Definir restauration cible controlee sans perte et sans base vide finale
-- [ ] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
+- [x] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
 - [ ] Definir gel des ecritures ou fenetre de bascule pour eviter les doubles ecritures
 - [ ] Audit `state/`
 - [ ] Choix d'integration Compose OVH
 - [ ] Integration FridaDev dans `/opt/platform` ou sous-stack dediee
-- [ ] Integration Postgres pgvector dedie a Frida si confirme par le DSN reel
+- [x] Integration Postgres pgvector dedie a Frida si confirme par le DSN reel
 - [ ] Secrets / `.env` / tokens
 - [ ] Branchement SearXNG OVH
 - [ ] Branchement Crawl4AI OVH
@@ -331,6 +376,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
 - [ ] Router le hostname final vers le service FridaDev OVH
 - [ ] Build FridaDev
+- [x] Dump/restore test de `fridadev` dans la cible OVH dediee sans bascule applicative
 - [ ] Migration DB sans perte avec verification avant bascule
 - [ ] Migration `state/`
 - [ ] Smoke test embedding depuis le futur conteneur FridaDev OVH
