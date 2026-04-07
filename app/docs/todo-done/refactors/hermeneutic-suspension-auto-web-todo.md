@@ -1,20 +1,25 @@
 # Hermeneutic Suspension / Auto-Web TODO
 
-Statut: ouvert
-Classement: `app/docs/todo-todo/memory/`
+Statut: ferme
+Classement: `app/docs/todo-done/refactors/`
 Origine: diagnostic code+traces revalide le `2026-04-06`
 
-## Etat courant
+## Decision de cloture
+
+- Le runtime actuel est accepte tel quel.
+- Ce TODO ne porte plus d'action runtime immediate.
+- Le rattrapage anti-suspension `no-web -> web` n'est pas decide maintenant.
+- Si ce sujet revient plus tard, il devra etre rouvert dans un nouveau TODO separe.
+
+## Etat runtime retenu
 
 - Runtime actuel: web manuel uniquement.
 - `web_search=true` declenche le web avec `activation_mode = manual`.
 - `web_search=false` laisse le web en `activation_mode = not_requested`.
 - Les demandes `source`, `lien`, `reference`, `verification pure`, les confirmations conversationnelles, et les cas conceptuels nettoyes n'activent pas le web pre-node.
 - `activation_mode = manual|auto|not_requested` reste le contrat canonique du `web_input`, mais `auto` n'est pas active dans le runtime actuel.
-- Le vrai rattrapage anti-suspension `no-web -> web` n'est pas implemente.
-- Pas de bug runtime immediat retenu a ce stade.
 
-## Ce qui est ferme
+## Points fermes et traces gardees
 
 - [x] Le tour suspendu de reference a ete diagnostique proprement:
   - `conversation_id = a2bebfd3-96d3-4088-b622-6495461f534a`
@@ -31,27 +36,9 @@ Origine: diagnostic code+traces revalide le `2026-04-06`
   - `web_search=false` laisse maintenant le web en `not_requested`
   - `source/lien/reference/verification` ne suffisent plus a lancer le web avant le noeud
 - [x] Le bouton manuel `web_search=true` reste intact.
-- [x] Le statut reel est documente honnetement dans les docs vivantes:
-  - runtime actuel sans auto-web actif
-  - `activation_mode = auto` reserve a un futur design eventuel
+- [x] Le statut reel est documente honnetement dans les docs vivantes.
 
-## Ce qui reste vraiment
+## Prochaine reouverture eventuelle
 
-- [ ] Decider plus tard s'il faut vraiment concevoir un rattrapage anti-suspension `no-web -> web`.
-- [ ] Si oui, ouvrir un lot de design dedie avant tout nouveau patch runtime.
-- [ ] Sinon, archiver ce TODO comme clos dans un pas separe.
-
-## Hors scope actuel
-
-- pas de patch runtime maintenant
-- pas de web auto pre-node
-- pas d'heuristique lexicale ou semantique de recherche web
-- pas de modification de `judgment_posture.py`
-- pas de modification du `validation_agent`
-
-## Prochain geste recommande
-
-- Rien cote runtime pour l'instant.
-- On peut rester comme ca tant qu'aucun lot dedie de rattrapage anti-suspension n'est explicitement ouvert.
-- Si le besoin revient, il faudra d'abord trancher le design aval proprement.
-- Si le besoin ne revient pas, le prochain geste propre sera un archivage documentaire de ce TODO.
+- Aucun travail runtime n'est demande maintenant.
+- Si un vrai rattrapage anti-suspension `no-web -> web` redevient souhaitable, il devra faire l'objet d'un nouveau TODO distinct.
