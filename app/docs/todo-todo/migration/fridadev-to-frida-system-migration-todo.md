@@ -334,6 +334,35 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucune synchronisation continue automatique entre `tofnas` et OVH
   - la DB cible OVH est encore alignee sur les comptages sources observes pendant ce lot, donc aucun snapshot DB supplementaire n'a ete juge necessaire ici
 
+### Lot DNS final OVH - hostnames `frida-system.fr`
+
+- Objectif de ce lot:
+  - remplacer les hostnames temporaires `sslip.io` par `fridadev.frida-system.fr` et `fridadev-db.frida-system.fr`
+- Resolution DNS observee au moment de ce lot:
+  - `auth.frida-system.fr` -> `137.74.204.229`
+  - `frida-system.fr` -> `137.74.204.229`
+  - `fridadev.frida-system.fr` -> non resolu
+  - `fridadev-db.frida-system.fr` -> non resolu
+- Delegation DNS observee:
+  - `frida-system.fr` est delegue a `dns14.ovh.net`
+  - `frida-system.fr` est delegue a `ns14.ovh.net`
+- Mecanisme DNS disponible depuis `tofnas` / OVH:
+  - aucun outil ou workflow DNS exploitable n'a ete trouve sur ces hotes
+  - aucun `ovh`, `cloudflare`, `flarectl` ou infrastructure-as-code DNS versionnee n'a ete trouve
+  - aucun changement DNS n'a donc ete tente dans ce lot
+- Consequence immediate:
+  - Caddy et Homepage restent sur les hostnames `sslip.io` deja valides
+  - aucun remplacement des URLs fonctionnelles n'a ete fait tant que les hostnames finaux ne resolvent pas
+  - la protection Authelia reste validee sur les hostnames `sslip.io` existants, pas encore sur les hostnames finaux
+- Records exacts a creer cote registrar / zone OVH:
+  - `fridadev.frida-system.fr.     A     137.74.204.229`
+  - `fridadev-db.frida-system.fr.  A     137.74.204.229`
+- Ce lot reste borne:
+  - aucune modification runtime OVH
+  - aucune modification Caddy / Homepage
+  - aucune suppression de `tofnas`
+  - aucune synchronisation continue automatique entre `tofnas` et OVH
+
 ## Exigence critique: alias frontend / Caddy
 
 - Un hostname / alias dedie doit etre choisi pour acceder au frontend FridaDev sur OVH.
@@ -533,5 +562,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: soit garder ce clone OVH protege en `sslip.io` pour les vacances, soit ouvrir un lot DNS final `frida-system.fr` + validation d'acces definitive, sans couper `tofnas`.
+- Prochain pas recommande: creer d'abord les deux enregistrements DNS finaux `fridadev.frida-system.fr -> 137.74.204.229` et `fridadev-db.frida-system.fr -> 137.74.204.229`, puis seulement rouvrir un lot Caddy / Homepage de bascule vers les hostnames finaux, sans couper `tofnas`.
 - Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
