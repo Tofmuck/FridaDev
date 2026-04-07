@@ -411,4 +411,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: `Lot 1` de migration, pas implementation sauvage.
+- Prochain pas recommande: lot applicatif OVH sans bascule, pour preparer la stack FridaDev, les secrets, les reseaux Docker, le raccordement a la DB dediee, ainsi que SearXNG, Crawl4AI et l'embedding.
+- Ne pas lancer encore la bascule finale: le dump final, le gel des ecritures et la migration DB finale restent ouverts.
