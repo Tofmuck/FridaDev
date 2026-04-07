@@ -338,28 +338,38 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 
 - Objectif de ce lot:
   - remplacer les hostnames temporaires `sslip.io` par `fridadev.frida-system.fr` et `fridadev-db.frida-system.fr`
-- Resolution DNS observee au moment de ce lot:
+- Reprise apres creation manuelle OVH:
+  - les records DNS ont ete crees manuellement par l'utilisateur dans l'interface OVH
+- Resolution DNS observee apres reprise:
+  - `fridadev.frida-system.fr` -> `137.74.204.229`
+  - `fridadev-db.frida-system.fr` -> `137.74.204.229`
   - `auth.frida-system.fr` -> `137.74.204.229`
   - `frida-system.fr` -> `137.74.204.229`
-  - `fridadev.frida-system.fr` -> non resolu
-  - `fridadev-db.frida-system.fr` -> non resolu
+  - resolution revalidee depuis `tofnas`, depuis OVH, et via `@1.1.1.1` / `@8.8.8.8`
+  - aucun `AAAA` n'a ete retenu pour ce lot
 - Delegation DNS observee:
   - `frida-system.fr` est delegue a `dns14.ovh.net`
   - `frida-system.fr` est delegue a `ns14.ovh.net`
-- Mecanisme DNS disponible depuis `tofnas` / OVH:
-  - aucun outil ou workflow DNS exploitable n'a ete trouve sur ces hotes
-  - aucun `ovh`, `cloudflare`, `flarectl` ou infrastructure-as-code DNS versionnee n'a ete trouve
-  - aucun changement DNS n'a donc ete tente dans ce lot
-- Consequence immediate:
-  - Caddy et Homepage restent sur les hostnames `sslip.io` deja valides
-  - aucun remplacement des URLs fonctionnelles n'a ete fait tant que les hostnames finaux ne resolvent pas
-  - la protection Authelia reste validee sur les hostnames `sslip.io` existants, pas encore sur les hostnames finaux
-- Records exacts a creer cote registrar / zone OVH:
-  - `fridadev.frida-system.fr.     A     137.74.204.229`
-  - `fridadev-db.frida-system.fr.  A     137.74.204.229`
+- Caddy mis a jour vers les hostnames finaux avec fallback temporaire:
+  - `FRIDADEV_CADDY_HOSTS=fridadev.frida-system.fr, fridadev.137-74-204-229.sslip.io`
+  - `FRIDADEV_DB_CADDY_HOSTS=fridadev-db.frida-system.fr, fridadev-db.137-74-204-229.sslip.io`
+  - les blocs Caddy gardent `import authn` sur tout le hostname FridaDev et sur tout le hostname DB/admin
+- Homepage mis a jour:
+  - `FridaDev` pointe maintenant vers `https://fridadev.frida-system.fr`
+  - `FridaDev DB Admin` pointe maintenant vers `https://fridadev-db.frida-system.fr`
+- Smoke tests publics reussis:
+  - `https://fridadev.frida-system.fr/` -> `302` vers `https://auth.frida-system.fr/...`
+  - `https://fridadev.frida-system.fr/admin` -> `302` vers `https://auth.frida-system.fr/...`
+  - `https://fridadev.frida-system.fr/api/admin` -> `302` vers `https://auth.frida-system.fr/...`
+  - `https://fridadev-db.frida-system.fr/` -> `302` vers `https://auth.frida-system.fr/...`
+  - aucun `200` direct non protege observe sur les hostnames finaux
+- Fallback temporaire conserve:
+  - `fridadev.137-74-204-229.sslip.io` reste actif
+  - `fridadev-db.137-74-204-229.sslip.io` reste actif
+  - ces deux hostnames `sslip.io` continuent eux aussi a renvoyer `302` vers Authelia
 - Ce lot reste borne:
-  - aucune modification runtime OVH
-  - aucune modification Caddy / Homepage
+  - aucune modification de `tofnas`
+  - aucun dump final / restore final
   - aucune suppression de `tofnas`
   - aucune synchronisation continue automatique entre `tofnas` et OVH
 
@@ -503,10 +513,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Ajouter la card Homepage FridaDev dans `/opt/platform/homepage/services.yaml`
 - [x] Ajouter la card Homepage DB/admin si l'interface DB est retenue
 - [x] Renseigner `server: local-docker` et les bons `container:` pour les cards Homepage
-- [ ] Verifier que les cards Homepage pointent vers les hostnames finaux
+- [x] Verifier que les cards Homepage pointent vers les hostnames finaux
 - [x] Choisir le hostname / alias frontend FridaDev OVH
 - [x] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia pour l'alias retenu
-- [ ] Router le hostname final vers le service FridaDev OVH
+- [x] Router le hostname final vers le service FridaDev OVH
 - [x] Build FridaDev
 - [x] Dump/restore test de `fridadev` dans la cible OVH dediee sans bascule applicative
 - [ ] Migration DB sans perte avec verification avant bascule
@@ -514,7 +524,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Smoke test embedding depuis le futur conteneur FridaDev OVH
 - [x] Smoke tests internes FridaDev OVH sans exposition publique
 - [x] Smoke test Homepage apres restart de la plateforme
-- [ ] Smoke tests backend et frontend via le hostname final
+- [x] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
 - [ ] Documentation finale
 
@@ -541,7 +551,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - exposition d'une interface DB sans protection suffisante
 - divergence entre hostname Caddy et `href` Homepage
 - `FRIDA_ADMIN_TOKEN` source reste vide: ne pas supposer une protection admin deja prete avant exposition OVH
-- hostnames `sslip.io` valides pour ce lot, mais pas encore le DNS final `frida-system.fr`
+- fallback `sslip.io` encore conserve temporairement: il faudra decider plus tard quand le retirer apres validation humaine des hostnames finaux
 - aucune synchronisation continue automatique entre `tofnas` et OVH: un futur dump de fraicheur restera un snapshot ponctuel, pas une replication
 
 ### Mode operatoire vacances - travailler depuis OVH
@@ -562,5 +572,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: creer d'abord les deux enregistrements DNS finaux `fridadev.frida-system.fr -> 137.74.204.229` et `fridadev-db.frida-system.fr -> 137.74.204.229`, puis seulement rouvrir un lot Caddy / Homepage de bascule vers les hostnames finaux, sans couper `tofnas`.
+- Prochain pas recommande: valider en usage humain le clone OVH sur `fridadev.frida-system.fr` et `fridadev-db.frida-system.fr`, puis ouvrir plus tard un lot de retrait du fallback `sslip.io` si ce secours ne sert plus, sans couper `tofnas`.
 - Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
