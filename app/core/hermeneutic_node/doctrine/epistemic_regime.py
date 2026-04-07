@@ -177,6 +177,13 @@ def _needs_external_verification(
     if "web" in required_provenances and not web_evidence_available:
         return True
     if (
+        temporal_scope == "atemporale"
+        and "factuelle" in requested_types
+        and not required_provenances
+        and not web_evidence_available
+    ):
+        return True
+    if (
         temporal_scope in {"immediate", "actuelle", "prospective"}
         and requested_types & _CURRENT_FACT_TYPES
         and not web_evidence_available

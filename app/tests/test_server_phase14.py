@@ -1794,6 +1794,116 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_auto_activates_web_for_pure_verification_request_without_manual_flag(self) -> None:
+        observed = {'web_input': None, 'prompt_messages': None, 'build_context_calls': 0}
+        conversation = {
+            'id': 'conv-web-auto-verify-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok web auto verify'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_context_payload = self.server.ws.build_context_payload
+        original_build_context = self.server.ws.build_context
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_payload = self.server.llm.build_payload
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+
+        def fake_build_context_payload(_user_msg, **_kwargs):
+            observed['build_context_calls'] += 1
+            return {
+                'enabled': True,
+                'status': 'ok',
+                'reason_code': None,
+                'original_user_message': 'Tu peux verifier cette affirmation ?',
+                'query': 'verification test',
+                'results_count': 1,
+                'runtime': {},
+                'sources': [
+                    {
+                        'rank': 1,
+                        'title': 'Titre verification',
+                        'url': 'https://example.com/verification',
+                        'source_domain': 'example.com',
+                        'search_snippet': 'Verification utile',
+                        'used_in_prompt': True,
+                        'used_content_kind': 'search_snippet',
+                        'content_used': 'Verification utile',
+                        'truncated': False,
+                        'source_origin': 'search_result',
+                        'is_primary_source': False,
+                        'crawl_status': 'not_attempted',
+                    }
+                ],
+                'context_block': 'WEB CONTEXT VERIFY',
+            }
+
+        def fake_insertion(**kwargs):
+            observed['web_input'] = kwargs.get('web_input')
+            return None
+
+        def fake_build_payload(messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['prompt_messages'] = messages
+            return {
+                'model': 'openrouter/runtime-main-model',
+                'messages': messages,
+                'max_tokens': max_tokens,
+                'stream': stream,
+            }
+
+        self.server.ws.build_context_payload = fake_build_context_payload
+        self.server.ws.build_context = lambda _user_msg: (_ for _ in ()).throw(
+            AssertionError('legacy build_context should not be called')
+        )
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.llm.build_payload = fake_build_payload
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Tu peux verifier cette affirmation ?'},
+            ]
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Tu peux verifier cette affirmation ?', 'web_search': False},
+            )
+        finally:
+            self.server.ws.build_context_payload = original_build_context_payload
+            self.server.ws.build_context = original_build_context
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.llm.build_payload = original_build_payload
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['build_context_calls'], 1)
+        self.assertTrue(observed['web_input']['enabled'])
+        self.assertEqual(observed['web_input']['status'], 'ok')
+        self.assertEqual(observed['web_input']['activation_mode'], 'auto')
+        self.assertEqual(
+            observed['prompt_messages'],
+            [
+                {'role': 'system', 'content': conversation['messages'][0]['content']},
+                {'role': 'user', 'content': 'WEB CONTEXT VERIFY\n\nQuestion : Tu peux verifier cette affirmation ?'},
+            ],
+        )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
     def test_api_chat_does_not_auto_activate_web_for_clean_conceptual_turn_without_manual_flag(self) -> None:
         observed = {'web_input': None, 'prompt_messages': None, 'build_context_calls': 0}
         conversation = {
