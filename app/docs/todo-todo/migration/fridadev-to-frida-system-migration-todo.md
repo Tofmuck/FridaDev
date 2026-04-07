@@ -1,7 +1,7 @@
 # Migration FridaDev `tofnas` -> `frida-system.fr` TODO
 
 Statut: ouvert
-Classement: `app/docs/todo-todo/product/`
+Classement: `app/docs/todo-todo/migration/`
 Date: `2026-04-07`
 
 ## Contexte
