@@ -80,7 +80,6 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - hote crawl via `{$CRAWL_HOST}` vers `crawl4ai:11235`
 - Secrets/chemins OVH deja en place pour la plateforme:
   - `/opt/platform/secrets/crawl4ai_api_token`
-  - `/opt/platform/secrets/openclaw_env`
   - `/opt/platform/secrets/doc_pipeline_env`
   - autres secrets plateforme Caddy/authelia/redis/nextcloud/n8n
 - Taille approx visible:
@@ -152,12 +151,31 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - que le token est present mais non expose
   - et qu'un smoke test embedding reussit depuis le futur conteneur FridaDev OVH
 
+## Exigence critique: Homepage dashboard
+
+- Le dashboard Homepage OVH est configure dans `/opt/platform/homepage/services.yaml`.
+- FridaDev doit avoir une card/entree Homepage apres migration.
+- L'interface DB Frida doit aussi avoir une card/entree Homepage si une interface DB admin est effectivement retenue sur OVH.
+- Les cards Homepage doivent utiliser les champs Docker adaptes:
+  - `server: local-docker`
+  - `container: <nom-du-conteneur-ovh>`
+- Les noms de conteneurs exacts doivent etre figes au lot Compose OVH.
+- Exemples de noms a decider, sans les imposer:
+  - `platform-fridadev`
+  - `platform-frida-adminer`
+  - `platform-frida-postgres`
+- La card FridaDev devra pointer vers le hostname frontend final retenu pour OVH.
+- La card interface DB ne devra pointer vers un hostname ou chemin final que si cette interface est volontairement exposee.
+- L'interface DB devra etre protegee ou limitee selon la decision prise sur Auth / Authelia / acces admin.
+- Un smoke test Homepage devra verifier que les cards apparaissent et pointent vers les bonnes URLs finales.
+
 ## Reutilisable cote OVH
 
 - SearXNG deja present, meme image que sur `tofnas`
 - Crawl4AI deja present, meme image que sur `tofnas`
 - Valkey browsing deja present
 - Embedding deja present via `platform-embeddings`
+- Homepage deja present via `/opt/platform/homepage/services.yaml`
 - Caddy deja present pour routage HTTP/TLS
 - Plateforme Docker deja stable et vivante
 
@@ -228,6 +246,11 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
 - [ ] Verifier que `EMBED_DIM=384`
 - [ ] Verifier que le token embedding est present mais non expose
+- [ ] Choisir l'interface DB admin OVH, par exemple Adminer ou autre, ou decider de ne pas en exposer
+- [ ] Ajouter la card Homepage FridaDev dans `/opt/platform/homepage/services.yaml`
+- [ ] Ajouter la card Homepage DB/admin si l'interface DB est retenue
+- [ ] Renseigner `server: local-docker` et les bons `container:` pour les cards Homepage
+- [ ] Verifier que les cards Homepage pointent vers les hostnames finaux
 - [ ] Choisir le hostname / alias frontend FridaDev OVH
 - [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
 - [ ] Router le hostname final vers le service FridaDev OVH
@@ -235,6 +258,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Migration DB sans perte avec verification avant bascule
 - [ ] Migration `state/`
 - [ ] Smoke test embedding depuis le futur conteneur FridaDev OVH
+- [ ] Smoke test Homepage apres restart de la plateforme
 - [ ] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
 - [ ] Documentation finale
@@ -257,6 +281,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - confusion entre route publique Caddy et route interne Docker pour l'embedding
 - bypass involontaire de la protection Caddy/token si l'endpoint interne est retenu
 - mismatch modele/dimensions avec les vecteurs existants
+- instance OVH fonctionnelle mais absente du dashboard Homepage
+- entree Homepage pointant vers un mauvais conteneur
+- exposition d'une interface DB sans protection suffisante
+- divergence entre hostname Caddy et `href` Homepage
 
 ## Decision recommandee
 
