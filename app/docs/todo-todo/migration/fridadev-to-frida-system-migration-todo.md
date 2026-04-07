@@ -21,7 +21,7 @@ Date: `2026-04-07`
 
 Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - l'application FridaDev
-- sa base Postgres/pgvector
+- sa base Postgres/pgvector migree depuis `tofnas` sans perte de donnees
 - son `state/`
 - et les dependances web necessaires
 
@@ -97,6 +97,34 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - OVH: `platform_platform_net`, `platform_browsing_net`, `platform_crawl_net`, `platform_auth_net`, `platform_proxy_net`
 - Les secrets necessaires a FridaDev ne sont pas encore provisionnes sur OVH.
 
+## Exigence critique: migration DB sans perte
+
+- La base Frida source sur `tofnas` reste autoritaire tant que la migration n'est pas validee.
+- La cible OVH ne doit pas recevoir une base vide comme etat final.
+- La DB effective a migrer doit etre identifiee via `FRIDA_MEMORY_DB_DSN` avant tout dump/restore.
+- La migration DB doit etre traitee comme un lot bloquant, avec:
+  - dump source controle
+  - sauvegarde de rollback gardee avant toute bascule
+  - restauration cible controlee
+  - verification des extensions attendues, notamment `pgvector`
+  - verification schema / tables / comptages ou checks equivalents avant et apres restauration
+  - verification finale avant ouverture du service OVH
+- Il faut prevoir un gel des ecritures ou une fenetre de bascule pour eviter les doubles ecritures `tofnas` / `frida-system.fr`.
+- Aucune bascule ne doit etre consideree valide tant que les checks de coherence DB ne sont pas termines.
+
+## Exigence critique: alias frontend / Caddy
+
+- Un hostname / alias dedie doit etre choisi pour acceder au frontend FridaDev sur OVH.
+- Sans alias/routage, l'instance OVH peut tourner mais rester inutilisable depuis l'exterieur.
+- Le lot d'acces frontend doit couvrir:
+  - choix explicite du hostname final
+  - verification DNS / domaine
+  - integration dans la plateforme Caddy existante sous `/opt/platform`
+  - verification TLS
+  - decision explicite sur l'eventuelle protection Auth / Authelia
+  - routage du hostname final vers le service FridaDev OVH
+  - smoke test HTTP du frontend via le nom de domaine retenu
+
 ## Reutilisable cote OVH
 
 - SearXNG deja present, meme image que sur `tofnas`
@@ -109,7 +137,8 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 
 - Base Postgres/pgvector Frida:
   - determiner quelle DB est autoritaire via `FRIDA_MEMORY_DB_DSN`
-  - migrer au minimum la base effective Frida
+  - migrer au minimum la base effective Frida sans perte de donnees
+  - ne pas remplacer la cible finale par une base vide
 - `state/` FridaDev:
   - `state/conv`
   - `state/data`
@@ -154,19 +183,25 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Audit SSH / acces
 - [x] Audit Docker source
 - [x] Audit Docker destination
-- [ ] Audit DB et strategie dump/restore
+- [ ] Identifier la base source autoritaire via `FRIDA_MEMORY_DB_DSN`
+- [ ] Definir dump source + sauvegarde de rollback avant toute bascule
+- [ ] Definir restauration cible controlee sans perte et sans base vide finale
+- [ ] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
+- [ ] Definir gel des ecritures ou fenetre de bascule pour eviter les doubles ecritures
 - [ ] Audit `state/`
 - [ ] Choix d'integration Compose OVH
 - [ ] Integration FridaDev dans `/opt/platform` ou sous-stack dediee
-- [ ] Integration Postgres pgvector
+- [ ] Integration Postgres pgvector dedie a Frida si confirme par le DSN reel
 - [ ] Secrets / `.env` / tokens
 - [ ] Branchement SearXNG OVH
 - [ ] Branchement Crawl4AI OVH
-- [ ] Caddy / domaine / TLS
+- [ ] Choisir le hostname / alias frontend FridaDev OVH
+- [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
+- [ ] Router le hostname final vers le service FridaDev OVH
 - [ ] Build FridaDev
-- [ ] Migration DB
+- [ ] Migration DB sans perte avec verification avant bascule
 - [ ] Migration `state/`
-- [ ] Smoke tests
+- [ ] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
 - [ ] Documentation finale
 
@@ -178,6 +213,12 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - integration Caddy / Authelia a arbitrer
 - donnees runtime non versionnees
 - double instance `tofnas` / `frida-system.fr` a garder coherente
+- perte de donnees si dump / restauration / verification sont incomplets
+- double-ecriture `tofnas` / OVH pendant la bascule
+- migration de la mauvaise DB si `frida` vs `fridadev` n'est pas tranche par le DSN reel
+- instance OVH fonctionnelle mais inaccessible faute d'alias ou de routage
+- collision avec les hotes Caddy deja en place
+- TLS / Auth / Authelia mal alignes sur le hostname final
 
 ## Decision recommandee
 
