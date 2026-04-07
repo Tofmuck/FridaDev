@@ -59,7 +59,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - token Crawl4AI local present par chemin: `/home/tof/docker-stacks/browsing/secrets/crawl4ai_api_token`
 - Tailles approximatives:
   - `/home/tof/docker-stacks/fridadev/state`: `464K`
-  - `/home/tof/docker-stacks/database/data`: `4.0K`
+  - `/home/tof/docker-stacks/database/data`: `106M` via `sudo du`; le `4.0K` sans sudo etait un artefact de permission
   - `/home/tof/docker-stacks/browsing`: `116K`
 
 ## Etat constate sur `frida-system.fr`
@@ -110,6 +110,82 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - verification finale avant ouverture du service OVH
 - Il faut prevoir un gel des ecritures ou une fenetre de bascule pour eviter les doubles ecritures `tofnas` / `frida-system.fr`.
 - Aucune bascule ne doit etre consideree valide tant que les checks de coherence DB ne sont pas termines.
+
+### Lot 1 DB - constat pre-migration
+
+- DB effective confirmee via `FRIDA_MEMORY_DB_DSN`:
+  - scheme: `postgresql`
+  - host: `192.168.0.36`
+  - port: `5432`
+  - database: `fridadev`
+  - username: `tof`
+  - password: `<redacted>`
+- Conteneur source confirme:
+  - `postgres`
+- Image source confirmee:
+  - `pgvector/pgvector:pg17`
+- Volume source confirme:
+  - `/home/tof/docker-stacks/database/data -> /var/lib/postgresql/data`
+- Taille reelle du volume source:
+  - `106M` via `sudo du`
+- Extensions observees dans `fridadev`:
+  - `pgcrypto`
+  - `plpgsql`
+  - `vector`
+- Schemas observes dans `fridadev`:
+  - `public`
+  - `observability`
+- Tables runtime recentes observees dans `fridadev`:
+  - `public.runtime_settings`
+  - `public.runtime_settings_history`
+  - `public.identity_mutables`
+  - `observability.chat_log_events`
+- Comptages de reference non sensibles dans `fridadev`:
+  - `public.conversations = 56`
+  - `public.conversation_messages = 262`
+  - `public.traces = 208`
+  - `public.summaries = 0`
+  - `public.runtime_settings = 10`
+  - `public.runtime_settings_history = 25`
+  - `public.identities = 88`
+  - `public.identity_mutables = 1`
+  - `observability.chat_log_events = 53772`
+- Comparaison `frida` vs `fridadev`:
+  - le DSN runtime pointe vers `fridadev`
+  - `fridadev` contient les tables runtime recentes et le schema `observability`
+  - `frida` ne contient pas `observability.chat_log_events`
+  - `frida` ne contient pas `public.runtime_settings`
+  - `frida` ne contient pas `public.runtime_settings_history`
+  - `frida` ne contient pas `public.identity_mutables`
+  - `frida` ne doit donc pas etre migree par reflexe
+- Etat cible OVH confirme:
+  - aucun conteneur Postgres/pgvector dedie a Frida n'est present
+  - `platform-doc-pipeline-db` existe en `postgres:16-alpine`
+  - `platform-doc-pipeline-db` ne doit pas etre reutilise par defaut pour Frida
+  - aucune restauration ne doit etre tentee sur OVH tant que la cible pgvector dediee n'est pas definie
+
+### Plan technique DB sans perte
+
+- Ce lot 1 reste non destructif:
+  - aucun dump
+  - aucune restauration
+  - aucune creation de DB cible
+- Preparer un dump source controle de `fridadev`, pas de `frida`.
+- Nommer le dump avec horodatage explicite, par exemple `fridadev-YYYYMMDD-HHMMSS.dump`.
+- Stocker le dump hors Git.
+- Verifier le dump avant transfert.
+- Transferer le dump vers OVH hors Git.
+- Creer un Postgres/pgvector cible dedie a Frida sur OVH dans un lot ulterieur.
+- Restaurer uniquement par restore controle dans la DB cible dediee.
+- Verifier apres restore:
+  - extensions attendues
+  - schemas attendus
+  - tables attendues
+  - comptages ou checks equivalents vs source
+- Faire un smoke test FridaDev sur OVH avant toute bascule.
+- Ne basculer qu'apres validation complete des checks DB et applicatifs.
+- Garder le dump de rollback et la DB source `tofnas` comme reference tant que la bascule n'est pas validee.
+- Definir une fenetre de gel des ecritures avant le dump final servant a la bascule.
 
 ## Exigence critique: alias frontend / Caddy
 
@@ -229,7 +305,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Audit SSH / acces
 - [x] Audit Docker source
 - [x] Audit Docker destination
-- [ ] Identifier la base source autoritaire via `FRIDA_MEMORY_DB_DSN`
+- [x] Identifier la base source autoritaire via `FRIDA_MEMORY_DB_DSN`
 - [ ] Definir dump source + sauvegarde de rollback avant toute bascule
 - [ ] Definir restauration cible controlee sans perte et sans base vide finale
 - [ ] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
