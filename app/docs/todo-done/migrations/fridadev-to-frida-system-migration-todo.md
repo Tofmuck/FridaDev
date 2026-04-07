@@ -806,6 +806,16 @@ Resultat obtenu:
 
 ## Post-cloture
 
+- Durcissement admin OVH reapplique le `2026-04-07`:
+  - `FRIDA_ADMIN_TOKEN` etait encore vide dans `/opt/platform/fridadev-app/.env`
+  - un token admin OVH a ete regenere localement sur `frida-system.fr`, ecrit dans ce `.env`, puis `platform-fridadev` a ete recree de facon ciblee
+  - verification de garde reussie sur `/api/admin/settings/status`:
+    - sans header `X-Admin-Token` -> `401`
+    - avec header `X-Admin-Token` -> `200`
+  - le conteneur recree voit bien `FRIDA_ADMIN_TOKEN=<set>`
+  - l'acces public reste borne par Authelia:
+    - `https://fridadev.frida-system.fr/admin` -> `302`
+  - aucun secret ni valeur de token n'est trace dans ce document
 - Revalidation admin / observabilite du clone OVH faite le `2026-04-07` apres signalement utilisateur.
 - Surfaces HTML internes revalidees:
   - `/admin` -> `200`, HTML present
