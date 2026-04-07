@@ -31,13 +31,13 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - pas de secrets en Git
 - pas de remplacement definitif de `tofnas`
 - pas de suppression de l'instance locale
-- pas de rebuild/restart Docker dans ce pas
+- pas de bascule applicative finale ni de restart destructif sur `tofnas`, Caddy ou Homepage dans ce pas
 
 ## Etat constate sur `tofnas`
 
 - Repo FridaDev local present et propre:
   - chemin: `/home/tof/docker-stacks/fridadev`
-  - HEAD: `1d9b156f8b5337a4e08d1735876320c87750c5d2`
+  - HEAD observe pour ce lot: `a52d115e7ad346a8bddbb883a7e2c7ec3310eafb`
   - remote Git: `origin https://github.com/Tofmuck/FridaDev.git`
 - Stack FridaDev:
   - conteneur: `FridaDev`
@@ -78,7 +78,16 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - image `pgvector/pgvector:pg17`
   - reseau dedie `platform_fridadev_db_net`
   - aucun port Postgres publie sur l'hote
-- Pas de conteneur FridaDev detecte.
+- Working copy Git OVH creee:
+  - `/opt/platform/fridadev`
+  - HEAD clone pour ce lot `a52d115e7ad346a8bddbb883a7e2c7ec3310eafb`
+  - remote `origin https://github.com/Tofmuck/FridaDev.git`
+- Sous-stack applicative interne creee:
+  - `/opt/platform/fridadev-app`
+  - conteneur `platform-fridadev`
+  - image `platform-fridadev-app:local`
+  - reseaux `platform_fridadev_db_net`, `platform_browsing_net`, `platform_crawl_net`
+  - aucun port host public publie
 - Caddy route deja:
   - `frida-system.fr` et `www.frida-system.fr`
   - hote search via `{$SEARCH_HOST}` vers `searxng:8080`
@@ -92,14 +101,14 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 
 ## Ecarts a resoudre
 
-- FridaDev existe sur `tofnas`, pas sur `frida-system.fr`.
-- La base Frida locale utilise `pgvector/pgvector:pg17`; OVH dispose maintenant d'une cible test dediee `platform-fridadev-postgres`, mais aucune app FridaDev OVH ne l'utilise encore.
+- FridaDev existe sur `tofnas` et tourne maintenant en interne sur `frida-system.fr`, mais sans exposition publique, sans Homepage et sans bascule.
+- La base Frida locale utilise `pgvector/pgvector:pg17`; OVH dispose maintenant d'une cible test dediee `platform-fridadev-postgres`, et l'app OVH interne l'utilise deja, mais le dump final et la bascule restent ouverts.
 - `tofnas` publie SearXNG et Crawl4AI en ports host; OVH les expose via Caddy et reseaux Docker internes.
 - `tofnas` a trois stacks separees (`fridadev`, `database`, `browsing`); OVH a une plateforme centralisee sous `/opt/platform`.
 - Les reseaux Docker ne sont pas alignes:
   - `tofnas`: `fridadev_default`, `database_default`, `browsing_browsing_net`
   - OVH: `platform_platform_net`, `platform_browsing_net`, `platform_crawl_net`, `platform_auth_net`, `platform_proxy_net`
-- Les secrets necessaires a FridaDev ne sont pas encore provisionnes sur OVH.
+- Les secrets applicatifs sont maintenant provisionnes hors Git sur OVH pour un test interne, mais l'exposition publique et les arbitrages admin restent ouverts.
 
 ## Exigence critique: migration DB sans perte
 
@@ -231,6 +240,55 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucun runtime ne pointe vers la DB OVH
   - `tofnas` reste la source autoritaire
 
+### Lot applicatif OVH - stack interne sans bascule
+
+- Working copy Git OVH creee:
+  - chemin: `/opt/platform/fridadev`
+  - HEAD clone pour ce lot: `a52d115e7ad346a8bddbb883a7e2c7ec3310eafb`
+  - remote: `origin https://github.com/Tofmuck/FridaDev.git`
+  - worktree propre au moment du clone
+- Sous-stack app OVH creee:
+  - chemin: `/opt/platform/fridadev-app`
+  - compose: `/opt/platform/fridadev-app/docker-compose.yml`
+  - env_file: `/opt/platform/fridadev-app/.env`
+  - conteneur: `platform-fridadev`
+  - image: `platform-fridadev-app:local`
+  - statut observe apres correction du healthcheck: `healthy`
+  - aucun port host public publie
+- Reseaux attaches:
+  - `platform_fridadev_db_net`
+  - `platform_browsing_net`
+  - `platform_crawl_net`
+  - `platform_platform_net` non attache dans ce lot, car l'option embedding retenue ici reste l'endpoint stable `https://embed.frida-system.fr`
+- `.env` OVH cree hors Git:
+  - `FRIDA_MEMORY_DB_DSN` pointe vers `platform-fridadev-postgres:5432/fridadev`
+  - `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` est preserve depuis `tofnas`
+  - `OPENROUTER_API_KEY` est present
+  - `FRIDA_ADMIN_TOKEN` reste vide, conforme a la source actuelle sur `tofnas`
+  - `SEARXNG_URL=http://searxng:8080`
+  - `CRAWL4AI_URL=http://crawl4ai:11235`
+  - `EMBED_BASE_URL=https://embed.frida-system.fr`
+  - `EMBED_DIM=384`
+  - tokens Crawl4AI et embedding presents, non exposes
+- Snapshot `state/` de test copie hors Git:
+  - source: `/home/tof/docker-stacks/fridadev/state/`
+  - cible: `/opt/platform/fridadev-app/state/`
+  - usage: snapshot de test uniquement, pas migration finale du `state/`
+- Smoke tests internes reussis:
+  - `http://127.0.0.1:8089/` -> `200`
+  - DB depuis l'app: `current_database() = fridadev`, `current_user = tof`
+  - comptages verifies: `public.conversations = 56`, `observability.chat_log_events = 53772`
+  - `SEARXNG_URL` -> `200`
+  - `CRAWL4AI_URL/health` -> `200`
+  - embedding via `https://embed.frida-system.fr/embed` -> `200`, dimension `384`
+- Ce lot reste borne:
+  - aucune route Caddy ajoutee
+  - aucune card Homepage ajoutee
+  - aucune bascule appliquee
+  - aucun dump final
+  - aucun gel des ecritures
+  - `tofnas` reste la source autoritaire
+
 ## Exigence critique: alias frontend / Caddy
 
 - Un hostname / alias dedie doit etre choisi pour acceder au frontend FridaDev sur OVH.
@@ -355,18 +413,18 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Definir restauration cible controlee sans perte et sans base vide finale
 - [x] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
 - [ ] Definir gel des ecritures ou fenetre de bascule pour eviter les doubles ecritures
-- [ ] Audit `state/`
-- [ ] Choix d'integration Compose OVH
-- [ ] Integration FridaDev dans `/opt/platform` ou sous-stack dediee
+- [x] Audit `state/`
+- [x] Choix d'integration Compose OVH
+- [x] Integration FridaDev dans `/opt/platform` ou sous-stack dediee
 - [x] Integration Postgres pgvector dedie a Frida si confirme par le DSN reel
-- [ ] Secrets / `.env` / tokens
-- [ ] Branchement SearXNG OVH
-- [ ] Branchement Crawl4AI OVH
-- [ ] Decider le mode d'acces embedding OVH: `https://embed.frida-system.fr` via Caddy ou `http://embeddings:8080` en interne Docker
+- [x] Secrets / `.env` / tokens
+- [x] Branchement SearXNG OVH
+- [x] Branchement Crawl4AI OVH
+- [x] Retenir pour ce lot l'acces embedding OVH via `https://embed.frida-system.fr`
 - [ ] Verifier que FridaDev OVH rejoint `platform_platform_net` si l'option embedding interne est retenue
-- [ ] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
-- [ ] Verifier que `EMBED_DIM=384`
-- [ ] Verifier que le token embedding est present mais non expose
+- [x] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
+- [x] Verifier que `EMBED_DIM=384`
+- [x] Verifier que le token embedding est present mais non expose
 - [ ] Choisir l'interface DB admin OVH, par exemple Adminer ou autre, ou decider de ne pas en exposer
 - [ ] Ajouter la card Homepage FridaDev dans `/opt/platform/homepage/services.yaml`
 - [ ] Ajouter la card Homepage DB/admin si l'interface DB est retenue
@@ -375,11 +433,12 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Choisir le hostname / alias frontend FridaDev OVH
 - [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
 - [ ] Router le hostname final vers le service FridaDev OVH
-- [ ] Build FridaDev
+- [x] Build FridaDev
 - [x] Dump/restore test de `fridadev` dans la cible OVH dediee sans bascule applicative
 - [ ] Migration DB sans perte avec verification avant bascule
-- [ ] Migration `state/`
-- [ ] Smoke test embedding depuis le futur conteneur FridaDev OVH
+- [ ] Migration `state/` finale
+- [x] Smoke test embedding depuis le futur conteneur FridaDev OVH
+- [x] Smoke tests internes FridaDev OVH sans exposition publique
 - [ ] Smoke test Homepage apres restart de la plateforme
 - [ ] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
@@ -407,9 +466,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - entree Homepage pointant vers un mauvais conteneur
 - exposition d'une interface DB sans protection suffisante
 - divergence entre hostname Caddy et `href` Homepage
+- `FRIDA_ADMIN_TOKEN` source reste vide: ne pas supposer une protection admin deja prete avant exposition OVH
 
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: lot applicatif OVH sans bascule, pour preparer la stack FridaDev, les secrets, les reseaux Docker, le raccordement a la DB dediee, ainsi que SearXNG, Crawl4AI et l'embedding.
-- Ne pas lancer encore la bascule finale: le dump final, le gel des ecritures et la migration DB finale restent ouverts.
+- Prochain pas recommande: lot d'acces OVH sans bascule, pour choisir le hostname FridaDev, cadrer Caddy / TLS / eventuelle Auth, puis preparer Homepage sans encore ouvrir la bascule finale.
+- Ne pas lancer encore la bascule finale: le dump final, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
