@@ -81,22 +81,22 @@ Tours voisins compares:
 
 ## Etat apres troisieme pas runtime
 
-- [x] Un auto-web backend borne est maintenant en place pour les tours deja classes comme dependants du web ou d'une verification externe explicitement raccordee a ce besoin
+- [x] Le contrat canonique du `web_input` garde bien `activation_mode = manual|auto|not_requested`
 - [x] `web_search=true` reste un forcage explicite du web
-- [x] `web_search=false` ne vaut plus interdiction absolue:
-  - il signifie seulement absence de demande manuelle explicite
-  - le backend peut encore auto-activer le web si la doctrine exige deja reellement une verification externe raccordee au web
+- [x] Le declenchement pre-node lexicalise de l'auto-web a ete retire:
+  - `web_search=false` laisse maintenant le web en `not_requested`
+  - les demandes de source, de lien, de reference ou de verification ne suffisent plus a elles seules pour lancer le web avant le noeud
 - [x] Les tours conceptuels / interpretatifs / atemporels deja nettoyes n'auto-declenchent pas le web
 - [x] L'injection web dans le prompt final depend maintenant du runtime web reel, pas du seul booleen manuel
 - [x] L'observabilite compacte du `web_input` expose maintenant:
   - `activation_mode = manual|auto|not_requested`
   - `reason_code` sur les skips utiles
-- [x] Si l'auto-web ne produit pas d'evidence, le pipeline peut rester honnetement en `verification_externe_requise` puis `suspend`
+- [x] Si un web manuel ne produit pas d'evidence, le pipeline peut rester honnetement en `verification_externe_requise` puis `suspend`
 - [x] La branche trop large `factuelle + atemporale + sans provenance => web` a ete retiree
 - [ ] Le vrai rattrapage anti-suspension pour les demandes pures de verification reste a implementer a une couture plus aval:
   - apres une evaluation no-web suffisamment doctrinale
   - sans transformer l'auto-web en heuristique semantique autonome
-- [ ] Le chantier reste ouvert pour calibrer la couverture exacte du web auto borne et surveiller les cas `no_data` encore legitimement suspendus
+- [ ] Le chantier reste ouvert pour implementer proprement un vrai rattrapage anti-suspension no-web -> web sans double passage sale ni heuristique lexicale autonome
 
 ## Contradiction apparente: verdict
 
@@ -124,8 +124,8 @@ Etat apres ce pas:
 - `app/core/chat_session_flow.py`
   - `web_search_on` reste un booleen de session lu en entree.
 - `app/core/chat_service.py`
-  - `_resolve_web_runtime_payload(...)` decide maintenant `activation_mode = manual|auto|not_requested` sans dupliquer la doctrine.
-  - `web_search_on = false` ne coupe plus absolument le web quand la doctrine requiert une verification externe.
+  - `_resolve_web_runtime_payload(...)` decide maintenant seulement entre `manual` et `not_requested` dans le runtime actif.
+  - le mode `auto` reste reserve au futur rattrapage anti-suspension, non implemente a ce stade.
   - `_run_hermeneutic_node_insertion_point(...)` transmet ensuite `user_turn_input`, `web_input`, `primary_payload` puis `validated_result`.
 - `app/core/hermeneutic_node/inputs/user_turn_input.py`
   - `_resolve_regime_probatoire(...)`
@@ -145,14 +145,14 @@ Etat apres ce pas:
 
 - le pipeline peut sur-classer certains tours conceptuels, interpretatifs ou atemporels comme dependants d'une verification externe;
 - ces faux positifs ne viennent pas necessairement de mots explicitement "web", mais aussi d'usages ordinaires de marqueurs trop larges;
-- meme avec un auto-web borne, il reste a verifier si certains cas legitimement dependants du web tombent encore trop vite en `no_data` puis `suspend`;
+- meme sans auto-web pre-node, il reste a verifier comment implementer proprement un rattrapage anti-suspension pour certains cas legitimement dependants du web;
 - la suspension ne doit rester que l'issue finale honnete des cas reellement non verifies, pas un substitut a un routage propre.
 
 ## Ce qui reste hypothese a ce stade
 
 - [ ] Le nettoyage lexical amont suffit-il a lui seul a faire disparaitre la majeure partie des suspensions indues, ou seulement le cas diagnostique ?
 - [ ] Faut-il revoir seulement la notion de provenance `web`, ou aussi la notion de `factuelle` pour les tours conceptuels longs ?
-- [x] Un auto-web backend borne etait bien necessaire pour les cas qui restent legitimement `verification_externe_requise` apres nettoyage des faux positifs
+- [x] Le design cible reste bien un rattrapage backend borne pour certains cas legitimement `verification_externe_requise`, mais pas via un pre-classement lexical avant le noeud
 - [ ] La combinaison `verification_externe_requise -> suspend` est-elle trop dure en general, ou seulement problematique quand l'etiquetage amont est faux ?
 - [ ] `provenances` suffit-il comme observabilite compacte de premier niveau, ou faudra-t-il plus tard un indicateur causal supplementaire tout aussi compact ?
 
@@ -160,7 +160,7 @@ Etat apres ce pas:
 
 - [ ] Reduire les faux positifs qui classent certains tours conceptuels / interpretatifs / atemporels en `verification_externe_requise`
 - [ ] Distinguer plus proprement les tours hermeneutiques / interpretatifs / conceptuels / atemporels des tours reellement factuels / sources / citationnels / dependants du web
-- [x] Retenir un auto-web backend borne qui n'intervient qu'apres assainissement des faux positifs, et non comme rustine primaire
+- [x] Retenir un rattrapage backend borne qui n'intervient qu'apres assainissement des faux positifs, et non comme rustine primaire
 - [ ] Garder la suspension comme filet final, pas comme premiere reponse par defaut
 - [ ] Rendre la cause de bascule observable de facon plus explicite si le chantier est ensuite implemente
 - [ ] Documenter la doctrine retenue dans les specs vivantes si le chantier est ensuite implemente
@@ -170,8 +170,8 @@ Etat apres ce pas:
 - [ ] Reproduction testee du cas critique avec un texte conceptuel atemporel contenant des usages ordinaires de marqueurs actuellement trop larges
 - [ ] Preuve qu'un tour conceptuel / interpretatif / atemporel ne tombe plus a tort en `verification_externe_requise`
 - [ ] Preuve qu'un tour reellement factuel / source / citationnel reste bien classable comme necessitant une verification externe
-- [x] Si l'auto-web est retenu: preuve qu'il ne se declenche pas sur les faux positifs nettoyes, mais seulement sur des cas reellement dependants du web
-- [x] Preuve que `web_search=true` reste un forcage manuel explicite et que `web_search=false` n'est plus un kill-switch absolu
+- [x] Preuve que le web pre-node ne se declenche plus sur `source/lien/reference/verification` ni sur les faux positifs nettoyes
+- [x] Preuve que `web_search=true` reste un forcage manuel explicite et que `web_search=false` n'active plus le web pre-node
 - [x] Preuve que le `web_input` canonique et l'observabilite compacte exposent maintenant `activation_mode`
 - [ ] Si la suspension reste necessaire: preuve qu'elle n'arrive plus avant les marches intermediaires retenues
 - [x] Preuve d'observabilite: les traces exposent maintenant `provenances` dans le resume compact `user_turn.regime_probatoire`

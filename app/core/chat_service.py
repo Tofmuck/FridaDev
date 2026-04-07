@@ -10,7 +10,6 @@ from core import chat_prompt_context
 from core import chat_session_flow
 from core import conversations_prompt_window
 from core import stimmung_agent
-from core.hermeneutic_node.doctrine import epistemic_regime as doctrinal_epistemic_regime
 from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
@@ -251,22 +250,11 @@ def _resolve_web_runtime_payload(
     *,
     user_msg: str,
     web_search_on: bool,
-    user_turn_input: Mapping[str, Any] | None,
     web_search_module: Any,
     requests_module: Any,
     llm_module: Any,
 ) -> dict[str, Any]:
     activation_mode = 'manual' if web_search_on else 'not_requested'
-    if activation_mode == 'not_requested' and doctrinal_epistemic_regime.requires_external_verification(
-        user_turn_input=user_turn_input,
-        web_input=canonical_web_input.build_web_input(
-            enabled=False,
-            status='skipped',
-            activation_mode='not_requested',
-            reason_code='not_applicable',
-        ),
-    ):
-        activation_mode = 'auto'
 
     if activation_mode == 'not_requested':
         chat_turn_logger.emit(
@@ -571,7 +559,6 @@ def chat_response(
     web_runtime_payload = _resolve_web_runtime_payload(
         user_msg=user_msg,
         web_search_on=web_search_on,
-        user_turn_input=user_turn_payload,
         web_search_module=web_search_module,
         requests_module=requests_module,
         llm_module=llm_module,

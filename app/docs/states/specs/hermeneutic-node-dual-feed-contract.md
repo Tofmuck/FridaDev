@@ -100,7 +100,7 @@ Cette spec est grounded dans l'etat reel du repo au 2026-03-31:
 - `app/core/chat_memory_flow.py` separe deja `memory_retrieved` de `memory_arbitration`;
 - `app/core/chat_prompt_context.py` continue a construire le contexte systeme et l'injection web pour le LLM principal;
 - `web` reste une phase d'injection tardive apres `build_prompt_messages(...)`, mais sa matiere canonique existe deja et doit rester lisible comme telle;
-- `web_input` expose maintenant `activation_mode = manual|auto|not_requested`, ce qui distingue le forcage manuel, l'auto-activation bornee et l'absence de declenchement;
+- `web_input` expose maintenant `activation_mode = manual|auto|not_requested`, ce qui conserve un contrat stable pour le forcage manuel, l'eventuel futur rattrapage borne et l'absence de declenchement;
 - l'injection web dans le prompt principal depend du runtime web reel, pas du seul booleen HTTP `web_search`.
 
 Le dual feed formelise donc un etat reel deja en place partiellement dans le code, au lieu d'inventer un dispositif fictif.
