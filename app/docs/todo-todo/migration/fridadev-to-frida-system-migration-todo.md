@@ -259,7 +259,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - `platform_fridadev_db_net`
   - `platform_browsing_net`
   - `platform_crawl_net`
-  - `platform_platform_net` non attache dans ce lot, car l'option embedding retenue ici reste l'endpoint stable `https://embed.frida-system.fr`
+  - `platform_platform_net` non attache dans ce lot initial; il a ete ajoute ensuite au lot d'acces OVH pour permettre le routage Caddy propre du clone
 - `.env` OVH cree hors Git:
   - `FRIDA_MEMORY_DB_DSN` pointe vers `platform-fridadev-postgres:5432/fridadev`
   - `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY` est preserve depuis `tofnas`
@@ -288,6 +288,51 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucun dump final
   - aucun gel des ecritures
   - `tofnas` reste la source autoritaire
+
+### Lot acces OVH - Caddy / Authelia / Homepage du clone
+
+- Hostname FridaDev retenu pour ce lot:
+  - `fridadev.137-74-204-229.sslip.io`
+- Hostname DB/admin retenu pour ce lot:
+  - `fridadev-db.137-74-204-229.sslip.io`
+- Statut DNS:
+  - les hostnames preferes `fridadev.frida-system.fr` et `fridadev-db.frida-system.fr` ne resolvent pas encore
+  - les hostnames `sslip.io` ci-dessus resolvent vers `137.74.204.229`
+  - ce lot valide donc un acces temporaire `sslip.io`, pas encore le DNS final
+- Reseaux et upstreams:
+  - `platform-fridadev` rejoint maintenant `platform_platform_net`
+  - `platform-caddy` atteint `platform-fridadev:8089`
+  - l'interface DB admin retenue est `Adminer`
+  - conteneur cree: `platform-frida-adminer`
+  - `platform-caddy` atteint `platform-frida-adminer:8080`
+- Protection web obligatoire:
+  - tout le hostname FridaDev passe derriere `import authn`
+  - aucune exception de chemin `/admin` ou `/api`
+  - tout le hostname DB/admin passe derriere `import authn`
+  - `FRIDA_ADMIN_TOKEN` ne remplace pas cette protection: l'exposition OVH est bien protegee par Caddy + Authelia au niveau du hostname entier
+- Routage Caddy ajoute:
+  - `{$FRIDADEV_HOST}` -> `platform-fridadev:8089`
+  - `{$FRIDADEV_DB_HOST}` -> `platform-frida-adminer:8080`
+- Homepage mis a jour:
+  - card `FridaDev` ajoutee dans le groupe `AI`
+  - card `FridaDev DB Admin` ajoutee dans le groupe `Administration`
+  - champs Docker renseignes:
+    - `server: local-docker`
+    - `container: platform-fridadev`
+    - `container: platform-frida-adminer`
+- Smoke tests d'acces reussis:
+  - Caddy -> FridaDev interne: `ok`
+  - Caddy -> Adminer interne: `ok`
+  - acces public sans session sur `fridadev.137-74-204-229.sslip.io` -> `302` vers Authelia
+  - acces public sans session sur `fridadev-db.137-74-204-229.sslip.io` -> `302` vers Authelia
+  - aucun `200` direct non protege observe sur ces hostnames
+- Ce lot reste borne:
+  - `tofnas` reste vivant et n'a pas ete desactive
+  - aucune suppression de la DB source
+  - aucun dump final dans ce lot
+  - aucun gel des ecritures dans ce lot
+  - aucune synchronisation continue automatique entre `tofnas` et OVH
+  - la DB cible OVH est encore alignee sur les comptages sources observes pendant ce lot, donc aucun snapshot DB supplementaire n'a ete juge necessaire ici
 
 ## Exigence critique: alias frontend / Caddy
 
@@ -425,13 +470,13 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
 - [x] Verifier que `EMBED_DIM=384`
 - [x] Verifier que le token embedding est present mais non expose
-- [ ] Choisir l'interface DB admin OVH, par exemple Adminer ou autre, ou decider de ne pas en exposer
-- [ ] Ajouter la card Homepage FridaDev dans `/opt/platform/homepage/services.yaml`
-- [ ] Ajouter la card Homepage DB/admin si l'interface DB est retenue
-- [ ] Renseigner `server: local-docker` et les bons `container:` pour les cards Homepage
+- [x] Choisir l'interface DB admin OVH, par exemple Adminer ou autre, ou decider de ne pas en exposer
+- [x] Ajouter la card Homepage FridaDev dans `/opt/platform/homepage/services.yaml`
+- [x] Ajouter la card Homepage DB/admin si l'interface DB est retenue
+- [x] Renseigner `server: local-docker` et les bons `container:` pour les cards Homepage
 - [ ] Verifier que les cards Homepage pointent vers les hostnames finaux
-- [ ] Choisir le hostname / alias frontend FridaDev OVH
-- [ ] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia
+- [x] Choisir le hostname / alias frontend FridaDev OVH
+- [x] Verifier DNS / domaine / Caddy / TLS / eventuelle Auth ou Authelia pour l'alias retenu
 - [ ] Router le hostname final vers le service FridaDev OVH
 - [x] Build FridaDev
 - [x] Dump/restore test de `fridadev` dans la cible OVH dediee sans bascule applicative
@@ -439,7 +484,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [ ] Migration `state/` finale
 - [x] Smoke test embedding depuis le futur conteneur FridaDev OVH
 - [x] Smoke tests internes FridaDev OVH sans exposition publique
-- [ ] Smoke test Homepage apres restart de la plateforme
+- [x] Smoke test Homepage apres restart de la plateforme
 - [ ] Smoke tests backend et frontend via le hostname final
 - [ ] Rollback plan
 - [ ] Documentation finale
@@ -467,9 +512,11 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - exposition d'une interface DB sans protection suffisante
 - divergence entre hostname Caddy et `href` Homepage
 - `FRIDA_ADMIN_TOKEN` source reste vide: ne pas supposer une protection admin deja prete avant exposition OVH
+- hostnames `sslip.io` valides pour ce lot, mais pas encore le DNS final `frida-system.fr`
+- aucune synchronisation continue automatique entre `tofnas` et OVH: un futur dump de fraicheur restera un snapshot ponctuel, pas une replication
 
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: lot d'acces OVH sans bascule, pour choisir le hostname FridaDev, cadrer Caddy / TLS / eventuelle Auth, puis preparer Homepage sans encore ouvrir la bascule finale.
-- Ne pas lancer encore la bascule finale: le dump final, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
+- Prochain pas recommande: soit garder ce clone OVH protege en `sslip.io` pour les vacances, soit ouvrir un lot DNS final `frida-system.fr` + validation d'acces definitive, sans couper `tofnas`.
+- Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
