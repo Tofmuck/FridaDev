@@ -493,10 +493,10 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Audit Docker destination
 - [x] Identifier la base source autoritaire via `FRIDA_MEMORY_DB_DSN`
 - [x] Creer une sous-stack DB Frida dediee sous `/opt/platform/fridadev-db`
-- [ ] Definir dump source + sauvegarde de rollback avant toute bascule
-- [ ] Definir restauration cible controlee sans perte et sans base vide finale
+- [x] Definir dump source + sauvegarde de rollback avant toute bascule ou resynchronisation ponctuelle du clone
+- [x] Definir restauration cible controlee sans perte et sans base vide finale
 - [x] Verifier extensions, notamment `pgvector`, schema, tables et comptages avant/apres restauration
-- [ ] Definir gel des ecritures ou fenetre de bascule pour eviter les doubles ecritures
+- [x] Definir une fenetre soft de snapshot avec verification pre/post des compteurs source pour eviter les doubles ecritures pendant la resynchronisation ponctuelle
 - [x] Audit `state/`
 - [x] Choix d'integration Compose OVH
 - [x] Integration FridaDev dans `/opt/platform` ou sous-stack dediee
@@ -505,7 +505,7 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Branchement SearXNG OVH
 - [x] Branchement Crawl4AI OVH
 - [x] Retenir pour ce lot l'acces embedding OVH via `https://embed.frida-system.fr`
-- [ ] Verifier que FridaDev OVH rejoint `platform_platform_net` si l'option embedding interne est retenue
+- [x] Embedding interne Docker non retenu: l'option stable reste `https://embed.frida-system.fr`; `platform-fridadev` rejoint deja `platform_platform_net` pour Caddy
 - [x] Verifier que le modele embedding reste `intfloat/multilingual-e5-small`
 - [x] Verifier que `EMBED_DIM=384`
 - [x] Verifier que le token embedding est present mais non expose
@@ -519,14 +519,14 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 - [x] Router le hostname final vers le service FridaDev OVH
 - [x] Build FridaDev
 - [x] Dump/restore test de `fridadev` dans la cible OVH dediee sans bascule applicative
-- [ ] Migration DB sans perte avec verification avant bascule
-- [ ] Migration `state/` finale
+- [x] Snapshot final DB de clone sans perte, avec verification source/cible
+- [x] Migration `state/` finale
 - [x] Smoke test embedding depuis le futur conteneur FridaDev OVH
 - [x] Smoke tests internes FridaDev OVH sans exposition publique
 - [x] Smoke test Homepage apres restart de la plateforme
 - [x] Smoke tests backend et frontend via le hostname final
-- [ ] Rollback plan
-- [ ] Documentation finale
+- [x] Rollback plan
+- [x] Documentation finale
 
 ## Risques
 
@@ -655,6 +655,72 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
   - aucun dump/restore n'a ete fait dans ce lot
   - aucune migration `state/` n'a ete faite dans ce lot
 
+### Cloture finale du clone OVH - DB / state / rollback
+
+- Date:
+  - `2026-04-07`
+- Snapshot final DB de clone:
+  - backup DB OVH cree avant ecrasement:
+    - `/opt/platform/fridadev-db/backups/fridadev-target-before-final-sync-20260407-184053.dump`
+  - dump source final cree hors Git:
+    - `/home/tof/docker-stacks/fridadev-migration-dumps/fridadev-final-sync-20260407-204106.dump`
+  - preuve de fenetre soft anti double-ecriture cote `tofnas`:
+    - `source_counts_before=56:262:208:53772`
+    - `source_counts_after=56:262:208:53772`
+    - les compteurs source n'ont donc pas bouge pendant le dump; si ces compteurs avaient diverge, il aurait fallu recommencer au lieu de restaurer
+  - restauration cible controlee:
+    - arret cible borne a `platform-fridadev`
+    - restore realise uniquement dans `platform-fridadev-postgres`
+    - aucune base vide finale n'a ete creee comme cible logique: la cible OVH finale est issue du restore controle du dump source `tofnas`
+- Comptages finaux source/cible apres restore:
+  - source `tofnas`: `conversations=56`, `conversation_messages=262`, `traces=208`, `runtime_settings=10`, `runtime_settings_history=25`, `identities=88`, `identity_mutables=1`, `chat_log_events=53772`
+  - cible OVH: `conversations=56`, `conversation_messages=262`, `traces=208`, `runtime_settings=10`, `runtime_settings_history=25`, `identities=88`, `identity_mutables=1`, `chat_log_events=53772`
+  - la conversation de validation OVH precedente n'est plus dans la cible active: elle reste recuperable via le backup DB OVH pre-sync si necessaire
+- Snapshot final `state/` du clone:
+  - backup `state/` OVH cree avant ecrasement:
+    - `/opt/platform/fridadev-app/state-backup-before-final-sync-20260407-184142.tar.gz`
+  - synchronisation finale realisee depuis `tofnas` vers OVH par flux `tar` sur SSH, car `rsync` n'etait pas disponible cote distant
+  - inventaire final `state/` verifie par chemin relatif + taille de fichier:
+    - aucun diff sur `find ... -type f -printf '%P\\t%s' | sort`
+    - `11` fichiers cote source et `11` fichiers cote OVH
+- Validation finale post-sync:
+  - `platform-fridadev-postgres` `healthy`
+  - `platform-fridadev` `healthy`
+  - DB depuis l'app OVH:
+    - `current_database() = fridadev`
+    - `current_user = tof`
+    - comptages lus depuis l'app conformes a la source finale
+  - UI / Authelia:
+    - `https://fridadev.frida-system.fr/` -> `302` Authelia
+    - `https://fridadev.frida-system.fr/admin` -> `302` Authelia
+    - `https://fridadev-db.frida-system.fr/` -> `302` Authelia
+    - routes internes valides: `/`, `/admin`, `/hermeneutic-admin`, `/log`
+  - services dependants:
+    - SearXNG `200`
+    - Crawl4AI `/health` `200`
+    - embedding `200`, dimension `384`
+  - logs:
+    - aucune nouvelle ligne `role \"$\\tof\" does not exist`
+    - aucune erreur critique remontee dans les fenetres de verification post-sync
+- Rollback plan:
+  - DB cible OVH:
+    - arreter temporairement l'app: `cd /opt/platform/fridadev-app && docker compose stop fridadev`
+    - restaurer le backup OVH pre-sync: `cat /opt/platform/fridadev-db/backups/fridadev-target-before-final-sync-20260407-184053.dump | docker exec -i platform-fridadev-postgres pg_restore --clean --if-exists --no-owner --no-acl -U tof -d fridadev`
+    - relancer l'app: `cd /opt/platform/fridadev-app && docker compose up -d fridadev`
+  - `state/` cible OVH:
+    - arreter temporairement l'app: `cd /opt/platform/fridadev-app && docker compose stop fridadev`
+    - restaurer le backup `state/`: `cd /opt/platform/fridadev-app && rm -rf state && tar -xzf state-backup-before-final-sync-20260407-184142.tar.gz`
+    - relancer l'app: `cd /opt/platform/fridadev-app && docker compose up -d fridadev`
+  - ce rollback ne revert pas automatiquement:
+    - le Git de `/opt/platform/fridadev`
+    - Caddy, Homepage ou DNS
+    - d'eventuelles nouvelles ecritures faites sur OVH apres la reprise du travail
+  - `tofnas` reste la source vivante et peut toujours servir de reference si un nouveau snapshot ponctuel est requis
+- Bornes:
+  - `tofnas` n'a pas ete modifie ni desactive
+  - aucune synchronisation continue automatique n'existe entre `tofnas` et OVH
+  - OVH peut diverger a nouveau des qu'on retravaille dessus apres ce snapshot final de clone
+
 ### Mode operatoire vacances - travailler depuis OVH
 
 - Si OVH devient l'environnement de travail temporaire pendant les vacances, commencer chaque session dans `/opt/platform/fridadev` par:
@@ -673,5 +739,5 @@ Obtenir plus tard une copie fonctionnelle de FridaDev sur OVH, avec:
 ## Decision recommandee
 
 - Ne pas migrer avant validation de ce TODO.
-- Prochain pas recommande: valider humainement l'usage sur `fridadev.frida-system.fr`, puis decider s'il faut faire un fresh snapshot final DB / `state/` et/ou retirer plus tard le fallback `sslip.io`, sans couper `tofnas`.
-- Ne pas lancer encore la bascule finale: le dump final de synchronisation, le gel des ecritures, la migration DB finale et la migration `state/` finale restent ouverts.
+- Prochain pas recommande: utiliser humainement le clone OVH sur `fridadev.frida-system.fr`, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
+- `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.
