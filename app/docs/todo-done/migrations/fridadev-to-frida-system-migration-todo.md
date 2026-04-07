@@ -806,6 +806,63 @@ Resultat obtenu:
 
 ## Post-cloture
 
+- Revalidation admin / observabilite du clone OVH faite le `2026-04-07` apres signalement utilisateur.
+- Surfaces HTML internes revalidees:
+  - `/admin` -> `200`, HTML present
+  - `/identity` -> `200`, HTML present
+  - `/hermeneutic-admin` -> `200`, HTML present
+  - `/log` -> `200`, HTML present
+  - `/logs` reste `404` et n'est pas une route exposee du clone
+- Navigation interne revalidee:
+  - `/admin` lie vers `/`, `/identity`, `/log`, `/hermeneutic-admin`
+  - `/identity` lie vers `/`, `/admin`, `/log`, `/hermeneutic-admin`
+  - `/log` lie vers `/`, `/admin`, `/identity`, `/hermeneutic-admin`
+  - aucun lien interne actif vers `/logs` n'a ete trouve dans `app/web/`
+- Assets JS admin revalides:
+  - `admin_api.js`
+  - `admin_ui_common.js`
+  - `admin_state.js`
+  - `admin.js`
+  - `log/log.js`
+  - `hermeneutic_admin/api.js`
+  - `hermeneutic_admin/main.js`
+  - tous servis en `200` depuis `platform-fridadev`
+- APIs admin effectivement utilisees par l'UI revalidees:
+  - `/api/admin/settings`
+  - `/api/admin/settings/status`
+  - `/api/admin/settings/main-model`
+  - `/api/admin/settings/database`
+  - `/api/admin/settings/services`
+  - `/api/admin/settings/resources`
+  - `/api/admin/identity/read-model`
+  - `/api/admin/identity/runtime-representations`
+  - `/api/admin/identity/governance`
+  - `/api/admin/hermeneutics/dashboard`
+  - `/api/admin/hermeneutics/arbiter-decisions`
+  - `/api/admin/hermeneutics/corrections-export`
+  - `/api/admin/logs/chat/metadata`
+  - `/api/admin/logs/chat`
+  - `toutes en 200` sur la fenetre de revalidation
+- Adminer / DB admin revalide:
+  - `https://fridadev-db.frida-system.fr/` reste protege par Authelia (`302`)
+  - l'upstream `platform-frida-adminer:8080` sert bien le formulaire Adminer
+  - login interne reussi vers `platform-fridadev-postgres` / `fridadev` avec l'utilisateur `tof`
+  - titre de page obtenu apres login: `Schema: public - platform-fridadev-postgres - Adminer`
+- Homepage revalidee:
+  - `FridaDev` -> `https://fridadev.frida-system.fr`
+  - `FridaDev DB Admin` -> `https://fridadev-db.frida-system.fr`
+- Authelia revalidee sur les surfaces admin publiques:
+  - `https://fridadev.frida-system.fr/admin` -> `302`
+  - `https://fridadev.frida-system.fr/hermeneutic-admin` -> `302`
+  - `https://fridadev.frida-system.fr/log` -> `302`
+  - `https://fridadev.frida-system.fr/identity` -> `302`
+  - `https://fridadev-db.frida-system.fr/` -> `302`
+- Logs de triage admin:
+  - aucune nouvelle erreur critique `500`, `FATAL` ou `traceback` n'a ete observee sur `platform-fridadev`, `platform-caddy`, `platform-fridadev-postgres` ou `platform-frida-adminer`
+  - les seuls `404` observes pendant le triage provenaient de sondes explicites sur des chemins obsoletes ou non exposes (`/logs`, `/api/admin/runtime-settings`, `/api/admin/runtime-representations`), pas des chemins utilises par l'UI actuelle
+- Conclusion post-cloture:
+  - aucune correction code ou runtime n'a ete necessaire pour cette reprise
+  - l'admin OVH et l'observabilite associee sont revalidees comme utilisables humainement dans l'etat courant
 - Clone OVH valide et utilisable sur `fridadev.frida-system.fr`.
 - Prochain pas recommande: utiliser humainement le clone OVH, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
 - `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.
