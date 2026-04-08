@@ -12,7 +12,7 @@ Le depot est maintenant exploite principalement depuis OVH pendant la periode de
 - URL publique: `https://fridadev.frida-system.fr`
 - DB/admin: `https://fridadev-db.frida-system.fr`
 
-`tofnas` reste vivant et utilisable comme instance de reference, mais il n'y a aucune synchronisation automatique entre `tofnas` et OVH. Toute resynchronisation DB ou `state/` doit etre une action explicite, documentee et precedee d'un backup.
+Cette instance OVH est l'environnement actif pour le travail courant. Il n'y a aucune synchronisation automatique avec d'autres copies ou serveurs. Toute resynchronisation DB ou `state/` entre environnements doit etre une action explicite, documentee et precedee d'un backup.
 
 ## Intention du depot
 
@@ -33,7 +33,7 @@ Le depot est maintenant exploite principalement depuis OVH pendant la periode de
 - Ne pas rouvrir silencieusement les decisions archivees dans `app/docs/todo-done/` sauf demande explicite.
 - Quand l'utilisateur colle des `Review findings`, re-verifier chaque finding dans l'etat courant du depot; marquer comme `stale` ce qui est deja corrige.
 - Apres chaque pas complet: valider, commit, puis push.
-- Sur OVH, Git doit pouvoir pousser directement vers GitHub via le credential helper local `store --file ~/.git-credentials-github`; ne pas contourner par `tofnas` sauf incident d'authentification.
+- Sur OVH, Git doit pouvoir pousser directement vers GitHub via le credential helper local `store --file ~/.git-credentials-github`; ne pas contourner par une autre machine sauf incident d'authentification.
 
 ## Environnement OVH courant
 
@@ -171,7 +171,7 @@ Ne pas melanger ce correctif avec les mises a jour d'environnement/plateforme.
 
 ## Tests et preuves
 
-Ne pas supposer que l'environnement de test de `tofnas` existe sur OVH. Au 2026-04-08, ces interpreteurs ne sont pas presents sur OVH:
+Ne pas supposer qu'un environnement de test historique ou local existe sur OVH. Au 2026-04-08, ces interpreteurs ne sont pas presents sur OVH:
 
 - `/home/tof/docker-stacks/fridadev/.venv/bin/python`
 - `/opt/platform/fridadev/.venv/bin/python`
