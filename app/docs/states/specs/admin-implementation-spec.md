@@ -70,7 +70,7 @@ Sont exclus de V1 :
 - `/admin` est l'entree canonique du nouvel admin ; `admin.html` reste un acces technique transitoire tant que le statique l'expose, mais le front et la documentation pointent vers `/admin`.
 - Aucune entree UI `/admin-old` n'est retenue pour cette migration ; l'UI logs/restart actuelle n'est pas preservee comme legacy.
 - `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles cote backend jusqu'au futur chantier logs.
-- Depuis la decision operateur du `2026-04-08`, le frontend admin ne demande plus de token admin applicatif et n'envoie plus `X-Admin-Token`; la protection publique repose sur Authelia au niveau du hostname.
+- Depuis la decision operateur du `2026-04-08`, le frontend admin ne demande plus de token admin applicatif et n'envoie plus `X-Admin-Token`; la protection publique repose sur Authelia au niveau du hostname, et le backend n'accepte `/api/admin/*` qu'en loopback local ou via le proxy Caddy transportant `Remote-User`.
 - Cette tranche documente cette contrainte mais ne l'implemente pas.
 
 ## Sujets explicitement hors tranche

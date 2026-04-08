@@ -896,6 +896,16 @@ Resultat obtenu:
     - `/api/admin/logs/chat?limit=5&offset=0` -> `200` sans token
     - `/api/admin/identity/read-model?limit=5` -> `200` sans token
     - `X-Forwarded-For: 82.67.119.187` sur ces APIs -> `200` sans token
+- Correctif de securite applique le `2026-04-08` apres constat d'exposition laterale:
+  - `enforce_admin_guard()` ne devait plus jamais rester un no-op sur OVH
+  - les appels directs conteneur -> conteneur vers `/api/admin/*` depuis `platform-caddy` et `platform-homepage` retournaient des JSON admin sans auth applicative
+  - correctif retenu: garde backend sans token humain
+  - contrat runtime corrige:
+    - loopback local conteneur accepte pour les proofs in-container
+    - source proxy de confiance `platform-caddy` requise hors loopback
+    - header `Remote-User` requis pour prouver le passage par Caddy + Authelia
+    - appels lateraux directs depuis les conteneurs pairs refuses
+  - `FRIDA_ADMIN_TOKEN` reste obsolete pour l'acces admin humain
 - Clone OVH valide et utilisable sur `fridadev.frida-system.fr`.
 - Prochain pas recommande: utiliser humainement le clone OVH, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
 - `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.

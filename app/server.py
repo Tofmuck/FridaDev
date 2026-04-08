@@ -5,7 +5,9 @@ import hashlib
 import codecs
 import logging
 import re
+import socket
 import time
+from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
 
@@ -114,8 +116,80 @@ logger.info(
     _RUNTIME_FINGERPRINT['logs_path'],
 )
 
+
+_TRUSTED_ADMIN_PROXY_HOSTS = ('platform-caddy', 'caddy')
+_TRUSTED_ADMIN_IDENTITY_HEADERS = ('Remote-User',)
+
+
+def _admin_request_remote_addr() -> str:
+    return str(request.remote_addr or '').strip()
+
+
+def _is_loopback_ip(client_ip: str) -> bool:
+    if not client_ip:
+        return False
+    try:
+        return ip_address(client_ip).is_loopback
+    except ValueError:
+        return False
+
+
+def _trusted_admin_proxy_ips() -> set[str]:
+    addresses: set[str] = set()
+    for hostname in _TRUSTED_ADMIN_PROXY_HOSTS:
+        try:
+            for result in socket.getaddrinfo(hostname, None):
+                sockaddr = result[4]
+                if sockaddr and sockaddr[0]:
+                    addresses.add(str(sockaddr[0]).strip())
+        except socket.gaierror:
+            continue
+    return addresses
+
+
+def _trusted_admin_identity() -> dict[str, str]:
+    return {
+        header: str(request.headers.get(header, '') or '').strip()
+        for header in _TRUSTED_ADMIN_IDENTITY_HEADERS
+    }
+
+
+def _has_trusted_admin_identity(identity: dict[str, str]) -> bool:
+    return any(identity.values())
+
+
+def _admin_auth_error(reason: str, status_code: int, client_ip: str, identity: dict[str, str] | None = None):
+    payload = {
+        'reason': reason,
+        'path': request.path,
+        'method': request.method,
+        'client_ip': client_ip,
+    }
+    if identity:
+        for header, value in identity.items():
+            if value:
+                payload[header.lower().replace('-', '_')] = value
+    admin_logs.log_event('admin_access_denied', level='WARN', **payload)
+    return jsonify({'ok': False, 'error': 'admin access denied'}), status_code
+
+
 @app.before_request
 def enforce_admin_guard():
+    if not request.path.startswith('/api/admin/'):
+        return None
+
+    client_ip = _admin_request_remote_addr()
+    if _is_loopback_ip(client_ip):
+        return None
+
+    trusted_proxy_ips = _trusted_admin_proxy_ips()
+    if client_ip not in trusted_proxy_ips:
+        return _admin_auth_error('untrusted_proxy_source', 403, client_ip)
+
+    identity = _trusted_admin_identity()
+    if not _has_trusted_admin_identity(identity):
+        return _admin_auth_error('missing_proxy_identity', 401, client_ip, identity=identity)
+
     return None
 
 

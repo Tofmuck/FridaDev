@@ -20,7 +20,8 @@ Il complete :
 
 - Les surfaces `/admin`, `/log`, `/identity`, `/hermeneutic-admin` et `/api/admin/*` ne demandent plus de token admin applicatif.
 - La protection publique attendue est Authelia au niveau du hostname.
-- En interne applicatif, les routes `/api/admin/*` restent accessibles sans header `X-Admin-Token`.
+- Les routes `/api/admin/*` ne doivent plus etre accessibles lateralement depuis les conteneurs pairs du reseau Docker.
+- Le runtime n'accepte ces routes qu'en loopback local ou via le chemin Caddy/Authelia, avec header proxy `Remote-User`.
 - Sur OVH, `FRIDA_ADMIN_LAN_ONLY` ne doit pas etre reactive sans decision explicite.
 
 ## Perimetre V1 reellement exploitable

@@ -90,19 +90,21 @@ Si une modification plateforme est necessaire:
 
 ## Securite admin OVH
 
-Sur OVH, l'admin FridaDev est protegee par deux niveaux:
+Sur OVH, l'admin FridaDev ne doit pas reposer sur un token humain applicatif.
 
-- Authelia sur tout le hostname `fridadev.frida-system.fr`;
-- `FRIDA_ADMIN_TOKEN` pour les APIs `/api/admin/*`.
+Contrat attendu:
 
-Regle importante: ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sur OVH sans decision explicite de l'operateur. Derriere Caddy/Authelia, Flask lit l'IP publique via `X-Forwarded-For`; le filtrage LAN applicatif a deja bloque l'admin humaine avec `reason=ip_not_allowed`. L'etat attendu sur OVH est donc:
+- Authelia protege tout le hostname `fridadev.frida-system.fr`;
+- les APIs `/api/admin/*` n'acceptent que:
+  - les appels proxifies par Caddy apres auth Authelia, avec identite proxy `Remote-User`;
+  - ou le loopback local du conteneur pour les preuves techniques in-container;
+- les appels lateraux directs depuis les autres conteneurs Docker doivent etre refuses.
 
-```text
-FRIDA_ADMIN_LAN_ONLY=0
-FRIDA_ADMIN_TOKEN=<set>
-```
+Regles importantes:
 
-Ne jamais afficher la valeur du token dans les logs, les commits ou les reponses.
+- ne pas reintroduire `FRIDA_ADMIN_TOKEN` comme garde d'acces humaine;
+- ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sur OVH sans decision explicite de l'operateur;
+- ne jamais afficher la valeur d'un token ou d'un secret runtime dans les logs, les commits ou les reponses.
 
 ## Discipline d'architecture
 

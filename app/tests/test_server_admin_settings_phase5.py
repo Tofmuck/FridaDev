@@ -728,6 +728,50 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
                 msg=f'unexpected admin guard on {method} {path}, got {response.status_code}',
             )
 
+    def test_admin_guard_rejects_untrusted_peer_even_with_remote_user_header(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.get(
+                '/api/admin/settings/status',
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.20.0.5'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'admin access denied'})
+
+    def test_admin_guard_rejects_trusted_proxy_without_remote_user_header(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.get(
+                '/api/admin/settings/status',
+                environ_overrides={'REMOTE_ADDR': '172.20.0.19'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'admin access denied'})
+
+    def test_admin_guard_accepts_trusted_proxy_with_remote_user_header(self) -> None:
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.get(
+                '/api/admin/settings/status',
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.20.0.19'},
+            )
+        finally:
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+
     def test_patch_admin_settings_main_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section
