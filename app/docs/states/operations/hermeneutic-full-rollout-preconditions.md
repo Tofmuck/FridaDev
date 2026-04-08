@@ -47,7 +47,7 @@ Avant de redemarrer en mode full, verifier:
 2. Sur `/log`, un tour recent montre bien les stages `stimmung_agent`, `hermeneutic_node_insertion`, `primary_node` et `validation_agent`.
 3. Sur `/hermeneutic-admin`, le dashboard et l'inspection par tour chargent correctement; la navigation admin reste utilisable.
 4. La visibilite tokens/provider deja fermee reste lisible dans les surfaces existantes; aucun chantier token bloquant ne reste ouvert pour cette bascule.
-5. Le token admin et la route backend `POST /api/admin/restart` sont disponibles; l'operateur sait que cette route provoque un auto-exit du runtime/conteneur.
+5. Les surfaces admin publiques restent derriere Authelia, les appels backend admin passent par Caddy avec `Remote-User`, et la route backend `POST /api/admin/restart` reste disponible; aucun token admin humain n'est requis.
 6. La valeur cible preparee pour le redemarrage est explicitement `HERMENEUTIC_MODE=enforced_all`.
 
 ## Checklist post-restart immediate
