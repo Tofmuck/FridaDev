@@ -1,9 +1,14 @@
 # Secrets and local runtime configuration
+.env
+.env.local
+.env.*.local
 app/.env
 app/.env.local
 app/.env.*.local
 
 # Runtime state and generated data
+# Note: the two static identity seed files already tracked under
+# state/data/identity/ stay tracked; new runtime state remains ignored.
 state/
 app/conv/
 app/data/
@@ -35,6 +40,12 @@ htmlcov/
 *.tmp
 *.tmpcodex
 *.corrupt-*.json
+*.dump
+*.sql
+*.tar.gz
 
 # Local Codex CLI residue
 .codex
+
+# Local Claude/Codex desktop settings
+.claude/
