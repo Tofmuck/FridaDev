@@ -34,19 +34,41 @@ def _governed_config_value(config_module: Any, key: str) -> Any:
 
 
 def _embedding_similarity_safe(
-    text_a: str,
-    text_b: str,
+    vec_a: Sequence[float] | None,
+    vec_b: Sequence[float] | None,
     *,
-    embed_fn: Callable[..., list[float]],
     cosine_similarity_fn: Callable[[Sequence[float], Sequence[float]], float],
     logger: Any,
 ) -> float | None:
     try:
-        vec_a = embed_fn(text_a, mode='passage')
-        vec_b = embed_fn(text_b, mode='passage')
+        if vec_a is None or vec_b is None:
+            return None
         return cosine_similarity_fn(vec_a, vec_b)
     except Exception as exc:
         logger.warning('conflict_embedding_similarity_error err=%s', exc)
+        return None
+
+
+def _embed_identity_conflict_vector(
+    text: str,
+    *,
+    purpose: str,
+    embed_fn: Callable[..., list[float]],
+    logger: Any,
+) -> list[float] | None:
+    try:
+        return embed_fn(text, mode='passage', purpose=purpose)
+    except TypeError as exc:
+        if 'purpose' not in str(exc):
+            logger.warning('conflict_embedding_similarity_error purpose=%s err=%s', purpose, exc)
+            return None
+        try:
+            return embed_fn(text, mode='passage')
+        except Exception as inner_exc:
+            logger.warning('conflict_embedding_similarity_error purpose=%s err=%s', purpose, inner_exc)
+            return None
+    except Exception as exc:
+        logger.warning('conflict_embedding_similarity_error purpose=%s err=%s', purpose, exc)
         return None
 
 
@@ -143,7 +165,8 @@ def detect_and_record_conflicts(
     policy_module: Any,
     logger: Any,
     conflict_already_open_fn: Callable[[Any, str, str], bool],
-    embedding_similarity_safe_fn: Callable[[str, str], float | None],
+    embed_identity_conflict_vector_fn: Callable[..., Sequence[float] | None],
+    embedding_similarity_safe_fn: Callable[[Sequence[float] | None, Sequence[float] | None], float | None],
     insert_conflict_fn: Callable[[Any, str, str, float, str], None],
 ) -> None:
     if not identity_id:
@@ -189,6 +212,17 @@ def detect_and_record_conflicts(
                 )
                 others = cur.fetchall()
 
+                candidate_count = len(others)
+                same_content_skipped = 0
+                open_conflict_skipped = 0
+                similarity_comparisons = 0
+                contradictions_detected = 0
+                current_embedding_calls = 0
+                candidate_embedding_calls = 0
+                current_embedding_reused = False
+                current_vector: Sequence[float] | None = None
+                current_embedding_blocked = False
+
                 for other in others:
                     other_id = str(other[0])
                     other_content = str(other[1] or '')
@@ -197,12 +231,39 @@ def detect_and_record_conflicts(
                     other_override = str(other[5] or 'none')
 
                     if not other_content_norm or other_content_norm == me_content_norm:
+                        same_content_skipped += 1
                         continue
 
                     if conflict_already_open_fn(cur, me_id, other_id):
+                        open_conflict_skipped += 1
                         continue
 
-                    semantic_similarity = embedding_similarity_safe_fn(me_content, other_content)
+                    if current_vector is None and not current_embedding_blocked:
+                        current_vector = embed_identity_conflict_vector_fn(
+                            me_content,
+                            purpose='identity_conflict_current',
+                        )
+                        if current_vector is not None:
+                            current_embedding_calls += 1
+                    if current_vector is None:
+                        current_embedding_blocked = True
+                        break
+
+                    candidate_vector = embed_identity_conflict_vector_fn(
+                        other_content,
+                        purpose='identity_conflict_candidate',
+                    )
+                    if candidate_vector is None:
+                        continue
+
+                    candidate_embedding_calls += 1
+                    if candidate_embedding_calls > 1 and current_embedding_calls == 1:
+                        current_embedding_reused = True
+                    semantic_similarity = embedding_similarity_safe_fn(current_vector, candidate_vector)
+                    if semantic_similarity is None:
+                        continue
+
+                    similarity_comparisons += 1
                     contradictory, confidence_conflict, reason = policy_module.is_contradictory(
                         me_content,
                         other_content,
@@ -211,6 +272,7 @@ def detect_and_record_conflicts(
                     if not contradictory:
                         continue
 
+                    contradictions_detected += 1
                     insert_conflict_fn(cur, me_id, other_id, confidence_conflict, reason)
 
                     action = policy_module.conflict_resolution_action(confidence_conflict)
@@ -255,6 +317,25 @@ def detect_and_record_conflicts(
                                 ''',
                                 (f'policy:weak_conflict:{reason}'[:500], candidate_id),
                             )
+
+                if candidate_count > 0:
+                    chat_turn_logger.emit(
+                        'identity_conflict_scan',
+                        status='ok',
+                        payload={
+                            'subject': me_subject,
+                            'candidate_count': candidate_count,
+                            'same_content_skipped': same_content_skipped,
+                            'open_conflict_skipped': open_conflict_skipped,
+                            'similarity_comparisons': similarity_comparisons,
+                            'conflicts_detected': contradictions_detected,
+                            'current_embedding_calls': current_embedding_calls,
+                            'candidate_embedding_calls': candidate_embedding_calls,
+                            'embedding_calls_total': current_embedding_calls + candidate_embedding_calls,
+                            'current_embedding_reused': current_embedding_reused,
+                            'current_embedding_blocked': current_embedding_blocked,
+                        },
+                    )
 
             conn.commit()
     except Exception as exc:

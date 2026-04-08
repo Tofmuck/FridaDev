@@ -144,7 +144,14 @@ def init_db() -> None:
 
 def _normalize_embedding_source_kind(*, purpose: str | None, mode: str) -> str:
     normalized = str(purpose or '').strip().lower()
-    if normalized in {'query', 'trace_user', 'trace_assistant', 'summary'}:
+    if normalized in {
+        'query',
+        'trace_user',
+        'trace_assistant',
+        'summary',
+        'identity_conflict_current',
+        'identity_conflict_candidate',
+    }:
         return normalized
     if str(mode).strip().lower() == 'query':
         return 'query'
@@ -524,12 +531,23 @@ def _cosine_similarity(vec_a: Sequence[float], vec_b: Sequence[float]) -> float:
     return memory_identity_dynamics._cosine_similarity(vec_a, vec_b)
 
 
-def _embedding_similarity_safe(text_a: str, text_b: str) -> Optional[float]:
+def _embedding_similarity_safe(
+    vec_a: Sequence[float] | None,
+    vec_b: Sequence[float] | None,
+) -> Optional[float]:
     return memory_identity_dynamics._embedding_similarity_safe(
-        text_a,
-        text_b,
-        embed_fn=embed,
+        vec_a,
+        vec_b,
         cosine_similarity_fn=_cosine_similarity,
+        logger=logger,
+    )
+
+
+def _embed_identity_conflict_vector(text: str, *, purpose: str) -> Optional[list[float]]:
+    return memory_identity_dynamics._embed_identity_conflict_vector(
+        text,
+        purpose=purpose,
+        embed_fn=embed,
         logger=logger,
     )
 
@@ -580,6 +598,7 @@ def detect_and_record_conflicts(identity_id: str) -> None:
         policy_module=policy,
         logger=logger,
         conflict_already_open_fn=_conflict_already_open,
+        embed_identity_conflict_vector_fn=_embed_identity_conflict_vector,
         embedding_similarity_safe_fn=_embedding_similarity_safe,
         insert_conflict_fn=_insert_conflict,
     )

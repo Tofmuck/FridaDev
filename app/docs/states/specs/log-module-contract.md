@@ -77,6 +77,7 @@ Mapping guidance (MVP):
 The MVP event list is:
 - `turn_start`
 - `embedding`
+- `identity_conflict_scan`
 - `memory_retrieve`
 - `summaries`
 - `identities_read`
@@ -97,7 +98,22 @@ Minimum event-specific details:
   - `web_search_enabled`, `user_msg_chars`
 
 - `embedding`
-  - `mode`, `provider`, `dimensions`
+  - `mode`, `provider`, `dimensions`, `source_kind`
+  - stable initial `source_kind` values:
+    - `query`
+    - `trace_user`
+    - `trace_assistant`
+    - `summary`
+    - `identity_conflict_current`
+    - `identity_conflict_candidate`
+
+- `identity_conflict_scan`
+  - compact summary of one identity conflict pass
+  - `candidate_count`, `same_content_skipped`, `open_conflict_skipped`
+  - `similarity_comparisons`, `conflicts_detected`
+  - `current_embedding_calls`, `candidate_embedding_calls`, `embedding_calls_total`
+  - `current_embedding_reused`, `current_embedding_blocked`
+  - goal: explain why a turn emitted several conflict-related embeddings without raw identity dumps
 
 - `memory_retrieve`
   - `top_k_requested`, `top_k_returned`

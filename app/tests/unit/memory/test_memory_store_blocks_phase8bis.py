@@ -276,6 +276,231 @@ class MemoryIdentityDynamicsBlockTests(unittest.TestCase):
         self.assertIn("llm:llm-signal", processed[0]["reason"])
         self.assertIn("policy:policy-accepted", processed[0]["reason"])
 
+    def test_detect_and_record_conflicts_reuses_current_embedding_once_for_multiple_candidates(self) -> None:
+        embed_calls: list[tuple[str, str]] = []
+        similarity_pairs: list[tuple[tuple[float, ...], tuple[float, ...]]] = []
+
+        class FakeCursor:
+            def __enter__(self) -> "FakeCursor":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...]) -> None:
+                return None
+
+            def fetchone(self) -> tuple[Any, ...]:
+                return (
+                    "11111111-1111-1111-1111-111111111111",
+                    "llm",
+                    "Current identity",
+                    "current identity",
+                    "accepted",
+                    datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc),
+                    "none",
+                )
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    (
+                        "22222222-2222-2222-2222-222222222222",
+                        "Candidate one",
+                        "candidate one",
+                        "accepted",
+                        datetime(2026, 4, 8, 9, 59, tzinfo=timezone.utc),
+                        "none",
+                    ),
+                    (
+                        "33333333-3333-3333-3333-333333333333",
+                        "Candidate two",
+                        "candidate two",
+                        "accepted",
+                        datetime(2026, 4, 8, 9, 58, tzinfo=timezone.utc),
+                        "none",
+                    ),
+                    (
+                        "44444444-4444-4444-4444-444444444444",
+                        "Candidate three",
+                        "candidate three",
+                        "accepted",
+                        datetime(2026, 4, 8, 9, 57, tzinfo=timezone.utc),
+                        "none",
+                    ),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> "FakeConn":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+            def commit(self) -> None:
+                return None
+
+        def fake_embed_identity_conflict_vector(text: str, *, purpose: str) -> list[float]:
+            embed_calls.append((purpose, text))
+            if purpose == "identity_conflict_current":
+                return [1.0, 0.0]
+            return [0.0, 1.0]
+
+        def fake_embedding_similarity_safe(
+            vec_a: list[float] | None,
+            vec_b: list[float] | None,
+        ) -> float | None:
+            if vec_a is None or vec_b is None:
+                return None
+            similarity_pairs.append((tuple(vec_a), tuple(vec_b)))
+            return 0.42
+
+        policy_module = SimpleNamespace(
+            is_contradictory=lambda *_args, **_kwargs: (False, 0.0, "no_conflict"),
+            conflict_resolution_action=lambda _confidence: "no_op",
+        )
+
+        memory_identity_dynamics.detect_and_record_conflicts(
+            "11111111-1111-1111-1111-111111111111",
+            conn_factory=lambda: FakeConn(),
+            policy_module=policy_module,
+            logger=_NoopLogger(),
+            conflict_already_open_fn=lambda *_args, **_kwargs: False,
+            embed_identity_conflict_vector_fn=fake_embed_identity_conflict_vector,
+            embedding_similarity_safe_fn=fake_embedding_similarity_safe,
+            insert_conflict_fn=lambda *_args, **_kwargs: None,
+        )
+
+        purposes = [purpose for purpose, _text in embed_calls]
+        self.assertEqual(purposes.count("identity_conflict_current"), 1)
+        self.assertEqual(purposes.count("identity_conflict_candidate"), 3)
+        self.assertEqual(
+            purposes,
+            [
+                "identity_conflict_current",
+                "identity_conflict_candidate",
+                "identity_conflict_candidate",
+                "identity_conflict_candidate",
+            ],
+        )
+        self.assertEqual(len(similarity_pairs), 3)
+
+    def test_detect_and_record_conflicts_still_records_conflict_with_reused_embeddings(self) -> None:
+        inserted_conflicts: list[tuple[str, str, float, str]] = []
+        embed_calls: list[str] = []
+
+        class FakeCursor:
+            def __enter__(self) -> "FakeCursor":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...]) -> None:
+                return None
+
+            def fetchone(self) -> tuple[Any, ...]:
+                return (
+                    "11111111-1111-1111-1111-111111111111",
+                    "llm",
+                    "Current identity",
+                    "current identity",
+                    "accepted",
+                    datetime(2026, 4, 8, 10, 0, tzinfo=timezone.utc),
+                    "none",
+                )
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    (
+                        "22222222-2222-2222-2222-222222222222",
+                        "Conflicting candidate",
+                        "conflicting candidate",
+                        "accepted",
+                        datetime(2026, 4, 8, 9, 59, tzinfo=timezone.utc),
+                        "none",
+                    ),
+                    (
+                        "33333333-3333-3333-3333-333333333333",
+                        "Compatible candidate",
+                        "compatible candidate",
+                        "accepted",
+                        datetime(2026, 4, 8, 9, 58, tzinfo=timezone.utc),
+                        "none",
+                    ),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> "FakeConn":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+            def commit(self) -> None:
+                return None
+
+        def fake_embed_identity_conflict_vector(text: str, *, purpose: str) -> list[float]:
+            embed_calls.append(purpose)
+            vectors = {
+                "Current identity": [1.0, 0.0],
+                "Conflicting candidate": [1.0, 0.0],
+                "Compatible candidate": [0.0, 1.0],
+            }
+            return vectors[text]
+
+        def fake_insert_conflict(
+            _cur: Any,
+            id_a: str,
+            id_b: str,
+            confidence_conflict: float,
+            reason: str,
+        ) -> None:
+            inserted_conflicts.append((id_a, id_b, confidence_conflict, reason))
+
+        policy_module = SimpleNamespace(
+            is_contradictory=lambda _me, _other, *, semantic_similarity: (
+                semantic_similarity >= 0.8,
+                semantic_similarity,
+                "semantic_conflict",
+            ),
+            conflict_resolution_action=lambda _confidence: "no_op",
+        )
+
+        memory_identity_dynamics.detect_and_record_conflicts(
+            "11111111-1111-1111-1111-111111111111",
+            conn_factory=lambda: FakeConn(),
+            policy_module=policy_module,
+            logger=_NoopLogger(),
+            conflict_already_open_fn=lambda *_args, **_kwargs: False,
+            embed_identity_conflict_vector_fn=fake_embed_identity_conflict_vector,
+            embedding_similarity_safe_fn=lambda vec_a, vec_b: memory_identity_dynamics._embedding_similarity_safe(
+                vec_a,
+                vec_b,
+                cosine_similarity_fn=memory_identity_dynamics._cosine_similarity,
+                logger=_NoopLogger(),
+            ),
+            insert_conflict_fn=fake_insert_conflict,
+        )
+
+        self.assertEqual(embed_calls.count("identity_conflict_current"), 1)
+        self.assertEqual(embed_calls.count("identity_conflict_candidate"), 2)
+        self.assertEqual(len(inserted_conflicts), 1)
+        self.assertEqual(
+            inserted_conflicts[0],
+            (
+                "11111111-1111-1111-1111-111111111111",
+                "22222222-2222-2222-2222-222222222222",
+                1.0,
+                "semantic_conflict",
+            ),
+        )
+
 
 class HermeneuticsPolicyWebReadingGuardTests(unittest.TestCase):
     def test_filter_unsupported_web_reading_identities_rejects_direct_claim_for_snippet_fallback(self) -> None:

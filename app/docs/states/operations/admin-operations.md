@@ -169,6 +169,30 @@ Checks courts a refaire apres deploiement :
 7. `POST /api/admin/restart` seulement dans une fenetre de maintenance adaptee
 8. `POST /api/chat` pour verifier que le chat principal reste operationnel
 
+## Lecture operatoire des embeddings dans `/log`
+
+Un meme tour peut emettre plusieurs evenements `embedding` pour des usages differents. C'est normal si les `source_kind` restent lisibles et si le volume reste coherent avec le pipeline :
+
+- `query` : embedding de la requete de retrieval memoire
+- `trace_user` : persistance de trace pour le message user
+- `trace_assistant` : persistance de trace pour le message assistant
+- `summary` : persistance d'un resume
+- `identity_conflict_current` : embedding du texte courant examine pendant un scan de conflits d'identite
+- `identity_conflict_candidate` : embedding d'un candidat compare pendant ce meme scan
+
+Le scan de conflits d'identite emet aussi un evenement `identity_conflict_scan` qui resume la passe :
+
+- nombre de candidats vus et compares
+- conflits detectes
+- nombre d'embeddings courant/candidats
+- indicateur `current_embedding_reused`
+
+Contrat operatoire actuel :
+
+- les embeddings de conflit d'identite ne doivent plus remonter en `source_kind=unknown`
+- le vecteur du texte courant est calcule une seule fois par passe de conflit, puis reutilise dans la boucle
+- pour `N` candidats, le cout cible du scan est donc `1 + N` embeddings, et non plus `2 * N`
+
 ## Point de vigilance
 
 - `POST /api/admin/restart` provoque un auto-exit du runtime
