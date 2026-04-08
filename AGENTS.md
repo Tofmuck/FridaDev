@@ -33,6 +33,7 @@ Le depot est maintenant exploite principalement depuis OVH pendant la periode de
 - Ne pas rouvrir silencieusement les decisions archivees dans `app/docs/todo-done/` sauf demande explicite.
 - Quand l'utilisateur colle des `Review findings`, re-verifier chaque finding dans l'etat courant du depot; marquer comme `stale` ce qui est deja corrige.
 - Apres chaque pas complet: valider, commit, puis push.
+- Sur OVH, Git doit pouvoir pousser directement vers GitHub via le credential helper local `store --file ~/.git-credentials-github`; ne pas contourner par `tofnas` sauf incident d'authentification.
 
 ## Environnement OVH courant
 
