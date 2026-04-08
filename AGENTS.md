@@ -1,171 +1,221 @@
 # AGENTS.md
 
-## Scope
+## Portee
 
-These instructions apply to the whole `FridaDev` repository.
+Ces instructions s'appliquent a tout le depot `FridaDev`.
 
-## Repository intent
+Le depot est maintenant exploite principalement depuis OVH pendant la periode de travail distante:
 
-`FridaDev` is a working repository, not a generic scaffold.
-Agents must optimize for:
+- working copy active: `/opt/platform/fridadev`
+- sous-stack app: `/opt/platform/fridadev-app`
+- sous-stack DB: `/opt/platform/fridadev-db`
+- URL publique: `https://fridadev.frida-system.fr`
+- DB/admin: `https://fridadev-db.frida-system.fr`
 
-- explicit boundaries between modules and responsibilities
-- readable structure over clever abstraction
-- small, testable, reversible changes
-- documentation that is easy to classify and retrieve quickly
-- no false refactors that merely move complexity around
+`tofnas` reste vivant et utilisable comme instance de reference, mais il n'y a aucune synchronisation automatique entre `tofnas` et OVH. Toute resynchronisation DB ou `state/` doit etre une action explicite, documentee et precedee d'un backup.
 
-## Working method
+## Intention du depot
 
-- Work one minimal, closed, reversible step at a time.
-- Before patching, check explicitly whether there is a cleaner, shorter, lower-side-effect plan; if yes, stop and propose it before editing.
-- Do not implement multiple unrelated changes in the same patch.
-- Do not perform opportunistic refactors outside the requested scope.
-- Prefer small, testable increments over large rewrites.
-- Do not silently reopen decisions already archived in `app/docs/todo-done/` unless the user explicitly asks to revisit them.
-- When users paste `Review findings`, re-verify each finding against current repository state; mark already-fixed items as `stale` and do not re-apply them.
-- After each completed step: validate, then commit, then push.
+`FridaDev` est un depot de travail reel, pas un scaffold generique. Les agents doivent optimiser pour:
 
-## Architecture discipline
+- des frontieres explicites entre modules et responsabilites;
+- une structure lisible plutot qu'une abstraction clever;
+- des changements petits, testables et reversibles;
+- une documentation facile a classer et a retrouver;
+- aucun faux refactor qui deplace seulement la complexite.
 
-The repository is expected to stay readable by responsibility:
+## Methode de travail
 
-- `app/server.py`: HTTP entrypoints and orchestration only
-- `app/core/`: application flows and conversation services
-- `app/admin/`: runtime settings, admin-side logic, admin support services
-- `app/memory/`: memory pipeline, persistence, retrieval, arbitration, identity logic
-- `app/web/`: browser-side UI and admin frontend code
-- `app/docs/`: structured working documentation
+- Travailler un pas minimal, ferme et reversible a la fois.
+- Avant de patcher, verifier explicitement s'il existe un plan plus simple, plus sur ou avec moins d'effets de bord; si oui, s'arreter et le proposer.
+- Ne pas melanger plusieurs sujets non lies dans le meme patch.
+- Ne pas faire de refactor opportuniste hors scope.
+- Ne pas rouvrir silencieusement les decisions archivees dans `app/docs/todo-done/` sauf demande explicite.
+- Quand l'utilisateur colle des `Review findings`, re-verifier chaque finding dans l'etat courant du depot; marquer comme `stale` ce qui est deja corrige.
+- Apres chaque pas complet: valider, commit, puis push.
 
-Rules:
+## Environnement OVH courant
 
-- Keep module boundaries explicit.
-- Search for side effects and dependency leaks before editing, not after.
-- Prefer extraction by real responsibility or pipeline stage, not by convenience.
-- Prefer separation by business responsibility or pipeline role, not by local convenience.
-- Do not create new god modules.
-- Do not create vague dump files such as `utils.py`, `helpers.py`, or similar catch-all modules.
-- A facade or orchestrator is acceptable only if it stays readable, bounded, and delegates clearly.
-- If coupling cannot be removed yet, make it explicit and bounded rather than hiding it behind a cosmetic split.
-- Do not rename or move files as a cosmetic gesture; every move must improve classification, readability, or dependency structure.
-- Keep files short, legible, and bounded; if a file starts becoming a grab-bag, stop and split by real responsibility.
+Au demarrage d'une session de travail sur OVH:
 
-## Documentation placement rules
+```bash
+cd /opt/platform/fridadev
+git fetch origin main
+git pull --ff-only origin main
+git status --short
+```
 
-`app/docs/` is intentionally structured and its root must stay minimal.
+Pour un changement runtime applicatif:
 
-- `app/docs/README.md` is the entrypoint.
-- New documentation should not be dropped at the root of `app/docs/` unless the user explicitly asks for that.
+1. patcher le depot dans `/opt/platform/fridadev`;
+2. executer les tests/proofs adaptes;
+3. commit + push;
+4. rebuild/restart uniquement l'app si le changement touche le runtime:
 
-Use these destinations:
+```bash
+cd /opt/platform/fridadev-app
+docker compose up -d --build fridadev
+```
 
-- `app/docs/states/architecture/`: architecture notes, repository conventions, structural decisions
-- `app/docs/states/specs/`: normative specs and schemas
-- `app/docs/states/operations/`: operational guides and runbooks
-- `app/docs/states/baselines/`: dated baselines and technical snapshots
-- `app/docs/states/policies/`: governance, retention, and similar policies
-- `app/docs/states/project/`: project state reference documents
-- `app/docs/states/legacy/`: explicit legacy archives, not active references
+5. verifier ensuite au minimum:
 
-- `app/docs/todo-done/audits/`: completed audits
-- `app/docs/todo-done/validations/`: completed validation reports
-- `app/docs/todo-done/refactors/`: completed refactor roadmaps and closure documents
-- `app/docs/todo-done/migrations/`: archived migration roadmaps
-- `app/docs/todo-done/notes/`: cleanup notes and supporting documentary traces
+```bash
+docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'
+```
 
-- `app/docs/todo-todo/memory/`: active memory / hermeneutics work items
-- `app/docs/todo-todo/product/`: active product / installation / deployment work items
-- `app/docs/todo-todo/admin/`: active admin-side work items
-- `app/docs/todo-todo/migration/`: active migration work items
+Ne pas redemarrer Caddy, Homepage, la DB ou d'autres services de plateforme sauf si le scope l'exige explicitement.
 
-Practical rule:
+## Frontiere avec la plateforme OVH
 
-- If a document describes a reference state, put it under `states/`.
-- If a document proves completed work, put it under `todo-done/`.
-- If a document drives unfinished work, put it under `todo-todo/`.
+Ce depot gere le code et la documentation `FridaDev`.
 
-If asked to create a new TODO document, choose the correct `todo-todo/` subdirectory immediately and state that choice in `PLAN`.
-If asked to create a new spec, policy, baseline, or operations note, place it directly under the corresponding `states/` subdirectory.
-When moving docs, update live references in `AGENTS.md`, `README.md`, `app/docs/README.md`, and any still-active roadmap or closure document that points to them.
+La plateforme Docker OVH vit sous `/opt/platform` et contient notamment Caddy, Authelia, Homepage, les reseaux Docker, les secrets runtime et les sous-stacks. Les modifications de plateforme ne doivent pas etre faites depuis un lot applicatif FridaDev sauf demande explicite.
 
-For entry/surface documents (repo root `README.md`, `app/docs/README.md`, and key operational entry guides), enforce higher readability: immediate clarity, compact structure, precise wording.
-When FR/EN sections coexist in the same entry document, keep semantic parity and update both sections in the same patch.
+Si une modification plateforme est necessaire:
 
-## Database baseline discipline
+- sauvegarder le fichier runtime avant modification;
+- ne jamais afficher `.env`, token, mot de passe, DSN complet ou cle;
+- documenter la modification dans le depot si elle change les attentes operateur;
+- verifier la config Docker Compose avec `docker compose config --quiet` quand applicable.
 
-- `app/docs/states/baselines/database-schema-baseline.md` is the repository snapshot reference for the physical DB schema.
-- Any patch that adds/removes/renames/changes a durable DB table, column, index, schema, or relation must update `app/docs/states/baselines/database-schema-baseline.md` in the same patch.
-- Do not leave durable DB schema changes implicit in Python/SQL sources only.
+## Securite admin OVH
 
-## Current authoritative documents
+Sur OVH, l'admin FridaDev est protegee par deux niveaux:
 
-Use these documents as living anchors unless noted otherwise or the user explicitly changes the strategy:
+- Authelia sur tout le hostname `fridadev.frida-system.fr`;
+- `FRIDA_ADMIN_TOKEN` pour les APIs `/api/admin/*`.
 
-- `app/docs/states/project/Frida-State-french-03-04-26.md`: current French project state reference
-- `app/docs/states/project/Frida-State-english-03-04-26.md`: current English project state reference
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`: canonical general repo audit
-- `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: active memory / hermeneutics roadmap
-- `app/docs/todo-todo/product/Frida-installation-config.md`: active product / installation roadmap
-- `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: archived closure trace for the closed hermeneutic convergence roadmap; do not treat it as an active roadmap
-- `app/docs/todo-done/refactors/admin-todo.md`: archived admin roadmap whose decisions must not be silently reopened
-- `app/docs/todo-done/refactors/fridadev_refactor_closure.md`: closure record for the repository audit/refactor cycle
-- `app/docs/todo-done/refactors/fridadev_refactor_todo.md`: completed refactor checklist kept as trace, not as an active roadmap
+Regle importante: ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sur OVH sans decision explicite de l'operateur. Derriere Caddy/Authelia, Flask lit l'IP publique via `X-Forwarded-For`; le filtrage LAN applicatif a deja bloque l'admin humaine avec `reason=ip_not_allowed`. L'etat attendu sur OVH est donc:
 
-## Required response format
+```text
+FRIDA_ADMIN_LAN_ONLY=0
+FRIDA_ADMIN_TOKEN=<set>
+```
 
-For every non-trivial task, respond and work using:
+Ne jamais afficher la valeur du token dans les logs, les commits ou les reponses.
 
+## Discipline d'architecture
+
+Le depot doit rester lisible par responsabilite:
+
+- `app/server.py`: entrees HTTP et orchestration seulement;
+- `app/core/`: flows applicatifs et services de conversation;
+- `app/admin/`: runtime settings, logique admin et services de support admin;
+- `app/memory/`: memoire, persistence, retrieval, arbitration, identite;
+- `app/web/`: UI navigateur et frontend admin;
+- `app/docs/`: documentation structuree.
+
+Regles:
+
+- garder les frontieres de modules explicites;
+- chercher les effets de bord et fuites de dependances avant d'editer;
+- extraire par responsabilite reelle, pas par confort local;
+- ne pas creer de fichier fourre-tout comme `utils.py` ou `helpers.py`;
+- ne pas renommer/deplacer un fichier pour un geste cosmetique;
+- si un fichier devient un grab-bag, s'arreter et proposer une separation par responsabilite.
+
+## Documentation
+
+`app/docs/` est structure et sa racine doit rester minimale.
+
+Destinations:
+
+- `app/docs/states/architecture/`: notes d'architecture et conventions;
+- `app/docs/states/specs/`: specs normatives et schemas;
+- `app/docs/states/operations/`: guides operatoires et runbooks;
+- `app/docs/states/baselines/`: baselines techniques datees;
+- `app/docs/states/policies/`: politiques et gouvernance;
+- `app/docs/states/project/`: etats projet de reference;
+- `app/docs/states/legacy/`: archives legacy explicites;
+- `app/docs/todo-done/audits/`: audits termines;
+- `app/docs/todo-done/validations/`: validations terminees;
+- `app/docs/todo-done/refactors/`: roadmaps/refactors termines;
+- `app/docs/todo-done/migrations/`: roadmaps de migration archivees;
+- `app/docs/todo-done/notes/`: notes de cloture/support;
+- `app/docs/todo-todo/memory/`: travaux actifs memoire/hermeneutique;
+- `app/docs/todo-todo/product/`: travaux actifs produit/installation;
+- `app/docs/todo-todo/admin/`: travaux actifs admin;
+- `app/docs/todo-todo/migration/`: travaux actifs migration.
+
+Regles pratiques:
+
+- document de reference -> `states/`;
+- preuve de travail termine -> `todo-done/`;
+- travail non termine -> `todo-todo/`;
+- quand une doc bouge, mettre a jour `AGENTS.md`, `README.md`, `app/docs/README.md` et toute roadmap active qui la reference.
+
+Si une modification change un comportement runtime, une attente operateur, un defaut, une limite ou une regle source-of-truth, mettre a jour la documentation vivante dans le meme cycle.
+
+## Documents d'ancrage courants
+
+Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
+
+- `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: trace archivee du clonage/migration OVH, chemins runtime, backups, mode operatoire vacances et decisions admin OVH.
+- `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`: TODO admin actif sur l'affichage `mode depuis` / `derniere bascule`.
+- `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: roadmap memoire/hermeneutique active, a relire avant tout lot memoire.
+- `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
+- `app/docs/todo-done/refactors/admin-todo.md`: roadmap admin archivee; ne pas la rouvrir silencieusement.
+- `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: cloture de convergence hermeneutique; ne pas la traiter comme active.
+- `app/docs/states/project/Frida-State-french-03-04-26.md` et `app/docs/states/project/Frida-State-english-03-04-26.md`: etats projet dates du 2026-04-03. Ils restent utiles historiquement, mais ne decrivent pas a eux seuls l'environnement OVH courant.
+
+## Finding actif a re-verifier
+
+Un finding de review reste a traiter separement du present travail documentaire:
+
+- `app/memory/memory_store.py`: `record_arbiter_decisions()` peut persister un modele d'arbitre different de celui qui a produit la decision si le runtime setting change entre l'appel LLM et l'insert DB. Le correctif attendu est de propager le modele concret utilise par `memory/arbiter.py` jusqu'a la persistence, avec un test simulant le changement de setting entre decision et enregistrement.
+
+Ne pas melanger ce correctif avec les mises a jour d'environnement/plateforme.
+
+## Tests et preuves
+
+Ne pas supposer que l'environnement de test de `tofnas` existe sur OVH. Au 2026-04-08, ces interpreteurs ne sont pas presents sur OVH:
+
+- `/home/tof/docker-stacks/fridadev/.venv/bin/python`
+- `/opt/platform/fridadev/.venv/bin/python`
+- `.venv/bin/python`
+
+Pour les tests runtime OVH, privilegier les preuves via conteneur et endpoints:
+
+```bash
+docker exec platform-fridadev python - <<'PY'
+print('runtime python ok')
+PY
+```
+
+Pour les tests unitaires repo, decouvrir d'abord l'interpreteur disponible ou signaler l'absence d'environnement Python de reference au lieu d'utiliser un chemin stale. Ne pas utiliser `/usr/bin/python3` pour conclure a la sante du depot si les dependances repo ne sont pas installees.
+
+`rg` peut ne pas etre present selon la machine. Preferer `rg` quand il est disponible; sinon utiliser `grep`/`find` et le signaler.
+
+Pour les patchs docs-only, remplacer les tests executables par des preuves concretes:
+
+- inventaire de chemins;
+- grep de references;
+- coherence des liens;
+- `git diff --check`;
+- `git status --short`.
+
+## Format de retour
+
+Pour toute tache non triviale, repondre avec:
+
+```text
 PLAN
 PATCH
 TEST
 RISKS
+```
 
-Meaning:
+Apres un commit, reporter aussi:
 
-- PLAN: exact scope, files touched, what is intentionally out of scope
-- PATCH: minimal implementation only
-- TEST: exact checks executed
-- RISKS: side effects, edge cases, follow-up watch points
+- hash du commit;
+- statut explicite du push.
 
-After a commit, also report:
+## Quand c'est ambigu
 
-- commit hash
-- explicit push status
-
-## Testing and proof policy
-
-- No code patch without executable verification.
-- Every implementation phase must add or update the tests that correspond exactly to the change.
-- Keep `app/minimal_validation.py` as the global smoke-check layer.
-- Put new focused tests in `app/tests/`.
-- Prefer simple, explicit backend or integration tests over heavy scaffolding.
-- If a change affects routes, persistence, runtime config, memory flow, or admin behavior, add or update tests for that behavior.
-- Run the relevant tests before commit.
-- If tests fail, fix the failure before moving to the next step.
-- On this host/repo, the reference Python interpreter for repo test execution is `/home/tof/docker-stacks/fridadev/.venv/bin/python`.
-- Do not use `/usr/bin/python3` to judge repository test health or missing Python dependencies.
-- If a script or document points to another environment or interpreter, flag the mismatch explicitly instead of improvising.
-
-For docs-only patches, replace executable behavior tests with concrete proof checks such as:
-
-- path inventory
-- reference grep
-- ignored-file status
-- link/path consistency checks
-
-## Repository conventions
-
-- Keep commits small and meaningful.
-- Use commit messages that describe the exact change.
-- Do not modify unrelated files just because they are nearby.
-- Preserve current application behavior unless the requested step explicitly changes it.
-- Preserve documentation classification: active, completed, reference, and legacy must not be mixed casually.
-- Do not leave temporary planning docs in active locations once their status becomes completed or archived.
-
-## When uncertain
-
-- First inspect the relevant files under `app/docs/states/`, `app/docs/todo-done/`, and `app/docs/todo-todo/` before inventing a direction.
-- If a decision already exists in an archived roadmap or closure document, follow it unless the user explicitly reopens it.
-- If the correct location for a new doc is obvious, place it there directly and state the choice in `PLAN`.
-- If the location is genuinely ambiguous, state the ambiguity explicitly in `RISKS` instead of improvising silently.
-- Do not create a large patch when a smaller validated patch is possible.
+- Inspecter d'abord `app/docs/states/`, `app/docs/todo-done/` et `app/docs/todo-todo/`.
+- Si une decision existe deja dans une roadmap archivee, la respecter sauf demande explicite de reouverture.
+- Si le bon emplacement documentaire est clair, l'utiliser directement et l'indiquer dans `PLAN`.
+- Si l'emplacement est vraiment ambigu, le dire dans `RISKS` plutot qu'improviser.
+- Ne pas faire un gros patch quand un patch plus petit et verifiable suffit.

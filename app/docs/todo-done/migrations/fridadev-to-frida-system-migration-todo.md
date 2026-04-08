@@ -870,9 +870,19 @@ Resultat obtenu:
 - Logs de triage admin:
   - aucune nouvelle erreur critique `500`, `FATAL` ou `traceback` n'a ete observee sur `platform-fridadev`, `platform-caddy`, `platform-fridadev-postgres` ou `platform-frida-adminer`
   - les seuls `404` observes pendant le triage provenaient de sondes explicites sur des chemins obsoletes ou non exposes (`/logs`, `/api/admin/runtime-settings`, `/api/admin/runtime-representations`), pas des chemins utilises par l'UI actuelle
-- Conclusion post-cloture:
-  - aucune correction code ou runtime n'a ete necessaire pour cette reprise
-  - l'admin OVH et l'observabilite associee sont revalidees comme utilisables humainement dans l'etat courant
+- Conclusion post-cloture de cette reprise:
+  - la premiere revalidation admin a prouve les surfaces internes, mais elle n'a pas reproduit le chemin navigateur public complet apres Authelia
+  - l'admin OVH et l'observabilite associee etaient utilisables en interne, mais restaient bloquees pour l'utilisateur via le garde IP applicatif
+- Correction complementaire admin appliquee le `2026-04-07` apres reproduction du `403 admin access denied` cote navigateur:
+  - cause confirmee dans `admin.log.jsonl`: `reason=ip_not_allowed`, `client_ip=82.67.119.187`
+  - le token admin etait valide; le blocage venait de `FRIDA_ADMIN_LAN_ONLY=1`, qui rejetait l'IP publique transmise par Caddy via `X-Forwarded-For` avant meme la logique token
+  - correction runtime OVH: `/opt/platform/fridadev-app/.env` passe a `FRIDA_ADMIN_LAN_ONLY=0`
+  - backup cree: `/opt/platform/fridadev-app/.env.bak-admin-lan-only-20260407-195150`
+  - `platform-fridadev` recree de facon ciblee
+  - validation avec `X-Forwarded-For: 82.67.119.187` + `X-Admin-Token` sur les APIs admin/settings, identity, hermeneutic et logs: `200`
+  - validation sans token: `401` attendu
+  - Authelia reste active sur `/admin`, `/identity`, `/hermeneutic-admin`, `/log` et `fridadev-db.frida-system.fr`
+  - decision operateur a conserver: sur OVH, ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sans demande explicite; la protection attendue est Authelia + `FRIDA_ADMIN_TOKEN`
 - Clone OVH valide et utilisable sur `fridadev.frida-system.fr`.
 - Prochain pas recommande: utiliser humainement le clone OVH, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
 - `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.
