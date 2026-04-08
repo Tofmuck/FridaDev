@@ -230,18 +230,9 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertFalse(data['subjects']['llm']['static']['loaded_for_runtime'])
         self.assertFalse(data['subjects']['llm']['static']['actively_injected'])
 
-    def test_identity_read_model_route_is_guarded_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase2-identity-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            response = self.client.get('/api/admin/identity/read-model')
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
-
-        self.assertEqual(response.status_code, 401)
+    def test_identity_read_model_route_is_available_without_admin_token(self) -> None:
+        response = self.client.get('/api/admin/identity/read-model')
+        self.assertNotIn(response.status_code, {401, 403})
 
 
 if __name__ == '__main__':

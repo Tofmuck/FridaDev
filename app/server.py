@@ -6,7 +6,6 @@ import codecs
 import logging
 import re
 import time
-from ipaddress import ip_address, ip_network
 from pathlib import Path
 from typing import Any
 
@@ -115,67 +114,8 @@ logger.info(
     _RUNTIME_FINGERPRINT['logs_path'],
 )
 
-def _parse_admin_cidr_allowlist(raw_cidrs: str) -> list[Any]:
-    allowlist: list[Any] = []
-    for raw in str(raw_cidrs or '').split(','):
-        cidr = raw.strip()
-        if not cidr:
-            continue
-        try:
-            allowlist.append(ip_network(cidr, strict=False))
-        except ValueError:
-            logger.warning('admin_allowlist_invalid_cidr cidr=%s', cidr)
-    return allowlist
-
-
-def _get_client_ip() -> str:
-    forwarded_for = str(request.headers.get('X-Forwarded-For', '') or '').strip()
-    if forwarded_for:
-        return forwarded_for.split(',')[0].strip()
-    return str(request.remote_addr or '').strip()
-
-
-def _is_admin_ip_allowed(client_ip: str) -> bool:
-    if not client_ip:
-        return False
-    try:
-        ip = ip_address(client_ip)
-    except ValueError:
-        return False
-    allowlist = _parse_admin_cidr_allowlist(config.FRIDA_ADMIN_ALLOWED_CIDRS)
-    if not allowlist:
-        return False
-    return any(ip in network for network in allowlist)
-
-
-def _admin_auth_error(reason: str, status_code: int, client_ip: str):
-    admin_logs.log_event(
-        'admin_access_denied',
-        level='WARN',
-        reason=reason,
-        path=request.path,
-        method=request.method,
-        client_ip=client_ip,
-    )
-    return jsonify({'ok': False, 'error': 'admin access denied'}), status_code
-
-
 @app.before_request
 def enforce_admin_guard():
-    if not request.path.startswith('/api/admin/'):
-        return None
-
-    client_ip = _get_client_ip()
-
-    if config.FRIDA_ADMIN_LAN_ONLY and not _is_admin_ip_allowed(client_ip):
-        return _admin_auth_error('ip_not_allowed', 403, client_ip)
-
-    expected_token = str(config.FRIDA_ADMIN_TOKEN or '').strip()
-    if expected_token:
-        token = str(request.headers.get('X-Admin-Token', '') or '').strip()
-        if token != expected_token:
-            return _admin_auth_error('invalid_or_missing_token', 401, client_ip)
-
     return None
 
 

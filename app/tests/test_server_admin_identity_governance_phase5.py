@@ -222,23 +222,15 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         self.assertEqual(observed_logs[0][0], 'identity_governance_admin_edit')
         self.assertNotIn('content', observed_logs[0][1])
 
-    def test_identity_governance_routes_are_guarded_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase5-governance-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            get_response = self.client.get('/api/admin/identity/governance')
-            post_response = self.client.post(
-                '/api/admin/identity/governance',
-                json={'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3}, 'reason': 'guard'},
-            )
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
+    def test_identity_governance_routes_are_available_without_admin_token(self) -> None:
+        get_response = self.client.get('/api/admin/identity/governance')
+        post_response = self.client.post(
+            '/api/admin/identity/governance',
+            json={'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3}, 'reason': 'guard'},
+        )
 
-        self.assertEqual(get_response.status_code, 401)
-        self.assertEqual(post_response.status_code, 401)
+        self.assertNotIn(get_response.status_code, {401, 403})
+        self.assertNotIn(post_response.status_code, {401, 403})
 
 
 if __name__ == '__main__':

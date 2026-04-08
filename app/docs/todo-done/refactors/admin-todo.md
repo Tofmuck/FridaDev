@@ -79,7 +79,9 @@ Ce document se base sur l'etat reel du depot observe dans le code au 24/03/2026.
 - `app/web/admin.html` embarque son propre bloc `<style>` inline ; il ne reutilise pas `app/web/styles.css`.
 - `app/web/admin.js` ne consomme aujourd'hui que deux endpoints : `/api/admin/logs` et `/api/admin/restart`.
 - Aucun code frontend dans `app/web/admin.js` ne consomme aujourd'hui les endpoints hermeneutiques exposes cote backend.
-- `app/web/admin.js` n'envoie jamais le header `X-Admin-Token` pourtant accepte par le backend ; si `FRIDA_ADMIN_TOKEN` est renseigne, la page charge mais les appels API admin echouent en `401`.
+- Note historique obsolete depuis le `2026-04-08`:
+  - le backend n'accepte plus `X-Admin-Token`
+  - l'UI admin n'utilise plus de token applicatif
 - L'admin actuel est donc bien principalement un admin de logs/restart, meme si le backend expose deja d'autres routes admin non branchees dans cette UI.
 
 ### Couplage du front principal avec l'admin actuel
@@ -246,7 +248,7 @@ Chaque case ci-dessous doit pouvoir correspondre a une action locale, verifiable
 - [x] Formaliser dans la spec d'implementation qu'une tranche minimale = implementation ciblee + validation + commit + push.
 - [x] Documenter que l'entree canonique du nouvel admin est `/admin` et que `admin.html` reste un acces technique transitoire pendant la migration.
 - [x] Documenter qu'aucune entree UI `/admin-old` n'est retenue et que l'UI logs/restart actuelle n'est pas preservee comme legacy.
-- [x] Documenter la politique UX appliquee quand `FRIDA_ADMIN_TOKEN` est actif : saisie a l'ouverture, stockage en `sessionStorage`, envoi via `X-Admin-Token` sur les requetes `/api/admin/*`.
+- [x] Archiver l'ancienne politique UX a token et documenter sa suppression operative le `2026-04-08`.
 
 ### Phase 1 - Conception du modele de donnees de configuration
 

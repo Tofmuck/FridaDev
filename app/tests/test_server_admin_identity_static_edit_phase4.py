@@ -361,21 +361,13 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         self.assertEqual(stored_text, 'Hors perimetre')
         self.assertNotIn('content', observed_logs[0][1])
 
-    def test_identity_static_edit_route_is_guarded_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase4-identity-static-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            response = self.client.post(
-                '/api/admin/identity/static',
-                json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
-            )
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
+    def test_identity_static_edit_route_is_available_without_admin_token(self) -> None:
+        response = self.client.post(
+            '/api/admin/identity/static',
+            json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
+        )
 
-        self.assertEqual(response.status_code, 401)
+        self.assertNotIn(response.status_code, {401, 403})
 
 
 if __name__ == '__main__':

@@ -41,13 +41,10 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
-        self._original_admin_token = self.server.config.FRIDA_ADMIN_TOKEN
         self._original_admin_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
         self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        self.server.config.FRIDA_ADMIN_TOKEN = "phase5-token"
 
     def tearDown(self) -> None:
-        self.server.config.FRIDA_ADMIN_TOKEN = self._original_admin_token
         self.server.config.FRIDA_ADMIN_LAN_ONLY = self._original_admin_lan_only
 
     def test_index_exposes_log_entry_next_to_admin(self) -> None:
@@ -217,57 +214,40 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
             self.assertIn('id="logConversationId"', page_html)
             self.assertIn('id="logTurnId"', page_html)
 
-            metadata_root = self.client.get(
-                "/api/admin/logs/chat/metadata",
-                headers={"X-Admin-Token": "phase5-token"},
-            )
+            metadata_root = self.client.get("/api/admin/logs/chat/metadata")
             self.assertEqual(metadata_root.status_code, 200)
             root_payload = metadata_root.get_json()
             self.assertTrue(root_payload["ok"])
             self.assertEqual(len(root_payload["conversations"]), 2)
             self.assertEqual(root_payload["turns"], [])
 
-            metadata_conv = self.client.get(
-                "/api/admin/logs/chat/metadata?conversation_id=conv-1",
-                headers={"X-Admin-Token": "phase5-token"},
-            )
+            metadata_conv = self.client.get("/api/admin/logs/chat/metadata?conversation_id=conv-1")
             self.assertEqual(metadata_conv.status_code, 200)
             conv_payload = metadata_conv.get_json()
             self.assertTrue(conv_payload["ok"])
             self.assertEqual(conv_payload["selected_conversation_id"], "conv-1")
             self.assertEqual([item["turn_id"] for item in conv_payload["turns"]], ["turn-1", "turn-2"])
 
-            scoped_read = self.client.get(
-                "/api/admin/logs/chat?conversation_id=conv-1&turn_id=turn-2",
-                headers={"X-Admin-Token": "phase5-token"},
-            )
+            scoped_read = self.client.get("/api/admin/logs/chat?conversation_id=conv-1&turn_id=turn-2")
             self.assertEqual(scoped_read.status_code, 200)
             self.assertTrue(scoped_read.get_json()["ok"])
 
-            delete_conversation = self.client.delete(
-                "/api/admin/logs/chat?conversation_id=conv-1",
-                headers={"X-Admin-Token": "phase5-token"},
-            )
+            delete_conversation = self.client.delete("/api/admin/logs/chat?conversation_id=conv-1")
             self.assertEqual(delete_conversation.status_code, 200)
             self.assertEqual(delete_conversation.get_json()["scope"], "conversation_logs")
 
-            delete_turn = self.client.delete(
-                "/api/admin/logs/chat?conversation_id=conv-1&turn_id=turn-2",
-                headers={"X-Admin-Token": "phase5-token"},
-            )
+            delete_turn = self.client.delete("/api/admin/logs/chat?conversation_id=conv-1&turn_id=turn-2")
             self.assertEqual(delete_turn.status_code, 200)
             self.assertEqual(delete_turn.get_json()["scope"], "turn_logs")
 
             export_conversation = self.client.get(
                 "/api/admin/logs/chat/export.md?conversation_id=conv-1",
-                headers={"X-Admin-Token": "phase5-token"},
             )
             self.assertEqual(export_conversation.status_code, 200)
             self.assertIn("text/markdown", export_conversation.content_type)
 
             export_turn = self.client.get(
                 "/api/admin/logs/chat/export.md?conversation_id=conv-1&turn_id=turn-2",
-                headers={"X-Admin-Token": "phase5-token"},
             )
             self.assertEqual(export_turn.status_code, 200)
             self.assertIn("text/markdown", export_turn.content_type)

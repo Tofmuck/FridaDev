@@ -329,9 +329,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn(("POST", "http://frida.test/api/admin/identity/governance"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/identity/runtime-representations"), calls)
 
-    def test_check_api_smoke_forwards_admin_token_to_admin_endpoints(self) -> None:
+    def test_check_api_smoke_calls_admin_endpoints_without_admin_token_header(self) -> None:
         original_http_json = minimal_validation._http_json
-        original_token = config.FRIDA_ADMIN_TOKEN
         admin_headers = []
         patch_payloads = []
 
@@ -402,27 +401,18 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(404, payload={"ok": False, "error": "conversation introuvable"})
             raise AssertionError(f"unexpected request: {method} {url}")
 
-        config.FRIDA_ADMIN_TOKEN = "phase9-admin-token"
         minimal_validation._http_json = fake_http_json
         try:
             details = minimal_validation._check_api_smoke("http://frida.test")
         finally:
             minimal_validation._http_json = original_http_json
-            config.FRIDA_ADMIN_TOKEN = original_token
 
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
         self.assertEqual(details["identity_runtime_representations_status"], 200)
         self.assertEqual(len(admin_headers), 8)
-        self.assertEqual(admin_headers[0], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[1], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[2], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[3], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[4], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[5], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[6], {"X-Admin-Token": "phase9-admin-token"})
-        self.assertEqual(admin_headers[7], {"X-Admin-Token": "phase9-admin-token"})
+        self.assertEqual(admin_headers, [{}, {}, {}, {}, {}, {}, {}, {}])
         self.assertEqual(
             patch_payloads,
             [

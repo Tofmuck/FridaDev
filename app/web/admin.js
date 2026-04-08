@@ -608,12 +608,9 @@
 
   const elements = {
     refresh: document.getElementById("adminRefresh"),
-    tokenButton: document.getElementById("adminTokenButton"),
-    clearToken: document.getElementById("adminClearToken"),
     statusBanner: document.getElementById("adminStatusBanner"),
     dbState: document.getElementById("adminDbState"),
     bootstrapMode: document.getElementById("adminBootstrapMode"),
-    tokenState: document.getElementById("adminTokenState"),
     sectionGrid: document.getElementById("adminSectionGrid"),
     mainModelForm: document.getElementById("adminMainModelForm"),
     mainModelFields: document.getElementById("adminMainModelFields"),
@@ -751,20 +748,6 @@
     if (!element) return;
     element.textContent = message;
     element.dataset.state = stateName;
-  };
-
-  const updateTokenState = () => {
-    if (!elements.tokenState) return;
-    elements.tokenState.textContent = adminApi.readToken() ? "Session active" : "Session vide";
-  };
-
-  const promptToken = () => {
-    const current = adminApi.readToken();
-    const next = window.prompt("Token admin", current);
-    if (next === null) return false;
-    adminApi.writeToken(next);
-    updateTokenState();
-    return true;
   };
 
   const toDraftString = (value) => (value === undefined || value === null ? "" : String(value));
@@ -1001,7 +984,6 @@
     if (elements.bootstrapMode) {
       elements.bootstrapMode.textContent = status.bootstrap?.database_dsn_mode || "Externe";
     }
-    updateTokenState();
     renderSectionCards(status);
   };
 
@@ -1010,7 +992,7 @@
     try {
       const response = await adminApi.fetchStatus();
       if (adminApi.isUnauthorized(response)) {
-        banner("Acces admin requis. Definis le token pour charger l'etat runtime.", "error");
+        banner("Acces admin requis.", "error");
         return;
       }
       if (!response.ok) {
@@ -1280,18 +1262,6 @@
   };
 
   elements.refresh?.addEventListener("click", () => {
-    void loadAdminSurface();
-  });
-
-  elements.tokenButton?.addEventListener("click", () => {
-    if (!promptToken()) return;
-    void loadAdminSurface();
-  });
-
-  elements.clearToken?.addEventListener("click", () => {
-    adminApi.clearToken();
-    updateTokenState();
-    banner("Token admin efface pour cette session.", "info");
     void loadAdminSurface();
   });
 

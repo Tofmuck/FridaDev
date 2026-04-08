@@ -100,18 +100,9 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         finally:
             response.close()
 
-    def test_identity_runtime_representations_route_is_guarded_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase6-identity-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            response = self.client.get('/api/admin/identity/runtime-representations')
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
-
-        self.assertEqual(response.status_code, 401)
+    def test_identity_runtime_representations_route_is_available_without_admin_token(self) -> None:
+        response = self.client.get('/api/admin/identity/runtime-representations')
+        self.assertNotIn(response.status_code, {401, 403})
 
 
 if __name__ == '__main__':

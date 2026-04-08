@@ -67,10 +67,7 @@ def _http_json(method: str, url: str, **kwargs: Any) -> requests.Response:
 
 
 def _admin_request_kwargs() -> Dict[str, Any]:
-    token = str(config.FRIDA_ADMIN_TOKEN or "").strip()
-    if not token:
-        return {}
-    return {"headers": {"X-Admin-Token": token}}
+    return {}
 
 
 def _build_non_secret_patch_payload(payload: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -657,10 +654,12 @@ def _check_ui_assets() -> Dict[str, Any]:
             f"missing={missing}, extra={extra}"
         )
 
-    if 'const TOKEN_KEY = "frida.adminToken";' not in admin_api_js:
-        raise RuntimeError("contrat token admin manquant (frida.adminToken)")
-    if 'headers.set("X-Admin-Token", token);' not in admin_api_js:
-        raise RuntimeError("contrat header admin manquant (X-Admin-Token)")
+    legacy_admin_storage_key = "frida." + "adminToken"
+    legacy_admin_header = "X-Admin" + "-Token"
+    if legacy_admin_storage_key in admin_api_js:
+        raise RuntimeError("stockage session token admin obsolete encore present")
+    if legacy_admin_header in admin_api_js:
+        raise RuntimeError("header admin token obsolete encore present")
 
     dom_hook_ids = sorted(set(re.findall(r'document\.getElementById\("([^"]+)"\)', admin_front_js)))
     missing_dom_hook_ids = [hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in admin_html]
@@ -1092,7 +1091,6 @@ def _check_ui_assets() -> Dict[str, Any]:
         "/api/admin/settings/services/validate",
         "/api/admin/settings/resources",
         "/api/admin/settings/resources/validate",
-        "frida.adminToken",
         "window.FridaAdminState",
         "createAdminState",
         "initializeAdminSectionDrafts",

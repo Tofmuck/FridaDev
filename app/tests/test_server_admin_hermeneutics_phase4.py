@@ -487,35 +487,27 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual([item['event'] for item in data['items']], ['identity_governance_admin_edit'])
         self.assertEqual(data['items'][0]['changed_keys'], ['CONTEXT_HINTS_MAX_ITEMS'])
 
-    def test_all_admin_hermeneutics_routes_are_protected_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase4-herm-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            guarded_rules = []
-            for rule in self.server.app.url_map.iter_rules():
-                if not rule.rule.startswith('/api/admin/hermeneutics'):
-                    continue
-                methods = sorted(method for method in rule.methods if method in {'GET', 'POST'})
-                for method in methods:
-                    guarded_rules.append((method, rule.rule))
+    def test_all_admin_hermeneutics_routes_are_available_without_admin_token(self) -> None:
+        public_rules = []
+        for rule in self.server.app.url_map.iter_rules():
+            if not rule.rule.startswith('/api/admin/hermeneutics'):
+                continue
+            methods = sorted(method for method in rule.methods if method in {'GET', 'POST'})
+            for method in methods:
+                public_rules.append((method, rule.rule))
 
-            self.assertTrue(guarded_rules)
+        self.assertTrue(public_rules)
 
-            for method, path in guarded_rules:
-                kwargs = {}
-                if method == 'POST':
-                    kwargs['json'] = {}
-                response = self.client.open(path, method=method, **kwargs)
-                self.assertEqual(
-                    response.status_code,
-                    401,
-                    msg=f'expected admin guard on {method} {path}, got {response.status_code}',
-                )
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
+        for method, path in public_rules:
+            kwargs = {}
+            if method == 'POST':
+                kwargs['json'] = {}
+            response = self.client.open(path, method=method, **kwargs)
+            self.assertNotIn(
+                response.status_code,
+                {401, 403},
+                msg=f'unexpected admin guard on {method} {path}, got {response.status_code}',
+            )
 
 
 if __name__ == '__main__':

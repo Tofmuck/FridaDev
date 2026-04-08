@@ -809,7 +809,7 @@ Resultat obtenu:
 - Durcissement admin OVH reapplique le `2026-04-07`:
   - `FRIDA_ADMIN_TOKEN` etait encore vide dans `/opt/platform/fridadev-app/.env`
   - un token admin OVH a ete regenere localement sur `frida-system.fr`, ecrit dans ce `.env`, puis `platform-fridadev` a ete recree de facon ciblee
-  - verification de garde reussie sur `/api/admin/settings/status`:
+  - verification de garde alors reussie sur `/api/admin/settings/status`:
     - sans header `X-Admin-Token` -> `401`
     - avec header `X-Admin-Token` -> `200`
   - le conteneur recree voit bien `FRIDA_ADMIN_TOKEN=<set>`
@@ -879,10 +879,23 @@ Resultat obtenu:
   - correction runtime OVH: `/opt/platform/fridadev-app/.env` passe a `FRIDA_ADMIN_LAN_ONLY=0`
   - backup cree: `/opt/platform/fridadev-app/.env.bak-admin-lan-only-20260407-195150`
   - `platform-fridadev` recree de facon ciblee
-  - validation avec `X-Forwarded-For: 82.67.119.187` + `X-Admin-Token` sur les APIs admin/settings, identity, hermeneutic et logs: `200`
-  - validation sans token: `401` attendu
+  - validation historique avec `X-Forwarded-For: 82.67.119.187` + `X-Admin-Token` sur les APIs admin/settings, identity, hermeneutic et logs: `200`
+  - validation historique sans token: `401` attendu
   - Authelia reste active sur `/admin`, `/identity`, `/hermeneutic-admin`, `/log` et `fridadev-db.frida-system.fr`
   - decision operateur a conserver: sur OVH, ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sans demande explicite; la protection attendue est Authelia + `FRIDA_ADMIN_TOKEN`
+- Addendum post-cloture applique le `2026-04-08`:
+  - decision operateur: supprimer la garde applicative `FRIDA_ADMIN_TOKEN`
+  - `/api/admin/*` ne demande plus `X-Admin-Token`
+  - les surfaces `/admin`, `/identity`, `/hermeneutic-admin` et `/log` ne demandent plus de token applicatif
+  - la protection publique attendue reste Authelia au niveau du hostname `https://fridadev.frida-system.fr`
+  - `FRIDA_ADMIN_LAN_ONLY` ne doit toujours pas etre reactive sur OVH sans demande explicite
+  - revalidation live ciblee:
+    - `/admin`, `/identity`, `/hermeneutic-admin`, `/log` -> `302` vers Authelia cote public
+    - `/api/admin/settings/status` -> `200` sans token
+    - `/api/admin/logs/chat/metadata` -> `200` sans token
+    - `/api/admin/logs/chat?limit=5&offset=0` -> `200` sans token
+    - `/api/admin/identity/read-model?limit=5` -> `200` sans token
+    - `X-Forwarded-For: 82.67.119.187` sur ces APIs -> `200` sans token
 - Clone OVH valide et utilisable sur `fridadev.frida-system.fr`.
 - Prochain pas recommande: utiliser humainement le clone OVH, surveiller la divergence future avec `tofnas`, puis retirer plus tard le fallback `sslip.io` si ce secours ne sert plus.
 - `tofnas` reste vivant; un futur resnapshot DB / `state/` vers OVH restera ponctuel et explicite, jamais automatique.

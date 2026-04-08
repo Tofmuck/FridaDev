@@ -122,13 +122,7 @@ class ServerLogsPhase4Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'turn_logs deletion requires conversation_id'})
 
-    def test_admin_chat_logs_delete_route_respects_admin_token_guard(self) -> None:
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase4-token'
-
-        response_missing = self.client.delete('/api/admin/logs/chat?conversation_id=conv-1')
-        self.assertEqual(response_missing.status_code, 401)
-
+    def test_admin_chat_logs_delete_route_is_available_without_admin_token(self) -> None:
         original_delete = self.server.log_store.delete_chat_log_events
         self.server.log_store.delete_chat_log_events = (
             lambda **_kwargs: {
@@ -139,10 +133,7 @@ class ServerLogsPhase4Tests(unittest.TestCase):
             }
         )
         try:
-            response_ok = self.client.delete(
-                '/api/admin/logs/chat?conversation_id=conv-1',
-                headers={'X-Admin-Token': 'phase4-token'},
-            )
+            response_ok = self.client.delete('/api/admin/logs/chat?conversation_id=conv-1')
         finally:
             self.server.log_store.delete_chat_log_events = original_delete
 

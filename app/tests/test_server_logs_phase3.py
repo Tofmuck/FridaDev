@@ -148,13 +148,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(data['turns'][0]['turn_id'], 'turn-1')
         self.assertEqual(observed['kwargs'], {'conversation_id': 'conv-1'})
 
-    def test_admin_chat_logs_metadata_route_respects_admin_token_guard(self) -> None:
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase3-token'
-
-        response_missing = self.client.get('/api/admin/logs/chat/metadata')
-        self.assertEqual(response_missing.status_code, 401)
-
+    def test_admin_chat_logs_metadata_route_is_available_without_admin_token(self) -> None:
         original_read_metadata = self.server.log_store.read_chat_log_metadata
         self.server.log_store.read_chat_log_metadata = (
             lambda **_kwargs: {
@@ -164,10 +158,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             }
         )
         try:
-            response_ok = self.client.get(
-                '/api/admin/logs/chat/metadata',
-                headers={'X-Admin-Token': 'phase3-token'},
-            )
+            response_ok = self.client.get('/api/admin/logs/chat/metadata')
         finally:
             self.server.log_store.read_chat_log_metadata = original_read_metadata
 
@@ -202,13 +193,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid ts_to timestamp: not-a-date'})
 
-    def test_admin_chat_logs_route_respects_admin_token_guard(self) -> None:
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase3-token'
-
-        response_missing = self.client.get('/api/admin/logs/chat?limit=1')
-        self.assertEqual(response_missing.status_code, 401)
-
+    def test_admin_chat_logs_route_is_available_without_admin_token(self) -> None:
         original_read = self.server.log_store.read_chat_log_events
         self.server.log_store.read_chat_log_events = (
             lambda **_kwargs: {
@@ -229,7 +214,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             }
         )
         try:
-            response_ok = self.client.get('/api/admin/logs/chat?limit=1', headers={'X-Admin-Token': 'phase3-token'})
+            response_ok = self.client.get('/api/admin/logs/chat?limit=1')
         finally:
             self.server.log_store.read_chat_log_events = original_read
 

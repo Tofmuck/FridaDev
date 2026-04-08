@@ -18,12 +18,10 @@ Il complete :
 
 ## Authentification admin
 
-- Quand `FRIDA_ADMIN_TOKEN` est vide, l'acces admin suit uniquement les autres gardes actifs
-- Quand `FRIDA_ADMIN_TOKEN` est defini :
-  - le frontend admin demande le token a l'ouverture
-  - le token est conserve en `sessionStorage`
-  - le frontend l'envoie via `X-Admin-Token` sur les requetes `/api/admin/*`
-- Les checks de validation minimale reutilisent aussi `X-Admin-Token` quand il est requis
+- Les surfaces `/admin`, `/log`, `/identity`, `/hermeneutic-admin` et `/api/admin/*` ne demandent plus de token admin applicatif.
+- La protection publique attendue est Authelia au niveau du hostname.
+- En interne applicatif, les routes `/api/admin/*` restent accessibles sans header `X-Admin-Token`.
+- Sur OVH, `FRIDA_ADMIN_LAN_ONLY` ne doit pas etre reactive sans decision explicite.
 
 ## Perimetre V1 reellement exploitable
 
@@ -121,12 +119,11 @@ Regles appliquees :
 Sequence nominale :
 
 1. ouvrir `/admin`
-2. fournir le token admin si demande
-3. rafraichir l'etat runtime
-4. verifier la source affichee pour la section a modifier
-5. lancer `Verifier`
-6. corriger si la validation backend remonte une erreur
-7. lancer `Enregistrer`
+2. rafraichir l'etat runtime
+3. verifier la source affichee pour la section a modifier
+4. lancer `Verifier`
+5. corriger si la validation backend remonte une erreur
+6. lancer `Enregistrer`
 
 Regle d'exploitation associee au chat principal :
 

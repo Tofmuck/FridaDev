@@ -49,11 +49,10 @@ Checks attendus:
 - ancien service systemd desactive/inactif
 
 ## 6) Admin API security (profil home-lab)
-- Toutes les routes `/api/admin/*` sont protegees par:
-  - allowlist CIDR (`FRIDA_ADMIN_ALLOWED_CIDRS`)
-  - token header `X-Admin-Token` si `FRIDA_ADMIN_TOKEN` est defini
-- Les refus sont traces via `admin_access_denied`.
-- UI admin (`/admin`) demande le token si necessaire et le garde en localStorage.
+- Historique obsolete depuis le `2026-04-08`:
+  - ce document decrit un ancien modele avec allowlist CIDR et header `X-Admin-Token`
+  - le runtime courant n'utilise plus de token admin applicatif pour `/api/admin/*`
+  - la protection publique attendue repose sur Authelia
 
 ## 7) Logs et retention
 - Ecriture runtime: `/app/logs/admin.log.jsonl`

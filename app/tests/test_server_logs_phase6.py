@@ -96,13 +96,7 @@ class ServerLogsPhase6Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'conversation_id is required for markdown export'})
 
-    def test_admin_chat_logs_export_markdown_respects_admin_token_guard(self) -> None:
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase6-token'
-
-        response_missing = self.client.get('/api/admin/logs/chat/export.md?conversation_id=conv-1')
-        self.assertEqual(response_missing.status_code, 401)
-
+    def test_admin_chat_logs_export_markdown_is_available_without_admin_token(self) -> None:
         original_export = self.server.log_markdown_export.export_chat_logs_markdown
         self.server.log_markdown_export.export_chat_logs_markdown = (
             lambda **_kwargs: {
@@ -114,10 +108,7 @@ class ServerLogsPhase6Tests(unittest.TestCase):
             }
         )
         try:
-            response_ok = self.client.get(
-                '/api/admin/logs/chat/export.md?conversation_id=conv-1',
-                headers={'X-Admin-Token': 'phase6-token'},
-            )
+            response_ok = self.client.get('/api/admin/logs/chat/export.md?conversation_id=conv-1')
         finally:
             self.server.log_markdown_export.export_chat_logs_markdown = original_export
 

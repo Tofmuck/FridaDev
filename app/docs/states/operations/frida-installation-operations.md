@@ -113,7 +113,6 @@ Indispensable:
 
 Fortement recommande:
 - `FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY`: cle de chiffrement des secrets runtime admin.
-- `FRIDA_ADMIN_TOKEN`: protection des routes `/api/admin/*`.
 
 Selon usages actives:
 - embeddings: `EMBED_BASE_URL`, `EMBED_TOKEN`, `EMBED_DIM`;
@@ -163,17 +162,10 @@ Rappel:
 curl -fsS http://127.0.0.1:8093/ >/dev/null && echo "root ok"
 ```
 
-2. Admin status (avec token si configure):
+2. Admin status:
 
 ```bash
 curl -fsS http://127.0.0.1:8093/api/admin/settings/status
-```
-
-Si `FRIDA_ADMIN_TOKEN` est defini:
-
-```bash
-curl -fsS -H "X-Admin-Token: <TOKEN>" \
-  http://127.0.0.1:8093/api/admin/settings/status
 ```
 
 3. Chat minimal:

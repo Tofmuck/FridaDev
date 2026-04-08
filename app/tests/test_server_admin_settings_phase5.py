@@ -702,53 +702,31 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
             self.server.runtime_settings._default_db_fetch_all_sections = original_fetcher
             self.server.runtime_settings.invalidate_runtime_settings_cache()
 
-    def test_get_admin_settings_is_protected_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase5-admin-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            unauthorized = self.client.get('/api/admin/settings')
-            authorized = self.client.get(
-                '/api/admin/settings',
-                headers={'X-Admin-Token': 'phase5-admin-token'},
+    def test_get_admin_settings_is_available_without_admin_token(self) -> None:
+        response = self.client.get('/api/admin/settings')
+        self.assertEqual(response.status_code, 200)
+
+    def test_all_admin_settings_routes_are_available_without_admin_token(self) -> None:
+        public_rules = []
+        for rule in self.server.app.url_map.iter_rules():
+            if not rule.rule.startswith('/api/admin/settings'):
+                continue
+            methods = sorted(method for method in rule.methods if method in {'GET', 'PATCH', 'POST'})
+            for method in methods:
+                public_rules.append((method, rule.rule))
+
+        self.assertTrue(public_rules)
+
+        for method, path in public_rules:
+            kwargs = {}
+            if method in {'PATCH', 'POST'}:
+                kwargs['json'] = {}
+            response = self.client.open(path, method=method, **kwargs)
+            self.assertNotIn(
+                response.status_code,
+                {401, 403},
+                msg=f'unexpected admin guard on {method} {path}, got {response.status_code}',
             )
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
-
-        self.assertEqual(unauthorized.status_code, 401)
-        self.assertEqual(authorized.status_code, 200)
-
-    def test_all_admin_settings_routes_are_protected_by_existing_admin_guard(self) -> None:
-        original_token = self.server.config.FRIDA_ADMIN_TOKEN
-        original_lan_only = self.server.config.FRIDA_ADMIN_LAN_ONLY
-        self.server.config.FRIDA_ADMIN_TOKEN = 'phase5-admin-token'
-        self.server.config.FRIDA_ADMIN_LAN_ONLY = False
-        try:
-            guarded_rules = []
-            for rule in self.server.app.url_map.iter_rules():
-                if not rule.rule.startswith('/api/admin/settings'):
-                    continue
-                methods = sorted(method for method in rule.methods if method in {'GET', 'PATCH', 'POST'})
-                for method in methods:
-                    guarded_rules.append((method, rule.rule))
-
-            self.assertTrue(guarded_rules)
-
-            for method, path in guarded_rules:
-                kwargs = {}
-                if method in {'PATCH', 'POST'}:
-                    kwargs['json'] = {}
-                response = self.client.open(path, method=method, **kwargs)
-                self.assertEqual(
-                    response.status_code,
-                    401,
-                    msg=f'expected admin guard on {method} {path}, got {response.status_code}',
-                )
-        finally:
-            self.server.config.FRIDA_ADMIN_TOKEN = original_token
-            self.server.config.FRIDA_ADMIN_LAN_ONLY = original_lan_only
 
     def test_patch_admin_settings_main_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}

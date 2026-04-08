@@ -1,5 +1,4 @@
 (() => {
-  const TOKEN_KEY = "frida.adminToken";
   const SETTINGS_BASE = "/api/admin/settings";
   const SETTINGS_STATUS_ENDPOINT = "/api/admin/settings/status";
   const sectionRoutes = Object.freeze({
@@ -36,27 +35,8 @@
     resources: "/api/admin/settings/resources/validate",
   });
 
-  const readToken = () => window.sessionStorage.getItem(TOKEN_KEY) || "";
-
-  const writeToken = (value) => {
-    const cleaned = String(value || "").trim();
-    if (!cleaned) {
-      window.sessionStorage.removeItem(TOKEN_KEY);
-      return "";
-    }
-    window.sessionStorage.setItem(TOKEN_KEY, cleaned);
-    return cleaned;
-  };
-
-  const clearToken = () => {
-    writeToken("");
-  };
-
   const buildHeaders = (init = {}) => {
-    const headers = new Headers(init.headers || {});
-    const token = readToken();
-    if (token) headers.set("X-Admin-Token", token);
-    return headers;
+    return new Headers(init.headers || {});
   };
 
   const fetchAdmin = (url, init = {}) => {
@@ -129,9 +109,6 @@
 
   window.FridaAdminApi = Object.freeze({
     sectionRoutes,
-    readToken,
-    writeToken,
-    clearToken,
     fetchAdmin,
     readJson,
     isUnauthorized,

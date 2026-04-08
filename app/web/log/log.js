@@ -7,8 +7,6 @@
   const elements = {
     statusBanner: document.getElementById("logStatusBanner"),
     refresh: document.getElementById("logRefresh"),
-    tokenButton: document.getElementById("logTokenButton"),
-    clearToken: document.getElementById("logClearToken"),
     filtersForm: document.getElementById("logFiltersForm"),
     conversationId: document.getElementById("logConversationId"),
     turnId: document.getElementById("logTurnId"),
@@ -540,21 +538,6 @@
     if (state.nextOffset == null) return;
     elements.offset.value = String(state.nextOffset);
     void loadLogs();
-  });
-
-  elements.tokenButton.addEventListener("click", async () => {
-    const current = adminApi.readToken();
-    const next = window.prompt("Token admin", current || "");
-    if (next == null) return;
-    adminApi.writeToken(next);
-    await loadMetadata({ preserveTurnSelection: true });
-    await loadLogs();
-  });
-
-  elements.clearToken.addEventListener("click", async () => {
-    adminApi.clearToken();
-    await loadMetadata({ preserveTurnSelection: true });
-    await loadLogs();
   });
 
   elements.deleteConversation.addEventListener("click", () => {

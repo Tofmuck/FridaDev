@@ -20,14 +20,11 @@
   }
 
   const elements = {
-    tokenButton: document.getElementById("identityTokenButton"),
-    clearToken: document.getElementById("identityClearToken"),
     refresh: document.getElementById("identityRefresh"),
     statusBanner: document.getElementById("identityStatusBanner"),
     promptContractMeta: document.getElementById("identityPromptContractMeta"),
     schemaVersionMeta: document.getElementById("identitySchemaVersionMeta"),
     injectedMeta: document.getElementById("identityInjectedMeta"),
-    tokenState: document.getElementById("identityTokenState"),
     currentStateMeta: document.getElementById("identityCurrentStateMeta"),
     currentState: document.getElementById("identityCurrentState"),
     runtimeRepresentationsMeta: document.getElementById("identityRuntimeRepresentationsMeta"),
@@ -88,7 +85,6 @@
       toText(activeRuntime.identity_input_schema_version) ||
       "n/a";
     elements.injectedMeta.textContent = injectedMetaText(injectedBlock);
-    elements.tokenState.textContent = adminApi.readToken() ? "Session active" : "Session vide";
   };
 
   const loadIdentityReadModel = async () => {
@@ -352,20 +348,6 @@
       );
     }
   };
-
-  elements.tokenButton.addEventListener("click", () => {
-    const nextToken = window.prompt("Token admin", adminApi.readToken());
-    if (nextToken == null) return;
-    adminApi.writeToken(nextToken);
-    syncMeta();
-    void refreshAll();
-  });
-
-  elements.clearToken.addEventListener("click", () => {
-    adminApi.clearToken();
-    syncMeta();
-    void refreshAll();
-  });
 
   elements.refresh.addEventListener("click", () => {
     void refreshAll();

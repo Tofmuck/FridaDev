@@ -11,14 +11,11 @@
   }
 
   const elements = {
-    tokenButton: document.getElementById("hermeneuticAdminTokenButton"),
-    clearToken: document.getElementById("hermeneuticAdminClearToken"),
     refresh: document.getElementById("hermeneuticAdminRefresh"),
     statusBanner: document.getElementById("hermeneuticAdminStatusBanner"),
     modeMeta: document.getElementById("hermeneuticAdminMode"),
     conversationMeta: document.getElementById("hermeneuticAdminConversationMeta"),
     turnMeta: document.getElementById("hermeneuticAdminTurnMeta"),
-    tokenState: document.getElementById("hermeneuticAdminTokenState"),
     overviewCards: document.getElementById("hermeneuticOverviewCards"),
     runtimeMetrics: document.getElementById("hermeneuticRuntimeMetrics"),
     conversationId: document.getElementById("hermeneuticConversationId"),
@@ -54,7 +51,6 @@
     elements.modeMeta.textContent = toText(mode) || "n/a";
     elements.conversationMeta.textContent = toText(state.conversationId) || "Aucune";
     elements.turnMeta.textContent = toText(state.turnId) || "Aucun";
-    elements.tokenState.textContent = adminApi.readToken() ? "Session active" : "Session vide";
   };
 
   const chooseConversationId = (conversations) => {
@@ -394,20 +390,6 @@
       );
     }
   };
-
-  elements.tokenButton.addEventListener("click", () => {
-    const nextToken = window.prompt("Token admin", adminApi.readToken());
-    if (nextToken == null) return;
-    adminApi.writeToken(nextToken);
-    syncMeta();
-    void refreshAll();
-  });
-
-  elements.clearToken.addEventListener("click", () => {
-    adminApi.clearToken();
-    syncMeta();
-    void refreshAll();
-  });
 
   elements.refresh.addEventListener("click", () => {
     void refreshAll();
