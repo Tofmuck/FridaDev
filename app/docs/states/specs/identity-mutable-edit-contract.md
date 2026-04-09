@@ -14,7 +14,12 @@ Ce contrat ouvre une edition controlee de la mutable canonique active, sans rouv
 Ici, `dynamique` veut dire:
 - la mutable canonique narrative stockee dans `identity_mutables`;
 - injectee activement via `static + mutable narrative`;
+- une couche identitaire mouvante (`ton`, `positionnement`, `continuite personnelle`) et non un pseudo-system-prompt;
 - et non plus le legacy fragmentaire `accepted|deferred|rejected`.
+
+Donc:
+- la mutable editee ici ne doit pas devenir une zone d'instructions de methode, de securite, de format, d'outils ou de contraintes runtime;
+- le fait qu'elle soit ensuite injectee dans le runtime n'en fait pas une source de prompt canonique.
 
 ## Route
 

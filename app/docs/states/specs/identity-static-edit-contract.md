@@ -14,8 +14,13 @@ Ce contrat ouvre une edition controlee du statique canonique actif, sans rouvrir
 Ici, `statique` veut dire:
 - le contenu du fichier actuellement reference par `resources.llm_identity_path` ou `resources.user_identity_path`;
 - charge puis injecte activement par le runtime;
+- la couche identitaire canonique stable (`personnalite`, `voix`, `posture`, `continuite`), et non un sous-prompt operatoire;
 - distinct de la mutable canonique `identity_mutables`;
 - distinct du legacy `identities`, `identity_evidence`, `identity_conflicts`.
+
+Donc:
+- le statique edite ici ne doit pas devenir une zone d'instructions de travail, de methode, de priorites, de format ou d'outillage;
+- le fait qu'il soit ensuite injecte dans le runtime n'en fait pas une source de prompt canonique.
 
 ## Route
 

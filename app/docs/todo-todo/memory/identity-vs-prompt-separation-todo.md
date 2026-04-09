@@ -160,7 +160,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Relire `main_system` et `main_hermeneutical`.
 - [x] Nettoyer doctrinalement la frontiere entre comportement identitaire et comportement operatoire.
 - [x] Poser noir sur blanc que le prompt systeme / prompt hermeneutique ne gardent que la technique, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
-- [ ] Relever les docs/specs qui parlent encore de facon melangee de personnalite et de prompt.
+- [x] Relever les docs/specs qui parlent encore de facon melangee de personnalite et de prompt.
 
 ### Lot 3 - Verification runtime de `llm.static`
 

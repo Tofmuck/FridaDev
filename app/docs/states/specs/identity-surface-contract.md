@@ -87,6 +87,11 @@ La fiche structuree pour le jugement expose:
 
 `data` porte la forme exacte retournee par `build_identity_input()`.
 
+Cette representation:
+- est une forme canonique structuree de l'identite;
+- ne decrit pas le prompt systeme;
+- sert a lire la base identitaire et sa projection de jugement sans la confondre avec des consignes operatoires.
+
 ### `injected_identity_text`
 
 Le texte identity injecte au modele expose:
@@ -97,10 +102,16 @@ Le texte identity injecte au modele expose:
 
 `content` porte le texte exact retourne par `build_identity_block()` pour la partie identity du prompt systeme augmente.
 
+Cette representation:
+- est une forme compilee d'injection runtime;
+- ne doit pas etre lue comme la source canonique de l'identite;
+- ne doit pas faire oublier que la source canonique reste `llm.static` / `user.static` plus les mutables canoniques.
+
 ### Semantique
 
 - ce ne sont pas deux verites concurrentes;
 - c'est la meme base identity projetee en deux formes;
+- ni l'une ni l'autre ne doivent etre lues comme "le prompt qui definit la personnalite";
 - la fiche structuree sert au jugement hermeneutique;
 - le texte identity sert a la reponse finale;
 - `used_identity_ids` peut rester vide si le legacy n'est pas reactif sur le chemin actif.

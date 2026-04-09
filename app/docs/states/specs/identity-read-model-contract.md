@@ -92,9 +92,11 @@ Semantique:
 - cette ressource doit rester dans les racines identity canoniques autorisees (`app/data/identity/...` ou mirror `state/data/identity/...`);
 - sur OVH, le `resolved_path` runtime attendu est `/app/data/identity/...`, alimente par le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`;
 - la source-of-truth host-side attendue reste donc le fichier suivi par le repo sous `state/data/identity/...`, pas une copie parallele dans la stack runtime;
+- cette couche de contenu reste une couche identitaire canonique (`personnalite`, `voix`, `posture`, `continuite`) et non un prompt de methode;
 - les runtime settings conservent la reference de ressource, pas l'edition du contenu;
 - `stored` reflete la presence de contenu fichier brut;
 - `loaded_for_runtime` et `actively_injected` refletent le contenu runtime normalise, une fois la ressource chargee puis trimmee;
+- `actively_injected` signifie seulement que cette couche participe a la forme compilee du runtime actif; cela ne requalifie pas cette couche en source de prompt;
 - verite active: oui, si `content` est present.
 
 ### `mutable`
@@ -114,6 +116,8 @@ Champs minimaux:
 
 Semantique:
 - source physique: table `identity_mutables`;
+- cette couche reste une couche identitaire mouvante et non un sous-prompt operatoire;
+- `actively_injected` signifie seulement qu'elle participe a la forme compilee active;
 - verite active: oui, si `content` est present.
 
 ### `legacy_fragments`
