@@ -46,7 +46,7 @@ Notes:
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
 - roadmap ouverte mini-lot admin `mode depuis / derniere bascule`: `todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`
 - roadmap ouverte surface `/identity` canonique: `todo-todo/admin/identity-surface-canonical-layout-todo.md`
-- roadmap ouverte separation doctrinale `identity` / `prompt`: `todo-todo/memory/identity-vs-prompt-separation-todo.md`
+- roadmap archivee separation doctrinale `identity` / `prompt`: `todo-done/refactors/identity-vs-prompt-separation-todo.md`
 - trace archivee follow-up audit complet 2026-04-04: `todo-done/audits/fridadev-audit-followup-2026-04-04.md`
 - note archivee de cloture lecture web URL explicite / Crawl4AI: `todo-done/notes/web-reading-truth-todo.md`
 - note archivee de cloture mini-lot dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`

@@ -1,7 +1,7 @@
 # Identity vs Prompt Separation TODO
 
-Statut: actif
-Classement: `app/docs/todo-todo/memory/`
+Statut: chantier termine, archive  
+Classement: `app/docs/todo-done/refactors/`
 Surface conceptuelle: identite canonique, prompt systeme, prompt hermeneutique, rewriter de mutable, representations runtime injectees
 Origine: clarification doctrinale apres fixation de la surface `/identity` et constat d'un melange conceptuel entre personnalite, instructions et formes compilees d'injection.
 

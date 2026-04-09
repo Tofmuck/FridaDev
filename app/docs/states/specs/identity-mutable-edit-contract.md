@@ -2,7 +2,7 @@
 
 Statut: spec vivante  
 Portee: edition operateur controlee de la mutable canonique, exposee dans `/hermeneutic-admin` puis reemployee dans `/identity`
-Chantier actif relie: `app/docs/todo-todo/memory/identity-vs-prompt-separation-todo.md` (`Lot 4` pour le durcissement prompt-like)
+Chantier archive relie: `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` (`Lot 4` pour le durcissement prompt-like)
 
 ## But
 
