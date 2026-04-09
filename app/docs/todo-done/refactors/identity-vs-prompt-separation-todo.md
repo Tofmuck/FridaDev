@@ -29,7 +29,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `llm` vide n'est pas un etat nominal du produit.
 - [x] `llm.mutable` ne doit pas devenir un pseudo-system-prompt.
 - [x] Une representation runtime injectee n'est pas une source canonique; c'est une forme compilee d'application.
-- [x] Le present document reste distinct du TODO UI `app/docs/todo-todo/admin/identity-surface-canonical-layout-todo.md`.
+- [x] Le present document reste distinct du TODO UI archive `app/docs/todo-done/refactors/identity-surface-canonical-layout-todo.md`.
 - [x] Sans `llm.static` fixe, la doctrine `identity != prompt` reste incomplete et flotte entre le prompt, la mutable et les representations runtime.
 
 ## Constats de depart a garder en tete

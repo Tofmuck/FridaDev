@@ -1,9 +1,10 @@
 # Identity Surface Canonical Layout TODO
 
-Statut: actif
-Classement: `app/docs/todo-todo/admin/`
+Statut: termine
+Classement: `app/docs/todo-done/refactors/`
 Surface cible: `/identity`
 Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres constat de surface trop dense, trop redondante et peu exploitable pour le pilotage immediat.
+Archivage: chantier termine, archive dans `app/docs/todo-done/refactors/identity-surface-canonical-layout-todo.md`
 
 ## Objectif
 
