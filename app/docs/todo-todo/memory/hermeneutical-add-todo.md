@@ -20,9 +20,9 @@ Implementer une "indetermination orientee" dans Frida-mini:
 - [ ] Le pipeline distingue auto-description vs projection vs role-play/ironie.
 - [ ] Le pipeline distingue recurrence vs accident.
 - [ ] Le pipeline distingue ce qui qualifie la personne vs la situation.
-- [ ] Les decisions arbitre + identite sont journalisees avec motifs et scores.
-- [ ] Les identites circonstancielles ne polluent plus le bloc identite durable.
-- [ ] Le mode `shadow` produit des metriques comparables avant `enforced`.
+- [x] Les decisions arbitre + identite sont journalisees avec motifs et scores.
+- [x] Les identites mutables ne polluent plus le bloc identite durable.
+- [x] Le mode `shadow` produit des metriques comparables avant `enforced`.
 - [x] Un operateur humain peut corriger les erreurs de classification.
 
 ## Parametres par defaut (a poser en Phase 0)
