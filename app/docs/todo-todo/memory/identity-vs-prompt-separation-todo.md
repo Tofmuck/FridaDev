@@ -12,6 +12,14 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Fixer le statut des representations runtime injectees.
 - [ ] Transformer cette doctrine en chantier d'implementation suivi, sans la melanger au TODO UI `/identity`.
 
+## Priorite absolue
+
+- [ ] Definir et figer `llm.static` comme noyau identitaire stable du modele.
+- [ ] Distinguer explicitement ce qui releve de la personnalite identitaire (`llm.static`) et ce qui releve du pilotage technique (`prompt systeme` / `prompt hermeneutique`).
+- [ ] Nettoyer le prompt du LLM pour n'y garder que la technique, l'operatoire, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
+- [ ] Verifier que `llm.static` est reellement charge, projete et injecte au runtime.
+- [ ] Ne traiter le durcissement de `llm.mutable` et du `identity_mutable_rewriter` qu'apres cette base posee et verifiee.
+
 ## Decisions acquises
 
 - [x] `identity` et `prompt` ne sont pas la meme chose.
@@ -20,6 +28,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `llm.mutable` ne doit pas devenir un pseudo-system-prompt.
 - [x] Une representation runtime injectee n'est pas une source canonique; c'est une forme compilee d'application.
 - [x] Le present document reste distinct du TODO UI `app/docs/todo-todo/admin/identity-surface-canonical-layout-todo.md`.
+- [x] Sans `llm.static` fixe, la doctrine `identity != prompt` reste incomplete et flotte entre le prompt, la mutable et les representations runtime.
 
 ## Constats de depart a garder en tete
 
@@ -30,6 +39,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `app/prompts/identity_mutable_rewriter.txt` demande deja une reecriture narrative de la mutable, mais ne ferme pas encore assez explicitement la frontiere entre personnalite et instruction.
 - [x] `app/prompts/main_system.txt` porte deja des consignes de conduite, de forme et de methode qui relevent du prompt, pas de l'identite.
 - [x] `app/prompts/main_hermeneutical.txt` traite deja le bloc identite comme une brique de coherence relationnelle, non souveraine sur la question courante.
+- [x] Tant que `llm.static` n'est pas clairement fixe et verifie dans le runtime, le systeme compense facilement en mettant de la personnalite un peu partout.
 
 ## Diagnostic conceptuel a ne pas perdre
 
@@ -39,6 +49,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] L'UI `/identity` montre aujourd'hui ensemble source canonique, projection runtime et diagnostics.
 - [x] Le probleme a corriger n'est pas seulement un probleme de rangement UI.
 - [x] Le probleme a corriger est un probleme de doctrine des couches.
+- [x] La premiere fuite a colmater n'est pas seulement dans la mutable; c'est d'abord l'absence d'un noyau identitaire stable suffisamment explicite et verifie.
 
 ## Invariants doctrinaux
 
@@ -48,6 +59,8 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `prompt` = instructions qui pilotent l'action du systeme.
 - [x] Le prompt peut cadrer la parole, mais il n'est pas l'identite.
 - [x] Les representations runtime injectees sont des vues compilees, pas une source canonique.
+- [x] Dans le prompt du LLM, on ne doit garder que la technique et l'operatoire.
+- [x] Tout ce qui releve de la personnalite, de la voix, de la posture relationnelle et du comportement identitaire doit vivre dans `llm.static`.
 
 ### Contrat par couche
 
@@ -63,6 +76,9 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `llm.static` porte la base de personnalite durable.
 - [x] `llm.static` porte la couleur relationnelle de reference.
 - [x] `llm.static` porte les traits de continuite qui ne doivent pas varier d'un tour a l'autre.
+- [x] `llm.static` porte la voix stable du modele.
+- [x] `llm.static` porte la posture relationnelle stable du modele.
+- [x] `llm.static` porte le comportement identitaire durable du modele.
 
 ### Contrat cible de `llm.mutable`
 
@@ -129,29 +145,37 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 ### Lot 1 - Doctrine et vocabulaire
 
-- [ ] Fermer les termes officiels `identity`, `prompt`, `mutable` et `representation runtime`.
-- [ ] Aligner les labels operateur sur cette doctrine.
-- [ ] Reperer les docs/specs qui parlent encore de facon melangee de personnalite et de prompt.
+- [ ] Definir et figer le contenu cible de `llm.static` comme noyau identitaire stable du modele.
+- [ ] Fermer explicitement ce qui doit vivre dans `llm.static`: personnalite stable, voix, posture relationnelle, comportement identitaire durable.
+- [ ] Reperer les docs/specs qui laissent encore entendre que la personnalite peut vivre ailleurs que dans `llm.static`.
 
-### Lot 2 - Audit des prompts et du rewriter mutable
+### Lot 2 - Frontiere prompt technique vs identite
 
-- [ ] Relire `main_system`, `main_hermeneutical` et `identity_mutable_rewriter`.
-- [ ] Identifier ce qui pousse encore a melanger personnalite, prompt et runtime.
-- [ ] Relever les contenus deja stockes qui ressemblent a du pseudo-prompt.
+- [ ] Relire `main_system` et `main_hermeneutical`.
+- [ ] Nettoyer doctrinalement la frontiere entre comportement identitaire et comportement operatoire.
+- [ ] Poser noir sur blanc que le prompt systeme / prompt hermeneutique ne gardent que la technique, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
+- [ ] Relever les docs/specs qui parlent encore de facon melangee de personnalite et de prompt.
 
-### Lot 3 - Contrat de reecriture mutable
+### Lot 3 - Verification runtime de `llm.static`
 
+- [ ] Verifier que `llm.static` est reellement charge dans le runtime.
+- [ ] Verifier que `llm.static` est bien projete dans `ActiveIdentityProjection`.
+- [ ] Verifier que `llm.static` est bien present dans `identity_input`.
+- [ ] Verifier que `llm.static` est bien injecte dans le `augmented_system`.
+- [ ] Verifier que la chaine `load -> projection -> injection` est explicitement documentee.
+
+### Lot 4 - Mutable et rewriter apres base posee
+
+- [ ] Relire `identity_mutable_rewriter` seulement apres fixation de `llm.static`.
+- [ ] Identifier ce qui pousse encore `llm.mutable` a absorber de la personnalite faute de noyau stable suffisamment explicite.
 - [ ] Durcir le prompt du rewriter.
 - [ ] Durcir la validation des sorties `llm.mutable` / `user.mutable`.
 - [ ] Interdire explicitement les contenus prompt-like dans la mutable.
 
-### Lot 4 - Separation runtime / source canonique
+### Lot 5 - Clarification admin et lecture runtime
 
 - [ ] Clarifier dans l'admin et les specs que les representations injectees sont compilees.
 - [ ] Montrer plus nettement la difference entre source canonique et projection runtime.
-
-### Lot 5 - Surface operateur `/identity`
-
 - [ ] Exposer distinctement la personnalite canonique et les couches prompt/runtime.
 - [ ] Rendre visible ce qui releve de l'identite et ce qui releve du pilotage systeme.
 - [ ] Garder ce lot distinct du TODO de layout `/identity`.
