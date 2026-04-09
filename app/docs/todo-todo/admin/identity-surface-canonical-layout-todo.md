@@ -67,9 +67,9 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### 2. Contrat d'information minimal par bloc
 
-- [ ] Afficher `Absent / Present` pour chaque bloc.
-- [ ] Afficher `Charge / Non charge` pour chaque bloc.
-- [ ] Afficher `Injecte / Non injecte` pour chaque bloc.
+- [x] Afficher `Absent / Present` pour chaque bloc.
+- [x] Afficher `Charge / Non charge` pour chaque bloc.
+- [x] Afficher `Injecte / Non injecte` pour chaque bloc.
 - [ ] Afficher `len` pour chaque bloc.
 - [ ] Afficher une provenance compacte pour chaque bloc.
 - [ ] Afficher la derniere mise a jour si elle existe.
@@ -82,7 +82,7 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 - [ ] Montrer la provenance `resource_path` pour `LLM statique` et `User statique`.
 - [ ] Montrer le champ runtime concerne pour le statique.
 - [ ] Montrer la resolution de chemin et le chemin resolu, ou l'etat de resolution.
-- [ ] Signaler `llm.static` vide comme etat degrade visible immediatement.
+- [x] Signaler `llm.static` vide comme etat degrade visible immediatement.
 
 ### 4. Contrat de la mutable
 
@@ -90,8 +90,8 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 - [ ] Montrer `updated_by`.
 - [ ] Montrer `updated_ts`.
 - [ ] Montrer la raison de mise a jour si elle existe.
-- [ ] Afficher `llm.mutable` vide comme `Absente`, sans laisser croire a un bloc cache ou introuvable.
-- [ ] Ne pas marquer par defaut `llm.mutable` vide comme la meme anomalie fondamentale que `llm.static` vide.
+- [x] Afficher `llm.mutable` vide comme `Absente`, sans laisser croire a un bloc cache ou introuvable.
+- [x] Ne pas marquer par defaut `llm.mutable` vide comme la meme anomalie fondamentale que `llm.static` vide.
 
 ### 5. Separation des couches
 
@@ -117,9 +117,9 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### Lot 2 - Traitement explicite des etats `llm`
 
-- [ ] Introduire le signal visuel degrade pour `llm.static` vide.
-- [ ] Introduire un etat explicite `Absente` pour `llm.mutable` vide, distinct d'un etat degrade critique.
-- [ ] Rendre ces etats visibles des l'arrivee sur la page.
+- [x] Introduire le signal visuel degrade pour `llm.static` vide.
+- [x] Introduire un etat explicite `Absente` pour `llm.mutable` vide, distinct d'un etat degrade critique.
+- [x] Rendre ces etats visibles des l'arrivee sur la page.
 
 ### Lot 3 - Deduplication des vues
 

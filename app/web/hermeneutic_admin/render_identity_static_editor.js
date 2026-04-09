@@ -68,9 +68,44 @@
     return layer;
   };
 
+  const buildOperatorState = (subject, staticLayer, currentContent) => {
+    const hasContent = currentContent.length > 0;
+    const loadedForRuntime = Boolean(staticLayer.loaded_for_runtime);
+    const activelyInjected = Boolean(staticLayer.actively_injected);
+    const isCriticalMissing = subject === "llm" && !hasContent;
+
+    let message = "Presente: contenu statique canonique editable.";
+    let messageState = hasContent ? "ok" : "";
+    if (isCriticalMissing) {
+      message =
+        "Etat degrade: llm.static absente. Le noyau identitaire stable du modele doit etre present.";
+      messageState = "error";
+    } else if (!hasContent) {
+      message = "Absente: aucun contenu statique canonique actif.";
+      messageState = "";
+    }
+
+    return {
+      message,
+      messageState,
+      chips: [
+        createChip(`Etat: ${hasContent ? "Presente" : "Absente"}`, {
+          status: isCriticalMissing ? "error" : hasContent ? "ok" : "skipped",
+        }),
+        createChip(`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`, {
+          status: loadedForRuntime ? "ok" : isCriticalMissing ? "error" : "skipped",
+        }),
+        createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
+          status: activelyInjected ? "ok" : isCriticalMissing ? "error" : "skipped",
+        }),
+      ],
+    };
+  };
+
   const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const staticLayer = subjectStaticLayer(payload, subject);
     const currentContent = toText(staticLayer.content);
+    const operatorState = buildOperatorState(subject, staticLayer, currentContent);
     const titleText = toText(options.title) || `${subject} statique canonique`;
     const noteText =
       toText(options.noteText) ||
@@ -91,6 +126,19 @@
     note.className = "admin-section-note admin-section-note-left";
     note.textContent = noteText;
     card.appendChild(note);
+
+    const operatorStatus = document.createElement("p");
+    operatorStatus.className = "admin-inline-status";
+    if (operatorState.messageState) {
+      operatorStatus.dataset.state = operatorState.messageState;
+    }
+    operatorStatus.textContent = operatorState.message;
+    card.appendChild(operatorStatus);
+
+    const operatorMeta = document.createElement("div");
+    operatorMeta.className = "admin-inline-meta";
+    operatorState.chips.forEach((chip) => operatorMeta.appendChild(chip));
+    card.appendChild(operatorMeta);
 
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";

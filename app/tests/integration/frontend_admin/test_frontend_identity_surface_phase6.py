@@ -148,6 +148,30 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Forme runtime compilee injectee", render_source)
         self.assertNotIn("prompt=", render_source)
 
+    def test_identity_top_cards_expose_operator_states_and_llm_severity_split(self) -> None:
+        static_source = (
+            APP_DIR / "web" / "hermeneutic_admin" / "render_identity_static_editor.js"
+        ).read_text(encoding="utf-8")
+        mutable_source = (
+            APP_DIR / "web" / "hermeneutic_admin" / "render_identity_mutable_editor.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Etat degrade: llm.static absente.", static_source)
+        self.assertIn("Le noyau identitaire stable du modele doit etre present.", static_source)
+        self.assertIn('`Etat: ${hasContent ? "Presente" : "Absente"}`', static_source)
+        self.assertIn('`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`', static_source)
+        self.assertIn('`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`', static_source)
+
+        self.assertIn("Absente: aucune modulation identitaire active pour le modele.", mutable_source)
+        self.assertIn(
+            "La mutable reste editable sans signaler un degrade critique.",
+            mutable_source,
+        )
+        self.assertIn('`Etat: ${hasContent ? "Presente" : "Absente"}`', mutable_source)
+        self.assertIn('`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`', mutable_source)
+        self.assertIn('`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`', mutable_source)
+        self.assertNotIn("Etat degrade: llm.mutable", mutable_source)
+
 
 if __name__ == "__main__":
     unittest.main()

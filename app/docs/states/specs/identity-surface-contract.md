@@ -11,6 +11,9 @@ Ce contrat ferme la surface `Identity` dediee en reemployant les contrats deja s
 La page doit montrer, en francais clair:
 - une introduction compacte qui ne repousse pas la zone de travail;
 - les 4 blocs canoniques editables comme premiere vraie zone de pilotage;
+- l'etat operateur `Present / Absente`, `Charge / Non charge` et `Injecte / Non injecte` directement dans ces 4 blocs;
+- `llm.static` vide comme etat degrade critique visible immediatement;
+- `llm.mutable` vide comme etat explicite `Absente`, sans la surqualifier comme la meme anomalie fondamentale;
 - la structure reelle du systeme identity;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet;
@@ -136,6 +139,7 @@ Le pilotage systeme reste distinct:
 La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - une introduction compacte;
 - `Pilotage canonique actif` avec `LLM statique`, `LLM mutable`, `User statique`, `User mutable`;
+- dans ces 4 blocs, un etat visible sans clic pour `Present / Absente`, `Charge / Non charge` et `Injecte / Non injecte`;
 - la structure reelle du systeme identity;
 - l'etat courant par sujet;
 - la projection structuree compilee pour le jugement;
@@ -154,6 +158,12 @@ Acceptables:
 - `LLM mutable`
 - `User statique`
 - `User mutable`
+- `Etat degrade`
+- `Absente`
+- `Charge`
+- `Non charge`
+- `Injecte`
+- `Non injecte`
 - `Etat courant par sujet`
 - `Projection structuree compilee pour le jugement`
 - `Forme runtime compilee injectee au modele`

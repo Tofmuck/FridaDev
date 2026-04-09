@@ -69,9 +69,39 @@
     return layer;
   };
 
+  const buildOperatorState = (subject, mutableLayer, currentContent) => {
+    const hasContent = currentContent.length > 0;
+    const loadedForRuntime = Boolean(mutableLayer.loaded_for_runtime);
+    const activelyInjected = Boolean(mutableLayer.actively_injected);
+
+    let message = "Presente: modulation identitaire canonique editable.";
+    if (!hasContent && subject === "llm") {
+      message =
+        "Absente: aucune modulation identitaire active pour le modele. La mutable reste editable sans signaler un degrade critique.";
+    } else if (!hasContent) {
+      message = "Absente: aucune modulation identitaire active.";
+    }
+
+    return {
+      message,
+      chips: [
+        createChip(`Etat: ${hasContent ? "Presente" : "Absente"}`, {
+          status: hasContent ? "ok" : "skipped",
+        }),
+        createChip(`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`, {
+          status: loadedForRuntime ? "ok" : "skipped",
+        }),
+        createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
+          status: activelyInjected ? "ok" : "skipped",
+        }),
+      ],
+    };
+  };
+
   const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const mutableLayer = subjectMutableLayer(payload, subject);
     const currentContent = toText(mutableLayer.content);
+    const operatorState = buildOperatorState(subject, mutableLayer, currentContent);
     const titleText = toText(options.title) || `${subject} mutable canonique`;
     const noteText =
       toText(options.noteText) ||
@@ -92,6 +122,16 @@
     note.className = "admin-section-note admin-section-note-left";
     note.textContent = noteText;
     card.appendChild(note);
+
+    const operatorStatus = document.createElement("p");
+    operatorStatus.className = "admin-inline-status";
+    operatorStatus.textContent = operatorState.message;
+    card.appendChild(operatorStatus);
+
+    const operatorMeta = document.createElement("div");
+    operatorMeta.className = "admin-inline-meta";
+    operatorState.chips.forEach((chip) => operatorMeta.appendChild(chip));
+    card.appendChild(operatorMeta);
 
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
