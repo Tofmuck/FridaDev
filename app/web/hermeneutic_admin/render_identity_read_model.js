@@ -98,6 +98,34 @@
     target.appendChild(createChip(`${label}=${formatted}`));
   };
 
+  const hasContent = (layer) => toText(layer?.content).length > 0;
+
+  const stateLabel = (present) => (present ? "Presente" : "Absente");
+  const runtimeLabel = (loaded) => (loaded ? "Charge" : "Non charge");
+  const injectionLabel = (injected) => (injected ? "Injecte" : "Non injecte");
+
+  const summarizeStaticLayer = (layer) => {
+    const present = hasContent(layer);
+    return [
+      stateLabel(present),
+      runtimeLabel(Boolean(layer?.loaded_for_runtime)),
+      injectionLabel(Boolean(layer?.actively_injected)),
+    ].join(", ");
+  };
+
+  const summarizeMutableLayer = (layer) => {
+    const present = hasContent(layer);
+    const parts = [
+      stateLabel(present),
+      runtimeLabel(Boolean(layer?.loaded_for_runtime)),
+      injectionLabel(Boolean(layer?.actively_injected)),
+    ];
+    if (toText(layer?.updated_by)) {
+      parts.push(`maj par ${toText(layer.updated_by)}`);
+    }
+    return parts.join(", ");
+  };
+
   const renderLayer = (subjectGroup, layerSpec, layer) => {
     if (!layer || typeof layer !== "object" || Array.isArray(layer)) {
       return;
@@ -139,6 +167,86 @@
     }
 
     subjectGroup.appendChild(layerGroup);
+  };
+
+  const renderSubjectSummary = (target, subjectKey, subject) => {
+    const subjectGroup = document.createElement("section");
+    subjectGroup.className = "admin-readonly-group";
+
+    const subjectHead = document.createElement("div");
+    subjectHead.className = "admin-readonly-group-head";
+    const subjectTitle = document.createElement("h4");
+    subjectTitle.textContent = subjectKey;
+    subjectHead.appendChild(subjectTitle);
+    subjectGroup.appendChild(subjectHead);
+
+    subjectGroup.appendChild(
+      createNote(
+        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes historiques utiles.",
+      ),
+    );
+
+    const staticLayer = subject.static || {};
+    const mutableLayer = subject.mutable || {};
+    const legacyLayer = subject.legacy_fragments || {};
+    const evidenceLayer = subject.evidence || {};
+    const conflictsLayer = subject.conflicts || {};
+
+    const subjectMeta = document.createElement("div");
+    subjectMeta.className = "admin-card-meta";
+    subjectMeta.appendChild(createChip(`statique=${stateLabel(hasContent(staticLayer)).toLowerCase()}`));
+    subjectMeta.appendChild(createChip(`mutable=${stateLabel(hasContent(mutableLayer)).toLowerCase()}`));
+    subjectMeta.appendChild(createChip(`legacy=${Number(legacyLayer.total_count) || 0}`));
+    subjectMeta.appendChild(createChip(`evidence=${Number(evidenceLayer.total_count) || 0}`));
+    subjectMeta.appendChild(createChip(`conflicts=${Number(conflictsLayer.total_count) || 0}`));
+    subjectGroup.appendChild(subjectMeta);
+
+    const summaryGrid = document.createElement("div");
+    summaryGrid.className = "admin-readonly-grid";
+    renderReadonlyEntries(summaryGrid, [
+      [
+        "static_summary",
+        {
+          label: "Statique canonique",
+          value: summarizeStaticLayer(staticLayer),
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "mutable_summary",
+        {
+          label: "Mutable canonique",
+          value: summarizeMutableLayer(mutableLayer),
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "legacy_summary",
+        {
+          label: "Fragments legacy",
+          value: `${Number(legacyLayer.total_count) || 0} element(s) visibles plus bas`,
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "evidence_summary",
+        {
+          label: "Evidences",
+          value: `${Number(evidenceLayer.total_count) || 0} element(s) visibles plus bas`,
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "conflicts_summary",
+        {
+          label: "Conflits",
+          value: `${Number(conflictsLayer.total_count) || 0} element(s) visibles plus bas`,
+          source: "identity_read_model",
+        },
+      ],
+    ]);
+    subjectGroup.appendChild(summaryGrid);
+    target.appendChild(subjectGroup);
   };
 
   const renderSubject = (target, subjectKey, subject) => {
@@ -204,7 +312,7 @@
     target.appendChild(subjectGroup);
   };
 
-  const renderIdentityReadModel = (metaTarget, target, payload) => {
+  const renderIdentityReadModel = (metaTarget, target, payload, options = {}) => {
     if (!target) return;
     target.innerHTML = "";
     if (metaTarget) metaTarget.innerHTML = "";
@@ -220,6 +328,7 @@
       safePayload.subjects && typeof safePayload.subjects === "object" && !Array.isArray(safePayload.subjects)
         ? safePayload.subjects
         : {};
+    const viewMode = toText(options.viewMode).toLowerCase() === "summary" ? "summary" : "full";
 
     if (metaTarget) {
       appendMetaChip(metaTarget, "read_model", toText(safePayload.read_model_version) || "n/a");
@@ -230,28 +339,34 @@
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
     }
 
-    const runtimeGroup = document.createElement("section");
-    runtimeGroup.className = "admin-readonly-group";
-    const runtimeHead = document.createElement("div");
-    runtimeHead.className = "admin-readonly-group-head";
-    const runtimeTitle = document.createElement("h4");
-    runtimeTitle.textContent = "Repères runtime et compilation active";
-    runtimeHead.appendChild(runtimeTitle);
-    runtimeGroup.appendChild(runtimeHead);
-    runtimeGroup.appendChild(
-      createNote(
-        "Ce bloc resume le runtime actif et le contrat de compilation de l'identite. Il ne remplace ni les couches canoniques statique/mutable, ni le pilotage systeme distinct.",
-      ),
-    );
-    const runtimeGrid = document.createElement("div");
-    runtimeGrid.className = "admin-readonly-grid";
-    renderReadonlyEntries(runtimeGrid, mappingToDetailEntries(activeRuntime, "identity_read_model"));
-    runtimeGroup.appendChild(runtimeGrid);
-    target.appendChild(runtimeGroup);
+    if (viewMode === "full") {
+      const runtimeGroup = document.createElement("section");
+      runtimeGroup.className = "admin-readonly-group";
+      const runtimeHead = document.createElement("div");
+      runtimeHead.className = "admin-readonly-group-head";
+      const runtimeTitle = document.createElement("h4");
+      runtimeTitle.textContent = "Repères runtime et compilation active";
+      runtimeHead.appendChild(runtimeTitle);
+      runtimeGroup.appendChild(runtimeHead);
+      runtimeGroup.appendChild(
+        createNote(
+          "Ce bloc resume le runtime actif et le contrat de compilation de l'identite. Il ne remplace ni les couches canoniques statique/mutable, ni le pilotage systeme distinct.",
+        ),
+      );
+      const runtimeGrid = document.createElement("div");
+      runtimeGrid.className = "admin-readonly-grid";
+      renderReadonlyEntries(runtimeGrid, mappingToDetailEntries(activeRuntime, "identity_read_model"));
+      runtimeGroup.appendChild(runtimeGrid);
+      target.appendChild(runtimeGroup);
+    }
 
     [["llm", "llm"], ["user", "user"]].forEach(([subjectKey, label]) => {
       const subject = subjects[subjectKey];
       if (!subject || typeof subject !== "object" || Array.isArray(subject)) {
+        return;
+      }
+      if (viewMode === "summary") {
+        renderSubjectSummary(target, label, subject);
         return;
       }
       renderSubject(target, label, subject);

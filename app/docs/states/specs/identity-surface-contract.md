@@ -16,7 +16,7 @@ La page doit montrer, en francais clair:
 - `llm.mutable` vide comme etat explicite `Absente`, sans la surqualifier comme la meme anomalie fondamentale;
 - la structure reelle du systeme identity;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
-- l'etat courant par sujet;
+- l'etat courant par sujet comme synthese compacte, sans recopier exhaustivement les cartes canoniques;
 - la difference entre la projection structuree pour le jugement et la forme runtime compilee injectee au modele;
 - l'edition du statique et de la mutable;
 - les seuils et limites;
@@ -141,7 +141,7 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - `Pilotage canonique actif` avec `LLM statique`, `LLM mutable`, `User statique`, `User mutable`;
 - dans ces 4 blocs, un etat visible sans clic pour `Present / Absente`, `Charge / Non charge` et `Injecte / Non injecte`;
 - la structure reelle du systeme identity;
-- l'etat courant par sujet;
+- l'etat courant par sujet comme synthese compacte;
 - la projection structuree compilee pour le jugement;
 - la forme runtime compilee injectee au modele;
 - les seuils et limites;

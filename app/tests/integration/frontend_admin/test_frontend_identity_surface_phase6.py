@@ -32,6 +32,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Source canonique, pilotage systeme et formes compilees", source)
         self.assertIn("Pilotage systeme distinct", source)
         self.assertIn("Etat courant par sujet", source)
+        self.assertIn("Cette synthese compacte dit vrai", source)
         self.assertIn("Projection structuree compilee pour le jugement", source)
         self.assertIn("Forme runtime compilee injectee au modele", source)
         self.assertIn("Seuils et limites", source)
@@ -147,6 +148,21 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Projection runtime compilee pour le jugement", render_source)
         self.assertIn("Forme runtime compilee injectee", render_source)
         self.assertNotIn("prompt=", render_source)
+
+    def test_identity_current_state_uses_summary_read_model_mode(self) -> None:
+        main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
+        read_model_source = (
+            APP_DIR / "web" / "hermeneutic_admin" / "render_identity_read_model.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('viewMode: "summary"', main_source)
+        self.assertIn("renderSubjectSummary", read_model_source)
+        self.assertIn(
+            "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif.",
+            read_model_source,
+        )
+        self.assertIn("element(s) visibles plus bas", read_model_source)
+        self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
 
     def test_identity_top_cards_expose_operator_states_and_llm_severity_split(self) -> None:
         static_source = (

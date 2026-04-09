@@ -117,7 +117,9 @@
     const payload = await api.fetchIdentityReadModel({ limit: 20 });
     state.readModelPayload = payload;
     renderPilotageCards(payload);
-    render.renderIdentityReadModel(elements.currentStateMeta, elements.currentState, payload);
+    render.renderIdentityReadModel(elements.currentStateMeta, elements.currentState, payload, {
+      viewMode: "summary",
+    });
     runtimeRepresentations.renderLegacyLayers(elements.legacyLayers, payload);
     syncMeta();
     return payload;

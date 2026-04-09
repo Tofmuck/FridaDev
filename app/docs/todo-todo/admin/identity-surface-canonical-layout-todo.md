@@ -102,10 +102,10 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### 6. Deduplication
 
-- [ ] Ne pas montrer `static` / `mutable` trois fois sous des formes equivalentes.
+- [x] Ne pas montrer `static` / `mutable` trois fois sous des formes equivalentes.
 - [ ] Ne pas garder `legacy`, `evidence` et `conflicts` dans le meme flux que le pilotage canonique.
-- [ ] Ne pas faire coexister un `etat courant` deja exhaustif avec des editeurs qui reracontent les memes statuts sans gain de lecture.
-- [ ] Ne pas dupliquer les couches historiques a la fois dans le read-model principal et dans une section diagnostics separee.
+- [x] Ne pas faire coexister un `etat courant` deja exhaustif avec des editeurs qui reracontent les memes statuts sans gain de lecture.
+- [x] Ne pas dupliquer les couches historiques a la fois dans le read-model principal et dans une section diagnostics separee.
 
 ## Lots d'implementation
 
@@ -123,9 +123,9 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### Lot 3 - Deduplication des vues
 
-- [ ] Retirer du flux principal les redites entre read-model, runtime et editeurs.
-- [ ] Reduire la repetition des chips `stored / loaded / injected / len`.
-- [ ] Faire du read-model une lecture de synthese, pas un second flux exhaustif concurrent.
+- [x] Retirer du flux principal les redites entre read-model, runtime et editeurs.
+- [x] Reduire la repetition des chips `stored / loaded / injected / len`.
+- [x] Faire du read-model une lecture de synthese, pas un second flux exhaustif concurrent.
 
 ### Lot 4 - Relegation / repli des diagnostics
 

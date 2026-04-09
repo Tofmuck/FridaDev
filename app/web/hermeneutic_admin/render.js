@@ -409,14 +409,14 @@
     });
   };
 
-  const renderIdentityReadModel = (metaTarget, target, payload) => {
+  const renderIdentityReadModel = (metaTarget, target, payload, options = {}) => {
     const identityRenderer = window.FridaHermeneuticIdentityReadModelRender;
     if (!identityRenderer || typeof identityRenderer.renderIdentityReadModel !== "function") {
       throw new Error(
         "hermeneutic_admin/render_identity_read_model.js must be loaded before renderIdentityReadModel()",
       );
     }
-    return identityRenderer.renderIdentityReadModel(metaTarget, target, payload);
+    return identityRenderer.renderIdentityReadModel(metaTarget, target, payload, options);
   };
 
   const renderCorrections = (target, items) => {

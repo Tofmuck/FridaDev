@@ -184,6 +184,8 @@ Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
 - pour l'etat courant par sujet;
 - sans le confondre avec le texte injecte ni la fiche structuree de jugement;
 - en le combinant avec `GET /api/admin/identity/runtime-representations`.
+- en mode synthese compacte pour ne pas recopier exhaustivement les statuts deja visibles dans `Pilotage canonique actif`.
+- en reservant le detail read-only exhaustif a `/hermeneutic-admin` et aux autres sections detaillees de `/identity`.
 
 Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:
 - via `GET /api/admin/identity/governance` et `POST /api/admin/identity/governance`;
