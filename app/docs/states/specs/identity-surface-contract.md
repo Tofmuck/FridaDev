@@ -1,8 +1,8 @@
 # Identity Surface Contract
 
-Statut: spec vivante  
-Portee: page `/identity`, navigation globale `Identity` et lecture read-only des deux representations runtime  
-Lot ferme: `Lot 6`
+Statut: spec vivante
+Portee: page `/identity`, navigation globale `Identity` et articulation avec la lecture diagnostique runtime sur `/hermeneutic-admin`
+Lot ferme: `Lot 5`
 
 ## But
 
@@ -17,7 +17,8 @@ La page doit montrer, en francais clair:
 - la structure reelle du systeme identity;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet comme synthese compacte, sans recopier exhaustivement les cartes canoniques;
-- la difference entre la projection structuree pour le jugement et la forme runtime compilee injectee au modele;
+- un rappel compact des formes runtime compilees utile au pilotage immediat;
+- un acces explicite vers leur detail diagnostique sur `/hermeneutic-admin`;
 - l'edition du statique et de la mutable;
 - les seuils et limites;
 - un bloc `Diagnostics / historique` replie par defaut;
@@ -34,7 +35,8 @@ La route read-only `runtime-representations` est:
 - distincte de `GET /api/admin/identity/read-model`;
 - distincte des routes d'edition `POST /api/admin/identity/mutable` et `POST /api/admin/identity/static`;
 - distincte de `GET /api/admin/identity/governance`;
-- protegee par la meme garde admin que les autres routes `/api/admin/*`.
+- protegee par la meme garde admin que les autres routes `/api/admin/*`;
+- reemployee par `/identity` pour son repere compact et par `/hermeneutic-admin` pour le detail diagnostique.
 
 ## Navigation globale
 
@@ -99,6 +101,9 @@ Cette representation:
 - ne devient pas pour autant une source canonique concurrente;
 - sert a lire la base identitaire et sa projection de jugement sans la confondre avec des consignes operatoires.
 
+Sur `/identity`, elle n'apparait plus en dump detaille: seule une synthese compacte reste visible.
+Le detail read-only complet vit sur `/hermeneutic-admin`.
+
 ### `injected_identity_text`
 
 La forme runtime compilee injectee au modele expose:
@@ -114,6 +119,9 @@ Cette representation:
 - occupe un slot technique `final_model_system_prompt` sans devenir pour autant le pilotage systeme source;
 - ne doit pas etre lue comme la source canonique de l'identite;
 - ne doit pas faire oublier que la source canonique reste `llm.static` / `user.static` plus les mutables canoniques.
+
+Sur `/identity`, elle n'apparait plus comme long texte detaille dans le flux principal.
+Le detail complet reste disponible sur `/hermeneutic-admin`.
 
 ## Pilotage systeme distinct
 
@@ -142,11 +150,14 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - dans ces 4 blocs, un etat visible sans clic pour `Present / Absente`, `Charge / Non charge` et `Injecte / Non injecte`;
 - la structure reelle du systeme identity;
 - l'etat courant par sujet comme synthese compacte;
-- la projection structuree compilee pour le jugement;
-- la forme runtime compilee injectee au modele;
+- un repere runtime compile utile au pilotage, avec lien explicite vers le detail diagnostique;
 - les seuils et limites;
 - `Diagnostics / historique`, replie par defaut;
 - dans ce bloc replie, le legacy / evidence-only, les conflits et les corrections recentes utiles.
+
+La page `/hermeneutic-admin` porte, elle, le detail complet:
+- de la projection structuree compilee pour le jugement;
+- de la forme runtime compilee injectee au modele.
 
 ## Langage operateur
 
@@ -181,8 +192,8 @@ Interdits comme titres principaux seuls:
 ## CSS et composition frontend
 
 La page `/identity` doit:
-- reutiliser `admin.css` tel quel;
-- ne pas modifier `admin.css`;
+- reutiliser `admin.css` comme socle partage;
+- garder les ajouts CSS bornees dans `admin.css` plutot que recreer une feuille parallele;
 - ne pas introduire une nouvelle CSS parallele;
 - rester dans le langage visuel deja partage par `/admin`, `/log` et `/hermeneutic-admin`.
 

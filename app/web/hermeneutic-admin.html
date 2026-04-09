@@ -159,6 +159,45 @@
       <div id="hermeneuticIdentityReadModel" class="admin-readonly-stack"></div>
     </section>
 
+    <section class="admin-section-block" aria-labelledby="hermeneutic-identity-runtime-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Detail diagnostique</p>
+          <h2 id="hermeneutic-identity-runtime-title">Representations runtime identity</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Cette section porte le detail complet des deux formes runtime compilees de l'identite. La page
+        <a href="/identity">Identity</a> n'en garde qu'un rappel compact pour le pilotage immediat.
+      </p>
+
+      <div id="hermeneuticIdentityRuntimeMeta" class="admin-inline-meta"></div>
+      <div class="admin-readonly-stack">
+        <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-structured-title">
+          <div class="admin-readonly-head">
+            <div>
+              <p class="admin-kicker">Lecture seule</p>
+              <h3 id="hermeneutic-identity-structured-title">Projection structuree compilee pour le jugement</h3>
+            </div>
+            <span class="admin-readonly-badge">Compile</span>
+          </div>
+          <div id="hermeneuticIdentityStructuredRepresentation"></div>
+        </section>
+
+        <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-injected-title">
+          <div class="admin-readonly-head">
+            <div>
+              <p class="admin-kicker">Lecture seule</p>
+              <h3 id="hermeneutic-identity-injected-title">Forme runtime compilee injectee au modele</h3>
+            </div>
+            <span class="admin-readonly-badge">Compile</span>
+          </div>
+          <div id="hermeneuticIdentityInjectedRepresentation"></div>
+        </section>
+      </div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="hermeneutic-identity-governance-title">
       <div class="admin-section-head">
         <div>
@@ -238,6 +277,7 @@
   <script src="hermeneutic_admin/render_identity_static_editor.js"></script>
   <script src="hermeneutic_admin/render_identity_mutable_editor.js"></script>
   <script src="hermeneutic_admin/render_identity_governance.js"></script>
+  <script src="identity/render_identity_runtime_representations.js"></script>
   <script src="hermeneutic_admin/main.js"></script>
 </body>
 </html>

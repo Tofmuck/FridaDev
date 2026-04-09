@@ -41,6 +41,8 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("edition mutable + statique", source)
         self.assertIn("edition mutable", source)
         self.assertIn("pilotage systeme reste distinct", source)
+        self.assertIn("Representations runtime identity", source)
+        self.assertIn("Identity</a> n'en garde qu'un rappel compact", source)
         self.assertIn("Gouvernance identity", source)
         self.assertIn("IDENTITY_TOP_N", source)
         self.assertIn("Fragments legacy d'identite", source)
@@ -85,6 +87,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
                 "hermeneutic_admin/render_identity_static_editor.js",
                 "hermeneutic_admin/render_identity_mutable_editor.js",
                 "hermeneutic_admin/render_identity_governance.js",
+                "identity/render_identity_runtime_representations.js",
                 "hermeneutic_admin/main.js",
             ],
         )
@@ -96,7 +99,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         )
         found_endpoints = set(
             re.findall(
-                r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|mutable|static|governance)|logs/chat(?:/metadata)?)",
+                r"/api/admin/(?:hermeneutics/[a-z-]+|identity/(?:read-model|runtime-representations|mutable|static|governance)|logs/chat(?:/metadata)?)",
                 combined,
             )
         )
@@ -105,6 +108,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
             {
                 "/api/admin/hermeneutics/dashboard",
                 "/api/admin/identity/read-model",
+                "/api/admin/identity/runtime-representations",
                 "/api/admin/identity/mutable",
                 "/api/admin/identity/static",
                 "/api/admin/identity/governance",
@@ -126,6 +130,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("FridaHermeneuticIdentityMutableEditor", identity_edit_source)
         self.assertIn("FridaHermeneuticIdentityGovernance", identity_governance_source)
         self.assertIn("FridaHermeneuticIdentityReadModelRender", render_source)
+        self.assertIn("fetchIdentityRuntimeRepresentations", api_source)
         self.assertIn("compile=", render_source)
         self.assertNotIn("prompt=", render_source)
         self.assertIn("Repères runtime et compilation active", identity_render_source)
@@ -153,6 +158,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('id="hermeneuticIdentityGovernanceMeta"', source)
         self.assertIn('id="hermeneuticIdentityGovernance"', source)
         self.assertIn('id="hermeneuticIdentityReadModel"', source)
+        self.assertIn('id="hermeneuticIdentityRuntimeMeta"', source)
+        self.assertIn('id="hermeneuticIdentityStructuredRepresentation"', source)
+        self.assertIn('id="hermeneuticIdentityInjectedRepresentation"', source)
         self.assertIn('id="hermeneuticIdentityList"', source)
         self.assertIn('id="hermeneuticCorrectionsList"', source)
         self.assertIn("stimmung_agent", source)

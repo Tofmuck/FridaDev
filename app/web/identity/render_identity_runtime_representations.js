@@ -26,6 +26,28 @@
     return chip;
   };
 
+  const createSummaryCard = ({ title, body, chips }) => {
+    const card = document.createElement("article");
+    card.className = "admin-card";
+
+    const head = document.createElement("div");
+    head.className = "admin-card-head";
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    head.appendChild(heading);
+    card.appendChild(head);
+
+    const copy = document.createElement("p");
+    copy.textContent = body;
+    card.appendChild(copy);
+
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    chips.forEach((chipText) => meta.appendChild(createChip(chipText)));
+    card.appendChild(meta);
+    return card;
+  };
+
   const createNote = (text) => {
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
@@ -372,7 +394,7 @@
     });
   };
 
-  const renderIdentityRuntimeRepresentations = (metaTarget, structuredTarget, injectedTarget, payload) => {
+  const renderIdentityRuntimeRepresentationsMeta = (metaTarget, payload) => {
     if (metaTarget) {
       metaTarget.innerHTML = "";
     }
@@ -385,6 +407,49 @@
       metaTarget.appendChild(createChip(`meme_base=${Boolean(safePayload.same_identity_basis)}`));
       metaTarget.appendChild(createChip(`used_ids=${Number(safePayload.used_identity_ids_count) || 0}`));
     }
+  };
+
+  const renderIdentityRuntimeSummary = (metaTarget, summaryTarget, payload) => {
+    if (!summaryTarget) return;
+    summaryTarget.innerHTML = "";
+    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+    const structured = safePayload.structured_identity && typeof safePayload.structured_identity === "object"
+      ? safePayload.structured_identity
+      : {};
+    const injected = safePayload.injected_identity_text && typeof safePayload.injected_identity_text === "object"
+      ? safePayload.injected_identity_text
+      : {};
+
+    renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
+    summaryTarget.appendChild(
+      createSummaryCard({
+        title: "Projection jugement",
+        body:
+          "Repere compact de la fiche compilee `identity_input` lue par le noeud hermeneutique. Le detail complet reste sur Hermeneutic admin.",
+        chips: [
+          `present=${Boolean(structured.present)}`,
+          `schema=${toText(structured.schema_version) || "n/a"}`,
+          `meme_base=${Boolean(safePayload.same_identity_basis)}`,
+        ],
+      }),
+    );
+    summaryTarget.appendChild(
+      createSummaryCard({
+        title: "Injection reponse finale",
+        body:
+          "Repere compact du texte identity compile injecte au modele final. La lecture ligne a ligne quitte le flux principal de /identity.",
+        chips: [
+          `present=${Boolean(injected.present)}`,
+          `len=${String((injected.content || "").length)}`,
+          `used_ids=${Number(safePayload.used_identity_ids_count) || 0}`,
+        ],
+      }),
+    );
+  };
+
+  const renderIdentityRuntimeRepresentations = (metaTarget, structuredTarget, injectedTarget, payload) => {
+    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+    renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
     renderStructuredRepresentation(structuredTarget, safePayload.structured_identity);
     renderInjectedRepresentation(
       injectedTarget,
@@ -394,6 +459,8 @@
   };
 
   window.FridaIdentityRuntimeRepresentationsRender = Object.freeze({
+    renderIdentityRuntimeRepresentationsMeta,
+    renderIdentityRuntimeSummary,
     renderIdentityRuntimeRepresentations,
     renderLegacyLayers,
   });

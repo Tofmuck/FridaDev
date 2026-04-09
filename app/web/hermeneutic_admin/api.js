@@ -85,6 +85,13 @@
     );
   };
 
+  const fetchIdentityRuntimeRepresentations = () => {
+    return readAdminJson(
+      "/api/admin/identity/runtime-representations",
+      "Echec lecture representations runtime identity.",
+    );
+  };
+
   const fetchIdentityGovernance = () => {
     return readAdminJson(
       "/api/admin/identity/governance",
@@ -156,6 +163,7 @@
     fetchTurnLogs,
     fetchArbiterDecisions,
     fetchIdentityReadModel,
+    fetchIdentityRuntimeRepresentations,
     fetchIdentityGovernance,
     updateIdentityMutable,
     updateIdentityStatic,

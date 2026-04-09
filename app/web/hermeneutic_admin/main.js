@@ -5,8 +5,9 @@
   const governance = window.FridaHermeneuticIdentityGovernance;
   const staticEditor = window.FridaHermeneuticIdentityStaticEditor;
   const mutableEditor = window.FridaHermeneuticIdentityMutableEditor;
+  const runtimeRepresentations = window.FridaIdentityRuntimeRepresentationsRender;
 
-  if (!adminApi || !api || !render || !governance || !staticEditor || !mutableEditor) {
+  if (!adminApi || !api || !render || !governance || !staticEditor || !mutableEditor || !runtimeRepresentations) {
     throw new Error("Hermeneutic admin dependencies are missing");
   }
 
@@ -32,6 +33,9 @@
     identityGovernance: document.getElementById("hermeneuticIdentityGovernance"),
     identityReadModelMeta: document.getElementById("hermeneuticIdentityReadModelMeta"),
     identityReadModel: document.getElementById("hermeneuticIdentityReadModel"),
+    identityRuntimeMeta: document.getElementById("hermeneuticIdentityRuntimeMeta"),
+    identityStructuredRepresentation: document.getElementById("hermeneuticIdentityStructuredRepresentation"),
+    identityInjectedRepresentation: document.getElementById("hermeneuticIdentityInjectedRepresentation"),
     identitySubject: document.getElementById("hermeneuticIdentitySubject"),
     identityStatus: document.getElementById("hermeneuticIdentityStatus"),
     identityList: document.getElementById("hermeneuticIdentityList"),
@@ -147,6 +151,17 @@
     return payload;
   };
 
+  const loadIdentityRuntimeRepresentations = async () => {
+    const payload = await api.fetchIdentityRuntimeRepresentations();
+    runtimeRepresentations.renderIdentityRuntimeRepresentations(
+      elements.identityRuntimeMeta,
+      elements.identityStructuredRepresentation,
+      elements.identityInjectedRepresentation,
+      payload,
+    );
+    return payload;
+  };
+
   const loadIdentityGovernance = async () => {
     const payload = await api.fetchIdentityGovernance();
     governance.renderIdentityGovernance(
@@ -191,7 +206,7 @@
         response,
         response.changed ? "ok" : "",
       );
-      await loadIdentityReadModel();
+      await Promise.all([loadIdentityReadModel(), loadIdentityRuntimeRepresentations()]);
       render.setStatusBanner(
         elements.statusBanner,
         `Edition statique canonique ${response.reason_code}.`,
@@ -259,7 +274,7 @@
         response,
         response.changed ? "ok" : "",
       );
-      await loadIdentityReadModel();
+      await Promise.all([loadIdentityReadModel(), loadIdentityRuntimeRepresentations()]);
       render.setStatusBanner(
         elements.statusBanner,
         `Edition mutable canonique ${response.reason_code}.`,
@@ -376,6 +391,7 @@
       await Promise.all([
         loadArbiterDecisions(),
         loadIdentityReadModel(),
+        loadIdentityRuntimeRepresentations(),
         loadIdentityGovernance(),
         loadIdentityCandidates(),
         loadCorrections(),

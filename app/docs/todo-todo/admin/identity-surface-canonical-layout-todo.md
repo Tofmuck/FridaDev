@@ -9,7 +9,7 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 - [x] Garder ce chantier distinct du chantier doctrinal `identity != prompt`, maintenant archive dans `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md`.
 - [x] Garder ce chantier distinct du mini-lot admin `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`.
-- [ ] Transformer `/identity` en surface de pilotage operateur d'abord, et en surface de diagnostic ensuite.
+- [x] Transformer `/identity` en surface de pilotage operateur d'abord, et en surface de diagnostic ensuite.
 
 ## Decisions acquises
 
@@ -70,35 +70,35 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 - [x] Afficher `Absent / Present` pour chaque bloc.
 - [x] Afficher `Charge / Non charge` pour chaque bloc.
 - [x] Afficher `Injecte / Non injecte` pour chaque bloc.
-- [ ] Afficher `len` pour chaque bloc.
-- [ ] Afficher une provenance compacte pour chaque bloc.
-- [ ] Afficher la derniere mise a jour si elle existe.
-- [ ] Garder la zone editable et les actions dans le meme bloc.
-- [ ] Permettre de repondre sans autre panneau a la question:
+- [x] Afficher `len` pour chaque bloc.
+- [x] Afficher une provenance compacte pour chaque bloc.
+- [x] Afficher la derniere mise a jour si elle existe.
+- [x] Garder la zone editable et les actions dans le meme bloc.
+- [x] Permettre de repondre sans autre panneau a la question:
   - `Est-ce que ce contenu existe, est-il charge, est-il injecte, puis-je l'editer maintenant ?`
 
 ### 3. Contrat du statique
 
-- [ ] Montrer la provenance `resource_path` pour `LLM statique` et `User statique`.
-- [ ] Montrer le champ runtime concerne pour le statique.
-- [ ] Montrer la resolution de chemin et le chemin resolu, ou l'etat de resolution.
+- [x] Montrer la provenance `resource_path` pour `LLM statique` et `User statique`.
+- [x] Montrer le champ runtime concerne pour le statique.
+- [x] Montrer la resolution de chemin et le chemin resolu, ou l'etat de resolution.
 - [x] Signaler `llm.static` vide comme etat degrade visible immediatement.
 
 ### 4. Contrat de la mutable
 
-- [ ] Montrer la provenance `identity_mutables` pour `LLM mutable` et `User mutable`.
-- [ ] Montrer `updated_by`.
-- [ ] Montrer `updated_ts`.
-- [ ] Montrer la raison de mise a jour si elle existe.
+- [x] Montrer la provenance `identity_mutables` pour `LLM mutable` et `User mutable`.
+- [x] Montrer `updated_by`.
+- [x] Montrer `updated_ts`.
+- [x] Montrer la raison de mise a jour si elle existe.
 - [x] Afficher `llm.mutable` vide comme `Absente`, sans laisser croire a un bloc cache ou introuvable.
 - [x] Ne pas marquer par defaut `llm.mutable` vide comme la meme anomalie fondamentale que `llm.static` vide.
 
 ### 5. Separation des couches
 
-- [ ] Garder `Pilotage canonique actif` dans le flux principal visible.
-- [ ] Releguer `Runtime detaille` plus bas et le rendre repliable par defaut.
+- [x] Garder `Pilotage canonique actif` dans le flux principal visible.
+- [x] Sortir le detail runtime complet du flux principal de `/identity` et ne garder qu'un repere compact avec acces clair au detail diagnostique.
 - [x] Releguer `Diagnostics / historique` plus bas et le rendre repliable par defaut.
-- [ ] Eviter que les couches runtime ou historiques ecrasent la lecture des 4 blocs canoniques.
+- [x] Eviter que les couches runtime ou historiques ecrasent la lecture des 4 blocs canoniques.
 
 ### 6. Deduplication
 
@@ -135,19 +135,19 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### Lot 5 - Arbitrage sur runtime representations / diagnostics dedies
 
-- [ ] Trancher si les runtime representations detaillees restent sur `/identity`.
-- [ ] Trancher si elles doivent migrer vers une surface plus clairement diagnostique.
-- [ ] Conserver seulement ce qui aide reellement l'operateur a comprendre l'etat actif.
+- [x] Trancher que les runtime representations detaillees ne restent plus dans le flux principal de `/identity`.
+- [x] Migrer leur detail complet vers une surface plus clairement diagnostique: `/hermeneutic-admin`.
+- [x] Conserver sur `/identity` seulement ce qui aide reellement l'operateur a comprendre l'etat actif.
 
 ## Definition of done
 
-- [ ] Les 4 blocs canoniques sont visibles immediatement.
-- [ ] L'absence de `llm.static` est visible comme degrade.
-- [ ] L'absence de `llm.mutable` reste visible sans ambiguite, sans etre confondue avec l'anomalie `llm.static` vide.
-- [ ] Le scroll principal avant edition est fortement reduit.
-- [ ] `Pilotage canonique actif`, `Runtime detaille` et `Diagnostics / historique` sont nettement separes.
-- [ ] Les redondances principales ont disparu.
-- [ ] L'operateur peut comprendre en quelques secondes quoi editer et ce qui est reellement absent.
+- [x] Les 4 blocs canoniques sont visibles immediatement.
+- [x] L'absence de `llm.static` est visible comme degrade.
+- [x] L'absence de `llm.mutable` reste visible sans ambiguite, sans etre confondue avec l'anomalie `llm.static` vide.
+- [x] Le scroll principal avant edition est fortement reduit.
+- [x] `Pilotage canonique actif`, `Runtime detaille` et `Diagnostics / historique` sont nettement separes.
+- [x] Les redondances principales ont disparu.
+- [x] L'operateur peut comprendre en quelques secondes quoi editer et ce qui est reellement absent.
 
 ## Hors scope
 

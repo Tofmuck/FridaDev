@@ -8,7 +8,7 @@ Lot ferme: `Lot 2`
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
 
-Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4`, `Lot 5` et `Lot 6`, des editions ou lectures distinctes documentees a part.
+Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4` et `Lot 5`, des editions ou lectures distinctes documentees a part.
 
 Il sert a :
 - montrer la base canonique active et les flags runtime associes;
@@ -180,12 +180,12 @@ Cette surface montre:
 - la separation `stored` vs `actively_injected`;
 - le fait que le pilotage systeme reste distinct de cette lecture identity.
 
-Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
+Depuis la fermeture du lot 5 de la surface `/identity`, cette page reemploie ce meme contrat:
 - pour l'etat courant par sujet;
 - sans le confondre avec le texte injecte ni la fiche structuree de jugement;
-- en le combinant avec `GET /api/admin/identity/runtime-representations`.
 - en mode synthese compacte pour ne pas recopier exhaustivement les statuts deja visibles dans `Pilotage canonique actif`.
-- en reservant le detail read-only exhaustif a `/hermeneutic-admin` et aux autres sections detaillees de `/identity`.
+- en gardant sur `/identity` seulement un repere compact des representations runtime.
+- en reservant le detail read-only exhaustif des representations runtime a `/hermeneutic-admin`.
 
 Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:
 - via `GET /api/admin/identity/governance` et `POST /api/admin/identity/governance`;

@@ -163,43 +163,25 @@
       <div id="identityCurrentState" class="admin-readonly-stack"></div>
     </section>
 
-    <section class="admin-section-block" aria-labelledby="identity-runtime-representations-title">
+    <section class="admin-section-block" aria-labelledby="identity-runtime-summary-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Deux formes, deux usages</p>
-          <h2 id="identity-runtime-representations-title">Projections runtime compilees pour le jugement et la reponse</h2>
+          <p class="admin-kicker">Repere runtime utile</p>
+          <h2 id="identity-runtime-summary-title">Repere runtime compile utile au pilotage</h2>
         </div>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin#hermeneutic-identity-runtime-title">
+          Voir le detail diagnostique
+        </a>
       </div>
 
       <p class="admin-section-note admin-section-note-left">
-        La fiche structuree et le texte injecte viennent de la meme base canonique, mais restent deux formes runtime
-        compilees. Le pilotage systeme reste distinct et n'est pas la source de ces contenus.
+        `/identity` garde ici seulement les reperes utiles pour comprendre l'etat actif. Le detail complet de la
+        projection structuree et du texte injecte vit maintenant sur
+        <a href="/hermeneutic-admin#hermeneutic-identity-runtime-title">Hermeneutic admin</a>.
       </p>
 
       <div id="identityRuntimeRepresentationsMeta" class="admin-inline-meta"></div>
-      <div class="admin-readonly-stack">
-        <section class="admin-readonly-panel" aria-labelledby="identity-structured-title">
-          <div class="admin-readonly-head">
-            <div>
-              <p class="admin-kicker">Lecture seule</p>
-              <h3 id="identity-structured-title">Projection structuree compilee pour le jugement</h3>
-            </div>
-            <span class="admin-readonly-badge">Compile</span>
-          </div>
-          <div id="identityStructuredRepresentation"></div>
-        </section>
-
-        <section class="admin-readonly-panel" aria-labelledby="identity-injected-title">
-          <div class="admin-readonly-head">
-            <div>
-              <p class="admin-kicker">Lecture seule</p>
-              <h3 id="identity-injected-title">Forme runtime compilee injectee au modele</h3>
-            </div>
-            <span class="admin-readonly-badge">Compile</span>
-          </div>
-          <div id="identityInjectedRepresentation"></div>
-        </section>
-      </div>
+      <div id="identityRuntimeSummary" class="admin-section-grid"></div>
     </section>
 
     <section class="admin-section-block" aria-labelledby="identity-governance-title">

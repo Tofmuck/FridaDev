@@ -33,8 +33,9 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Pilotage systeme distinct", source)
         self.assertIn("Etat courant par sujet", source)
         self.assertIn("Cette synthese compacte dit vrai", source)
-        self.assertIn("Projection structuree compilee pour le jugement", source)
-        self.assertIn("Forme runtime compilee injectee au modele", source)
+        self.assertIn("Repere runtime compile utile au pilotage", source)
+        self.assertIn("Voir le detail diagnostique", source)
+        self.assertIn('href="/hermeneutic-admin#hermeneutic-identity-runtime-title"', source)
         self.assertIn("Seuils et limites", source)
         self.assertIn("Diagnostics / historique", source)
         self.assertIn("Ouvrir legacy, evidences, conflits et corrections", source)
@@ -53,6 +54,9 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
         self.assertIn('href="/hermeneutic-admin"', source)
+        self.assertIn('id="identityRuntimeSummary"', source)
+        self.assertNotIn('id="identityStructuredRepresentation"', source)
+        self.assertNotIn('id="identityInjectedRepresentation"', source)
         self.assertEqual(
             found_scripts,
             [
@@ -72,7 +76,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
 
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-structure-title"'))
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-current-state-title"'))
-        self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-runtime-representations-title"'))
+        self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-runtime-summary-title"'))
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-governance-title"'))
         self.assertLess(source.index('id="identity-governance-title"'), source.index('id="identity-diagnostics-title"'))
         self.assertLess(source.index('id="identityLlmStaticCard"'), source.index('id="identityLlmMutableCard"'))
@@ -186,6 +190,26 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertNotIn('id="identityDiagnosticsDisclosure" class="admin-readonly-panel admin-disclosure" open', html_source)
         self.assertIn(".admin-disclosure-summary", css_source)
         self.assertIn(".admin-disclosure[open] > .admin-disclosure-summary", css_source)
+
+    def test_identity_runtime_section_is_compact_and_points_to_hermeneutic_admin_detail(self) -> None:
+        source = (APP_DIR / "web" / "identity.html").read_text(encoding="utf-8")
+        main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
+        render_source = (
+            APP_DIR / "web" / "identity" / "render_identity_runtime_representations.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Repere runtime compile utile au pilotage", source)
+        self.assertIn("Voir le detail diagnostique", source)
+        self.assertIn('href="/hermeneutic-admin#hermeneutic-identity-runtime-title"', source)
+        self.assertIn('id="identityRuntimeSummary"', source)
+        self.assertNotIn('id="identityStructuredRepresentation"', source)
+        self.assertNotIn('id="identityInjectedRepresentation"', source)
+        self.assertIn("renderIdentityRuntimeSummary", main_source)
+        self.assertIn("renderIdentityRuntimeSummary", render_source)
+        self.assertIn("Projection jugement", render_source)
+        self.assertIn("Injection reponse finale", render_source)
+        self.assertNotIn("elements.structuredRepresentation", main_source)
+        self.assertNotIn("elements.injectedRepresentation", main_source)
 
     def test_identity_top_cards_expose_operator_states_and_llm_severity_split(self) -> None:
         static_source = (

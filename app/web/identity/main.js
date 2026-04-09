@@ -33,8 +33,7 @@
     currentStateMeta: document.getElementById("identityCurrentStateMeta"),
     currentState: document.getElementById("identityCurrentState"),
     runtimeRepresentationsMeta: document.getElementById("identityRuntimeRepresentationsMeta"),
-    structuredRepresentation: document.getElementById("identityStructuredRepresentation"),
-    injectedRepresentation: document.getElementById("identityInjectedRepresentation"),
+    runtimeSummary: document.getElementById("identityRuntimeSummary"),
     staticEditStatus: document.getElementById("identityStaticEditStatus"),
     mutableEditStatus: document.getElementById("identityMutableEditStatus"),
     governanceStatus: document.getElementById("identityGovernanceStatus"),
@@ -177,10 +176,9 @@
   const loadRuntimeRepresentations = async () => {
     const payload = await api.fetchIdentityRuntimeRepresentations();
     state.runtimeRepresentationsPayload = payload;
-    runtimeRepresentations.renderIdentityRuntimeRepresentations(
+    runtimeRepresentations.renderIdentityRuntimeSummary(
       elements.runtimeRepresentationsMeta,
-      elements.structuredRepresentation,
-      elements.injectedRepresentation,
+      elements.runtimeSummary,
       payload,
     );
     syncMeta();
