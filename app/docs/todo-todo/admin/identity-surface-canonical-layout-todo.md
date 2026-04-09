@@ -212,7 +212,7 @@ L'UI doit distinguer clairement:
 - `Present`: contenu non vide
 - `Charge`: contenu pris en compte par le runtime actuel
 - `Non charge`: contenu stocke mais non pris en compte
-- `Injecte`: contribue a l'identite active ou au bloc prompt actif
+- `Injecte`: contribue a la forme runtime compilee / a l'injection active, sans requalifier cette couche en prompt canonique
 - `Non injecte`: visible seulement, hors injection active
 - `Editable`: modifiable depuis cette page
 - `Etat degrade`: etat non nominal necessitant une action operateur
