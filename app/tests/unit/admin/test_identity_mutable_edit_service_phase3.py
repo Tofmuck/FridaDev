@@ -146,6 +146,36 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(observed_logs[0][1]['new_len'], 1651)
         self.assertNotIn('content', observed_logs[0][1])
 
+    def test_rejects_prompt_like_content_without_write(self) -> None:
+        store = _MutableStore({'llm': 'Frida reste sobre.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'llm',
+                'action': 'set',
+                'content': 'Tu dois verifier les sources et citer chaque point important.',
+                'reason': 'probe only',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 400)
+        self.assertFalse(payload['ok'])
+        self.assertEqual(
+            payload['validation_error'],
+            'mutable_content_prompt_like_operator_instruction',
+        )
+        self.assertEqual(store.state['llm'], 'Frida reste sobre.')
+        self.assertEqual(store.upsert_calls, [])
+        self.assertEqual(
+            observed_logs[0][1]['validation_error'],
+            'mutable_content_prompt_like_operator_instruction',
+        )
+        self.assertNotIn('content', observed_logs[0][1])
+
 
 if __name__ == '__main__':
     unittest.main()

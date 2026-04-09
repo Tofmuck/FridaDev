@@ -6,6 +6,7 @@ import config
 
 from admin import admin_identity_mutable_edit_audit as audit
 from admin import admin_identity_mutable_edit_contract as contract
+from identity import mutable_identity_validation
 
 
 def identity_mutable_edit_response(
@@ -262,6 +263,37 @@ def identity_mutable_edit_response(
             reason_len=reason_len,
         )
         return response, 400
+
+    if action == 'set':
+        validation = mutable_identity_validation.validate_mutable_identity_content(content)
+        if not validation.ok:
+            response = contract.response_payload(
+                ok=False,
+                subject=subject,
+                action=action,
+                old_len=old_len,
+                new_len=len(content),
+                changed=False,
+                stored_after=bool(current_content),
+                validation_ok=False,
+                validation_error=validation.reason_code,
+                reason_code=validation.reason_code,
+                error='mutable prompt-like interdite',
+            )
+            audit.log_compact_edit(
+                admin_logs_module,
+                subject=subject,
+                action=action,
+                old_len=old_len,
+                new_len=len(content),
+                changed=False,
+                stored_after=bool(current_content),
+                validation_ok=False,
+                validation_error=validation.reason_code,
+                reason_code=validation.reason_code,
+                reason_len=reason_len,
+            )
+            return response, 400
 
     if action == 'set' and content == current_content:
         response = contract.response_payload(

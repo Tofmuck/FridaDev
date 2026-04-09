@@ -175,11 +175,12 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 ### Lot 4 - Mutable et rewriter apres base posee
 
-- [ ] Relire `identity_mutable_rewriter` seulement apres fixation de `llm.static`.
-- [ ] Identifier ce qui pousse encore `llm.mutable` a absorber de la personnalite faute de noyau stable suffisamment explicite.
-- [ ] Durcir le prompt du rewriter.
-- [ ] Durcir la validation des sorties `llm.mutable` / `user.mutable`.
-- [ ] Interdire explicitement les contenus prompt-like dans la mutable.
+- [x] Relire `identity_mutable_rewriter` seulement apres fixation de `llm.static`.
+- [x] Identifier ce qui pousse encore `llm.mutable` a absorber de la personnalite faute de noyau stable suffisamment explicite.
+- [x] Introduire une validation canonique partagee entre le rewriter et l'edition admin mutable.
+- [x] Durcir le prompt du rewriter.
+- [x] Durcir la validation des sorties `llm.mutable` / `user.mutable`.
+- [x] Interdire explicitement les contenus prompt-like dans la mutable.
 
 ### Lot 5 - Clarification admin et lecture runtime
 

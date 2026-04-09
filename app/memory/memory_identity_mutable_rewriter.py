@@ -5,6 +5,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 import config
 from identity import identity as static_identity
+from identity import mutable_identity_validation
 from observability import chat_turn_logger
 
 logger = logging.getLogger('frida.identity_mutable_rewriter')
@@ -130,6 +131,10 @@ def _validate_subject_contract(subject: str, raw: Any) -> tuple[dict[str, Any] |
         return None, {'action': 'rejected', 'content': '', 'reason_code': 'contract_rewrite_missing_content'}
     if action == 'rewrite' and len(content) > int(config.IDENTITY_MUTABLE_MAX_CHARS):
         return None, {'action': 'rejected', 'content': content, 'reason_code': 'mutable_content_too_long'}
+    if action == 'rewrite':
+        validation = mutable_identity_validation.validate_mutable_identity_content(content)
+        if not validation.ok:
+            return None, {'action': 'rejected', 'content': content, 'reason_code': validation.reason_code}
 
     return {
         'subject': subject,

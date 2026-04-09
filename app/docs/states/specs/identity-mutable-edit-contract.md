@@ -2,13 +2,13 @@
 
 Statut: spec vivante  
 Portee: edition operateur controlee de la mutable canonique, exposee dans `/hermeneutic-admin` puis reemployee dans `/identity`
-Lot ferme: `Lot 3`
+Chantier actif relie: `app/docs/todo-todo/memory/identity-vs-prompt-separation-todo.md` (`Lot 4` pour le durcissement prompt-like)
 
 ## But
 
 Ce contrat ouvre une edition controlee de la mutable canonique active, sans rouvrir:
-- l'edition du statique (`Lot 4`);
-- la gouvernance des caps et seuils (`Lot 5`);
+- l'edition du statique;
+- la gouvernance des caps et seuils;
 - les vieux mutateurs legacy `force_accept`, `force_reject`, `relabel`.
 
 Ici, `dynamique` veut dire:
@@ -69,8 +69,23 @@ La mutable canonique editee par l'operateur suit la meme discipline doctrinale q
 - plafond dur: `1650` caracteres
 - aucune troncature cachee
 - si `content > 1650`: rejet, aucune ecriture
+- le meme validateur canonique est applique a l'edition admin et au `identity_mutable_rewriter`
+- tout contenu prompt-like est rejete fail-closed avant ecriture
 
-Depuis `Lot 5`, ces deux caps restent visibles dans la gouvernance identity:
+Contenus explicitement interdits:
+- instructions de tache ou de methode
+- consignes de securite, d'outils ou de contraintes runtime
+- politiques de formatage `markdown` / `JSON` / formats de sortie
+- meta `system prompt`, `prompt hermeneutique`, `source de verite`, `pipeline`, `admin`
+
+Reason codes metier stables attendus:
+- `mutable_content_prompt_like_operator_instruction`
+- `mutable_content_prompt_like_format_policy`
+- `mutable_content_prompt_like_tool_policy`
+- `mutable_content_prompt_like_runtime_meta`
+- `mutable_content_prompt_like_system_meta`
+
+Ces deux caps restent visibles dans la gouvernance identity:
 - `IDENTITY_MUTABLE_TARGET_CHARS`
 - `IDENTITY_MUTABLE_MAX_CHARS`
 - mais ils restent `doctrine_locked_readonly` et ne sont pas reouverts a l'edition.

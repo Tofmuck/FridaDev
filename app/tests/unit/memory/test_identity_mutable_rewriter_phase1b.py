@@ -135,6 +135,26 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         self.assertEqual(rejections[0]['subject'], 'llm')
         self.assertEqual(rejections[0]['reason_code'], 'contract_reason_missing')
 
+    def test_validate_rewriter_contract_rejects_prompt_like_rewrite(self) -> None:
+        validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
+            {
+                'llm': {
+                    'action': 'rewrite',
+                    'content': 'Tu dois verifier les sources et citer chaque point important.',
+                    'reason': 'durable policy',
+                },
+                'user': {
+                    'action': 'no_change',
+                    'content': '',
+                    'reason': 'no durable update',
+                },
+            }
+        )
+
+        self.assertNotIn('llm', validated)
+        self.assertEqual(rejections[0]['subject'], 'llm')
+        self.assertEqual(rejections[0]['reason_code'], 'mutable_content_prompt_like_operator_instruction')
+
     def test_refresh_mutable_identities_applies_valid_rewrite_and_logs_compact_outcomes(self) -> None:
         observed_events: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
@@ -276,6 +296,49 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         by_subject = {item['subject']: item for item in summary['outcomes']}
         self.assertEqual(by_subject['llm']['action'], 'rejected')
         self.assertEqual(by_subject['llm']['reason_code'], 'mutable_content_too_long')
+        self.assertEqual(store.state['llm']['content'], 'Frida garde une voix sobre.')
+        self.assertEqual(store.upsert_calls, [])
+
+    def test_refresh_mutable_identities_rejects_prompt_like_rewrite_without_erasing_existing_state(self) -> None:
+        store = _MutableStore(
+            {
+                'llm': {'subject': 'llm', 'content': 'Frida garde une voix sobre.'},
+                'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'},
+            }
+        )
+        summary = memory_identity_mutable_rewriter.refresh_mutable_identities(
+            [{'role': 'user', 'content': 'Peux-tu garder une trace durable ?'}],
+            arbiter_module=type(
+                'ArbiterStub',
+                (),
+                {
+                    'rewrite_identity_mutables': staticmethod(
+                        lambda _payload: {
+                            'llm': {
+                                'action': 'rewrite',
+                                'content': 'Tu dois verifier les sources et citer chaque point important.',
+                                'reason': 'durable policy',
+                            },
+                            'user': {
+                                'action': 'no_change',
+                                'content': '',
+                                'reason': 'no durable update',
+                            },
+                        }
+                    )
+                },
+            )(),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida statique',
+            load_user_identity_fn=lambda: 'Utilisateur statique',
+        )
+
+        by_subject = {item['subject']: item for item in summary['outcomes']}
+        self.assertEqual(by_subject['llm']['action'], 'rejected')
+        self.assertEqual(
+            by_subject['llm']['reason_code'],
+            'mutable_content_prompt_like_operator_instruction',
+        )
         self.assertEqual(store.state['llm']['content'], 'Frida garde une voix sobre.')
         self.assertEqual(store.upsert_calls, [])
 

@@ -184,6 +184,46 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertFalse(observed['clear'])
         self.assertEqual(observed['logs'][0][1]['validation_error'], 'contract_reason_missing')
 
+    def test_identity_mutable_edit_route_rejects_prompt_like_content(self) -> None:
+        observed = {'upsert': False, 'logs': []}
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity
+        original_clear_mutable_identity = self.server.memory_store.clear_mutable_identity
+        original_log_event = self.server.admin_logs.log_event
+
+        self.server.memory_store.get_mutable_identity = lambda subject: {'subject': subject, 'content': 'Frida reste sobre.'}
+        self.server.memory_store.upsert_mutable_identity = lambda *_args, **_kwargs: observed.__setitem__('upsert', True)
+        self.server.memory_store.clear_mutable_identity = lambda *_args, **_kwargs: self.fail('clear must not be called')
+        self.server.admin_logs.log_event = lambda event, **kwargs: observed['logs'].append((event, kwargs))
+        try:
+            response = self.client.post(
+                '/api/admin/identity/mutable',
+                json={
+                    'subject': 'llm',
+                    'action': 'set',
+                    'content': 'Tu dois verifier les sources et citer chaque point important.',
+                    'reason': 'probe only',
+                },
+            )
+        finally:
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.upsert_mutable_identity = original_upsert_mutable_identity
+            self.server.memory_store.clear_mutable_identity = original_clear_mutable_identity
+            self.server.admin_logs.log_event = original_log_event
+
+        self.assertEqual(response.status_code, 400)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(
+            data['validation_error'],
+            'mutable_content_prompt_like_operator_instruction',
+        )
+        self.assertFalse(observed['upsert'])
+        self.assertEqual(
+            observed['logs'][0][1]['validation_error'],
+            'mutable_content_prompt_like_operator_instruction',
+        )
+
     def test_identity_mutable_edit_route_is_available_without_admin_token(self) -> None:
         response = self.client.post(
             '/api/admin/identity/mutable',
