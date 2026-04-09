@@ -42,6 +42,7 @@ Notes:
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
+- note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
 - trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
 - mini-lot admin archive `mode depuis / observation du mode`: `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
