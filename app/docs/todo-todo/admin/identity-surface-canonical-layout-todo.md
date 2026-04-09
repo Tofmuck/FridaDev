@@ -25,18 +25,18 @@ Le reste doit etre range en dessous, replie ou extrait selon son statut reel:
 
 ## Decision produit non negociable
 
-- Decision produit explicite: `LLM vide` = etat degrade.
-- Le sujet `llm` ne doit pas etre vide dans l'etat nominal du produit.
-- Un `llm` vide est un etat degrade / incorrect, pas un etat normal.
+- Decision produit explicite: `LLM statique vide` = etat degrade.
+- Le sujet `llm` ne doit pas perdre sa base identitaire stable dans l'etat nominal du produit.
+- Un `llm.static` vide est un etat degrade / incorrect, pas un etat normal.
 - L'UI doit rendre cet etat visible immediatement en haut de page.
-- Un `llm` vide ne doit jamais etre noye dans une longue pile readonly ni masque par la presence d'autres couches (`legacy`, `evidence`, `conflicts`, representations runtime, etc.).
+- Un `llm.static` vide ne doit jamais etre noye dans une longue pile readonly ni masque par la presence d'autres couches (`legacy`, `evidence`, `conflicts`, representations runtime, etc.).
 
 Conséquences operatoires obligatoires:
 
 - si `llm.static` est vide, l'operateur doit le voir immediatement dans le bloc `LLM statique`
 - si `llm.mutable` est vide, l'operateur doit le voir immediatement dans le bloc `LLM mutable`
-- l'etat degrade doit etre signale par un libelle explicite, compact et non ambigu
-- la page ne doit pas laisser croire que `llm` est "introuvable"; elle doit montrer clairement qu'il est absent et que c'est anormal
+- l'etat degrade fort doit viser `llm.static` absente; `llm.mutable` vide doit rester visible explicitement sans etre surelevee comme la meme anomalie fondamentale
+- la page ne doit pas laisser croire que `llm` est "introuvable"; elle doit montrer clairement ce qui est absent, ce qui est present, et ce qui releve d'un etat degrade reel
 
 ## Constat de depart sur la surface actuelle
 
@@ -55,17 +55,18 @@ Etat actuel observe dans le code:
 - le read model montre deja `static`, `mutable`, `legacy_fragments`, `evidence` et `conflicts` dans une meme lecture
 - la page rerend ensuite une partie de ces informations dans d'autres sections
 
-Etat runtime constate sur OVH au moment de la redaction:
+Snapshot runtime re-verifie sur OVH le `2026-04-09`:
 
-- `llm.static`: vide
-- `llm.mutable`: vide
-- `user.static`: present
-- `user.mutable`: present
+- `llm.static`: presente, chargee, injectee
+- `llm.mutable`: vide, non chargee, non injectee
+- `user.static`: presente
+- `user.mutable`: presente
 
 Interpretation produit imposee:
 
-- cet etat `llm` vide n'est pas un cas nominal a rendre "acceptable"
-- la future UI doit le signaler comme un etat degrade a corriger
+- une absence de `llm.static` n'est pas un cas nominal a rendre "acceptable"
+- une absence de `llm.mutable` doit etre lisible immediatement, mais ne doit pas etre surdecrite comme la meme anomalie produit que `llm.static` vide
+- la future UI doit distinguer clairement base identitaire manquante et modulation mouvante absente
 
 ## Invariants canoniques de la page
 
@@ -183,11 +184,11 @@ La mutable doit aussi montrer:
 
 ### LLM mutable
 
-- nominal: non vide
-- vide interdit a l'etat nominal
-- doit etre charge au runtime
-- doit etre visible comme participant a l'identite active quand le contrat `static + mutable narrative` est en vigueur
-- si vide: etat degrade visible immediatement, sans ambiguite
+- nominal: editable et autorisee comme couche mouvante, non obligatoire en permanence
+- peut etre vide si aucune modulation durable ou semi-durable n'est active
+- si presente et non vide: doit etre chargee / injectee de facon visible quand le contrat `static + mutable narrative` l'utilise
+- si vide: l'UI doit l'afficher explicitement comme `Absente`, sans laisser croire a un bloc cache ou introuvable
+- son absence n'est pas la meme anomalie fondamentale qu'une absence de `llm.static`
 
 ### User statique
 
@@ -219,7 +220,8 @@ L'UI doit distinguer clairement:
 
 Regle specifique `llm`:
 
-- si `llm.static` ou `llm.mutable` est vide, le bloc doit afficher un signal degrade fort et immediat
+- si `llm.static` est vide, le bloc doit afficher un signal degrade fort et immediat
+- si `llm.mutable` est vide, le bloc doit l'afficher clairement comme absente, sans la marquer d'office comme la meme anomalie fondamentale que `llm.static`
 - ce signal doit etre plus visible que les compteurs readonly historiques
 
 ## Deduplication obligatoire
@@ -261,8 +263,8 @@ Regles associees:
 ### Lot 2 - Traitement explicite des etats degrades `llm`
 
 - introduire le signal visuel degrade pour `llm.static` vide
-- introduire le signal visuel degrade pour `llm.mutable` vide
-- rendre cet etat visible des l'arrivee sur la page
+- introduire un etat explicite `Absente` pour `llm.mutable` vide, distinct d'un etat degrade critique
+- rendre ces etats visibles des l'arrivee sur la page
 
 ### Lot 3 - Deduplication des vues
 
@@ -294,7 +296,7 @@ Regles associees:
 Le futur lot d'implementation sera considere comme boucle quand:
 
 - les 4 blocs sont visibles immediatement
-- l'etat `llm` vide est visible comme degrade
+- l'absence de `llm.static` est visible comme degrade et l'absence de `llm.mutable` reste visible sans ambiguite
 - le scroll principal avant edition est fortement reduit
 - `Pilotage canonique actif`, `Runtime detaille` et `Diagnostics / historique` sont nettement separes
 - les redondances principales ont disparu
