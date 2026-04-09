@@ -230,6 +230,66 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(llm_resolution.resolved_path, llm_file.resolve())
         self.assertEqual(user_resolution.resolved_path, user_file.resolve())
 
+    def test_identity_runtime_contract_load_projection_and_input_use_non_empty_llm_static_from_app_data(self) -> None:
+        original_get_resources = identity.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+        original_get_mutable_identity = identity._get_mutable_identity
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            identity_dir = tmp_path / 'app' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            llm_text = 'Frida statique canonique chargee depuis app/data'
+            user_text = 'User statique canonique chargee depuis app/data'
+            (identity_dir / 'llm_identity.txt').write_text(llm_text, encoding='utf-8')
+            (identity_dir / 'user_identity.txt').write_text(user_text, encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'origin': 'db'},
+                            'user_identity_path': {'value': 'data/identity/user_identity.txt', 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            identity._get_mutable_identity = lambda _subject: None
+            try:
+                llm_loaded = identity.load_llm_identity()
+                resolution = static_identity_paths.resolve_static_identity_path('data/identity/llm_identity.txt')
+                block, used_ids = identity.build_identity_block()
+                payload = identity.build_identity_input()
+            finally:
+                identity.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+                identity._get_mutable_identity = original_get_mutable_identity
+
+        self.assertEqual(llm_loaded, llm_text)
+        self.assertTrue(llm_loaded)
+        self.assertEqual(resolution.resolution_kind, 'app_relative')
+        self.assertIn('[IDENTITÉ DU MODÈLE]', block)
+        self.assertIn(llm_text, block)
+        self.assertIn(user_text, block)
+        self.assertEqual(used_ids, [])
+        self.assertEqual(payload['schema_version'], 'v2')
+        self.assertEqual(payload['frida']['static']['content'], llm_text)
+        self.assertEqual(payload['frida']['static']['source'], 'data/identity/llm_identity.txt')
+        self.assertEqual(payload['user']['static']['content'], user_text)
+        self.assertEqual(payload['user']['static']['source'], 'data/identity/user_identity.txt')
+
     def test_identity_block_and_payload_include_static_identity_from_host_state_mirror(self) -> None:
         original_get_resources = identity.runtime_settings.get_resources_settings
         original_app_root = static_identity_paths.APP_ROOT

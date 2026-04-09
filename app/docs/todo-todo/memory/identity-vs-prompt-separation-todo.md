@@ -15,6 +15,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 ## Priorite absolue
 
 - [x] Definir et figer `llm.static` comme noyau identitaire stable du modele.
+- [x] Unifier repo et runtime sur une source canonique unique de `llm.static`.
 - [x] Distinguer explicitement ce qui releve de la personnalite identitaire (`llm.static`) et ce qui releve du pilotage technique (`prompt systeme` / `prompt hermeneutique`).
 - [x] Nettoyer le prompt du LLM pour n'y garder que la technique, l'operatoire, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
 - [x] Verifier que `llm.static` est reellement charge, projete et injecte au runtime.
@@ -40,7 +41,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `app/prompts/main_system.txt` porte deja des consignes de conduite, de forme et de methode qui relevent du prompt, pas de l'identite.
 - [x] `app/prompts/main_hermeneutical.txt` traite deja le bloc identite comme une brique de coherence relationnelle, non souveraine sur la question courante.
 - [x] Tant que `llm.static` n'est pas clairement fixe et verifie dans le runtime, le systeme compense facilement en mettant de la personnalite un peu partout.
-- [x] La vraie source active de `llm.static` sur OVH est `data/identity/llm_identity.txt`, montee dans le conteneur via `/opt/platform/fridadev-app/state/data/identity/llm_identity.txt`.
+- [x] La source canonique unique de `llm.static` sur OVH est `state/data/identity/llm_identity.txt` dans le repo `fridadev`, montee dans le conteneur en `/app/data/identity/llm_identity.txt`.
 
 ## Diagnostic conceptuel a ne pas perdre
 
@@ -147,6 +148,8 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 ### Lot 1 - Doctrine et vocabulaire
 
 - [x] Definir et figer le contenu cible de `llm.static` comme noyau identitaire stable du modele.
+- [x] Unifier la source canonique effective de `llm.static` entre repo et runtime.
+- [x] Aligner le montage runtime pour que `/app/data/identity/llm_identity.txt` consomme `state/data/identity/llm_identity.txt` du repo.
 - [x] Fermer explicitement ce qui doit vivre dans `llm.static`: personnalite stable, voix, posture relationnelle, comportement identitaire durable.
 - [x] Reperer la fuite principale active: la personnalite stable logee dans `main_system.txt` alors que `llm.static` etait vide.
 
@@ -162,6 +165,8 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Verifier que `llm.static` est reellement charge dans le runtime.
 - [x] Verifier que `llm.static` est bien projete dans `ActiveIdentityProjection`.
 - [x] Verifier que `llm.static` est bien present dans `identity_input`.
+- [x] Verrouiller par tests le contrat `load_llm_identity() -> build_identity_block() -> build_identity_input()` pour la vraie source active.
+- [x] Verifier via le read-model admin que `llm.static` est `loaded_for_runtime` et `actively_injected`.
 - [x] Verifier que `llm.static` est bien injecte dans le `augmented_system`.
 - [x] Verifier que la chaine `load -> projection -> injection` est explicitement prouvee sur OVH.
 

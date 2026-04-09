@@ -175,6 +175,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])
         self.assertEqual(data['subjects']['llm']['static']['content'], 'Frida static canonique')
+        self.assertTrue(data['subjects']['llm']['static']['loaded_for_runtime'])
         self.assertTrue(data['subjects']['llm']['static']['actively_injected'])
         self.assertEqual(data['subjects']['llm']['static']['resource_field'], 'llm_identity_path')
         self.assertEqual(data['subjects']['llm']['static']['configured_path'], 'data/identity/llm_identity.txt')
