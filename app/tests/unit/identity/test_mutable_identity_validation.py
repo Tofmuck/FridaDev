@@ -28,7 +28,7 @@ class MutableIdentityValidationTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.reason_code, 'ok')
 
-    def test_rejects_prompt_like_operator_instruction(self) -> None:
+    def test_rejects_prompt_like_operator_instruction_in_french(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
             'Tu dois verifier les sources et citer chaque point important.'
         )
@@ -36,13 +36,45 @@ class MutableIdentityValidationTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertEqual(result.reason_code, 'mutable_content_prompt_like_operator_instruction')
 
-    def test_rejects_prompt_like_runtime_meta(self) -> None:
+    def test_rejects_prompt_like_operator_instruction_in_english(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
-            'Cette mutable doit rappeler la source de verite runtime et la garde admin.'
+            'You must verify sources and cite each important point.'
         )
 
         self.assertFalse(result.ok)
-        self.assertEqual(result.reason_code, 'mutable_content_prompt_like_runtime_meta')
+        self.assertEqual(result.reason_code, 'mutable_content_prompt_like_operator_instruction')
+
+    def test_rejects_prompt_like_format_policy_in_english(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Always answer in plain text.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_prompt_like_format_policy')
+
+    def test_rejects_prompt_like_format_policy_in_french(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Il faut repondre en markdown.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_prompt_like_format_policy')
+
+    def test_accepts_user_interest_in_runtime_and_pipelines(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Tof aime discuter du runtime, des pipelines et des architectures complexes.'
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, 'ok')
+
+    def test_accepts_user_interest_in_technical_markdown_topics(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Tof aime comparer Markdown, JSON et XML quand il discute d outillage documentaire.'
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, 'ok')
 
 
 if __name__ == '__main__':

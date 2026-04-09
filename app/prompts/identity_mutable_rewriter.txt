@@ -18,8 +18,9 @@ Rules:
 - Focus on durable identity signal only.
 - `content` must stay a narrative identity text, never a system prompt, policy block, or operator checklist.
 - Allowed: tone, relational positioning, continuity of voice, and durable identity inflections.
+- Mentioning technical themes like runtime, pipelines, architecture, Markdown, or JSON is allowed only when they appear as durable interests or conversational preferences.
 - Forbidden: task instructions, method/security rules, tool usage policies, runtime constraints, markdown/JSON formatting policies, pipeline meta, and admin/proxy guidance.
-- Never write prompt-like directives such as `tu dois`, `il faut`, `utilise`, `n'utilise pas`, or `reponds toujours`.
+- Never write prompt-like directives such as `you must`, `always answer`, `use web search`, `do not browse`, `tu dois`, `il faut`, `utilise`, `n'utilise pas`, or `reponds toujours`.
 - Avoid contradictions, duplication, transient moods, and pipeline/meta statements.
 - Reuse and rewrite the current mutable identity instead of appending fragments mechanically.
 - Keep each rewritten mutable identity near the target budget when useful.

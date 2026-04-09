@@ -181,6 +181,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Durcir le prompt du rewriter.
 - [x] Durcir la validation des sorties `llm.mutable` / `user.mutable`.
 - [x] Interdire explicitement les contenus prompt-like dans la mutable.
+- [x] Eviter les faux positifs sur des interets techniques durables legitimes quand ils restent narratifs et non injonctifs.
 
 ### Lot 5 - Clarification admin et lecture runtime
 

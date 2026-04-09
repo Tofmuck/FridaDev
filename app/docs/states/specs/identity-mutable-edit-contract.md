@@ -78,6 +78,14 @@ Contenus explicitement interdits:
 - politiques de formatage `markdown` / `JSON` / formats de sortie
 - meta `system prompt`, `prompt hermeneutique`, `source de verite`, `pipeline`, `admin`
 
+Contenus explicitement autorises s'ils restent narratifs / identitaires:
+- interets durables pour des sujets techniques (`runtime`, `pipelines`, `architectures`, `Markdown`, `JSON`)
+- preferences de conversation sur des themes techniques
+- formulations du type `aime discuter de`, `prefere des echanges sur`, `garde une voix`
+
+La garde metier ne rejette donc pas un simple mot technique isole.
+Elle rejette une formulation injonctive ou politique de ce mot technique.
+
 Reason codes metier stables attendus:
 - `mutable_content_prompt_like_operator_instruction`
 - `mutable_content_prompt_like_format_policy`

@@ -97,6 +97,28 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertNotIn('reason', event_payload)
         self.assertEqual(event_payload['reason_code'], 'set_applied')
 
+    def test_set_valid_accepts_narrative_technical_interest(self) -> None:
+        store = _MutableStore({'user': 'Utilisateur prefere la clarte.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'user',
+                'action': 'set',
+                'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
+                'reason': 'interet durable',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'set_applied')
+        self.assertIn('runtime', store.state['user'])
+        self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
+
     def test_clear_valid_removes_canonical_mutable(self) -> None:
         store = _MutableStore({'user': 'Utilisateur prefere la clarte.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
@@ -146,7 +168,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(observed_logs[0][1]['new_len'], 1651)
         self.assertNotIn('content', observed_logs[0][1])
 
-    def test_rejects_prompt_like_content_without_write(self) -> None:
+    def test_rejects_prompt_like_content_in_english_without_write(self) -> None:
         store = _MutableStore({'llm': 'Frida reste sobre.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
@@ -155,7 +177,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
             {
                 'subject': 'llm',
                 'action': 'set',
-                'content': 'Tu dois verifier les sources et citer chaque point important.',
+                'content': 'You must verify sources and cite each important point.',
                 'reason': 'probe only',
             },
             memory_store_module=store,

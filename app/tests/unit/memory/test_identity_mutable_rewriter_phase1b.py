@@ -135,12 +135,12 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         self.assertEqual(rejections[0]['subject'], 'llm')
         self.assertEqual(rejections[0]['reason_code'], 'contract_reason_missing')
 
-    def test_validate_rewriter_contract_rejects_prompt_like_rewrite(self) -> None:
+    def test_validate_rewriter_contract_rejects_prompt_like_rewrite_in_english(self) -> None:
         validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
             {
                 'llm': {
                     'action': 'rewrite',
-                    'content': 'Tu dois verifier les sources et citer chaque point important.',
+                    'content': 'You must verify sources and cite each important point.',
                     'reason': 'durable policy',
                 },
                 'user': {
@@ -154,6 +154,26 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         self.assertNotIn('llm', validated)
         self.assertEqual(rejections[0]['subject'], 'llm')
         self.assertEqual(rejections[0]['reason_code'], 'mutable_content_prompt_like_operator_instruction')
+
+    def test_validate_rewriter_contract_accepts_technical_interest_as_narrative_identity(self) -> None:
+        validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
+            {
+                'llm': {
+                    'action': 'no_change',
+                    'content': '',
+                    'reason': 'no durable update',
+                },
+                'user': {
+                    'action': 'rewrite',
+                    'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
+                    'reason': 'durable technical interest',
+                },
+            }
+        )
+
+        self.assertEqual(rejections, [])
+        self.assertEqual(validated['user']['action'], 'rewrite')
+        self.assertIn('runtime', validated['user']['content'])
 
     def test_refresh_mutable_identities_applies_valid_rewrite_and_logs_compact_outcomes(self) -> None:
         observed_events: list[dict[str, Any]] = []
@@ -316,7 +336,7 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
                         lambda _payload: {
                             'llm': {
                                 'action': 'rewrite',
-                                'content': 'Tu dois verifier les sources et citer chaque point important.',
+                                'content': 'You must verify sources and cite each important point.',
                                 'reason': 'durable policy',
                             },
                             'user': {
@@ -341,6 +361,45 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         )
         self.assertEqual(store.state['llm']['content'], 'Frida garde une voix sobre.')
         self.assertEqual(store.upsert_calls, [])
+
+    def test_refresh_mutable_identities_accepts_narrative_technical_interest(self) -> None:
+        store = _MutableStore(
+            {
+                'llm': {'subject': 'llm', 'content': 'Frida garde une voix sobre.'},
+                'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'},
+            }
+        )
+        summary = memory_identity_mutable_rewriter.refresh_mutable_identities(
+            [{'role': 'user', 'content': 'Je reviens souvent sur les architectures complexes.'}],
+            arbiter_module=type(
+                'ArbiterStub',
+                (),
+                {
+                    'rewrite_identity_mutables': staticmethod(
+                        lambda _payload: {
+                            'llm': {
+                                'action': 'no_change',
+                                'content': '',
+                                'reason': 'no durable update',
+                            },
+                            'user': {
+                                'action': 'rewrite',
+                                'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
+                                'reason': 'durable technical interest',
+                            },
+                        }
+                    )
+                },
+            )(),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida statique',
+            load_user_identity_fn=lambda: 'Utilisateur statique',
+        )
+
+        by_subject = {item['subject']: item for item in summary['outcomes']}
+        self.assertEqual(by_subject['user']['action'], 'rewrite')
+        self.assertEqual(by_subject['user']['reason_code'], 'rewrite_applied')
+        self.assertIn('runtime', store.state['user']['content'])
 
 
 if __name__ == '__main__':

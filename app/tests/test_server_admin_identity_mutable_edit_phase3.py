@@ -112,6 +112,51 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertNotIn('content', observed['logs'][0][1])
         self.assertNotIn('reason', observed['logs'][0][1])
 
+    def test_identity_mutable_edit_route_accepts_narrative_technical_interest(self) -> None:
+        observed = {'upsert': [], 'clear': [], 'logs': []}
+        current = {'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'}}
+
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity
+        original_clear_mutable_identity = self.server.memory_store.clear_mutable_identity
+        original_log_event = self.server.admin_logs.log_event
+
+        def fake_get_mutable_identity(subject: str):
+            item = current.get(subject)
+            return dict(item) if item is not None else None
+
+        def fake_upsert_mutable_identity(subject: str, content: str, **kwargs):
+            observed['upsert'].append((subject, content, kwargs))
+            current[subject] = {'subject': subject, 'content': content}
+            return {'subject': subject, 'content': content, **kwargs}
+
+        self.server.memory_store.get_mutable_identity = fake_get_mutable_identity
+        self.server.memory_store.upsert_mutable_identity = fake_upsert_mutable_identity
+        self.server.memory_store.clear_mutable_identity = lambda *_args, **_kwargs: self.fail('clear must not be used')
+        self.server.admin_logs.log_event = lambda event, **kwargs: observed['logs'].append((event, kwargs))
+        try:
+            response = self.client.post(
+                '/api/admin/identity/mutable',
+                json={
+                    'subject': 'user',
+                    'action': 'set',
+                    'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
+                    'reason': 'interet durable',
+                },
+            )
+        finally:
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.upsert_mutable_identity = original_upsert_mutable_identity
+            self.server.memory_store.clear_mutable_identity = original_clear_mutable_identity
+            self.server.admin_logs.log_event = original_log_event
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['reason_code'], 'set_applied')
+        self.assertEqual(len(observed['upsert']), 1)
+        self.assertIn('runtime', observed['upsert'][0][1])
+
     def test_identity_mutable_edit_route_supports_clear(self) -> None:
         current = {'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'}}
         observed = {'logs': []}
@@ -184,7 +229,7 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertFalse(observed['clear'])
         self.assertEqual(observed['logs'][0][1]['validation_error'], 'contract_reason_missing')
 
-    def test_identity_mutable_edit_route_rejects_prompt_like_content(self) -> None:
+    def test_identity_mutable_edit_route_rejects_prompt_like_content_in_english(self) -> None:
         observed = {'upsert': False, 'logs': []}
         original_get_mutable_identity = self.server.memory_store.get_mutable_identity
         original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity
@@ -201,7 +246,7 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
                 json={
                     'subject': 'llm',
                     'action': 'set',
-                    'content': 'Tu dois verifier les sources et citer chaque point important.',
+                    'content': 'You must verify sources and cite each important point.',
                     'reason': 'probe only',
                 },
             )

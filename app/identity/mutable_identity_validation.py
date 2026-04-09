@@ -10,64 +10,81 @@ class MutableIdentityValidationResult:
     reason_code: str
 
 
-_SYSTEM_META_PATTERNS = (
-    re.compile(r'\bsystem prompt\b', re.IGNORECASE),
-    re.compile(r'\bprompt syst(?:e|è)me\b', re.IGNORECASE),
-    re.compile(r'\bprompt herm(?:e|é)neutique\b', re.IGNORECASE),
-    re.compile(r'\baugmented_system\b', re.IGNORECASE),
-    re.compile(r'\bfinal_model_system_prompt\b', re.IGNORECASE),
+_SYSTEM_META_INSTRUCTION_PATTERNS = (
+    re.compile(
+        r"\b(?:you must|you need to|you have to|tu dois|vous devez|il faut)\b.{0,64}\b(?:system prompt|prompt syst(?:e|è)me|prompt herm(?:e|é)neutique|augmented_system|final_model_system_prompt)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:system prompt|prompt syst(?:e|è)me|prompt herm(?:e|é)neutique|augmented_system|final_model_system_prompt)\b.{0,64}\b(?:must|need to|have to|doit|doivent|faut)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
 
-_RUNTIME_META_PATTERNS = (
-    re.compile(r'\bsource canonique\b', re.IGNORECASE),
-    re.compile(r'\bsource de v(?:e|é)rit(?:e|é)\b', re.IGNORECASE),
-    re.compile(r'\bsource of truth\b', re.IGNORECASE),
-    re.compile(r'\bruntime\b', re.IGNORECASE),
-    re.compile(r'\bpipeline\b', re.IGNORECASE),
-    re.compile(r'\bauthelia\b', re.IGNORECASE),
-    re.compile(r'\bcaddy\b', re.IGNORECASE),
-    re.compile(r'\bremote-user\b', re.IGNORECASE),
-    re.compile(r'\badmin token\b', re.IGNORECASE),
+_RUNTIME_META_INSTRUCTION_PATTERNS = (
+    re.compile(
+        r"\b(?:you must|you need to|you have to|tu dois|vous devez|il faut)\b.{0,64}\b(?:source canonique|source de v(?:e|é)rit(?:e|é)|source of truth|runtime|pipeline|authelia|caddy|remote-user|admin token)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:mention|keep|remember|follow|respect|retain|rappelle|mentionne|respecte|garde)\b.{0,64}\b(?:source canonique|source de v(?:e|é)rit(?:e|é)|source of truth|runtime|pipeline|authelia|caddy|remote-user|admin token)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
 
 _FORMAT_POLICY_PATTERNS = (
-    re.compile(r'\bmarkdown\b', re.IGNORECASE),
-    re.compile(r'\bjson\b', re.IGNORECASE),
-    re.compile(r'\byaml\b', re.IGNORECASE),
-    re.compile(r'\bxml\b', re.IGNORECASE),
-    re.compile(r'\bhtml\b', re.IGNORECASE),
+    re.compile(
+        r"\b(?:always answer|answer|respond)\b.{0,32}\b(?:plain text|markdown|json|yaml|xml|html)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:tu dois|vous devez|il faut|r(?:e|é)ponds?|r(?:e|é)pondez)\b.{0,32}\b(?:texte brut|markdown|json|yaml|xml|html)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
 )
 
 _TOOL_POLICY_PATTERNS = (
-    re.compile(r'\bweb search\b', re.IGNORECASE),
-    re.compile(r'\bnavigation\b', re.IGNORECASE),
-    re.compile(r'\bbrowser\b', re.IGNORECASE),
-    re.compile(r'\bbrowse\b', re.IGNORECASE),
-    re.compile(r'\bcrawl4ai\b', re.IGNORECASE),
+    re.compile(r'\buse web search\b', re.IGNORECASE),
+    re.compile(r"\bdo not browse\b", re.IGNORECASE),
+    re.compile(r"\bdon't browse\b", re.IGNORECASE),
     re.compile(
-        r"\b(?:utilise(?:r|z)?|n['’]utilise(?:r|z)?\s+pas|use|do not use)\b.{0,48}\b(?:outil(?:s)?|tool(?:s)?|web|browser|browse|search|navigation)\b",
+        r"\b(?:use|do not use|don't use)\b.{0,32}\b(?:tools?|browser|browse|navigation|search)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:utilise|utilisez|n['’]utilise(?:z)?\s+pas|ne\s+cherche(?:r|z)?\s+pas|ne\s+navigue(?:r|z)?\s+pas)\b.{0,32}\b(?:outil(?:s)?|recherche web|navigation|browser|web)\b",
         re.IGNORECASE | re.DOTALL,
     ),
 )
 
 _OPERATOR_INSTRUCTION_PATTERNS = (
-    re.compile(r'\btu dois\b', re.IGNORECASE),
-    re.compile(r'\bvous devez\b', re.IGNORECASE),
     re.compile(
-        r"\bil faut\s+(?:r(?:e|é)pondre|utiliser|chercher|v(?:e|é)rifier|citer|clarifier|suspendre|naviguer|respecter|suivre)\b",
+        r"\b(?:you must|you need to|you have to)\b.{0,48}\b(?:verify|check|cite|clarify|suspend)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:verify|check)\b.{0,24}\bsources?\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\bcite\b.{0,32}\b(?:each|every|important|key|relevant|point|points|sources?)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(r"\btu dois\b", re.IGNORECASE),
+    re.compile(r"\bvous devez\b", re.IGNORECASE),
+    re.compile(
+        r"\bil faut\s+(?:r(?:e|é)pondre|v(?:e|é)rifier|citer|clarifier|suspendre)\b",
         re.IGNORECASE,
     ),
-    re.compile(r"\br(?:e|é)ponds?\s+(?:toujours|en|avec|sans)\b", re.IGNORECASE),
-    re.compile(r"\bne\s+r(?:e|é)ponds?\s+pas\b", re.IGNORECASE),
     re.compile(
-        r"\b(?:v(?:e|é)rifie(?:r|z)?|cite(?:r|z)?|clarifie(?:r|z)?|cherche(?:r|z)?|navigue(?:r|z)?)\b.{0,32}\b(?:web|source|outil(?:s)?|tool(?:s)?|prompt|markdown|json)\b",
+        r"\b(?:v(?:e|é)rifie(?:r|z)?|cite(?:r|z)?)\b.{0,32}\b(?:source|sources|point|points)\b",
         re.IGNORECASE | re.DOTALL,
     ),
 )
 
 _PROMPT_LIKE_RULES = (
-    ('mutable_content_prompt_like_system_meta', _SYSTEM_META_PATTERNS),
-    ('mutable_content_prompt_like_runtime_meta', _RUNTIME_META_PATTERNS),
+    ('mutable_content_prompt_like_system_meta', _SYSTEM_META_INSTRUCTION_PATTERNS),
+    ('mutable_content_prompt_like_runtime_meta', _RUNTIME_META_INSTRUCTION_PATTERNS),
     ('mutable_content_prompt_like_format_policy', _FORMAT_POLICY_PATTERNS),
     ('mutable_content_prompt_like_tool_policy', _TOOL_POLICY_PATTERNS),
     ('mutable_content_prompt_like_operator_instruction', _OPERATOR_INSTRUCTION_PATTERNS),
