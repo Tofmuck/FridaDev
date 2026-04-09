@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -173,11 +174,20 @@ def write_static_identity_content(
             f'static identity resource outside allowed roots for {resolved.resource_field}: {resolved.configured_path}'
         )
 
+    target_stat = path.stat()
+    target_mode = stat.S_IMODE(target_stat.st_mode)
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=path.parent, delete=False) as handle:
             handle.write(str(content))
+            handle.flush()
+            os.fsync(handle.fileno())
             temp_path = Path(handle.name)
+        temp_stat = temp_path.stat()
+        if stat.S_IMODE(temp_stat.st_mode) != target_mode:
+            os.chmod(temp_path, target_mode)
+        if temp_stat.st_uid != target_stat.st_uid or temp_stat.st_gid != target_stat.st_gid:
+            os.chown(temp_path, target_stat.st_uid, target_stat.st_gid)
         os.replace(temp_path, path)
     except Exception as exc:
         if temp_path is not None:

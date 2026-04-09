@@ -40,6 +40,12 @@ Le perimetre autorise reste borne aux racines identity canoniques:
 - un chemin absolu n'est accepte que s'il resolve dans une de ces racines;
 - tout fichier existant hors de ce perimetre est refuse fail-closed.
 
+Sur OVH et dans le deploiement Docker standard actuellement retenu:
+- la source canonique de `llm.static` est le fichier suivi par le repo `state/data/identity/llm_identity.txt`;
+- la source canonique de `user.static` est le fichier suivi par le repo `state/data/identity/user_identity.txt`;
+- le runtime consomme cette meme arborescence via le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`;
+- le read-model et l'admin continuent d'exposer la reference runtime `data/identity/...`, mais cette reference doit toujours resoudre vers cette arborescence canonique.
+
 `clear` ne supprime pas le fichier:
 - il conserve la ressource referencee;
 - il ecrit un contenu vide;
@@ -131,6 +137,7 @@ Convention:
 - le fichier recoit exactement le contenu demande pour `set`;
 - `old_len` et `new_len` refletent la longueur du contenu fichier brut avant/apres ecriture;
 - la normalisation runtime (`strip`) reste reservee a l'injection active et ne doit pas fausser `clear`, `unchanged` ou `stored_after`.
+- sur un bind mount repo, le remplacement atomique doit preserver le mode et l'ownership du fichier cible existant; une edition admin ne doit pas rendre la ressource canonique root-owned par derive du conteneur.
 
 ## Audit compact
 

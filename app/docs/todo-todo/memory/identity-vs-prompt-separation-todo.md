@@ -16,6 +16,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 - [x] Definir et figer `llm.static` comme noyau identitaire stable du modele.
 - [x] Unifier repo et runtime sur une source canonique unique de `llm.static`.
+- [x] Stabiliser l'edition statique sur bind mount repo sans derive de mode ou d'ownership.
 - [x] Distinguer explicitement ce qui releve de la personnalite identitaire (`llm.static`) et ce qui releve du pilotage technique (`prompt systeme` / `prompt hermeneutique`).
 - [x] Nettoyer le prompt du LLM pour n'y garder que la technique, l'operatoire, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
 - [x] Verifier que `llm.static` est reellement charge, projete et injecte au runtime.
@@ -150,6 +151,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Definir et figer le contenu cible de `llm.static` comme noyau identitaire stable du modele.
 - [x] Unifier la source canonique effective de `llm.static` entre repo et runtime.
 - [x] Aligner le montage runtime pour que `/app/data/identity/llm_identity.txt` consomme `state/data/identity/llm_identity.txt` du repo.
+- [x] Rendre l'ecriture admin du statique sure sur bind mount repo en preservant les metadata du fichier cible.
 - [x] Fermer explicitement ce qui doit vivre dans `llm.static`: personnalite stable, voix, posture relationnelle, comportement identitaire durable.
 - [x] Reperer la fuite principale active: la personnalite stable logee dans `main_system.txt` alors que `llm.static` etait vide.
 
@@ -167,6 +169,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Verifier que `llm.static` est bien present dans `identity_input`.
 - [x] Verrouiller par tests le contrat `load_llm_identity() -> build_identity_block() -> build_identity_input()` pour la vraie source active.
 - [x] Verifier via le read-model admin que `llm.static` est `loaded_for_runtime` et `actively_injected`.
+- [x] Aligner les docs vivantes et la stack OVH sur la meme source-of-truth durable.
 - [x] Verifier que `llm.static` est bien injecte dans le `augmented_system`.
 - [x] Verifier que la chaine `load -> projection -> injection` est explicitement prouvee sur OVH.
 

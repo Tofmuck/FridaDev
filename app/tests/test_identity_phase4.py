@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -466,6 +468,59 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(payload['user']['static']['content'], '')
         self.assertEqual(payload['frida']['static']['source'], str(llm_file))
         self.assertEqual(payload['user']['static']['source'], str(user_file))
+
+    def test_static_identity_content_write_preserves_target_mode_and_owner_on_replace(self) -> None:
+        original_get_resources = static_identity_content.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
+            llm_file.write_text('Frida statique initiale', encoding='utf-8')
+            user_file.write_text('Utilisateur statique initial', encoding='utf-8')
+            os.chmod(llm_file, 0o664)
+            if hasattr(os, 'geteuid') and os.geteuid() == 0:
+                os.chown(llm_file, 65534, 65534)
+            before = llm_file.stat()
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'db'},
+                            'user_identity_path': {'value': str(user_file), 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            static_identity_content.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                snapshot = static_identity_content.write_static_identity_content(
+                    'llm',
+                    'Frida statique revisee',
+                )
+                after = llm_file.stat()
+            finally:
+                static_identity_content.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+
+        self.assertEqual(snapshot.content, 'Frida statique revisee')
+        self.assertEqual(stat.S_IMODE(before.st_mode), stat.S_IMODE(after.st_mode))
+        self.assertEqual(before.st_uid, after.st_uid)
+        self.assertEqual(before.st_gid, after.st_gid)
 
     def test_identity_loaders_refuse_outside_allowed_static_resource_paths(self) -> None:
         original_get_resources = identity.runtime_settings.get_resources_settings

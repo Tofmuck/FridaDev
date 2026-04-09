@@ -47,6 +47,8 @@ Les fichiers suivants restent volontaires et hors du chantier "DB only" du state
 - identites statiques de base chargees par configuration:
   - `state/data/identity/llm_identity.txt`
   - `state/data/identity/user_identity.txt`
+  - ces fichiers constituent la source canonique retenue quand le runtime resout `data/identity/...`
+  - sur OVH, le conteneur consomme cette meme arborescence via le bind mount `/opt/platform/fridadev/state/data -> /app/data`
 - assets et front:
   - `app/web/*`
 - logs techniques:

@@ -201,7 +201,9 @@ Regle de transition :
 Convention explicite:
 
 - la valeur visible cote admin reste un chemin runtime du type `data/identity/...`;
-- en deploiement Docker standard, cette convention pointe vers `/app/data/...`, alimente par le volume hote `state/data/...`;
+- en deploiement Docker standard, cette convention pointe vers `/app/data/...`;
+- sur OVH, `/app/data` est alimente par le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`;
+- la source-of-truth host-side retenue pour `llm.static` et `user.static` est donc `state/data/identity/...` dans le repo `fridadev`, pas une copie parallele dans `fridadev-app`;
 - les validations et lectures host-side reutilisent cette meme convention et resolvent le mirror `state/data/...` quand le chemin relatif `app/data/...` n'existe pas localement.
 - un chemin absolu ne reste acceptable que s'il resolve dans ces racines identity canoniques; un fichier arbitraire existant hors perimetre est refuse.
 - depuis `Lot 4`, ces champs restent des references de ressource; l'edition du contenu statique actif passe par `POST /api/admin/identity/static` et la section `Vue unifiee identity` de `/hermeneutic-admin`.

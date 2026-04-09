@@ -90,6 +90,8 @@ Champs minimaux:
 Semantique:
 - source physique: contenu du fichier reference par `resources.llm_identity_path` / `resources.user_identity_path`;
 - cette ressource doit rester dans les racines identity canoniques autorisees (`app/data/identity/...` ou mirror `state/data/identity/...`);
+- sur OVH, le `resolved_path` runtime attendu est `/app/data/identity/...`, alimente par le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`;
+- la source-of-truth host-side attendue reste donc le fichier suivi par le repo sous `state/data/identity/...`, pas une copie parallele dans la stack runtime;
 - les runtime settings conservent la reference de ressource, pas l'edition du contenu;
 - `stored` reflete la presence de contenu fichier brut;
 - `loaded_for_runtime` et `actively_injected` refletent le contenu runtime normalise, une fois la ressource chargee puis trimmee;
