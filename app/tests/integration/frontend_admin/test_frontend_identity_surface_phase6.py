@@ -27,15 +27,17 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("<h1>Identity</h1>", source)
         self.assertIn('href="admin.css"', source)
         self.assertNotIn('href="styles.css"', source)
-        self.assertIn("Comment l'identite circule", source)
+        self.assertIn("Source canonique, pilotage systeme et formes compilees", source)
+        self.assertIn("Pilotage systeme distinct", source)
         self.assertIn("Etat courant par sujet", source)
-        self.assertIn("Fiche identite pour le jugement", source)
-        self.assertIn("Texte identity injecte au modele", source)
+        self.assertIn("Projection structuree compilee pour le jugement", source)
+        self.assertIn("Forme runtime compilee injectee au modele", source)
         self.assertIn("Editer le statique canonique", source)
         self.assertIn("Editer la mutable canonique", source)
         self.assertIn("Seuils et limites", source)
         self.assertIn("Legacy, evidences et conflits", source)
         self.assertIn("Corrections recentes et sorties utiles", source)
+        self.assertNotIn(">Prompt</span>", source)
         self.assertIn('href="/"', source)
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
@@ -111,11 +113,22 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
     def test_identity_injected_meta_describes_injection_state_not_legacy_reactivation_count(self) -> None:
         main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
 
-        self.assertIn("Texte injecte present", main_source)
-        self.assertIn("Aucun bloc injecte", main_source)
+        self.assertIn("Forme compilee injectee presente", main_source)
+        self.assertIn("Aucune forme compilee injectee", main_source)
         self.assertIn("elements.injectedMeta.textContent = injectedMetaText(injectedBlock);", main_source)
         self.assertNotIn("id(s) legacy reactivés", main_source)
         self.assertNotIn("id(s) legacy reactives", main_source)
+
+    def test_identity_runtime_render_labels_compile_and_system_guidance_distinct(self) -> None:
+        render_source = (
+            APP_DIR / "web" / "identity" / "render_identity_runtime_representations.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("compile=", render_source)
+        self.assertIn("pilotage_systeme=distinct", render_source)
+        self.assertIn("Projection runtime compilee pour le jugement", render_source)
+        self.assertIn("Forme runtime compilee injectee", render_source)
+        self.assertNotIn("prompt=", render_source)
 
 
 if __name__ == "__main__":

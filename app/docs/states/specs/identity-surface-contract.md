@@ -10,8 +10,9 @@ Ce contrat ferme la surface `Identity` dediee en reemployant les contrats deja s
 
 La page doit montrer, en francais clair:
 - la structure reelle du systeme identity;
+- la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet;
-- la difference entre la fiche structuree pour le jugement et le texte identity injecte au modele;
+- la difference entre la projection structuree pour le jugement et la forme runtime compilee injectee au modele;
 - l'edition du statique et de la mutable;
 - les seuils et limites;
 - le legacy / evidence-only;
@@ -78,7 +79,7 @@ Top-level:
 
 ### `structured_identity`
 
-La fiche structuree pour le jugement expose:
+La projection structuree compilee pour le jugement expose:
 - `technical_name = "identity_input"`
 - `role = "hermeneutic_judgment"`
 - `present`
@@ -88,24 +89,36 @@ La fiche structuree pour le jugement expose:
 `data` porte la forme exacte retournee par `build_identity_input()`.
 
 Cette representation:
-- est une forme canonique structuree de l'identite;
+- est une projection runtime compilee a partir de la base canonique;
 - ne decrit pas le prompt systeme;
+- ne devient pas pour autant une source canonique concurrente;
 - sert a lire la base identitaire et sa projection de jugement sans la confondre avec des consignes operatoires.
 
 ### `injected_identity_text`
 
-Le texte identity injecte au modele expose:
+La forme runtime compilee injectee au modele expose:
 - `technical_name = "identity_block"`
 - `role = "final_model_system_prompt"`
 - `present`
 - `content`
 
-`content` porte le texte exact retourne par `build_identity_block()` pour la partie identity du prompt systeme augmente.
+`content` porte le texte exact retourne par `build_identity_block()` pour la partie identity injectee dans le prompt systeme augmente.
 
 Cette representation:
 - est une forme compilee d'injection runtime;
+- occupe un slot technique `final_model_system_prompt` sans devenir pour autant le pilotage systeme source;
 - ne doit pas etre lue comme la source canonique de l'identite;
 - ne doit pas faire oublier que la source canonique reste `llm.static` / `user.static` plus les mutables canoniques.
+
+## Pilotage systeme distinct
+
+La page `/identity` ne doit pas laisser croire que le pilotage systeme vit dans les couches identity.
+
+Le pilotage systeme reste distinct:
+- il vit dans `main_system` et `main_hermeneutical`;
+- il porte methode, priorites, securite, outils, format et contraintes operatoires;
+- il n'est pas editable depuis les blocs statique / mutable;
+- il n'est pas remplace par la projection structuree ni par la forme runtime compilee injectee.
 
 ### Semantique
 
@@ -113,7 +126,7 @@ Cette representation:
 - c'est la meme base identity projetee en deux formes;
 - ni l'une ni l'autre ne doivent etre lues comme "le prompt qui definit la personnalite";
 - la fiche structuree sert au jugement hermeneutique;
-- le texte identity sert a la reponse finale;
+- la forme runtime compilee sert a la reponse finale;
 - `used_identity_ids` peut rester vide si le legacy n'est pas reactif sur le chemin actif.
 
 ## Ordre de lecture attendu sur la page
@@ -121,8 +134,8 @@ Cette representation:
 La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - la structure reelle du systeme identity;
 - l'etat courant par sujet;
-- la fiche structuree pour le jugement;
-- le texte identity injecte au modele;
+- la projection structuree compilee pour le jugement;
+- la forme runtime compilee injectee au modele;
 - l'edition du statique canonique;
 - l'edition de la mutable canonique;
 - les seuils et limites;
@@ -135,8 +148,8 @@ Les titres principaux de la page doivent rester en francais clair.
 
 Acceptables:
 - `Etat courant par sujet`
-- `Fiche identite pour le jugement`
-- `Texte identity injecte au modele`
+- `Projection structuree compilee pour le jugement`
+- `Forme runtime compilee injectee au modele`
 - `Editer le statique canonique`
 - `Editer la mutable canonique`
 - `Seuils et limites`
@@ -148,6 +161,7 @@ Interdits comme titres principaux seuls:
 - `runtime`
 - `governance`
 - `identity_input`
+- `Prompt`
 
 ## CSS et composition frontend
 

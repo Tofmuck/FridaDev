@@ -50,8 +50,8 @@
   const toText = (value) => String(value == null ? "" : value).trim();
   const injectedMetaText = (injectedBlock) =>
     injectedBlock && injectedBlock.present
-      ? "Texte injecte present"
-      : "Aucun bloc injecte";
+      ? "Forme compilee injectee presente"
+      : "Aucune forme compilee injectee";
 
   const syncMeta = () => {
     const runtimePayload =

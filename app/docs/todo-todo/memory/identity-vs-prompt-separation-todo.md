@@ -10,7 +10,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] Fixer une doctrine lisible qui separe `identity` et `prompt`.
 - [x] Fixer un contrat distinct pour le prompt du rewriter de mutable.
 - [x] Fixer le statut des representations runtime injectees.
-- [ ] Transformer cette doctrine en chantier d'implementation suivi, sans la melanger au TODO UI `/identity`.
+- [x] Transformer cette doctrine en chantier d'implementation suivi, sans la melanger au TODO UI `/identity`.
 
 ## Priorite absolue
 
@@ -185,19 +185,19 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 ### Lot 5 - Clarification admin et lecture runtime
 
-- [ ] Clarifier dans l'admin et les specs que les representations injectees sont compilees.
-- [ ] Montrer plus nettement la difference entre source canonique et projection runtime.
-- [ ] Exposer distinctement la personnalite canonique et les couches prompt/runtime.
-- [ ] Rendre visible ce qui releve de l'identite et ce qui releve du pilotage systeme.
-- [ ] Garder ce lot distinct du TODO de layout `/identity`.
+- [x] Clarifier dans l'admin et les specs que les representations injectees sont compilees.
+- [x] Montrer plus nettement la difference entre source canonique et projection runtime.
+- [x] Exposer distinctement la personnalite canonique et les couches prompt/runtime.
+- [x] Rendre visible ce qui releve de l'identite et ce qui releve du pilotage systeme.
+- [x] Garder ce lot distinct du TODO de layout `/identity`.
 
 ## Definition of done
 
-- [ ] La doctrine `identity != prompt` est visible dans les docs et dans l'admin.
-- [ ] `llm.mutable` ne peut plus servir de pseudo-prompt de tache.
-- [ ] Le prompt du rewriter ne contamine plus la personnalite qu'il maintient.
-- [ ] Les representations runtime injectees sont clairement presentees comme des formes compilees.
-- [ ] L'operateur peut distinguer en quelques secondes identite, prompt et injection runtime.
+- [x] La doctrine `identity != prompt` est visible dans les docs et dans l'admin.
+- [x] `llm.mutable` ne peut plus servir de pseudo-prompt de tache.
+- [x] Le prompt du rewriter ne contamine plus la personnalite qu'il maintient.
+- [x] Les representations runtime injectees sont clairement presentees comme des formes compilees.
+- [x] L'operateur peut distinguer en quelques secondes identite, prompt et injection runtime.
 
 ## Hors scope
 

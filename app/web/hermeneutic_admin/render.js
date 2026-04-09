@@ -392,7 +392,7 @@
       meta.appendChild(createChip(`active=${toText(safePayload.active_identity_source)}`));
     }
     if (toText(safePayload.active_prompt_contract)) {
-      meta.appendChild(createChip(`prompt=${toText(safePayload.active_prompt_contract)}`));
+      meta.appendChild(createChip(`compile=${toText(safePayload.active_prompt_contract)}`));
     }
     if (meta.childNodes.length) {
       target.appendChild(meta);

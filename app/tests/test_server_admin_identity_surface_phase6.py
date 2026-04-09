@@ -95,8 +95,9 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             source = response.get_data(as_text=True)
             self.assertIn('<title>Identity</title>', source)
-            self.assertIn('Fiche identite pour le jugement', source)
-            self.assertIn('Texte identity injecte au modele', source)
+            self.assertIn('Projection structuree compilee pour le jugement', source)
+            self.assertIn('Forme runtime compilee injectee au modele', source)
+            self.assertIn('Pilotage systeme distinct', source)
         finally:
             response.close()
 

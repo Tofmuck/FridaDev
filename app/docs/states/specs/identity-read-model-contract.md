@@ -11,8 +11,9 @@ Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans
 Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4`, `Lot 5` et `Lot 6`, des editions ou lectures distinctes documentees a part.
 
 Il sert a :
-- montrer la verite active runtime;
+- montrer la base canonique active et les flags runtime associes;
 - distinguer clairement ce qui est charge, stocke, injecte, legacy, evidence et conflit;
+- rappeler que le pilotage systeme reste distinct de cette lecture identity;
 - fournir une base stable pour la surface `Identity` dediee.
 
 ## Route
@@ -24,7 +25,7 @@ Cette route est:
 - protegee par la meme garde admin que les autres routes `/api/admin/*`;
 - distincte de `/api/admin/hermeneutics/identity-candidates`, qui reste legacy / evidence-only;
 - distincte de `GET /api/admin/identity/governance`, qui porte la lecture des caps/seuils/budgets identity;
-- distincte de `GET /api/admin/identity/runtime-representations`, qui porte la fiche structuree pour le jugement et le texte identity injecte au modele.
+- distincte de `GET /api/admin/identity/runtime-representations`, qui porte une projection structuree compilee pour le jugement et une forme runtime compilee injectee au modele.
 
 ## Verite active exposee
 
@@ -32,6 +33,7 @@ Le read-model doit exposer explicitement:
 - `active_identity_source = "identity_mutables"`
 - `active_static_source = "resource_path_content"`
 - `active_prompt_contract = "static + mutable narrative"`
+- `active_prompt_contract` reste le nom technique du contrat de compilation identity runtime, pas un prompt canonique source-of-truth
 - `identity_input_schema_version = "v2"`
 - `used_identity_ids = []`
 - `used_identity_ids_count = 0`
@@ -41,6 +43,7 @@ Le read-model doit exposer explicitement:
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
+- laisser croire que `active_prompt_contract` designe le pilotage systeme source;
 - laisser croire que `identities` pilote encore l'injection active;
 - masquer la separation entre runtime actif et couches legacy.
 
@@ -71,7 +74,7 @@ Chaque sujet expose exactement ces couches:
 
 ### `static`
 
-Bloc read-only du contenu statique actuellement charge puis injecte.
+Bloc read-only du contenu statique canonique actuellement charge puis utilise dans la compilation runtime.
 
 Champs minimaux:
 - `storage_kind`
@@ -96,7 +99,7 @@ Semantique:
 - les runtime settings conservent la reference de ressource, pas l'edition du contenu;
 - `stored` reflete la presence de contenu fichier brut;
 - `loaded_for_runtime` et `actively_injected` refletent le contenu runtime normalise, une fois la ressource chargee puis trimmee;
-- `actively_injected` signifie seulement que cette couche participe a la forme compilee du runtime actif; cela ne requalifie pas cette couche en source de prompt;
+- `actively_injected` signifie seulement que cette couche participe a la forme compilee du runtime actif; cela ne requalifie ni cette couche ni son contenu en source de prompt;
 - verite active: oui, si `content` est present.
 
 ### `mutable`
@@ -171,14 +174,15 @@ La surface `/hermeneutic-admin` expose une section minimale:
 - sans pretendre devenir la page `Identity` complete
 
 Cette surface montre:
-- la verite active runtime;
+- la base canonique active et ses flags runtime;
 - la lecture par sujet `llm` / `user`;
 - les couches stockees legacy/evidence/conflicts;
-- la separation `stored` vs `actively_injected`.
+- la separation `stored` vs `actively_injected`;
+- le fait que le pilotage systeme reste distinct de cette lecture identity.
 
 Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
 - pour l'etat courant par sujet;
-- sans le surcharger avec le texte injecte ni la fiche structuree de jugement;
+- sans le confondre avec le texte injecte ni la fiche structuree de jugement;
 - en le combinant avec `GET /api/admin/identity/runtime-representations`.
 
 Depuis `Lot 5`, cette meme surface peut aussi pointer vers une gouvernance identity distincte:

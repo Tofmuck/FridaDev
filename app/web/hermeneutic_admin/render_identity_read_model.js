@@ -15,6 +15,13 @@
     return chip;
   };
 
+  const createNote = (text) => {
+    const note = document.createElement("p");
+    note.className = "admin-section-note admin-section-note-left";
+    note.textContent = text;
+    return note;
+  };
+
   const renderEmpty = (target, message) => {
     if (!target) return;
     target.innerHTML = "";
@@ -109,8 +116,8 @@
     layerMeta.className = "admin-card-meta";
     appendMetaChip(layerMeta, "storage", toText(layer.storage_kind));
     layerMeta.appendChild(createChip(`stored=${Boolean(layer.stored)}`));
-    layerMeta.appendChild(createChip(`loaded=${Boolean(layer.loaded_for_runtime)}`));
-    layerMeta.appendChild(createChip(`injected=${Boolean(layer.actively_injected)}`));
+    layerMeta.appendChild(createChip(`charge=${Boolean(layer.loaded_for_runtime)}`));
+    layerMeta.appendChild(createChip(`injection_active=${Boolean(layer.actively_injected)}`));
     if (layer.total_count != null) {
       layerMeta.appendChild(createChip(`count=${Number(layer.total_count) || 0}`));
     }
@@ -152,8 +159,8 @@
     const legacyLayer = subject.legacy_fragments || {};
     const evidenceLayer = subject.evidence || {};
     const conflictsLayer = subject.conflicts || {};
-    subjectMeta.appendChild(createChip(`static=${Boolean(staticLayer.actively_injected)}`));
-    subjectMeta.appendChild(createChip(`mutable=${Boolean(mutableLayer.actively_injected)}`));
+    subjectMeta.appendChild(createChip(`static_injecte=${Boolean(staticLayer.actively_injected)}`));
+    subjectMeta.appendChild(createChip(`mutable_injecte=${Boolean(mutableLayer.actively_injected)}`));
     subjectMeta.appendChild(createChip(`legacy=${Number(legacyLayer.total_count) || 0}`));
     subjectMeta.appendChild(createChip(`evidence=${Number(evidenceLayer.total_count) || 0}`));
     subjectMeta.appendChild(createChip(`conflicts=${Number(conflictsLayer.total_count) || 0}`));
@@ -162,31 +169,31 @@
     [
       {
         key: "static",
-        label: "Static",
+        label: "Statique canonique",
         identifyTitle: (_item, index) => `Static ${index + 1}`,
         emptyMessage: "Aucun contenu statique charge.",
       },
       {
         key: "mutable",
-        label: "Mutable",
+        label: "Mutable canonique",
         identifyTitle: (_item, index) => `Mutable ${index + 1}`,
         emptyMessage: "Aucune mutable narrative stockee.",
       },
       {
         key: "legacy_fragments",
-        label: "Legacy fragments",
+        label: "Fragments legacy",
         identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment ${index + 1}`,
         emptyMessage: "Aucun fragment legacy pour ce sujet.",
       },
       {
         key: "evidence",
-        label: "Evidence",
+        label: "Evidences",
         identifyTitle: (item, index) => toText(item?.evidence_id) || `Evidence ${index + 1}`,
         emptyMessage: "Aucune evidence pour ce sujet.",
       },
       {
         key: "conflicts",
-        label: "Conflicts",
+        label: "Conflits",
         identifyTitle: (item, index) => toText(item?.conflict_id) || `Conflict ${index + 1}`,
         emptyMessage: "Aucun conflit pour ce sujet.",
       },
@@ -216,8 +223,9 @@
 
     if (metaTarget) {
       appendMetaChip(metaTarget, "read_model", toText(safePayload.read_model_version) || "n/a");
-      appendMetaChip(metaTarget, "active", toText(activeRuntime.active_identity_source));
-      appendMetaChip(metaTarget, "prompt", toText(activeRuntime.active_prompt_contract));
+      appendMetaChip(metaTarget, "canonique_mutable", toText(activeRuntime.active_identity_source));
+      appendMetaChip(metaTarget, "compile", toText(activeRuntime.active_prompt_contract));
+      metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
       appendMetaChip(metaTarget, "identity_input", toText(activeRuntime.identity_input_schema_version));
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
     }
@@ -227,9 +235,14 @@
     const runtimeHead = document.createElement("div");
     runtimeHead.className = "admin-readonly-group-head";
     const runtimeTitle = document.createElement("h4");
-    runtimeTitle.textContent = "Active runtime";
+    runtimeTitle.textContent = "Repères runtime et compilation active";
     runtimeHead.appendChild(runtimeTitle);
     runtimeGroup.appendChild(runtimeHead);
+    runtimeGroup.appendChild(
+      createNote(
+        "Ce bloc resume le runtime actif et le contrat de compilation de l'identite. Il ne remplace ni les couches canoniques statique/mutable, ni le pilotage systeme distinct.",
+      ),
+    );
     const runtimeGrid = document.createElement("div");
     runtimeGrid.className = "admin-readonly-grid";
     renderReadonlyEntries(runtimeGrid, mappingToDetailEntries(activeRuntime, "identity_read_model"));

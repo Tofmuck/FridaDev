@@ -26,6 +26,13 @@
     return chip;
   };
 
+  const createNote = (text) => {
+    const note = document.createElement("p");
+    note.className = "admin-section-note admin-section-note-left";
+    note.textContent = text;
+    return note;
+  };
+
   const renderReadonlyEntries = (target, entries) => {
     adminUi.renderReadonlyInfoEntries(target, entries);
   };
@@ -82,16 +89,79 @@
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`present=${Boolean(safePayload.present)}`));
-    meta.appendChild(createChip(`schema=${toText(safePayload.schema_version) || "n/a"}`));
-    meta.appendChild(createChip(`role=${toText(safePayload.role) || "n/a"}`));
-    meta.appendChild(createChip(`nom=${toText(safePayload.technical_name) || "n/a"}`));
+    meta.appendChild(createChip(`forme=compilee`));
+    meta.appendChild(createChip(`usage=jugement`));
+    meta.appendChild(createChip(`source=canonique`));
     target.appendChild(meta);
+
+    target.appendChild(
+      createNote(
+        "Cette vue montre une projection structuree compilee pour le jugement hermeneutique. La source canonique reste le statique et la mutable; le pilotage systeme reste distinct.",
+      ),
+    );
 
     const summary = document.createElement("div");
     summary.className = "admin-readonly-grid";
     renderReadonlyEntries(
       summary,
-      mappingToEntries(safePayload, "identity_runtime_representations", ["data"]),
+      [
+        [
+          "representation_kind",
+          {
+            label: "Nature",
+            value: "Projection runtime compilee pour le jugement",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "canonical_source",
+          {
+            label: "Source canonique",
+            value: "Statique + mutable canoniques",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "system_guidance",
+          {
+            label: "Pilotage systeme",
+            value: "Distinct, hors de cette vue",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "technical_name",
+          {
+            label: "Nom technique",
+            value: toText(safePayload.technical_name) || "n/a",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "role",
+          {
+            label: "Usage runtime",
+            value: toText(safePayload.role) || "n/a",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "schema_version",
+          {
+            label: "Schema",
+            value: toText(safePayload.schema_version) || "n/a",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "present",
+          {
+            label: "Present",
+            value: String(Boolean(safePayload.present)),
+            source: "identity_runtime_representations",
+          },
+        ],
+      ],
     );
     target.appendChild(summary);
 
@@ -111,17 +181,81 @@
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`present=${Boolean(safePayload.present)}`));
-    meta.appendChild(createChip(`role=${toText(safePayload.role) || "n/a"}`));
-    meta.appendChild(createChip(`nom=${toText(safePayload.technical_name) || "n/a"}`));
+    meta.appendChild(createChip(`forme=compilee`));
+    meta.appendChild(createChip(`usage=reponse_finale`));
+    meta.appendChild(createChip(`source=canonique`));
     meta.appendChild(createChip(`len=${content.length}`));
     meta.appendChild(createChip(`used_ids=${Number(usedIdentityIdsCount) || 0}`));
     target.appendChild(meta);
+
+    target.appendChild(
+      createNote(
+        "Ce texte est la forme runtime compilee de l'identite injectee pour la reponse finale. Il ne remplace ni la source canonique statique/mutable, ni le pilotage systeme distinct.",
+      ),
+    );
 
     const summary = document.createElement("div");
     summary.className = "admin-readonly-grid";
     renderReadonlyEntries(
       summary,
-      mappingToEntries(safePayload, "identity_runtime_representations", ["content"]),
+      [
+        [
+          "representation_kind",
+          {
+            label: "Nature",
+            value: "Forme runtime compilee injectee",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "canonical_source",
+          {
+            label: "Source canonique",
+            value: "Statique + mutable canoniques",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "system_guidance",
+          {
+            label: "Pilotage systeme",
+            value: "Distinct, hors de cette vue",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "technical_name",
+          {
+            label: "Nom technique",
+            value: toText(safePayload.technical_name) || "n/a",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "role",
+          {
+            label: "Slot technique",
+            value: toText(safePayload.role) || "n/a",
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "present",
+          {
+            label: "Present",
+            value: String(Boolean(safePayload.present)),
+            source: "identity_runtime_representations",
+          },
+        ],
+        [
+          "used_identity_ids_count",
+          {
+            label: "Ids legacy utilises",
+            value: String(Number(usedIdentityIdsCount) || 0),
+            source: "identity_runtime_representations",
+          },
+        ],
+      ],
     );
     target.appendChild(summary);
 
@@ -245,8 +379,9 @@
     const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
     if (metaTarget) {
       metaTarget.appendChild(createChip(`version=${toText(safePayload.representations_version) || "n/a"}`));
-      metaTarget.appendChild(createChip(`prompt=${toText(safePayload.active_prompt_contract) || "n/a"}`));
+      metaTarget.appendChild(createChip(`compile=${toText(safePayload.active_prompt_contract) || "n/a"}`));
       metaTarget.appendChild(createChip(`schema=${toText(safePayload.identity_input_schema_version) || "n/a"}`));
+      metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
       metaTarget.appendChild(createChip(`meme_base=${Boolean(safePayload.same_identity_basis)}`));
       metaTarget.appendChild(createChip(`used_ids=${Number(safePayload.used_identity_ids_count) || 0}`));
     }
