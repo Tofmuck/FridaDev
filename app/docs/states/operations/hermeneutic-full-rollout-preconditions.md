@@ -59,11 +59,15 @@ Juste apres redemarrage:
 3. Verifier dans `/log` que le tour produit toujours les stages `stimmung_agent`, `hermeneutic_node_insertion`, `primary_node` et `validation_agent`.
 4. Verifier que l'inspection reste disponible dans `/hermeneutic-admin` pour ce tour et que le dashboard conserve ses champs reels:
    - `mode`
+   - `mode_observation`
    - `alerts`
    - `counters`
    - `rates`
    - `latency_ms`
    - `runtime_metrics`
+   Notes:
+   - `mode_observation` decrit une observation retenue du mode courant dans les logs admin, pas une bascule exacte persistee;
+   - `observed_since` est donc une premiere observation honnete du segment courant, pas un faux timestamp de transition.
 5. Verifier cote backend via `GET /api/admin/logs` que les tours post-restart portent bien les marqueurs d'enforcement reel:
    - `memory_mode_apply` avec `mode=enforced_all` et `source=arbiter_enforced`
    - `identity_mode_apply` avec `mode=enforced_all` et `action=persist_enforced`

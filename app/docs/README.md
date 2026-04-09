@@ -44,7 +44,7 @@ Notes:
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
-- roadmap ouverte mini-lot admin `mode depuis / derniere bascule`: `todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`
+- mini-lot admin termine `mode depuis / observation du mode`: `todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`
 - roadmap archivee surface `/identity` canonique: `todo-done/refactors/identity-surface-canonical-layout-todo.md`
 - roadmap archivee separation doctrinale `identity` / `prompt`: `todo-done/refactors/identity-vs-prompt-separation-todo.md`
 - trace archivee follow-up audit complet 2026-04-04: `todo-done/audits/fridadev-audit-followup-2026-04-04.md`

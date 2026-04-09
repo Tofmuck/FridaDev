@@ -52,6 +52,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
         self.assertIn('href="/identity"', source)
+        self.assertIn('id="hermeneuticAdminModeMetaNote"', source)
         self.assertNotIn('href="/admin" target="_blank"', source)
         self.assertNotIn('href="/log" target="_blank"', source)
 
@@ -131,6 +132,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("FridaHermeneuticIdentityGovernance", identity_governance_source)
         self.assertIn("FridaHermeneuticIdentityReadModelRender", render_source)
         self.assertIn("fetchIdentityRuntimeRepresentations", api_source)
+        self.assertIn("mode_observation", render_source)
+        self.assertIn("Observe depuis", main_source)
+        self.assertIn("bascule exacte", render_source)
         self.assertIn("compile=", render_source)
         self.assertNotIn("prompt=", render_source)
         self.assertIn("Repères runtime et compilation active", identity_render_source)

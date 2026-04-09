@@ -190,6 +190,23 @@ def dashboard_response(
 
     log_entries = admin_logs_module.read_logs(limit=log_limit)
     stage_latencies = _compute_stage_latencies(log_entries)
+    summarize_mode_observation = getattr(admin_logs_module, 'summarize_hermeneutic_mode_observation', None)
+    if callable(summarize_mode_observation):
+        mode_observation = summarize_mode_observation(config_module.HERMENEUTIC_MODE)
+    else:
+        mode_observation = {
+            'source': 'unavailable',
+            'semantics': 'current_mode_observed_segment_not_exact_switch',
+            'current_mode_observed': False,
+            'observed_since': None,
+            'last_observed_at': None,
+            'observation_count': 0,
+            'previous_mode': None,
+            'previous_mode_last_observed_at': None,
+            'latest_observed_mode': None,
+            'latest_observed_at': None,
+            'exact_switch_known': False,
+        }
 
     fallback_rate = max(float(kpis.get('fallback_rate', 0.0)), runtime_fallback_rate)
 
@@ -212,6 +229,7 @@ def dashboard_response(
         {
             'ok': True,
             'mode': config_module.HERMENEUTIC_MODE,
+            'mode_observation': mode_observation,
             'window_days': window_days,
             'counters': counters,
             'rates': {

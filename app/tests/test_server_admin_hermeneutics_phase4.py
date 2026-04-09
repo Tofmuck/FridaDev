@@ -276,10 +276,11 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(response.get_json()['error_code'], 'legacy_identity_control_disabled')
 
     def test_dashboard_computes_rates_and_alerts_with_contract_fallbacks(self) -> None:
-        observed = {'window_days': None, 'log_limit': None}
+        observed = {'window_days': None, 'log_limit': None, 'current_mode': None}
         original_get_kpis = self.server.memory_store.get_hermeneutic_kpis
         original_get_runtime_metrics = self.server.arbiter.get_runtime_metrics
         original_read_logs = self.server.admin_logs.read_logs
+        original_mode_summary = self.server.admin_logs.summarize_hermeneutic_mode_observation
 
         def fake_get_hermeneutic_kpis(*, window_days: int):
             observed['window_days'] = window_days
@@ -311,22 +312,48 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
                 {'event': 'other_event', 'stage': 'retrieve', 'duration_ms': 999},
             ]
 
+        def fake_mode_summary(current_mode: str):
+            observed['current_mode'] = current_mode
+            return {
+                'source': 'admin_logs_retained_observations',
+                'semantics': 'current_mode_observed_segment_not_exact_switch',
+                'current_mode_observed': True,
+                'observed_since': '2026-04-03T15:38:51Z',
+                'last_observed_at': '2026-04-09T12:00:00Z',
+                'observation_count': 6,
+                'previous_mode': 'shadow',
+                'previous_mode_last_observed_at': '2026-03-31T07:59:03Z',
+                'latest_observed_mode': 'enforced_all',
+                'latest_observed_at': '2026-04-09T12:00:00Z',
+                'exact_switch_known': False,
+            }
+
         self.server.memory_store.get_hermeneutic_kpis = fake_get_hermeneutic_kpis
         self.server.arbiter.get_runtime_metrics = fake_get_runtime_metrics
         self.server.admin_logs.read_logs = fake_read_logs
+        self.server.admin_logs.summarize_hermeneutic_mode_observation = fake_mode_summary
         try:
             response = self.client.get('/api/admin/hermeneutics/dashboard?window_days=bad&log_limit=oops')
         finally:
             self.server.memory_store.get_hermeneutic_kpis = original_get_kpis
             self.server.arbiter.get_runtime_metrics = original_get_runtime_metrics
             self.server.admin_logs.read_logs = original_read_logs
+            self.server.admin_logs.summarize_hermeneutic_mode_observation = original_mode_summary
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertTrue(data['ok'])
+        self.assertEqual(observed['current_mode'], self.server.config.HERMENEUTIC_MODE)
         self.assertEqual(observed['window_days'], 7)
         self.assertEqual(observed['log_limit'], 5000)
         self.assertEqual(data['window_days'], 7)
+        self.assertEqual(data['mode_observation']['source'], 'admin_logs_retained_observations')
+        self.assertEqual(
+            data['mode_observation']['observed_since'],
+            '2026-04-03T15:38:51Z',
+        )
+        self.assertEqual(data['mode_observation']['previous_mode'], 'shadow')
+        self.assertFalse(data['mode_observation']['exact_switch_known'])
         self.assertEqual(data['counters']['parse_error_count'], 3)
         self.assertEqual(data['rates']['parse_error_rate'], 0.1)
         self.assertEqual(data['rates']['runtime_fallback_rate'], 0.05)

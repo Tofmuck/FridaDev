@@ -113,6 +113,109 @@ def read_logs(limit: int = 200) -> list[dict[str, Any]]:
     return entries
 
 
+def _iter_log_paths(log_path: Path | None = None) -> list[Path]:
+    root = (log_path or LOG_PATH).resolve()
+    try:
+        paths = list(root.parent.glob('admin*.log.jsonl'))
+    except OSError:
+        paths = []
+    if root.exists() and root not in paths:
+        paths.append(root)
+    return sorted(set(paths), key=lambda path: path.name)
+
+
+def _parse_iso8601_timestamp(value: Any) -> datetime | None:
+    raw = str(value or '').strip()
+    if not raw:
+        return None
+    normalized = raw[:-1] + '+00:00' if raw.endswith('Z') else raw
+    try:
+        return datetime.fromisoformat(normalized).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _utc_iso_z(dt: datetime | None) -> str | None:
+    if not isinstance(dt, datetime):
+        return None
+    return dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def summarize_hermeneutic_mode_observation(
+    current_mode: str,
+    *,
+    log_path: Path | None = None,
+) -> dict[str, Any]:
+    normalized_current_mode = str(current_mode or '').strip().lower()
+    observations: list[dict[str, Any]] = []
+
+    for path in _iter_log_paths(log_path):
+        try:
+            lines = path.read_text(encoding='utf-8').splitlines()
+        except OSError as exc:
+            logger.error('admin_log_mode_summary_read_error file=%s err=%s', path, exc)
+            continue
+
+        for line in lines:
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if str(item.get('event') or '').strip() != 'hermeneutic_mode':
+                continue
+            observed_mode = str(item.get('mode') or '').strip().lower()
+            observed_at = _parse_iso8601_timestamp(item.get('timestamp'))
+            if not observed_mode or observed_at is None:
+                continue
+            observations.append(
+                {
+                    'mode': observed_mode,
+                    'observed_at': observed_at,
+                }
+            )
+
+    observations.sort(key=lambda item: item['observed_at'])
+    latest_observation = observations[-1] if observations else None
+
+    summary = {
+        'source': 'admin_logs_retained_observations',
+        'semantics': 'current_mode_observed_segment_not_exact_switch',
+        'current_mode_observed': False,
+        'observed_since': None,
+        'last_observed_at': None,
+        'observation_count': 0,
+        'previous_mode': None,
+        'previous_mode_last_observed_at': None,
+        'latest_observed_mode': latest_observation['mode'] if latest_observation else None,
+        'latest_observed_at': _utc_iso_z(latest_observation['observed_at']) if latest_observation else None,
+        'exact_switch_known': False,
+    }
+
+    if not normalized_current_mode or not latest_observation or latest_observation['mode'] != normalized_current_mode:
+        return summary
+
+    segment_start = len(observations) - 1
+    while segment_start > 0 and observations[segment_start - 1]['mode'] == normalized_current_mode:
+        segment_start -= 1
+
+    current_segment = observations[segment_start:]
+    previous_observation = observations[segment_start - 1] if segment_start > 0 else None
+
+    summary.update(
+        {
+            'current_mode_observed': True,
+            'observed_since': _utc_iso_z(current_segment[0]['observed_at']),
+            'last_observed_at': _utc_iso_z(current_segment[-1]['observed_at']),
+            'observation_count': len(current_segment),
+            'previous_mode': previous_observation['mode'] if previous_observation else None,
+            'previous_mode_last_observed_at': (
+                _utc_iso_z(previous_observation['observed_at']) if previous_observation else None
+            ),
+        }
+    )
+    return summary
+
+
 def _bootstrap_legacy_logs_if_needed() -> None:
     global _BOOTSTRAP_DONE
     if _BOOTSTRAP_DONE:

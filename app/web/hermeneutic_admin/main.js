@@ -15,6 +15,7 @@
     refresh: document.getElementById("hermeneuticAdminRefresh"),
     statusBanner: document.getElementById("hermeneuticAdminStatusBanner"),
     modeMeta: document.getElementById("hermeneuticAdminMode"),
+    modeMetaNote: document.getElementById("hermeneuticAdminModeMetaNote"),
     conversationMeta: document.getElementById("hermeneuticAdminConversationMeta"),
     turnMeta: document.getElementById("hermeneuticAdminTurnMeta"),
     overviewCards: document.getElementById("hermeneuticOverviewCards"),
@@ -47,12 +48,30 @@
     turnId: "",
     identitySubject: "all",
     identityStatus: "all",
+    dashboard: null,
   };
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
-  const syncMeta = ({ mode } = {}) => {
+  const buildModeObservationNote = (dashboard) => {
+    const modeObservation = dashboard && typeof dashboard.mode_observation === "object"
+      ? dashboard.mode_observation
+      : {};
+    if (modeObservation.current_mode_observed && toText(modeObservation.observed_since)) {
+      return `Observe depuis ${modeObservation.observed_since} (logs admin retenus).`;
+    }
+    if (toText(modeObservation.latest_observed_mode) && toText(modeObservation.latest_observed_at)) {
+      return `Derniere observation retenue: ${modeObservation.latest_observed_mode} le ${modeObservation.latest_observed_at}.`;
+    }
+    return "Aucune observation retenue du mode courant pour l'instant.";
+  };
+
+  const syncMeta = ({ mode, dashboard } = {}) => {
+    const effectiveDashboard = dashboard || state.dashboard;
     elements.modeMeta.textContent = toText(mode) || "n/a";
+    if (elements.modeMetaNote) {
+      elements.modeMetaNote.textContent = buildModeObservationNote(effectiveDashboard);
+    }
     elements.conversationMeta.textContent = toText(state.conversationId) || "Aucune";
     elements.turnMeta.textContent = toText(state.turnId) || "Aucun";
   };
@@ -75,8 +94,9 @@
 
   const loadOverview = async () => {
     const dashboard = await api.fetchDashboard();
+    state.dashboard = dashboard;
     render.renderOverview(elements.overviewCards, elements.runtimeMetrics, dashboard);
-    syncMeta({ mode: dashboard.mode });
+    syncMeta({ mode: dashboard.mode, dashboard });
   };
 
   const loadInspection = async ({ keepTurn = true } = {}) => {

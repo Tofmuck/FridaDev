@@ -50,6 +50,33 @@
     return compactJson(value, 1200);
   };
 
+  const buildModeObservationBody = (dashboard) => {
+    const modeObservation = dashboard && typeof dashboard.mode_observation === "object"
+      ? dashboard.mode_observation
+      : {};
+    const mode = toText(dashboard?.mode) || "n/a";
+    if (modeObservation.current_mode_observed && toText(modeObservation.observed_since)) {
+      return `Mode: ${mode}. Observe dans les logs admin retenus depuis ${modeObservation.observed_since}.`;
+    }
+    return `Mode: ${mode}. Aucune bascule exacte n'est persistee; seule l'observation retenue du mode courant est disponible.`;
+  };
+
+  const buildModeObservationChips = (dashboard) => {
+    const modeObservation = dashboard && typeof dashboard.mode_observation === "object"
+      ? dashboard.mode_observation
+      : {};
+    const chips = [];
+    chips.push(
+      `observe_depuis=${toText(modeObservation.observed_since) || "inconnu"}`,
+      `derniere_obs=${toText(modeObservation.last_observed_at || modeObservation.latest_observed_at) || "inconnue"}`,
+      `bascule_exacte=${modeObservation.exact_switch_known ? "oui" : "inconnue"}`,
+    );
+    if (toText(modeObservation.previous_mode) && toText(modeObservation.previous_mode_last_observed_at)) {
+      chips.push(`precedent=${modeObservation.previous_mode}@${modeObservation.previous_mode_last_observed_at}`);
+    }
+    return chips;
+  };
+
   const createChip = (text, options = {}) => {
     const chip = document.createElement("span");
     chip.className = "admin-chip";
@@ -109,8 +136,11 @@
     const cards = [
       {
         title: "Mode et alertes",
-        body: `Mode: ${toText(dashboard?.mode) || "n/a"}`,
-        chips: alerts.length ? alerts : ["Aucune alerte"],
+        body: buildModeObservationBody(dashboard),
+        chips: [
+          ...buildModeObservationChips(dashboard),
+          ...(alerts.length ? alerts : ["Aucune alerte"]),
+        ],
       },
       {
         title: "Compteurs",

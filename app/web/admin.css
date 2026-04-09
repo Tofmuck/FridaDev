@@ -213,6 +213,13 @@ body.admin-page {
   font-weight: 600;
 }
 
+.admin-meta-note {
+  margin: 8px 0 0;
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .admin-status,
 .admin-inline-status {
   border-left: 3px solid var(--accent);
