@@ -1,8 +1,9 @@
 # Hermeneutic Dashboard Mode Since TODO
 
-Statut: termine
-Classement: `app/docs/todo-todo/admin/`
+Statut: archive
+Classement: `app/docs/todo-done/notes/`
 Origine: reliquat extrait du follow-up d'audit `2026-04-04`, maintenant archive dans `app/docs/todo-done/audits/fridadev-audit-followup-2026-04-04.md`
+Archivage: mini-lot termine, archive dans `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
 
 ## Objectif
 

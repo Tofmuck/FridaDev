@@ -163,7 +163,7 @@ Si une modification change un comportement runtime, une attente operateur, un de
 Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 
 - `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: trace archivee du clonage/migration OVH, chemins runtime, backups, mode operatoire vacances et decisions admin OVH.
-- `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`: TODO admin actif sur l'affichage `mode depuis` / `derniere bascule`.
+- `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`: mini-lot admin archive sur l'affichage `mode depuis` / `observation du mode`.
 - `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: roadmap memoire/hermeneutique active, a relire avant tout lot memoire.
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.

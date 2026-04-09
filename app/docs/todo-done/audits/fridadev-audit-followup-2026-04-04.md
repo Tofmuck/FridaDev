@@ -1,7 +1,7 @@
 # FridaDev - Suivi d'audit complet du 2026-04-04
 
 Statut de cloture: archive le 2026-04-05 dans `app/docs/todo-done/audits/`
-Carry-over extrait: `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`
+Carry-over extrait, maintenant archive: `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
 
 Objectif: transformer l'audit Claude Opus 4.6 et sa revalidation SSH en checklist d'execution claire, en separant ce qui a ete bien vu, ce qui a ete vu trop legerement, et ce qui doit etre prouve avant cloture.
 
@@ -43,7 +43,7 @@ Sources de travail retenues:
 ## 4. Idees alignees avec Frida a arbitrer apres stabilisation
 
 - [x] Ajouter un indicateur `memory_traces_injected_in_prompt` ou equivalent, distinct de `memory_retrieved` et `memory_arbitrated`, pour voir ce qui arrive vraiment dans le prompt final: `prompt_prepared` expose maintenant un resume redacted `memory_prompt_injection`, veridique sur les briques memoire effectivement injectees.
-- [x] Extraire le reliquat `mode depuis` / `derniere bascule` vers `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`, afin de laisser ce follow-up d'audit archive sans feature admin encore ouverte.
+- [x] Extraire puis archiver le reliquat `mode depuis` / `derniere bascule` dans `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`, afin de laisser ce follow-up d'audit archive sans feature admin encore ouverte.
 
 ## 4bis. Travaux documentaires de consolidation
 

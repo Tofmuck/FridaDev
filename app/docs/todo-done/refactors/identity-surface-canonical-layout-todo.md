@@ -9,7 +9,7 @@ Archivage: chantier termine, archive dans `app/docs/todo-done/refactors/identity
 ## Objectif
 
 - [x] Garder ce chantier distinct du chantier doctrinal `identity != prompt`, maintenant archive dans `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md`.
-- [x] Garder ce chantier distinct du mini-lot admin `app/docs/todo-todo/admin/hermeneutic-dashboard-mode-since-todo.md`.
+- [x] Garder ce chantier distinct du mini-lot admin archive `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`.
 - [x] Transformer `/identity` en surface de pilotage operateur d'abord, et en surface de diagnostic ensuite.
 
 ## Decisions acquises
@@ -152,7 +152,7 @@ Archivage: chantier termine, archive dans `app/docs/todo-done/refactors/identity
 
 ## Hors scope
 
-- [x] Ne pas fusionner ce chantier avec `hermeneutic-dashboard-mode-since-todo.md`.
+- [x] Ne pas fusionner ce chantier avec `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`.
 - [x] Ne pas reouvrir le chantier doctrinal `identity vs prompt`.
 - [x] Ne pas patcher frontend ou backend dans le present document.
 - [x] Ne pas lancer un redesign global de tout l'admin dans le present document.
