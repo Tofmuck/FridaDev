@@ -32,13 +32,8 @@
     <section class="admin-hero">
       <div class="admin-copy">
         <p class="admin-lead">
-          Cette page separe trois couches: la source canonique d'identite, le pilotage systeme distinct, puis les
-          formes runtime compilees utilisees pour le jugement et la reponse finale.
-        </p>
-        <p class="admin-sublead">
-          Le canonique reste le statique file-backed et la mutable canonique. Le pilotage systeme reste hors de ces
-          contenus. Les vues runtime ci-dessous montrent seulement des projections compilees, pas une nouvelle source
-          de verite.
+          Cette page montre d'abord les 4 blocs canoniques editables, puis les lectures runtime et historiques qui en
+          derivent. Le pilotage systeme reste distinct de ces contenus.
         </p>
       </div>
 
@@ -61,6 +56,30 @@
     <p id="identityStatusBanner" class="admin-status" role="status" aria-live="polite">
       Chargement de la surface Identity...
     </p>
+
+    <section class="admin-section-block" aria-labelledby="identity-pilotage-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Pilotage canonique actif</p>
+          <h2 id="identity-pilotage-title">Les 4 blocs a editer en premier</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Cette zone remonte les 4 blocs canoniques editables en premier: LLM statique, LLM mutable, User statique et
+        User mutable. Les lectures runtime detaillees et les couches historiques restent plus bas.
+      </p>
+
+      <div id="identityPilotageGrid" class="admin-section-grid">
+        <div id="identityLlmStaticCard"></div>
+        <div id="identityLlmMutableCard"></div>
+        <div id="identityUserStaticCard"></div>
+        <div id="identityUserMutableCard"></div>
+      </div>
+
+      <div id="identityStaticEditStatus"></div>
+      <div id="identityMutableEditStatus"></div>
+    </section>
 
     <section class="admin-section-block" aria-labelledby="identity-structure-title">
       <div class="admin-section-head">
@@ -181,40 +200,6 @@
           <div id="identityInjectedRepresentation"></div>
         </section>
       </div>
-    </section>
-
-    <section class="admin-section-block" aria-labelledby="identity-static-edit-title">
-      <div class="admin-section-head">
-        <div>
-          <p class="admin-kicker">Edition controlee</p>
-          <h2 id="identity-static-edit-title">Editer le statique canonique</h2>
-        </div>
-      </div>
-
-      <p class="admin-section-note admin-section-note-left">
-        L'edition porte sur le vrai contenu statique canonique actif de la ressource referencee par les runtime settings.
-        On n'edite ni un simple path, ni un prompt systeme.
-      </p>
-
-      <div id="identityStaticEditStatus"></div>
-      <div id="identityStaticEditors" class="admin-readonly-stack"></div>
-    </section>
-
-    <section class="admin-section-block" aria-labelledby="identity-mutable-edit-title">
-      <div class="admin-section-head">
-        <div>
-          <p class="admin-kicker">Edition controlee</p>
-          <h2 id="identity-mutable-edit-title">Editer la mutable canonique</h2>
-        </div>
-      </div>
-
-      <p class="admin-section-note admin-section-note-left">
-        La mutable canonique reste une couche identitaire mouvante. Elle peut participer a la forme runtime compilee
-        active, sans devenir une zone de pilotage systeme.
-      </p>
-
-      <div id="identityMutableEditStatus"></div>
-      <div id="identityMutableEditors" class="admin-readonly-stack"></div>
     </section>
 
     <section class="admin-section-block" aria-labelledby="identity-governance-title">

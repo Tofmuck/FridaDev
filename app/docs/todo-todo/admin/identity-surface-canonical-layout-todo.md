@@ -60,10 +60,10 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### 1. Visibilite immediate des 4 blocs
 
-- [ ] Remonter `LLM statique`, `LLM mutable`, `User statique` et `User mutable` tout en haut de la page.
-- [ ] Rendre ces 4 blocs visibles sans scroll important.
-- [ ] Garder l'ordre desktop `2x2` et mobile vertical.
-- [ ] Reduire l'intro de tete a une forme compacte qui ne concurrence pas l'edition.
+- [x] Remonter `LLM statique`, `LLM mutable`, `User statique` et `User mutable` tout en haut de la page.
+- [x] Rendre ces 4 blocs visibles sans scroll important.
+- [x] Garder l'ordre desktop `2x2` et mobile vertical.
+- [x] Reduire l'intro de tete a une forme compacte qui ne concurrence pas l'edition.
 
 ### 2. Contrat d'information minimal par bloc
 
@@ -111,9 +111,9 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### Lot 1 - Hierarchie et remontee des 4 blocs
 
-- [ ] Remonter les 4 blocs canoniques tout en haut.
-- [ ] Imposer l'ordre desktop `2x2` / mobile vertical.
-- [ ] Reduire l'intro de tete a une forme compacte.
+- [x] Remonter les 4 blocs canoniques tout en haut.
+- [x] Imposer l'ordre desktop `2x2` / mobile vertical.
+- [x] Reduire l'intro de tete a une forme compacte.
 
 ### Lot 2 - Traitement explicite des etats `llm`
 

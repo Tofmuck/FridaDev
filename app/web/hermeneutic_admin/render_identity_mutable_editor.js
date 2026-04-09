@@ -69,9 +69,13 @@
     return layer;
   };
 
-  const renderSubjectEditor = (target, payload, subject) => {
+  const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const mutableLayer = subjectMutableLayer(payload, subject);
     const currentContent = toText(mutableLayer.content);
+    const titleText = toText(options.title) || `${subject} mutable canonique`;
+    const noteText =
+      toText(options.noteText) ||
+      "Edition controlee de la mutable canonique injectee activement. Le statique dispose d'un editeur distinct; le legacy, les evidences et les conflits restent read-only.";
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -80,19 +84,19 @@
     const head = document.createElement("div");
     head.className = "admin-readonly-group-head";
     const title = document.createElement("h4");
-    title.textContent = `${subject} mutable canonique`;
+    title.textContent = titleText;
     head.appendChild(title);
     card.appendChild(head);
 
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
-    note.textContent =
-      "Edition controlee de la mutable canonique injectee activement. Le statique dispose d'un editeur distinct; le legacy, les evidences et les conflits restent read-only.";
+    note.textContent = noteText;
     card.appendChild(note);
 
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`stored=${Boolean(mutableLayer.stored)}`));
+    meta.appendChild(createChip(`loaded=${Boolean(mutableLayer.loaded_for_runtime)}`));
     meta.appendChild(createChip(`injected=${Boolean(mutableLayer.actively_injected)}`));
     meta.appendChild(createChip(`len=${currentContent.length}`));
     meta.appendChild(createChip(`target=${TARGET_CHARS}`));
@@ -204,6 +208,12 @@
     available.forEach((subject) => renderSubjectEditor(target, safePayload, subject));
   };
 
+  const renderIdentityMutableEditorCard = (target, payload, subject, options = {}) => {
+    if (!target) return;
+    target.innerHTML = "";
+    renderSubjectEditor(target, payload, subject, options);
+  };
+
   const readIdentityMutableDraft = (trigger) => {
     const button = trigger?.closest?.("[data-identity-mutable-action]");
     if (!button) return null;
@@ -268,6 +278,7 @@
 
   window.FridaHermeneuticIdentityMutableEditor = Object.freeze({
     renderIdentityMutableEditors,
+    renderIdentityMutableEditorCard,
     readIdentityMutableDraft,
     setIdentityMutableEditStatus,
   });

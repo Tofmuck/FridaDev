@@ -68,9 +68,13 @@
     return layer;
   };
 
-  const renderSubjectEditor = (target, payload, subject) => {
+  const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const staticLayer = subjectStaticLayer(payload, subject);
     const currentContent = toText(staticLayer.content);
+    const titleText = toText(options.title) || `${subject} statique canonique`;
+    const noteText =
+      toText(options.noteText) ||
+      "Edition controlee du contenu statique reel charge par le runtime. Les runtime settings conservent seulement la reference de ressource; la mutable et le legacy restent separes.";
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -79,14 +83,13 @@
     const head = document.createElement("div");
     head.className = "admin-readonly-group-head";
     const title = document.createElement("h4");
-    title.textContent = `${subject} statique canonique`;
+    title.textContent = titleText;
     head.appendChild(title);
     card.appendChild(head);
 
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
-    note.textContent =
-      "Edition controlee du contenu statique reel charge par le runtime. Les runtime settings conservent seulement la reference de ressource; la mutable et le legacy restent separes.";
+    note.textContent = noteText;
     card.appendChild(note);
 
     const meta = document.createElement("div");
@@ -202,6 +205,12 @@
     available.forEach((subject) => renderSubjectEditor(target, safePayload, subject));
   };
 
+  const renderIdentityStaticEditorCard = (target, payload, subject, options = {}) => {
+    if (!target) return;
+    target.innerHTML = "";
+    renderSubjectEditor(target, payload, subject, options);
+  };
+
   const readIdentityStaticDraft = (trigger) => {
     const button = trigger?.closest?.("[data-identity-static-action]");
     if (!button) return null;
@@ -268,6 +277,7 @@
 
   window.FridaHermeneuticIdentityStaticEditor = Object.freeze({
     renderIdentityStaticEditors,
+    renderIdentityStaticEditorCard,
     readIdentityStaticDraft,
     setIdentityStaticEditStatus,
   });

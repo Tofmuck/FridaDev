@@ -25,15 +25,18 @@
     promptContractMeta: document.getElementById("identityPromptContractMeta"),
     schemaVersionMeta: document.getElementById("identitySchemaVersionMeta"),
     injectedMeta: document.getElementById("identityInjectedMeta"),
+    pilotageGrid: document.getElementById("identityPilotageGrid"),
+    llmStaticCard: document.getElementById("identityLlmStaticCard"),
+    llmMutableCard: document.getElementById("identityLlmMutableCard"),
+    userStaticCard: document.getElementById("identityUserStaticCard"),
+    userMutableCard: document.getElementById("identityUserMutableCard"),
     currentStateMeta: document.getElementById("identityCurrentStateMeta"),
     currentState: document.getElementById("identityCurrentState"),
     runtimeRepresentationsMeta: document.getElementById("identityRuntimeRepresentationsMeta"),
     structuredRepresentation: document.getElementById("identityStructuredRepresentation"),
     injectedRepresentation: document.getElementById("identityInjectedRepresentation"),
     staticEditStatus: document.getElementById("identityStaticEditStatus"),
-    staticEditors: document.getElementById("identityStaticEditors"),
     mutableEditStatus: document.getElementById("identityMutableEditStatus"),
-    mutableEditors: document.getElementById("identityMutableEditors"),
     governanceStatus: document.getElementById("identityGovernanceStatus"),
     governanceMeta: document.getElementById("identityGovernanceMeta"),
     governance: document.getElementById("identityGovernance"),
@@ -52,6 +55,29 @@
     injectedBlock && injectedBlock.present
       ? "Forme compilee injectee presente"
       : "Aucune forme compilee injectee";
+
+  const renderPilotageCards = (payload) => {
+    staticEditor.renderIdentityStaticEditorCard(elements.llmStaticCard, payload, "llm", {
+      title: "LLM statique",
+      noteText:
+        "Edition controlee du contenu statique canonique reel charge par le runtime du modele.",
+    });
+    mutableEditor.renderIdentityMutableEditorCard(elements.llmMutableCard, payload, "llm", {
+      title: "LLM mutable",
+      noteText:
+        "Edition controlee de la couche identitaire mouvante du modele, distincte du pilotage systeme.",
+    });
+    staticEditor.renderIdentityStaticEditorCard(elements.userStaticCard, payload, "user", {
+      title: "User statique",
+      noteText:
+        "Edition controlee de la base statique canonique cote utilisateur, chargee par le runtime quand elle est presente.",
+    });
+    mutableEditor.renderIdentityMutableEditorCard(elements.userMutableCard, payload, "user", {
+      title: "User mutable",
+      noteText:
+        "Edition controlee de la couche identitaire mouvante cote utilisateur, sans confusion avec les consignes runtime.",
+    });
+  };
 
   const syncMeta = () => {
     const runtimePayload =
@@ -90,8 +116,7 @@
   const loadIdentityReadModel = async () => {
     const payload = await api.fetchIdentityReadModel({ limit: 20 });
     state.readModelPayload = payload;
-    staticEditor.renderIdentityStaticEditors(elements.staticEditors, payload);
-    mutableEditor.renderIdentityMutableEditors(elements.mutableEditors, payload);
+    renderPilotageCards(payload);
     render.renderIdentityReadModel(elements.currentStateMeta, elements.currentState, payload);
     runtimeRepresentations.renderLegacyLayers(elements.legacyLayers, payload);
     syncMeta();
@@ -353,13 +378,11 @@
     void refreshAll();
   });
 
-  elements.staticEditors.addEventListener("click", (event) => {
+  elements.pilotageGrid.addEventListener("click", (event) => {
     if (event.target.closest("[data-identity-static-action]")) {
       void handleIdentityStaticEdit(event);
+      return;
     }
-  });
-
-  elements.mutableEditors.addEventListener("click", (event) => {
     if (event.target.closest("[data-identity-mutable-action]")) {
       void handleIdentityMutableEdit(event);
     }

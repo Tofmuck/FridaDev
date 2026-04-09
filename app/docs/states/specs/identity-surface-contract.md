@@ -9,6 +9,8 @@ Lot ferme: `Lot 6`
 Ce contrat ferme la surface `Identity` dediee en reemployant les contrats deja stabilises des Lots 2 a 5.
 
 La page doit montrer, en francais clair:
+- une introduction compacte qui ne repousse pas la zone de travail;
+- les 4 blocs canoniques editables comme premiere vraie zone de pilotage;
 - la structure reelle du systeme identity;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet;
@@ -132,12 +134,12 @@ Le pilotage systeme reste distinct:
 ## Ordre de lecture attendu sur la page
 
 La page `/identity` doit presenter, dans cet ordre ou equivalent:
+- une introduction compacte;
+- `Pilotage canonique actif` avec `LLM statique`, `LLM mutable`, `User statique`, `User mutable`;
 - la structure reelle du systeme identity;
 - l'etat courant par sujet;
 - la projection structuree compilee pour le jugement;
 - la forme runtime compilee injectee au modele;
-- l'edition du statique canonique;
-- l'edition de la mutable canonique;
 - les seuils et limites;
 - le legacy / evidence-only;
 - les corrections recentes utiles.
@@ -147,11 +149,14 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 Les titres principaux de la page doivent rester en francais clair.
 
 Acceptables:
+- `Pilotage canonique actif`
+- `LLM statique`
+- `LLM mutable`
+- `User statique`
+- `User mutable`
 - `Etat courant par sujet`
 - `Projection structuree compilee pour le jugement`
 - `Forme runtime compilee injectee au modele`
-- `Editer le statique canonique`
-- `Editer la mutable canonique`
 - `Seuils et limites`
 - `Legacy, evidences et conflits`
 
