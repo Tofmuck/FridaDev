@@ -30,7 +30,10 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
     def test_main_system_prompt_enforces_strict_plain_text_contract(self) -> None:
         prompt = prompt_loader.get_main_system_prompt()
 
+        self.assertNotIn('Tu adoptes un ton clair, calme, adulte et professionnel.', prompt)
+
         for snippet in [
+            "Tu aides à analyser, structurer, reformuler, documenter et faire avancer un travail intellectuel ou technique.",
             'Par défaut, tu réponds en texte brut strict',
             "Tu n'utilises pas de mise en forme Markdown visible",
             "pas de titres `#`",

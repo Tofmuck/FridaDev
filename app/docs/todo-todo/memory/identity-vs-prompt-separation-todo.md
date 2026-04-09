@@ -14,11 +14,11 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 ## Priorite absolue
 
-- [ ] Definir et figer `llm.static` comme noyau identitaire stable du modele.
-- [ ] Distinguer explicitement ce qui releve de la personnalite identitaire (`llm.static`) et ce qui releve du pilotage technique (`prompt systeme` / `prompt hermeneutique`).
-- [ ] Nettoyer le prompt du LLM pour n'y garder que la technique, l'operatoire, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
-- [ ] Verifier que `llm.static` est reellement charge, projete et injecte au runtime.
-- [ ] Ne traiter le durcissement de `llm.mutable` et du `identity_mutable_rewriter` qu'apres cette base posee et verifiee.
+- [x] Definir et figer `llm.static` comme noyau identitaire stable du modele.
+- [x] Distinguer explicitement ce qui releve de la personnalite identitaire (`llm.static`) et ce qui releve du pilotage technique (`prompt systeme` / `prompt hermeneutique`).
+- [x] Nettoyer le prompt du LLM pour n'y garder que la technique, l'operatoire, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
+- [x] Verifier que `llm.static` est reellement charge, projete et injecte au runtime.
+- [x] Ne traiter le durcissement de `llm.mutable` et du `identity_mutable_rewriter` qu'apres cette base posee et verifiee.
 
 ## Decisions acquises
 
@@ -40,6 +40,7 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 - [x] `app/prompts/main_system.txt` porte deja des consignes de conduite, de forme et de methode qui relevent du prompt, pas de l'identite.
 - [x] `app/prompts/main_hermeneutical.txt` traite deja le bloc identite comme une brique de coherence relationnelle, non souveraine sur la question courante.
 - [x] Tant que `llm.static` n'est pas clairement fixe et verifie dans le runtime, le systeme compense facilement en mettant de la personnalite un peu partout.
+- [x] La vraie source active de `llm.static` sur OVH est `data/identity/llm_identity.txt`, montee dans le conteneur via `/opt/platform/fridadev-app/state/data/identity/llm_identity.txt`.
 
 ## Diagnostic conceptuel a ne pas perdre
 
@@ -145,24 +146,24 @@ Origine: clarification doctrinale apres fixation de la surface `/identity` et co
 
 ### Lot 1 - Doctrine et vocabulaire
 
-- [ ] Definir et figer le contenu cible de `llm.static` comme noyau identitaire stable du modele.
-- [ ] Fermer explicitement ce qui doit vivre dans `llm.static`: personnalite stable, voix, posture relationnelle, comportement identitaire durable.
-- [ ] Reperer les docs/specs qui laissent encore entendre que la personnalite peut vivre ailleurs que dans `llm.static`.
+- [x] Definir et figer le contenu cible de `llm.static` comme noyau identitaire stable du modele.
+- [x] Fermer explicitement ce qui doit vivre dans `llm.static`: personnalite stable, voix, posture relationnelle, comportement identitaire durable.
+- [x] Reperer la fuite principale active: la personnalite stable logee dans `main_system.txt` alors que `llm.static` etait vide.
 
 ### Lot 2 - Frontiere prompt technique vs identite
 
-- [ ] Relire `main_system` et `main_hermeneutical`.
-- [ ] Nettoyer doctrinalement la frontiere entre comportement identitaire et comportement operatoire.
-- [ ] Poser noir sur blanc que le prompt systeme / prompt hermeneutique ne gardent que la technique, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
+- [x] Relire `main_system` et `main_hermeneutical`.
+- [x] Nettoyer doctrinalement la frontiere entre comportement identitaire et comportement operatoire.
+- [x] Poser noir sur blanc que le prompt systeme / prompt hermeneutique ne gardent que la technique, la methode, la securite, les priorites, les outils, le format et les contraintes runtime.
 - [ ] Relever les docs/specs qui parlent encore de facon melangee de personnalite et de prompt.
 
 ### Lot 3 - Verification runtime de `llm.static`
 
-- [ ] Verifier que `llm.static` est reellement charge dans le runtime.
-- [ ] Verifier que `llm.static` est bien projete dans `ActiveIdentityProjection`.
-- [ ] Verifier que `llm.static` est bien present dans `identity_input`.
-- [ ] Verifier que `llm.static` est bien injecte dans le `augmented_system`.
-- [ ] Verifier que la chaine `load -> projection -> injection` est explicitement documentee.
+- [x] Verifier que `llm.static` est reellement charge dans le runtime.
+- [x] Verifier que `llm.static` est bien projete dans `ActiveIdentityProjection`.
+- [x] Verifier que `llm.static` est bien present dans `identity_input`.
+- [x] Verifier que `llm.static` est bien injecte dans le `augmented_system`.
+- [x] Verifier que la chaine `load -> projection -> injection` est explicitement prouvee sur OVH.
 
 ### Lot 4 - Mutable et rewriter apres base posee
 

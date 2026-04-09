@@ -407,7 +407,14 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
         self.assertEqual(readonly_info['system_prompt']['value'], prompt_loader.get_main_system_prompt())
         self.assertIn('Cadre de réponse', readonly_info['system_prompt']['value'])
-        self.assertIn('Tu adoptes un ton clair, calme, adulte et professionnel.', readonly_info['system_prompt']['value'])
+        self.assertIn(
+            'Tu aides à analyser, structurer, reformuler, documenter et faire avancer un travail intellectuel ou technique.',
+            readonly_info['system_prompt']['value'],
+        )
+        self.assertNotIn(
+            'Tu adoptes un ton clair, calme, adulte et professionnel.',
+            readonly_info['system_prompt']['value'],
+        )
         self.assertEqual(readonly_info['system_prompt_path']['label'], 'MAIN_SYSTEM_PROMPT_PATH')
         self.assertEqual(readonly_info['system_prompt_path']['value'], config.MAIN_SYSTEM_PROMPT_PATH)
         self.assertEqual(readonly_info['system_prompt_path']['source'], 'config_py')
