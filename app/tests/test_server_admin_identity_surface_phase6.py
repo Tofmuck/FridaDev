@@ -99,8 +99,12 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
             self.assertIn('Projection structuree compilee pour le jugement', source)
             self.assertIn('Forme runtime compilee injectee au modele', source)
             self.assertIn('Pilotage systeme distinct', source)
+            self.assertIn('Diagnostics / historique', source)
+            self.assertIn('id="identityDiagnosticsDisclosure"', source)
+            self.assertIn('Replie par defaut', source)
             self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-current-state-title"'))
             self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-runtime-representations-title"'))
+            self.assertLess(source.index('id="identity-governance-title"'), source.index('id="identity-diagnostics-title"'))
             self.assertLess(source.index('id="identityLlmStaticCard"'), source.index('id="identityUserMutableCard"'))
         finally:
             response.close()

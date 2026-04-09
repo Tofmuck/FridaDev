@@ -97,13 +97,13 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 - [ ] Garder `Pilotage canonique actif` dans le flux principal visible.
 - [ ] Releguer `Runtime detaille` plus bas et le rendre repliable par defaut.
-- [ ] Releguer `Diagnostics / historique` plus bas et le rendre repliable par defaut.
+- [x] Releguer `Diagnostics / historique` plus bas et le rendre repliable par defaut.
 - [ ] Eviter que les couches runtime ou historiques ecrasent la lecture des 4 blocs canoniques.
 
 ### 6. Deduplication
 
 - [x] Ne pas montrer `static` / `mutable` trois fois sous des formes equivalentes.
-- [ ] Ne pas garder `legacy`, `evidence` et `conflicts` dans le meme flux que le pilotage canonique.
+- [x] Ne pas garder `legacy`, `evidence` et `conflicts` dans le meme flux que le pilotage canonique.
 - [x] Ne pas faire coexister un `etat courant` deja exhaustif avec des editeurs qui reracontent les memes statuts sans gain de lecture.
 - [x] Ne pas dupliquer les couches historiques a la fois dans le read-model principal et dans une section diagnostics separee.
 
@@ -129,9 +129,9 @@ Origine: formalisation canonique du diagnostic UX/runtime produit sur OVH apres 
 
 ### Lot 4 - Relegation / repli des diagnostics
 
-- [ ] Sortir `legacy`, `evidence` et `conflicts` du parcours principal.
-- [ ] Replier par defaut `Diagnostics / historique`.
-- [ ] Garder un acces operateur utile, mais non concurrent du pilotage immediat.
+- [x] Sortir `legacy`, `evidence` et `conflicts` du parcours principal.
+- [x] Replier par defaut `Diagnostics / historique`.
+- [x] Garder un acces operateur utile, mais non concurrent du pilotage immediat.
 
 ### Lot 5 - Arbitrage sur runtime representations / diagnostics dedies
 

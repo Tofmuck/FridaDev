@@ -577,6 +577,43 @@ body.admin-page {
   margin-top: 14px;
 }
 
+.admin-disclosure {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-disclosure-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-disclosure-summary h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.admin-disclosure[open] > .admin-disclosure-summary {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.admin-disclosure-body {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
 .admin-readonly-card {
   padding: 14px;
   border: 1px solid var(--border-muted);

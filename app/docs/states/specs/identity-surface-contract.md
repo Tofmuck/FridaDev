@@ -20,8 +20,8 @@ La page doit montrer, en francais clair:
 - la difference entre la projection structuree pour le jugement et la forme runtime compilee injectee au modele;
 - l'edition du statique et de la mutable;
 - les seuils et limites;
-- le legacy / evidence-only;
-- les corrections recentes utiles.
+- un bloc `Diagnostics / historique` replie par defaut;
+- dans ce bloc replie: legacy / evidence-only, conflits et corrections recentes utiles.
 
 ## Routes
 
@@ -145,8 +145,8 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - la projection structuree compilee pour le jugement;
 - la forme runtime compilee injectee au modele;
 - les seuils et limites;
-- le legacy / evidence-only;
-- les corrections recentes utiles.
+- `Diagnostics / historique`, replie par defaut;
+- dans ce bloc replie, le legacy / evidence-only, les conflits et les corrections recentes utiles.
 
 ## Langage operateur
 

@@ -40,6 +40,7 @@
     governanceStatus: document.getElementById("identityGovernanceStatus"),
     governanceMeta: document.getElementById("identityGovernanceMeta"),
     governance: document.getElementById("identityGovernance"),
+    diagnosticsSummary: document.getElementById("identityDiagnosticsSummary"),
     legacyLayers: document.getElementById("identityLegacyLayers"),
     correctionsList: document.getElementById("identityCorrectionsList"),
   };
@@ -48,13 +49,60 @@
     readModelPayload: null,
     runtimeRepresentationsPayload: null,
     governancePayload: null,
+    correctionsPayload: null,
   };
 
   const toText = (value) => String(value == null ? "" : value).trim();
+  const createChip = (text) => {
+    const chip = document.createElement("span");
+    chip.className = "admin-chip";
+    chip.textContent = text;
+    return chip;
+  };
   const injectedMetaText = (injectedBlock) =>
     injectedBlock && injectedBlock.present
       ? "Forme compilee injectee presente"
       : "Aucune forme compilee injectee";
+
+  const subjectsFromReadModel = (payload) =>
+    payload?.subjects && typeof payload.subjects === "object" && !Array.isArray(payload.subjects)
+      ? payload.subjects
+      : {};
+
+  const countLayerItems = (subjects, layerKey) =>
+    Object.values(subjects).reduce((total, subject) => {
+      const layer =
+        subject && typeof subject === "object" && !Array.isArray(subject)
+          ? subject[layerKey]
+          : null;
+      return total + (Number(layer?.total_count) || 0);
+    }, 0);
+
+  const syncDiagnosticsSummary = () => {
+    if (!elements.diagnosticsSummary) return;
+    elements.diagnosticsSummary.innerHTML = "";
+    const subjects = subjectsFromReadModel(state.readModelPayload);
+    const hasReadModel = Object.keys(subjects).length > 0;
+    const correctionsCount = Array.isArray(state.correctionsPayload?.items)
+      ? state.correctionsPayload.items.length
+      : 0;
+
+    if (!hasReadModel && !state.correctionsPayload) {
+      elements.diagnosticsSummary.appendChild(createChip("Chargement"));
+      return;
+    }
+
+    elements.diagnosticsSummary.appendChild(
+      createChip(`legacy=${countLayerItems(subjects, "legacy_fragments")}`),
+    );
+    elements.diagnosticsSummary.appendChild(
+      createChip(`evidences=${countLayerItems(subjects, "evidence")}`),
+    );
+    elements.diagnosticsSummary.appendChild(
+      createChip(`conflits=${countLayerItems(subjects, "conflicts")}`),
+    );
+    elements.diagnosticsSummary.appendChild(createChip(`corrections=${correctionsCount}`));
+  };
 
   const renderPilotageCards = (payload) => {
     staticEditor.renderIdentityStaticEditorCard(elements.llmStaticCard, payload, "llm", {
@@ -121,6 +169,7 @@
       viewMode: "summary",
     });
     runtimeRepresentations.renderLegacyLayers(elements.legacyLayers, payload);
+    syncDiagnosticsSummary();
     syncMeta();
     return payload;
   };
@@ -151,7 +200,9 @@
 
   const loadCorrections = async () => {
     const payload = await api.fetchCorrectionsExport({ windowDays: 7, limit: 20 });
+    state.correctionsPayload = payload;
     render.renderCorrections(elements.correctionsList, payload.items);
+    syncDiagnosticsSummary();
     return payload;
   };
 

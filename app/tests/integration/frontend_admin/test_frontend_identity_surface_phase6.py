@@ -36,6 +36,10 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Projection structuree compilee pour le jugement", source)
         self.assertIn("Forme runtime compilee injectee au modele", source)
         self.assertIn("Seuils et limites", source)
+        self.assertIn("Diagnostics / historique", source)
+        self.assertIn("Ouvrir legacy, evidences, conflits et corrections", source)
+        self.assertIn('id="identityDiagnosticsDisclosure"', source)
+        self.assertIn('id="identityDiagnosticsSummary"', source)
         self.assertIn("Legacy, evidences et conflits", source)
         self.assertIn("Corrections recentes et sorties utiles", source)
         self.assertNotIn(">Prompt</span>", source)
@@ -70,9 +74,11 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-current-state-title"'))
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-runtime-representations-title"'))
         self.assertLess(source.index('id="identity-pilotage-title"'), source.index('id="identity-governance-title"'))
+        self.assertLess(source.index('id="identity-governance-title"'), source.index('id="identity-diagnostics-title"'))
         self.assertLess(source.index('id="identityLlmStaticCard"'), source.index('id="identityLlmMutableCard"'))
         self.assertLess(source.index('id="identityLlmMutableCard"'), source.index('id="identityUserStaticCard"'))
         self.assertLess(source.index('id="identityUserStaticCard"'), source.index('id="identityUserMutableCard"'))
+        self.assertIn('<details id="identityDiagnosticsDisclosure" class="admin-readonly-panel admin-disclosure">', source)
 
     def test_identity_navigation_links_exist_on_required_surfaces(self) -> None:
         index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
@@ -163,6 +169,23 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         )
         self.assertIn("element(s) visibles plus bas", read_model_source)
         self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
+
+    def test_identity_diagnostics_history_is_collapsed_by_default_with_visible_summary_counts(self) -> None:
+        main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
+        html_source = (APP_DIR / "web" / "identity.html").read_text(encoding="utf-8")
+        css_source = (APP_DIR / "web" / "admin.css").read_text(encoding="utf-8")
+
+        self.assertIn("syncDiagnosticsSummary", main_source)
+        self.assertIn("state.correctionsPayload = payload;", main_source)
+        self.assertIn("legacy=", main_source)
+        self.assertIn("evidences=", main_source)
+        self.assertIn("conflits=", main_source)
+        self.assertIn("corrections=", main_source)
+        self.assertIn("Replie par defaut", html_source)
+        self.assertIn("identityDiagnosticsDisclosure", html_source)
+        self.assertNotIn('id="identityDiagnosticsDisclosure" class="admin-readonly-panel admin-disclosure" open', html_source)
+        self.assertIn(".admin-disclosure-summary", css_source)
+        self.assertIn(".admin-disclosure[open] > .admin-disclosure-summary", css_source)
 
     def test_identity_top_cards_expose_operator_states_and_llm_severity_split(self) -> None:
         static_source = (

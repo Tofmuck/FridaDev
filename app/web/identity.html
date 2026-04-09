@@ -220,36 +220,67 @@
       <div id="identityGovernance" class="admin-readonly-stack"></div>
     </section>
 
-    <section class="admin-section-block" aria-labelledby="identity-legacy-title">
+    <section class="admin-section-block" aria-labelledby="identity-diagnostics-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Legacy / evidence-only</p>
-          <h2 id="identity-legacy-title">Legacy, evidences et conflits</h2>
+          <p class="admin-kicker">Couches lourdes</p>
+          <h2 id="identity-diagnostics-title">Diagnostics / historique</h2>
         </div>
       </div>
 
       <p class="admin-section-note admin-section-note-left">
-        Ces couches restent visibles pour l'operateur, mais elles ne pilotent plus l'injection active. Elles servent
-        a comprendre l'historique, les evidences et les contradictions encore presentes dans le systeme.
+        Legacy, evidences, conflits et corrections recentes restent disponibles ici pour l'inspection operateur, mais
+        replies par defaut afin de ne plus concurrencer le pilotage canonique immediat.
       </p>
 
-      <div id="identityLegacyLayers" class="admin-readonly-stack"></div>
-    </section>
+      <details id="identityDiagnosticsDisclosure" class="admin-readonly-panel admin-disclosure">
+        <summary class="admin-disclosure-summary">
+          <div>
+            <p class="admin-kicker">Replie par defaut</p>
+            <h3>Ouvrir legacy, evidences, conflits et corrections</h3>
+          </div>
+          <div id="identityDiagnosticsSummary" class="admin-inline-meta">
+            <span class="admin-chip">Chargement</span>
+          </div>
+        </summary>
 
-    <section class="admin-section-block" aria-labelledby="identity-observability-title">
-      <div class="admin-section-head">
-        <div>
-          <p class="admin-kicker">Observabilite utile</p>
-          <h2 id="identity-observability-title">Corrections recentes et sorties utiles</h2>
+        <div class="admin-disclosure-body">
+          <section class="admin-readonly-panel" aria-labelledby="identity-legacy-title">
+            <div class="admin-readonly-head">
+              <div>
+                <p class="admin-kicker">Legacy / evidence-only</p>
+                <h3 id="identity-legacy-title">Legacy, evidences et conflits</h3>
+              </div>
+              <span class="admin-readonly-badge">Historique</span>
+            </div>
+
+            <p class="admin-section-note admin-section-note-left">
+              Ces couches restent visibles pour l'operateur, mais elles ne pilotent plus l'injection active. Elles
+              servent a comprendre l'historique, les evidences et les contradictions encore presentes dans le systeme.
+            </p>
+
+            <div id="identityLegacyLayers" class="admin-readonly-stack"></div>
+          </section>
+
+          <section class="admin-readonly-panel" aria-labelledby="identity-observability-title">
+            <div class="admin-readonly-head">
+              <div>
+                <p class="admin-kicker">Observabilite utile</p>
+                <h3 id="identity-observability-title">Corrections recentes et sorties utiles</h3>
+              </div>
+              <span class="admin-readonly-badge">Historique</span>
+            </div>
+
+            <p class="admin-section-note admin-section-note-left">
+              Les corrections recentes restent compactes. Pour l'inspection tour par tour et les logs applicatifs
+              complets, utilisez aussi <a href="/hermeneutic-admin">Hermeneutic admin</a> et
+              <a href="/log">Logs applicatifs</a>.
+            </p>
+
+            <div id="identityCorrectionsList" class="admin-readonly-stack"></div>
+          </section>
         </div>
-      </div>
-
-      <p class="admin-section-note admin-section-note-left">
-        Les corrections recentes restent compactes. Pour l'inspection tour par tour et les logs applicatifs complets,
-        utilisez aussi <a href="/hermeneutic-admin">Hermeneutic admin</a> et <a href="/log">Logs applicatifs</a>.
-      </p>
-
-      <div id="identityCorrectionsList" class="admin-readonly-stack"></div>
+      </details>
     </section>
   </main>
 
