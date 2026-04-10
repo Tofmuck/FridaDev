@@ -33,14 +33,14 @@ La doctrine conservee est explicite:
 ## Baseline runtime factuelle au 2026-04-10
 
 - [x] Runtime observe sur OVH: `HERMENEUTIC_MODE=enforced_all`, `MEMORY_TOP_K=5`, `ARBITER_MAX_KEPT_TRACES=3`, `ARBITER_MIN_SEMANTIC_RELEVANCE=0.62`, `ARBITER_MIN_CONTEXTUAL_GAIN=0.55`.
-- [x] Snapshot base observe: `traces=224`, `summaries=0`, `embedded_traces=224`, `embedded_summaries=0`, `traces_with_summary_id=0`.
+- [x] Snapshot base observe: `traces=224` (`224` avec `embedding IS NOT NULL`), `summaries=0` (`0` avec `embedding IS NOT NULL`), `traces_with_summary_id=0`.
 - [x] Repartition live des traces: `assistant=112`, `user=112`.
 - [x] `memory_traces_summaries.retrieve()` interroge aujourd'hui `traces` seulement, sur un top-k vectoriel plat, avec le seul `user_msg` comme query.
 - [x] `summaries` est persiste en theorie mais n'est pas une voie de retrieval live; sur OVH au `2026-04-10`, la table est vide.
 - [x] `chat_memory_flow.prepare_memory_context()` enrichit les traces avec `parent_summary` apres le retrieval, puis construit `memory_retrieved`.
 - [x] `arbiter.filter_traces_with_diagnostics()` voit un payload plat compose de `id`, `role`, `content`, `ts`, `score`, plus le contexte recent; il ne voit pas `parent_summary`.
 - [x] Les decisions arbitre sont deja observables en base via `arbiter_decisions`; snapshot lu: `551` decisions, toutes `decision_source=llm`, avec `32` gardees et `519` rejetees.
-- [x] Des doublons exacts existent deja dans `traces`; exemples lus: `Je suis Christophe Muck` (`6` occurrences), `Qui suis-je ?` (`5`), `Bonsoir Frida` (`5`), `Explique simplement la difference entre la memoire vive et le disque dur.` (`3`).
+- [x] Des doublons exacts existent deja dans `traces`; exemples lus: `Je suis Christophe Muck` (`6` occurrences), `Qui suis-je ?` (`5`), `Bonsoir Frida` (`5`).
 
 ## Probes runtime relues pendant cet audit
 
