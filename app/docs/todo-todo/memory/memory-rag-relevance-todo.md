@@ -7,6 +7,11 @@ Derniere revue documentaire: `2026-04-10`
 Origine: audit doc + code + runtime OVH du `2026-04-10`
 Doc liee: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 
+Legende minimale:
+- `[x]` = ferme
+- `[ ]` = a faire
+- `[~]` = tente / evalue / non retenu a ce stade
+
 ## Intention
 
 Transformer le TODO macro initial en plan de travail executable, borne, sequence et verifiable, sans lancer dans ce tour l'implementation de la V2 memoire/RAG.
@@ -298,23 +303,29 @@ La doctrine conservee est explicite:
 
 ## Phase 6 - Futur lot d'implementation A: candidate generation
 
-- [ ] Le lot A ne touche qu'au candidate generation.
-- [ ] Le lot A ne touche pas aux seuils arbitre.
-- [ ] Le lot A ne touche pas encore au reranker.
-- [ ] Le lot A ajoute des tests unitaires ou integration sur:
-  - taille du recall;
-  - composition par role;
-  - composition par conversation;
-  - absence de regression du contrat existant.
-- [ ] Le lot A rejoue le corpus de probes et archive un avant/apres.
+- [~] Une tentative runtime du lot A a ete menee en restant bornee au candidate generation.
+- [~] La variante testee a preserve `top_k` comme cap final et n'a touche ni aux seuils arbitre, ni au reranker, ni a la voie `summaries`.
+- [~] La tentative a bien rejoue le corpus canonique avant/apres avec des probes read-only et des tests cibles sur le lot A.
+- [~] La tentative n'a pas montre de gain assez net sur le corpus canonique pour etre retenue en l'etat.
+- [~] Les problemes dominants restaient encore visibles apres essai:
+  - bruit `assistant` sur plusieurs probes;
+  - doublons identitaires toujours presents;
+  - panier encore trop plat sur les cas limites.
+- [~] La variante testee ajoutait de la complexite et un surcout de latence `retrieve` sans gain suffisant; elle est donc ajournee prudemment, pas invalidee de facon definitive.
+- [~] Le corpus live reste encore limite; l'ajournement documente ici vaut pour la variante testee, pas comme rejet metaphysique de l'idee multi-lanes.
+- [~] Aucune modification runtime du lot A n'est conservee a ce stade; le depot et le runtime sont revenus sur `75e35d10cb1fafa6edc5868e0ac9f4bbd0f72a8c`.
 
 ### Gate 6A
 
-- [ ] Le recall est meilleur ou plus propre sur le corpus.
-- [ ] Le panier brut reste borne et lisible.
-- [ ] Les regressions sont nulles ou documentees.
+- [~] Gate evaluee mais non franchie: le recall n'etait pas clairement meilleur ou plus propre sur le corpus canonique.
+- [~] Gate evaluee mais non franchie: le panier brut teste restait borne, mais le gain net ne justifiait pas de conserver la variante.
+- [~] Gate evaluee mais non franchie: les regressions ou surcouts restaient documentables, en particulier sur la latence `retrieve`, donc le lot est ajourne a ce stade.
 
 ## Phase 7 - Futur lot d'implementation B: structuration du panier et dedup
+
+Statut de pilotage:
+- prochaine phase active recommandee;
+- non ouverte en implementation dans ce tour.
 
 - [ ] Le lot B ne change pas le candidate generation choisi en Phase 2 sauf necessite documentee.
 - [ ] Le lot B introduit le schema candidat cible retenu.
