@@ -3,6 +3,20 @@ from __future__ import annotations
 from typing import Any, Callable
 
 
+_LEXICAL_TRANSLATE_FROM = (
+    '\u00e0\u00e1\u00e2\u00e4\u00e3\u00e5'
+    '\u00e7'
+    '\u00e8\u00e9\u00ea\u00eb'
+    '\u00ec\u00ed\u00ee\u00ef'
+    '\u00f1'
+    '\u00f2\u00f3\u00f4\u00f6'
+    '\u00f9\u00fa\u00fb\u00fc'
+    '\u00fd\u00ff'
+    '\u0153\u00e6'
+)
+_LEXICAL_TRANSLATE_TO = 'aaaaaaceeeeiiiinoooouuuuyyoa'
+
+
 def connect_runtime_database(
     *,
     psycopg_module: Any,
@@ -226,6 +240,17 @@ def init_db(
                     '''
                     CREATE INDEX IF NOT EXISTS traces_embedding_hnsw
                     ON traces USING hnsw (embedding vector_cosine_ops);
+                    '''
+                )
+                cur.execute(
+                    f'''
+                    CREATE INDEX IF NOT EXISTS traces_content_fts_simple_idx
+                    ON traces USING gin (
+                        to_tsvector(
+                            'simple',
+                            translate(lower(content), '{_LEXICAL_TRANSLATE_FROM}', '{_LEXICAL_TRANSLATE_TO}')
+                        )
+                    );
                     '''
                 )
                 cur.execute(

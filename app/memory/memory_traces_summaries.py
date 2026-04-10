@@ -1,9 +1,486 @@
 from __future__ import annotations
 
+import re
 import time
+import unicodedata
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from observability import chat_turn_logger
+
+
+_LEXICAL_TOKEN_RE = re.compile(r'https?://\S+|[A-Za-z0-9][A-Za-z0-9._:/?-]*')
+_LEXICAL_TRANSLATE_FROM = (
+    '\u00e0\u00e1\u00e2\u00e4\u00e3\u00e5'
+    '\u00e7'
+    '\u00e8\u00e9\u00ea\u00eb'
+    '\u00ec\u00ed\u00ee\u00ef'
+    '\u00f1'
+    '\u00f2\u00f3\u00f4\u00f6'
+    '\u00f9\u00fa\u00fb\u00fc'
+    '\u00fd\u00ff'
+    '\u0153\u00e6'
+)
+_LEXICAL_TRANSLATE_TO = 'aaaaaaceeeeiiiinoooouuuuyyoa'
+_LEXICAL_STOPWORDS = {
+    'a',
+    'au',
+    'aux',
+    'blog',
+    'blogs',
+    'ce',
+    'ces',
+    'cette',
+    'comme',
+    'dans',
+    'de',
+    'des',
+    'du',
+    'en',
+    'et',
+    'http',
+    'https',
+    'ici',
+    'la',
+    'le',
+    'les',
+    'mais',
+    'nos',
+    'notre',
+    'ou',
+    'par',
+    'pas',
+    'pour',
+    'qui',
+    'quoi',
+    'que',
+    'quand',
+    'suis',
+    'sur',
+    'toi',
+    'un',
+    'une',
+    'vos',
+    'votre',
+    'www',
+}
+_HYBRID_INTERNAL_LIMIT_MIN = 12
+_HYBRID_INTERNAL_LIMIT_MULTIPLIER = 3
+
+
+def _normalize_lexical_text(text: str) -> str:
+    normalized = (text or '').replace('\u0153', 'oe').replace('\u00e6', 'ae').lower()
+    normalized = ''.join(
+        ch for ch in unicodedata.normalize('NFKD', normalized) if not unicodedata.combining(ch)
+    )
+    return re.sub(r'\s+', ' ', normalized).strip()
+
+
+def _extract_lexical_query_terms(query: str) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for token in _LEXICAL_TOKEN_RE.findall(query or ''):
+        has_digit = any(ch.isdigit() for ch in token)
+        is_url = '://' in token
+        is_upper = token.isupper() and any(ch.isalpha() for ch in token)
+        has_title = token[:1].isupper() and any(ch.islower() for ch in token[1:])
+        if not (has_digit or is_url or is_upper or has_title):
+            continue
+
+        normalized_token = _normalize_lexical_text(token)
+        for part in re.split(r'[^a-z0-9]+', normalized_token):
+            if not part:
+                continue
+            if part in _LEXICAL_STOPWORDS:
+                continue
+            if len(part) < 3 and not any(ch.isdigit() for ch in part):
+                continue
+            if part in seen:
+                continue
+            seen.add(part)
+            terms.append(part)
+            if len(terms) >= 6:
+                return terms
+    return terms
+
+
+def _extract_lexical_exact_tokens(query: str) -> list[str]:
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for token in _LEXICAL_TOKEN_RE.findall(query or ''):
+        has_digit = any(ch.isdigit() for ch in token)
+        is_url = '://' in token
+        is_upper = token.isupper() and any(ch.isalpha() for ch in token)
+        if not (has_digit or is_url or is_upper):
+            continue
+
+        normalized_token = _normalize_lexical_text(token)
+        if normalized_token in _LEXICAL_STOPWORDS:
+            continue
+        if len(normalized_token) < 3:
+            continue
+        if normalized_token in seen:
+            continue
+        seen.add(normalized_token)
+        tokens.append(normalized_token)
+    return tokens
+
+
+def _should_use_exact_token_lookup(
+    query: str,
+    *,
+    normalized_query: str,
+    exact_tokens: list[str],
+) -> bool:
+    if len(exact_tokens) != 1:
+        return False
+
+    exact_token = exact_tokens[0]
+    if normalized_query == exact_token:
+        return True
+
+    # Preserve exact locator probes such as a full URL wrapped in a short sentence.
+    if '://' in (query or '') and exact_token in normalized_query:
+        return True
+
+    residual = normalized_query.replace(exact_token, ' ')
+    residual_terms = [
+        part
+        for part in re.split(r'[^a-z0-9]+', residual)
+        if part and part not in _LEXICAL_STOPWORDS
+    ]
+    return not residual_terms and (len(exact_token) >= 10 or any(ch.isdigit() for ch in exact_token))
+
+
+def _internal_recall_limit(top_k: int) -> int:
+    return max(int(top_k) * _HYBRID_INTERNAL_LIMIT_MULTIPLIER, _HYBRID_INTERNAL_LIMIT_MIN)
+
+
+def _trace_public_key(trace: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        trace.get('conversation_id'),
+        trace.get('role'),
+        trace.get('content'),
+        trace.get('timestamp'),
+        trace.get('summary_id'),
+    )
+
+
+def _timestamp_sort_value(value: Any) -> datetime:
+    if not value:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+
+
+def _coerce_trace_row(
+    conversation_id: Any,
+    role: Any,
+    content: Any,
+    timestamp: Any,
+    summary_id: Any,
+    score: Any,
+) -> dict[str, Any]:
+    return {
+        'conversation_id': conversation_id,
+        'role': role,
+        'content': content,
+        'timestamp': str(timestamp) if timestamp else None,
+        'summary_id': str(summary_id) if summary_id else None,
+        'score': float(score),
+    }
+
+
+def _retrieve_dense_candidates(
+    q_vec: list[float],
+    *,
+    limit: int,
+    conn_factory: Callable[[], Any],
+) -> list[dict[str, Any]]:
+    with conn_factory() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''
+                SELECT conversation_id, role, content, timestamp, summary_id,
+                       1 - (embedding <=> %s::vector) AS score
+                FROM   traces
+                WHERE  embedding IS NOT NULL
+                ORDER  BY embedding <=> %s::vector
+                LIMIT  %s
+                ''',
+                (str(q_vec), str(q_vec), int(limit)),
+            )
+            rows = cur.fetchall()
+    return [_coerce_trace_row(*row) for row in rows]
+
+
+def _retrieve_lexical_candidates(
+    query: str,
+    *,
+    limit: int,
+    conn_factory: Callable[[], Any],
+) -> list[dict[str, Any]]:
+    normalized_query = _normalize_lexical_text(query)
+    query_terms = _extract_lexical_query_terms(query)
+    exact_tokens = _extract_lexical_exact_tokens(query)
+    if not normalized_query or not query_terms:
+        return []
+    if _should_use_exact_token_lookup(
+        query,
+        normalized_query=normalized_query,
+        exact_tokens=exact_tokens,
+    ):
+        normalized_content_expr = "translate(lower(content), %s, %s)"
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    SELECT conversation_id, role, content, timestamp, summary_id
+                    FROM traces
+                    WHERE {normalized_content_expr} LIKE '%%' || %s || '%%'
+                    ORDER BY char_length(content) ASC, timestamp DESC
+                    LIMIT %s
+                    ''',
+                    (
+                        _LEXICAL_TRANSLATE_FROM,
+                        _LEXICAL_TRANSLATE_TO,
+                        exact_tokens[0],
+                        int(limit),
+                    ),
+                )
+                rows = cur.fetchall()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            candidate = _coerce_trace_row(row[0], row[1], row[2], row[3], row[4], 0.98)
+            candidate['_lexical_exact_token_hits'] = 1
+            candidate['_lexical_term_hits'] = 1
+            candidate['_lexical_phrase_hit'] = 1
+            out.append(candidate)
+        return out
+
+    normalized_content_expr = "translate(lower(content), %s, %s)"
+    tsquery = ' | '.join(query_terms)
+    params = [
+        normalized_query,
+        query_terms,
+        exact_tokens,
+        tsquery,
+        _LEXICAL_TRANSLATE_FROM,
+        _LEXICAL_TRANSLATE_TO,
+        _LEXICAL_TRANSLATE_FROM,
+        _LEXICAL_TRANSLATE_TO,
+        _LEXICAL_TRANSLATE_FROM,
+        _LEXICAL_TRANSLATE_TO,
+        _LEXICAL_TRANSLATE_FROM,
+        _LEXICAL_TRANSLATE_TO,
+        _LEXICAL_TRANSLATE_FROM,
+        _LEXICAL_TRANSLATE_TO,
+        int(limit),
+    ]
+
+    with conn_factory() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f'''
+                WITH params AS (
+                    SELECT %s::text AS normalized_query,
+                           %s::text[] AS query_terms,
+                           %s::text[] AS exact_tokens,
+                           to_tsquery('simple', %s) AS ts_query
+                )
+                SELECT conversation_id, role, content, timestamp, summary_id,
+                       ts_rank_cd(
+                           to_tsvector('simple', {normalized_content_expr}),
+                           params.ts_query
+                       ) AS lexical_rank,
+                       CASE
+                           WHEN {normalized_content_expr} LIKE '%%' || params.normalized_query || '%%'
+                           THEN 1
+                           ELSE 0
+                       END AS phrase_hit,
+                       (
+                           SELECT COUNT(*)
+                           FROM unnest(params.exact_tokens) AS token
+                           WHERE {normalized_content_expr} LIKE '%%' || token || '%%'
+                       ) AS exact_token_hits,
+                       (
+                           SELECT COUNT(*)
+                           FROM unnest(params.query_terms) AS term
+                           WHERE {normalized_content_expr} LIKE '%%' || term || '%%'
+                       ) AS term_hits
+                FROM traces, params
+                WHERE to_tsvector('simple', {normalized_content_expr}) @@ params.ts_query
+                ORDER BY phrase_hit DESC, exact_token_hits DESC, term_hits DESC, lexical_rank DESC, timestamp DESC
+                LIMIT %s
+                ''',
+                params,
+            )
+            rows = cur.fetchall()
+
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        lexical_rank = float(row[5] or 0.0)
+        phrase_hit = int(row[6] or 0)
+        exact_token_hits = int(row[7] or 0)
+        term_hits = int(row[8] or 0)
+        lexical_norm = lexical_rank / (1.0 + lexical_rank)
+        lexical_score = min(
+            0.99,
+            max(
+                0.25 * lexical_norm + 0.08 * min(exact_token_hits, 2) + 0.18 * min(term_hits, 4),
+                0.98 if phrase_hit else 0.0,
+                0.92 if exact_token_hits else 0.0,
+            ),
+        )
+        candidate = _coerce_trace_row(row[0], row[1], row[2], row[3], row[4], lexical_score)
+        candidate['_lexical_exact_token_hits'] = exact_token_hits
+        candidate['_lexical_term_hits'] = term_hits
+        candidate['_lexical_phrase_hit'] = phrase_hit
+        out.append(candidate)
+    return out
+
+
+def _hybrid_output_score(
+    *,
+    dense_score: float,
+    lexical_score: float,
+    exact_token_hits: int,
+    phrase_hit: int,
+) -> float:
+    if dense_score > 0.0:
+        blended = min(
+            0.99,
+            0.80 * dense_score + 0.25 * lexical_score + 0.02 * min(exact_token_hits, 2) + 0.01 * phrase_hit,
+        )
+        return max(dense_score, blended)
+    if phrase_hit:
+        return max(lexical_score, 0.98)
+    if exact_token_hits:
+        return max(lexical_score, 0.92)
+    return lexical_score
+
+
+def _merge_hybrid_candidates(
+    *,
+    dense_candidates: list[dict[str, Any]],
+    lexical_candidates: list[dict[str, Any]],
+    top_k: int,
+) -> list[dict[str, Any]]:
+    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+    for rank, candidate in enumerate(dense_candidates, start=1):
+        key = _trace_public_key(candidate)
+        entry = merged.setdefault(
+            key,
+            {
+                **candidate,
+                '_dense_rank': None,
+                '_dense_score': 0.0,
+                '_lexical_rank': None,
+                '_lexical_score': 0.0,
+                '_lexical_exact_token_hits': 0,
+                '_lexical_term_hits': 0,
+                '_lexical_phrase_hit': 0,
+            },
+        )
+        entry['_dense_rank'] = rank
+        entry['_dense_score'] = float(candidate.get('score') or 0.0)
+
+    for rank, candidate in enumerate(lexical_candidates, start=1):
+        key = _trace_public_key(candidate)
+        entry = merged.setdefault(
+            key,
+            {
+                'conversation_id': candidate.get('conversation_id'),
+                'role': candidate.get('role'),
+                'content': candidate.get('content'),
+                'timestamp': candidate.get('timestamp'),
+                'summary_id': candidate.get('summary_id'),
+                'score': float(candidate.get('score') or 0.0),
+                '_dense_rank': None,
+                '_dense_score': 0.0,
+                '_lexical_rank': None,
+                '_lexical_score': 0.0,
+                '_lexical_exact_token_hits': 0,
+                '_lexical_term_hits': 0,
+                '_lexical_phrase_hit': 0,
+            },
+        )
+        entry['_lexical_rank'] = rank
+        entry['_lexical_score'] = max(entry['_lexical_score'], float(candidate.get('score') or 0.0))
+        entry['_lexical_exact_token_hits'] = max(
+            entry['_lexical_exact_token_hits'],
+            int(candidate.get('_lexical_exact_token_hits') or 0),
+        )
+        entry['_lexical_term_hits'] = max(
+            entry['_lexical_term_hits'],
+            int(candidate.get('_lexical_term_hits') or 0),
+        )
+        entry['_lexical_phrase_hit'] = max(
+            entry['_lexical_phrase_hit'],
+            int(candidate.get('_lexical_phrase_hit') or 0),
+        )
+
+    ranked: list[dict[str, Any]] = []
+    for entry in merged.values():
+        hybrid_rank = 0.0
+        dense_rank = entry.get('_dense_rank')
+        lexical_rank = entry.get('_lexical_rank')
+        phrase_hit = int(entry.get('_lexical_phrase_hit') or 0)
+        exact_token_hits = int(entry.get('_lexical_exact_token_hits') or 0)
+        term_hits = int(entry.get('_lexical_term_hits') or 0)
+        dense_score = float(entry.get('_dense_score') or 0.0)
+        lexical_score = float(entry.get('_lexical_score') or 0.0)
+
+        if dense_rank is not None:
+            hybrid_rank += 1.0 / (25 + dense_rank)
+        if lexical_rank is not None and (phrase_hit or exact_token_hits or term_hits >= 2 or dense_rank is not None):
+            hybrid_rank += 1.0 / (15 + lexical_rank)
+            hybrid_rank += 0.02 * phrase_hit
+            hybrid_rank += 0.01 * min(exact_token_hits, 2)
+            hybrid_rank += 0.004 * min(term_hits, 4)
+
+        ranked.append(
+            {
+                'conversation_id': entry.get('conversation_id'),
+                'role': entry.get('role'),
+                'content': entry.get('content'),
+                'timestamp': entry.get('timestamp'),
+                'summary_id': entry.get('summary_id'),
+                'score': _hybrid_output_score(
+                    dense_score=dense_score,
+                    lexical_score=lexical_score,
+                    exact_token_hits=exact_token_hits,
+                    phrase_hit=phrase_hit,
+                ),
+                '_hybrid_rank': hybrid_rank,
+            }
+        )
+
+    ranked.sort(
+        key=lambda item: (
+            float(item.get('_hybrid_rank') or 0.0),
+            float(item.get('score') or 0.0),
+            _timestamp_sort_value(item.get('timestamp')),
+        ),
+        reverse=True,
+    )
+    return [
+        {
+            'conversation_id': item.get('conversation_id'),
+            'role': item.get('role'),
+            'content': item.get('content'),
+            'timestamp': item.get('timestamp'),
+            'summary_id': item.get('summary_id'),
+            'score': float(item.get('score') or 0.0),
+        }
+        for item in ranked[: int(top_k)]
+    ]
 
 
 def _embed_with_purpose(
@@ -152,7 +629,9 @@ def retrieve(
     logger: Any,
 ) -> list[dict[str, Any]]:
     """
-    Embed query and return top_k nearest traces (cosine similarity).
+    Return a bounded hybrid recall over traces.
+    The public shape remains stable: top_k stays the final cap and rows stay
+    compatible with downstream timestamp/summary enrichment.
     Return [] on error to avoid blocking response pipeline.
     """
     started_at = time.perf_counter()
@@ -182,31 +661,21 @@ def retrieve(
         return []
 
     try:
-        with conn_factory() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT conversation_id, role, content, timestamp, summary_id,
-                           1 - (embedding <=> %s::vector) AS score
-                    FROM   traces
-                    WHERE  embedding IS NOT NULL
-                    ORDER  BY embedding <=> %s::vector
-                    LIMIT  %s
-                    ''',
-                    (str(q_vec), str(q_vec), top_k),
-                )
-                rows = cur.fetchall()
-        out = [
-            {
-                'conversation_id': r[0],
-                'role': r[1],
-                'content': r[2],
-                'timestamp': str(r[3]) if r[3] else None,
-                'summary_id': str(r[4]) if r[4] else None,
-                'score': float(r[5]),
-            }
-            for r in rows
-        ]
+        dense_candidates = _retrieve_dense_candidates(
+            q_vec,
+            limit=_internal_recall_limit(int(top_k)),
+            conn_factory=conn_factory,
+        )
+        lexical_candidates = _retrieve_lexical_candidates(
+            query,
+            limit=_internal_recall_limit(int(top_k)),
+            conn_factory=conn_factory,
+        )
+        out = _merge_hybrid_candidates(
+            dense_candidates=dense_candidates,
+            lexical_candidates=lexical_candidates,
+            top_k=int(top_k),
+        )
         chat_turn_logger.emit(
             'memory_retrieve',
             status='ok',
@@ -214,6 +683,8 @@ def retrieve(
             payload={
                 'top_k_requested': int(top_k),
                 'top_k_returned': len(out),
+                'dense_candidates_count': len(dense_candidates),
+                'lexical_candidates_count': len(lexical_candidates),
             },
         )
         return out

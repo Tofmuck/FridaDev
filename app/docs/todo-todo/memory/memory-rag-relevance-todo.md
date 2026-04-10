@@ -301,30 +301,43 @@ La doctrine conservee est explicite:
 - [x] La feuille d'evaluation existe avant le premier patch d'implementation.
 - [x] Les criteres de succes et d'echec sont explicites.
 
-## Phase 6 - Futur lot d'implementation A: candidate generation
+## Phase 6 - Lot d'implementation A: candidate generation
 
-- [~] Une tentative runtime du lot A a ete menee en restant bornee au candidate generation.
-- [~] La variante testee a preserve `top_k` comme cap final et n'a touche ni aux seuils arbitre, ni au reranker, ni a la voie `summaries`.
-- [~] La tentative a bien rejoue le corpus canonique avant/apres avec des probes read-only et des tests cibles sur le lot A.
-- [~] La tentative n'a pas montre de gain assez net sur le corpus canonique pour etre retenue en l'etat.
-- [~] Les problemes dominants restaient encore visibles apres essai:
-  - bruit `assistant` sur plusieurs probes;
-  - doublons identitaires toujours presents;
-  - panier encore trop plat sur les cas limites.
-- [~] La variante testee ajoutait de la complexite et un surcout de latence `retrieve` sans gain suffisant; elle est donc ajournee prudemment, pas invalidee de facon definitive.
-- [~] Le corpus live reste encore limite; l'ajournement documente ici vaut pour la variante testee, pas comme rejet metaphysique de l'idee multi-lanes.
-- [~] Aucune modification runtime du lot A n'est conservee a ce stade; le depot et le runtime sont revenus sur `75e35d10cb1fafa6edc5868e0ac9f4bbd0f72a8c`.
+- [x] Une premiere tentative purement multi-lanes dense a ete ajournee; le lot retenu remplace cette variante par un recall reellement hybride.
+- [x] Le lot 6A introduit un vrai nouveau signal de rappel:
+  - lane dense vectorielle;
+  - lane lexicale built-in PostgreSQL (`to_tsvector('simple', ...)`);
+  - voie exacte pour codes, IDs, acronymes et URL.
+- [x] Le lot 6A reste borne au candidate generation:
+  - aucun changement des seuils arbitre;
+  - aucun reranker;
+  - aucune voie `summaries` live;
+  - aucun redesign Phase `7B`.
+- [x] `top_k` garde son sens de cap final de `memory_store.retrieve(...)`, malgre un recall interne elargi.
+- [x] La shape retournee reste stable et compatible avec l'aval:
+  - `conversation_id`;
+  - `role`;
+  - `content`;
+  - `timestamp`;
+  - `summary_id`;
+  - `score`.
+- [x] Les timestamps, `summary_id` et la compatibilite `parent_summary` sont preserves.
+- [x] Le lot 6A rejoue le corpus canonique avant/apres et ajoute des probes lexicales de stress pour prouver le nouveau signal.
+- [x] Le lot 6A ajoute des tests structurels et des tests de valeur recall sur fixtures locales.
+- [x] Une baseline d'evaluation datee archive le verdict et les limites du lot.
+  - Reference Phase 6A: `app/docs/states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
+- [x] Les gains restent concentres sur certains cas exact-term / nom propre / URL, tandis que le bruit assistant residuel, la duplication identitaire et la platitude du panier restent a traiter en `7B`.
 
 ### Gate 6A
 
-- [~] Gate evaluee mais non franchie: le recall n'etait pas clairement meilleur ou plus propre sur le corpus canonique.
-- [~] Gate evaluee mais non franchie: le panier brut teste restait borne, mais le gain net ne justifiait pas de conserver la variante.
-- [~] Gate evaluee mais non franchie: les regressions ou surcouts restaient documentables, en particulier sur la latence `retrieve`, donc le lot est ajourne a ce stade.
+- [x] Gate franchie: un recall hybride defendable est implemente et garde.
+- [x] Gate franchie: `top_k`, le contrat de shape et la compatibilite aval sont preserves.
+- [x] Gate franchie: aucun blocker Phase 5 n'est observe sur la latence `retrieve` ni sur le chainage runtime.
 
 ## Phase 7 - Futur lot d'implementation B: structuration du panier et dedup
 
 Statut de pilotage:
-- prochaine phase active recommandee;
+- prochaine phase active recommandee apres cloture `6A`;
 - non ouverte en implementation dans ce tour.
 
 - [ ] Le lot B ne change pas le candidate generation choisi en Phase 2 sauf necessite documentee.

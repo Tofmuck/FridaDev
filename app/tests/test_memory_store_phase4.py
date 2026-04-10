@@ -96,46 +96,51 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(observed['json']['inputs'], ['query: bonjour'])
 
     def test_retrieve_uses_runtime_embedding_top_k_by_default(self) -> None:
-        observed = {'limit': None}
+        observed = {'dense_limit': None, 'lexical_limit': None, 'merge_top_k': None}
         original_get_settings = memory_store.runtime_settings.get_embedding_settings
         original_embed = memory_store.embed
         original_conn = memory_store._conn
-
-        class FakeCursor:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def execute(self, query, params):
-                observed['limit'] = params[2]
-
-            def fetchall(self):
-                return []
-
-        class FakeConnection:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-            def cursor(self):
-                return FakeCursor()
+        original_dense = memory_store.memory_traces_summaries._retrieve_dense_candidates
+        original_lexical = memory_store.memory_traces_summaries._retrieve_lexical_candidates
+        original_merge = memory_store.memory_traces_summaries._merge_hybrid_candidates
 
         memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
-        memory_store.embed = lambda query, mode='query': [0.1, 0.2, 0.3]
-        memory_store._conn = lambda: FakeConnection()
+        memory_store.embed = lambda query, mode='query', purpose=None: [0.1, 0.2, 0.3]
+        memory_store._conn = lambda: object()
+
+        def fake_dense(_q_vec, *, limit, conn_factory):
+            observed['dense_limit'] = limit
+            self.assertIsNotNone(conn_factory)
+            return []
+
+        def fake_lexical(_query, *, limit, conn_factory):
+            observed['lexical_limit'] = limit
+            self.assertIsNotNone(conn_factory)
+            return []
+
+        def fake_merge(*, dense_candidates, lexical_candidates, top_k):
+            observed['merge_top_k'] = top_k
+            self.assertEqual(dense_candidates, [])
+            self.assertEqual(lexical_candidates, [])
+            return []
+
+        memory_store.memory_traces_summaries._retrieve_dense_candidates = fake_dense
+        memory_store.memory_traces_summaries._retrieve_lexical_candidates = fake_lexical
+        memory_store.memory_traces_summaries._merge_hybrid_candidates = fake_merge
         try:
             rows = memory_store.retrieve('question')
         finally:
             memory_store.runtime_settings.get_embedding_settings = original_get_settings
             memory_store.embed = original_embed
             memory_store._conn = original_conn
+            memory_store.memory_traces_summaries._retrieve_dense_candidates = original_dense
+            memory_store.memory_traces_summaries._retrieve_lexical_candidates = original_lexical
+            memory_store.memory_traces_summaries._merge_hybrid_candidates = original_merge
 
         self.assertEqual(rows, [])
-        self.assertEqual(observed['limit'], 9)
+        self.assertEqual(observed['merge_top_k'], 9)
+        self.assertEqual(observed['dense_limit'], 27)
+        self.assertEqual(observed['lexical_limit'], 27)
 
     def test_init_db_uses_runtime_embedding_dimensions(self) -> None:
         observed_queries = []
