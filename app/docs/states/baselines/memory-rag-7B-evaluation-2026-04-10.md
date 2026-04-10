@@ -116,17 +116,24 @@ Avant panier:
 
 Apres panier:
 - `basket_count=2`
-- fusion exacte observee:
+- fusion exacte stable observee en reruns read-only:
   - `cand-0c575f34c4f459c3` absorbe `cand-067d197802bbf823`, `cand-e5b882964dec7cc6`, `cand-eef1f1dc32c6c423`
 
 Verdict arbitre:
-- `arbiter_kept_ids=['cand-0c575f34c4f459c3']`
+- reruns read-only:
+  - `arbiter_kept_ids=[]` sur `4/5` reruns
+  - `arbiter_kept_ids=['cand-0c575f34c4f459c3', 'cand-8ef9e8d2fcbcef75']` sur `1/5` rerun
+- le nettoyage du panier est reproductible, mais le keep aval ne l'est pas tel qu'ecrit dans la version initiale de cette baseline
 
 Injection finale:
-- `injected_ids=['cand-0c575f34c4f459c3']`
+- reruns read-only:
+  - `injected_ids=[]` sur `4/5` reruns
+  - `injected_ids=['cand-0c575f34c4f459c3', 'cand-8ef9e8d2fcbcef75']` sur `1/5` rerun
+- ne pas surinterpreter un keep/injection ponctuel comme un resultat stable du lot `7B`
 
 Verdict local:
-- gain net de lisibilite et disparition de la repetition identitaire brute avant arbitre.
+- gain stable de lisibilite et disparition de la repetition identitaire brute avant arbitre;
+- verdict aval arbitre/injection sensible a la variabilite du run et/ou au contexte recent, donc non baselineable ici comme fait stable.
 
 ### 4.4 `preferences utilisateur durables style reponse`
 
