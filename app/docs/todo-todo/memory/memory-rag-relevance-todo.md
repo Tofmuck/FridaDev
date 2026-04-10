@@ -15,7 +15,8 @@ La doctrine conservee est explicite:
 - d'abord assainir le candidate generation;
 - ensuite structurer le panier remis a l'arbitre;
 - ensuite faire de `summaries` une vraie voie si elle devient disponible;
-- et seulement ensuite evaluer un reranker de second rang.
+- ensuite prendre une decision testee `go / no-go` sur un reranker de second rang;
+- et seulement en fin de chantier, apres cette decision, ouvrir le lot de surface d'observabilite memoire/RAG dediee.
 
 ## Verdict d'audit integre
 
@@ -29,6 +30,7 @@ La doctrine conservee est explicite:
   - et ce qui est seulement logge pour le noeud hermeneutique.
 - [x] Le TODO precedent ne figeait ni corpus de probes, ni taxonomy de faux positifs, ni gates entre phases.
 - [x] Le TODO precedent n'explicitait pas assez les preconditions de la voie `summaries`, alors que le runtime OVH actif n'en contient actuellement aucune.
+- [x] Le TODO precedent n'isolait pas encore explicitement un lot final de surface d'observabilite memoire/RAG distinct de l'admin general et posterieur a la decision reranker.
 
 ## Baseline runtime factuelle au 2026-04-10
 
@@ -57,6 +59,12 @@ La doctrine conservee est explicite:
 - [x] Tests existants pour le contrat canonique `memory_retrieved` et la separation avec les champs arbitre: `app/tests/unit/chat/test_chat_memory_flow.py`.
 - [x] Tests existants pour le cache d'enrichissement `parent_summary`: `app/tests/unit/memory/test_memory_store_blocks_phase8bis.py`.
 - [x] Tests existants pour la persistence du modele effectif de l'arbitre malgre un changement runtime concurrent: `app/tests/test_memory_store_phase4.py`.
+- [x] `/api/admin/hermeneutics/dashboard` existe deja et agrege des KPIs `memory_store`, des `runtime_metrics` process et des latences lues depuis les admin logs.
+- [x] `/api/admin/hermeneutics/arbiter-decisions` existe deja comme lecture read-only des decisions arbitre persistees.
+- [x] `observability.chat_log_events` existe deja comme persistence dediee des evenements tour par tour; snapshot lu pendant cet audit: `54646` events avec des stages incluant `embedding`, `prompt_prepared`, `context_build` et `branch_skipped`.
+- [x] `admin_logs` constitue deja une deuxieme couche d'observation distincte, notamment pour le mode hermeneutique et certaines actions admin.
+- [x] `/hermeneutic-admin` existe deja comme surface mixte de pilotage et d'inspection hermeneutique reemployant des APIs existantes; ce n'est pas encore une surface dediee memoire/RAG.
+- [x] Une partie des `runtime_metrics` vient aujourd'hui du process en memoire; la future surface finale devra donc distinguer explicitement ce qui est persiste, ce qui est derive et ce qui est seulement process-local.
 - [x] Le finding separe sur `record_arbiter_decisions()` reste hors scope de ce chantier et ne doit pas etre re-melange ici.
 
 ## Hypotheses de travail a tenir tant qu'aucune preuve contraire n'existe
@@ -65,6 +73,9 @@ La doctrine conservee est explicite:
 - Tant que `summaries=0` sur le runtime actif, la voie `summaries` est un chantier de design + preconditions, pas un levier live immediat.
 - Tant que le panier pre-arbitre reste peu structure, l'arbitre compense partiellement mais ne peut pas reparer un recall mal calibre.
 - Les doublons exacts et quasi-doublons doivent etre traites comme un sujet explicite de panier, pas comme un detail cosmetique.
+- La decision `go / no-go` sur un reranker doit etre fondee sur des tests et probes, pas presumee d'avance.
+- Le design final d'une surface d'observabilite memoire/RAG ne doit pas etre fige tant que le systeme de fond et la decision reranker ne sont pas stabilises.
+- La future surface d'observabilite memoire/RAG devra etre pensee comme un systeme dedie distinct de l'admin general, meme si elle reemploie des briques communes.
 
 ## Hors scope explicite
 
@@ -333,6 +344,7 @@ La doctrine conservee est explicite:
 ## Phase 9 - Futur lot d'evaluation D: reranker tardif et optionnel
 
 - [ ] Confirmer que les Gates `0` a `8C` sont fermes avant d'ouvrir cette phase.
+- [ ] Fonder la decision `go / no-go` reranker sur les probes, tests et comparaisons avant/apres deja figes; ne pas presumer qu'un reranker sera retenu.
 - [ ] Confirmer par preuves que le recall de base et le panier ont deja ete assainis sans reranker.
 - [ ] Comparer au moins deux options de reranker:
   - local;
@@ -346,6 +358,61 @@ La doctrine conservee est explicite:
 
 - [ ] Le reranker reste une option tardive, non un pretexte pour sauter les phases amont.
 - [ ] Une decision explicite `go / no-go` est prise et documentee.
+- [ ] Aucun lot final de surface d'observabilite memoire/RAG ne demarre avant cette decision explicite.
+
+## Phase 10 - Futur lot final E: surface d'observabilite memoire/RAG dediee
+
+- [ ] Confirmer que les Gates `0` a `9D` sont fermees avant d'ouvrir ce lot.
+- [ ] Confirmer que le systeme de fond est assez stabilise pour eviter de designer une surface finale sur des objets encore mouvants.
+- [ ] Ouvrir ce lot seulement apres la decision testee `go / no-go` sur le reranker, qu'un reranker soit retenu ou non.
+- [ ] Definir la surface comme un systeme separe de l'administration generale, dedie a l'observabilite memoire / RAG dans FridaDev.
+- [ ] Definir le role fonctionnel de cette surface:
+  - rendre lisible ce qui se passe dans le domaine memoire/RAG;
+  - rendre les objets et etapes comprehensibles pour un operateur;
+  - fournir des intitules lisibles et, si necessaire, une legende ou aide de lecture;
+  - permettre l'inspection sans obliger a croiser durablement plusieurs surfaces confuses.
+- [ ] Cadrer les familles d'informations que la surface devra rendre lisibles, sans figer trop tot leur taxonomie finale:
+  - etat memoire (`traces`, `summaries`, couverture utile, duplications notables);
+  - retrieval / RAG;
+  - embeddings;
+  - panier pre-arbitre;
+  - arbitre;
+  - injection memoire;
+  - decisions, probes et eventuels doublons si ces objets restent pertinents dans la cible.
+- [ ] Distinguer explicitement, dans le futur design fonctionnel, ce qui vient:
+  - d'une persistence durable;
+  - d'une agregation calculee;
+  - d'un etat process runtime;
+  - ou d'une lecture historique de logs.
+- [ ] Faire l'inventaire explicite des informations de ce domaine aujourd'hui dispersees entre:
+  - l'admin general;
+  - `/hermeneutic-admin`;
+  - `dashboard`;
+  - `arbiter-decisions`;
+  - logs chat / `observability.chat_log_events`;
+  - admin logs;
+  - et autres lectures utiles deja existantes.
+- [ ] Pour chaque information inventoriee, trancher explicitement:
+  - migration vers la future surface si elle reste utile;
+  - maintien ailleurs si elle ne releve pas vraiment du domaine memoire/RAG;
+  - suppression si elle devient redondante ou peu utile.
+- [ ] Interdire une duplication confuse durable entre l'admin general et la future surface dediee.
+- [ ] Verifier que la future surface ne soit pas decrite comme une simple extension floue de l'admin general ou de `/hermeneutic-admin`.
+- [ ] Definir les non-goals de ce lot:
+  - ne pas figer l'UI exacte trop tot;
+  - ne pas figer l'arborescence finale exacte trop tot;
+  - ne pas figer les endpoints finaux exacts trop tot;
+  - ne pas figer le detail des composants frontend trop tot;
+  - ne pas sur-designer une taxonomie finale avant stabilisation du systeme observe.
+- [ ] Produire avant implementation un cadrage fonctionnel final qui dise ce que la surface doit permettre de comprendre, sans imposer prematurement son design technique exact.
+
+### Gate 10E
+
+- [ ] La decision reranker testee est documentee et close.
+- [ ] Le perimetre fonctionnel de la surface dediee est ecrit sans sur-fixer l'implementation.
+- [ ] La liste des informations a migrer, conserver ailleurs ou supprimer est explicite.
+- [ ] La contrainte anti-redondance avec l'admin general est documentee.
+- [ ] Le lot peut demarrer sans reouvrir les phases de fond du systeme.
 
 ## Definition of done globale
 
@@ -355,7 +422,10 @@ La doctrine conservee est explicite:
 - [ ] Le panier pre-arbitre a un schema stable, borne et moins redondant.
 - [ ] La place de `parent_summary` est documentee et testee.
 - [ ] La voie `summaries` est soit implementee avec preuves, soit ajournee explicitement avec cause.
+- [ ] La decision `go / no-go` reranker est prise sur preuves et documentee.
 - [ ] Le reranker reste absent tant que ses prerequis ne sont pas demontres.
+- [ ] Une surface finale d'observabilite memoire/RAG est cadree puis livree comme systeme dedie distinct de l'admin general.
+- [ ] Les informations memoire/RAG aujourd'hui dispersees sont migrees, maintenues ailleurs ou supprimees explicitement; aucune duplication confuse durable n'est laissee en place.
 - [ ] Aucun lot n'a melange ce chantier avec le finding separe `record_arbiter_decisions()`.
 - [ ] La validation finale est archivee dans `app/docs/todo-done/validations/`.
 
@@ -368,4 +438,5 @@ La doctrine conservee est explicite:
 5. Preconditions et design de la voie `summaries`.
 6. Feuille d'evaluation avant tout patch runtime.
 7. Lots d'implementation separes: generation, panier, summaries.
-8. Reranker seulement si les gains amont sont deja visibles.
+8. Decision reranker testee, avec issue `go / no-go`.
+9. Surface finale d'observabilite memoire/RAG dediee, distincte de l'admin general, seulement apres cette decision.
