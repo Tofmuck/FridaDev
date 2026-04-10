@@ -184,6 +184,75 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertNotIn('semantic_relevance', second_trace)
         self.assertNotIn('decision_source', second_trace)
 
+    def test_prepare_memory_context_prefers_retrieve_for_arbiter_and_keeps_memory_retrieved_public(self) -> None:
+        observed = {'arbiter_traces': None}
+        internal_traces = [
+            {
+                'conversation_id': 'conv-source-a',
+                'role': 'user',
+                'content': 'codex-8192-live-1775296899',
+                'timestamp': '2026-04-10T08:00:00Z',
+                'summary_id': 'sum-1',
+                'score': 0.98,
+                'retrieval_score': 0.98,
+                'semantic_score': 0.0,
+            }
+        ]
+
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE='shadow',
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            'id': 'conv-memory-internal-retrieval',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve=lambda _msg: (_ for _ in ()).throw(
+                AssertionError('public retrieve should not be used when retrieve_for_arbiter exists')
+            ),
+            retrieve_for_arbiter=lambda _msg: list(internal_traces),
+            _runtime_embedding_value=lambda field: 5 if field == 'top_k' else None,
+            record_arbiter_decisions=lambda *_args, **_kwargs: None,
+            enrich_traces_with_summaries=lambda traces: list(traces),
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+
+        def fake_filter(traces, _recent_turns):
+            observed['arbiter_traces'] = list(traces)
+            return [], [
+                {
+                    'candidate_id': '0',
+                    'keep': False,
+                    'semantic_relevance': 0.0,
+                    'contextual_gain': 0.0,
+                    'redundant_with_recent': False,
+                    'reason': 'no_semantic_signal',
+                    'decision_source': 'fallback',
+                    'model': 'openai/gpt-5.4-mini',
+                }
+            ]
+
+        arbiter_module = SimpleNamespace(filter_traces_with_diagnostics=fake_filter)
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+
+        prepared = chat_memory_flow.prepare_memory_context(
+            conversation=conversation,
+            user_msg='bonjour',
+            config_module=config_module,
+            memory_store_module=memory_store_module,
+            arbiter_module=arbiter_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertIsNotNone(observed['arbiter_traces'])
+        self.assertEqual(observed['arbiter_traces'][0]['retrieval_score'], 0.98)
+        self.assertEqual(observed['arbiter_traces'][0]['semantic_score'], 0.0)
+        self.assertEqual(prepared.memory_retrieved['traces'][0]['retrieval_score'], 0.98)
+        self.assertNotIn('semantic_score', prepared.memory_retrieved['traces'][0])
+
     def test_prepare_memory_context_exposes_canonical_memory_arbitration_with_stable_and_legacy_links(self) -> None:
         raw_traces = [
             {

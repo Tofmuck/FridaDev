@@ -220,6 +220,13 @@ def _resolve_retrieval_top_k_requested(*, memory_store_module: Any, config_modul
     return _safe_int(getattr(config_module, 'MEMORY_TOP_K', None))
 
 
+def _retrieve_raw_traces(*, memory_store_module: Any, user_msg: str) -> list[dict[str, Any]]:
+    retrieve_for_arbiter = getattr(memory_store_module, 'retrieve_for_arbiter', None)
+    if callable(retrieve_for_arbiter):
+        return list(retrieve_for_arbiter(user_msg))
+    return list(memory_store_module.retrieve(user_msg))
+
+
 def _enrich_retrieved_candidates(
     *,
     memory_store_module: Any,
@@ -266,7 +273,7 @@ def prepare_memory_context(
         config_module=config_module,
     )
     retrieve_t0 = time.perf_counter()
-    raw_traces = memory_store_module.retrieve(user_msg)
+    raw_traces = _retrieve_raw_traces(memory_store_module=memory_store_module, user_msg=user_msg)
     _log_stage_latency(
         conversation_id,
         'retrieve',

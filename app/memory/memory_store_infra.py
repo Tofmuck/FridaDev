@@ -2,19 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-
-_LEXICAL_TRANSLATE_FROM = (
-    '\u00e0\u00e1\u00e2\u00e4\u00e3\u00e5'
-    '\u00e7'
-    '\u00e8\u00e9\u00ea\u00eb'
-    '\u00ec\u00ed\u00ee\u00ef'
-    '\u00f1'
-    '\u00f2\u00f3\u00f4\u00f6'
-    '\u00f9\u00fa\u00fb\u00fc'
-    '\u00fd\u00ff'
-    '\u0153\u00e6'
-)
-_LEXICAL_TRANSLATE_TO = 'aaaaaaceeeeiiiinoooouuuuyyoa'
+from memory import memory_lexical_sql
 
 
 def connect_runtime_database(
@@ -90,11 +78,13 @@ def init_db(
 ) -> None:
     """Create tables/indexes if absent. Never crash app startup when DB is unavailable."""
     embed_dim = int(runtime_embedding_value_fn('dimensions'))
+    normalized_content_expr = memory_lexical_sql.normalized_content_sql(column_name='content')
     try:
         with conn_factory() as conn:
             with conn.cursor() as cur:
                 cur.execute('CREATE EXTENSION IF NOT EXISTS vector;')
                 cur.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
+                cur.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm;')
 
                 cur.execute(
                     f'''
@@ -246,11 +236,19 @@ def init_db(
                     f'''
                     CREATE INDEX IF NOT EXISTS traces_content_fts_simple_idx
                     ON traces USING gin (
-                        to_tsvector(
-                            'simple',
-                            translate(lower(content), '{_LEXICAL_TRANSLATE_FROM}', '{_LEXICAL_TRANSLATE_TO}')
-                        )
+                        to_tsvector('simple', {normalized_content_expr})
                     );
+                    '''
+                )
+                cur.execute(
+                    f'''
+                    DROP INDEX IF EXISTS traces_content_exact_trgm_idx;
+                    '''
+                )
+                cur.execute(
+                    f'''
+                    CREATE INDEX IF NOT EXISTS traces_content_exact_trgm_gist_idx
+                    ON traces USING gist ({normalized_content_expr} gist_trgm_ops);
                     '''
                 )
                 cur.execute(

@@ -236,6 +236,18 @@ def retrieve(query: str, top_k: Optional[int] = None) -> list[dict[str, Any]]:
     )
 
 
+def retrieve_for_arbiter(query: str, top_k: Optional[int] = None) -> list[dict[str, Any]]:
+    return memory_traces_summaries.retrieve(
+        query,
+        top_k=top_k,
+        include_internal_scores=True,
+        runtime_embedding_value_fn=_runtime_embedding_value,
+        conn_factory=_conn,
+        embed_fn=embed,
+        logger=logger,
+    )
+
+
 # Summary persistence
 
 def save_summary(conversation_id: str, summary: dict[str, Any]) -> None:

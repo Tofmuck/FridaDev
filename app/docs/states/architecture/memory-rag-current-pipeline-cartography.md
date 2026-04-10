@@ -39,7 +39,8 @@ Preuves runtime relues pendant cette phase:
 - lecture read-only des `admin*.log.jsonl` via `admin_logs`.
 
 Constats runtime directement verifies:
-- `raw_traces[0]` porte aujourd'hui les cles `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
+- `memory_store.retrieve()[0]` garde aujourd'hui les cles publiques `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
+- `memory_store.retrieve_for_arbiter()[0]` ajoute `retrieval_score` et `semantic_score` pour la frontiere pre-arbitre, sans changer la shape publique de `retrieve()`;
 - l'enrichissement ajoute seulement `parent_summary`;
 - `memory_retrieved` expose `schema_version`, `retrieval_query`, `top_k_requested`, `retrieved_count`, `traces`;
 - `memory_retrieved.traces[*]` expose `candidate_id`, `conversation_id`, `role`, `content`, `timestamp_iso`, `retrieval_score`, `summary_id`, `parent_summary`;
@@ -51,7 +52,7 @@ Constats runtime directement verifies:
 
 ## 3. Glossaire minimal pour lever les ambiguities
 
-- `raw_traces`: sortie brute de `memory_store.retrieve(user_msg)`.
+- `raw_traces`: sortie brute remise a l'arbitre, issue de `memory_store.retrieve_for_arbiter(user_msg)` quand cette surface interne est disponible.
 - `retrieved_candidates`: `raw_traces` apres enrichissement `parent_summary`.
 - `memory_retrieved`: snapshot canonique de `retrieved_candidates`, construit avant l'arbitre.
 - `filtered_traces`: sous-ensemble garde par l'arbitre.
@@ -75,16 +76,20 @@ Point d'entree memoire courant:
 ### 4.2 Retrieval brut
 
 Chemin:
-- `memory_store.retrieve(user_msg)`
-- delegation vers `memory_traces_summaries.retrieve(query, top_k=None, ...)`
+- surface publique: `memory_store.retrieve(user_msg)`
+- surface interne pre-arbitre: `memory_store.retrieve_for_arbiter(user_msg)`
+- delegation commune vers `memory_traces_summaries.retrieve(query, top_k=None, ...)`
 
 Ce que fait le retrieval:
 - embed la query en mode `query`;
 - lit `top_k` depuis le runtime embedding si aucun `top_k` explicite n'est passe;
-- execute un `SELECT ... FROM traces WHERE embedding IS NOT NULL ORDER BY embedding <=> query LIMIT top_k`;
-- retourne une liste de traces plates.
+- execute un rappel hybride borne sur `traces`:
+  - lane dense vectorielle;
+  - lane FTS `to_tsvector('simple', ...)`;
+  - voie exacte `pg_trgm` sur contenu normalise, triee par distance `<->` quand elle s'active;
+- garde `top_k` comme cap final public.
 
-Forme de sortie reelle:
+Forme de sortie publique reelle:
 - `conversation_id`
 - `role`
 - `content`
@@ -92,7 +97,12 @@ Forme de sortie reelle:
 - `summary_id`
 - `score`
 
-Ce que cette surface ne contient pas encore:
+Forme de sortie interne pre-arbitre:
+- meme base publique;
+- plus `retrieval_score`;
+- plus `semantic_score`.
+
+Ce que la surface publique ne contient pas encore:
 - aucun `candidate_id` canonique;
 - aucun `parent_summary`;
 - aucune metadonnee arbitre;
@@ -173,7 +183,13 @@ Panier vu par l'arbitre:
   - `role`
   - `content`
   - `ts`
-  - `score`
+  - `retrieval_score`
+  - `semantic_score`
+
+Contrat de lecture important:
+- `retrieval_score` = score hybride de rappel/rang;
+- `semantic_score` = signal dense explicite consomme par l'arbitre et par le fallback deterministe;
+- le fallback ne compare plus le `score` hybride comme s'il etait directement semantique.
 
 Ce que le panier arbitre n'inclut pas:
 - `conversation_id`
@@ -200,6 +216,7 @@ Forme persistante `arbiter_decisions`:
 - `candidate_content`
 - `candidate_ts`
 - `candidate_score`
+  - score de rappel/ranking du candidat, pas le score semantique arbitre
 - `keep`
 - `semantic_relevance`
 - `contextual_gain`

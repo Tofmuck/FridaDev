@@ -42,10 +42,10 @@ La doctrine conservee est explicite:
 - [x] Runtime observe sur OVH: `HERMENEUTIC_MODE=enforced_all`, `MEMORY_TOP_K=5`, `ARBITER_MAX_KEPT_TRACES=3`, `ARBITER_MIN_SEMANTIC_RELEVANCE=0.62`, `ARBITER_MIN_CONTEXTUAL_GAIN=0.55`.
 - [x] Snapshot base observe: `traces=224` (`224` avec `embedding IS NOT NULL`), `summaries=0` (`0` avec `embedding IS NOT NULL`), `traces_with_summary_id=0`.
 - [x] Repartition live des traces: `assistant=112`, `user=112`.
-- [x] `memory_traces_summaries.retrieve()` interroge aujourd'hui `traces` seulement, sur un top-k vectoriel plat, avec le seul `user_msg` comme query.
+- [x] `memory_traces_summaries.retrieve()` interroge aujourd'hui `traces` seulement, via un rappel hybride borne: dense vectoriel, lane FTS `simple` et voie exacte indexee `pg_trgm`.
 - [x] `summaries` est persiste en theorie mais n'est pas une voie de retrieval live; sur OVH au `2026-04-10`, la table est vide.
 - [x] `chat_memory_flow.prepare_memory_context()` enrichit les traces avec `parent_summary` apres le retrieval, puis construit `memory_retrieved`.
-- [x] `arbiter.filter_traces_with_diagnostics()` voit un payload plat compose de `id`, `role`, `content`, `ts`, `score`, plus le contexte recent; il ne voit pas `parent_summary`.
+- [x] `arbiter.filter_traces_with_diagnostics()` voit un payload plat compose de `id`, `role`, `content`, `ts`, `retrieval_score`, `semantic_score`, plus le contexte recent; il ne voit pas `parent_summary`.
 - [x] Les decisions arbitre sont deja observables en base via `arbiter_decisions`; snapshot lu: `551` decisions, toutes `decision_source=llm`, avec `32` gardees et `519` rejetees.
 - [x] Des doublons exacts existent deja dans `traces`; exemples lus: `Je suis Christophe Muck` (`6` occurrences), `Qui suis-je ?` (`5`), `Bonsoir Frida` (`5`).
 
@@ -322,6 +322,10 @@ La doctrine conservee est explicite:
   - `summary_id`;
   - `score`.
 - [x] Les timestamps, `summary_id` et la compatibilite `parent_summary` sont preserves.
+- [x] Mini-correctif immediat post-6A ferme:
+  - voie exacte adossee a `traces_content_exact_trgm_gist_idx` et triee `<->` au lieu d'un scan lineaire;
+  - contrat retrieval -> arbitre clarifie via `retrieval_score` / `semantic_score`;
+  - fallback et payload arbitre ne lisent plus un `score` hybride ambigu.
 - [x] Le lot 6A rejoue le corpus canonique avant/apres et ajoute des probes lexicales de stress pour prouver le nouveau signal.
 - [x] Le lot 6A ajoute des tests structurels et des tests de valeur recall sur fixtures locales.
 - [x] Une baseline d'evaluation datee archive le verdict et les limites du lot.
@@ -332,6 +336,7 @@ La doctrine conservee est explicite:
 
 - [x] Gate franchie: un recall hybride defendable est implemente et garde.
 - [x] Gate franchie: `top_k`, le contrat de shape et la compatibilite aval sont preserves.
+- [x] Gate franchie: la dette exacte de scalabilite et l'ambiguite de score pre-arbitre sont fermees sans ouvrir `7B`.
 - [x] Gate franchie: aucun blocker Phase 5 n'est observe sur la latence `retrieve` ni sur le chainage runtime.
 
 ## Phase 7 - Futur lot d'implementation B: structuration du panier et dedup

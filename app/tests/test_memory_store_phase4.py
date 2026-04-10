@@ -118,8 +118,9 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
             self.assertIsNotNone(conn_factory)
             return []
 
-        def fake_merge(*, dense_candidates, lexical_candidates, top_k):
+        def fake_merge(*, dense_candidates, lexical_candidates, top_k, include_internal_scores=False):
             observed['merge_top_k'] = top_k
+            self.assertFalse(include_internal_scores)
             self.assertEqual(dense_candidates, [])
             self.assertEqual(lexical_candidates, [])
             return []
@@ -141,6 +142,55 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(observed['merge_top_k'], 9)
         self.assertEqual(observed['dense_limit'], 27)
         self.assertEqual(observed['lexical_limit'], 27)
+
+    def test_retrieve_for_arbiter_requests_internal_scores_while_public_retrieve_stays_stable(self) -> None:
+        observed_include_internal_scores = []
+        original_retrieve = memory_store.memory_traces_summaries.retrieve
+
+        def fake_retrieve(
+            _query,
+            top_k=None,
+            *,
+            include_internal_scores=False,
+            runtime_embedding_value_fn,
+            conn_factory,
+            embed_fn,
+            logger,
+        ):
+            observed_include_internal_scores.append(include_internal_scores)
+            self.assertIsNone(top_k)
+            self.assertIsNotNone(runtime_embedding_value_fn)
+            self.assertIsNotNone(conn_factory)
+            self.assertIsNotNone(embed_fn)
+            self.assertIsNotNone(logger)
+            row = {
+                'conversation_id': 'conv-1',
+                'role': 'user',
+                'content': 'Christophe Muck',
+                'timestamp': '2026-04-10T12:34:56Z',
+                'summary_id': 'sum-1',
+                'score': 0.98,
+            }
+            if include_internal_scores:
+                row['retrieval_score'] = 0.98
+                row['semantic_score'] = 0.0
+            return [row]
+
+        memory_store.memory_traces_summaries.retrieve = fake_retrieve
+        try:
+            public_rows = memory_store.retrieve('question')
+            internal_rows = memory_store.retrieve_for_arbiter('question')
+        finally:
+            memory_store.memory_traces_summaries.retrieve = original_retrieve
+
+        self.assertEqual(observed_include_internal_scores, [False, True])
+        self.assertEqual(
+            set(public_rows[0].keys()),
+            {'conversation_id', 'role', 'content', 'timestamp', 'summary_id', 'score'},
+        )
+        self.assertEqual(public_rows[0]['summary_id'], 'sum-1')
+        self.assertEqual(internal_rows[0]['retrieval_score'], 0.98)
+        self.assertEqual(internal_rows[0]['semantic_score'], 0.0)
 
     def test_init_db_uses_runtime_embedding_dimensions(self) -> None:
         observed_queries = []
@@ -180,6 +230,47 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
         joined = '\n'.join(observed_queries)
         self.assertIn('embedding       vector(768)', joined)
+
+    def test_init_db_creates_pg_trgm_extension_and_exact_trigram_index(self) -> None:
+        observed_queries = []
+        original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_conn = memory_store._conn
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params=None):
+                observed_queries.append(query)
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                return None
+
+        memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
+        memory_store._conn = lambda: FakeConnection()
+        try:
+            memory_store.init_db()
+        finally:
+            memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store._conn = original_conn
+
+        joined = '\n'.join(observed_queries)
+        self.assertIn('CREATE EXTENSION IF NOT EXISTS pg_trgm;', joined)
+        self.assertIn('traces_content_exact_trgm_gist_idx', joined)
+        self.assertIn('gist_trgm_ops', joined)
 
     def test_runtime_embedding_token_uses_env_fallback_when_runtime_layer_returns_it(self) -> None:
         original_get_secret = memory_store.runtime_settings.get_runtime_secret_value

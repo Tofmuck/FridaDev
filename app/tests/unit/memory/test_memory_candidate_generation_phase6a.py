@@ -245,3 +245,41 @@ class MemoryCandidateGenerationPhase6ATests(unittest.TestCase):
             set(rows[0].keys()),
             {'conversation_id', 'role', 'content', 'timestamp', 'summary_id', 'score'},
         )
+
+    def test_retrieve_for_arbiter_can_expose_explicit_retrieval_and_semantic_scores(self) -> None:
+        original_dense = memory_traces_summaries._retrieve_dense_candidates
+        original_lexical = memory_traces_summaries._retrieve_lexical_candidates
+
+        memory_traces_summaries._retrieve_dense_candidates = lambda *_args, **_kwargs: []
+        memory_traces_summaries._retrieve_lexical_candidates = lambda *_args, **_kwargs: [
+            {
+                'conversation_id': 'conv-lex',
+                'role': 'user',
+                'content': 'codex-8192-live-1775296899',
+                'timestamp': '2026-04-10T12:34:56Z',
+                'summary_id': 'sum-lex',
+                'score': 0.98,
+                '_lexical_term_hits': 2,
+                '_lexical_phrase_hit': 1,
+            }
+        ]
+        try:
+            rows = memory_traces_summaries.retrieve(
+                'codex-8192-live-1775296899',
+                top_k=1,
+                include_internal_scores=True,
+                runtime_embedding_value_fn=lambda _field: 5,
+                conn_factory=lambda: object(),
+                embed_fn=lambda *_args, **_kwargs: [0.1, 0.2, 0.3],
+                logger=SimpleNamespace(warning=lambda *_a, **_k: None, error=lambda *_a, **_k: None),
+            )
+        finally:
+            memory_traces_summaries._retrieve_dense_candidates = original_dense
+            memory_traces_summaries._retrieve_lexical_candidates = original_lexical
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['timestamp'], '2026-04-10T12:34:56Z')
+        self.assertEqual(rows[0]['summary_id'], 'sum-lex')
+        self.assertEqual(rows[0]['score'], 0.98)
+        self.assertEqual(rows[0]['retrieval_score'], 0.98)
+        self.assertEqual(rows[0]['semantic_score'], 0.0)

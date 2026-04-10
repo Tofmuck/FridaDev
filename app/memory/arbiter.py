@@ -123,9 +123,19 @@ def _as_float_01(value: Any) -> float:
     return f
 
 
-def _trace_score(trace: Dict[str, Any]) -> float:
+def _trace_retrieval_score(trace: Dict[str, Any]) -> float:
     try:
-        return float(trace.get('score') or 0.0)
+        value = trace.get('retrieval_score', trace.get('score'))
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _trace_semantic_score(trace: Dict[str, Any]) -> float:
+    try:
+        if 'semantic_score' in trace:
+            return float(trace.get('semantic_score') or 0.0)
+        return _trace_retrieval_score(trace)
     except (TypeError, ValueError):
         return 0.0
 
@@ -174,7 +184,7 @@ def _build_fallback_decisions(
     decisions: List[Dict[str, Any]] = []
     threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
     for i, trace in enumerate(traces):
-        semantic = max(0.0, min(1.0, _trace_score(trace)))
+        semantic = max(0.0, min(1.0, _trace_semantic_score(trace)))
         keep = i == keep_idx and semantic >= threshold
         decisions.append(
             {
@@ -199,18 +209,20 @@ def _deterministic_fallback(
     if not traces:
         return [], []
 
-    keep_idx = max(range(len(traces)), key=lambda idx: _trace_score(traces[idx]))
+    keep_idx = max(range(len(traces)), key=lambda idx: _trace_semantic_score(traces[idx]))
     best = traces[keep_idx]
-    best_score = _trace_score(best)
+    best_semantic_score = _trace_semantic_score(best)
+    best_retrieval_score = _trace_retrieval_score(best)
     threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
-    kept = [best] if best_score >= threshold else []
+    kept = [best] if best_semantic_score >= threshold else []
 
     fallback_count = _inc_metric('arbiter_fallback_count')
     logger.warning(
-        'arbiter_fallback reason=%s kept=%s best_score=%.3f threshold=%.3f fallback_count=%s',
+        'arbiter_fallback reason=%s kept=%s best_semantic_score=%.3f best_retrieval_score=%.3f threshold=%.3f fallback_count=%s',
         reason,
         len(kept),
-        best_score,
+        best_semantic_score,
+        best_retrieval_score,
         threshold,
         fallback_count,
     )
@@ -305,7 +317,8 @@ def filter_traces_with_diagnostics(
             'role': t.get('role', '?'),
             'content': t.get('content', ''),
             'ts': (t.get('timestamp') or '')[:19],
-            'score': round(_trace_score(t), 6),
+            'retrieval_score': round(_trace_retrieval_score(t), 6),
+            'semantic_score': round(_trace_semantic_score(t), 6),
         }
         for i, t in enumerate(traces)
     ]
@@ -374,7 +387,7 @@ def filter_traces_with_diagnostics(
             d = {
                 'candidate_id': str(idx),
                 'keep': False,
-                'semantic_relevance': max(0.0, min(1.0, _trace_score(trace))),
+                'semantic_relevance': max(0.0, min(1.0, _trace_semantic_score(trace))),
                 'contextual_gain': 0.0,
                 'redundant_with_recent': False,
                 'reason': 'missing_from_llm_output',

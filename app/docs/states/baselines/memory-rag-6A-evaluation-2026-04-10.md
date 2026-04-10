@@ -13,7 +13,12 @@ Ce lot implemente un recall hybride borne:
 - lane dense vectorielle existante;
 - lane lexicale built-in PostgreSQL via `to_tsvector('simple', ...)`;
 - voie exacte pour tokens saillants de type code, acronyme, ID ou URL;
-- fusion explicite par merge hybride borne, sans changer l'arbitre, les seuils, `summaries` ni le reranker.
+- fusion explicite par merge hybride borne, sans changer les seuils, `summaries` ni le reranker.
+
+Correctif immediat post-6A integre dans cette baseline:
+- la voie exacte n'est plus un simple `LIKE` sur scan lineaire; elle passe par un index `pg_trgm` `gist_trgm_ops` et un tri `<->` borne;
+- le contrat retrieval -> arbitre distingue maintenant le score de rappel (`retrieval_score`) du signal semantique consomme par l'arbitre/fallback (`semantic_score`);
+- `memory_store.retrieve()` garde sa shape publique stable et `retrieve_for_arbiter()` porte seulement les champs internes explicites utiles au jugement.
 
 Invariants preserves:
 - `top_k` garde son sens de cap final;
@@ -25,11 +30,12 @@ Invariants preserves:
 
 - Runtime observe: `MEMORY_TOP_K=5`, `summaries=0`, `traces=224`.
 - Recall interne du lot 6A: `internal_limit = max(top_k * 3, 12)` donc `15` avec `top_k=5`.
-- Index ajoute et verifie live: `traces_content_fts_simple_idx`.
-- Extensions live: `pgcrypto`, `plpgsql`, `vector`.
+- Index ajoutes et verifies live: `traces_content_fts_simple_idx`, `traces_content_exact_trgm_gist_idx`.
+- Extensions live: `pg_trgm`, `pgcrypto`, `plpgsql`, `vector`.
 - Artefacts utilises pour l'evaluation:
   - replay dense-only read-only inline pour le `before`;
   - `memory_store.retrieve()` pour le `after`;
+  - `memory_store.retrieve_for_arbiter()` pour la projection pre-arbitre explicite;
   - `memory_store.enrich_traces_with_summaries()` pour verifier la compatibilite aval;
   - `memory_retrieved_input.build_memory_retrieved_input()` pour verifier le contrat canonique;
   - tests unitaire/ciblés dans le conteneur app.
@@ -50,10 +56,20 @@ Invariants preserves:
   - `tests.test_memory_store_phase4`
   - `tests.unit.chat.test_chat_memory_flow`
   - `tests.unit.memory.test_memory_candidate_generation_phase6a`
-- Resultat: `37 tests`, `OK`.
+  - `tests.unit.memory.test_arbiter_phase4`
+- Resultat: `45 tests`, `OK`.
 - Verification live:
   - `platform-fridadev` healthy apres rebuild;
   - `curl https://fridadev.frida-system.fr/admin` -> `302` Authelia attendu.
+- Plans SQL verifies:
+  - avant correctif, la voie exacte `codex-8192-live-1775296899` etait en `Seq Scan`;
+  - apres correctif, la meme requete passe en `Index Scan using traces_content_exact_trgm_gist_idx`;
+  - la lane FTS reste en `Bitmap Index Scan on traces_content_fts_simple_idx`.
+- Contrat retrieval/arbitre confirme:
+  - `memory_store.retrieve()` garde les cles `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
+  - `memory_store.retrieve_for_arbiter()` ajoute explicitement `retrieval_score`, `semantic_score`;
+  - le payload arbitre lit `retrieval_score` et `semantic_score`, plus `id`, `role`, `content`, `ts`;
+  - le fallback deterministe compare `semantic_score`, pas le score hybride de rappel.
 - Contrat aval confirme sur probe `Christophe Muck`:
   - retrieval keys: `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
   - `memory_retrieved.traces[*]`: `candidate_id`, `content`, `conversation_id`, `parent_summary`, `retrieval_score`, `role`, `summary_id`, `timestamp_iso`.
@@ -269,9 +285,10 @@ Mesures retenues par probe:
 ### Gains retenus
 
 - vrai nouveau signal de rappel introduit;
-- rappel exact-term / code / URL robuste;
+- rappel exact-term / code / URL robuste et maintenant index-backed;
 - probe `OVH migration ...` nettoye du parasite `codex-8192-live-1775296899`;
 - probe `Christophe Muck` moins sature de doublons user exacts;
+- contrat retrieval -> arbitre clarifie sans casser `top_k`, `timestamp`, `summary_id` ni `parent_summary`;
 - `top_k`, timestamps, `summary_id` et compatibilite `parent_summary` preserves.
 
 ### Regressions observees
@@ -297,6 +314,7 @@ Pourquoi le lot est garde:
 - il reste borne au recall/candidate generation;
 - il garde les invariants runtime;
 - il apporte des gains defensables sur les cas exact-term / nom propre / URL;
+- il ferme proprement les deux dettes immediates post-6A sans glisser vers `7B`;
 - il ne cree pas de regression bloquante sur le corpus canonique.
 
 Ce que le lot ne pretend pas resoudre:

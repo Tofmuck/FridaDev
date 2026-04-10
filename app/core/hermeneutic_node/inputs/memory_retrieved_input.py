@@ -48,7 +48,7 @@ def _canonical_trace(trace: Mapping[str, Any]) -> dict[str, Any]:
         "role": _optional_str(trace.get("role")),
         "content": str(trace.get("content") or ""),
         "timestamp_iso": _optional_str(trace.get("timestamp") or trace.get("timestamp_iso")),
-        "retrieval_score": float(trace.get("score") or 0.0),
+        "retrieval_score": float(trace.get("retrieval_score", trace.get("score")) or 0.0),
         "summary_id": _optional_str(trace.get("summary_id")),
         "parent_summary": _canonical_parent_summary(trace.get("parent_summary")),
     }

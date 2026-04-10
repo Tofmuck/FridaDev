@@ -292,9 +292,12 @@ Le payload arbitre cible DOIT voir seulement:
 - `content`
 - `timestamp_iso`
 - `retrieval_score`
+- `semantic_score`
 
 Justification:
 - cela enrichit legerement le panier actuel avec une provenance utile;
+- `retrieval_score` garde son role de score de rappel/ranking sans etre reinterprete comme verite semantique;
+- `semantic_score` donne a l'arbitre un signal dense explicite quand il existe;
 - cela garde le payload lisible;
 - cela n'ouvre pas encore un redesign complet de l'arbitre.
 

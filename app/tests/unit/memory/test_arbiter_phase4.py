@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -24,6 +25,97 @@ import config
 class ArbiterPhase4ModelTests(unittest.TestCase):
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
+
+    def test_deterministic_fallback_uses_explicit_semantic_score_when_available(self) -> None:
+        traces = [
+            {
+                'role': 'user',
+                'content': 'codex-8192-live-1775296899',
+                'timestamp': '2026-04-10T09:00:00Z',
+                'score': 0.98,
+                'retrieval_score': 0.98,
+                'semantic_score': 0.0,
+            },
+            {
+                'role': 'assistant',
+                'content': 'Migration OVH vers Caddy et Authelia',
+                'timestamp': '2026-04-10T09:01:00Z',
+                'score': 0.71,
+                'retrieval_score': 0.71,
+                'semantic_score': 0.71,
+            },
+        ]
+
+        kept, decisions = arbiter._deterministic_fallback(
+            traces,
+            reason='timeout',
+            model='openai/gpt-5.4-mini',
+        )
+
+        self.assertEqual([trace['content'] for trace in kept], ['Migration OVH vers Caddy et Authelia'])
+        self.assertEqual(decisions[0]['semantic_relevance'], 0.0)
+        self.assertTrue(decisions[1]['keep'])
+
+    def test_filter_traces_payload_exposes_retrieval_and_semantic_scores_separately(self) -> None:
+        observed_candidates = []
+        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': '{"decisions":[]}'}}]}
+
+        def fake_post(url, json, headers, timeout):
+            user_content = json['messages'][1]['content']
+            payload_marker = '=== Candidate memories ===\\n'
+            observed_candidates.extend(json_module.loads(user_content.split(payload_marker, 1)[1]))
+            return FakeResponse()
+
+        json_module = json
+        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='arbiter': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            arbiter.filter_traces_with_diagnostics(
+                [
+                    {
+                        'role': 'user',
+                        'content': 'codex-8192-live-1775296899',
+                        'timestamp': '2026-04-10T09:00:00Z',
+                        'score': 0.98,
+                        'retrieval_score': 0.98,
+                        'semantic_score': 0.0,
+                    }
+                ],
+                [{'role': 'user', 'content': 'Quel etait le code ?'}],
+            )
+        finally:
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
+
+        self.assertEqual(len(observed_candidates), 1)
+        self.assertEqual(observed_candidates[0]['retrieval_score'], 0.98)
+        self.assertEqual(observed_candidates[0]['semantic_score'], 0.0)
+        self.assertNotIn('score', observed_candidates[0])
 
     def test_arbiter_calls_use_runtime_model_from_db_when_present(self) -> None:
         observed_models = []
