@@ -96,46 +96,47 @@ La doctrine conservee est explicite:
 
 ## Phase 0 - Baseline exploitable et corpus de probes
 
-- [ ] Figer un corpus de `5` a `10` requetes canoniques couvrant au minimum:
+- [x] Figer un corpus de `5` a `10` requetes canoniques couvrant au minimum:
   - architecture / modules externes;
   - memoire / identite;
   - OVH / migration / exploitation;
   - preferences utilisateur durables;
   - contexte circonstanciel recent.
-- [ ] Pour chaque requete, ecrire:
+- [x] Pour chaque requete, ecrire:
   - la formulation exacte;
   - la raison du probe;
   - le type de souvenir attendu;
   - ce qui compterait comme faux positif typique.
-- [ ] Rejouer chaque probe avec le runtime actuel sans changer les settings.
-- [ ] Archiver pour chaque probe:
+- [x] Rejouer chaque probe avec le runtime actuel sans changer les settings.
+- [x] Archiver pour chaque probe:
   - le `top_k` brut retourne;
   - les roles des items;
   - les scores de retrieval;
   - la presence ou absence de `summary_id`;
   - la presence ou absence de `parent_summary`;
   - un apercu texte des items.
-- [ ] Construire une taxonomy simple et stable des faux positifs observes:
+- [x] Construire une taxonomy simple et stable des faux positifs observes:
   - assistant generique;
   - duplication exacte;
   - quasi-doublon;
   - item circonstanciel sans utilite;
   - item lexicalement voisin mais semantiquement plat;
   - item stale / procedural / hors axe.
-- [ ] Relever explicitement les probes ou le `top_k=5` actuel parait trop court.
-- [ ] Relever explicitement les probes ou le probleme principal n'est pas la taille du recall mais sa composition.
-- [ ] Verifier si les exemples deja presents dans `arbiter_decisions` peuvent servir de baseline historique complementaire sans nouvelles ecritures.
-- [ ] Choisir l'emplacement de la preuve baseline future:
-  - soit `app/docs/states/baselines/`;
-  - soit `app/docs/todo-done/validations/`;
-  - sans ouvrir une nouvelle doc tant que le besoin n'est pas net.
+- [x] Relever explicitement les probes ou le `top_k=5` actuel parait trop court.
+  - Verdict Phase 0: aucun probe ne montre `top_k=5` comme probleme primaire; le probe identitaire de stress devra etre relu apres dedup.
+- [x] Relever explicitement les probes ou le probleme principal n'est pas la taille du recall mais sa composition.
+  - Verdict Phase 0: les `6` probes canoniques montrent un probleme de composition dominant.
+- [x] Verifier si les exemples deja presents dans `arbiter_decisions` peuvent servir de baseline historique complementaire sans nouvelles ecritures.
+  - Verdict Phase 0: oui comme source complementaire de faux positifs et de raisons arbitre, non comme substitut au corpus canonique.
+- [x] Choisir l'emplacement de la preuve baseline future.
+  - Emplacement retenu: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 
 ### Gate 0
 
-- [ ] Le corpus de probes est fige.
-- [ ] La taxonomy de faux positifs est ecrite.
-- [ ] Un snapshot baseline exploitable existe pour chaque probe.
-- [ ] Aucun choix d'implementation n'a encore ete engage.
+- [x] Le corpus de probes est fige.
+- [x] La taxonomy de faux positifs est ecrite.
+- [x] Un snapshot baseline exploitable existe pour chaque probe.
+- [x] Aucun choix d'implementation n'a encore ete engage.
 
 ## Phase 1 - Cartographie exacte du pipeline courant
 
