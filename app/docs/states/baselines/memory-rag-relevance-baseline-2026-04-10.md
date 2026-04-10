@@ -259,11 +259,11 @@ Lecture:
 
 Exemples confirmes en lecture SQL exacte:
 - `Je suis Christophe Muck` -> `6`
-- `Tu peux le trouver et le lire la : https://blogs.mediapart.fr/...` -> `6`
+- `Tu peux le trouver et le lire là : https://blogs.mediapart.fr/christophe-muck/blog/030426/apres-la-garde-vue-de-rima-hassan-ce-que-l-occident-refuse-de-voir` -> `6`
 - `Bonsoir Frida` -> `5`
 - `Qui suis-je ?` -> `5`
 - `Qui suis-je pour toi maintenant ?` -> `4`
-- `Explique simplement la difference entre la memoire vive et le disque dur.` -> `3`
+- `Explique simplement la différence entre la mémoire vive et le disque dur.` -> `3`
 
 Utilite pour la suite:
 - ces doublons confirment qu'un futur lot de panier devra traiter la dedup comme un sujet central;
