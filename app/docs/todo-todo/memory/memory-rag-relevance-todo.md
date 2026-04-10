@@ -249,25 +249,26 @@ La doctrine conservee est explicite:
 
 ## Phase 4 - Voie `summaries` comme chantier distinct
 
-- [ ] Verifier pourquoi le runtime actif a `summaries=0`:
+- [x] Verifier pourquoi le runtime actif a `summaries=0`:
   - absence de generation;
   - absence de trafic assez long;
   - autre cause a documenter si necessaire.
-- [ ] Decider si la preparation de cette voie doit commencer par:
+- [x] Decider si la preparation de cette voie doit commencer par:
   - fixtures de tests;
   - replay hors live;
   - ou attente de donnees live.
-- [ ] Definir le schema minimal d'un candidat `summary`.
-- [ ] Definir le mode de retrieval `summary` a comparer a la lane `traces`.
-- [ ] Definir la politique de fusion `traces + summaries`.
-- [ ] Definir la politique d'antidoublon entre une trace et son resume parent.
-- [ ] Definir comment mesurer qu'une lane `summaries` apporte un gain reel et pas seulement du texte plus long.
-- [ ] Definir les preuves minimales requises avant toute implementation de cette lane.
+- [x] Definir le schema minimal d'un candidat `summary`.
+- [x] Definir le mode de retrieval `summary` a comparer a la lane `traces`.
+- [x] Definir la politique de fusion `traces + summaries`.
+- [x] Definir la politique d'antidoublon entre une trace et son resume parent.
+- [x] Definir comment mesurer qu'une lane `summaries` apporte un gain reel et pas seulement du texte plus long.
+- [x] Definir les preuves minimales requises avant toute implementation de cette lane.
+  - Reference Phase 4: `app/docs/states/specs/memory-rag-summaries-lane-contract.md`
 
 ### Gate 4
 
-- [ ] La voie `summaries` est soit prete a etre implementee, soit explicitement marquee comme bloquee par manque de donnees live.
-- [ ] La politique de fusion et d'antidoublon est ecrite.
+- [x] La voie `summaries` est soit prete a etre implementee, soit explicitement marquee comme bloquee par manque de donnees live.
+- [x] La politique de fusion et d'antidoublon est ecrite.
 
 ## Phase 5 - Mesures de succes et feuille d'evaluation
 

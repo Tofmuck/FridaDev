@@ -44,6 +44,7 @@ Notes:
 - cartographie courante du pipeline memoire/RAG: `states/architecture/memory-rag-current-pipeline-cartography.md`
 - design du candidate generation memoire/RAG: `states/architecture/memory-rag-candidate-generation-design.md`
 - contrat cible du panier pre-arbitre memoire/RAG: `states/specs/memory-rag-pre-arbiter-basket-contract.md`
+- contrat minimal de la voie `summaries` memoire/RAG: `states/specs/memory-rag-summaries-lane-contract.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
