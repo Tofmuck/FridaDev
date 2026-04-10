@@ -140,27 +140,28 @@ La doctrine conservee est explicite:
 
 ## Phase 1 - Cartographie exacte du pipeline courant
 
-- [ ] Documenter pas a pas la chaine actuelle:
+- [x] Documenter pas a pas la chaine actuelle:
   - query de retrieval;
   - retrieval brut;
   - enrichissement `parent_summary`;
   - panier vu par l'arbitre;
   - decisions arbitre;
   - injection finale dans le prompt.
-- [ ] Distinguer explicitement quatre surfaces de donnees:
+  - Reference Phase 1: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
+- [x] Distinguer explicitement quatre surfaces de donnees:
   - retrieval brut;
   - panier pre-arbitre;
   - sortie arbitre;
   - prompt final.
-- [ ] Lister pour chaque surface les champs disponibles et ceux absents.
-- [ ] Noter noir sur blanc que `parent_summary` enrichit aujourd'hui le prompt et `memory_retrieved`, mais pas le payload arbitre.
-- [ ] Noter noir sur blanc que `summaries` n'est pas une voie autonome live au `2026-04-10`.
-- [ ] Lister les observabilites deja presentes a reutiliser:
+- [x] Lister pour chaque surface les champs disponibles et ceux absents.
+- [x] Noter noir sur blanc que `parent_summary` enrichit aujourd'hui le prompt et `memory_retrieved`, mais pas le payload arbitre.
+- [x] Noter noir sur blanc que `summaries` n'est pas une voie autonome live au `2026-04-10`.
+- [x] Lister les observabilites deja presentes a reutiliser:
   - `memory_retrieved`;
   - `memory_arbitration`;
   - `arbiter_decisions`;
   - latences de stage.
-- [ ] Lister ce qui manque encore pour evaluer proprement la pertinence amont:
+- [x] Lister ce qui manque encore pour evaluer proprement la pertinence amont:
   - faux positifs par categorie;
   - provenance de lane;
   - duplication avant arbitre;
@@ -168,9 +169,9 @@ La doctrine conservee est explicite:
 
 ### Gate 1
 
-- [ ] La cartographie actuelle est stable et partagee.
-- [ ] Les frontieres retrieval / arbitre / prompt sont explicites.
-- [ ] Aucun lot suivant n'avance sans cette cartographie.
+- [x] La cartographie actuelle est stable et partagee.
+- [x] Les frontieres retrieval / arbitre / prompt sont explicites.
+- [x] Aucun lot suivant n'avance sans cette cartographie.
 
 ## Phase 2 - Design du candidate generation
 

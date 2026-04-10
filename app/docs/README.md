@@ -41,6 +41,7 @@ Notes:
 - etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - baseline Phase 0 pertinence memoire/RAG 2026-04-10: `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+- cartographie courante du pipeline memoire/RAG: `states/architecture/memory-rag-current-pipeline-cartography.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
