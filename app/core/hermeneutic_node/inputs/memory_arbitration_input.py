@@ -47,6 +47,8 @@ def _canonical_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
         "role": _optional_str(candidate.get("role")),
         "content": str(candidate.get("content") or ""),
         "timestamp_iso": _optional_str(candidate.get("timestamp_iso")),
+        "start_ts": _optional_str(candidate.get("start_ts")),
+        "end_ts": _optional_str(candidate.get("end_ts")),
         "retrieval_score": _float_or_zero(candidate.get("retrieval_score")),
         "semantic_score": _float_or_zero(candidate.get("semantic_score")),
         "summary_id": _optional_str(candidate.get("summary_id")),

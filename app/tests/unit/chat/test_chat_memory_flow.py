@@ -37,6 +37,10 @@ def _trace(
     summary_id: str | None = None,
     retrieval_score: float | None = None,
     semantic_score: float | None = None,
+    source_kind: str | None = None,
+    source_lane: str | None = None,
+    start_ts: str | None = None,
+    end_ts: str | None = None,
 ):
     payload = {
         'trace_id': trace_id,
@@ -51,6 +55,14 @@ def _trace(
         payload['retrieval_score'] = retrieval_score
     if semantic_score is not None:
         payload['semantic_score'] = semantic_score
+    if source_kind is not None:
+        payload['source_kind'] = source_kind
+    if source_lane is not None:
+        payload['source_lane'] = source_lane
+    if start_ts is not None:
+        payload['start_ts'] = start_ts
+    if end_ts is not None:
+        payload['end_ts'] = end_ts
     return payload
 
 
@@ -409,6 +421,119 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertIsNone(second_decision['legacy_candidate_index'])
         self.assertFalse(second_decision['keep'])
         self.assertTrue(second_decision['redundant_with_recent'])
+
+    def test_prepare_memory_context_keeps_summary_candidate_ids_stable_through_basket_and_injection(self) -> None:
+        raw_traces = [
+            _trace(
+                'summary-1',
+                conversation_id='conv-prefs',
+                role='summary',
+                content='Preferences durables: reponses courtes et ton direct.',
+                timestamp='2026-04-10T09:10:00Z',
+                score=0.92,
+                summary_id='sum-prefs',
+                retrieval_score=0.92,
+                semantic_score=0.92,
+                source_kind='summary',
+                source_lane='summaries',
+                start_ts='2026-04-10T09:00:00Z',
+                end_ts='2026-04-10T09:10:00Z',
+            ),
+            _trace(
+                'trace-1',
+                conversation_id='conv-prefs',
+                role='user',
+                content='Tu preferes les reponses courtes.',
+                timestamp='2026-04-10T09:02:00Z',
+                score=0.82,
+                summary_id='sum-prefs',
+                retrieval_score=0.82,
+                semantic_score=0.82,
+            ),
+            _trace(
+                'trace-2',
+                conversation_id='conv-prefs',
+                role='user',
+                content='Tu veux un ton direct.',
+                timestamp='2026-04-10T09:05:00Z',
+                score=0.81,
+                summary_id='sum-prefs',
+                retrieval_score=0.81,
+                semantic_score=0.81,
+            ),
+        ]
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE='enforced_all',
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            'id': 'conv-memory-summary-lane',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve_for_arbiter=lambda _msg: list(raw_traces),
+            _runtime_embedding_value=lambda field: 5 if field == 'top_k' else None,
+            record_arbiter_decisions=lambda *_args, **_kwargs: None,
+            enrich_traces_with_summaries=lambda traces: [
+                {
+                    **trace,
+                    'parent_summary': None if trace.get('role') == 'summary' else {
+                        'id': 'sum-prefs',
+                        'conversation_id': 'conv-prefs',
+                        'start_ts': '2026-04-10T09:00:00Z',
+                        'end_ts': '2026-04-10T09:10:00Z',
+                        'content': 'Preferences utilisateur durables',
+                    },
+                }
+                for trace in traces
+            ],
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+        arbiter_module = SimpleNamespace(
+            filter_traces_with_diagnostics=lambda traces, _recent_turns: (
+                [traces[0]],
+                [
+                    {
+                        'candidate_id': traces[0]['candidate_id'],
+                        'keep': True,
+                        'semantic_relevance': 0.92,
+                        'contextual_gain': 0.9,
+                        'redundant_with_recent': False,
+                        'reason': 'summary_wins',
+                        'decision_source': 'fallback',
+                        'model': 'tests',
+                    }
+                ],
+            ),
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+
+        prepared = chat_memory_flow.prepare_memory_context(
+            conversation=conversation,
+            user_msg='preferences durables',
+            config_module=config_module,
+            memory_store_module=memory_store_module,
+            arbiter_module=arbiter_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(len(prepared.memory_traces), 1)
+        self.assertEqual(prepared.memory_traces[0]['candidate_id'], 'summary:sum-prefs')
+        self.assertEqual(prepared.memory_traces[0]['role'], 'summary')
+        self.assertIsNone(prepared.memory_traces[0]['parent_summary'])
+        self.assertEqual(prepared.memory_arbitration['injected_candidate_ids'], ['summary:sum-prefs'])
+        self.assertEqual(prepared.memory_arbitration['basket_candidates'][0]['candidate_id'], 'summary:sum-prefs')
+        self.assertEqual(prepared.memory_arbitration['basket_candidates'][0]['source_kind'], 'summary')
+        self.assertEqual(
+            set(prepared.memory_arbitration['basket_candidates'][0]['source_candidate_ids']),
+            {
+                'summary:sum-prefs',
+                prepared.memory_retrieved['traces'][1]['candidate_id'],
+                prepared.memory_retrieved['traces'][2]['candidate_id'],
+            },
+        )
 
     def test_prepare_memory_context_mode_shadow_uses_pre_arbiter_basket_for_prompt_side(self) -> None:
         events = []

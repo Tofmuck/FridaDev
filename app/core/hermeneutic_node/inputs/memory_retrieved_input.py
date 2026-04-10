@@ -27,13 +27,35 @@ def _canonical_parent_summary(parent_summary: Mapping[str, Any] | None) -> dict[
     }
 
 
+def _source_kind(trace: Mapping[str, Any]) -> str:
+    explicit = _optional_str(trace.get("source_kind"))
+    if explicit:
+        return explicit
+    if _optional_str(trace.get("role")) == "summary" and _optional_str(trace.get("summary_id")):
+        return "summary"
+    return "trace"
+
+
+def _source_lane(trace: Mapping[str, Any], *, source_kind: str) -> str:
+    explicit = _optional_str(trace.get("source_lane"))
+    if explicit:
+        return explicit
+    if source_kind == "summary":
+        return "summaries"
+    return "global"
+
+
 def _candidate_id(trace: Mapping[str, Any]) -> str:
+    source_kind = _source_kind(trace)
+    summary_id = _optional_str(trace.get("summary_id"))
+    if source_kind == "summary" and summary_id:
+        return f"summary:{summary_id}"
     fingerprint = {
         "conversation_id": _optional_str(trace.get("conversation_id")),
         "role": _optional_str(trace.get("role")),
         "content": str(trace.get("content") or ""),
         "timestamp_iso": _optional_str(trace.get("timestamp") or trace.get("timestamp_iso")),
-        "summary_id": _optional_str(trace.get("summary_id")),
+        "summary_id": summary_id,
     }
     digest = hashlib.sha1(
         json.dumps(fingerprint, sort_keys=True, ensure_ascii=True).encode("utf-8")
@@ -42,15 +64,28 @@ def _candidate_id(trace: Mapping[str, Any]) -> str:
 
 
 def _canonical_trace(trace: Mapping[str, Any]) -> dict[str, Any]:
+    source_kind = _source_kind(trace)
+    start_ts = _optional_str(trace.get("start_ts"))
+    end_ts = _optional_str(trace.get("end_ts"))
+    timestamp_iso = (
+        end_ts
+        if source_kind == "summary"
+        else _optional_str(trace.get("timestamp") or trace.get("timestamp_iso"))
+    )
+    parent_summary = None if source_kind == "summary" else _canonical_parent_summary(trace.get("parent_summary"))
     return {
         "candidate_id": _candidate_id(trace),
+        "source_kind": source_kind,
+        "source_lane": _source_lane(trace, source_kind=source_kind),
         "conversation_id": _optional_str(trace.get("conversation_id")),
         "role": _optional_str(trace.get("role")),
         "content": str(trace.get("content") or ""),
-        "timestamp_iso": _optional_str(trace.get("timestamp") or trace.get("timestamp_iso")),
+        "timestamp_iso": timestamp_iso,
+        "start_ts": start_ts,
+        "end_ts": end_ts,
         "retrieval_score": float(trace.get("retrieval_score", trace.get("score")) or 0.0),
         "summary_id": _optional_str(trace.get("summary_id")),
-        "parent_summary": _canonical_parent_summary(trace.get("parent_summary")),
+        "parent_summary": parent_summary,
     }
 
 

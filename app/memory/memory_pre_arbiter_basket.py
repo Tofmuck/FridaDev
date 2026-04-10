@@ -21,7 +21,8 @@ _DEDUP_REASON_PRIORITY = {
     'none': 0,
     'lexical_near_duplicate': 1,
     'same_conversation_same_idea': 2,
-    'exact_duplicate': 3,
+    'trace_summary_collision': 3,
+    'exact_duplicate': 4,
 }
 _TOKEN_RE = re.compile(r'[a-z0-9]+')
 
@@ -119,7 +120,52 @@ def _canonical_source_candidate_ids(
     return ordered
 
 
+def _source_kind(item: Mapping[str, Any]) -> str:
+    explicit = _optional_str(item.get('source_kind'))
+    if explicit:
+        return explicit
+    if _optional_str(item.get('role')) == 'summary':
+        return 'summary'
+    return 'trace'
+
+
+def _is_summary_candidate(item: Mapping[str, Any]) -> bool:
+    return _source_kind(item) == 'summary'
+
+
+def _summary_covers_trace(summary: Mapping[str, Any], trace: Mapping[str, Any]) -> bool:
+    if _optional_str(summary.get('conversation_id')) != _optional_str(trace.get('conversation_id')):
+        return False
+    summary_id = _optional_str(summary.get('summary_id'))
+    trace_summary_id = _optional_str(trace.get('summary_id'))
+    if summary_id and trace_summary_id and summary_id == trace_summary_id:
+        return True
+
+    trace_ts = _timestamp_sort_value(trace.get('timestamp_iso'))
+    if trace_ts == 0.0:
+        return False
+    start_ts = _timestamp_sort_value(summary.get('start_ts'))
+    end_ts = _timestamp_sort_value(summary.get('end_ts') or summary.get('timestamp_iso'))
+    if start_ts == 0.0 and end_ts == 0.0:
+        return False
+    if start_ts and trace_ts < start_ts:
+        return False
+    if end_ts and trace_ts > end_ts:
+        return False
+    return True
+
+
+def _trace_summary_collision(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    if _source_kind(left) == _source_kind(right):
+        return False
+    summary = left if _is_summary_candidate(left) else right
+    trace = right if summary is left else left
+    return _summary_covers_trace(summary, trace)
+
+
 def _same_conversation_same_idea(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    if _is_summary_candidate(left) or _is_summary_candidate(right):
+        return False
     if _optional_str(left.get('conversation_id')) != _optional_str(right.get('conversation_id')):
         return False
     left_norm = str(left.get('_content_norm') or '')
@@ -149,6 +195,8 @@ def _same_conversation_same_idea(left: Mapping[str, Any], right: Mapping[str, An
 
 
 def _lexical_near_duplicate(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    if _is_summary_candidate(left) or _is_summary_candidate(right):
+        return False
     left_norm = str(left.get('_content_norm') or '')
     right_norm = str(right.get('_content_norm') or '')
     if not left_norm or not right_norm or left_norm == right_norm:
@@ -178,12 +226,37 @@ def _lexical_near_duplicate(left: Mapping[str, Any], right: Mapping[str, Any]) -
 
 
 def _match_reason(candidate: Mapping[str, Any], group: Mapping[str, Any]) -> str | None:
-    if str(candidate.get('_content_norm') or '') == str(group.get('_content_norm') or ''):
-        return 'exact_duplicate'
-    if _same_conversation_same_idea(candidate, group):
-        return 'same_conversation_same_idea'
-    if _lexical_near_duplicate(candidate, group):
-        return 'lexical_near_duplicate'
+    candidate_members = candidate.get('_members') if isinstance(candidate, Mapping) else None
+    group_members = group.get('_members') if isinstance(group, Mapping) else None
+    if not isinstance(candidate_members, Sequence):
+        candidate_members = [candidate]
+    if not isinstance(group_members, Sequence):
+        group_members = [group]
+
+    for left in candidate_members:
+        for right in group_members:
+            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+                continue
+            if _trace_summary_collision(left, right):
+                return 'trace_summary_collision'
+    for left in candidate_members:
+        for right in group_members:
+            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+                continue
+            if str(left.get('_content_norm') or '') == str(right.get('_content_norm') or ''):
+                return 'exact_duplicate'
+    for left in candidate_members:
+        for right in group_members:
+            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+                continue
+            if _same_conversation_same_idea(left, right):
+                return 'same_conversation_same_idea'
+    for left in candidate_members:
+        for right in group_members:
+            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
+                continue
+            if _lexical_near_duplicate(left, right):
+                return 'lexical_near_duplicate'
     return None
 
 
@@ -199,11 +272,24 @@ def _build_source_item(
     retrieved_trace: Mapping[str, Any],
     internal_trace: Mapping[str, Any],
 ) -> dict[str, Any]:
+    source_kind = _source_kind(canonical_trace)
+    source_lane = _optional_str(canonical_trace.get('source_lane') or retrieved_trace.get('source_lane'))
+    if not source_lane:
+        source_lane = 'summaries' if source_kind == 'summary' else 'global'
     candidate_id = _optional_str(canonical_trace.get('candidate_id')) or 'cand-missing'
     role = _optional_str(canonical_trace.get('role'))
     content = str(canonical_trace.get('content') or '')
-    timestamp_iso = _optional_str(canonical_trace.get('timestamp_iso') or retrieved_trace.get('timestamp'))
-    parent_summary = canonical_trace.get('parent_summary') or retrieved_trace.get('parent_summary')
+    start_ts = _optional_str(canonical_trace.get('start_ts') or retrieved_trace.get('start_ts'))
+    end_ts = _optional_str(canonical_trace.get('end_ts') or retrieved_trace.get('end_ts'))
+    timestamp_iso = _optional_str(
+        canonical_trace.get('timestamp_iso')
+        or retrieved_trace.get('timestamp_iso')
+        or retrieved_trace.get('timestamp')
+        or end_ts
+    )
+    parent_summary = None
+    if source_kind != 'summary':
+        parent_summary = canonical_trace.get('parent_summary') or retrieved_trace.get('parent_summary')
     retrieval_score = _float_or_zero(canonical_trace.get('retrieval_score'))
     semantic_score = _float_or_zero(internal_trace.get('semantic_score'))
     if semantic_score == 0.0 and 'semantic_score' not in internal_trace:
@@ -216,18 +302,20 @@ def _build_source_item(
         {
             'candidate_id': candidate_id,
             'source_candidate_ids': [candidate_id],
-            'source_kind': 'trace',
-            'source_lane': 'global',
+            'source_kind': source_kind,
+            'source_lane': source_lane,
             'conversation_id': _optional_str(canonical_trace.get('conversation_id')),
             'role': role,
             'content': content,
             'timestamp': timestamp_iso,
             'timestamp_iso': timestamp_iso,
+            'start_ts': start_ts,
+            'end_ts': end_ts,
             'retrieval_score': retrieval_score,
             'semantic_score': semantic_score,
             'summary_id': _optional_str(canonical_trace.get('summary_id')),
             'parent_summary': parent_summary,
-            'parent_summary_present': bool(parent_summary),
+            'parent_summary_present': bool(parent_summary) if source_kind != 'summary' else False,
             'dedup_reason_code': 'none',
         }
     )
@@ -238,12 +326,14 @@ def _build_source_item(
         'role': role,
         'content': content,
         'timestamp_iso': timestamp_iso,
+        'start_ts': start_ts,
+        'end_ts': end_ts,
         'retrieval_score': retrieval_score,
         'semantic_score': semantic_score,
         'summary_id': _optional_str(canonical_trace.get('summary_id')),
-        'parent_summary_present': bool(parent_summary),
-        'source_kind': 'trace',
-        'source_lane': 'global',
+        'parent_summary_present': bool(parent_summary) if source_kind != 'summary' else False,
+        'source_kind': source_kind,
+        'source_lane': source_lane,
         'source_candidate_ids': [candidate_id],
         'prompt_candidate': prompt_candidate,
         '_content_norm': _content_norm(content),
@@ -251,13 +341,41 @@ def _build_source_item(
     }
 
 
-def _choose_representative(current: dict[str, Any], incoming: Mapping[str, Any]) -> dict[str, Any]:
-    if _representative_rank(incoming) > _representative_rank(current):
-        updated = dict(incoming)
-        updated['source_candidate_ids'] = list(current.get('source_candidate_ids', ()))
-        updated['dedup_reason_code'] = str(current.get('dedup_reason_code') or 'none')
-        return updated
-    return current
+def _best_member(members: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    return dict(max(members, key=_representative_rank))
+
+
+def _select_group_representative(group: dict[str, Any]) -> dict[str, Any]:
+    members = [
+        member
+        for member in group.get('_members', ())
+        if isinstance(member, Mapping)
+    ]
+    if not members:
+        return group
+
+    trace_members = [member for member in members if _source_kind(member) == 'trace']
+    summary_members = [member for member in members if _source_kind(member) == 'summary']
+
+    if trace_members and summary_members:
+        best_trace = _best_member(trace_members)
+        best_summary = _best_member(summary_members)
+        if (
+            len(trace_members) >= 2
+            and _float_or_zero(best_summary.get('retrieval_score'))
+            >= _float_or_zero(best_trace.get('retrieval_score'))
+        ):
+            representative = best_summary
+        else:
+            representative = best_trace
+    else:
+        representative = _best_member(members)
+
+    selected = dict(representative)
+    selected['source_candidate_ids'] = list(group.get('source_candidate_ids', ()))
+    selected['dedup_reason_code'] = str(group.get('dedup_reason_code') or 'none')
+    selected['_members'] = [dict(member) for member in members]
+    return selected
 
 
 def _merge_source_item(
@@ -266,7 +384,18 @@ def _merge_source_item(
     *,
     reason_code: str,
 ) -> dict[str, Any]:
-    updated = _choose_representative(group, incoming)
+    updated = dict(group)
+    updated_members = [dict(member) for member in updated.get('_members', ())]
+    incoming_members = incoming.get('_members') if isinstance(incoming, Mapping) else None
+    if isinstance(incoming_members, Sequence):
+        updated_members.extend(
+            dict(member)
+            for member in incoming_members
+            if isinstance(member, Mapping)
+        )
+    else:
+        updated_members.append(dict(incoming))
+    updated['_members'] = updated_members
     source_candidate_ids = list(updated.get('source_candidate_ids', ()))
     for candidate_id in list(group.get('source_candidate_ids', ())) + list(incoming.get('source_candidate_ids', ())):
         text = _optional_str(candidate_id)
@@ -277,7 +406,7 @@ def _merge_source_item(
         str(group.get('dedup_reason_code') or 'none'),
         reason_code,
     )
-    return updated
+    return _select_group_representative(updated)
 
 
 def _finalize_group(group: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -300,6 +429,8 @@ def _finalize_group(group: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str,
         'role': _optional_str(group.get('role')),
         'content': str(group.get('content') or ''),
         'timestamp_iso': _optional_str(group.get('timestamp_iso')),
+        'start_ts': _optional_str(group.get('start_ts')),
+        'end_ts': _optional_str(group.get('end_ts')),
         'retrieval_score': _float_or_zero(group.get('retrieval_score')),
         'semantic_score': _float_or_zero(group.get('semantic_score')),
         'summary_id': _optional_str(group.get('summary_id')),
@@ -349,18 +480,29 @@ def build_pre_arbiter_basket(
 
     groups: list[dict[str, Any]] = []
     for item in source_items:
-        merged = False
+        matches: list[tuple[int, str]] = []
         for index, group in enumerate(groups):
             reason_code = _match_reason(item, group)
             if not reason_code:
                 continue
-            groups[index] = _merge_source_item(group, item, reason_code=reason_code)
-            merged = True
-            break
-        if not merged:
+            matches.append((index, reason_code))
+        if not matches:
             base = dict(item)
             base['dedup_reason_code'] = 'none'
+            base['_members'] = [dict(item)]
             groups.append(base)
+            continue
+
+        primary_index, primary_reason = matches[0]
+        primary_group = _merge_source_item(groups[primary_index], item, reason_code=primary_reason)
+        for secondary_index, secondary_reason in reversed(matches[1:]):
+            primary_group = _merge_source_item(
+                primary_group,
+                groups[secondary_index],
+                reason_code=secondary_reason,
+            )
+            del groups[secondary_index]
+        groups[primary_index] = primary_group
 
     groups.sort(key=_representative_rank, reverse=True)
     limit = max(0, int(max_candidates))

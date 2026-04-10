@@ -4,7 +4,9 @@ Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: contrat minimal de la lane `summaries`, doctrine de fusion `traces + summaries`, et decision de readiness Phase 4
 Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
-Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+Baselines liees:
+- `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+- `app/docs/states/baselines/memory-rag-8C-evaluation-2026-04-10.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`
 Spec liee: `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
@@ -12,6 +14,8 @@ Spec liee: `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
 ## 1. Objet
 
 Cette spec ferme la Phase 4 du chantier `memory-rag-relevance`.
+
+Apres implementation du lot `8C`, elle reste la reference normative du contrat minimal de la lane `summaries`; la baseline `8C` archive le verdict runtime et rappelle que le live OVH reste neutre tant que `summaries=0`.
 
 Elle fixe, sans patch runtime:
 - la cause retenue de `summaries=0` sur le runtime OVH observe;

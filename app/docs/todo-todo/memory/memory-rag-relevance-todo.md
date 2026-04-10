@@ -364,17 +364,21 @@ Statut de pilotage:
 
 ## Phase 8 - Futur lot d'implementation C: voie `summaries`
 
-- [ ] Le lot C n'ouvre que la voie `summaries`.
-- [ ] Le lot C n'introduit pas encore de reranker.
-- [ ] Le lot C prouve la fusion propre `traces + summaries`.
-- [ ] Le lot C prouve l'absence d'injection double.
-- [ ] Le lot C ajoute des tests avec fixtures ou donnees live selon la decision de la Phase 4.
-- [ ] Le lot C rejoue le corpus de probes et compare la couverture utile sur les cas ou des resumes existent.
+Statut de pilotage:
+- phase fermee au `2026-04-10`;
+- baseline de cloture: `app/docs/states/baselines/memory-rag-8C-evaluation-2026-04-10.md`
+
+- [x] Le lot C n'ouvre que la voie `summaries`.
+- [x] Le lot C n'introduit pas encore de reranker.
+- [x] Le lot C prouve la fusion propre `traces + summaries`.
+- [x] Le lot C prouve l'absence d'injection double.
+- [x] Le lot C ajoute des tests avec fixtures ou donnees live selon la decision de la Phase 4.
+- [x] Le lot C rejoue le corpus de probes et compare la couverture utile sur les cas ou des resumes existent.
 
 ### Gate 8C
 
-- [ ] La voie `summaries` apporte un gain mesurable ou est explicitement ajournee avec raison.
-- [ ] Les collisions trace / summary sont gerees proprement.
+- [x] La voie `summaries` apporte un gain mesurable sur fixtures/replay et reste explicitement neutre en live tant que `summaries=0`.
+- [x] Les collisions trace / summary sont gerees proprement.
 
 ## Phase 9 - Futur lot d'evaluation D: reranker tardif et optionnel
 

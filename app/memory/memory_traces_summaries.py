@@ -58,6 +58,8 @@ _LEXICAL_STOPWORDS = {
 }
 _HYBRID_INTERNAL_LIMIT_MIN = 12
 _HYBRID_INTERNAL_LIMIT_MULTIPLIER = 3
+_SUMMARY_LANE_LIMIT_MAX = 3
+_PRE_ARBITER_TOTAL_LIMIT = 8
 
 
 def _normalize_lexical_text(text: str) -> str:
@@ -158,6 +160,16 @@ def _trace_public_key(trace: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _summary_public_key(summary: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        summary.get('summary_id'),
+        summary.get('conversation_id'),
+        summary.get('start_ts'),
+        summary.get('end_ts'),
+        summary.get('content'),
+    )
+
+
 def _timestamp_sort_value(value: Any) -> datetime:
     if not value:
         return datetime.min.replace(tzinfo=timezone.utc)
@@ -197,6 +209,62 @@ def _public_trace_row(trace: dict[str, Any]) -> dict[str, Any]:
         'summary_id': trace.get('summary_id'),
         'score': float(trace.get('score') or 0.0),
     }
+
+
+def _coerce_summary_row(
+    summary_id: Any,
+    conversation_id: Any,
+    start_ts: Any,
+    end_ts: Any,
+    content: Any,
+    score: Any,
+) -> dict[str, Any]:
+    timestamp_iso = str(end_ts) if end_ts else None
+    return {
+        'conversation_id': conversation_id,
+        'role': 'summary',
+        'content': content,
+        'timestamp': timestamp_iso,
+        'timestamp_iso': timestamp_iso,
+        'start_ts': str(start_ts) if start_ts else None,
+        'end_ts': str(end_ts) if end_ts else None,
+        'summary_id': str(summary_id) if summary_id else None,
+        'score': float(score),
+        'retrieval_score': float(score),
+        'semantic_score': float(score),
+        'source_kind': 'summary',
+        'source_lane': 'summaries',
+    }
+
+
+def _summary_lane_limit(top_k: int) -> int:
+    remaining_budget = max(0, _PRE_ARBITER_TOTAL_LIMIT - int(top_k))
+    return min(_SUMMARY_LANE_LIMIT_MAX, remaining_budget)
+
+
+def _retrieve_summary_candidates(
+    q_vec: list[float],
+    *,
+    limit: int,
+    conn_factory: Callable[[], Any],
+) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return []
+    with conn_factory() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''
+                SELECT id, conversation_id, start_ts, end_ts, content,
+                       1 - (embedding <=> %s::vector) AS score
+                FROM summaries
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> %s::vector
+                LIMIT %s
+                ''',
+                (str(q_vec), str(q_vec), int(limit)),
+            )
+            rows = cur.fetchall()
+    return [_coerce_summary_row(*row) for row in rows]
 
 
 def _retrieve_dense_candidates(
@@ -472,6 +540,28 @@ def _merge_hybrid_candidates(
     return out
 
 
+def _merge_trace_and_summary_candidates(
+    *,
+    trace_candidates: list[dict[str, Any]],
+    summary_candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for candidate in trace_candidates:
+        merged[_trace_public_key(candidate)] = dict(candidate)
+    for candidate in summary_candidates:
+        merged[_summary_public_key(candidate)] = dict(candidate)
+    out = list(merged.values())
+    out.sort(
+        key=lambda item: (
+            float(item.get('retrieval_score', item.get('score')) or 0.0),
+            _timestamp_sort_value(item.get('timestamp_iso') or item.get('timestamp')),
+            1 if str(item.get('source_kind') or '') == 'summary' else 0,
+        ),
+        reverse=True,
+    )
+    return out
+
+
 def _embed_with_purpose(
     embed_fn: Callable[..., list[float]],
     text: str,
@@ -613,6 +703,7 @@ def retrieve(
     top_k: int | None = None,
     *,
     include_internal_scores: bool = False,
+    include_summary_candidates: bool = False,
     runtime_embedding_value_fn: Callable[[str], Any],
     conn_factory: Callable[[], Any],
     embed_fn: Callable[..., list[float]],
@@ -667,6 +758,17 @@ def retrieve(
             top_k=int(top_k),
             include_internal_scores=include_internal_scores,
         )
+        summary_candidates: list[dict[str, Any]] = []
+        if include_summary_candidates:
+            summary_candidates = _retrieve_summary_candidates(
+                q_vec,
+                limit=_summary_lane_limit(int(top_k)),
+                conn_factory=conn_factory,
+            )
+            out = _merge_trace_and_summary_candidates(
+                trace_candidates=out,
+                summary_candidates=summary_candidates,
+            )
         chat_turn_logger.emit(
             'memory_retrieve',
             status='ok',
@@ -676,6 +778,7 @@ def retrieve(
                 'top_k_returned': len(out),
                 'dense_candidates_count': len(dense_candidates),
                 'lexical_candidates_count': len(lexical_candidates),
+                'summary_candidates_count': len(summary_candidates),
             },
         )
         return out
@@ -789,6 +892,8 @@ def get_summary_for_trace(
     - by summary_id when available,
     - otherwise by time overlap on same conversation_id.
     """
+    if str(trace.get('source_kind') or '') == 'summary' or str(trace.get('role') or '') == 'summary':
+        return None
     summary_id = trace.get('summary_id')
     conv_id = trace.get('conversation_id')
     ts = trace.get('timestamp')
@@ -845,6 +950,9 @@ def enrich_traces_with_summaries(
     """
     cache: dict[str, dict[str, Any] | None] = {}
     for trace in traces:
+        if str(trace.get('source_kind') or '') == 'summary' or str(trace.get('role') or '') == 'summary':
+            trace['parent_summary'] = None
+            continue
         summary_id = trace.get('summary_id')
         cache_key = summary_id or f"{trace.get('conversation_id')}@{trace.get('timestamp')}"
         if cache_key not in cache:

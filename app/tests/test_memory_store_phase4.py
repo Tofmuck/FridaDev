@@ -144,7 +144,7 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(observed['lexical_limit'], 27)
 
     def test_retrieve_for_arbiter_requests_internal_scores_while_public_retrieve_stays_stable(self) -> None:
-        observed_include_internal_scores = []
+        observed_calls = []
         original_retrieve = memory_store.memory_traces_summaries.retrieve
 
         def fake_retrieve(
@@ -152,12 +152,18 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
             top_k=None,
             *,
             include_internal_scores=False,
+            include_summary_candidates=False,
             runtime_embedding_value_fn,
             conn_factory,
             embed_fn,
             logger,
         ):
-            observed_include_internal_scores.append(include_internal_scores)
+            observed_calls.append(
+                {
+                    'include_internal_scores': include_internal_scores,
+                    'include_summary_candidates': include_summary_candidates,
+                }
+            )
             self.assertIsNone(top_k)
             self.assertIsNotNone(runtime_embedding_value_fn)
             self.assertIsNotNone(conn_factory)
@@ -183,7 +189,13 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         finally:
             memory_store.memory_traces_summaries.retrieve = original_retrieve
 
-        self.assertEqual(observed_include_internal_scores, [False, True])
+        self.assertEqual(
+            observed_calls,
+            [
+                {'include_internal_scores': False, 'include_summary_candidates': False},
+                {'include_internal_scores': True, 'include_summary_candidates': True},
+            ],
+        )
         self.assertEqual(
             set(public_rows[0].keys()),
             {'conversation_id', 'role', 'content', 'timestamp', 'summary_id', 'score'},
@@ -191,6 +203,115 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(public_rows[0]['summary_id'], 'sum-1')
         self.assertEqual(internal_rows[0]['retrieval_score'], 0.98)
         self.assertEqual(internal_rows[0]['semantic_score'], 0.0)
+
+    def test_retrieve_for_arbiter_adds_bounded_summary_lane_without_changing_public_retrieve(self) -> None:
+        observed = {'summary_limit': None, 'public_summary_limit': None}
+        original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_embed = memory_store.embed
+        original_conn = memory_store._conn
+        original_dense = memory_store.memory_traces_summaries._retrieve_dense_candidates
+        original_lexical = memory_store.memory_traces_summaries._retrieve_lexical_candidates
+        original_merge = memory_store.memory_traces_summaries._merge_hybrid_candidates
+        original_summary = memory_store.memory_traces_summaries._retrieve_summary_candidates
+
+        def embedding_view_top_k_five():
+            return runtime_settings.RuntimeSectionView(
+                section='embedding',
+                payload=runtime_settings.normalize_stored_payload(
+                    'embedding',
+                    {
+                        'endpoint': {'value': 'https://embed.override.example', 'origin': 'db'},
+                        'model': {'value': 'intfloat/multilingual-e5-small', 'origin': 'db'},
+                        'token': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'dimensions': {'value': 768, 'origin': 'db'},
+                        'top_k': {'value': 5, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        memory_store.runtime_settings.get_embedding_settings = embedding_view_top_k_five
+        memory_store.embed = lambda query, mode='query', purpose=None: [0.1, 0.2, 0.3]
+        memory_store._conn = lambda: object()
+
+        def fake_dense(_q_vec, *, limit, conn_factory):
+            self.assertEqual(limit, 15)
+            self.assertIsNotNone(conn_factory)
+            return [
+                {
+                    'conversation_id': 'conv-trace',
+                    'role': 'user',
+                    'content': 'Trace utile',
+                    'timestamp': '2026-04-10T08:00:00Z',
+                    'summary_id': None,
+                    'score': 0.83,
+                }
+            ]
+
+        def fake_lexical(_query, *, limit, conn_factory):
+            self.assertEqual(limit, 15)
+            self.assertIsNotNone(conn_factory)
+            return []
+
+        def fake_merge(*, dense_candidates, lexical_candidates, top_k, include_internal_scores=False):
+            self.assertEqual(top_k, 5)
+            self.assertEqual(len(dense_candidates), 1)
+            self.assertEqual(lexical_candidates, [])
+            row = dict(dense_candidates[0])
+            if include_internal_scores:
+                row['retrieval_score'] = row['score']
+                row['semantic_score'] = row['score']
+            return [row]
+
+        def fake_summary(_q_vec, *, limit, conn_factory):
+            self.assertIsNotNone(conn_factory)
+            if observed['summary_limit'] is None:
+                observed['summary_limit'] = limit
+            else:
+                observed['public_summary_limit'] = limit
+            return [
+                {
+                    'conversation_id': 'conv-summary',
+                    'role': 'summary',
+                    'content': 'Resume utile',
+                    'timestamp': '2026-04-10T08:05:00Z',
+                    'timestamp_iso': '2026-04-10T08:05:00Z',
+                    'start_ts': '2026-04-10T08:00:00Z',
+                    'end_ts': '2026-04-10T08:05:00Z',
+                    'summary_id': 'sum-1',
+                    'score': 0.91,
+                    'retrieval_score': 0.91,
+                    'semantic_score': 0.91,
+                    'source_kind': 'summary',
+                    'source_lane': 'summaries',
+                }
+            ]
+
+        memory_store.memory_traces_summaries._retrieve_dense_candidates = fake_dense
+        memory_store.memory_traces_summaries._retrieve_lexical_candidates = fake_lexical
+        memory_store.memory_traces_summaries._merge_hybrid_candidates = fake_merge
+        memory_store.memory_traces_summaries._retrieve_summary_candidates = fake_summary
+        try:
+            public_rows = memory_store.retrieve('question')
+            internal_rows = memory_store.retrieve_for_arbiter('question')
+        finally:
+            memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store.embed = original_embed
+            memory_store._conn = original_conn
+            memory_store.memory_traces_summaries._retrieve_dense_candidates = original_dense
+            memory_store.memory_traces_summaries._retrieve_lexical_candidates = original_lexical
+            memory_store.memory_traces_summaries._merge_hybrid_candidates = original_merge
+            memory_store.memory_traces_summaries._retrieve_summary_candidates = original_summary
+
+        self.assertEqual(observed['summary_limit'], 3)
+        self.assertIsNone(observed['public_summary_limit'])
+        self.assertEqual(len(public_rows), 1)
+        self.assertEqual(public_rows[0]['role'], 'user')
+        self.assertEqual(len(internal_rows), 2)
+        self.assertEqual(internal_rows[0]['role'], 'summary')
+        self.assertEqual(internal_rows[0]['source_lane'], 'summaries')
+        self.assertEqual(internal_rows[0]['summary_id'], 'sum-1')
 
     def test_init_db_uses_runtime_embedding_dimensions(self) -> None:
         observed_queries = []

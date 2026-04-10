@@ -231,6 +231,10 @@ Chaque candidat du panier pre-arbitre DOIT porter:
 
 Un candidat PEUT porter, pour diagnostic et pilotage local:
 
+- `start_ts`
+  - borne basse d'un candidat `summary`
+- `end_ts`
+  - borne haute d'un candidat `summary`
 - `recency_bucket`
   - enum conseille: `recent | middle | stale`
 - `conversation_rank`
@@ -241,6 +245,7 @@ Un candidat PEUT porter, pour diagnostic et pilotage local:
 Ces champs ne sont pas requis pour fermer la Phase 3, mais leur place est tranchee:
 - ils appartiennent au panier cible;
 - ils restent diagnostic-only dans un premier lot V2.
+- pour un `summary`, `timestamp_iso` reste l'ancre arbitre/prompt, tandis que `start_ts` et `end_ts` restent diagnostiques.
 
 ## 7.3 Invariants du schema
 

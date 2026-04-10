@@ -149,7 +149,13 @@ def make_memory_message(
         return None
     lines = [MEMORY_TRACES_BLOCK_HEADER]
     for trace in traces:
-        role = "Utilisateur" if trace.get("role") == "user" else "Assistant"
+        trace_role = str(trace.get("role") or "")
+        if trace_role == "user":
+            role = "Utilisateur"
+        elif trace_role == "summary":
+            role = "Resume"
+        else:
+            role = "Assistant"
         ts = trace.get("timestamp") or ""
         label = delta_t_label_func(ts, ts_now) if ts else ""
         prefix = f"[{label}] " if label else ""

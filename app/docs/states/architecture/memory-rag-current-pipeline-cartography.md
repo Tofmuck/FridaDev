@@ -2,7 +2,7 @@
 
 Statut: reference active
 Classement: `app/docs/states/architecture/`
-Portee: cartographie exacte du pipeline memoire/RAG courant apres implementation du lot 7B
+Portee: cartographie exacte du pipeline memoire/RAG courant apres implementation des lots 7B et 8C
 Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
 Baselines liees:
 - `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
@@ -10,7 +10,7 @@ Baselines liees:
 
 ## 1. Objet
 
-Cette note documente l'etat runtime courant du chantier `memory-rag-relevance` apres les lots `6A` et `7B`.
+Cette note documente l'etat runtime courant du chantier `memory-rag-relevance` apres les lots `6A`, `7B` et `8C`.
 
 Elle documente:
 - la chaine exacte `user_msg -> retrieval -> enrichissement -> arbitre -> prompt`;
@@ -42,15 +42,16 @@ Preuves runtime relues pendant cette phase:
 
 Constats runtime directement verifies:
 - `memory_store.retrieve()[0]` garde aujourd'hui les cles publiques `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
-- `memory_store.retrieve_for_arbiter()[0]` ajoute `retrieval_score` et `semantic_score` pour la frontiere pre-arbitre, sans changer la shape publique de `retrieve()`;
+- `memory_store.retrieve_for_arbiter()` ajoute `retrieval_score` et `semantic_score` pour la frontiere pre-arbitre, et peut maintenant completer les traces par une petite lane `summaries` interne;
 - l'enrichissement ajoute seulement `parent_summary`;
 - `memory_retrieved` expose `schema_version`, `retrieval_query`, `top_k_requested`, `retrieved_count`, `traces`;
-- `memory_retrieved.traces[*]` expose `candidate_id`, `conversation_id`, `role`, `content`, `timestamp_iso`, `retrieval_score`, `summary_id`, `parent_summary`;
+- `memory_retrieved.traces[*]` expose `candidate_id`, `source_kind`, `source_lane`, `conversation_id`, `role`, `content`, `timestamp_iso`, `start_ts`, `end_ts`, `retrieval_score`, `summary_id`, `parent_summary`;
 - `memory_arbitration` expose maintenant `schema_version`, `status`, `reason_code`, `raw_candidates_count`, `basket_candidates_count`, `basket_limit`, `basket_candidates`, `decisions_count`, `kept_count`, `rejected_count`, `injected_candidate_ids`, `decisions`;
 - `memory_arbitration.decisions[*]` expose maintenant `candidate_id`, `retrieved_candidate_id`, `legacy_candidate_id`, `legacy_candidate_index`, `source_candidate_ids`, `source_kind`, `source_lane`, `keep`, `semantic_relevance`, `contextual_gain`, `redundant_with_recent`, `reason`, `decision_source`, `model`;
 - `arbiter_decisions` persiste maintenant le `candidate_id` stable du representant quand il existe, avec `candidate_content`, `candidate_role`, `candidate_ts`, `candidate_score`, plus verdict et scores;
 - `prompt_prepared` persiste maintenant un resume de l'injection memoire effective dans le prompt, y compris `injected_candidate_ids`;
-- `summaries=0` sur le runtime actif, donc `parent_summary` est actuellement nul en pratique et le bloc `[Contexte du souvenir ...]` n'apparait pas live.
+- `summaries=0` sur le runtime actif, donc la nouvelle lane `summaries` reste neutre live au `2026-04-10`;
+- `parent_summary` reste actuellement nul en pratique sur OVH et le bloc `[Contexte du souvenir ...]` n'apparait pas live hors fixtures/replay.
 
 ## 3. Glossaire minimal pour lever les ambiguities
 
@@ -90,6 +91,7 @@ Ce que fait le retrieval:
   - lane dense vectorielle;
   - lane FTS `to_tsvector('simple', ...)`;
   - voie exacte `pg_trgm` sur contenu normalise, triee par distance `<->` quand elle s'active;
+- quand la surface interne pre-arbitre est demandee, peut ajouter une lane vectorielle `summaries` bornee a `top3` interne si des resumes existent;
 - garde `top_k` comme cap final public.
 
 Forme de sortie publique reelle:
@@ -104,6 +106,14 @@ Forme de sortie interne pre-arbitre:
 - meme base publique;
 - plus `retrieval_score`;
 - plus `semantic_score`.
+- pour un candidat `summary` interne:
+  - `source_kind=summary`
+  - `source_lane=summaries`
+  - `role=summary`
+  - `timestamp_iso=end_ts`
+  - `start_ts`
+  - `end_ts`
+  - `summary_id` non nul
 
 Ce que la surface publique ne contient pas encore:
 - aucun `candidate_id` canonique;
@@ -134,7 +144,8 @@ Forme de sortie:
 
 Point factuel important:
 - au `2026-04-10`, `summaries=0` sur OVH;
-- donc `parent_summary` existe dans le contrat mais vaut `None` en pratique sur le runtime actif.
+- donc la lane `summaries` existe desormais en code mais reste vide live;
+- `parent_summary` existe dans le contrat mais vaut `None` en pratique sur le runtime actif.
 
 ### 4.4 Construction de `memory_retrieved`
 
@@ -152,10 +163,14 @@ Ce que garde `memory_retrieved`:
 - `top_k_requested`
 - `retrieved_count`
 - `traces[*].candidate_id`
+- `traces[*].source_kind`
+- `traces[*].source_lane`
 - `traces[*].conversation_id`
 - `traces[*].role`
 - `traces[*].content`
 - `traces[*].timestamp_iso`
+- `traces[*].start_ts`
+- `traces[*].end_ts`
 - `traces[*].retrieval_score`
 - `traces[*].summary_id`
 - `traces[*].parent_summary`
@@ -177,6 +192,7 @@ Chemin:
 
 Important:
 - l'arbitre consomme un panier deja borne et dedupe;
+- le panier peut maintenant contenir des representants `trace` ou `summary`;
 - il ne voit toujours pas `parent_summary` complet;
 - il ne voit pas `conversation_id` ni `summary_id` dans son payload explicite.
 
@@ -246,6 +262,8 @@ Forme canonique runtime `memory_arbitration`:
 - `basket_candidates[*].role`
 - `basket_candidates[*].content`
 - `basket_candidates[*].timestamp_iso`
+- `basket_candidates[*].start_ts`
+- `basket_candidates[*].end_ts`
 - `basket_candidates[*].retrieval_score`
 - `basket_candidates[*].semantic_score`
 - `basket_candidates[*].summary_id`

@@ -241,6 +241,7 @@ def retrieve_for_arbiter(query: str, top_k: Optional[int] = None) -> list[dict[s
         query,
         top_k=top_k,
         include_internal_scores=True,
+        include_summary_candidates=True,
         runtime_embedding_value_fn=_runtime_embedding_value,
         conn_factory=_conn,
         embed_fn=embed,
