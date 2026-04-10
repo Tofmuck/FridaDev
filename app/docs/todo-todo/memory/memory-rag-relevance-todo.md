@@ -272,28 +272,29 @@ La doctrine conservee est explicite:
 
 ## Phase 5 - Mesures de succes et feuille d'evaluation
 
-- [ ] Figer une grille de lecture manuelle des probes:
+- [x] Figer une grille de lecture manuelle des probes:
   - souvenir utile;
   - souvenir tolerable mais faible;
   - faux positif;
   - doublon;
   - item a garder pour contexte recent plutot que memoire durable.
-- [ ] Definir une mesure simple de couverture utile par probe.
-- [ ] Definir une mesure simple de bruit par probe.
-- [ ] Definir une mesure simple de duplication par probe.
-- [ ] Definir une mesure simple de diversite de conversations dans le panier.
-- [ ] Definir comment lire la contribution reelle de l'arbitre:
+- [x] Definir une mesure simple de couverture utile par probe.
+- [x] Definir une mesure simple de bruit par probe.
+- [x] Definir une mesure simple de duplication par probe.
+- [x] Definir une mesure simple de diversite de conversations dans le panier.
+- [x] Definir comment lire la contribution reelle de l'arbitre:
   - recall deja bon mais tri utile;
   - recall mauvais que l'arbitre ne peut pas sauver;
   - rejets surtout de nettoyage.
-- [ ] Definir le budget de latence acceptable par etape future.
-- [ ] Definir ce qui constituera une regression bloquante.
-- [ ] Definir le format de comparaison avant/apres a archiver.
+- [x] Definir le budget de latence acceptable par etape future.
+- [x] Definir ce qui constituera une regression bloquante.
+- [x] Definir le format de comparaison avant/apres a archiver.
+  - Reference Phase 5: `app/docs/states/specs/memory-rag-evaluation-sheet.md`
 
 ### Gate 5
 
-- [ ] La feuille d'evaluation existe avant le premier patch d'implementation.
-- [ ] Les criteres de succes et d'echec sont explicites.
+- [x] La feuille d'evaluation existe avant le premier patch d'implementation.
+- [x] Les criteres de succes et d'echec sont explicites.
 
 ## Phase 6 - Futur lot d'implementation A: candidate generation
 
