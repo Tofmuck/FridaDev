@@ -276,6 +276,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'prompt_block_count': 0,
                 'memory_traces_injected': False,
                 'memory_traces_injected_count': 0,
+                'injected_candidate_ids': [],
                 'memory_context_injected': False,
                 'memory_context_summary_count': 0,
                 'context_hints_injected': False,
@@ -325,8 +326,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 {'id': 'conv-prompt-memory-injection', 'messages': []},
                 'openrouter/runtime-main-model',
                 memory_traces=[
-                    {'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
-                    {'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
+                    {'candidate_id': 'cand-user', 'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
+                    {'candidate_id': 'cand-assistant', 'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
                 ],
                 context_hints=[
                     {'content': 'Christophe Muck'},
@@ -363,6 +364,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'prompt_block_count': 3,
                 'memory_traces_injected': True,
                 'memory_traces_injected_count': 2,
+                'injected_candidate_ids': ['cand-user', 'cand-assistant'],
                 'memory_context_injected': True,
                 'memory_context_summary_count': 2,
                 'context_hints_injected': True,

@@ -2456,6 +2456,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'prompt_block_count': 0,
                 'memory_traces_injected': False,
                 'memory_traces_injected_count': 0,
+                'injected_candidate_ids': [],
                 'memory_context_injected': False,
                 'memory_context_summary_count': 0,
                 'context_hints_injected': False,

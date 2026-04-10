@@ -27,7 +27,7 @@ Output contract:
 {
   "decisions": [
     {
-      "candidate_id": "0",
+      "candidate_id": "cand-0c575f34c4f459c3",
       "keep": true,
       "semantic_relevance": 0.91,
       "contextual_gain": 0.72,
@@ -38,7 +38,7 @@ Output contract:
 }
 
 Validation constraints:
-- candidate_id: stringified integer referencing provided candidates.
+- candidate_id: exact stable string referencing a provided candidate.
 - keep: boolean.
 - semantic_relevance: float in [0,1].
 - contextual_gain: float in [0,1].

@@ -258,14 +258,21 @@ def record_arbiter_decisions(
 
     try:
         fallback_arbiter_model = arbiter_model if arbiter_model != 'unknown' else None
+        traces_by_candidate_id = {
+            str(trace.get('candidate_id') or '').strip(): trace
+            for trace in traces
+            if str(trace.get('candidate_id') or '').strip()
+        }
         with conn_factory() as conn:
             with conn.cursor() as cur:
                 for decision in decisions:
                     candidate_id = str(decision.get('candidate_id', '')).strip()
-                    if not candidate_id.isdigit():
+                    if not candidate_id:
                         continue
-                    idx = int(candidate_id)
-                    trace = traces[idx] if 0 <= idx < len(traces) else {}
+                    trace = traces_by_candidate_id.get(candidate_id, {})
+                    if not trace and candidate_id.isdigit():
+                        idx = int(candidate_id)
+                        trace = traces[idx] if 0 <= idx < len(traces) else {}
                     decision_model = str(decision.get('model') or '').strip()
                     if not decision_model and fallback_arbiter_model:
                         decision_model = fallback_arbiter_model
@@ -294,8 +301,8 @@ def record_arbiter_decisions(
                             candidate_id,
                             trace.get('role'),
                             trace.get('content'),
-                            trace.get('timestamp'),
-                            trace_float_fn(trace.get('score')),
+                            trace.get('timestamp_iso') or trace.get('timestamp'),
+                            trace_float_fn(trace.get('retrieval_score', trace.get('score'))),
                             bool(decision.get('keep', False)),
                             trace_float_fn(decision.get('semantic_relevance')),
                             trace_float_fn(decision.get('contextual_gain')),

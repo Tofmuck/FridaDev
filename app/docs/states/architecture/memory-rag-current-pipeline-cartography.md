@@ -2,15 +2,17 @@
 
 Statut: reference active
 Classement: `app/docs/states/architecture/`
-Portee: cartographie exacte du pipeline memoire/RAG courant avant tout lot d'implementation V2
+Portee: cartographie exacte du pipeline memoire/RAG courant apres implementation du lot 7B
 Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
-Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+Baselines liees:
+- `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+- `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
 
 ## 1. Objet
 
-Cette note ferme la Phase 1 du chantier `memory-rag-relevance`.
+Cette note documente l'etat runtime courant du chantier `memory-rag-relevance` apres les lots `6A` et `7B`.
 
-Elle documente, sans patch runtime:
+Elle documente:
 - la chaine exacte `user_msg -> retrieval -> enrichissement -> arbitre -> prompt`;
 - les quatre surfaces de donnees a distinguer pour la suite;
 - la place exacte de `parent_summary`;
@@ -19,8 +21,8 @@ Elle documente, sans patch runtime:
 - ce qu'il manque encore pour evaluer proprement la pertinence amont.
 
 Elle ne fait pas:
-- d'appel live a l'arbitre quand cela impliquerait un LLM;
-- de changement de seuils;
+- de redesign complet de l'arbitre;
+- d'ouverture de la voie `summaries` live;
 - de design de la future surface finale d'observabilite memoire/RAG.
 
 ## 2. Methode et preuves relues
@@ -44,18 +46,19 @@ Constats runtime directement verifies:
 - l'enrichissement ajoute seulement `parent_summary`;
 - `memory_retrieved` expose `schema_version`, `retrieval_query`, `top_k_requested`, `retrieved_count`, `traces`;
 - `memory_retrieved.traces[*]` expose `candidate_id`, `conversation_id`, `role`, `content`, `timestamp_iso`, `retrieval_score`, `summary_id`, `parent_summary`;
-- `memory_arbitration` expose `schema_version`, `status`, `reason_code`, `raw_candidates_count`, `decisions_count`, `kept_count`, `rejected_count`, `decisions`;
-- `memory_arbitration.decisions[*]` expose `retrieved_candidate_id`, `legacy_candidate_id`, `legacy_candidate_index`, `keep`, `semantic_relevance`, `contextual_gain`, `redundant_with_recent`, `reason`, `decision_source`, `model`;
-- `arbiter_decisions` persiste un autre schema, par ligne candidate, avec `candidate_content`, `candidate_role`, `candidate_ts`, `candidate_score`, plus verdict et scores;
-- `prompt_prepared` persiste deja un resume de l'injection memoire effective dans le prompt;
+- `memory_arbitration` expose maintenant `schema_version`, `status`, `reason_code`, `raw_candidates_count`, `basket_candidates_count`, `basket_limit`, `basket_candidates`, `decisions_count`, `kept_count`, `rejected_count`, `injected_candidate_ids`, `decisions`;
+- `memory_arbitration.decisions[*]` expose maintenant `candidate_id`, `retrieved_candidate_id`, `legacy_candidate_id`, `legacy_candidate_index`, `source_candidate_ids`, `source_kind`, `source_lane`, `keep`, `semantic_relevance`, `contextual_gain`, `redundant_with_recent`, `reason`, `decision_source`, `model`;
+- `arbiter_decisions` persiste maintenant le `candidate_id` stable du representant quand il existe, avec `candidate_content`, `candidate_role`, `candidate_ts`, `candidate_score`, plus verdict et scores;
+- `prompt_prepared` persiste maintenant un resume de l'injection memoire effective dans le prompt, y compris `injected_candidate_ids`;
 - `summaries=0` sur le runtime actif, donc `parent_summary` est actuellement nul en pratique et le bloc `[Contexte du souvenir ...]` n'apparait pas live.
 
 ## 3. Glossaire minimal pour lever les ambiguities
 
-- `raw_traces`: sortie brute remise a l'arbitre, issue de `memory_store.retrieve_for_arbiter(user_msg)` quand cette surface interne est disponible.
+- `raw_traces`: sortie brute du retrieval hybride, issue de `memory_store.retrieve_for_arbiter(user_msg)` quand cette surface interne est disponible.
 - `retrieved_candidates`: `raw_traces` apres enrichissement `parent_summary`.
 - `memory_retrieved`: snapshot canonique de `retrieved_candidates`, construit avant l'arbitre.
-- `filtered_traces`: sous-ensemble garde par l'arbitre.
+- `pre_arbiter_basket`: panier borne et dedupe construit a partir de `memory_retrieved`.
+- `filtered_traces`: sous-ensemble garde par l'arbitre a partir du panier pre-arbitre.
 - `memory_arbitration`: snapshot canonique des decisions arbitre, relie a `memory_retrieved`.
 - `memory_traces`: liste effectivement transmise au constructeur de prompt.
 - `arbiter_decisions`: table SQL persistante, une ligne par decision candidate.
@@ -169,20 +172,23 @@ Ce que `memory_retrieved` ne garde pas:
 ### 4.5 Ce que voit reellement l'arbitre
 
 Chemin:
-- `arbiter.filter_traces_with_diagnostics(raw_traces, recent_turns)`
+- `memory_pre_arbiter_basket.build_pre_arbiter_basket(...)`
+- `arbiter.filter_traces_with_diagnostics(pre_arbiter_basket.prompt_candidates, recent_turns)`
 
 Important:
-- l'arbitre consomme `raw_traces`, pas `retrieved_candidates`;
-- il ne voit donc pas `parent_summary`;
-- il ne voit pas non plus `conversation_id` ni `summary_id` dans son panier explicite.
+- l'arbitre consomme un panier deja borne et dedupe;
+- il ne voit toujours pas `parent_summary` complet;
+- il ne voit pas `conversation_id` ni `summary_id` dans son payload explicite.
 
 Panier vu par l'arbitre:
 - contexte recent separe: concat des `recent_turns[-10:]` sous forme texte `ROLE: content`
 - candidats JSON:
-  - `id` indexe par position dans `raw_traces`
+  - `candidate_id`
+  - `source_kind`
+  - `source_lane`
   - `role`
   - `content`
-  - `ts`
+  - `timestamp_iso`
   - `retrieval_score`
   - `semantic_score`
 
@@ -195,23 +201,23 @@ Ce que le panier arbitre n'inclut pas:
 - `conversation_id`
 - `summary_id`
 - `parent_summary`
-- `candidate_id` canonique de `memory_retrieved`
-- provenance de lane
-- signaux de dedup ou de recence conversationnelle structures
+- `source_candidate_ids`
+- `dedup_key`
+- `parent_summary_present`
 
 ### 4.6 Sortie arbitre
 
 Sorties runtime:
-- `filtered_traces`: sous-ensemble garde de `raw_traces`
-- `arbiter_decisions`: liste de verdicts indexee par `candidate_id` legacy (`"0"`, `"1"`, ...)
+- `filtered_traces`: sous-ensemble garde du panier pre-arbitre, avec `candidate_id` stable
+- `arbiter_decisions`: liste de verdicts keyee par `candidate_id` stable
 
 Persistence:
-- `record_arbiter_decisions(conversation_id, raw_traces, arbiter_decisions, ...)`
+- `record_arbiter_decisions(conversation_id, pre_arbiter_basket.prompt_candidates, arbiter_decisions, ...)`
 - insere une ligne SQL par decision dans `arbiter_decisions`
 
 Forme persistante `arbiter_decisions`:
 - `conversation_id`
-- `candidate_id` legacy
+- `candidate_id`
 - `candidate_role`
 - `candidate_content`
 - `candidate_ts`
@@ -231,12 +237,32 @@ Forme canonique runtime `memory_arbitration`:
 - `status`
 - `reason_code`
 - `raw_candidates_count`
+- `basket_candidates_count`
+- `basket_limit`
+- `basket_candidates[*].candidate_id`
+- `basket_candidates[*].source_candidate_ids`
+- `basket_candidates[*].source_kind`
+- `basket_candidates[*].source_lane`
+- `basket_candidates[*].role`
+- `basket_candidates[*].content`
+- `basket_candidates[*].timestamp_iso`
+- `basket_candidates[*].retrieval_score`
+- `basket_candidates[*].semantic_score`
+- `basket_candidates[*].summary_id`
+- `basket_candidates[*].parent_summary_present`
+- `basket_candidates[*].dedup_key`
+- `basket_candidates[*].dedup_reason_code`
 - `decisions_count`
 - `kept_count`
 - `rejected_count`
+- `injected_candidate_ids`
+- `decisions[*].candidate_id`
 - `decisions[*].retrieved_candidate_id`
 - `decisions[*].legacy_candidate_id`
 - `decisions[*].legacy_candidate_index`
+- `decisions[*].source_candidate_ids`
+- `decisions[*].source_kind`
+- `decisions[*].source_lane`
 - `decisions[*].keep`
 - `decisions[*].semantic_relevance`
 - `decisions[*].contextual_gain`
@@ -250,13 +276,14 @@ Forme canonique runtime `memory_arbitration`:
 `memory_traces` est la liste qui part vers le prompt builder. Ce n'est ni le retrieval brut, ni `memory_retrieved`, ni `arbiter_decisions`.
 
 Regle actuelle:
-- mode `enforced_all`: `memory_traces = enrich(filtered_traces)`
-- mode `shadow`: `memory_traces = retrieved_candidates` meme si l'arbitre a tourne
-- mode `off`: `memory_traces = retrieved_candidates` et `memory_arbitration.status='skipped'`
+- mode `enforced_all`: `memory_traces = candidats gardes du panier pre-arbitre`
+- mode `shadow`: `memory_traces = panier pre-arbitre complet` meme si l'arbitre a tourne
+- mode `off`: `memory_traces = panier pre-arbitre complet` et `memory_arbitration.status='skipped'`
 - aucun candidat: `memory_traces = []`
 
 Consequence:
-- meme quand l'arbitre ne voit pas `parent_summary`, le prompt final peut encore recevoir des traces enrichies avec `parent_summary` si le mode final le permet.
+- `memory_traces[*]` garde maintenant `candidate_id`, `source_candidate_ids`, `dedup_key`, `summary_id`, `timestamp` et `parent_summary`;
+- meme quand l'arbitre ne voit pas `parent_summary`, le prompt final peut encore recevoir les traces representatives enrichies avec `parent_summary` si le mode final le permet.
 
 ### 4.8 Injection finale dans le prompt
 
@@ -272,11 +299,11 @@ Ordre memoire utile:
 
 Ce que le prompt final injecte reellement:
 - messages `role/content` seulement;
-- les scores, verdicts arbitre, `candidate_id`, `summary_id` et metadonnees de retrieval ne sont plus presents sous forme structuree;
+- les scores, verdicts arbitre, `candidate_id`, `summary_id` et metadonnees de retrieval ne sont pas reinjectes dans le texte prompt;
 - `parent_summary` n'apparait pas comme champ JSON, seulement comme contenu textuel dans un bloc systeme dedie s'il existe.
 
 Observabilite associee:
-- `prompt_prepared` dans `observability.chat_log_events` resume l'injection effective via `memory_prompt_injection`.
+- `prompt_prepared` dans `observability.chat_log_events` resume l'injection effective via `memory_prompt_injection`, avec `injected_candidate_ids`.
 
 ### 4.9 Insertion dans le noeud hermeneutique
 
@@ -470,23 +497,27 @@ Ce qu'il ne garde pas:
 Nature:
 - snapshot canonique du tri arbitre;
 - pas la table `arbiter_decisions`;
-- pas la liste finale de traces injectees.
+- pas le prompt final textuel.
 
 A quoi il sert:
 - fournir au noeud hermeneutique et a la validation une vue compacte du tri;
-- relier les decisions au `candidate_id` stable de `memory_retrieved` tout en gardant l'index legacy encore utilise par l'arbitre.
+- exposer le panier pre-arbitre reellement juge;
+- relier les decisions au `candidate_id` stable de `memory_retrieved`;
+- exposer la liste des `candidate_id` effectivement injectes.
 
 Ce qu'il garde:
 - counts;
 - statut;
+- le panier pre-arbitre structure;
 - raisons;
 - scores arbitre;
-- lien `retrieved_candidate_id`.
+- lien `retrieved_candidate_id`;
+- `injected_candidate_ids`.
 
 Ce qu'il ne garde pas:
-- le contenu complet des traces;
-- `parent_summary`;
-- les champs prompt final.
+- le `parent_summary` complet;
+- le texte final du prompt;
+- les champs JSON exclus du payload arbitre.
 
 ## 7. Place exacte de `parent_summary`
 
@@ -494,6 +525,7 @@ Ce qu'il ne garde pas:
 - apres `memory_store.enrich_traces_with_summaries(...)`;
 - dans `retrieved_candidates`;
 - dans `memory_retrieved.traces[*].parent_summary`;
+- dans `pre_arbiter_basket.candidates[*].parent_summary_present`;
 - dans `memory_traces` quand la liste injectee a ete enrichie;
 - dans le prompt final uniquement via le bloc systeme `[Contexte du souvenir ...]`.
 
@@ -524,7 +556,7 @@ Ce que chaque stage montre aujourd'hui:
 - `memory_retrieve`: seulement `top_k_requested` / `top_k_returned`
 - `arbiter`: counts, `mode`, `model`, `decision_source`, `fallback_used`, `rejection_reason_counts`
 - `hermeneutic_node_insertion`: resume compact de `memory_retrieved` et `memory_arbitration`
-- `prompt_prepared`: resume de l'injection memoire effective dans le prompt
+- `prompt_prepared`: resume de l'injection memoire effective dans le prompt, avec `injected_candidate_ids`
 
 Limite:
 - pas de snapshot brut complet des candidats retrieval persiste dans cette table.
@@ -545,7 +577,7 @@ Ce que cette table apporte:
 Limite:
 - elle ne persiste pas `parent_summary`;
 - elle ne persiste pas `retrieved_candidate_id`;
-- elle conserve encore l'index legacy `candidate_id`.
+- elle ne persiste pas `source_candidate_ids`.
 
 ### 8.3 `admin_logs`
 

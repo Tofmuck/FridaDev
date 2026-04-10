@@ -140,6 +140,15 @@ def _trace_semantic_score(trace: Dict[str, Any]) -> float:
         return 0.0
 
 
+def _trace_candidate_id(trace: Dict[str, Any], fallback_index: int) -> str:
+    candidate_id = str(trace.get('candidate_id') or '').strip()
+    return candidate_id or str(fallback_index)
+
+
+def _trace_timestamp(trace: Dict[str, Any]) -> str:
+    return str(trace.get('timestamp_iso') or trace.get('timestamp') or '').strip()
+
+
 def _append_reason(decision: Dict[str, Any], suffix: str) -> None:
     base = str(decision.get('reason') or '').strip()
     decision['reason'] = f'{base} | {suffix}' if base else suffix
@@ -177,18 +186,19 @@ def _is_circumstantial_memory(content: str) -> bool:
 
 def _build_fallback_decisions(
     traces: List[Dict[str, Any]],
-    keep_idx: int,
+    keep_candidate_id: str,
     reason: str,
     model: str,
 ) -> List[Dict[str, Any]]:
     decisions: List[Dict[str, Any]] = []
     threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
     for i, trace in enumerate(traces):
+        candidate_id = _trace_candidate_id(trace, i)
         semantic = max(0.0, min(1.0, _trace_semantic_score(trace)))
-        keep = i == keep_idx and semantic >= threshold
+        keep = candidate_id == keep_candidate_id and semantic >= threshold
         decisions.append(
             {
-                'candidate_id': str(i),
+                'candidate_id': candidate_id,
                 'keep': keep,
                 'semantic_relevance': semantic,
                 'contextual_gain': semantic if keep else 0.0,
@@ -211,6 +221,7 @@ def _deterministic_fallback(
 
     keep_idx = max(range(len(traces)), key=lambda idx: _trace_semantic_score(traces[idx]))
     best = traces[keep_idx]
+    keep_candidate_id = _trace_candidate_id(best, keep_idx)
     best_semantic_score = _trace_semantic_score(best)
     best_retrieval_score = _trace_retrieval_score(best)
     threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
@@ -226,7 +237,12 @@ def _deterministic_fallback(
         threshold,
         fallback_count,
     )
-    decisions = _build_fallback_decisions(traces, keep_idx=keep_idx, reason=reason, model=model)
+    decisions = _build_fallback_decisions(
+        traces,
+        keep_candidate_id=keep_candidate_id,
+        reason=reason,
+        model=model,
+    )
     return kept, decisions
 
 
@@ -259,7 +275,7 @@ def _validate_arbiter_output(data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
         candidate_id = str(item.get('candidate_id', '')).strip()
         keep = item.get('keep')
-        if not candidate_id.isdigit() or not isinstance(keep, bool):
+        if not candidate_id or not isinstance(keep, bool):
             continue
 
         try:
@@ -296,7 +312,7 @@ def filter_traces_with_diagnostics(
     _inc_metric('arbiter_call_count')
     """
     Return (kept_traces, decisions_for_logging).
-    decisions_for_logging always references candidate_id indexes from `traces`.
+    decisions_for_logging references stable candidate_id values when available.
     """
     if not traces:
         return [], []
@@ -313,10 +329,12 @@ def filter_traces_with_diagnostics(
 
     candidates = [
         {
-            'id': str(i),
+            'candidate_id': _trace_candidate_id(t, i),
+            'source_kind': str(t.get('source_kind') or 'trace'),
+            'source_lane': str(t.get('source_lane') or 'global'),
             'role': t.get('role', '?'),
             'content': t.get('content', ''),
-            'ts': (t.get('timestamp') or '')[:19],
+            'timestamp_iso': _trace_timestamp(t)[:25],
             'retrieval_score': round(_trace_retrieval_score(t), 6),
             'semantic_score': round(_trace_semantic_score(t), 6),
         }
@@ -367,25 +385,31 @@ def filter_traces_with_diagnostics(
         logger.error('arbiter_parse_or_runtime_error err=%s parse_error_count=%s', exc, parse_count)
         return _deterministic_fallback(traces, 'parse_or_runtime_error', arbiter_model)
 
-    decisions_by_id: Dict[int, Dict[str, Any]] = {}
+    trace_by_candidate_id: Dict[str, Dict[str, Any]] = {
+        _trace_candidate_id(trace, index): trace
+        for index, trace in enumerate(traces)
+    }
+    ordered_candidate_ids = [_trace_candidate_id(trace, index) for index, trace in enumerate(traces)]
+    decisions_by_id: Dict[str, Dict[str, Any]] = {}
     for decision in decisions:
-        idx = int(decision['candidate_id'])
-        if idx < 0 or idx >= len(traces):
+        candidate_id = str(decision['candidate_id'])
+        if candidate_id not in trace_by_candidate_id:
             continue
-        if idx in decisions_by_id:
+        if candidate_id in decisions_by_id:
             # Prefer explicit keep=true when duplicated.
-            if decision['keep'] and not decisions_by_id[idx]['keep']:
-                decisions_by_id[idx] = decision
+            if decision['keep'] and not decisions_by_id[candidate_id]['keep']:
+                decisions_by_id[candidate_id] = decision
         else:
-            decisions_by_id[idx] = decision
+            decisions_by_id[candidate_id] = decision
 
     completed_decisions: List[Dict[str, Any]] = []
     for idx, trace in enumerate(traces):
-        if idx in decisions_by_id:
-            d = dict(decisions_by_id[idx])
+        candidate_id = ordered_candidate_ids[idx]
+        if candidate_id in decisions_by_id:
+            d = dict(decisions_by_id[candidate_id])
         else:
             d = {
-                'candidate_id': str(idx),
+                'candidate_id': candidate_id,
                 'keep': False,
                 'semantic_relevance': max(0.0, min(1.0, _trace_semantic_score(trace))),
                 'contextual_gain': 0.0,
@@ -395,10 +419,13 @@ def filter_traces_with_diagnostics(
             }
         completed_decisions.append(d)
 
-    selected_candidates: List[tuple[float, int]] = []
+    selected_candidates: List[tuple[float, str]] = []
     for d in completed_decisions:
-        candidate_idx = int(d['candidate_id'])
-        trace_content = str(traces[candidate_idx].get('content') or '')
+        candidate_id = str(d['candidate_id'])
+        trace = trace_by_candidate_id.get(candidate_id)
+        if trace is None:
+            continue
+        trace_content = str(trace.get('content') or '')
         if not d['keep']:
             continue
         if d['redundant_with_recent']:
@@ -439,24 +466,24 @@ def filter_traces_with_diagnostics(
             continue
 
         blended_score = (d['semantic_relevance'] + d['contextual_gain']) / 2.0
-        selected_candidates.append((blended_score, candidate_idx))
+        selected_candidates.append((blended_score, candidate_id))
 
     selected_candidates.sort(key=lambda x: x[0], reverse=True)
 
     max_kept = max(0, config.ARBITER_MAX_KEPT_TRACES)
-    chosen: set[int] = set()
+    chosen: set[str] = set()
     kept: List[Dict[str, Any]] = []
-    for _, idx in selected_candidates:
-        if idx in chosen:
+    for _, candidate_id in selected_candidates:
+        if candidate_id in chosen:
             continue
-        chosen.add(idx)
-        kept.append(traces[idx])
+        chosen.add(candidate_id)
+        kept.append(trace_by_candidate_id[candidate_id])
         if len(kept) >= max_kept:
             break
 
     for d in completed_decisions:
-        idx = int(d['candidate_id'])
-        d['keep'] = idx in chosen
+        candidate_id = str(d['candidate_id'])
+        d['keep'] = candidate_id in chosen
         d['model'] = arbiter_model
 
     logger.info(

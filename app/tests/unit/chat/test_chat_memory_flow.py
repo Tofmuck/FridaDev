@@ -26,11 +26,48 @@ def _event_payloads(events, name: str):
     return [payload for event, payload in events if event == name]
 
 
+def _trace(
+    trace_id: str,
+    *,
+    conversation_id: str,
+    role: str,
+    content: str,
+    timestamp: str,
+    score: float = 0.8,
+    summary_id: str | None = None,
+    retrieval_score: float | None = None,
+    semantic_score: float | None = None,
+):
+    payload = {
+        'trace_id': trace_id,
+        'conversation_id': conversation_id,
+        'role': role,
+        'content': content,
+        'timestamp': timestamp,
+        'summary_id': summary_id,
+        'score': score,
+    }
+    if retrieval_score is not None:
+        payload['retrieval_score'] = retrieval_score
+    if semantic_score is not None:
+        payload['semantic_score'] = semantic_score
+    return payload
+
+
 class ChatMemoryFlowTests(unittest.TestCase):
     def test_prepare_memory_context_mode_off_keeps_raw_traces_without_arbiter(self) -> None:
         events = []
         observed = {'record_calls': 0, 'enrich_called_with': None}
-        raw_traces = [{'trace_id': 'r1'}]
+        raw_traces = [
+            _trace(
+                'r1',
+                conversation_id='conv-source-a',
+                role='user',
+                content='Je suis Christophe Muck',
+                timestamp='2026-04-10T09:00:00Z',
+                score=0.91,
+            )
+        ]
 
         config_module = SimpleNamespace(
             HERMENEUTIC_MODE='off',
@@ -46,7 +83,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
             retrieve=lambda _msg: raw_traces,
             record_arbiter_decisions=lambda *_args, **_kwargs: observed.update({'record_calls': observed['record_calls'] + 1}),
             enrich_traces_with_summaries=lambda traces: observed.update({'enrich_called_with': list(traces)})
-            or [{'trace_id': trace['trace_id'], 'enriched': True} for trace in traces],
+            or [{**trace, 'enriched': True} for trace in traces],
             get_recent_context_hints=lambda **_kwargs: [],
         )
         arbiter_module = SimpleNamespace(
@@ -67,17 +104,25 @@ class ChatMemoryFlowTests(unittest.TestCase):
         mode, memory_traces, context_hints = prepared
 
         self.assertEqual(mode, 'off')
-        self.assertEqual(memory_traces, [{'trace_id': 'r1', 'enriched': True}])
+        self.assertEqual(len(memory_traces), 1)
+        self.assertEqual(memory_traces[0]['trace_id'], 'r1')
+        self.assertTrue(memory_traces[0]['enriched'])
+        self.assertTrue(memory_traces[0]['candidate_id'].startswith('cand-'))
         self.assertEqual(context_hints, [])
         self.assertEqual(observed['record_calls'], 0)
         self.assertEqual(observed['enrich_called_with'], raw_traces)
-        self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['source'], 'raw_mode_off')
+        self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['source'], 'pre_arbiter_basket_mode_off')
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['selected'], 1)
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['filtered'], 0)
         self.assertEqual(_event_payloads(events, 'memory_arbitrated'), [])
         self.assertEqual(prepared.memory_arbitration['status'], 'skipped')
         self.assertEqual(prepared.memory_arbitration['reason_code'], 'mode_off')
         self.assertEqual(prepared.memory_arbitration['raw_candidates_count'], 1)
+        self.assertEqual(prepared.memory_arbitration['basket_candidates_count'], 1)
+        self.assertEqual(
+            prepared.memory_arbitration['injected_candidate_ids'],
+            [memory_traces[0]['candidate_id']],
+        )
         self.assertEqual(prepared.memory_arbitration['decisions'], [])
 
     def test_prepare_memory_context_exposes_canonical_memory_retrieved_without_arbiter_fields(self) -> None:
@@ -224,7 +269,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
             observed['arbiter_traces'] = list(traces)
             return [], [
                 {
-                    'candidate_id': '0',
+                    'candidate_id': traces[0]['candidate_id'],
                     'keep': False,
                     'semantic_relevance': 0.0,
                     'contextual_gain': 0.0,
@@ -250,6 +295,8 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertIsNotNone(observed['arbiter_traces'])
         self.assertEqual(observed['arbiter_traces'][0]['retrieval_score'], 0.98)
         self.assertEqual(observed['arbiter_traces'][0]['semantic_score'], 0.0)
+        self.assertEqual(observed['arbiter_traces'][0]['source_lane'], 'global')
+        self.assertTrue(observed['arbiter_traces'][0]['candidate_id'].startswith('cand-'))
         self.assertEqual(prepared.memory_retrieved['traces'][0]['retrieval_score'], 0.98)
         self.assertNotIn('semantic_score', prepared.memory_retrieved['traces'][0])
 
@@ -272,29 +319,6 @@ class ChatMemoryFlowTests(unittest.TestCase):
                 'score': 0.73,
             },
         ]
-        arbiter_decisions = [
-            {
-                'candidate_id': '0',
-                'keep': True,
-                'semantic_relevance': 0.94,
-                'contextual_gain': 0.81,
-                'redundant_with_recent': False,
-                'reason': 'best_match',
-                'decision_source': 'llm',
-                'model': 'openrouter/arbiter-test',
-            },
-            {
-                'candidate_id': '1',
-                'keep': False,
-                'semantic_relevance': 0.33,
-                'contextual_gain': 0.11,
-                'redundant_with_recent': True,
-                'reason': 'redundant',
-                'decision_source': 'llm',
-                'model': 'openrouter/arbiter-test',
-            },
-        ]
-
         config_module = SimpleNamespace(
             HERMENEUTIC_MODE='shadow',
             CONTEXT_HINTS_MAX_ITEMS=2,
@@ -312,9 +336,30 @@ class ChatMemoryFlowTests(unittest.TestCase):
             get_recent_context_hints=lambda **_kwargs: [],
         )
         arbiter_module = SimpleNamespace(
-            filter_traces_with_diagnostics=lambda _traces, _recent_turns: (
-                [raw_traces[0]],
-                arbiter_decisions,
+            filter_traces_with_diagnostics=lambda traces, _recent_turns: (
+                [traces[0]],
+                [
+                    {
+                        'candidate_id': traces[0]['candidate_id'],
+                        'keep': True,
+                        'semantic_relevance': 0.94,
+                        'contextual_gain': 0.81,
+                        'redundant_with_recent': False,
+                        'reason': 'best_match',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-test',
+                    },
+                    {
+                        'candidate_id': traces[1]['candidate_id'],
+                        'keep': False,
+                        'semantic_relevance': 0.33,
+                        'contextual_gain': 0.11,
+                        'redundant_with_recent': True,
+                        'reason': 'redundant',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-test',
+                    },
+                ],
             ),
         )
         admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
@@ -330,20 +375,24 @@ class ChatMemoryFlowTests(unittest.TestCase):
 
         memory_retrieved = prepared.memory_retrieved
         memory_arbitration = prepared.memory_arbitration
+        candidate_ids = [trace['candidate_id'] for trace in memory_retrieved['traces']]
 
         self.assertEqual(memory_arbitration['schema_version'], 'v1')
         self.assertEqual(memory_arbitration['status'], 'available')
         self.assertIsNone(memory_arbitration['reason_code'])
         self.assertEqual(memory_arbitration['raw_candidates_count'], 2)
+        self.assertEqual(memory_arbitration['basket_candidates_count'], 2)
         self.assertEqual(memory_arbitration['decisions_count'], 2)
         self.assertEqual(memory_arbitration['kept_count'], 1)
         self.assertEqual(memory_arbitration['rejected_count'], 1)
+        self.assertEqual(memory_arbitration['injected_candidate_ids'], candidate_ids[:2])
 
         first_decision = memory_arbitration['decisions'][0]
         second_decision = memory_arbitration['decisions'][1]
-        self.assertEqual(first_decision['legacy_candidate_id'], '0')
-        self.assertEqual(first_decision['legacy_candidate_index'], 0)
+        self.assertEqual(first_decision['candidate_id'], memory_retrieved['traces'][0]['candidate_id'])
         self.assertEqual(first_decision['retrieved_candidate_id'], memory_retrieved['traces'][0]['candidate_id'])
+        self.assertIsNone(first_decision['legacy_candidate_id'])
+        self.assertIsNone(first_decision['legacy_candidate_index'])
         self.assertTrue(first_decision['keep'])
         self.assertEqual(first_decision['semantic_relevance'], 0.94)
         self.assertEqual(first_decision['contextual_gain'], 0.81)
@@ -351,24 +400,41 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(first_decision['reason'], 'best_match')
         self.assertEqual(first_decision['decision_source'], 'llm')
         self.assertEqual(first_decision['model'], 'openrouter/arbiter-test')
+        self.assertEqual(first_decision['source_candidate_ids'], [memory_retrieved['traces'][0]['candidate_id']])
         self.assertNotIn('content', first_decision)
 
-        self.assertEqual(second_decision['legacy_candidate_id'], '1')
-        self.assertEqual(second_decision['legacy_candidate_index'], 1)
+        self.assertEqual(second_decision['candidate_id'], memory_retrieved['traces'][1]['candidate_id'])
         self.assertEqual(second_decision['retrieved_candidate_id'], memory_retrieved['traces'][1]['candidate_id'])
+        self.assertIsNone(second_decision['legacy_candidate_id'])
+        self.assertIsNone(second_decision['legacy_candidate_index'])
         self.assertFalse(second_decision['keep'])
         self.assertTrue(second_decision['redundant_with_recent'])
 
-    def test_prepare_memory_context_mode_shadow_calls_arbiter_but_keeps_raw_source(self) -> None:
+    def test_prepare_memory_context_mode_shadow_uses_pre_arbiter_basket_for_prompt_side(self) -> None:
         events = []
         observed = {
             'arbiter_recent_turns': None,
             'record_args': None,
             'enrich_called_with': None,
         }
-        raw_traces = [{'trace_id': 'r1'}, {'trace_id': 'r2'}]
-        filtered_traces = [{'trace_id': 'r2'}]
-        arbiter_decisions = [{'trace_id': 'r1', 'keep': False}]
+        raw_traces = [
+            _trace(
+                'r1',
+                conversation_id='conv-shadow-a',
+                role='user',
+                content='Je suis Christophe Muck',
+                timestamp='2026-04-10T09:00:00Z',
+                score=0.91,
+            ),
+            _trace(
+                'r2',
+                conversation_id='conv-shadow-b',
+                role='assistant',
+                content='Nous travaillons sur FridaDev',
+                timestamp='2026-04-10T09:01:00Z',
+                score=0.74,
+            ),
+        ]
 
         config_module = SimpleNamespace(
             HERMENEUTIC_MODE='shadow',
@@ -387,7 +453,29 @@ class ChatMemoryFlowTests(unittest.TestCase):
 
         def fake_filter(traces, recent_turns):
             observed['arbiter_recent_turns'] = list(recent_turns)
-            return filtered_traces, arbiter_decisions
+            decisions = [
+                {
+                    'candidate_id': traces[0]['candidate_id'],
+                    'keep': False,
+                    'semantic_relevance': 0.1,
+                    'contextual_gain': 0.1,
+                    'redundant_with_recent': False,
+                    'reason': 'shadow',
+                    'decision_source': 'llm',
+                    'model': 'openrouter/arbiter-test',
+                },
+                {
+                    'candidate_id': traces[1]['candidate_id'],
+                    'keep': True,
+                    'semantic_relevance': 0.9,
+                    'contextual_gain': 0.8,
+                    'redundant_with_recent': False,
+                    'reason': 'keep',
+                    'decision_source': 'llm',
+                    'model': 'openrouter/arbiter-test',
+                },
+            ]
+            return [traces[1]], decisions
 
         memory_store_module = SimpleNamespace(
             retrieve=lambda _msg: raw_traces,
@@ -395,7 +483,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
                 {'record_args': (conversation_id, list(traces), list(decisions))}
             ),
             enrich_traces_with_summaries=lambda traces: observed.update({'enrich_called_with': list(traces)})
-            or [{'trace_id': trace['trace_id'], 'enriched': True} for trace in traces],
+            or [{**trace, 'enriched': True} for trace in traces],
             get_recent_context_hints=lambda **_kwargs: [],
         )
         arbiter_module = SimpleNamespace(filter_traces_with_diagnostics=fake_filter)
@@ -411,25 +499,47 @@ class ChatMemoryFlowTests(unittest.TestCase):
         )
 
         self.assertEqual(mode, 'shadow')
-        self.assertEqual(memory_traces, [{'trace_id': 'r1', 'enriched': True}, {'trace_id': 'r2', 'enriched': True}])
+        self.assertEqual([trace['trace_id'] for trace in memory_traces], ['r1', 'r2'])
+        self.assertTrue(all(trace['candidate_id'].startswith('cand-') for trace in memory_traces))
+        self.assertEqual(observed['record_args'][0], 'conv-memory-shadow')
         self.assertEqual(
-            observed['record_args'],
-            ('conv-memory-shadow', raw_traces, arbiter_decisions),
+            [trace['trace_id'] for trace in observed['record_args'][1]],
+            ['r1', 'r2'],
+        )
+        self.assertEqual(
+            [decision['candidate_id'] for decision in observed['record_args'][2]],
+            [trace['candidate_id'] for trace in observed['record_args'][1]],
         )
         self.assertEqual(observed['enrich_called_with'], raw_traces)
         self.assertEqual(
             [entry['role'] for entry in observed['arbiter_recent_turns']],
             ['user', 'assistant'],
         )
-        self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['source'], 'raw_shadow_non_blocking')
+        self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['source'], 'pre_arbiter_basket_shadow')
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['selected'], 2)
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['filtered'], 1)
-        self.assertEqual(_event_payloads(events, 'memory_arbitrated')[0]['decisions'], 1)
+        self.assertEqual(_event_payloads(events, 'memory_arbitrated')[0]['decisions'], 2)
 
     def test_prepare_memory_context_mode_enforced_all_uses_filtered_traces(self) -> None:
         events = []
-        raw_traces = [{'trace_id': 'r1'}, {'trace_id': 'r2'}]
-        filtered_traces = [{'trace_id': 'r2'}]
+        raw_traces = [
+            _trace(
+                'r1',
+                conversation_id='conv-enforced-a',
+                role='user',
+                content='Je suis Christophe Muck',
+                timestamp='2026-04-10T09:00:00Z',
+                score=0.91,
+            ),
+            _trace(
+                'r2',
+                conversation_id='conv-enforced-b',
+                role='assistant',
+                content='Nous travaillons sur FridaDev',
+                timestamp='2026-04-10T09:01:00Z',
+                score=0.74,
+            ),
+        ]
 
         config_module = SimpleNamespace(
             HERMENEUTIC_MODE='enforced_all',
@@ -444,11 +554,35 @@ class ChatMemoryFlowTests(unittest.TestCase):
         memory_store_module = SimpleNamespace(
             retrieve=lambda _msg: raw_traces,
             record_arbiter_decisions=lambda *_args, **_kwargs: None,
-            enrich_traces_with_summaries=lambda traces: [{'trace_id': trace['trace_id'], 'enriched': True} for trace in traces],
+            enrich_traces_with_summaries=lambda traces: [{**trace, 'enriched': True} for trace in traces],
             get_recent_context_hints=lambda **_kwargs: [],
         )
         arbiter_module = SimpleNamespace(
-            filter_traces_with_diagnostics=lambda _traces, _recent_turns: (filtered_traces, [{'trace_id': 'r1', 'keep': False}]),
+            filter_traces_with_diagnostics=lambda traces, _recent_turns: (
+                [traces[1]],
+                [
+                    {
+                        'candidate_id': traces[0]['candidate_id'],
+                        'keep': False,
+                        'semantic_relevance': 0.2,
+                        'contextual_gain': 0.1,
+                        'redundant_with_recent': False,
+                        'reason': 'reject',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-test',
+                    },
+                    {
+                        'candidate_id': traces[1]['candidate_id'],
+                        'keep': True,
+                        'semantic_relevance': 0.9,
+                        'contextual_gain': 0.8,
+                        'redundant_with_recent': False,
+                        'reason': 'keep',
+                        'decision_source': 'llm',
+                        'model': 'openrouter/arbiter-test',
+                    },
+                ],
+            ),
         )
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
@@ -462,7 +596,8 @@ class ChatMemoryFlowTests(unittest.TestCase):
         )
 
         self.assertEqual(mode, 'enforced_all')
-        self.assertEqual(memory_traces, [{'trace_id': 'r2', 'enriched': True}])
+        self.assertEqual([trace['trace_id'] for trace in memory_traces], ['r2'])
+        self.assertTrue(memory_traces[0]['candidate_id'].startswith('cand-'))
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['source'], 'arbiter_enforced')
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['selected'], 1)
         self.assertEqual(_event_payloads(events, 'memory_mode_apply')[0]['filtered'], 1)
@@ -566,7 +701,24 @@ class ChatMemoryFlowTests(unittest.TestCase):
         events = []
         chat_events: list[tuple[str, dict[str, object]]] = []
         branch_events: list[tuple[str, str]] = []
-        raw_traces = [{'trace_id': 'r1'}, {'trace_id': 'r2'}]
+        raw_traces = [
+            _trace(
+                'r1',
+                conversation_id='conv-off-a',
+                role='user',
+                content='Je suis Christophe Muck',
+                timestamp='2026-04-10T09:00:00Z',
+                score=0.91,
+            ),
+            _trace(
+                'r2',
+                conversation_id='conv-off-b',
+                role='assistant',
+                content='Nous travaillons sur FridaDev',
+                timestamp='2026-04-10T09:01:00Z',
+                score=0.74,
+            ),
+        ]
 
         config_module = SimpleNamespace(
             HERMENEUTIC_MODE='off',
@@ -609,7 +761,8 @@ class ChatMemoryFlowTests(unittest.TestCase):
             chat_memory_flow.chat_turn_logger.emit = original_emit
             chat_memory_flow.chat_turn_logger.emit_branch_skipped = original_branch
 
-        self.assertEqual(memory_traces, raw_traces)
+        self.assertEqual([trace['trace_id'] for trace in memory_traces], ['r1', 'r2'])
+        self.assertTrue(all(trace['candidate_id'].startswith('cand-') for trace in memory_traces))
         self.assertEqual(context_hints, [])
         self.assertTrue(chat_events)
         stage, kwargs = chat_events[0]
@@ -617,6 +770,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(kwargs['status'], 'skipped')
         self.assertEqual(kwargs['reason_code'], 'mode_off')
         self.assertEqual(kwargs['payload']['raw_candidates'], 2)
+        self.assertEqual(kwargs['payload']['basket_candidates'], 2)
         self.assertEqual(kwargs['payload']['kept_candidates'], 2)
         self.assertEqual(kwargs['payload']['mode'], 'off')
         self.assertEqual(branch_events, [('mode_off', 'arbiter_disabled_for_mode')])

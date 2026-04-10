@@ -2,9 +2,11 @@
 
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
-Portee: contrat cible du panier memoire remis a l'arbitre avant toute implementation V2
+Portee: contrat cible du panier memoire remis a l'arbitre, implemente minimalement en lot 7B
 Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
-Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+Baselines liees:
+- `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+- `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`
 
@@ -12,7 +14,7 @@ Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design
 
 Cette spec ferme la Phase 3 du chantier `memory-rag-relevance`.
 
-Elle fixe, sans patch runtime:
+Elle fixe:
 - la shape cible d'un candidat avant arbitre;
 - les champs qui doivent exister dans le panier pre-arbitre;
 - les champs que l'arbitre doit effectivement voir dans un premier lot V2;
@@ -62,9 +64,9 @@ Preuves runtime relues pour cette phase:
 Constats factuels confirms:
 - `raw_traces` ne portent encore aucun identifiant canonique;
 - `memory_retrieved.traces[*]` portent deja un `candidate_id` stable;
-- `memory_arbitration.decisions[*]` savent deja relier `retrieved_candidate_id` et `legacy_candidate_id`;
-- `arbiter_decisions` persiste encore seulement l'index legacy `candidate_id`;
-- `prompt_prepared` ne persiste aujourd'hui que des compteurs d'injection memoire, pas des IDs candidats;
+- `memory_arbitration.decisions[*]` savent maintenant relier `candidate_id`, `retrieved_candidate_id` et, en bridge, `legacy_candidate_id`;
+- `arbiter_decisions` persiste maintenant le `candidate_id` stable du representant quand il existe;
+- `prompt_prepared` persiste maintenant les `injected_candidate_ids` en plus des compteurs d'injection memoire;
 - `hermeneutic_node_insertion` ne persiste aujourd'hui qu'un resume de counts, pas la liste des IDs;
 - des collisions reelles existent deja en base (`Je suis Christophe Muck` x6, URL Mediapart x6, `Qui suis-je ?` x5, `Qui suis-je pour toi maintenant ?` x4, etc.);
 - `summaries=0` en live, mais `summary_id` et `parent_summary` existent deja dans le contrat des traces.
@@ -73,9 +75,9 @@ Constats factuels confirms:
 
 Aujourd'hui:
 - le retrieval brut reste plat et sans identifiant canonique;
-- l'arbitre travaille encore sur un index legacy par position;
-- le prompt final ne garde plus aucun lien stable avec les candidats;
-- la dedup n'est pas un objet explicite du pipeline;
+- l'arbitre ne lit plus l'index legacy comme source de verite, mais ce bridge reste present pour compatibilite;
+- le prompt final textuel garde maintenant un lien stable hors texte via `candidate_id` et `prompt_prepared.memory_prompt_injection.injected_candidate_ids`;
+- la dedup est maintenant un objet explicite du panier pre-arbitre;
 - `parent_summary` enrichit l'aval mais n'entre pas dans le panier vu par l'arbitre.
 
 Le contrat cible doit donc:

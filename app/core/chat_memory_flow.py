@@ -10,6 +10,7 @@ from core.hermeneutic_node.inputs import memory_retrieved_input
 from identity import identity_governance
 from memory import hermeneutics_policy
 from memory import memory_identity_mutable_rewriter
+from memory import memory_pre_arbiter_basket
 from observability import chat_turn_logger
 from observability import identity_observability
 
@@ -299,13 +300,21 @@ def prepare_memory_context(
             top_k_requested=top_k_requested,
             traces=retrieved_candidates,
         )
-        memory_traces = list(retrieved_candidates)
+        pre_arbiter_basket = memory_pre_arbiter_basket.build_pre_arbiter_basket(
+            memory_retrieved=memory_retrieved,
+            retrieved_candidates=retrieved_candidates,
+            internal_traces=raw_traces,
+        )
+        memory_traces = memory_pre_arbiter_basket.select_prompt_candidates(pre_arbiter_basket)
         filtered_traces: list[dict[str, Any]] = []
         arbiter_decisions: list[dict[str, Any]] = []
 
         if _mode_runs_arbiter(current_mode):
             arbiter_t0 = time.perf_counter()
-            filtered_traces, arbiter_decisions = arbiter_module.filter_traces_with_diagnostics(raw_traces, recent_turns)
+            filtered_traces, arbiter_decisions = arbiter_module.filter_traces_with_diagnostics(
+                pre_arbiter_basket.prompt_candidates,
+                recent_turns,
+            )
             _log_stage_latency(
                 conversation_id,
                 'arbiter',
@@ -316,13 +325,17 @@ def prepare_memory_context(
             try:
                 memory_store_module.record_arbiter_decisions(
                     conversation_id,
-                    raw_traces,
+                    pre_arbiter_basket.prompt_candidates,
                     arbiter_decisions,
                     mode=current_mode,
                 )
             except TypeError:
                 # Compatibility with legacy test doubles that still expose the old signature.
-                memory_store_module.record_arbiter_decisions(conversation_id, raw_traces, arbiter_decisions)
+                memory_store_module.record_arbiter_decisions(
+                    conversation_id,
+                    pre_arbiter_basket.prompt_candidates,
+                    arbiter_decisions,
+                )
             admin_logs_module.log_event(
                 'memory_arbitrated',
                 conversation_id=conversation_id,
@@ -330,30 +343,36 @@ def prepare_memory_context(
                 kept=len(filtered_traces),
                 decisions=len(arbiter_decisions),
             )
+            if _mode_enforces_memory(current_mode):
+                memory_traces = memory_pre_arbiter_basket.select_prompt_candidates(
+                    pre_arbiter_basket,
+                    decisions=arbiter_decisions,
+                )
+                memory_source = 'arbiter_enforced'
+            else:
+                memory_source = 'pre_arbiter_basket_shadow'
             memory_arbitration = memory_arbitration_input.build_memory_arbitration_input(
                 memory_retrieved=memory_retrieved,
                 raw_candidates_count=len(raw_traces),
                 decisions=arbiter_decisions,
                 status='available',
+                basket_candidates=pre_arbiter_basket.candidates,
+                injected_candidate_ids=[
+                    str(trace.get('candidate_id') or '')
+                    for trace in memory_traces
+                    if str(trace.get('candidate_id') or '').strip()
+                ],
             )
-
-            if _mode_enforces_memory(current_mode):
-                memory_traces = _enrich_retrieved_candidates(
-                    memory_store_module=memory_store_module,
-                    traces=filtered_traces,
-                )
-                memory_source = 'arbiter_enforced'
-            else:
-                memory_source = 'raw_shadow_non_blocking'
         else:
-            memory_source = 'raw_mode_off'
+            memory_source = 'pre_arbiter_basket_mode_off'
             chat_turn_logger.emit(
                 'arbiter',
                 status='skipped',
                 reason_code='mode_off',
                 payload={
                     'raw_candidates': len(raw_traces),
-                    'kept_candidates': len(raw_traces),
+                    'basket_candidates': len(pre_arbiter_basket.candidates),
+                    'kept_candidates': len(memory_traces),
                     'mode': current_mode,
                 },
             )
@@ -367,6 +386,12 @@ def prepare_memory_context(
                 decisions=[],
                 status='skipped',
                 reason_code='mode_off',
+                basket_candidates=pre_arbiter_basket.candidates,
+                injected_candidate_ids=[
+                    str(trace.get('candidate_id') or '')
+                    for trace in memory_traces
+                    if str(trace.get('candidate_id') or '').strip()
+                ],
             )
 
         admin_logs_module.log_event(

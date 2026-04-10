@@ -23,6 +23,7 @@ def empty_memory_prompt_injection_summary() -> dict[str, Any]:
         'prompt_block_count': 0,
         'memory_traces_injected': False,
         'memory_traces_injected_count': 0,
+        'injected_candidate_ids': [],
         'memory_context_injected': False,
         'memory_context_summary_count': 0,
         'context_hints_injected': False,
@@ -41,6 +42,18 @@ def _unique_parent_summary_count(memory_traces: Sequence[Any]) -> int:
         seen_ids.add(summary_id)
         count += 1
     return count
+
+
+def _injected_candidate_ids(memory_traces: Sequence[Any]) -> list[str]:
+    seen: set[str] = set()
+    candidate_ids: list[str] = []
+    for trace in memory_traces:
+        candidate_id = str(_mapping(trace).get('candidate_id') or '').strip()
+        if not candidate_id or candidate_id in seen:
+            continue
+        seen.add(candidate_id)
+        candidate_ids.append(candidate_id)
+    return candidate_ids
 
 
 def build_memory_prompt_injection_summary(
@@ -69,6 +82,7 @@ def build_memory_prompt_injection_summary(
         if not summary['memory_traces_injected'] and content.startswith(conversations_prompt_window.MEMORY_TRACES_BLOCK_HEADER):
             summary['memory_traces_injected'] = True
             summary['memory_traces_injected_count'] = len(traces_seq)
+            summary['injected_candidate_ids'] = _injected_candidate_ids(traces_seq)
 
     summary['prompt_block_count'] = int(
         bool(summary['context_hints_injected'])

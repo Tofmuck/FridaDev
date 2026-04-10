@@ -95,9 +95,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.filter_traces_with_diagnostics(
                 [
                     {
+                        'candidate_id': 'cand-codex-live',
+                        'source_kind': 'trace',
+                        'source_lane': 'global',
                         'role': 'user',
                         'content': 'codex-8192-live-1775296899',
-                        'timestamp': '2026-04-10T09:00:00Z',
+                        'timestamp_iso': '2026-04-10T09:00:00Z',
                         'score': 0.98,
                         'retrieval_score': 0.98,
                         'semantic_score': 0.0,
@@ -113,6 +116,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
 
         self.assertEqual(len(observed_candidates), 1)
+        self.assertEqual(observed_candidates[0]['candidate_id'], 'cand-codex-live')
+        self.assertEqual(observed_candidates[0]['source_kind'], 'trace')
+        self.assertEqual(observed_candidates[0]['source_lane'], 'global')
         self.assertEqual(observed_candidates[0]['retrieval_score'], 0.98)
         self.assertEqual(observed_candidates[0]['semantic_score'], 0.0)
         self.assertNotIn('score', observed_candidates[0])

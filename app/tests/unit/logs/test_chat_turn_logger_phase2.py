@@ -465,8 +465,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         summary = prompt_injection_summary.build_memory_prompt_injection_summary(
             prompt_messages,
             memory_traces=[
-                {'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
-                {'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
+                {'candidate_id': 'cand-user', 'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
+                {'candidate_id': 'cand-assistant', 'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
             ],
             context_hints=[
                 {'content': 'Christophe Muck'},
@@ -481,6 +481,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                 'prompt_block_count': 3,
                 'memory_traces_injected': True,
                 'memory_traces_injected_count': 2,
+                'injected_candidate_ids': ['cand-user', 'cand-assistant'],
                 'memory_context_injected': True,
                 'memory_context_summary_count': 2,
                 'context_hints_injected': True,

@@ -339,28 +339,28 @@ La doctrine conservee est explicite:
 - [x] Gate franchie: la dette exacte de scalabilite et l'ambiguite de score pre-arbitre sont fermees sans ouvrir `7B`.
 - [x] Gate franchie: aucun blocker Phase 5 n'est observe sur la latence `retrieve` ni sur le chainage runtime.
 
-## Phase 7 - Futur lot d'implementation B: structuration du panier et dedup
+## Phase 7 - Lot d'implementation B: structuration du panier et dedup
 
 Statut de pilotage:
-- prochaine phase active recommandee apres cloture `6A`;
-- non ouverte en implementation dans ce tour.
+- phase fermee au `2026-04-10`;
+- baseline de cloture: `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
 
-- [ ] Le lot B ne change pas le candidate generation choisi en Phase 2 sauf necessite documentee.
-- [ ] Le lot B introduit le schema candidat cible retenu.
-- [ ] Le lot B traite explicitement doublons exacts et quasi-doublons.
-- [ ] Le lot B clarifie la place de `parent_summary`.
-- [ ] Le lot B ajoute des tests sur:
+- [x] Le lot B ne change pas le candidate generation choisi en Phase 2 sauf necessite documentee.
+- [x] Le lot B introduit le schema candidat cible retenu.
+- [x] Le lot B traite explicitement doublons exacts et quasi-doublons.
+- [x] Le lot B clarifie la place de `parent_summary`.
+- [x] Le lot B ajoute des tests sur:
   - stabilite des IDs candidats;
   - dedup avant arbitre;
   - liens entre `memory_retrieved` et `memory_arbitration`;
   - non-regression prompt injection.
-- [ ] Le lot B rejoue le corpus de probes et compare le panier pre-arbitre.
+- [x] Le lot B rejoue le corpus de probes et compare le panier pre-arbitre.
 
 ### Gate 7B
 
-- [ ] Le panier est plus structure et moins redondant.
-- [ ] Les champs du contrat cible sont stables.
-- [ ] Le lot suivant peut mesurer la voie `summaries` sans ambiguite de schema.
+- [x] Le panier est plus structure et moins redondant.
+- [x] Les champs du contrat cible sont stables.
+- [x] Le lot suivant peut mesurer la voie `summaries` sans ambiguite de schema.
 
 ## Phase 8 - Futur lot d'implementation C: voie `summaries`
 
