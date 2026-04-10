@@ -175,37 +175,38 @@ La doctrine conservee est explicite:
 
 ## Phase 2 - Design du candidate generation
 
-- [ ] Definir les lanes candidates a etudier avant toute implementation:
+- [x] Definir les lanes candidates a etudier avant toute implementation:
   - lane `traces` globale actuelle;
   - lane `user` dediee;
   - lane `assistant` dediee;
   - lane recence / diversite conversationnelle;
   - lane `summaries` future.
-- [ ] Pour chaque lane, decrire:
+  - Reference Phase 2: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`
+- [x] Pour chaque lane, decrire:
   - objectif;
   - type de souvenirs vises;
   - risque principal de faux positifs;
   - signal attendu pour dire qu'elle aide vraiment.
-- [ ] Definir si l'amelioration vise plutot:
+- [x] Definir si l'amelioration vise plutot:
   - un `top_k` brut plus large;
   - une union multi-lanes;
   - une diversification par conversation;
   - un cap par role;
   - ou une combinaison borne.
-- [ ] Definir les cas ou les traces assistant doivent etre:
+- [x] Definir les cas ou les traces assistant doivent etre:
   - plafonnees;
   - penalisees;
   - ou gardees a parite avec les traces user.
-- [ ] Definir les cas ou la recence doit aider sans ecraser la pertinence durable.
-- [ ] Definir si une reformulation de query doit rester hors scope d'un premier lot.
-- [ ] Definir les dependances minimales pour tester un recall plus large sans toucher encore au reranker.
-- [ ] Rediger un choix recommande et au moins une alternative rejetee avec raison explicite.
+- [x] Definir les cas ou la recence doit aider sans ecraser la pertinence durable.
+- [x] Definir si une reformulation de query doit rester hors scope d'un premier lot.
+- [x] Definir les dependances minimales pour tester un recall plus large sans toucher encore au reranker.
+- [x] Rediger un choix recommande et au moins une alternative rejetee avec raison explicite.
 
 ### Gate 2
 
-- [ ] Une strategie de candidate generation est choisie.
-- [ ] Les alternatives rejetees sont notees.
-- [ ] Le lot suivant ne touche pas encore a l'arbitre ni aux seuils.
+- [x] Une strategie de candidate generation est choisie.
+- [x] Les alternatives rejetees sont notees.
+- [x] Le lot suivant ne touche pas encore a l'arbitre ni aux seuils.
 
 ## Phase 3 - Contrat cible du panier pre-arbitre
 
