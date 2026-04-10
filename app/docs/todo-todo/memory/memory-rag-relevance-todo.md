@@ -210,8 +210,8 @@ La doctrine conservee est explicite:
 
 ## Phase 3 - Contrat cible du panier pre-arbitre
 
-- [ ] Definir un schema candidat cible plus riche que le panier actuel.
-- [ ] Trancher quels champs doivent exister avant arbitre:
+- [x] Definir un schema candidat cible plus riche que le panier actuel.
+- [x] Trancher quels champs doivent exister avant arbitre:
   - `source_kind`;
   - `source_lane`;
   - `conversation_id`;
@@ -222,29 +222,30 @@ La doctrine conservee est explicite:
   - `parent_summary_present`;
   - cle de deduplication;
   - eventuels marqueurs de recence / diversite.
-- [ ] Definir quels champs l'arbitre doit effectivement voir dans un premier lot V2.
-- [ ] Definir quels champs restent diagnostic-only ou prompt-only.
-- [ ] Definir la regle de dedup:
+  - Reference Phase 3: `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
+- [x] Definir quels champs l'arbitre doit effectivement voir dans un premier lot V2.
+- [x] Definir quels champs restent diagnostic-only ou prompt-only.
+- [x] Definir la regle de dedup:
   - doublon exact;
   - quasi-doublon lexical;
   - collision meme conversation / meme idee;
   - collision trace / summary.
-- [ ] Definir la taille cible maximale du panier remis a l'arbitre.
-- [ ] Definir comment relier de facon stable:
+- [x] Definir la taille cible maximale du panier remis a l'arbitre.
+- [x] Definir comment relier de facon stable:
   - l'item retrieve;
   - la decision arbitre;
   - l'item injecte.
-- [ ] Definir la place exacte de `parent_summary`:
+- [x] Definir la place exacte de `parent_summary`:
   - absent du panier arbitre;
   - present comme hint arbitre;
   - ou present seulement en aval.
-- [ ] Definir comment éviter l'injection double d'une meme information quand trace et summary coexistent.
+- [x] Definir comment éviter l'injection double d'une meme information quand trace et summary coexistent.
 
 ### Gate 3
 
-- [ ] Le schema cible du panier est fige.
-- [ ] La strategie de dedup est ecrite.
-- [ ] La place de `parent_summary` est tranchee explicitement.
+- [x] Le schema cible du panier est fige.
+- [x] La strategie de dedup est ecrite.
+- [x] La place de `parent_summary` est tranchee explicitement.
 
 ## Phase 4 - Voie `summaries` comme chantier distinct
 
