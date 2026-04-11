@@ -3,7 +3,7 @@
 Statut: actif
 Classement: `app/docs/todo-todo/memory/`
 Portee: roadmap de travail pour la pertinence du retrieval memoire/RAG en amont de l'arbitre
-Derniere revue documentaire: `2026-04-10`
+Derniere revue documentaire: `2026-04-11`
 Origine: audit doc + code + runtime OVH du `2026-04-10`
 Doc liee: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 
@@ -382,22 +382,24 @@ Statut de pilotage:
 
 ## Phase 9 - Futur lot d'evaluation D: reranker tardif et optionnel
 
-- [ ] Confirmer que les Gates `0` a `8C` sont fermes avant d'ouvrir cette phase.
-- [ ] Fonder la decision `go / no-go` reranker sur les probes, tests et comparaisons avant/apres deja figes; ne pas presumer qu'un reranker sera retenu.
-- [ ] Confirmer par preuves que le recall de base et le panier ont deja ete assainis sans reranker.
-- [ ] Comparer au moins deux options de reranker:
-  - local;
-  - service API / conteneur;
-  - ou abandon motive si aucune n'est proportionnee.
-- [ ] Limiter le reranker a un second passage sur un panier deja meilleur.
-- [ ] Definir un budget de latence et un plan de rollback.
-- [ ] Rejeter explicitement toute proposition de reranker servant seulement a masquer un retrieval encore plat.
+Statut de pilotage:
+- phase fermee au `2026-04-11`;
+- decision retenue: `no-go reranker for now`;
+- note de decision: `app/docs/states/project/memory-rag-reranker-decision-2026-04-11.md`
+
+- [x] Confirmer que les Gates `0` a `8C` sont fermes avant d'ouvrir cette phase.
+- [x] Fonder la decision `go / no-go` reranker sur les probes, tests et comparaisons avant/apres deja figes; ne pas presumer qu'un reranker sera retenu.
+- [x] Confirmer par preuves que le recall de base et le panier ont deja ete assainis sans reranker.
+- [x] Conclure qu'aucune comparaison de solutions reranker ne doit etre ouverte tant que le dossier de necessite reste trop faible pour justifier cout, latence et complexite supplementaires.
+- [x] Rappeler qu'un reranker, s'il etait reouvert plus tard, resterait un second passage sur un panier deja meilleur.
+- [x] Conclure qu'aucun budget de latence, plan de rollback, choix de modele ou choix de provider ne doit etre engage tant que le dossier de necessite reste insuffisant.
+- [x] Rejeter explicitement toute proposition de reranker servant seulement a masquer un retrieval encore plat.
 
 ### Gate 9D
 
-- [ ] Le reranker reste une option tardive, non un pretexte pour sauter les phases amont.
-- [ ] Une decision explicite `go / no-go` est prise et documentee.
-- [ ] Aucun lot final de surface d'observabilite memoire/RAG ne demarre avant cette decision explicite.
+- [x] Le reranker reste une option tardive, non un pretexte pour sauter les phases amont.
+- [x] Une decision explicite `go / no-go` est prise et documentee.
+- [x] Aucun lot final de surface d'observabilite memoire/RAG ne demarre avant cette decision explicite.
 
 ## Phase 10 - Futur lot final E: surface d'observabilite memoire/RAG dediee
 
