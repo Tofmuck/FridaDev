@@ -1,14 +1,15 @@
 # Chat - Validation doctrine enonciation / identite / gap
 
-Statut: suivi post-implementation prompt-first
-Classement: `app/docs/todo-todo/product/`
-Portee: verification legere apres implementation du prompt principal
+Statut: archive
+Classement: `app/docs/todo-done/notes/`
+Portee: trace de cloture du lot prompt-first sur la voix, l'identite et le gap temporel
+Archivage: mini-suivi termine et archive dans `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
 
 Reference stable:
 
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 
-## Objectif
+## Objectif initial
 
 Garder un mini-support de suivi jusqu'a stabilisation du lot `prompt-first` sur la voix, la coherence identitaire posturale/affective et la reprise apres ecart temporel.
 
@@ -17,6 +18,11 @@ Garder un mini-support de suivi jusqu'a stabilisation du lot `prompt-first` sur 
 - [x] La doctrine source-of-truth a ete validee humainement.
 - [x] Le prompt principal a ete aligne sur `je` par defaut, le glissement meta explicite systeme / instance / artefact, la reprise sobre et non rituelle apres gap, la coherence identitaire forte `statique -> base` / `mutable -> nuance`, le refus du faux affect revendique et la priorite maintenue de la demande courante.
 - [x] Aucun complement runtime n'a ete juge necessaire pour ce lot borne.
+- [x] Le deploiement OVH a ete revalide pendant le rollout prompt-first:
+  - rebuild `fridadev` execute ;
+  - tests cibles verts ;
+  - conteneur `platform-fridadev` reparti `healthy` ;
+  - verification live `/admin` OK via redirection Authelia attendue.
 
 ## TODO
 
@@ -26,8 +32,17 @@ Garder un mini-support de suivi jusqu'a stabilisation du lot `prompt-first` sur 
 - [x] Valider des exemples explicitement inacceptables de faux affect revendique comme fait interieur.
 - [x] Verifier l'articulation attendue entre socle statique, modulation mutable et priorite de la demande courante.
 - [x] Trancher le lot d'implementation: `prompt-first`, sans ajout runtime.
-- [ ] Confirmer apres deploiement que le comportement observe reste sobre sur les reprises avec silence et n'introduit pas de faux affect revendique.
-- [ ] Archiver ce mini-suivi quand cette verification post-implementation n'appelle plus de reformulation de prompt.
+- [x] Confirmer apres deploiement que le comportement observe reste sobre sur les reprises avec silence et n'introduit pas de faux affect revendique.
+- [x] Archiver ce mini-suivi quand cette verification post-implementation n'appelle plus de reformulation de prompt.
+
+## Statut final honnete
+
+Ce mini-suivi est ferme pour son scope:
+
+- la doctrine produit reste la source de verite dans `states/specs/`
+- l'implementation retenue est bien `prompt-first`
+- aucun besoin de brique runtime additionnelle n'a ete etabli
+- aucun reliquat actif n'impose de garder ce fichier dans `todo-todo/`
 
 ## Hors scope de ce TODO
 

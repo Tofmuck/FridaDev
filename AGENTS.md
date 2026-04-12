@@ -167,7 +167,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: roadmap memoire/hermeneutique active, a relire avant tout lot memoire.
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
-- `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`: mini-suivi post-implementation prompt-first du lot voix / identite / gap temporel.
+- `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
 - `app/docs/todo-done/refactors/admin-todo.md`: roadmap admin archivee; ne pas la rouvrir silencieusement.
 - `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: cloture de convergence hermeneutique; ne pas la traiter comme active.

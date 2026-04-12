@@ -39,7 +39,7 @@ Primary references for the current repository state:
 - Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
-- Active chat enunciation prompt-first follow-up: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
+- Archived chat enunciation prompt-first closure note: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
 ### Versioned vs runtime-local
@@ -120,7 +120,7 @@ References principales pour l'etat actuel du depot:
 - Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
-- Suivi actif prompt-first voix / identite / gap du chat: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
+- Note archivee de cloture prompt-first voix / identite / gap du chat: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
 ### Ce qui est versionne vs local runtime
