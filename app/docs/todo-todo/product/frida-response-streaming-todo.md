@@ -26,14 +26,14 @@ Le systeme actuel fonctionne dans la configuration suivante:
 - Le turn logger suit correctement le cycle de vie stream (`app/server.py:545-605`).
 - La politique de buffering (`assistant_output_contract`) est fonctionnelle: plain text = bufferise en un bloc final, structure/code = stream progressif.
 
-### Ce qui est fragile ou incomplet
+### Ce qui reste fragile ou incomplet
 - **Pas de signal de fin applicatif**: le frontend ne distingue pas fin normale de coupure reseau — il ne voit que la fermeture TCP.
 - **Pas de signal d'erreur mid-stream**: une `RequestException` dans `chat_llm_flow.py:213` est loggee mais ne produit aucun signal visible cote frontend. Le texte partiel accumule est envoye sans indication d'erreur.
-- **UX du buffering**: en mode plain text (cas le plus frequent), RIEN n'est affiche pendant toute la generation LLM. Le frontend attend en silence puis recoit tout d'un coup.
+- **UX du buffering**: en mode plain text (cas le plus frequent), rien n'est affiche pendant toute la generation LLM. Le frontend attend en silence puis recoit tout d'un coup.
 - **Pas de `X-Conversation-Updated-At` dans le stream**: les headers initiaux du stream omettent cette metadonnee (`chat_session_flow.py:61-65`). Le frontend ne connait jamais la date de mise a jour finale.
 - **Persistance inconditionnelle en cas d'erreur**: si le stream avorte avec 3 caracteres de texte, ces 3 caracteres sont sauvegardes comme message assistant complet en DB.
-- **Observabilité asymetrique**: les erreurs `RequestException` dans le generateur ne remontent pas au turn logger. Le turn se termine avec `status='ok'` meme si une erreur LLM s'est produite.
-- **Comptage chars dans le wrapper**: le comptage `stream_response_chars` (`server.py:554-556`) est correct mais si des marqueurs de controle futuraux sont ajoutes au flux, ils seront comptes dans le total.
+- **Observabilite asymetrique**: les erreurs `RequestException` dans le generateur ne remontent pas au turn logger. Le turn se termine avec `status='ok'` meme si une erreur LLM s'est produite.
+- **Comptage chars dans le wrapper**: le comptage `stream_response_chars` (`server.py:554-556`) est correct pour le flux actuel, mais devra etre re-verifie si le transport ajoute un signal de controle applicatif.
 
 ## Probleme produit
 
@@ -51,26 +51,34 @@ Ces limites ne sont pas des bugs bloquants, mais elles degradent l'experience co
 - Le buffering est dicte par `assistant_output_contract`. Modifier ce comportement peut changer la presentation des reponses.
 
 ### Hors-scope de ce chantier (a moins que specifie ulterieurement)
-- Refonte completa du transport vers SSE/WebSocket.
-- Lots memoire, admin, platforme en parallele.
+- Refonte complete du transport vers SSE/WebSocket.
+- Lots memoire, admin, plateforme en parallele.
 - Refactoring structurel de `chat_llm_flow.py` au-dela de ce que les lots demandent.
 
-## Decision cible
+## Cadrage produit
 
-**Le plan retenu est de completer l'existant plutot que de le remplacer.**
+### Decision deja prise
 
-Arguments:
-1. Le stream existe et est teste de bout en bout.
-2. Les faiblesses sont incrementales (marqueurs fin/erreur, buffering UX, metadonnees, persistance conditionnelle).
-3. Aucun avantage fonctionnel ne justifie une refonte vers SSE/WebSocket pour un contenu qui est du texte continu.
-4. Le contrat `POST /api/chat + fetch + ReadableStream` est extensible (ajout de marqueurs de controle dans le flux texte).
-5. La transition serait reversible: un marqueur de ligne est trivial a parser, et le format peut evoluer sans breaking change.
+Le chantier vise a completer l'existant plutot qu'a remplacer le transport actuel.
 
-Le protocole cible:
-- **Protocole**: texte brut + marqueurs de controle de ligne (ex: `::FRIDA::DONE`, `::FRIDA::ERROR:msg`).
-- **Content-Type**: reste `text/plain; charset=utf-8`.
-- **Frontend**: lit le flux comme aujourd'hui, detecte les marqueurs de controle.
-- **Extensibilite**: les marqueurs utilisent un prefixe artificiel non linguistique qui n'a aucune chance d'etre genere par le LLM.
+Ce cadrage implique:
+- conserver `POST /api/chat + fetch + ReadableStream` comme base de travail pour ce lot;
+- traiter le sujet comme un lot produit de fiabilisation, pas comme une refonte protocolaire;
+- ordonner le travail en petits lots testables et reversibles.
+
+### Ce document ne tranche pas encore
+
+Ce TODO ne fixe pas a lui seul:
+- le format exact du signal applicatif de fin normale et d'erreur;
+- la forme du transport de metadonnees post-stream;
+- la regle precise de persistance en cas d'interruption;
+- le niveau de feedback UX minimal pendant le buffering.
+
+### Option technique legere a evaluer
+
+Une piste simple consiste a conserver le flux `text/plain` actuel et a y ajouter un signal applicatif parseable cote frontend.
+
+Les marqueurs inline de type `::FRIDA::DONE` / `::FRIDA::ERROR:...` font partie des options possibles, mais ils ne doivent pas etre traites ici comme protocole deja tranche. Le lot code devra confirmer si cette option est la plus lisible, la plus sure et la plus reversible, ou s'il faut lui preferer une variante equivalente.
 
 ## Lots proposes
 
@@ -79,33 +87,33 @@ Le protocole cible:
 - Fichiers: aucun (preuves curl uniquement).
 - Done: matrice documentee comportement x mode.
 
-### Lot 1 — Marqueurs de fin et d'erreur
+### Lot 1 — Signal applicatif de fin et d'erreur
 - Objectif: le frontend puisse distinguer fin normale d'erreur mid-stream.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
-- Done: `::FRIDA::DONE` recu en fin normale; `::FRIDA::ERROR:msg` recu en cas d'erreur.
+- Done: un signal explicite de fin normale et un signal explicite d'erreur sont recues et interpretes cote frontend, avec un format documente dans le lot.
 
 ### Lot 2 — Feedback UX pendant l'attente
 - Objectif: l'utilisateur a un indicateur visuel pendant le buffering.
 - Fichiers: `app/web/app.js` (priorite), optionnellement `app/core/chat_llm_flow.py` pour une normalisation incrementale (phase 2).
-- Done: indicateur "Frida reflechit..." visible des l'envoi, retire au DONE/ERROR.
+- Done: un indicateur d'attente est visible des l'envoi et disparait quand le stream se termine normalement ou en erreur.
 
 ### Lot 3 — Metadonnees post-stream
 - Objectif: `X-Conversation-Updated-At` propage au frontend post-stream.
-- Fichiers: `app/core/chat_llm_flow.py` (marqueur DONE avec updated_at), `app/web/app.js` (parse et setThreadMeta).
+- Fichiers: `app/core/chat_llm_flow.py`, `app/web/app.js`.
 - Done: les metadonnees du thread incluent updated_at correct apres un stream complet.
 
 ### Lot 4 — Gestion d'erreurs mid-stream
 - Objectif: erreur LLM visible et distinguable cote frontend.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
-- Done: le frontend affiche le message d'erreur au lieu de "Erreur de connexion."; le thread n'est pas hydrate avec un texte tronque.
+- Done: le frontend affiche un statut d'erreur intelligible, distinct d'une simple coupure reseau, et le thread n'est pas presente comme complet quand la reponse a echoue.
 
 ### Lot 5 — Persistance robuste en cas d'echec
-- Objectif: pas de message assistant fantosome ou tronquee en DB apres un stream avorte.
-- Fichiers: `app/core/chat_llm_flow.py` (gard de longueur minimale ou marqueur d'interruption).
-- Done: stream erreur avec <seuil chars → pas de message DB; stream erreur avec texte suffisant → message avec indication d'interruption.
+- Objectif: eviter qu'une reponse interrompue soit persistee comme message assistant complet.
+- Fichiers: `app/core/chat_llm_flow.py`.
+- Done: la regle produit de persistance en cas d'echec est explicite, implementee et testee. Si une heuristique de longueur, un statut d'interruption ou une autre garde est retenue, elle est documentee comme choix du lot code et non comme hypothese implicite.
 
 ### Lot 6 — Adaptation des tests
-- Objectif: adapter les tests existants aux nouveaux marqueurs et ajouter les tests des nouveaux comportements.
+- Objectif: adapter les tests existants au signal applicatif retenu et ajouter les tests des nouveaux comportements.
 - Fichiers: `app/tests/test_server_phase14.py`, `app/tests/test_server_logs_phase3.py`, `app/tests/unit/chat/test_chat_llm_flow.py`.
 - Done: suite complete et verte.
 
@@ -116,11 +124,11 @@ Le protocole cible:
 
 ## Risques
 
-- **Marqueur dans le contenu genere**: `::FRIDA::DONE` est artificiel et improbabile, mais non impossible. Utiliser un prefixe avec caracteres de controle (`\x02`) eliminera ce risque au prix d'une lisibilite reduite dans les logs curl.
-- **Chunk boundary**: un marqueur coupe entre deux chunks TCP peut etre rate. Le frontend doit accumuler un buffer de fin de chunk (20 chars) pour la verification.
-- **Regret protocole**: le format "texte + marqueurs de ligne" est fonctionnel mais pas standard. Si l'app evolue vers des surfaces tierces (API publique, mobile), un wrapping JSON/SSE propre sera necessaire.
-- **Tests existants**: les tests qui verifient `response.get_data(as_text=True) == 'text'` doivent etre adaptes pour filtrer les marqueurs. Breaking change mineur mais reel.
-- **Persistance conditionnelle (Lot 5)**: changer la logique du finally modifie un comportement existant — il faut valider qu'aucun scenario ne perd de reponses valides.
+- **Signal applicatif inline**: si le lot code retient des marqueurs dans le flux texte, il faudra verifier le risque de collision avec le contenu genere et definir une strategie simple de mitigation.
+- **Chunk boundary**: si le signal applicatif est parse en flux, le frontend devra rester correct meme quand le delimiteur arrive a cheval sur plusieurs chunks TCP.
+- **Regret protocolaire**: un format "texte + signal de controle" peut etre suffisant pour l'app actuelle sans constituer une cible long terme pour d'eventuelles surfaces tierces.
+- **Tests existants**: les assertions qui supposent un flux texte nu devront etre adaptees si le transport ajoute un signal applicatif. Breaking change mineur mais reel.
+- **Persistance conditionnelle (Lot 5)**: changer la logique du `finally` modifie un comportement existant. Le lot devra prouver qu'il n'ecarte pas de reponses valides et qu'il ne degrade pas la memoire conversationnelle.
 
 ## Preuves / validations attendues
 
@@ -130,11 +138,11 @@ Pour chaque lot:
 - Tests existants adaptes et verts.
 
 Specifiquement:
-- Lot 1: `curl -sN` montre `::FRIDA::DONE` en fin de flux; une erreur montre `::FRIDA::ERROR`.
-- Lot 2: le frontend affiche l'indicateur pendant l'attente, le retire au DONE.
-- Lot 3: `X-Conversation-Updated-At` est connu et utilise par le frontend post-stream.
+- Lot 1: une preuve runtime montre un signal explicite de fin normale et un signal explicite d'erreur, avec le format retenu.
+- Lot 2: le frontend affiche l'indicateur pendant l'attente, puis le retire a la terminaison du stream.
+- Lot 3: `X-Conversation-Updated-At` ou son equivalent retenu est connu et utilise par le frontend post-stream.
 - Lot 4: une erreur mid-stream produit un message intelligible cote utilisateur.
-- Lot 5: un stream avorte avec peu de texte ne cree pas de message fantome en DB.
+- Lot 5: un stream avorte avec peu ou pas de texte ne cree pas de message assistant presente comme complet en DB; si un fragment est conserve, son statut est explicite.
 - Lot 6: tous les tests passent.
 - Lot 7: le document spec est lisible et couvre format, erreurs, headers, persistance.
 
@@ -147,4 +155,4 @@ Le streaming des reponses Frida est considere produit-pret quand:
 - [ ] Aucun message assistant tronque ou fantome n'est persiste en DB.
 - [ ] Tous les tests existants sont adaptes et passent.
 - [ ] Le protocole est documente dans `app/docs/states/specs/`.
-- [ ] L'observabilité du turn logger couvre les erreurs stream.
+- [ ] L'observabilite du turn logger couvre les erreurs stream.
