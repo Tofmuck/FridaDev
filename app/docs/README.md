@@ -41,6 +41,7 @@ Notes:
 - etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
 - decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
 - contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
+- doctrine produit voix / gap temporel du chat: `states/specs/chat-enunciation-and-gap-contract.md`
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - baseline Phase 0 pertinence memoire/RAG 2026-04-10: `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - baseline d'evaluation Lot 6A memoire/RAG 2026-04-10: `states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
@@ -54,6 +55,7 @@ Notes:
 - validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
+- mini-TODO de validation voix / gap temporel du chat: `todo-todo/product/chat-enunciation-gap-validation-todo.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
 - trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
