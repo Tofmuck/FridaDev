@@ -1,0 +1,9 @@
+[EXAMPLE STATIC USER IDENTITY]
+
+Replace this local file with the real static user identity text on the target host.
+
+Possible structure:
+- durable profile elements
+- language and style preferences
+- working habits
+- topics and constraints to remember

@@ -7,9 +7,14 @@ app/.env.local
 app/.env.*.local
 
 # Runtime state and generated data
-# Note: the two static identity seed files already tracked under
-# state/data/identity/ stay tracked; new runtime state remains ignored.
+# Runtime identity files stay local and untracked; only examples/docs are versioned.
 state/
+!state/data/
+state/data/*
+!state/data/identity/
+state/data/identity/*
+!state/data/identity/README.md
+!state/data/identity/*.example.txt
 app/conv/
 app/data/
 # Runtime log artifacts (keep app/logs source package trackable)

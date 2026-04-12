@@ -46,8 +46,9 @@ Le perimetre autorise reste borne aux racines identity canoniques:
 - tout fichier existant hors de ce perimetre est refuse fail-closed.
 
 Sur OVH et dans le deploiement Docker standard actuellement retenu:
-- la source canonique de `llm.static` est le fichier suivi par le repo `state/data/identity/llm_identity.txt`;
-- la source canonique de `user.static` est le fichier suivi par le repo `state/data/identity/user_identity.txt`;
+- la source canonique de `llm.static` est le fichier operateur local `state/data/identity/llm_identity.txt`, non versionne dans Git;
+- la source canonique de `user.static` est le fichier operateur local `state/data/identity/user_identity.txt`, non versionne dans Git;
+- le repo versionne seulement `state/data/identity/README.md` et les exemples `*.example.txt`;
 - le runtime consomme cette meme arborescence via le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`;
 - le read-model et l'admin continuent d'exposer la reference runtime `data/identity/...`, mais cette reference doit toujours resoudre vers cette arborescence canonique.
 

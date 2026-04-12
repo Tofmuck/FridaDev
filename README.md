@@ -43,10 +43,12 @@ Primary references for the current repository state:
 ### Versioned vs runtime-local
 Versioned:
 - code, prompts, scripts, tests, docs
+- static identity examples and provisioning note under `state/data/identity/`
 
 Not versioned:
 - `app/.env`
-- runtime state under `state/conv`, `state/logs`, `state/data`
+- runtime state under `state/conv` and `state/logs`
+- local operator-provisioned identity files under `state/data/identity/*.txt`
 - local caches, virtualenvs, OS/editor residue
 
 Container mapping note:
@@ -120,10 +122,12 @@ References principales pour l'etat actuel du depot:
 ### Ce qui est versionne vs local runtime
 Versionne:
 - code, prompts, scripts, tests, docs
+- exemples d'identite statique et note de provisionnement sous `state/data/identity/`
 
 Non versionne:
 - `app/.env`
-- etat runtime sous `state/conv`, `state/logs`, `state/data`
+- etat runtime sous `state/conv` et `state/logs`
+- fichiers d'identite operateur locaux sous `state/data/identity/*.txt`
 - caches locaux, virtualenvs et residus systeme/editeur
 
 Repere conteneur:

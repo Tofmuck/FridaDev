@@ -121,7 +121,8 @@ Selon usages actives:
 Option identites statiques (sinon bloc identite vide):
 - `FRIDA_LLM_IDENTITY_PATH` (defaut: `data/identity/llm_identity.txt`);
 - `FRIDA_USER_IDENTITY_PATH` (defaut: `data/identity/user_identity.txt`).
-- la source canonique attendue reste les fichiers suivis par le repo sous `state/data/identity/*`.
+- la source canonique attendue reste les fichiers operateur locaux sous `state/data/identity/*`, non versionnes dans Git.
+- le repo fournit seulement `state/data/identity/README.md` et les fichiers `*.example.txt` pour bootstrap/provisionnement.
 - en exploitation Docker standard sur OVH, ces fichiers sont consommes via le bind mount `/opt/platform/fridadev/state/data -> /app/data` declare dans `/opt/platform/fridadev-app/docker-compose.yml`.
 - le contrat visible reste `data/identity/...` car le runtime applicatif lit ces chemins sous `/app`.
 - hors conteneur, les chargeurs et validations host-side resolvent le mirror `state/data/identity/...` si `app/data/identity/...` est absent.
@@ -131,7 +132,8 @@ Option identites statiques (sinon bloc identite vide):
 ```bash
 cd /path/to/fridadev
 mkdir -p state/conv state/logs state/data/identity
-touch state/data/identity/llm_identity.txt state/data/identity/user_identity.txt
+cp -n state/data/identity/llm_identity.example.txt state/data/identity/llm_identity.txt
+cp -n state/data/identity/user_identity.example.txt state/data/identity/user_identity.txt
 ```
 
 ## 6. Demarrage

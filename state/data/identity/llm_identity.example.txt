@@ -1,0 +1,9 @@
+[EXAMPLE STATIC LLM IDENTITY]
+
+Replace this local file with the real static LLM identity text on the target host.
+
+Possible structure:
+- role and posture
+- tone and style constraints
+- continuity expectations
+- explicit non-goals
