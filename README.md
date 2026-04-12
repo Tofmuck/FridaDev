@@ -35,11 +35,11 @@ Primary references for the current repository state:
 - Current FR project state: `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Canonical repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
-- Chat enunciation / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
-- Active chat enunciation validation TODO: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
+- Active chat enunciation prompt-first follow-up: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
 - Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
 ### Versioned vs runtime-local
@@ -116,11 +116,11 @@ References principales pour l'etat actuel du depot:
 - Etat projet EN courant: `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Audit canonique du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
-- Doctrine produit voix / gap temporel du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
-- TODO actif de validation voix / gap temporel du chat: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
+- Suivi actif prompt-first voix / identite / gap du chat: `app/docs/todo-todo/product/chat-enunciation-gap-validation-todo.md`
 - Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
 ### Ce qui est versionne vs local runtime

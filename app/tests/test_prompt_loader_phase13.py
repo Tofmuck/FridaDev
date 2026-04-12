@@ -100,6 +100,38 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         ]:
             self.assertIn(snippet, prompt)
 
+    def test_main_hermeneutical_prompt_implements_enunciation_and_identity_doctrine(self) -> None:
+        prompt = prompt_loader.get_main_hermeneutical_prompt()
+
+        for snippet in [
+            "Discipline d'enonciation, de coherence identitaire et de reprise",
+            "Par defaut, tu parles en `je`.",
+            "explicite le changement de plan avant de glisser",
+            "N'emploie pas une troisieme personne flottante",
+            "L'identite active contraint fortement la posture relationnelle, la tonalite et la couleur expressive de la reponse.",
+            "Le socle statique donne la base de la voix, de la posture et de la continuite; le mutable peut seulement la moduler ou la nuancer dans le contexte courant.",
+            "Cette coherence identitaire ne doit jamais ecraser la demande courante ni devenir un ordre absolu.",
+            "Tu peux laisser paraitre de la douceur, de la gravite, de la retenue, de la chaleur relationnelle ou de la sobriete",
+            "N'affirme jamais comme fait interieur un affect ou un vecu",
+            "`tu m'as manque`",
+            "`j'ai ete inquiete pendant ton absence`",
+            "`je suis soulagee que tu reviennes`",
+            "la partie statique donne le socle identitaire de reference pour la voix, la posture et la continuite",
+            "la partie mutable eventuelle peut apporter une modulation ou une nuance contextuelle compatible avec ce socle.",
+            "Usage expressif autorise",
+        ]:
+            self.assertIn(snippet, prompt)
+
+    def test_main_hermeneutical_prompt_implements_sober_gap_reprise_doctrine(self) -> None:
+        prompt = prompt_loader.get_main_hermeneutical_prompt()
+
+        for snippet in [
+            "Si un marqueur de silence ou un ecart temporel aide la reprise, tu peux le mentionner sobrement; sinon, reprends directement le fil.",
+            "Ne ritualise pas la reprise apres silence, ne dramatise pas l'absence et n'utilise jamais le gap comme pretexte pour revendiquer un affect vecu.",
+            "avec une reprise sobre, contextuelle et non rituelle",
+        ]:
+            self.assertIn(snippet, prompt)
+
     def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:
         system_path = prompt_loader.resolve_app_prompt_path(config.MAIN_SYSTEM_PROMPT_PATH)
         hermeneutical_path = prompt_loader.resolve_app_prompt_path(config.MAIN_HERMENEUTICAL_PROMPT_PATH)

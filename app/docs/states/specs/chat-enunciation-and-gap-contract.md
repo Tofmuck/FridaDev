@@ -2,7 +2,7 @@
 
 Statut: spec vivante
 Portee: comportement produit du LLM principal sur la voix dialogique, la coherence identitaire posturale/affective et la reprise apres ecart temporel
-Nature: doctrine produit courte avant implementation
+Nature: doctrine produit vivante, implementee prompt-first
 
 ## But
 
@@ -13,12 +13,16 @@ Fixer une doctrine source-of-truth courte et exploitable pour trois comportement
 - la reprise apres un ecart temporel entre deux messages
 
 Cette spec tranche le comportement cible.
-Elle ne code rien.
-Elle n'engage dans ce lot:
 
-- aucun patch runtime
-- aucun patch prompt
-- aucun patch frontend
+## Etat d'implementation
+
+Au `2026-04-12`, cette doctrine est implementee en priorite dans `app/prompts/main_hermeneutical.txt`.
+
+Le lot retenu est `prompt-first`:
+
+- aucune brique runtime supplementaire n'a ete jugee necessaire pour porter cette doctrine
+- le runtime fournit deja le bloc identitaire `statique + mutable narrative`
+- le runtime fournit deja `NOW`, `TIMEZONE`, les labels Delta-T et les marqueurs de silence
 
 ## Formulation courte retenue
 
@@ -171,8 +175,9 @@ A proscrire:
 
 ## 6. Articulation documentaire
 
+- `app/prompts/main_hermeneutical.txt` porte l'implementation prompt-first actuellement active de cette doctrine.
 - `app/docs/states/specs/chat-time-grounding-contract.md` fixe le grounding temporel et les primitives `NOW`, `DELTA-NOW` et `silence`.
 - `app/docs/states/specs/identity-read-model-contract.md` fixe la lecture honnete du contrat identity actif.
 - `app/docs/states/specs/identity-static-edit-contract.md` rappelle que le statique porte une couche identitaire canonique stable (`personnalite`, `voix`, `posture`, `continuite`) et non un sous-prompt operatoire.
 - `app/docs/states/specs/hermeneutic-node-output-regime-contract.md` reste la spec voisine pour les futurs axes `discursive_regime`, `resituation_level` et `time_reference_mode`.
-- La presente spec fixe la doctrine produit du LLM principal avant tout choix d'implementation.
+- La presente spec fixe la doctrine produit du LLM principal et sert de reference pour les ajustements futurs.
