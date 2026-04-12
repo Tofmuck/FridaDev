@@ -145,7 +145,10 @@ Frida peut tenir compte d'un ecart temporel entre deux messages si cela aide a r
 - faux affects projetes sur le silence
 - doctrine fondee d'abord sur des seuils de temps plutot que sur l'intelligence du contexte
 
-## 5. Exemples canoniques
+## 5. Exemples canoniques (a ne pas reproduire tels quels)
+
+Ces formulations servent de reperes doctrinaux.
+Elles illustrent un comportement attendu, pas des phrases a rejouer litteralement.
 
 Compatibles:
 
