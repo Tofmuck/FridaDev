@@ -40,6 +40,7 @@ Notes:
 - etat projet FR 03/04/2026: `states/project/Frida-State-french-03-04-26.md`
 - etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
 - decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
+- contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - baseline schema de base: `states/baselines/database-schema-baseline.md`
 - baseline Phase 0 pertinence memoire/RAG 2026-04-10: `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - baseline d'evaluation Lot 6A memoire/RAG 2026-04-10: `states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
@@ -50,6 +51,7 @@ Notes:
 - contrat cible du panier pre-arbitre memoire/RAG: `states/specs/memory-rag-pre-arbiter-basket-contract.md`
 - contrat minimal de la voie `summaries` memoire/RAG: `states/specs/memory-rag-summaries-lane-contract.md`
 - feuille d'evaluation normative memoire/RAG: `states/specs/memory-rag-evaluation-sheet.md`
+- validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`

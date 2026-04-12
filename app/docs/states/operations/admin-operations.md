@@ -18,7 +18,7 @@ Il complete :
 
 ## Authentification admin
 
-- Les surfaces `/admin`, `/log`, `/identity`, `/hermeneutic-admin` et `/api/admin/*` ne demandent plus de token admin applicatif.
+- Les surfaces `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin` et `/api/admin/*` ne demandent plus de token admin applicatif.
 - La protection publique attendue est Authelia au niveau du hostname.
 - Les routes `/api/admin/*` ne doivent plus etre accessibles lateralement depuis les conteneurs pairs du reseau Docker.
 - Le runtime n'accepte ces routes qu'en loopback local ou via le chemin Caddy/Authelia, avec header proxy `Remote-User`.
@@ -43,6 +43,23 @@ Le frontend V1 permet :
 - ecriture des champs non secrets
 - remplacement explicite des secrets sans re-affichage en clair
 - visualisation de la source de valeur (`env` ou `db`)
+
+## Surface read-only complementaire
+
+`Memory Admin` complete le paysage admin sans devenir une extension confuse de `/admin`.
+
+- UI read-only dediee : `/memory-admin`
+- API read-only dediee : `GET /api/admin/memory/dashboard`
+- role :
+  - regrouper l observabilite memoire / RAG
+  - distinguer persistance durable, agregat calcule, runtime process-local et historique logs
+  - eviter de naviguer durablement entre plusieurs surfaces pour comprendre retrieval, panier, arbitre et injection
+
+Cette surface ne remplace pas :
+
+- `/log` pour la timeline brute et les operations sur logs
+- `/hermeneutic-admin` pour le detail identity / pipeline hermeneutique
+- `/admin` pour le pilotage runtime settings
 
 ## Ce qui reste hors perimetre
 
@@ -161,13 +178,15 @@ Etat atteint a la fin des phases 0 a 11 :
 Checks courts a refaire apres deploiement :
 
 1. `GET /admin`
-2. `GET /api/admin/settings`
-3. `PATCH` valide sur `resources`
-4. `PATCH` invalide sur `resources`
-5. controle qu'aucun secret ne ressort en clair via les `GET`
-6. `GET /api/admin/logs`
-7. `POST /api/admin/restart` seulement dans une fenetre de maintenance adaptee
-8. `POST /api/chat` pour verifier que le chat principal reste operationnel
+2. `GET /memory-admin`
+3. `GET /api/admin/settings`
+4. `GET /api/admin/memory/dashboard`
+5. `PATCH` valide sur `resources`
+6. `PATCH` invalide sur `resources`
+7. controle qu'aucun secret ne ressort en clair via les `GET`
+8. `GET /api/admin/logs`
+9. `POST /api/admin/restart` seulement dans une fenetre de maintenance adaptee
+10. `POST /api/chat` pour verifier que le chat principal reste operationnel
 
 ## Lecture operatoire des embeddings dans `/log`
 

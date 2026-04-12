@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Memory Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Memory Admin</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <button id="memoryAdminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      </div>
+    </header>
+
+    <section class="admin-hero">
+      <div class="admin-copy">
+        <p class="admin-lead">
+          Surface dediee a l observabilite memoire / RAG: etat durable, retrieval, embeddings,
+          panier pre-arbitre, arbitre, injection memoire et lecture recente des tours.
+        </p>
+        <p class="admin-sublead">
+          La page recadre les provenances sans recreer une admin parallele: persistance durable,
+          agregats calcules, runtime process-local et historiques logs restent identifies clairement.
+        </p>
+      </div>
+
+      <div class="admin-meta">
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Mode courant</span>
+          <strong id="memoryAdminModeMeta">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Reranker</span>
+          <strong id="memoryAdminRerankerMeta">Chargement</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Sources visibles</span>
+          <strong id="memoryAdminSourcesMeta">Chargement</strong>
+        </article>
+      </div>
+    </section>
+
+    <p id="memoryAdminStatusBanner" class="admin-status" role="status" aria-live="polite">
+      Chargement de la surface Memory Admin...
+    </p>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-scope-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Cadrage</p>
+          <h2 id="memory-admin-scope-title">Surface dediee et provenance des donnees</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Cette section dit ce que Memory Admin centralise ici, ce qui reste ailleurs, et comment
+        lire les provenances: persistance durable, agregat calcule, runtime process-local et historique logs.
+      </p>
+
+      <div id="memoryAdminScopeCards" class="admin-section-grid"></div>
+
+      <section class="admin-readonly-panel" aria-labelledby="memory-admin-sources-title">
+        <div class="admin-readonly-head">
+          <div>
+            <p class="admin-kicker">Legende</p>
+            <h3 id="memory-admin-sources-title">Types de sources affiches</h3>
+          </div>
+          <span class="admin-readonly-badge">Lecture seule</span>
+        </div>
+        <div id="memoryAdminSourcesLegend" class="admin-readonly-grid"></div>
+      </section>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-durable-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Persistance durable</p>
+          <h2 id="memory-admin-durable-title">Etat memoire durable</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Lecture des tables <code>traces</code>, <code>summaries</code> et <code>arbiter_decisions</code>,
+        avec rappel explicite des doublons notables et de la couverture effectivement persistante.
+      </p>
+
+      <div id="memoryAdminDurableCards" class="admin-section-grid"></div>
+      <div id="memoryAdminDurableDetails" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-retrieval-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Retrieval / embeddings</p>
+          <h2 id="memory-admin-retrieval-title">Retrieval, embeddings et couverture recente</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Les reglages viennent des runtime settings et les activites recentes des logs. Cela permet
+        de distinguer le contrat configure de ce qui a vraiment tourne dans les derniers tours.
+      </p>
+
+      <div id="memoryAdminRetrievalCards" class="admin-section-grid"></div>
+      <div id="memoryAdminEmbeddingsCards" class="admin-section-grid"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-arbiter-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Panier et arbitre</p>
+          <h2 id="memory-admin-arbiter-title">Panier pre-arbitre, arbitre et runtime process-local</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Ici, le panier pre-arbitre reste un objet calcule distinct, l arbitre combine lecture durable,
+        process-local et logs admin, et la decision reranker reste documentee en no-go for now.
+      </p>
+
+      <div id="memoryAdminBasketCards" class="admin-section-grid"></div>
+      <div id="memoryAdminArbiterCards" class="admin-section-grid"></div>
+
+      <section class="admin-readonly-panel" aria-labelledby="memory-admin-runtime-metrics-title">
+        <div class="admin-readonly-head">
+          <div>
+            <p class="admin-kicker">Runtime process-local</p>
+            <h3 id="memory-admin-runtime-metrics-title">Compteurs process et latences retenues</h3>
+          </div>
+          <span class="admin-readonly-badge">Lecture seule</span>
+        </div>
+        <div id="memoryAdminArbiterRuntimeMetrics" class="admin-readonly-grid"></div>
+      </section>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-injection-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Injection et tours recents</p>
+          <h2 id="memory-admin-injection-title">Injection memoire et lecture recente</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Synthese honnete des injections dans le prompt et des derniers tours ou le domaine memoire/RAG
+        a laisse des traces utiles dans les logs runtime.
+      </p>
+
+      <div id="memoryAdminInjectionCards" class="admin-section-grid"></div>
+      <div id="memoryAdminRecentTurns" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-turn-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Inspection par tour</p>
+          <h2 id="memory-admin-turn-title">Details memory/RAG par tour</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Detail read-only a partir de <code>/api/admin/logs/chat/metadata</code> et
+        <code>/api/admin/logs/chat</code>, sans dupliquer la timeline brute de <a href="/log">/log</a>.
+      </p>
+
+      <form id="memoryAdminInspectionForm" class="admin-form" novalidate>
+        <div class="admin-form-grid">
+          <label class="admin-field" for="memoryAdminConversationId">
+            <span>Conversation</span>
+            <select id="memoryAdminConversationId" name="conversation_id">
+              <option value="">Aucune conversation</option>
+            </select>
+            <small>La liste vient des metadata logs existantes.</small>
+          </label>
+
+          <label class="admin-field" for="memoryAdminTurnId">
+            <span>Tour</span>
+            <select id="memoryAdminTurnId" name="turn_id" disabled>
+              <option value="">Selectionner une conversation</option>
+            </select>
+            <small>Le detail du tour est lu depuis les logs existants.</small>
+          </label>
+        </div>
+      </form>
+
+      <div id="memoryAdminTurnStages" class="admin-readonly-stack"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="memory-admin-decisions-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Persistance durable</p>
+          <h2 id="memory-admin-decisions-title">Decisions arbitre persistees</h2>
+        </div>
+      </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        Liste read-only des decisions arbitre deja exposees par le backend, avec filtre implicite par
+        conversation selectionnee quand c est pertinent.
+      </p>
+
+      <div id="memoryAdminArbiterMeta" class="admin-inline-meta"></div>
+      <div id="memoryAdminArbiterList" class="admin-readonly-stack"></div>
+    </section>
+  </main>
+
+  <script src="admin_api.js"></script>
+  <script src="admin_ui_common.js"></script>
+  <script src="memory_admin/api.js"></script>
+  <script src="memory_admin/render_overview.js"></script>
+  <script src="memory_admin/render_turns.js"></script>
+  <script src="memory_admin/main.js"></script>
+</body>
+</html>

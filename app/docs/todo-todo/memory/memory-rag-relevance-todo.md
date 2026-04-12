@@ -1,9 +1,9 @@
 # Memory RAG Relevance - TODO implementation roadmap (v2)
 
-Statut: actif
+Statut: ferme au `2026-04-12`
 Classement: `app/docs/todo-todo/memory/`
 Portee: roadmap de travail pour la pertinence du retrieval memoire/RAG en amont de l'arbitre
-Derniere revue documentaire: `2026-04-11`
+Derniere revue documentaire: `2026-04-12`
 Origine: audit doc + code + runtime OVH du `2026-04-10`
 Doc liee: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 
@@ -20,7 +20,7 @@ La doctrine conservee est explicite:
 - d'abord assainir le candidate generation;
 - ensuite structurer le panier remis a l'arbitre;
 - ensuite faire de `summaries` une vraie voie si elle devient disponible;
-- ensuite prendre une decision testee `go / no-go` sur un reranker de second rang;
+- ensuite prendre une decision documentaire explicite `go / no-go` sur un reranker de second rang;
 - et seulement en fin de chantier, apres cette decision, ouvrir le lot de surface d'observabilite memoire/RAG dediee.
 
 ## Verdict d'audit integre
@@ -78,7 +78,7 @@ La doctrine conservee est explicite:
 - Tant que `summaries=0` sur le runtime actif, la voie `summaries` est un chantier de design + preconditions, pas un levier live immediat.
 - Tant que le panier pre-arbitre reste peu structure, l'arbitre compense partiellement mais ne peut pas reparer un recall mal calibre.
 - Les doublons exacts et quasi-doublons doivent etre traites comme un sujet explicite de panier, pas comme un detail cosmetique.
-- La decision `go / no-go` sur un reranker doit etre fondee sur des tests et probes, pas presumee d'avance.
+- La decision `go / no-go` sur un reranker doit etre fondee sur les preuves deja accumulees, sans presumer un essai effectif si le dossier de necessite reste insuffisant.
 - Le design final d'une surface d'observabilite memoire/RAG ne doit pas etre fige tant que le systeme de fond et la decision reranker ne sont pas stabilises.
 - La future surface d'observabilite memoire/RAG devra etre pensee comme un systeme dedie distinct de l'admin general, meme si elle reemploie des briques communes.
 
@@ -401,74 +401,82 @@ Statut de pilotage:
 - [x] Une decision explicite `go / no-go` est prise et documentee.
 - [x] Aucun lot final de surface d'observabilite memoire/RAG ne demarre avant cette decision explicite.
 
-## Phase 10 - Futur lot final E: surface d'observabilite memoire/RAG dediee
+## Phase 10 - Lot final E: surface d'observabilite memoire/RAG dediee
 
-- [ ] Confirmer que les Gates `0` a `9D` sont fermees avant d'ouvrir ce lot.
-- [ ] Confirmer que le systeme de fond est assez stabilise pour eviter de designer une surface finale sur des objets encore mouvants.
-- [ ] Ouvrir ce lot seulement apres la decision testee `go / no-go` sur le reranker, qu'un reranker soit retenu ou non.
-- [ ] Definir la surface comme un systeme separe de l'administration generale, dedie a l'observabilite memoire / RAG dans FridaDev.
-- [ ] Definir le role fonctionnel de cette surface:
+Statut de pilotage:
+- phase fermee au `2026-04-12`;
+- contrat de surface: `app/docs/states/specs/memory-admin-surface-contract.md`
+- validation de cloture: `app/docs/todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
+
+- [x] Confirmer que les Gates `0` a `9D` sont fermees avant d'ouvrir ce lot.
+- [x] Confirmer que le systeme de fond est assez stabilise pour eviter de designer une surface finale sur des objets encore mouvants.
+- [x] Ouvrir ce lot seulement apres la decision documentaire explicite `go / no-go` sur le reranker, qu'un reranker soit retenu ou non.
+- [x] Definir la surface comme un systeme separe de l'administration generale, dedie a l'observabilite memoire / RAG dans FridaDev.
+- [x] Definir le role fonctionnel de cette surface:
   - rendre lisible ce qui se passe dans le domaine memoire/RAG;
   - rendre les objets et etapes comprehensibles pour un operateur;
-  - fournir des intitules lisibles et, si necessaire, une legende ou aide de lecture;
+  - fournir des intitules lisibles et une legende de provenance;
   - permettre l'inspection sans obliger a croiser durablement plusieurs surfaces confuses.
-- [ ] Cadrer les familles d'informations que la surface devra rendre lisibles, sans figer trop tot leur taxonomie finale:
-  - etat memoire (`traces`, `summaries`, couverture utile, duplications notables);
+- [x] Rendre lisibles dans la surface les familles suivantes:
+  - etat memoire (`traces`, `summaries`, duplications notables);
   - retrieval / RAG;
   - embeddings;
   - panier pre-arbitre;
   - arbitre;
   - injection memoire;
-  - decisions, probes et eventuels doublons si ces objets restent pertinents dans la cible.
-- [ ] Distinguer explicitement, dans le futur design fonctionnel, ce qui vient:
+  - tours recents et decisions arbitre persistees.
+- [x] Distinguer explicitement ce qui vient:
   - d'une persistence durable;
   - d'une agregation calculee;
   - d'un etat process runtime;
   - ou d'une lecture historique de logs.
-- [ ] Faire l'inventaire explicite des informations de ce domaine aujourd'hui dispersees entre:
-  - l'admin general;
+- [x] Faire l'inventaire explicite des informations du domaine aujourd hui dispersees entre:
+  - `/admin`;
   - `/hermeneutic-admin`;
   - `dashboard`;
   - `arbiter-decisions`;
   - logs chat / `observability.chat_log_events`;
-  - admin logs;
-  - et autres lectures utiles deja existantes.
-- [ ] Pour chaque information inventoriee, trancher explicitement:
-  - migration vers la future surface si elle reste utile;
-  - maintien ailleurs si elle ne releve pas vraiment du domaine memoire/RAG;
-  - suppression si elle devient redondante ou peu utile.
-- [ ] Interdire une duplication confuse durable entre l'admin general et la future surface dediee.
-- [ ] Verifier que la future surface ne soit pas decrite comme une simple extension floue de l'admin general ou de `/hermeneutic-admin`.
-- [ ] Definir les non-goals de ce lot:
-  - ne pas figer l'UI exacte trop tot;
-  - ne pas figer l'arborescence finale exacte trop tot;
-  - ne pas figer les endpoints finaux exacts trop tot;
-  - ne pas figer le detail des composants frontend trop tot;
-  - ne pas sur-designer une taxonomie finale avant stabilisation du systeme observe.
-- [ ] Produire avant implementation un cadrage fonctionnel final qui dise ce que la surface doit permettre de comprendre, sans imposer prematurement son design technique exact.
+  - admin logs.
+- [x] Trancher explicitement pour chaque famille inventoriee:
+  - migration dans `Memory Admin` pour la vue memoire / RAG agregee;
+  - maintien sur `/log`, `/identity` ou `/hermeneutic-admin` quand le sujet sort du seul domaine memoire / RAG;
+  - absence de duplication confuse durable.
+- [x] Interdire une duplication confuse durable entre l'admin general et la surface dediee.
+- [x] Verifier que la surface n'est pas decrite comme une simple extension floue de l'admin general ou de `/hermeneutic-admin`.
+- [x] Figer les non-goals de ce lot:
+  - aucun reranker;
+  - aucun nouveau systeme CSS;
+  - aucune refonte globale de `app/web/`;
+  - aucun rangement des `admin_section_*`;
+  - aucun redesign d Identity ou d Hermeneutic admin.
+- [x] Produire un cadrage fonctionnel final disant ce que la surface doit permettre de comprendre et l architecture frontend retenue:
+  - `app/web/memory-admin.html` a la racine;
+  - logique JS dans `app/web/memory_admin/`;
+  - reutilisation de `admin.css`;
+  - ajout d'une entree `Memory Admin` dans la navigation admin pertinente.
 
 ### Gate 10E
 
-- [ ] La decision reranker testee est documentee et close.
-- [ ] Le perimetre fonctionnel de la surface dediee est ecrit sans sur-fixer l'implementation.
-- [ ] La liste des informations a migrer, conserver ailleurs ou supprimer est explicite.
-- [ ] La contrainte anti-redondance avec l'admin general est documentee.
-- [ ] Le lot peut demarrer sans reouvrir les phases de fond du systeme.
+- [x] La decision reranker documentaire explicite est documentee et close.
+- [x] Le perimetre fonctionnel de la surface dediee est ecrit sans rouvrir les phases amont.
+- [x] La liste des informations a migrer, conserver ailleurs ou laisser hors surface est explicite.
+- [x] La contrainte anti-redondance avec l'admin general est documentee.
+- [x] Le lot est ferme sans reouvrir les phases de fond du systeme.
 
 ## Definition of done globale
 
-- [ ] Le corpus canonique de probes est versionne et reutilisable.
-- [ ] Une baseline avant/apres existe pour chaque lot d'implementation retenu.
-- [ ] Le candidate generation est plus propre sur les probes canoniques.
-- [ ] Le panier pre-arbitre a un schema stable, borne et moins redondant.
-- [ ] La place de `parent_summary` est documentee et testee.
-- [ ] La voie `summaries` est soit implementee avec preuves, soit ajournee explicitement avec cause.
-- [ ] La decision `go / no-go` reranker est prise sur preuves et documentee.
-- [ ] Le reranker reste absent tant que ses prerequis ne sont pas demontres.
-- [ ] Une surface finale d'observabilite memoire/RAG est cadree puis livree comme systeme dedie distinct de l'admin general.
-- [ ] Les informations memoire/RAG aujourd'hui dispersees sont migrees, maintenues ailleurs ou supprimees explicitement; aucune duplication confuse durable n'est laissee en place.
-- [ ] Aucun lot n'a melange ce chantier avec le finding separe `record_arbiter_decisions()`.
-- [ ] La validation finale est archivee dans `app/docs/todo-done/validations/`.
+- [x] Le corpus canonique de probes est versionne et reutilisable.
+- [x] Une baseline avant/apres existe pour chaque lot d'implementation retenu.
+- [x] Le candidate generation est plus propre sur les probes canoniques.
+- [x] Le panier pre-arbitre a un schema stable, borne et moins redondant.
+- [x] La place de `parent_summary` est documentee et testee.
+- [x] La voie `summaries` est soit implementee avec preuves, soit ajournee explicitement avec cause.
+- [x] La decision `go / no-go` reranker est prise sur preuves et documentee.
+- [x] Le reranker reste absent tant que ses prerequis ne sont pas demontres.
+- [x] Une surface finale d'observabilite memoire/RAG est cadree puis livree comme systeme dedie distinct de l'admin general.
+- [x] Les informations memoire/RAG aujourd'hui dispersees sont migrees, maintenues ailleurs ou laissees hors surface explicitement; aucune duplication confuse durable n'est laissee en place.
+- [x] Aucun lot n'a melange ce chantier avec le finding separe `record_arbiter_decisions()`.
+- [x] La validation finale est archivee dans `app/docs/todo-done/validations/`.
 
 ## Ordre reel de travail recommande
 
@@ -479,5 +487,5 @@ Statut de pilotage:
 5. Preconditions et design de la voie `summaries`.
 6. Feuille d'evaluation avant tout patch runtime.
 7. Lots d'implementation separes: generation, panier, summaries.
-8. Decision reranker testee, avec issue `go / no-go`.
+8. Decision reranker documentaire explicite, avec issue `go / no-go`.
 9. Surface finale d'observabilite memoire/RAG dediee, distincte de l'admin general, seulement apres cette decision.

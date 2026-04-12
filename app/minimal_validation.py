@@ -435,6 +435,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "log_html": web_dir / "log.html",
         "hermeneutic_admin_html": web_dir / "hermeneutic-admin.html",
         "identity_html": web_dir / "identity.html",
+        "memory_admin_html": web_dir / "memory-admin.html",
         "admin_css": web_dir / "admin.css",
         "styles_css": web_dir / "styles.css",
         "app_js": web_dir / "app.js",
@@ -471,6 +472,10 @@ def _check_ui_assets() -> Dict[str, Any]:
             web_dir / "identity" / "render_identity_runtime_representations.js"
         ),
         "identity_main_js": web_dir / "identity" / "main.js",
+        "memory_admin_api_js": web_dir / "memory_admin" / "api.js",
+        "memory_admin_render_overview_js": web_dir / "memory_admin" / "render_overview.js",
+        "memory_admin_render_turns_js": web_dir / "memory_admin" / "render_turns.js",
+        "memory_admin_main_js": web_dir / "memory_admin" / "main.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
     forbidden_files = {
@@ -492,6 +497,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     log_html = required_files["log_html"].read_text(encoding="utf-8")
     hermeneutic_admin_html = required_files["hermeneutic_admin_html"].read_text(encoding="utf-8")
     identity_html = required_files["identity_html"].read_text(encoding="utf-8")
+    memory_admin_html = required_files["memory_admin_html"].read_text(encoding="utf-8")
     admin_api_js = required_files["admin_api_js"].read_text(encoding="utf-8")
     admin_ui_common_js = required_files["admin_ui_common_js"].read_text(encoding="utf-8")
     admin_state_js = required_files["admin_state_js"].read_text(encoding="utf-8")
@@ -525,6 +531,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         "identity_render_runtime_representations_js"
     ].read_text(encoding="utf-8")
     identity_main_js = required_files["identity_main_js"].read_text(encoding="utf-8")
+    memory_admin_api_js = required_files["memory_admin_api_js"].read_text(encoding="utf-8")
+    memory_admin_render_overview_js = required_files["memory_admin_render_overview_js"].read_text(
+        encoding="utf-8"
+    )
+    memory_admin_render_turns_js = required_files["memory_admin_render_turns_js"].read_text(encoding="utf-8")
+    memory_admin_main_js = required_files["memory_admin_main_js"].read_text(encoding="utf-8")
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
@@ -560,6 +572,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{identity_render_runtime_representations_js}\n"
         f"{identity_main_js}"
     )
+    memory_admin_front_js = (
+        f"{memory_admin_api_js}\n"
+        f"{memory_admin_render_overview_js}\n"
+        f"{memory_admin_render_turns_js}\n"
+        f"{memory_admin_main_js}"
+    )
 
     admin_script_order = [
         "admin_api.js",
@@ -592,6 +610,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin/render_identity_static_editor.js",
         "hermeneutic_admin/render_identity_mutable_editor.js",
         "hermeneutic_admin/render_identity_governance.js",
+        "identity/render_identity_runtime_representations.js",
         "hermeneutic_admin/main.js",
     ]
     hermeneutic_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', hermeneutic_admin_html)
@@ -619,6 +638,21 @@ def _check_ui_assets() -> Dict[str, Any]:
         raise RuntimeError(
             "ordre scripts identity invalide: "
             f"attendu={identity_script_order}, trouve={identity_script_srcs}"
+        )
+
+    memory_admin_script_order = [
+        "admin_api.js",
+        "admin_ui_common.js",
+        "memory_admin/api.js",
+        "memory_admin/render_overview.js",
+        "memory_admin/render_turns.js",
+        "memory_admin/main.js",
+    ]
+    memory_admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', memory_admin_html)
+    if memory_admin_script_srcs != memory_admin_script_order:
+        raise RuntimeError(
+            "ordre scripts memory admin invalide: "
+            f"attendu={memory_admin_script_order}, trouve={memory_admin_script_srcs}"
         )
 
     expected_admin_settings_endpoints = {
@@ -847,6 +881,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="message"',
         'id="btnIdentity"',
         'href="/identity"',
+        'id="btnMemoryAdmin"',
+        'href="/memory-admin"',
     ]
     for marker in index_markers:
         if marker not in index_html:
@@ -865,6 +901,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Admin de configuration",
         'href="admin.css"',
         'href="/identity"',
+        'href="/memory-admin"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
         'script src="admin_state.js"',
@@ -952,6 +989,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="/identity"',
         'href="/admin"',
         'href="/hermeneutic-admin"',
+        'href="/memory-admin"',
         'id="logRefresh"',
     ]
     for marker in log_markers:
@@ -962,6 +1000,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Hermeneutic admin",
         'href="admin.css"',
         'href="/identity"',
+        'href="/memory-admin"',
         'script src="admin_api.js"',
         'script src="admin_ui_common.js"',
         'script src="hermeneutic_admin/api.js"',
@@ -1032,12 +1071,11 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="/admin"',
         'href="/log"',
         'href="/hermeneutic-admin"',
-        "Comment l'identite circule",
+        'href="/memory-admin"',
+        "Les 4 blocs a editer en premier",
+        "Source canonique, pilotage systeme et formes compilees",
         "Etat courant par sujet",
-        "Fiche identite pour le jugement",
-        "Texte identity injecte au modele",
-        "Editer le statique canonique",
-        "Editer la mutable canonique",
+        "Repere runtime compile utile au pilotage",
         "Seuils et limites",
         "Legacy, evidences et conflits",
         "Corrections recentes et sorties utiles",
@@ -1048,6 +1086,30 @@ def _check_ui_assets() -> Dict[str, Any]:
     for marker in identity_markers:
         if marker not in identity_html:
             raise RuntimeError(f"marker identity.html manquant: {marker}")
+
+    memory_admin_markers = [
+        "Memory Admin",
+        'href="admin.css"',
+        'href="/admin"',
+        'href="/log"',
+        'href="/identity"',
+        'href="/hermeneutic-admin"',
+        'href="/memory-admin"',
+        'script src="memory_admin/api.js"',
+        'script src="memory_admin/render_overview.js"',
+        'script src="memory_admin/render_turns.js"',
+        'script src="memory_admin/main.js"',
+        "Etat memoire durable",
+        "Retrieval, embeddings et couverture recente",
+        "Panier pre-arbitre, arbitre et runtime process-local",
+        "Injection memoire et lecture recente",
+        "Details memory/RAG par tour",
+        "Decisions arbitre persistees",
+        "persistance durable, agregat calcule, runtime process-local et historique logs",
+    ]
+    for marker in memory_admin_markers:
+        if marker not in memory_admin_html:
+            raise RuntimeError(f"marker memory-admin.html manquant: {marker}")
 
     expected_identity_endpoints = {
         "/api/admin/identity/read-model",
@@ -1068,6 +1130,26 @@ def _check_ui_assets() -> Dict[str, Any]:
         extra = sorted(found_identity_endpoints - expected_identity_endpoints)
         raise RuntimeError(
             "endpoints identity invalides: "
+            f"missing={missing}, extra={extra}"
+        )
+
+    expected_memory_admin_endpoints = {
+        "/api/admin/memory/dashboard",
+        "/api/admin/logs/chat",
+        "/api/admin/logs/chat/metadata",
+        "/api/admin/hermeneutics/arbiter-decisions",
+    }
+    found_memory_admin_endpoints = set(
+        re.findall(
+            r"/api/admin/(?:memory/dashboard|logs/chat(?:/metadata)?|hermeneutics/arbiter-decisions)",
+            memory_admin_front_js,
+        )
+    )
+    if found_memory_admin_endpoints != expected_memory_admin_endpoints:
+        missing = sorted(expected_memory_admin_endpoints - found_memory_admin_endpoints)
+        extra = sorted(found_memory_admin_endpoints - expected_memory_admin_endpoints)
+        raise RuntimeError(
+            "endpoints memory admin invalides: "
             f"missing={missing}, extra={extra}"
         )
 
@@ -1161,6 +1243,10 @@ def _check_ui_assets() -> Dict[str, Any]:
         "identity_script_srcs": identity_script_srcs,
         "identity_endpoints_expected": sorted(expected_identity_endpoints),
         "identity_endpoints_found": sorted(found_identity_endpoints),
+        "memory_admin_script_order": memory_admin_script_order,
+        "memory_admin_script_srcs": memory_admin_script_srcs,
+        "memory_admin_endpoints_expected": sorted(expected_memory_admin_endpoints),
+        "memory_admin_endpoints_found": sorted(found_memory_admin_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
         "admin_dynamic_getelement_templates_expected": sorted(expected_dynamic_getelement_templates),
         "admin_dynamic_getelement_templates_found": dynamic_getelement_templates,
@@ -1179,6 +1265,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "log_markers": log_markers,
         "hermeneutic_admin_markers": hermeneutic_admin_markers,
         "identity_markers": identity_markers,
+        "memory_admin_markers": memory_admin_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,
         "admin_js_markers": admin_js_markers,
         "admin_js_forbidden_markers": admin_js_forbidden_markers,
@@ -1203,8 +1290,12 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         raise RuntimeError("hermeneutic-admin invalide")
 
     identity_page = _http_json("GET", f"{base_url}/identity")
-    if identity_page.status_code != 200 or "Fiche identite pour le jugement" not in identity_page.text:
+    if identity_page.status_code != 200 or "Identity" not in identity_page.text:
         raise RuntimeError("identity invalide")
+
+    memory_admin_page = _http_json("GET", f"{base_url}/memory-admin")
+    if memory_admin_page.status_code != 200 or "Memory Admin" not in memory_admin_page.text:
+        raise RuntimeError("memory-admin invalide")
 
     admin_old = _http_json("GET", f"{base_url}/admin-old")
     if admin_old.status_code != 404:
@@ -1307,6 +1398,15 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     if not isinstance(admin_logs_payload.get("logs"), list):
         raise RuntimeError("api admin logs sans logs")
 
+    memory_dashboard = _http_json("GET", f"{base_url}/api/admin/memory/dashboard", **_admin_request_kwargs())
+    memory_dashboard_payload = memory_dashboard.json()
+    if memory_dashboard.status_code != 200 or memory_dashboard_payload.get("ok") is not True:
+        raise RuntimeError("api admin memory dashboard invalide")
+    if not isinstance(memory_dashboard_payload.get("surface"), dict):
+        raise RuntimeError("api admin memory dashboard sans surface")
+    if str(memory_dashboard_payload["surface"].get("name") or "") != "Memory Admin":
+        raise RuntimeError("api admin memory dashboard surface invalide")
+
     random_id = str(uuid.uuid4())
     missing = _http_json("GET", f"{base_url}/api/conversations/{random_id}/messages")
     missing_payload = missing.json()
@@ -1321,6 +1421,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "log_status": log.status_code,
         "hermeneutic_admin_status": hermeneutic_admin.status_code,
         "identity_status": identity_page.status_code,
+        "memory_admin_status": memory_admin_page.status_code,
         "admin_old_status": admin_old.status_code,
         "conversations_status": conv_list.status_code,
         "admin_settings_status": admin_settings.status_code,
@@ -1331,6 +1432,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
         "identity_governance_invalid_patch_status": governance_invalid_patch.status_code,
         "identity_runtime_representations_status": runtime_representations_get.status_code,
         "admin_logs_status": admin_logs.status_code,
+        "memory_dashboard_status": memory_dashboard.status_code,
         "missing_conversation_status": missing.status_code,
     }
 

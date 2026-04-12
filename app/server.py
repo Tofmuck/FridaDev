@@ -26,6 +26,7 @@ from admin import (
     admin_identity_runtime_representations_service,
     admin_identity_static_edit_service,
     admin_identity_mutable_edit_service,
+    admin_memory_service,
     admin_identity_read_model_service,
     admin_logs,
     admin_hermeneutics_service,
@@ -1120,6 +1121,20 @@ def api_create_conversation():
     return jsonify(payload), status
 
 
+@app.get('/api/admin/memory/dashboard')
+def api_admin_memory_dashboard():
+    payload, status = admin_memory_service.dashboard_response(
+        request.args,
+        memory_store_module=memory_store,
+        arbiter_module=arbiter,
+        admin_logs_module=admin_logs,
+        runtime_settings_module=runtime_settings,
+        config_module=config,
+        log_store_module=log_store,
+    )
+    return jsonify(payload), status
+
+
 @app.get('/api/conversations/<conversation_id>/messages')
 def api_get_conversation_messages(conversation_id: str):
     payload, status = conversations_service.get_conversation_messages(
@@ -1173,6 +1188,11 @@ def hermeneutic_admin_root():
 @app.get("/identity")
 def identity_root():
     return send_from_directory(app.static_folder, "identity.html")
+
+
+@app.get("/memory-admin")
+def memory_admin_root():
+    return send_from_directory(app.static_folder, "memory-admin.html")
 
 
 if __name__ == "__main__":

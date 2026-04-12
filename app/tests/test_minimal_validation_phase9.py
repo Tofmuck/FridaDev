@@ -153,6 +153,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("log_html", details["files"])
         self.assertIn("hermeneutic_admin_html", details["files"])
         self.assertIn("identity_html", details["files"])
+        self.assertIn("memory_admin_html", details["files"])
         self.assertIn("admin_ui_common_js", details["files"])
         self.assertIn("admin_state_js", details["files"])
         self.assertIn("admin_section_main_model_js", details["files"])
@@ -172,6 +173,10 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("identity_api_js", details["files"])
         self.assertIn("identity_render_runtime_representations_js", details["files"])
         self.assertIn("identity_main_js", details["files"])
+        self.assertIn("memory_admin_api_js", details["files"])
+        self.assertIn("memory_admin_render_overview_js", details["files"])
+        self.assertIn("memory_admin_render_turns_js", details["files"])
+        self.assertIn("memory_admin_main_js", details["files"])
         self.assertEqual(details["admin_script_srcs"], details["admin_script_order"])
         self.assertEqual(
             details["admin_settings_endpoints_found"],
@@ -192,6 +197,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(
             details["identity_endpoints_found"],
             details["identity_endpoints_expected"],
+        )
+        self.assertEqual(
+            details["memory_admin_script_srcs"],
+            details["memory_admin_script_order"],
+        )
+        self.assertEqual(
+            details["memory_admin_endpoints_found"],
+            details["memory_admin_endpoints_expected"],
         )
         self.assertIn("adminMainModelSave", details["admin_dom_hook_ids_checked"])
         self.assertIn("adminEmbeddingSecretCard", details["admin_dom_hook_ids_checked"])
@@ -221,9 +234,11 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("adminValidationAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn('target="_blank"', details["index_hermeneutic_markers"])
         self.assertIn('href="/identity"', details["index_markers"])
+        self.assertIn('href="/memory-admin"', details["index_markers"])
         self.assertIn("Hermeneutic admin", details["hermeneutic_admin_markers"])
         self.assertIn("Logs applicatifs", details["log_markers"])
-        self.assertIn("Fiche identite pour le jugement", details["identity_markers"])
+        self.assertIn("Les 4 blocs a editer en premier", details["identity_markers"])
+        self.assertIn("Memory Admin", details["memory_admin_markers"])
         self.assertIn("admin_old_html", details["legacy_admin_assets_absent"])
         self.assertIn("admin_old_js", details["legacy_admin_assets_absent"])
         self.assertIn('id="rows"', details["admin_html_forbidden_markers"])
@@ -246,7 +261,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             if url.endswith("/hermeneutic-admin"):
                 return _FakeResponse(200, text="Hermeneutic admin")
             if url.endswith("/identity"):
-                return _FakeResponse(200, text="Fiche identite pour le jugement")
+                return _FakeResponse(200, text="Identity")
+            if url.endswith("/memory-admin"):
+                return _FakeResponse(200, text="Memory Admin")
             if url.endswith("/admin-old"):
                 return _FakeResponse(404, text="not found")
             if url.endswith("/api/conversations?limit=1"):
@@ -294,6 +311,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
+            if url.endswith("/api/admin/memory/dashboard"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "surface": {"name": "Memory Admin"},
+                    },
+                )
             if "/api/conversations/" in url and url.endswith("/messages"):
                 return _FakeResponse(404, payload={"ok": False, "error": "conversation introuvable"})
             raise AssertionError(f"unexpected request: {method} {url}")
@@ -309,6 +334,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["log_status"], 200)
         self.assertEqual(details["hermeneutic_admin_status"], 200)
         self.assertEqual(details["identity_status"], 200)
+        self.assertEqual(details["memory_admin_status"], 200)
         self.assertEqual(details["admin_old_status"], 404)
         self.assertEqual(details["admin_settings_status"], 200)
         self.assertEqual(details["admin_resources_status"], 200)
@@ -317,10 +343,12 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["identity_governance_status"], 200)
         self.assertEqual(details["identity_governance_invalid_patch_status"], 400)
         self.assertEqual(details["identity_runtime_representations_status"], 200)
+        self.assertEqual(details["memory_dashboard_status"], 200)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
         self.assertIn(("GET", "http://frida.test/log"), calls)
         self.assertIn(("GET", "http://frida.test/hermeneutic-admin"), calls)
         self.assertIn(("GET", "http://frida.test/identity"), calls)
+        self.assertIn(("GET", "http://frida.test/memory-admin"), calls)
         self.assertIn(("GET", "http://frida.test/admin-old"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/settings/resources"), calls)
@@ -328,6 +356,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn(("GET", "http://frida.test/api/admin/identity/governance"), calls)
         self.assertIn(("POST", "http://frida.test/api/admin/identity/governance"), calls)
         self.assertIn(("GET", "http://frida.test/api/admin/identity/runtime-representations"), calls)
+        self.assertIn(("GET", "http://frida.test/api/admin/memory/dashboard"), calls)
 
     def test_check_api_smoke_calls_admin_endpoints_without_admin_token_header(self) -> None:
         original_http_json = minimal_validation._http_json
@@ -349,7 +378,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             if url.endswith("/hermeneutic-admin"):
                 return _FakeResponse(200, text="Hermeneutic admin")
             if url.endswith("/identity"):
-                return _FakeResponse(200, text="Fiche identite pour le jugement")
+                return _FakeResponse(200, text="Identity")
+            if url.endswith("/memory-admin"):
+                return _FakeResponse(200, text="Memory Admin")
             if url.endswith("/admin-old"):
                 return _FakeResponse(404, text="not found")
             if url.endswith("/api/conversations?limit=1"):
@@ -397,6 +428,14 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 )
             if url.endswith("/api/admin/logs?limit=1"):
                 return _FakeResponse(200, payload={"ok": True, "logs": []})
+            if url.endswith("/api/admin/memory/dashboard"):
+                return _FakeResponse(
+                    200,
+                    payload={
+                        "ok": True,
+                        "surface": {"name": "Memory Admin"},
+                    },
+                )
             if "/api/conversations/" in url and url.endswith("/messages"):
                 return _FakeResponse(404, payload={"ok": False, "error": "conversation introuvable"})
             raise AssertionError(f"unexpected request: {method} {url}")
@@ -411,8 +450,9 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["admin_resources_patch_status"], 200)
         self.assertEqual(details["admin_resources_invalid_patch_status"], 400)
         self.assertEqual(details["identity_runtime_representations_status"], 200)
-        self.assertEqual(len(admin_headers), 8)
-        self.assertEqual(admin_headers, [{}, {}, {}, {}, {}, {}, {}, {}])
+        self.assertEqual(details["memory_dashboard_status"], 200)
+        self.assertEqual(len(admin_headers), 9)
+        self.assertEqual(admin_headers, [{}, {}, {}, {}, {}, {}, {}, {}, {}])
         self.assertEqual(
             patch_payloads,
             [

@@ -12,7 +12,7 @@ Primary references for the current repository state:
 - `app/docs/README.md`
 
 ### What the system does today
-- Flask runtime exposing `/`, `/admin`, `/log`, `/hermeneutic-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*`, and the live dashboard route `GET /api/admin/hermeneutics/dashboard`.
+- Flask runtime exposing `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*`, and the read-only Memory Admin route `GET /api/admin/memory/dashboard`.
 - Verified local stack on `http://127.0.0.1:8093`, currently running with `HERMENEUTIC_MODE=enforced_all`.
 - Chat flow wired as: session resolution -> time grounding -> memory retrieval/arbitration -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> `[JUGEMENT HERMENEUTIQUE]` injection -> main LLM call -> persistence and logs.
 - Operator observability keeping local `estimated_*` counters distinct from post-call OpenRouter `provider_*` truth.
@@ -36,6 +36,7 @@ Primary references for the current repository state:
 - Canonical repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
 - Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
@@ -88,7 +89,7 @@ References principales pour l'etat actuel du depot:
 - `app/docs/README.md`
 
 ### Ce que fait aujourd'hui le systeme
-- Runtime Flask exposant `/`, `/admin`, `/log`, `/hermeneutic-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*` et la route live `GET /api/admin/hermeneutics/dashboard`.
+- Runtime Flask exposant `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*` et la route read-only `GET /api/admin/memory/dashboard`.
 - Stack locale verifiee sur `http://127.0.0.1:8093`, actuellement en `HERMENEUTIC_MODE=enforced_all`.
 - Pipeline chat branche ainsi: resolution de session -> grounding temporel -> retrieval/arbitrage memoire -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> injection `[JUGEMENT HERMENEUTIQUE]` -> appel LLM principal -> persistance et logs.
 - Observabilite operateur distinguant les compteurs locaux `estimated_*` et la verite OpenRouter post-call `provider_*`.
@@ -112,6 +113,7 @@ References principales pour l'etat actuel du depot:
 - Audit canonique du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
 - Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
