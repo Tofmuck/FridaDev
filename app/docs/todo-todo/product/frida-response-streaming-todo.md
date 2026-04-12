@@ -104,8 +104,8 @@ Checklist:
 - [ ] Verifier que le format retenu reste simple a tester et a faire evoluer.
 
 ### Lot 2 — Feedback UX pendant l'attente
-- Objectif: l'utilisateur a un indicateur visuel pendant le buffering.
-- Fichiers: `app/web/app.js` (priorite), optionnellement `app/core/chat_llm_flow.py` pour une normalisation incrementale (phase 2).
+- Objectif: l'utilisateur a un indicateur visuel pendant le buffering, sans modifier dans ce lot le contrat du flux ni la politique de normalisation.
+- Fichiers: `app/web/app.js`.
 - Done: un indicateur d'attente est visible des l'envoi et disparait quand le stream se termine normalement ou en erreur.
 Checklist:
 - [ ] Afficher un indicateur d'attente des l'envoi de la requete.
@@ -113,6 +113,7 @@ Checklist:
 - [ ] Retirer proprement l'indicateur a la fin normale du stream.
 - [ ] Retirer proprement l'indicateur en cas d'erreur mid-stream.
 - [ ] Verifier que le feedback ne se confond pas avec un etat de chargement bloque.
+- [ ] Garder hors de ce lot toute evolution plus intrusive du flux ou de la normalisation.
 
 ### Lot 3 — Metadonnees post-stream
 - Objectif: `X-Conversation-Updated-At` propage au frontend post-stream.
