@@ -3,7 +3,7 @@
 Statut: decision active
 Classement: `app/docs/states/project/`
 Date: `2026-04-11`
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 References liees:
 - `app/docs/states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
 - `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`

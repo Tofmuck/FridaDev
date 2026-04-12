@@ -65,7 +65,7 @@ Notes:
 - note archivee de cloture mini-lot dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - roadmap ouverte memoire/hermeneutique: `todo-todo/memory/hermeneutical-add-todo.md`
-- roadmap ouverte pertinence memoire/RAG: `todo-todo/memory/memory-rag-relevance-todo.md`
+- roadmap archivee pertinence memoire/RAG: `todo-done/refactors/memory-rag-relevance-todo.md`
 - trace archivee suspension excessive / auto-web backend: `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md`
 - roadmap Lot 9 archivee noeud de convergence hermeneutique: `todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - roadmap archivee refactor structurel `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`

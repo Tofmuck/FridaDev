@@ -1,7 +1,7 @@
 # Memory RAG Relevance - TODO implementation roadmap (v2)
 
 Statut: ferme au `2026-04-12`
-Classement: `app/docs/todo-todo/memory/`
+Classement: `app/docs/todo-done/refactors/`
 Portee: roadmap de travail pour la pertinence du retrieval memoire/RAG en amont de l'arbitre
 Derniere revue documentaire: `2026-04-12`
 Origine: audit doc + code + runtime OVH du `2026-04-10`

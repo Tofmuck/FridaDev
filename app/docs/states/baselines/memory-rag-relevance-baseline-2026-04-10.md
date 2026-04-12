@@ -3,7 +3,7 @@
 Statut: reference active
 Classement: `app/docs/states/baselines/`
 Portee: baseline read-only du retrieval memoire actuel avant tout lot V2
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 
 ## 1. Objet
 

@@ -3,7 +3,7 @@
 Statut: baseline active
 Classement: `app/docs/states/baselines/`
 Lot evalue: `Phase 7B - structuration du panier et dedup`
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Spec liee: `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 

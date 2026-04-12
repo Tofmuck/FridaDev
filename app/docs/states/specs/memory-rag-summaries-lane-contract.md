@@ -3,7 +3,7 @@
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: contrat minimal de la lane `summaries`, doctrine de fusion `traces + summaries`, et decision de readiness Phase 4
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Baselines liees:
 - `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - `app/docs/states/baselines/memory-rag-8C-evaluation-2026-04-10.md`

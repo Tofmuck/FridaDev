@@ -3,7 +3,7 @@
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: contrat cible du panier memoire remis a l'arbitre, implemente minimalement en lot 7B
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Baselines liees:
 - `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`

@@ -3,7 +3,7 @@
 Statut: reference active
 Classement: `app/docs/states/architecture/`
 Portee: design du candidate generation memoire/RAG avant tout lot d'implementation V2
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 

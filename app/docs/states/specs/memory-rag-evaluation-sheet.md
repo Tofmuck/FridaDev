@@ -3,7 +3,7 @@
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: feuille d'evaluation commune aux futurs lots `6A`, `7B`, `8C` et `9D` du chantier `memory-rag-relevance`
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`

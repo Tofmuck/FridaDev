@@ -3,7 +3,7 @@
 Statut: baseline active
 Classement: `app/docs/states/baselines/`
 Lot evalue: `Phase 8C - voie summaries`
-Roadmap liee: `app/docs/todo-todo/memory/memory-rag-relevance-todo.md`
+Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Specs liees:
 - `app/docs/states/specs/memory-rag-summaries-lane-contract.md`
 - `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
