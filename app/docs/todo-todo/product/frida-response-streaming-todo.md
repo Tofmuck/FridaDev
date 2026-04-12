@@ -86,41 +86,86 @@ Les marqueurs inline de type `::FRIDA::DONE` / `::FRIDA::ERROR:...` font partie 
 - Objectif: valider chaque scenario (stream normal, buffering, erreur) en runtime reel.
 - Fichiers: aucun (preuves curl uniquement).
 - Done: matrice documentee comportement x mode.
+Checklist:
+- [ ] Verifier le comportement du stream non-bufferise en runtime reel.
+- [ ] Verifier le comportement du buffering plain text en runtime reel.
+- [ ] Verifier le comportement observable en cas d'erreur upstream pendant le stream.
+- [ ] Consigner une matrice simple comportement x mode x issue.
 
 ### Lot 1 — Signal applicatif de fin et d'erreur
 - Objectif: le frontend puisse distinguer fin normale d'erreur mid-stream.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
 - Done: un signal explicite de fin normale et un signal explicite d'erreur sont recues et interpretes cote frontend, avec un format documente dans le lot.
+Checklist:
+- [ ] Choisir un format minimal de signal applicatif compatible avec le transport actuel.
+- [ ] Emettre un signal explicite en fin normale de stream.
+- [ ] Emettre un signal explicite en cas d'erreur mid-stream.
+- [ ] Parser correctement ce signal cote frontend.
+- [ ] Verifier que le format retenu reste simple a tester et a faire evoluer.
 
 ### Lot 2 — Feedback UX pendant l'attente
 - Objectif: l'utilisateur a un indicateur visuel pendant le buffering.
 - Fichiers: `app/web/app.js` (priorite), optionnellement `app/core/chat_llm_flow.py` pour une normalisation incrementale (phase 2).
 - Done: un indicateur d'attente est visible des l'envoi et disparait quand le stream se termine normalement ou en erreur.
+Checklist:
+- [ ] Afficher un indicateur d'attente des l'envoi de la requete.
+- [ ] Conserver cet indicateur tant qu'aucun contenu n'est visible pendant le buffering.
+- [ ] Retirer proprement l'indicateur a la fin normale du stream.
+- [ ] Retirer proprement l'indicateur en cas d'erreur mid-stream.
+- [ ] Verifier que le feedback ne se confond pas avec un etat de chargement bloque.
 
 ### Lot 3 — Metadonnees post-stream
 - Objectif: `X-Conversation-Updated-At` propage au frontend post-stream.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/web/app.js`.
 - Done: les metadonnees du thread incluent updated_at correct apres un stream complet.
+Checklist:
+- [ ] Choisir le canal de propagation post-stream de `updated_at`.
+- [ ] Rendre cette metadonnee disponible a la fin d'un stream complet.
+- [ ] Reinjecter correctement cette valeur dans le thread cote frontend.
+- [ ] Verifier l'absence de divergence entre l'affichage frontend et l'etat persiste.
 
 ### Lot 4 — Gestion d'erreurs mid-stream
 - Objectif: erreur LLM visible et distinguable cote frontend.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
 - Done: le frontend affiche un statut d'erreur intelligible, distinct d'une simple coupure reseau, et le thread n'est pas presente comme complet quand la reponse a echoue.
+Checklist:
+- [ ] Faire remonter un statut d'erreur applicatif exploitable jusqu'au frontend.
+- [ ] Distinguer cote UI une erreur mid-stream d'une simple coupure reseau.
+- [ ] Eviter de presenter la reponse comme terminee quand le stream a echoue.
+- [ ] Verifier la coherence entre message utilisateur, etat du thread et observabilite.
 
 ### Lot 5 — Persistance robuste en cas d'echec
 - Objectif: eviter qu'une reponse interrompue soit persistee comme message assistant complet.
 - Fichiers: `app/core/chat_llm_flow.py`.
 - Done: la regle produit de persistance en cas d'echec est explicite, implementee et testee. Si une heuristique de longueur, un statut d'interruption ou une autre garde est retenue, elle est documentee comme choix du lot code et non comme hypothese implicite.
+Checklist:
+- [ ] Formaliser la regle produit de persistance en cas de stream interrompu.
+- [ ] Choisir explicitement entre non-persistance, persistance partielle qualifiee, ou variante equivalente.
+- [ ] Implementer la garde retenue sans presenter un fragment comme reponse complete.
+- [ ] Verifier qu'un echec court ne cree pas de message assistant fantome.
+- [ ] Documenter le choix retenu s'il depend d'une heuristique ou d'un statut d'interruption.
 
 ### Lot 6 — Adaptation des tests
 - Objectif: adapter les tests existants au signal applicatif retenu et ajouter les tests des nouveaux comportements.
 - Fichiers: `app/tests/test_server_phase14.py`, `app/tests/test_server_logs_phase3.py`, `app/tests/unit/chat/test_chat_llm_flow.py`.
 - Done: suite complete et verte.
+Checklist:
+- [ ] Adapter les tests serveur au comportement de stream retenu.
+- [ ] Ajouter un cas de fin normale avec signal applicatif.
+- [ ] Ajouter un cas d'erreur mid-stream avec comportement frontend attendu.
+- [ ] Ajouter ou ajuster les preuves d'observabilite associees.
+- [ ] Revalider une suite complete verte apres adaptation.
 
 ### Lot 7 — Documentation du protocole
 - Objectif: spec du protocole de streaming dans `app/docs/states/specs/`.
 - Fichiers: `app/docs/states/specs/streaming-protocol.md` (nouveau).
 - Done: un developpeur peut comprendre le protocole sans lire le code.
+Checklist:
+- [ ] Decrire le format de stream retenu et son contrat minimal.
+- [ ] Documenter les cas de fin normale, d'erreur et de coupure reseau.
+- [ ] Documenter la propagation des metadonnees utiles post-stream.
+- [ ] Documenter la regle de persistance applicable en cas d'interruption.
+- [ ] Relire la spec pour qu'elle reste comprensible sans retour au chat ni au code.
 
 ## Risques
 
