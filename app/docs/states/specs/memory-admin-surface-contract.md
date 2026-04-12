@@ -70,6 +70,16 @@ La surface doit rendre lisibles, au minimum :
 - lectures recentes utiles par tour
 - decisions arbitre persistees
 
+Pour l inspection read-only par tour, la surface couvre les stages memory / RAG suivants quand ils existent dans les logs :
+
+- `embedding`
+- `memory_retrieve`
+- `summaries`
+- `arbiter`
+- `hermeneutic_node_insertion`
+- `prompt_prepared`
+- `branch_skipped`
+
 ## Provenances a distinguer explicitement
 
 La surface affiche explicitement quatre familles de provenance :

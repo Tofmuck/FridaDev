@@ -4,8 +4,18 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Mapping, Sequence, Tuple
 from urllib.parse import urlparse
 
-from admin import admin_hermeneutics_service
+from admin import admin_stage_latency_summary
 from memory import memory_pre_arbiter_basket
+
+_RECENT_TURN_STAGES = (
+    'embedding',
+    'memory_retrieve',
+    'summaries',
+    'arbiter',
+    'hermeneutic_node_insertion',
+    'prompt_prepared',
+    'branch_skipped',
+)
 
 
 def _to_int(value: Any, fallback: int = 0) -> int:
@@ -414,6 +424,13 @@ def _read_injection_summary(
 
 def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     data = _safe_mapping(payload)
+    if stage == 'embedding':
+        return {
+            'source_kind': str(data.get('source_kind') or ''),
+            'mode': str(data.get('mode') or ''),
+            'provider': str(data.get('provider') or ''),
+            'dimensions': _to_int(data.get('dimensions')),
+        }
     if stage == 'memory_retrieve':
         return {
             'top_k_requested': _to_int(data.get('top_k_requested')),
@@ -421,6 +438,14 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'dense_candidates_count': _to_int(data.get('dense_candidates_count')),
             'lexical_candidates_count': _to_int(data.get('lexical_candidates_count')),
             'summary_candidates_count': _to_int(data.get('summary_candidates_count')),
+        }
+    if stage == 'summaries':
+        return {
+            'active_summary_present': bool(data.get('active_summary_present')),
+            'summary_count_used': _to_int(data.get('summary_count_used')),
+            'summary_usage': str(data.get('summary_usage') or ''),
+            'in_prompt': bool(data.get('in_prompt')),
+            'summary_generation_observed': bool(data.get('summary_generation_observed')),
         }
     if stage == 'arbiter':
         return {
@@ -461,6 +486,11 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
                 if str(item).strip()
             ],
         }
+    if stage == 'branch_skipped':
+        return {
+            'reason_code': str(data.get('reason_code') or ''),
+            'reason_short': str(data.get('reason_short') or ''),
+        }
     return {}
 
 
@@ -469,7 +499,7 @@ def _read_recent_turns(
     conn_factory: Callable[[], Any],
     turn_limit: int,
 ) -> dict[str, Any]:
-    stages = ('memory_retrieve', 'arbiter', 'prompt_prepared', 'hermeneutic_node_insertion')
+    stages = _RECENT_TURN_STAGES
     placeholders = ', '.join(['%s'] * len(stages))
     sample_limit = max(turn_limit * 8, 64)
 
@@ -578,7 +608,7 @@ def _mode_observation(current_mode: str, admin_logs_module: Any) -> dict[str, An
 
 def _stage_latencies(admin_logs_module: Any) -> dict[str, Any]:
     logs = admin_logs_module.read_logs(limit=5000)
-    return admin_hermeneutics_service._compute_stage_latencies(logs)
+    return admin_stage_latency_summary.compute_stage_latencies(logs)
 
 
 def _section_with_fallback(

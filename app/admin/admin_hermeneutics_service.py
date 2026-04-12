@@ -1,52 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import ceil, floor
 from typing import Any, Dict, List, Mapping, Tuple
 
-
-def _percentile(values: List[float], p: float) -> float:
-    if not values:
-        return 0.0
-    vals = sorted(values)
-    rank = max(0.0, min(1.0, p)) * (len(vals) - 1)
-    lo = int(floor(rank))
-    hi = int(ceil(rank))
-    if lo == hi:
-        return float(vals[lo])
-    weight = rank - lo
-    return float(vals[lo] * (1.0 - weight) + vals[hi] * weight)
-
-
-def _compute_stage_latencies(log_entries: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
-    buckets: Dict[str, List[float]] = {
-        'retrieve': [],
-        'arbiter': [],
-        'identity_extractor': [],
-    }
-    for entry in log_entries:
-        if entry.get('event') != 'stage_latency':
-            continue
-        stage = str(entry.get('stage') or '').strip()
-        if stage not in buckets:
-            continue
-        try:
-            duration = float(entry.get('duration_ms') or 0.0)
-        except (TypeError, ValueError):
-            continue
-        if duration < 0:
-            continue
-        buckets[stage].append(duration)
-
-    out: Dict[str, Dict[str, float]] = {}
-    for stage, values in buckets.items():
-        out[stage] = {
-            'count': int(len(values)),
-            'p50_ms': round(_percentile(values, 0.50), 3),
-            'p95_ms': round(_percentile(values, 0.95), 3),
-        }
-    return out
-
+from admin import admin_stage_latency_summary
 
 def identity_candidates_response(
     args: Mapping[str, Any],
@@ -189,7 +146,7 @@ def dashboard_response(
     )
 
     log_entries = admin_logs_module.read_logs(limit=log_limit)
-    stage_latencies = _compute_stage_latencies(log_entries)
+    stage_latencies = admin_stage_latency_summary.compute_stage_latencies(log_entries)
     summarize_mode_observation = getattr(admin_logs_module, 'summarize_hermeneutic_mode_observation', None)
     if callable(summarize_mode_observation):
         mode_observation = summarize_mode_observation(config_module.HERMENEUTIC_MODE)
