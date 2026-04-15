@@ -604,6 +604,13 @@ def chat_response(
         augmented_system,
         hermeneutic_judgment_block,
     )
+    voice_transcription_guard_block = chat_prompt_context.build_voice_transcription_guard_block(
+        input_mode=input_mode,
+    )
+    augmented_system = chat_prompt_context.inject_voice_transcription_guard_block(
+        augmented_system,
+        voice_transcription_guard_block,
+    )
     direct_identity_revelation_guard_block = chat_prompt_context.build_direct_identity_revelation_guard_block(
         user_msg=user_msg,
         user_turn_input=user_turn_payload,

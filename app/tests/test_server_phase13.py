@@ -303,8 +303,13 @@ class ServerPhase13Tests(unittest.TestCase):
         self.server.conv_store.new_conversation = fake_new_conversation
         self.server.conv_store.save_conversation = lambda *_args, **_kwargs: None
         self.server.conv_store.append_message = (
-            lambda conv, role, content, timestamp=None: conv["messages"].append(
-                {"role": role, "content": content, "timestamp": timestamp}
+            lambda conv, role, content, meta=None, timestamp=None: conv["messages"].append(
+                {
+                    "role": role,
+                    "content": content,
+                    "timestamp": timestamp,
+                    **({"meta": meta} if meta is not None else {}),
+                }
             )
         )
         self.server.chat_service.chat_prompt_context.build_augmented_system = fake_build_augmented_system

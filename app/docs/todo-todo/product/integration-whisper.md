@@ -17,7 +17,7 @@ Le gain recherche est d'abord ergonomique:
 - [x] Lot 0 - fondation backend de transcription
 - [x] Lot 1 - frontend micro, capture audio et reinjection du transcript
 - [x] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
-- [ ] Lot 3 - lecture faible de l'oralite via helper prompt dedie
+- [x] Lot 3 - lecture faible de l'oralite via helper prompt dedie
 - [ ] Lot 4 - finitions UX, observabilite et documentation de cloture
 
 ## Principe directeur
@@ -427,13 +427,13 @@ Hors-scope de cette V1:
 - [x] maintien du comportement par defaut `keyboard` sans regression
 - [x] tests backend / integration sur le transport du mode d'entree
 
-### [ ] Lot 3 - lecture faible de l'oralite
+### [x] Lot 3 - lecture faible de l'oralite
 
-- [ ] helper prompt ou guard block dedie pour les tours `voice`
-- [ ] interpretation locale du tour vocal comme indice faible seulement
-- [ ] absence d'integration opportuniste dans la `stimmung`
-- [ ] absence de nouvel objet canonique dur `enunciation_mode`
-- [ ] tests / preuves sur l'effet prompt attendu
+- [x] helper prompt ou guard block dedie pour les tours `voice`
+- [x] interpretation locale du tour vocal comme indice faible seulement
+- [x] absence d'integration opportuniste dans la `stimmung`
+- [x] absence de nouvel objet canonique dur `enunciation_mode`
+- [x] tests / preuves sur l'effet prompt attendu
 
 ### [ ] Lot 4 - finitions UX, observabilite et documentation
 

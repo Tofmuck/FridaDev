@@ -19,14 +19,28 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import chat_prompt_context
-from core.hermeneutic_node.inputs import time_input
+from core.hermeneutic_node.inputs import stimmung_input, time_input, user_turn_input
 
 
 class ChatPromptContextTests(unittest.TestCase):
-    def test_lot2_keeps_chat_prompt_context_free_of_input_mode_transport_logic(self) -> None:
+    def test_lot3_keeps_chat_prompt_context_free_of_enunciation_mode_and_orality_hint_objects(self) -> None:
         source = inspect.getsource(chat_prompt_context)
 
+        self.assertNotIn('enunciation_mode', source)
+        self.assertNotIn('orality_hint', source)
+
+    def test_lot3_keeps_user_turn_input_free_of_voice_transport_logic(self) -> None:
+        source = inspect.getsource(user_turn_input)
+
         self.assertNotIn('input_mode', source)
+        self.assertNotIn('enunciation_mode', source)
+        self.assertNotIn('orality_hint', source)
+
+    def test_lot3_keeps_stimmung_input_free_of_voice_transport_logic(self) -> None:
+        source = inspect.getsource(stimmung_input)
+
+        self.assertNotIn('input_mode', source)
+        self.assertNotIn('enunciation_mode', source)
         self.assertNotIn('orality_hint', source)
 
     def test_build_time_input_exposes_canonical_time_fields(self) -> None:
@@ -154,6 +168,33 @@ class ChatPromptContextTests(unittest.TestCase):
         )
 
         self.assertEqual(block, '')
+
+    def test_build_voice_transcription_guard_block_is_present_for_voice_turns(self) -> None:
+        block = chat_prompt_context.build_voice_transcription_guard_block(
+            input_mode='voice',
+        )
+
+        self.assertIn('[GARDE DE LECTURE VOCALE]', block)
+        self.assertIn("transcription vocale", block)
+        self.assertIn("scories d'oralite", block)
+        self.assertIn('partiellement mixte', block)
+
+    def test_build_voice_transcription_guard_block_is_absent_for_keyboard_turns(self) -> None:
+        block = chat_prompt_context.build_voice_transcription_guard_block(
+            input_mode='keyboard',
+        )
+
+        self.assertEqual(block, '')
+
+    def test_inject_voice_transcription_guard_block_appends_after_augmented_system(self) -> None:
+        augmented = chat_prompt_context.inject_voice_transcription_guard_block(
+            'BASE SYSTEM',
+            "[GARDE DE LECTURE VOCALE]\nLe tour utilisateur courant provient d'une transcription vocale.",
+        )
+
+        self.assertTrue(augmented.startswith('BASE SYSTEM'))
+        self.assertIn('[GARDE DE LECTURE VOCALE]', augmented)
+        self.assertLess(augmented.index('BASE SYSTEM'), augmented.index('[GARDE DE LECTURE VOCALE]'))
 
     def test_build_plain_text_guard_block_for_default_turn_forbids_markdown_lists_and_code_fences(self) -> None:
         block = chat_prompt_context.build_plain_text_guard_block(

@@ -52,7 +52,7 @@ class ChatInputModeRouteTests(unittest.TestCase):
 
     def _patch_chat_runtime(self, *, conversation: dict[str, object]):
         originals = []
-        observed = {'save_calls': []}
+        observed = {'save_calls': [], 'payload_messages': []}
 
         def patch_attr(obj, name, value):
             originals.append((obj, name, getattr(obj, name)))
@@ -117,7 +117,14 @@ class ChatInputModeRouteTests(unittest.TestCase):
         patch_attr(
             self.server.conv_store,
             'build_prompt_messages',
-            lambda *_args, **_kwargs: [{'role': 'user', 'content': 'Bonjour'}],
+            lambda conv, *_args, **_kwargs: [
+                {
+                    'role': str(message.get('role') or ''),
+                    'content': str(message.get('content') or ''),
+                }
+                for message in conv.get('messages', [])
+                if str(message.get('role') or '').strip() in {'system', 'user', 'assistant'}
+            ],
         )
         patch_attr(
             self.server.conv_store,
@@ -154,16 +161,16 @@ class ChatInputModeRouteTests(unittest.TestCase):
         patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
         patch_attr(self.server.admin_logs, 'log_event', lambda *args, **kwargs: None)
         patch_attr(self.server.llm, 'or_headers', lambda **_kwargs: {})
-        patch_attr(
-            self.server.llm,
-            'build_payload',
-            lambda _messages, _temperature, _top_p, max_tokens, stream=False: {
+        def build_payload(_messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['payload_messages'] = [dict(message) for message in _messages]
+            return {
                 'model': 'openrouter/runtime-main-model',
                 'messages': list(_messages),
                 'max_tokens': max_tokens,
                 'stream': stream,
-            },
-        )
+            }
+
+        patch_attr(self.server.llm, 'build_payload', build_payload)
         patch_attr(self.server.requests, 'post', lambda *args, **kwargs: _FakeResponse())
         patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
         patch_attr(self.server.token_utils, 'estimate_tokens', lambda *_args, **_kwargs: 1)
@@ -264,6 +271,52 @@ class ChatInputModeRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'input_mode invalide'})
+
+    def test_api_chat_injects_voice_guard_block_into_prompt_for_voice_turn(self) -> None:
+        conversation = {
+            'id': 'conv-input-mode',
+            'created_at': '2026-03-26T00:00:00Z',
+            'updated_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+        observed, restore = self._patch_chat_runtime(conversation=conversation)
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Bonjour', 'input_mode': 'voice'},
+            )
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['payload_messages'][0]['role'], 'system')
+        system_prompt = observed['payload_messages'][0]['content']
+        self.assertIn('[GARDE DE LECTURE VOCALE]', system_prompt)
+        self.assertIn("transcription vocale", system_prompt)
+        self.assertIn("scories d'oralite", system_prompt)
+        self.assertIn('partiellement mixte', system_prompt)
+
+    def test_api_chat_keeps_voice_guard_block_out_of_prompt_for_keyboard_turn(self) -> None:
+        conversation = {
+            'id': 'conv-input-mode',
+            'created_at': '2026-03-26T00:00:00Z',
+            'updated_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+        observed, restore = self._patch_chat_runtime(conversation=conversation)
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Bonjour', 'input_mode': 'keyboard'},
+            )
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['payload_messages'][0]['role'], 'system')
+        system_prompt = observed['payload_messages'][0]['content']
+        self.assertNotIn('[GARDE DE LECTURE VOCALE]', system_prompt)
+        self.assertNotIn("transcription vocale", system_prompt)
 
 
 if __name__ == '__main__':

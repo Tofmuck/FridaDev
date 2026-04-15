@@ -142,6 +142,33 @@ def inject_direct_identity_revelation_guard_block(
     return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
 
 
+def build_voice_transcription_guard_block(
+    *,
+    input_mode: Any,
+) -> str:
+    if _text(input_mode) != 'voice':
+        return ''
+
+    return (
+        '[GARDE DE LECTURE VOCALE]\n'
+        "Le tour utilisateur courant provient d'une transcription vocale.\n"
+        "Lis ce tour avec une tolerance locale aux hesitations, repetitions, reprises, ponctuation faible ou relachements de formulation.\n"
+        "N'interprete pas a lui seul ces scories d'oralite comme un manque de rigueur, de clarte ou de densite.\n"
+        "Un tour vocal peut rester phatique, exploratoire ou approximatif sans etre vide de sens.\n"
+        "Ce signal reste faible et local au tour courant: le transcript peut aussi avoir ete retouche au clavier et rester partiellement mixte."
+    )
+
+
+def inject_voice_transcription_guard_block(
+    augmented_system: str,
+    voice_transcription_guard_block: str,
+) -> str:
+    block = _text(voice_transcription_guard_block)
+    if not block:
+        return str(augmented_system or '')
+    return '\n\n'.join(part for part in [str(augmented_system or ''), block] if part)
+
+
 def build_plain_text_guard_block(
     *,
     user_msg: str,
