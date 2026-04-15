@@ -231,7 +231,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         response_text, terminal = self._split_stream_body(response)
         self.assertEqual(response_text, 'Bonjour')
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:00:20Z'})
         self.assertTrue(observed['stream_kw'])
         self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:00:20Z')
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), '2026-03-26T00:00:20Z')
@@ -286,7 +286,10 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertNotIn('\n1) ', text)
         self.assertIn('Lisible.', text)
         self.assertIn('Portable.', text)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(
+            terminal,
+            {'event': 'done', 'updated_at': conversation['messages'][-1]['timestamp']},
+        )
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], text)
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
@@ -336,7 +339,10 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertIn('1) Comprendre', text)
         self.assertIn('2) Structurer', text)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(
+            terminal,
+            {'event': 'done', 'updated_at': conversation['messages'][-1]['timestamp']},
+        )
         self.assertEqual(conversation['messages'][-1]['content'], text)
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
@@ -391,7 +397,10 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertIn('C’est un format texte.', text)
         self.assertNotIn('```', text)
         self.assertNotIn('"nom"', text)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(
+            terminal,
+            {'event': 'done', 'updated_at': conversation['messages'][-1]['timestamp']},
+        )
         self.assertEqual(conversation['messages'][-1]['content'], text)
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
@@ -440,7 +449,14 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
         self.assertEqual(text, '')
-        self.assertEqual(terminal, {'event': 'error', 'error_code': 'upstream_error'})
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'upstream_error',
+                'updated_at': observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            },
+        )
         self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
 
@@ -490,7 +506,14 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
         self.assertEqual(text, '')
-        self.assertEqual(terminal, {'event': 'error', 'error_code': 'stream_finalize_error'})
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'stream_finalize_error',
+                'updated_at': observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            },
+        )
         self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
 

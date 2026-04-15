@@ -93,7 +93,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("marked(", app_source)
         self.assertNotIn("markdown-it", app_source)
 
-    def test_streaming_front_no_longer_uses_pre_body_updated_at_header_as_final_metadata(self) -> None:
+    def test_streaming_front_keeps_pre_body_updated_at_header_out_of_stream_contract_and_uses_terminal_metadata(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn('if (contentType.includes("application/json")) {', app_source)
@@ -103,6 +103,9 @@ class AppPhase8Tests(unittest.TestCase):
             'setThreadMeta(threadId, {\n        conversation_id: convId || (thread ? thread.conversation_id : null),\n        created_at: createdAt || (thread ? thread.created_at : null),\n      });',
             app_source,
         )
+        self.assertIn('const updatedAt = String(payload.updated_at || "").trim();', app_source)
+        self.assertIn('const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);', app_source)
+        self.assertIn('applyConversationTerminalMeta(requestThreadId, replyTerminal);', app_source)
 
     def test_session_panel_points_main_llm_response_budget_to_admin_runtime(self) -> None:
         source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
@@ -142,11 +145,13 @@ class AppPhase8Tests(unittest.TestCase):
         success_block, error_and_finally = submit_block.split('} catch (err) {', 1)
         catch_block, _finally_block = error_and_finally.split('} finally {', 1)
 
-        self.assertIn('appendToThread("assistant", assistantNode.bubble.textContent);', success_block)
-        self.assertIn('await hydrateThreadMessages(activeThreadId, { force: true });', success_block)
+        self.assertIn('appendMessageToThread(', success_block)
+        self.assertIn('const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);', success_block)
+        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', success_block)
+        self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', success_block)
         self.assertIn('assistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
-        self.assertNotIn('appendToThread("assistant", assistantNode.bubble.textContent);', catch_block)
-        self.assertNotIn('await hydrateThreadMessages(activeThreadId, { force: true });', catch_block)
+        self.assertNotIn('appendMessageToThread(', catch_block)
+        self.assertNotIn('await hydrateThreadMessages(requestThreadId, { force: true });', catch_block)
         self.assertNotIn('messageCache.set(', catch_block)
 
     def test_streaming_front_wires_observable_ux_states_without_changing_the_stream_contract(self) -> None:
@@ -167,6 +172,8 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_RESPONSE_OPENED);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_ERROR);', send_block)
+        self.assertIn('return { text: finalText, terminal };', send_block)
+        self.assertIn('return { text, terminal };', send_block)
 
     def test_streaming_front_has_a_discreet_status_line_for_the_live_assistant_bubble(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
@@ -177,6 +184,17 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('.msg-stream-status {', styles_source)
         self.assertIn('.msg-stream-status[data-state="streaming"] {', styles_source)
         self.assertIn('.msg-stream-status[data-state="interrupted"] {', styles_source)
+
+    def test_streaming_front_uses_terminal_updated_at_before_falling_back_to_force_rehydration(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);', app_source)
+        self.assertIn('setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);', app_source)
+        self.assertIn('appendMessageToThread(', app_source)
+        self.assertIn('}, requestThreadId, inputMode, {', app_source)
+        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', app_source)
+        self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', app_source)
+        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {', app_source)
 
 
 if __name__ == "__main__":

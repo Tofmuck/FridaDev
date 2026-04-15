@@ -87,6 +87,10 @@ function parseStreamControlFrame(frameText) {
   if (errorCode) {
     terminal.error_code = errorCode;
   }
+  const updatedAt = String(payload.updated_at || "").trim();
+  if (updatedAt) {
+    terminal.updated_at = updatedAt;
+  }
   return terminal;
 }
 
@@ -290,6 +294,18 @@ if (typeof module !== "undefined" && module.exports) {
     return role;
   };
 
+  const buildBylineText = (role, timestamp = null) => {
+    const hourStr = fmtHour(timestamp);
+    return hourStr ? `${resolveDisplayName(role)} · ${hourStr}` : resolveDisplayName(role);
+  };
+
+  const setMessageNodeTimestamp = (messageNode, role, timestamp = null) => {
+    if (!messageNode || !messageNode.byline) return;
+    messageNode.byline.textContent = buildBylineText(role, timestamp);
+  };
+
+  const hasTerminalUpdatedAt = (terminal) => Boolean(String(terminal && terminal.updated_at || "").trim());
+
   const createMessageNode = (role, text = "", timestamp = null) => {
     const wrapper = document.createElement("div");
     wrapper.className = `msg-wrapper ${role === "user" ? "me" : ""}`;
@@ -300,8 +316,7 @@ if (typeof module !== "undefined" && module.exports) {
 
     const by = document.createElement("div");
     by.className = "byline";
-    const hourStr = fmtHour(timestamp);
-    by.textContent = hourStr ? `${resolveDisplayName(role)} · ${hourStr}` : resolveDisplayName(role);
+    by.textContent = buildBylineText(role, timestamp);
 
     let status = null;
     if (role === "assistant") {
@@ -434,6 +449,13 @@ if (typeof module !== "undefined" && module.exports) {
     if (!t || !patch || typeof patch !== 'object') return;
     Object.assign(t, patch);
     saveThreads([...threads]);
+  };
+
+  const applyConversationTerminalMeta = (threadId, terminal) => {
+    const updatedAt = String(terminal && terminal.updated_at || "").trim();
+    if (!threadId || !updatedAt) return false;
+    setThreadMeta(threadId, { updated_at: updatedAt });
+    return true;
   };
 
   const formatTimestamp = (iso) => {
@@ -818,8 +840,8 @@ if (typeof module !== "undefined" && module.exports) {
     scrollToBottom(false);
   };
 
-  const appendToThread = (role, content, timestamp = null) => {
-    const id = getCurrentId();
+  const appendMessageToThread = (threadId, role, content, timestamp = null) => {
+    const id = threadId || null;
     if (!id) return;
     const thread = getThreadById(id);
     if (!thread) return;
@@ -835,6 +857,10 @@ if (typeof module !== "undefined" && module.exports) {
       thread.last_message_preview = String(content || '').slice(0, 180);
     }
     saveThreads([...getThreads()]);
+  };
+
+  const appendToThread = (role, content, timestamp = null) => {
+    appendMessageToThread(getCurrentId(), role, content, timestamp);
   };
 
   // ---- Nouveau chat
@@ -871,9 +897,10 @@ if (typeof module !== "undefined" && module.exports) {
     const text = (message.value || "").trim();
     if (!text) return;
     const inputMode = currentDraftInputMode;
+    const requestThreadId = getCurrentId();
 
     addMsg("user", text);
-    appendToThread("user", text);
+    appendMessageToThread(requestThreadId, "user", text);
     message.value = "";
     setCurrentDraftInputMode("keyboard");
 
@@ -884,7 +911,7 @@ if (typeof module !== "undefined" && module.exports) {
     chatRequestInFlight = true;
     syncDictationUi();
     try {
-      const reply = await sendToServer(text, (chunk) => {
+      const response = await sendToServer(text, (chunk) => {
         if (!chunk) return;
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
@@ -892,27 +919,42 @@ if (typeof module !== "undefined" && module.exports) {
           applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);
         }
         scrollToBottom(false);
-      }, getCurrentId(), inputMode, {
+      }, requestThreadId, inputMode, {
         onStreamEvent(event) {
           applyAssistantStreamingUiEvent(assistantNode, event);
         },
       });
+      const reply = response && typeof response.text === "string" ? response.text : "";
+      const replyTerminal = response && response.terminal ? response.terminal : null;
+      const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);
 
       assistantText = reply || assistantText;
       assistantNode.bubble.textContent = assistantText || "(vide)";
-      appendToThread("assistant", assistantNode.bubble.textContent);
-      const activeThreadId = getCurrentId();
-      if (activeThreadId) {
-        await hydrateThreadMessages(activeThreadId, { force: true });
+      if (hasReplyUpdatedAt) {
+        setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);
+      }
+      appendMessageToThread(
+        requestThreadId,
+        "assistant",
+        assistantNode.bubble.textContent,
+        hasReplyUpdatedAt ? replyTerminal.updated_at : null,
+      );
+      applyConversationTerminalMeta(requestThreadId, replyTerminal);
+      if (!hasReplyUpdatedAt && requestThreadId) {
+        await hydrateThreadMessages(requestThreadId, { force: true });
       }
       await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
-      if (activeThreadId && getCurrentId() === activeThreadId) {
-        await loadThread(activeThreadId);
+      if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
+        await loadThread(requestThreadId);
       } else {
         scrollToBottom(true);
       }
     } catch (err) {
+      const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;
+      if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
+        renderThreads();
+      }
       applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_NETWORK_ERROR);
       assistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
@@ -979,7 +1021,12 @@ if (typeof module !== "undefined" && module.exports) {
       }
       if (typeof onChunk === "function" && text) onChunk(text);
       emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-      return text;
+      const terminal = { event: "done" };
+      const terminalUpdatedAt = String(data.updated_at || updatedAt || "").trim();
+      if (terminalUpdatedAt) {
+        terminal.updated_at = terminalUpdatedAt;
+      }
+      return { text, terminal };
     }
 
     if (threadId && (convId || createdAt)) {
@@ -992,7 +1039,7 @@ if (typeof module !== "undefined" && module.exports) {
 
     if (!res.body) {
       emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-      return "";
+      return { text: "", terminal: { event: "done" } };
     }
 
     const reader = res.body.getReader();
@@ -1027,7 +1074,7 @@ if (typeof module !== "undefined" && module.exports) {
     }
 
     emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
-    return finalText;
+    return { text: finalText, terminal };
   }
 
   // ---- Init

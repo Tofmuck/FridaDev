@@ -385,7 +385,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         streamed, terminal = _collect_stream_output(result['stream'])
         self.assertEqual(streamed, 'Bonjour')
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:59Z'})
         self.assertTrue(observed['request_stream_flag'])
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], 'Bonjour')
@@ -549,7 +549,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertNotIn('\n1) ', streamed)
         self.assertIn('Lisible.', streamed)
         self.assertIn('Portable.', streamed)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_preserves_structure_for_explicit_plan_requests(self) -> None:
@@ -640,7 +640,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         streamed, terminal = _collect_stream_output(result['stream'])
         self.assertIn('1) Comprendre', streamed)
         self.assertIn('2) Structurer', streamed)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_removes_unrequested_fenced_code_blocks(self) -> None:
@@ -736,7 +736,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertIn('C’est un format texte.', streamed)
         self.assertNotIn('```', streamed)
         self.assertNotIn('"nom"', streamed)
-        self.assertEqual(terminal, {'event': 'done'})
+        self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_request_exception(self) -> None:
@@ -840,7 +840,14 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         streamed, terminal = _collect_stream_output(result['stream'])
         self.assertEqual(streamed, '')
-        self.assertEqual(terminal, {'event': 'error', 'error_code': 'upstream_error'})
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'upstream_error',
+                'updated_at': '2026-03-26T00:11:00Z',
+            },
+        )
         self.assertEqual(
             [message['role'] for message in conversation['messages']],
             ['user'],
@@ -960,7 +967,14 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         streamed, terminal = _collect_stream_output(result['stream'])
         self.assertEqual(streamed, '')
-        self.assertEqual(terminal, {'event': 'error', 'error_code': 'stream_finalize_error'})
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'stream_finalize_error',
+                'updated_at': '2026-03-26T00:11:00Z',
+            },
+        )
         self.assertEqual(
             [message['role'] for message in conversation['messages']],
             ['user'],

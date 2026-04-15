@@ -11,7 +11,12 @@ STREAM_TERMINAL_ERROR = 'error'
 STREAM_TERMINAL_EVENTS = frozenset({STREAM_TERMINAL_DONE, STREAM_TERMINAL_ERROR})
 
 
-def build_terminal_chunk(event: str, *, error_code: str | None = None) -> str:
+def build_terminal_chunk(
+    event: str,
+    *,
+    error_code: str | None = None,
+    updated_at: str | None = None,
+) -> str:
     event_norm = str(event or '').strip().lower()
     if event_norm not in STREAM_TERMINAL_EVENTS:
         raise ValueError(f'unsupported stream terminal event: {event!r}')
@@ -22,6 +27,9 @@ def build_terminal_chunk(event: str, *, error_code: str | None = None) -> str:
     error_code_norm = str(error_code or '').strip()
     if event_norm == STREAM_TERMINAL_ERROR and error_code_norm:
         payload['error_code'] = error_code_norm
+    updated_at_norm = str(updated_at or '').strip()
+    if updated_at_norm:
+        payload['updated_at'] = updated_at_norm
     return f'{STREAM_CONTROL_PREFIX}{json.dumps(payload, ensure_ascii=True, separators=(",", ":"))}\n'
 
 
@@ -49,6 +57,9 @@ def parse_terminal_chunk(chunk: str | bytes | bytearray | None) -> dict[str, str
     error_code = str(payload.get('error_code') or '').strip()
     if error_code:
         terminal['error_code'] = error_code
+    updated_at = str(payload.get('updated_at') or '').strip()
+    if updated_at:
+        terminal['updated_at'] = updated_at
     return terminal
 
 

@@ -149,13 +149,20 @@ Checklist:
 - Objectif: rendre `updated_at` et le statut terminal disponibles au frontend sans dependre uniquement de la rehydratation/fetch secondaire post-stream.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/core/chat_session_flow.py`, `app/web/app.js`.
 - Done: le frontend recoit, a la fin du stream, un paquet terminal minimal contenant au moins le statut final et `updated_at` ou leur equivalent retenu.
+Validation implementation 2026-04-15:
+
+- Canal retenu: enrichissement du terminal de stream existant, sans nouveau format ni second canal post-stream; le chunk terminal porte maintenant aussi `updated_at` quand cette valeur est disponible.
+- Contrat retenu: le frontend consomme d'abord la metadata terminale (`event`, `updated_at`) pour mettre a jour la bulle en cours et le thread courant; la rehydratation/fetch secondaire forcee ne reste qu'en fallback si `updated_at` terminal manque.
+- Reinjection frontend retenue: la byline de la bulle assistant live peut etre recalee sur le timestamp final, et `thread.updated_at` est recopie depuis le terminal sans attendre une recharge complete des messages.
+- Sortie erreur retenue: un terminal `error` continue de piloter l'etat `interrompu`; si `updated_at` est present, il est aussi reinjecte dans le thread sans persister de faux fragment assistant.
+- Preuve ciblee retenue: tests backend/frontend du terminal enrichi, puis preuve runtime normale montrant le terminal `done` avec `updated_at`, et preuve runtime d'erreur montrant le terminal `error` avec statut frontend coherent.
 Checklist:
-- [ ] Choisir le canal de propagation post-stream des metadonnees terminales.
-- [ ] Preciser si la rehydratation/fetch secondaire actuelle reste un simple fallback UI ou une dependance du contrat cible.
-- [ ] Rendre `updated_at` disponible a la fin d'un stream complet.
-- [ ] Definir la place du statut terminal dans ce meme canal de fin.
-- [ ] Reinjecter correctement cette valeur dans le thread cote frontend.
-- [ ] Verifier l'absence de divergence entre l'affichage frontend et l'etat persiste.
+- [x] Choisir le canal de propagation post-stream des metadonnees terminales.
+- [x] Preciser si la rehydratation/fetch secondaire actuelle reste un simple fallback UI ou une dependance du contrat cible.
+- [x] Rendre `updated_at` disponible a la fin d'un stream complet.
+- [x] Definir la place du statut terminal dans ce meme canal de fin.
+- [x] Reinjecter correctement cette valeur dans le thread cote frontend.
+- [x] Verifier l'absence de divergence entre l'affichage frontend et l'etat persiste.
 
 ### Lot 4 — Gestion d'erreurs mid-stream
 - Objectif: erreur LLM visible et distinguable cote frontend, sans confondre les differents types d'interruption.

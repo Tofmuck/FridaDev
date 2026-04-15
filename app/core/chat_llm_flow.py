@@ -344,6 +344,7 @@ def run_llm_exchange(
             yield chat_stream_control.build_terminal_chunk(
                 terminal_event,
                 error_code=terminal_error_code,
+                updated_at=final_updated_at,
             )
 
         logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))

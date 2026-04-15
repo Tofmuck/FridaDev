@@ -111,8 +111,8 @@ class Phase4TransversalTests(unittest.TestCase):
 
         self.assertNotIn('history: Array.isArray(history) ? history : [],', app_js)
         self.assertNotIn('const history = buildContextHistory(MAX_CONTEXT_TURNS);', app_js)
-        self.assertIn('async function sendToServer(userText, onChunk, threadId){', app_js)
-        self.assertIn('const reply = await sendToServer(text, (chunk) => {', app_js)
+        self.assertIn('async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){', app_js)
+        self.assertIn('const response = await sendToServer(text, (chunk) => {', app_js)
 
 
 if __name__ == '__main__':

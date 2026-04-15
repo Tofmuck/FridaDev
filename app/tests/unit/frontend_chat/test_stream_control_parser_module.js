@@ -19,12 +19,12 @@ test('createStreamControlParser keeps visible prose clean and returns done termi
 
   parser.push('Bon');
   parser.push('jour');
-  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"do`);
-  parser.push('ne"}\n');
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"done","updated_at":"2026-04-15T16:55:00`);
+  parser.push('Z"}\n');
 
   const terminal = parser.finish();
   assert.equal(visibleText, 'Bonjour');
-  assert.deepEqual(terminal, { event: 'done' });
+  assert.deepEqual(terminal, { event: 'done', updated_at: '2026-04-15T16:55:00Z' });
   assert.equal(visibleText.includes('frida-stream-control'), false);
   assert.equal(visibleText.includes(STREAM_CONTROL_PREFIX), false);
 });
@@ -40,15 +40,20 @@ test('createStreamControlParser keeps error terminal out of visible prose and pr
   parser.push('Segment 1. ');
   parser.push('Segment 2.');
   parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"error","error_code":"upstream_`);
-  parser.push('error"}\n');
+  parser.push('error","updated_at":"2026-04-15T16:56:00Z"}\n');
 
   const terminal = parser.finish();
   assert.equal(visibleText, 'Segment 1. Segment 2.');
-  assert.deepEqual(terminal, { event: 'error', error_code: 'upstream_error' });
+  assert.deepEqual(terminal, {
+    event: 'error',
+    error_code: 'upstream_error',
+    updated_at: '2026-04-15T16:56:00Z',
+  });
   assert.equal(visibleText.includes('upstream_error'), false);
   assert.equal(visibleText.includes(STREAM_CONTROL_PREFIX), false);
 
   const err = createStreamTerminalError(terminal);
   assert.equal(err.name, 'FridaStreamTerminalError');
   assert.match(err.message, /Réponse interrompue/);
+  assert.equal(err.terminal.updated_at, '2026-04-15T16:56:00Z');
 });
