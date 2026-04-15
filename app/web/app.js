@@ -1,4 +1,131 @@
+const STREAM_CONTROL_PREFIX = "\x1e";
+const STREAM_CONTROL_KIND = "frida-stream-control";
+
+function parseStreamControlFrame(frameText) {
+  const text = String(frameText || "");
+  if (!text.startsWith(STREAM_CONTROL_PREFIX) || !text.endsWith("\n")) return null;
+  let payload = null;
+  try {
+    payload = JSON.parse(text.slice(STREAM_CONTROL_PREFIX.length, -1));
+  } catch {
+    return null;
+  }
+  if (!payload || payload.kind !== STREAM_CONTROL_KIND) return null;
+  const event = String(payload.event || "").trim().toLowerCase();
+  if (event !== "done" && event !== "error") return null;
+  const terminal = { event };
+  const errorCode = String(payload.error_code || "").trim();
+  if (errorCode) {
+    terminal.error_code = errorCode;
+  }
+  return terminal;
+}
+
+function createStreamTerminalError(terminal) {
+  const terminalEvent = terminal && terminal.event === "error" ? "error" : "done";
+  const error = new Error(JSON.stringify({
+    error: terminalEvent === "error" ? "Réponse interrompue." : "Flux interrompu.",
+    code: terminal && terminal.error_code ? terminal.error_code : "stream_terminal_error",
+  }));
+  error.name = "FridaStreamTerminalError";
+  error.terminal = terminal || null;
+  return error;
+}
+
+function createStreamProtocolError(code) {
+  const error = new Error(JSON.stringify({
+    error: "Réponse interrompue.",
+    code: String(code || "stream_protocol_error"),
+  }));
+  error.name = "FridaStreamProtocolError";
+  error.code = String(code || "stream_protocol_error");
+  return error;
+}
+
+function createStreamControlParser({ onContent } = {}) {
+  let pending = "";
+  let terminal = null;
+  let terminalSeen = false;
+
+  const emitContent = (text) => {
+    if (!text) return;
+    if (typeof onContent === "function") {
+      onContent(text);
+    }
+  };
+
+  return {
+    push(chunk) {
+      const text = String(chunk || "");
+      if (!text) return;
+      pending += text;
+      while (pending) {
+        const markerIndex = pending.indexOf(STREAM_CONTROL_PREFIX);
+        if (markerIndex < 0) {
+          emitContent(pending);
+          pending = "";
+          return;
+        }
+        if (markerIndex > 0) {
+          emitContent(pending.slice(0, markerIndex));
+          pending = pending.slice(markerIndex);
+        }
+        const newlineIndex = pending.indexOf("\n", STREAM_CONTROL_PREFIX.length);
+        if (newlineIndex < 0) {
+          return;
+        }
+        const frameText = pending.slice(0, newlineIndex + 1);
+        pending = pending.slice(newlineIndex + 1);
+        const parsed = parseStreamControlFrame(frameText);
+        if (!parsed) {
+          emitContent(frameText);
+          continue;
+        }
+        if (terminalSeen) {
+          throw createStreamProtocolError("multiple_stream_terminal");
+        }
+        terminalSeen = true;
+        terminal = parsed;
+        if (pending) {
+          throw createStreamProtocolError("content_after_stream_terminal");
+        }
+      }
+    },
+    finish() {
+      if (pending) {
+        const markerIndex = pending.indexOf(STREAM_CONTROL_PREFIX);
+        if (markerIndex < 0) {
+          emitContent(pending);
+          pending = "";
+        } else if (markerIndex > 0) {
+          emitContent(pending.slice(0, markerIndex));
+          pending = pending.slice(markerIndex);
+        }
+      }
+      if (!terminalSeen) {
+        throw createStreamProtocolError("missing_stream_terminal");
+      }
+      if (pending) {
+        throw createStreamProtocolError("content_after_stream_terminal");
+      }
+      return terminal;
+    },
+  };
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    STREAM_CONTROL_PREFIX,
+    STREAM_CONTROL_KIND,
+    parseStreamControlFrame,
+    createStreamControlParser,
+    createStreamTerminalError,
+    createStreamProtocolError,
+  };
+}
+
 (() => {
+  if (typeof document === "undefined") return;
   const $ = (sel) => document.querySelector(sel);
 
   // ---- DOM refs
@@ -733,6 +860,12 @@
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8", { fatal: false });
     let finalText = "";
+    const parser = createStreamControlParser({
+      onContent(chunk) {
+        finalText += chunk;
+        if (typeof onChunk === "function") onChunk(chunk);
+      },
+    });
 
     while (true) {
       const { value, done } = await reader.read();
@@ -740,15 +873,18 @@
       const chunk = decoder.decode(value, { stream: true })
         .replace(/\r/g, "");
       if (!chunk) continue;
-      finalText += chunk;
-      if (typeof onChunk === "function") onChunk(chunk);
+      parser.push(chunk);
     }
 
     const tail = decoder.decode();
     if (tail) {
       const cleanTail = tail.replace(/\r/g, "");
-      finalText += cleanTail;
-      if (typeof onChunk === "function") onChunk(cleanTail);
+      parser.push(cleanTail);
+    }
+
+    const terminal = parser.finish();
+    if (!terminal || terminal.event !== "done") {
+      throw createStreamTerminalError(terminal);
     }
 
     return finalText;

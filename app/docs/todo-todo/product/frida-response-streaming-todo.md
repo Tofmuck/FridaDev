@@ -108,14 +108,20 @@ Validation runtime 2026-04-15:
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
 - Done: le flux possede un plan de controle minimal et documente. Le frontend recoit un signal explicite de fin normale et un signal explicite d'erreur sans ambiguite avec la prose affichee.
 Checklist:
-- [ ] Definir les invariants minimaux du flux: zero ou plusieurs segments de contenu, au plus un signal terminal, aucun contenu apres le terminal.
-- [ ] Choisir un format minimal de signal applicatif compatible avec le transport actuel.
-- [ ] Emettre un signal explicite en fin normale de stream.
-- [ ] Emettre un signal explicite en cas d'erreur mid-stream.
-- [ ] Garantir que le texte affiche a l'utilisateur ne contient jamais le signal de controle brut.
-- [ ] Parser correctement ce signal cote frontend.
-- [ ] Verifier explicitement la robustesse aux chunk boundaries pour le contenu et les signaux de controle.
-- [ ] Verifier que le format retenu reste simple a tester et a faire evoluer.
+- [x] Definir les invariants minimaux du flux: zero ou plusieurs segments de contenu, au plus un signal terminal, aucun contenu apres le terminal.
+- [x] Choisir un format minimal de signal applicatif compatible avec le transport actuel.
+- [x] Emettre un signal explicite en fin normale de stream.
+- [x] Emettre un signal explicite en cas d'erreur mid-stream.
+- [x] Garantir que le texte affiche a l'utilisateur ne contient jamais le signal de controle brut.
+- [x] Parser correctement ce signal cote frontend.
+- [x] Verifier explicitement la robustesse aux chunk boundaries pour le contenu et les signaux de controle.
+- [x] Verifier que le format retenu reste simple a tester et a faire evoluer.
+
+Validation implementation 2026-04-15:
+
+- Format retenu: un chunk terminal unique, prefixe par le caractere `RS` (`0x1e`), contenant un JSON compact puis `\n`, par exemple `\x1e{"kind":"frida-stream-control","event":"done"}\n` ou `\x1e{"kind":"frida-stream-control","event":"error","error_code":"upstream_error"}\n`.
+- Invariants appliques: zero ou plusieurs chunks de contenu visibles, puis au plus un terminal; le wrapper serveur considere l'absence de terminal ou du contenu apres terminal comme une erreur de protocole.
+- Cote frontend, `sendToServer()` parse ce terminal en flux, n'injecte jamais le controle dans la prose rendue, et traite un terminal `error` comme un echec exploitable au lieu d'une fin silencieuse.
 
 ### Lot 2 — Feedback UX pendant l'attente
 - Objectif: l'utilisateur dispose d'un etat visible de la reponse en cours, sans modifier dans ce lot le contrat du flux ni la politique de normalisation.

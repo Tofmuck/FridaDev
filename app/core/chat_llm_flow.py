@@ -4,6 +4,7 @@ import json
 from typing import Any, Callable, Mapping, Sequence
 
 from core import assistant_output_contract
+from core import chat_stream_control
 
 
 def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] | None = None) -> dict[str, Any]:
@@ -170,6 +171,8 @@ def run_llm_exchange(
             provider_metadata: dict[str, object] = {}
             provider_response_open = False
             buffered_output = ''
+            terminal_event = chat_stream_control.STREAM_TERMINAL_DONE
+            terminal_error_code: str | None = None
             buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
                 assistant_output_policy,
             )
@@ -211,6 +214,8 @@ def run_llm_exchange(
                             if not buffer_stream_output:
                                 yield sanitized_content
             except requests_module.exceptions.RequestException as exc:
+                terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
+                terminal_error_code = 'upstream_error'
                 logger.error('llm_stream_error id=%s err=%s', conversation['id'], exc)
                 admin_logs_module.log_event(
                     'llm_stream_error',
@@ -276,6 +281,10 @@ def run_llm_exchange(
                 conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
             if buffered_output:
                 yield buffered_output
+            yield chat_stream_control.build_terminal_chunk(
+                terminal_event,
+                error_code=terminal_error_code,
+            )
 
         logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))
         admin_logs_module.log_event(

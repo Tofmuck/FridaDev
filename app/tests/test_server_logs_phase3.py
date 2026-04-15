@@ -11,6 +11,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core import chat_stream_control
 from core import conv_store
 from memory import memory_store
 
@@ -635,6 +636,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             def fake_stream():
                 yield 'ab'
                 yield 'cdef'
+                yield chat_stream_control.build_terminal_chunk('done')
 
             return {
                 'kind': 'stream',
@@ -654,7 +656,9 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 },
             )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.get_data(as_text=True), 'abcdef')
+            body_text, terminal = chat_stream_control.split_text_and_terminal(response.get_data())
+            self.assertEqual(body_text, 'abcdef')
+            self.assertEqual(terminal, {'event': 'done'})
         finally:
             self.server.log_store.insert_chat_log_event = original_insert
             self.server.chat_service.chat_response = original_chat_response
@@ -704,6 +708,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 # "é" is UTF-8 C3 A9, intentionally split across two chunks.
                 yield b'ab\xc3'
                 yield b'\xa9cd'
+                yield chat_stream_control.build_terminal_chunk('done').encode('utf-8')
 
             return {
                 'kind': 'stream',
@@ -723,7 +728,9 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 },
             )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.get_data(as_text=True), 'abécd')
+            body_text, terminal = chat_stream_control.split_text_and_terminal(response.get_data())
+            self.assertEqual(body_text, 'abécd')
+            self.assertEqual(terminal, {'event': 'done'})
         finally:
             self.server.log_store.insert_chat_log_event = original_insert
             self.server.chat_service.chat_response = original_chat_response
@@ -741,6 +748,77 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
+
+    def test_api_chat_stream_terminal_error_marks_llm_call_and_turn_end_as_error(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+        original_chat_response = self.server.chat_service.chat_response
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        def fake_chat_response(*_args: object, **_kwargs: object) -> dict[str, object]:
+            self.server.chat_turn_logger.set_state(
+                'llm_stream_call_meta',
+                {
+                    'model': 'openrouter/runtime-main-model',
+                    'timeout_s': 45,
+                    'started_at': self.server.time.perf_counter() - 0.01,
+                    'provider_caller': 'llm',
+                    'provider_title': 'FridaDev/LLM',
+                },
+            )
+
+            def fake_stream():
+                yield 'ab'
+                yield chat_stream_control.build_terminal_chunk('error', error_code='upstream_error')
+
+            return {
+                'kind': 'stream',
+                'stream': fake_stream(),
+                'headers': {},
+            }
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        self.server.chat_service.chat_response = fake_chat_response
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'bonjour',
+                    'stream': True,
+                    'conversation_id': 'conv-llm-stream-terminal-error',
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.get_data(as_text=True),
+                'ab' + chat_stream_control.build_terminal_chunk('error', error_code='upstream_error'),
+            )
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+            self.server.chat_service.chat_response = original_chat_response
+
+        stream_llm_events = [
+            event
+            for event in observed
+            if event.get('stage') == 'llm_call' and event['payload_json'].get('mode') == 'stream'
+        ]
+        self.assertEqual(len(stream_llm_events), 1)
+        llm_event = stream_llm_events[0]
+        self.assertEqual(llm_event.get('status'), 'error')
+        payload = llm_event['payload_json']
+        self.assertEqual(payload.get('response_chars'), 2)
+        self.assertEqual(payload.get('stream_chunks'), 1)
+        self.assertEqual(payload.get('stream_terminal'), 'error')
+        self.assertEqual(payload.get('error_class'), 'stream_terminal_error')
+        self.assertEqual(payload.get('error_code'), 'upstream_error')
+
+        turn_end_events = [event for event in observed if event.get('stage') == 'turn_end']
+        self.assertEqual(len(turn_end_events), 1)
+        self.assertEqual(turn_end_events[0].get('status'), 'error')
+        self.assertEqual(turn_end_events[0]['payload_json'].get('final_status'), 'error')
 
     def test_build_prompt_messages_logs_summaries_as_prompt_injection_usage(self) -> None:
         observed: list[dict[str, object]] = []

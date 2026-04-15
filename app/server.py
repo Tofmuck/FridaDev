@@ -18,6 +18,7 @@ import config
 from core import llm_client as llm
 from core import prompt_loader
 from tools import web_search as ws
+from core import chat_stream_control
 from core import conv_store
 from core import chat_service
 from core import conversations_service
@@ -566,9 +567,32 @@ def api_chat():
             stream_response_chars = 0
             stream_chunk_count = 0
             llm_call_error_class: str | None = None
+            llm_call_error_code: str | None = None
+            stream_terminal_event: str | None = None
+            stream_terminal_seen = False
             utf8_decoder = codecs.getincrementaldecoder('utf-8')('ignore')
             try:
                 for chunk in result['stream']:
+                    terminal = chat_stream_control.parse_terminal_chunk(chunk)
+                    if terminal is not None:
+                        if stream_terminal_seen:
+                            final_status = 'error'
+                            llm_call_error_class = 'multiple_stream_terminal'
+                            llm_call_error_code = 'stream_protocol_error'
+                            raise RuntimeError('multiple stream terminals emitted')
+                        stream_terminal_seen = True
+                        stream_terminal_event = terminal.get('event')
+                        if stream_terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
+                            final_status = 'error'
+                            llm_call_error_class = 'stream_terminal_error'
+                            llm_call_error_code = terminal.get('error_code') or 'stream_protocol_error'
+                        yield chunk
+                        continue
+                    if stream_terminal_seen:
+                        final_status = 'error'
+                        llm_call_error_class = 'content_after_stream_terminal'
+                        llm_call_error_code = 'stream_protocol_error'
+                        raise RuntimeError('content emitted after stream terminal')
                     if isinstance(chunk, (bytes, bytearray)):
                         stream_response_chars += len(utf8_decoder.decode(bytes(chunk), final=False))
                     else:
@@ -578,8 +602,9 @@ def api_chat():
             except Exception as exc:
                 final_status = 'error'
                 llm_call_error_class = exc.__class__.__name__
+                llm_call_error_code = llm_call_error_code or 'upstream_error'
                 chat_turn_logger.emit_error(
-                    error_code='upstream_error',
+                    error_code=llm_call_error_code,
                     error_class=exc.__class__.__name__,
                     message_short=str(exc),
                 )
@@ -595,6 +620,10 @@ def api_chat():
                 # Flush pending UTF-8 continuation bytes to keep response_chars accurate
                 # when a multi-byte character spans two streamed byte chunks.
                 stream_response_chars += len(utf8_decoder.decode(b'', final=True))
+                if not stream_terminal_seen:
+                    final_status = 'error'
+                    llm_call_error_class = llm_call_error_class or 'missing_stream_terminal'
+                    llm_call_error_code = llm_call_error_code or 'stream_protocol_error'
 
                 llm_payload = {
                     'mode': 'stream',
@@ -602,21 +631,25 @@ def api_chat():
                     'response_chars': stream_response_chars,
                     'stream_chunks': stream_chunk_count,
                 }
+                if stream_terminal_event:
+                    llm_payload['stream_terminal'] = stream_terminal_event
                 provider_meta = chat_turn_logger.get_state('llm_provider_response_meta', {}) or {}
                 if isinstance(provider_meta, dict):
                     llm_payload.update(provider_meta)
                 for key in ('provider_caller', 'provider_title'):
                     if key not in llm_payload and stream_meta.get(key):
                         llm_payload[key] = stream_meta.get(key)
-                llm_status = 'error' if llm_call_error_class else 'ok'
+                llm_status = 'error' if final_status == 'error' else 'ok'
                 if llm_call_error_class:
                     llm_payload['error_class'] = llm_call_error_class
+                if llm_call_error_code:
+                    llm_payload['error_code'] = llm_call_error_code
                 chat_turn_logger.emit(
                     'llm_call',
                     status=llm_status,
                     model=str(stream_meta.get('model') or ''),
                     duration_ms=llm_call_duration_ms,
-                    error_code='upstream_error' if llm_call_error_class else None,
+                    error_code=llm_call_error_code if final_status == 'error' else None,
                     payload=llm_payload,
                 )
                 chat_turn_logger.set_state('llm_stream_call_meta', None)
