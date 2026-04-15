@@ -168,13 +168,19 @@ Checklist:
 - Objectif: erreur LLM visible et distinguable cote frontend, sans confondre les differents types d'interruption.
 - Fichiers: `app/core/chat_llm_flow.py`, `app/server.py`, `app/web/app.js`.
 - Done: le frontend affiche un statut d'erreur intelligible, distinct d'une simple coupure reseau, et le thread n'est pas presente comme complet quand la reponse a echoue.
+Validation implementation 2026-04-15:
+
+- Taxonomie observable retenue cote frontend: `upstream_error` quand le terminal `error` porte ce `error_code`; `server_error` pour les interruptions locales/protocolaires (`stream_finalize_error`, `stream_protocol_error`, terminal manquant/duplique, contenu apres terminal, ou terminal sans code plus precis); `network_error` pour les exceptions `fetch` / `ReadableStream` qui signalent une coupure cote navigateur. Un fallback sobre `interrupted` reste uniquement quand aucune cause plus precise n'est observable.
+- Politique UX retenue: la ligne discrete garde un libelle court et factuel (`Interrompu par le modele`, `Interrompu cote serveur`, `Connexion interrompue`), tandis que la bulle conserve la politique produit des lots precedents et remplace le contenu live par une phrase d'interruption correspondante (`Reponse interrompue par le modele.`, `Reponse interrompue cote serveur.`, `Connexion interrompue pendant la reponse.`).
+- Invariants retenus: `done` reste inchange et ne ressemble jamais a une erreur; toute interruption garde l'etat UI `interrupted`, n'ajoute toujours pas de message assistant au thread cache, et ne presente donc pas le thread comme une reponse normale terminee.
+- Preuve retenue: tests JS de mapping observable (`upstream` / `serveur-protocole` / `reseau`) et du parseur de terminal, plus contrat frontend verifiant la conservation du `done`; la preuve runtime complete le lot avec un flux normal intact, un flux `upstream_error` distinct, et une preuve JS reelle pour le cas reseau quand une coupure navigateur complete n'est pas injectee en live.
 Checklist:
-- [ ] Definir une taxonomie minimale des echecs observables (`erreur upstream`, `coupure reseau`, `interruption locale`, ou variante equivalente selon le lot).
-- [ ] Faire remonter un statut d'erreur applicatif exploitable jusqu'au frontend.
-- [ ] Distinguer cote UI une erreur mid-stream d'une simple coupure reseau.
-- [ ] Eviter de presenter la reponse comme terminee quand le stream a echoue.
-- [ ] Faire converger le statut utilisateur, le statut de persistance et le statut de logging sur une meme lecture de l'echec.
-- [ ] Verifier la coherence entre message utilisateur, etat du thread et observabilite.
+- [x] Definir une taxonomie minimale des echecs observables (`erreur upstream`, `coupure reseau`, `interruption locale`, ou variante equivalente selon le lot).
+- [x] Faire remonter un statut d'erreur applicatif exploitable jusqu'au frontend.
+- [x] Distinguer cote UI une erreur mid-stream d'une simple coupure reseau.
+- [x] Eviter de presenter la reponse comme terminee quand le stream a echoue.
+- [x] Faire converger le statut utilisateur, le statut de persistance et le statut de logging sur une meme lecture de l'echec.
+- [x] Verifier la coherence entre message utilisateur, etat du thread et observabilite.
 
 ### Lot 5 — Persistance robuste en cas d'echec
 - Objectif: eviter qu'une reponse interrompue soit persistee comme message assistant complet, et donner un statut explicite au fragment s'il est conserve.

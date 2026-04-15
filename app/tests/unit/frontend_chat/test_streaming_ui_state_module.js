@@ -9,6 +9,10 @@ const {
   STREAMING_UI_STATE_STREAMING,
   STREAMING_UI_STATE_DONE,
   STREAMING_UI_STATE_INTERRUPTED,
+  STREAM_ERROR_KIND_INTERRUPTED,
+  STREAM_ERROR_KIND_UPSTREAM,
+  STREAM_ERROR_KIND_SERVER,
+  STREAM_ERROR_KIND_NETWORK,
   STREAMING_UI_EVENT_REQUEST_STARTED,
   STREAMING_UI_EVENT_RESPONSE_OPENED,
   STREAMING_UI_EVENT_VISIBLE_CONTENT,
@@ -17,6 +21,7 @@ const {
   STREAMING_UI_EVENT_NETWORK_ERROR,
   reduceStreamingUiState,
   getStreamingUiStateMeta,
+  getObservableStreamErrorMeta,
   hasVisibleAssistantContent,
 } = require('../../../web/app.js');
 
@@ -73,6 +78,74 @@ test('reduceStreamingUiState keeps interrupted as the terminal state for termina
 
   state = reduceStreamingUiState(state, STREAMING_UI_EVENT_TERMINAL_DONE);
   assert.equal(state, STREAMING_UI_STATE_INTERRUPTED);
+});
+
+test('getStreamingUiStateMeta can keep interrupted while exposing a more precise visible label', () => {
+  assert.deepEqual(
+    getStreamingUiStateMeta(STREAMING_UI_STATE_INTERRUPTED, {
+      statusLabel: 'Connexion interrompue',
+    }),
+    {
+      label: 'Connexion interrompue',
+      tone: 'error',
+      visible: true,
+    },
+  );
+});
+
+test('getObservableStreamErrorMeta distinguishes upstream, server, network and fallback interruptions', () => {
+  assert.deepEqual(
+    getObservableStreamErrorMeta({
+      name: 'FridaStreamTerminalError',
+      code: 'upstream_error',
+      terminal: { event: 'error', error_code: 'upstream_error' },
+    }),
+    {
+      kind: STREAM_ERROR_KIND_UPSTREAM,
+      errorCode: 'upstream_error',
+      statusLabel: 'Interrompu par le modèle',
+      bubbleMessage: 'Réponse interrompue par le modèle.',
+      terminal: { event: 'error', error_code: 'upstream_error' },
+    },
+  );
+
+  assert.deepEqual(
+    getObservableStreamErrorMeta({
+      name: 'FridaStreamProtocolError',
+      code: 'stream_finalize_error',
+    }),
+    {
+      kind: STREAM_ERROR_KIND_SERVER,
+      errorCode: 'stream_finalize_error',
+      statusLabel: 'Interrompu côté serveur',
+      bubbleMessage: 'Réponse interrompue côté serveur.',
+      terminal: null,
+    },
+  );
+
+  assert.deepEqual(
+    getObservableStreamErrorMeta(new TypeError('Failed to fetch')),
+    {
+      kind: STREAM_ERROR_KIND_NETWORK,
+      errorCode: null,
+      statusLabel: 'Connexion interrompue',
+      bubbleMessage: 'Connexion interrompue pendant la réponse.',
+      terminal: null,
+    },
+  );
+
+  assert.deepEqual(
+    getObservableStreamErrorMeta(new Error(JSON.stringify({
+      error: 'Conversation introuvable.',
+    }))),
+    {
+      kind: STREAM_ERROR_KIND_INTERRUPTED,
+      errorCode: null,
+      statusLabel: 'Interrompu',
+      bubbleMessage: 'Conversation introuvable.',
+      terminal: null,
+    },
+  );
 });
 
 test('hasVisibleAssistantContent only flips the UI once non-whitespace content is visible', () => {

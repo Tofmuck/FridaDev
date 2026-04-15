@@ -7,6 +7,7 @@ const {
   STREAM_CONTROL_PREFIX,
   createStreamControlParser,
   createStreamTerminalError,
+  getObservableStreamErrorMeta,
 } = require('../../../web/app.js');
 
 test('createStreamControlParser keeps visible prose clean and returns done terminal across chunk boundaries', () => {
@@ -54,6 +55,36 @@ test('createStreamControlParser keeps error terminal out of visible prose and pr
 
   const err = createStreamTerminalError(terminal);
   assert.equal(err.name, 'FridaStreamTerminalError');
-  assert.match(err.message, /Réponse interrompue/);
+  assert.equal(err.observableKind, 'upstream_error');
+  assert.match(err.message, /Réponse interrompue par le modèle/);
   assert.equal(err.terminal.updated_at, '2026-04-15T16:56:00Z');
+});
+
+test('createStreamControlParser surfaces missing terminal as a server-side stream interruption', () => {
+  let visibleText = '';
+  const parser = createStreamControlParser({
+    onContent(chunk) {
+      visibleText += chunk;
+    },
+  });
+
+  parser.push('Segment partiel.');
+
+  let err = null;
+  try {
+    parser.finish();
+  } catch (caught) {
+    err = caught;
+  }
+  assert.ok(err);
+  assert.equal(visibleText, 'Segment partiel.');
+  assert.equal(err.name, 'FridaStreamProtocolError');
+  assert.equal(err.observableKind, 'server_error');
+  assert.deepEqual(getObservableStreamErrorMeta(err), {
+    kind: 'server_error',
+    errorCode: 'missing_stream_terminal',
+    statusLabel: 'Interrompu côté serveur',
+    bubbleMessage: 'Réponse interrompue côté serveur.',
+    terminal: null,
+  });
 });

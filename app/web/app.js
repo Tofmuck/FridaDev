@@ -11,6 +11,37 @@ const STREAMING_UI_EVENT_VISIBLE_CONTENT = "visible_content";
 const STREAMING_UI_EVENT_TERMINAL_DONE = "terminal_done";
 const STREAMING_UI_EVENT_TERMINAL_ERROR = "terminal_error";
 const STREAMING_UI_EVENT_NETWORK_ERROR = "network_error";
+const STREAM_ERROR_KIND_INTERRUPTED = "interrupted";
+const STREAM_ERROR_KIND_UPSTREAM = "upstream_error";
+const STREAM_ERROR_KIND_SERVER = "server_error";
+const STREAM_ERROR_KIND_NETWORK = "network_error";
+const STREAM_SERVER_ERROR_CODES = new Set([
+  "stream_terminal_error",
+  "stream_finalize_error",
+  "stream_protocol_error",
+  "missing_stream_terminal",
+  "multiple_stream_terminal",
+  "content_after_stream_terminal",
+]);
+const STREAM_NETWORK_ERROR_MESSAGE_RE = /(failed to fetch|networkerror|load failed|network request failed|body stream|the network connection was lost|terminated|stream aborted)/i;
+const STREAM_ERROR_META = Object.freeze({
+  [STREAM_ERROR_KIND_INTERRUPTED]: {
+    statusLabel: "Interrompu",
+    bubbleMessage: "Réponse interrompue.",
+  },
+  [STREAM_ERROR_KIND_UPSTREAM]: {
+    statusLabel: "Interrompu par le modèle",
+    bubbleMessage: "Réponse interrompue par le modèle.",
+  },
+  [STREAM_ERROR_KIND_SERVER]: {
+    statusLabel: "Interrompu côté serveur",
+    bubbleMessage: "Réponse interrompue côté serveur.",
+  },
+  [STREAM_ERROR_KIND_NETWORK]: {
+    statusLabel: "Connexion interrompue",
+    bubbleMessage: "Connexion interrompue pendant la réponse.",
+  },
+});
 
 const STREAMING_UI_STATE_META = Object.freeze({
   [STREAMING_UI_STATE_PREPARING]: {
@@ -62,12 +93,78 @@ function reduceStreamingUiState(currentState, event) {
   }
 }
 
-function getStreamingUiStateMeta(state) {
-  return STREAMING_UI_STATE_META[state] || null;
+function getStreamingUiStateMeta(state, interruptionMeta = null) {
+  const meta = STREAMING_UI_STATE_META[state] || null;
+  if (!meta || state !== STREAMING_UI_STATE_INTERRUPTED) {
+    return meta;
+  }
+  const statusLabel = String(interruptionMeta && interruptionMeta.statusLabel || "").trim();
+  if (!statusLabel) {
+    return meta;
+  }
+  return { ...meta, label: statusLabel };
 }
 
 function hasVisibleAssistantContent(text) {
   return /\S/u.test(String(text || ""));
+}
+
+function parseStructuredErrorPayload(err) {
+  if (!err) return null;
+  const raw = err && typeof err === "object" ? err.message || String(err) : String(err);
+  try {
+    const payload = JSON.parse(raw);
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function getObservableStreamErrorMeta(err) {
+  const payload = parseStructuredErrorPayload(err);
+  const terminal = err && typeof err === "object" && err.terminal && typeof err.terminal === "object"
+    ? err.terminal
+    : null;
+  const errorName = String(err && typeof err === "object" ? err.name || "" : "").trim();
+  const errorCode = String(
+    (terminal && terminal.error_code)
+    || (payload && payload.code)
+    || (err && typeof err === "object" ? err.code || "" : ""),
+  ).trim();
+  const payloadMessage = String(payload && payload.error || "").trim();
+  const rawMessage = String(
+    payloadMessage
+    || (err && typeof err === "object" ? err.message || "" : err || ""),
+  ).trim();
+  let kind = STREAM_ERROR_KIND_INTERRUPTED;
+
+  if (errorCode === STREAM_ERROR_KIND_UPSTREAM) {
+    kind = STREAM_ERROR_KIND_UPSTREAM;
+  } else if (
+    STREAM_SERVER_ERROR_CODES.has(errorCode)
+    || errorName === "FridaStreamTerminalError"
+    || errorName === "FridaStreamProtocolError"
+    || (errorCode && errorCode.startsWith("stream_"))
+  ) {
+    kind = STREAM_ERROR_KIND_SERVER;
+  } else if (
+    errorName === "AbortError"
+    || (errorName === "TypeError" && STREAM_NETWORK_ERROR_MESSAGE_RE.test(rawMessage))
+    || (!errorCode && STREAM_NETWORK_ERROR_MESSAGE_RE.test(rawMessage))
+  ) {
+    kind = STREAM_ERROR_KIND_NETWORK;
+  }
+
+  const baseMeta = STREAM_ERROR_META[kind] || STREAM_ERROR_META[STREAM_ERROR_KIND_INTERRUPTED];
+  return {
+    kind,
+    errorCode: errorCode || null,
+    statusLabel: baseMeta.statusLabel,
+    bubbleMessage: kind === STREAM_ERROR_KIND_INTERRUPTED && payloadMessage
+      ? payloadMessage
+      : baseMeta.bubbleMessage,
+    terminal,
+  };
 }
 
 function parseStreamControlFrame(frameText) {
@@ -95,23 +192,36 @@ function parseStreamControlFrame(frameText) {
 }
 
 function createStreamTerminalError(terminal) {
-  const terminalEvent = terminal && terminal.event === "error" ? "error" : "done";
+  const errorCode = terminal && terminal.error_code ? terminal.error_code : "stream_terminal_error";
+  const errorMeta = getObservableStreamErrorMeta({
+    name: "FridaStreamTerminalError",
+    code: errorCode,
+    terminal: terminal || null,
+  });
   const error = new Error(JSON.stringify({
-    error: terminalEvent === "error" ? "Réponse interrompue." : "Flux interrompu.",
-    code: terminal && terminal.error_code ? terminal.error_code : "stream_terminal_error",
+    error: errorMeta.bubbleMessage,
+    code: errorCode,
   }));
   error.name = "FridaStreamTerminalError";
+  error.code = errorCode;
+  error.observableKind = errorMeta.kind;
   error.terminal = terminal || null;
   return error;
 }
 
 function createStreamProtocolError(code) {
+  const errorCode = String(code || "stream_protocol_error");
+  const errorMeta = getObservableStreamErrorMeta({
+    name: "FridaStreamProtocolError",
+    code: errorCode,
+  });
   const error = new Error(JSON.stringify({
-    error: "Réponse interrompue.",
-    code: String(code || "stream_protocol_error"),
+    error: errorMeta.bubbleMessage,
+    code: errorCode,
   }));
   error.name = "FridaStreamProtocolError";
-  error.code = String(code || "stream_protocol_error");
+  error.code = errorCode;
+  error.observableKind = errorMeta.kind;
   return error;
 }
 
@@ -201,10 +311,15 @@ if (typeof module !== "undefined" && module.exports) {
     STREAMING_UI_EVENT_TERMINAL_DONE,
     STREAMING_UI_EVENT_TERMINAL_ERROR,
     STREAMING_UI_EVENT_NETWORK_ERROR,
+    STREAM_ERROR_KIND_INTERRUPTED,
+    STREAM_ERROR_KIND_UPSTREAM,
+    STREAM_ERROR_KIND_SERVER,
+    STREAM_ERROR_KIND_NETWORK,
     parseStreamControlFrame,
     createStreamControlParser,
     createStreamTerminalError,
     createStreamProtocolError,
+    getObservableStreamErrorMeta,
     reduceStreamingUiState,
     getStreamingUiStateMeta,
     hasVisibleAssistantContent,
@@ -263,13 +378,7 @@ if (typeof module !== "undefined" && module.exports) {
   };
 
   const extractErrorMessage = (err) => {
-    if (!err) return "Erreur de connexion.";
-    const raw = err.message || String(err);
-    try {
-      const data = JSON.parse(raw);
-      if (data && data.error) return data.error;
-    } catch {}
-    return "Erreur de connexion.";
+    return getObservableStreamErrorMeta(err).bubbleMessage;
   };
 
   const focusMessageDraft = () => {
@@ -346,7 +455,7 @@ if (typeof module !== "undefined" && module.exports) {
 
   const renderAssistantStreamingUiState = (assistantNode, state) => {
     if (!assistantNode || !assistantNode.status) return;
-    const meta = getStreamingUiStateMeta(state);
+    const meta = getStreamingUiStateMeta(state, assistantNode.streamingErrorMeta || null);
     assistantNode.status.textContent = meta && meta.visible ? meta.label : "";
     assistantNode.status.hidden = !(meta && meta.visible);
     if (meta && meta.visible) {
@@ -361,12 +470,23 @@ if (typeof module !== "undefined" && module.exports) {
   const applyAssistantStreamingUiEvent = (assistantNode, event) => {
     if (!assistantNode) return null;
     const nextState = reduceStreamingUiState(assistantNode.streamingState || null, event);
+    if (nextState !== STREAMING_UI_STATE_INTERRUPTED) {
+      assistantNode.streamingErrorMeta = null;
+    }
     if (nextState === assistantNode.streamingState) {
       return nextState;
     }
     assistantNode.streamingState = nextState;
     renderAssistantStreamingUiState(assistantNode, nextState);
     return nextState;
+  };
+
+  const applyAssistantStreamingFailure = (assistantNode, errorMeta) => {
+    if (!assistantNode) return null;
+    assistantNode.streamingErrorMeta = errorMeta || getObservableStreamErrorMeta(null);
+    assistantNode.streamingState = STREAMING_UI_STATE_INTERRUPTED;
+    renderAssistantStreamingUiState(assistantNode, STREAMING_UI_STATE_INTERRUPTED);
+    return assistantNode.streamingState;
   };
 
   const threadStatus = document.createElement('div');
@@ -951,11 +1071,12 @@ if (typeof module !== "undefined" && module.exports) {
         scrollToBottom(true);
       }
     } catch (err) {
+      const errorMeta = getObservableStreamErrorMeta(err);
       const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;
       if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
         renderThreads();
       }
-      applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_NETWORK_ERROR);
+      applyAssistantStreamingFailure(assistantNode, errorMeta);
       assistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
     } finally {
