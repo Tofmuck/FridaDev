@@ -14,8 +14,11 @@ Le gain recherche est d'abord ergonomique:
 
 ## Statut des lots
 
-- Lot 0: fait
-- Lot 1 et la suite: ouverts
+- [x] Lot 0 - fondation backend de transcription
+- [ ] Lot 1 - frontend micro, capture audio et reinjection du transcript
+- [ ] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
+- [ ] Lot 3 - lecture faible de l'oralite via helper prompt dedie
+- [ ] Lot 4 - finitions UX, observabilite et documentation de cloture
 
 ## Principe directeur
 
@@ -398,18 +401,43 @@ Hors-scope de cette V1:
 - les gros fichiers existants ne recoivent que des coutures bornees, pas zero coutures;
 - aucune inflation opportuniste de `stimmung` ou des modules coeur n'est introduite.
 
-## Decision d'implementation pour le futur lot code
+## Lots d'implementation
 
-Si ce TODO est execute, la priorite d'implementation doit etre:
-1. module backend de transcription dedie;
-2. route backend de transcription comme simple wiring;
-3. module frontend dedie pour capture audio et etats UI;
-4. bouton micro frontend + capture audio;
-5. reinjection du transcript dans la textarea;
-6. gestion UX des etats `recording`, `transcribing`, `error`, `busy`;
-7. ajout de `input_mode` dans `/api/chat`;
-8. persistance `meta.input_mode`;
-9. helper prompt ou guard block dedie pour les tours `voice`;
-10. observabilite minimale du mode d'entree si utile;
-11. tests frontend/backend minimaux;
-12. documentation runtime associee.
+### [x] Lot 0 - fondation backend de transcription
+
+- [x] module backend de transcription dedie
+- [x] route backend `/api/chat/transcribe` comme simple wiring HTTP
+- [x] configuration backend `WHISPER_*` introduite dans `app/config.py`
+- [x] tests backend minimaux sur le service et sur la route
+
+### [ ] Lot 1 - frontend micro, capture audio et reinjection du transcript
+
+- [ ] module frontend dedie pour capture audio et etats UI
+- [ ] bouton micro dans le composer
+- [ ] capture audio navigateur et envoi a `/api/chat/transcribe`
+- [ ] reinjection du transcript dans la textarea existante
+- [ ] gestion UX des etats `recording`, `transcribing`, `error`, `busy`
+- [ ] tests frontend / integration adaptes a ce lot
+
+### [ ] Lot 2 - transport `input_mode` dans le chat
+
+- [ ] ajout de `input_mode` dans `/api/chat`
+- [ ] lecture et validation de `input_mode` dans l'orchestration de session
+- [ ] persistance `meta.input_mode` sur le message utilisateur
+- [ ] maintien du comportement par defaut `keyboard` sans regression
+- [ ] tests backend / integration sur le transport du mode d'entree
+
+### [ ] Lot 3 - lecture faible de l'oralite
+
+- [ ] helper prompt ou guard block dedie pour les tours `voice`
+- [ ] interpretation locale du tour vocal comme indice faible seulement
+- [ ] absence d'integration opportuniste dans la `stimmung`
+- [ ] absence de nouvel objet canonique dur `enunciation_mode`
+- [ ] tests / preuves sur l'effet prompt attendu
+
+### [ ] Lot 4 - finitions UX, observabilite et documentation
+
+- [ ] observabilite minimale du mode d'entree si utile
+- [ ] documentation runtime associee a la V1 effectivement codee
+- [ ] verification finale de la coherence lot par lot
+- [ ] cloture du TODO ou decoupage d'une V2 si le scope depasse la V1
