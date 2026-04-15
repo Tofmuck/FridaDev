@@ -7,7 +7,9 @@
   const chatEl = document.querySelector('.chat');
   const ask = $("#ask");
   const message = $("#message");
+  const btnMic = $("#btnMic");
   const btnWebSearch = $("#btnWebSearch");
+  const dictationStatus = $("#dictationStatus");
   const newChatBtn = $("#newChat");
   const threadsUl = $("#threads");
   // Mobile sidebar
@@ -54,6 +56,15 @@
       if (data && data.error) return data.error;
     } catch {}
     return "Erreur de connexion.";
+  };
+
+  const focusMessageDraft = () => {
+    if (!message) return;
+    message.focus();
+    if (typeof message.setSelectionRange === "function") {
+      const end = String(message.value || "").length;
+      message.setSelectionRange(end, end);
+    }
   };
 
   const fmtHour = (value) => {
@@ -126,6 +137,13 @@
   let threadsState = [];
   let currentThreadId = null;
   const messageCache = new Map();
+  let chatRequestInFlight = false;
+  let dictationController = null;
+
+  const syncDictationUi = () => {
+    if (!dictationController || typeof dictationController.refreshUi !== "function") return;
+    dictationController.refreshUi();
+  };
 
   const clampTitle = (value, fallback = 'Nouvelle conversation') => {
     const normalized = String(value || '').replace(/\s+/g, ' ').trim();
@@ -571,6 +589,22 @@
   // ---- Nouveau chat
   newChatBtn.addEventListener("click", () => { void newThread(); });
 
+  if (window.FridaWhisperDictation && btnMic && message) {
+    dictationController = window.FridaWhisperDictation.createWhisperDictation({
+      buttonEl: btnMic,
+      statusEl: dictationStatus,
+      textareaEl: message,
+      endpoint: "/api/chat/transcribe",
+      getDraftValue: () => message.value || "",
+      setDraftValue: (nextValue) => {
+        message.value = nextValue;
+      },
+      focusDraft: focusMessageDraft,
+      isBusy: () => chatRequestInFlight,
+    });
+    syncDictationUi();
+  }
+
   // ---- Envoi
   ask.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -584,6 +618,8 @@
     const assistantNode = createMessageNode("assistant", "…");
     let assistantText = "";
 
+    chatRequestInFlight = true;
+    syncDictationUi();
     try {
       const reply = await sendToServer(text, (chunk) => {
         if (!chunk) return;
@@ -609,6 +645,9 @@
     } catch (err) {
       assistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
+    } finally {
+      chatRequestInFlight = false;
+      syncDictationUi();
     }
   });
 

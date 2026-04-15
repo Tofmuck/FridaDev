@@ -496,7 +496,7 @@ body {
   border-top: 1px solid var(--border-muted);
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: end;
   gap: 7px;
 }
@@ -526,7 +526,8 @@ body {
   border-color: var(--border-strong);
 }
 
-/* Bouton recherche web */
+/* Boutons utilitaires du composer */
+.btn-dictation,
 .btn-web-search {
   display: flex;
   align-items: center;
@@ -542,14 +543,52 @@ body {
   transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
 }
 
+.btn-dictation:hover,
 .btn-web-search:hover {
   color: var(--fg-muted);
+}
+
+.btn-dictation[data-dictation-state="recording"] {
+  color: #a33a32;
+  border-color: rgba(163, 58, 50, 0.45);
+  background: rgba(163, 58, 50, 0.1);
+}
+
+.btn-dictation[data-dictation-state="transcribing"] {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.btn-dictation[data-dictation-state="error"] {
+  color: #b85050;
+  border-color: rgba(184, 80, 80, 0.4);
+  background: rgba(184, 80, 80, 0.08);
+}
+
+.btn-dictation[data-dictation-state="busy"],
+.btn-dictation:disabled,
+.btn-web-search:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .btn-web-search.active {
   color: var(--fg);
   border-color: var(--border-strong);
   background: var(--surface);
+}
+
+.dictation-status {
+  grid-column: 1 / -1;
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--fg-subtle);
+}
+
+.dictation-status.is-error {
+  color: #b85050;
 }
 
 /* Bouton envoyer (réutilise .primary) */
@@ -615,6 +654,7 @@ body {
   }
 
   .ask button.primary,
+  .btn-dictation,
   .btn-web-search {
     width: 36px;
     min-width: 36px;

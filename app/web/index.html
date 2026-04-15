@@ -83,6 +83,14 @@
 
       <form id="ask" class="ask">
         <textarea id="message" rows="3" placeholder="Écris ton message…"></textarea>
+        <button type="button" id="btnMic" class="btn-dictation" title="Lancer la dictée" aria-label="Lancer la dictée" aria-pressed="false">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V6a3 3 0 0 0-3-3z"/>
+            <path d="M19 10a7 7 0 0 1-14 0"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+          </svg>
+        </button>
         <button type="button" id="btnWebSearch" class="btn-web-search" title="Recherche web : désactivée">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
@@ -96,10 +104,12 @@
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
         </button>
+        <div id="dictationStatus" class="dictation-status" aria-live="polite"></div>
       </form>
     </main>
   </div>
 
+  <script src="whisper_dictation.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ Le gain recherche est d'abord ergonomique:
 ## Statut des lots
 
 - [x] Lot 0 - fondation backend de transcription
-- [ ] Lot 1 - frontend micro, capture audio et reinjection du transcript
+- [x] Lot 1 - frontend micro, capture audio et reinjection du transcript
 - [ ] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
 - [ ] Lot 3 - lecture faible de l'oralite via helper prompt dedie
 - [ ] Lot 4 - finitions UX, observabilite et documentation de cloture
@@ -410,14 +410,14 @@ Hors-scope de cette V1:
 - [x] configuration backend `WHISPER_*` introduite dans `app/config.py`
 - [x] tests backend minimaux sur le service et sur la route
 
-### [ ] Lot 1 - frontend micro, capture audio et reinjection du transcript
+### [x] Lot 1 - frontend micro, capture audio et reinjection du transcript
 
-- [ ] module frontend dedie pour capture audio et etats UI
-- [ ] bouton micro dans le composer
-- [ ] capture audio navigateur et envoi a `/api/chat/transcribe`
-- [ ] reinjection du transcript dans la textarea existante
-- [ ] gestion UX des etats `recording`, `transcribing`, `error`, `busy`
-- [ ] tests frontend / integration adaptes a ce lot
+- [x] module frontend dedie pour capture audio et etats UI
+- [x] bouton micro dans le composer
+- [x] capture audio navigateur et envoi a `/api/chat/transcribe`
+- [x] reinjection du transcript dans la textarea existante
+- [x] gestion UX des etats `recording`, `transcribing`, `error`, `busy`
+- [x] tests frontend / integration adaptes a ce lot
 
 ### [ ] Lot 2 - transport `input_mode` dans le chat
 
