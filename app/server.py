@@ -21,6 +21,7 @@ from tools import web_search as ws
 from core import conv_store
 from core import chat_service
 from core import conversations_service
+from core import whisper_transcription_service
 from admin import (
     admin_identity_governance_service,
     admin_identity_runtime_representations_service,
@@ -493,6 +494,24 @@ class _AdminLogsChatLogProxy:
                 error_class=event,
                 message_short=str(fields.get('error') or 'llm error'),
             )
+
+
+# ── /api/chat/transcribe ───────────────────────────────────────────────────────
+
+
+@app.post("/api/chat/transcribe")
+def api_chat_transcribe():
+    try:
+        payload, status = whisper_transcription_service.transcribe_http_request(
+            content_type=request.content_type,
+            files=request.files,
+            requests_module=requests,
+            config_module=config,
+            logger_obj=logger,
+        )
+    except whisper_transcription_service.WhisperTranscriptionServiceError as exc:
+        payload, status = exc.as_response()
+    return jsonify(payload), status
 
 
 # ── /api/chat ─────────────────────────────────────────────────────────────────

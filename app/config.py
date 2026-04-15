@@ -129,6 +129,9 @@ CRAWL4AI_EXPLICIT_URL_MAX_CHARS = _env_int('CRAWL4AI_EXPLICIT_URL_MAX_CHARS', 25
 WEB_HOST = os.environ.get('FRIDA_WEB_HOST', '0.0.0.0').strip() or '0.0.0.0'
 WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)
 TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
+WHISPER_API_URL = os.environ.get('WHISPER_API_URL', 'http://platform-whisper-api:9001').rstrip('/')
+WHISPER_API_TIMEOUT_S = _env_int('WHISPER_API_TIMEOUT_S', 120)
+WHISPER_API_KEY = os.environ.get('WHISPER_API_KEY', '').strip()
 
 # Admin API security
 FRIDA_ADMIN_TOKEN = os.environ.get('FRIDA_ADMIN_TOKEN', '').strip()
