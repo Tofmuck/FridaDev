@@ -173,9 +173,30 @@ def run_llm_exchange(
             buffered_output = ''
             terminal_event = chat_stream_control.STREAM_TERMINAL_DONE
             terminal_error_code: str | None = None
+            assistant_appended = False
+            appended_assistant_content = ''
+            appended_assistant_timestamp: str | None = None
             buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
                 assistant_output_policy,
             )
+
+            def _rollback_appended_assistant() -> None:
+                nonlocal assistant_appended, buffered_output
+                if not assistant_appended:
+                    return
+                messages = conversation.get('messages')
+                if isinstance(messages, list) and messages:
+                    last_message = messages[-1]
+                    if (
+                        isinstance(last_message, dict)
+                        and str(last_message.get('role') or '') == 'assistant'
+                        and str(last_message.get('content') or '') == appended_assistant_content
+                        and str(last_message.get('timestamp') or '') == str(appended_assistant_timestamp or '')
+                    ):
+                        messages.pop()
+                assistant_appended = False
+                buffered_output = ''
+
             try:
                 with requests_module.post(
                     url,
@@ -223,8 +244,11 @@ def run_llm_exchange(
                     conversation_id=conversation['id'],
                     model=call_model,
                     error=str(exc),
+                    error_code=terminal_error_code,
                 )
-            finally:
+            assistant_text = llm_module.sanitize_provider_text(''.join(assistant_chunks)).strip()
+            final_updated_at: str | None = None
+            try:
                 if provider_response_open:
                     provider_fields = llm_module.build_provider_observability_fields(
                         caller='llm',
@@ -236,50 +260,86 @@ def run_llm_exchange(
                         conversation_id=conversation['id'],
                         **provider_fields,
                     )
-                assistant_text = llm_module.sanitize_provider_text(''.join(assistant_chunks)).strip()
-                if buffer_stream_output:
-                    assistant_text = assistant_output_contract.normalize_assistant_output(
-                        assistant_text,
-                        assistant_output_policy,
-                    )
                 final_updated_at = now_iso_func()
-                if assistant_text:
-                    buffered_output = assistant_text if buffer_stream_output else ''
-                    conv_store_module.append_message(
-                        conversation,
-                        'assistant',
-                        assistant_text,
-                        timestamp=final_updated_at,
+                if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
+                    if buffer_stream_output:
+                        assistant_text = assistant_output_contract.normalize_assistant_output(
+                            assistant_text,
+                            assistant_output_policy,
+                        )
+                    if assistant_text:
+                        buffered_output = assistant_text if buffer_stream_output else ''
+                        appended_assistant_content = assistant_text
+                        appended_assistant_timestamp = final_updated_at
+                        conv_store_module.append_message(
+                            conversation,
+                            'assistant',
+                            assistant_text,
+                            timestamp=final_updated_at,
+                        )
+                        assistant_appended = True
+                        estimated_assistant_tokens = token_utils_module.estimate_tokens(
+                            [{'content': assistant_text}],
+                            runtime_main_model,
+                        )
+                        admin_logs_module.log_event(
+                            'AssistantText',
+                            conversation_id=conversation['id'],
+                            estimated_assistant_tokens=estimated_assistant_tokens,
+                            message_timestamp=final_updated_at,
+                        )
+                    memory_store_module.save_new_traces(conversation)
+                    recent_2 = [
+                        message
+                        for message in conversation.get('messages', [])
+                        if message.get('role') in {'user', 'assistant'}
+                    ][-2:]
+                    record_identity_entries_for_mode(
+                        conversation['id'],
+                        recent_2,
+                        current_mode,
+                        web_input=web_input,
+                        arbiter_module=arbiter_module,
+                        memory_store_module=memory_store_module,
+                        admin_logs_module=admin_logs_module,
                     )
-                    estimated_assistant_tokens = token_utils_module.estimate_tokens(
-                        [{'content': assistant_text}],
-                        runtime_main_model,
-                    )
-                    admin_logs_module.log_event(
-                        'AssistantText',
-                        conversation_id=conversation['id'],
-                        estimated_assistant_tokens=estimated_assistant_tokens,
-                        message_timestamp=final_updated_at,
-                    )
-                memory_store_module.save_new_traces(conversation)
-                recent_2 = [
-                    message
-                    for message in conversation.get('messages', [])
-                    if message.get('role') in {'user', 'assistant'}
-                ][-2:]
-                record_identity_entries_for_mode(
-                    conversation['id'],
-                    recent_2,
-                    current_mode,
-                    web_input=web_input,
-                    arbiter_module=arbiter_module,
-                    memory_store_module=memory_store_module,
-                    admin_logs_module=admin_logs_module,
-                )
-                if identity_ids and mode_enforces_identity(current_mode):
-                    memory_store_module.reactivate_identities(identity_ids)
+                    if identity_ids and mode_enforces_identity(current_mode):
+                        memory_store_module.reactivate_identities(identity_ids)
                 conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
-            if buffered_output:
+            except Exception as exc:
+                _rollback_appended_assistant()
+                terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
+                terminal_error_code = terminal_error_code or 'stream_finalize_error'
+                logger.error('llm_stream_finalize_error id=%s err=%s', conversation['id'], exc)
+                admin_logs_module.log_event(
+                    'llm_stream_finalize_error',
+                    level='ERROR',
+                    conversation_id=conversation['id'],
+                    model=call_model,
+                    error=str(exc),
+                    error_code=terminal_error_code,
+                )
+                if final_updated_at is None:
+                    try:
+                        final_updated_at = now_iso_func()
+                    except Exception:
+                        final_updated_at = None
+                try:
+                    if final_updated_at is None:
+                        conv_store_module.save_conversation(conversation)
+                    else:
+                        conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
+                except Exception as persist_exc:
+                    logger.error('llm_stream_finalize_persist_error id=%s err=%s', conversation['id'], persist_exc)
+                    admin_logs_module.log_event(
+                        'llm_stream_finalize_persist_error',
+                        level='ERROR',
+                        conversation_id=conversation['id'],
+                        model=call_model,
+                        error=str(persist_exc),
+                        error_code=terminal_error_code,
+                    )
+            if buffered_output and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
                 yield buffered_output
             yield chat_stream_control.build_terminal_chunk(
                 terminal_event,

@@ -136,6 +136,19 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("Restart", index_source)
         self.assertNotIn("admin-old", index_source)
 
+    def test_streaming_error_path_replaces_visible_bubble_without_appending_assistant_to_thread_cache(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        submit_block = app_source.split('ask.addEventListener("submit", async (e) => {', 1)[1]
+        success_block, error_and_finally = submit_block.split('} catch (err) {', 1)
+        catch_block, _finally_block = error_and_finally.split('} finally {', 1)
+
+        self.assertIn('appendToThread("assistant", assistantNode.bubble.textContent);', success_block)
+        self.assertIn('await hydrateThreadMessages(activeThreadId, { force: true });', success_block)
+        self.assertIn('assistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
+        self.assertNotIn('appendToThread("assistant", assistantNode.bubble.textContent);', catch_block)
+        self.assertNotIn('await hydrateThreadMessages(activeThreadId, { force: true });', catch_block)
+        self.assertNotIn('messageCache.set(', catch_block)
+
 
 if __name__ == "__main__":
     unittest.main()

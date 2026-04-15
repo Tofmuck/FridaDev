@@ -489,9 +489,9 @@ class _AdminLogsChatLogProxy:
             }
             chat_turn_logger.set_state('llm_provider_response_meta', provider_fields)
             return
-        if event in {'llm_error', 'llm_stream_error'}:
+        if event in {'llm_error', 'llm_stream_error', 'llm_stream_finalize_error'}:
             chat_turn_logger.emit_error(
-                error_code='upstream_error',
+                error_code=str(fields.get('error_code') or 'upstream_error'),
                 error_class=event,
                 message_short=str(fields.get('error') or 'llm error'),
             )
@@ -571,6 +571,27 @@ def api_chat():
             stream_terminal_event: str | None = None
             stream_terminal_seen = False
             utf8_decoder = codecs.getincrementaldecoder('utf-8')('ignore')
+
+            def _mark_stream_error(*, error_code: str, error_class: str, message_short: str) -> str | None:
+                nonlocal final_status, llm_call_error_class, llm_call_error_code
+                nonlocal stream_terminal_event, stream_terminal_seen
+                final_status = 'error'
+                llm_call_error_class = error_class
+                llm_call_error_code = error_code
+                chat_turn_logger.emit_error(
+                    error_code=error_code,
+                    error_class=error_class,
+                    message_short=message_short,
+                )
+                if stream_terminal_seen:
+                    return None
+                stream_terminal_seen = True
+                stream_terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
+                return chat_stream_control.build_terminal_chunk(
+                    chat_stream_control.STREAM_TERMINAL_ERROR,
+                    error_code=error_code,
+                )
+
             try:
                 for chunk in result['stream']:
                     terminal = chat_stream_control.parse_terminal_chunk(chunk)
@@ -599,16 +620,22 @@ def api_chat():
                         stream_response_chars += len(str(chunk or ''))
                     stream_chunk_count += 1
                     yield chunk
+                if not stream_terminal_seen:
+                    terminal_chunk = _mark_stream_error(
+                        error_code='stream_protocol_error',
+                        error_class='missing_stream_terminal',
+                        message_short='stream ended without terminal',
+                    )
+                    if terminal_chunk is not None:
+                        yield terminal_chunk
             except Exception as exc:
-                final_status = 'error'
-                llm_call_error_class = exc.__class__.__name__
-                llm_call_error_code = llm_call_error_code or 'upstream_error'
-                chat_turn_logger.emit_error(
-                    error_code=llm_call_error_code,
+                terminal_chunk = _mark_stream_error(
+                    error_code=llm_call_error_code or 'stream_finalize_error',
                     error_class=exc.__class__.__name__,
                     message_short=str(exc),
                 )
-                raise
+                if terminal_chunk is not None:
+                    yield terminal_chunk
             finally:
                 stream_meta = chat_turn_logger.get_state('llm_stream_call_meta', {}) or {}
                 stream_started_at = stream_meta.get('started_at')

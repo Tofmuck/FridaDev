@@ -439,10 +439,60 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         text, terminal = self._split_stream_body(response)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
-        self.assertEqual(text, 'Bon')
+        self.assertEqual(text, '')
         self.assertEqual(terminal, {'event': 'error', 'error_code': 'upstream_error'})
-        self.assertEqual(conversation['messages'][-1]['content'], 'Bon')
-        self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
+        self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
+        self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
+
+    def test_api_chat_stream_emits_error_terminal_when_local_finalize_breaks_and_does_not_persist_fragment(self) -> None:
+        conversation = {
+            'id': 'conv-stream-finalize-error-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
+
+        def raising_record_identity(*_args, **_kwargs):
+            raise RuntimeError('finalize boom')
+
+        self.server.chat_service._record_identity_entries_for_mode = raising_record_identity
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
+        finally:
+            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
+            restore()
+
+        text, terminal = self._split_stream_body(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+        self.assertEqual(text, '')
+        self.assertEqual(terminal, {'event': 'error', 'error_code': 'stream_finalize_error'})
+        self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
+        self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
 
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})

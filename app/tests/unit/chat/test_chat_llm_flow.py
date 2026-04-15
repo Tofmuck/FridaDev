@@ -839,9 +839,12 @@ class ChatLlmFlowTests(unittest.TestCase):
         )
 
         streamed, terminal = _collect_stream_output(result['stream'])
-        self.assertEqual(streamed, 'Bon')
+        self.assertEqual(streamed, '')
         self.assertEqual(terminal, {'event': 'error', 'error_code': 'upstream_error'})
-        self.assertEqual(conversation['messages'][-1]['content'], 'Bon')
+        self.assertEqual(
+            [message['role'] for message in conversation['messages']],
+            ['user'],
+        )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertEqual(
             _event_payloads(events, 'llm_stream_error'),
@@ -851,6 +854,127 @@ class ChatLlmFlowTests(unittest.TestCase):
                     'conversation_id': 'conv-stream-error',
                     'model': 'openrouter/runtime-main-model',
                     'error': 'boom stream',
+                    'error_code': 'upstream_error',
+                }
+            ],
+        )
+
+    def test_run_llm_exchange_stream_emits_error_terminal_on_local_finalize_exception(self) -> None:
+        events = []
+        observed = {'save_calls': [], 'provider_log_calls': []}
+        conversation = {
+            'id': 'conv-stream-finalize-error',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"id":"gen-stream","choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_post(_url, *, json, headers, timeout, stream=False):
+            return FakeStreamResponse()
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
+            RuntimeSettingsSecretRequiredError=RuntimeError,
+            RuntimeSettingsSecretResolutionError=ValueError,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=lambda _conversation: None,
+            reactivate_identities=lambda _identity_ids: None,
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp}
+            ),
+            save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
+                'provider_generation_id': payload.get('id'),
+                'provider_model': payload.get('model') or requested_model,
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                'provider_title': f'FridaDev/{caller}',
+                **dict(provider_metadata),
+            },
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}, **{
+                key: value
+                for key, value in {
+                    'provider_generation_id': payload.get('id'),
+                    'provider_model': payload.get('model') or requested_model,
+                }.items()
+                if value is not None
+            }),
+            log_provider_metadata=lambda _logger, event, provider_metadata: observed['provider_log_calls'].append((event, dict(provider_metadata))),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            sanitize_provider_text=lambda text: text,
+        )
+        requests_module = SimpleNamespace(
+            post=fake_post,
+            exceptions=SimpleNamespace(RequestException=_RequestException),
+        )
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=True,
+            current_mode='shadow',
+            identity_ids=[],
+            web_input=None,
+            runtime_settings_module=runtime_settings_module,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            llm_module=llm_module,
+            requests_module=requests_module,
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
+            admin_logs_module=SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs))),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-03-26T00:11:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('finalize boom')),
+            mode_enforces_identity=lambda _mode: False,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+        )
+
+        streamed, terminal = _collect_stream_output(result['stream'])
+        self.assertEqual(streamed, '')
+        self.assertEqual(terminal, {'event': 'error', 'error_code': 'stream_finalize_error'})
+        self.assertEqual(
+            [message['role'] for message in conversation['messages']],
+            ['user'],
+        )
+        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
+        self.assertEqual(
+            _event_payloads(events, 'llm_stream_finalize_error'),
+            [
+                {
+                    'level': 'ERROR',
+                    'conversation_id': 'conv-stream-finalize-error',
+                    'model': 'openrouter/runtime-main-model',
+                    'error': 'finalize boom',
+                    'error_code': 'stream_finalize_error',
                 }
             ],
         )

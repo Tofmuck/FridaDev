@@ -27,12 +27,12 @@ Le systeme actuel fonctionne dans la configuration suivante:
 - La politique de buffering (`assistant_output_contract`) est fonctionnelle: plain text = bufferise en un bloc final, structure/code = stream progressif.
 
 ### Ce qui reste fragile ou incomplet
-- **Pas de signal de fin applicatif**: le frontend ne distingue pas fin normale de coupure reseau — il ne voit que la fermeture TCP.
-- **Pas de signal d'erreur mid-stream**: une `RequestException` dans `chat_llm_flow.py:213` est loggee mais ne produit aucun signal visible cote frontend. Le texte partiel accumule est envoye sans indication d'erreur.
+- **Signal terminal encore minimal**: le flux porte maintenant `done` / `error`, mais sans metadonnees terminales complementaires comme `updated_at`.
+- **Taxonomie d'erreur encore compacte**: le terminal `error` et `error_code` ferment le trou de contrat minimal, mais ne distinguent pas encore toute la gamme produit des interruptions cote UI.
 - **UX du buffering**: en mode plain text (cas le plus frequent), le frontend n'affiche qu'une bulle d'attente minimale (`…`) sans distinguer preparation, buffering et reponse effectivement visible. Le texte utile arrive ensuite d'un coup en fin de generation.
 - **Pas de `X-Conversation-Updated-At` dans le stream**: les headers initiaux du stream omettent cette metadonnee (`chat_session_flow.conversation_stream_headers()`). Le frontend recupere bien `updated_at` apres rehydratation/fetch secondaire, mais pas via le flux lui-meme ni via un signal terminal explicite.
-- **Persistance inconditionnelle en cas d'erreur**: si le stream avorte avec 3 caracteres de texte, ces 3 caracteres sont sauvegardes comme message assistant complet en DB.
-- **Observabilite asymetrique**: les erreurs `RequestException` dans le generateur ne remontent pas au turn logger. Le turn se termine avec `status='ok'` meme si une erreur LLM s'est produite.
+- **Politique de persistance encore minimale**: un terminal `error` n'ajoute plus de message assistant en DB, mais le statut produit complet d'un tour interrompu reste a formaliser.
+- **Observabilite terminale encore sobre**: le turn logger voit maintenant l'echec terminal, mais la taxonomie et les metadonnees de fin restent volontairement compactes a ce stade.
 - **Comptage chars dans le wrapper**: le comptage `stream_response_chars` (`server.py:554-556`) est correct pour le flux actuel, mais devra etre re-verifie si le transport ajoute un signal de controle applicatif.
 
 ## Probleme produit
@@ -74,7 +74,7 @@ Ce TODO ne fixe pas a lui seul:
 - le format exact du signal applicatif de fin normale et d'erreur;
 - la representation concrete d'un plan de controle distinct du contenu (lignes reservees, enveloppe NDJSON, SSE parse via `fetch`, ou variante equivalente);
 - la forme du transport de metadonnees post-stream;
-- la regle precise de persistance en cas d'interruption;
+- la regle produit complete de persistance en cas d'interruption, au-dela du garde-fou minimal deja retenu (`terminal error` => pas de message assistant persiste);
 - le niveau de feedback UX minimal pendant le buffering.
 
 ### Option technique legere a evaluer
@@ -120,8 +120,9 @@ Checklist:
 Validation implementation 2026-04-15:
 
 - Format retenu: un chunk terminal unique, prefixe par le caractere `RS` (`0x1e`), contenant un JSON compact puis `\n`, par exemple `\x1e{"kind":"frida-stream-control","event":"done"}\n` ou `\x1e{"kind":"frida-stream-control","event":"error","error_code":"upstream_error"}\n`.
-- Invariants appliques: zero ou plusieurs chunks de contenu visibles, puis au plus un terminal; le wrapper serveur considere l'absence de terminal ou du contenu apres terminal comme une erreur de protocole.
+- Invariants appliques: zero ou plusieurs chunks de contenu visibles, puis au plus un terminal; le wrapper serveur considere l'absence de terminal, un stream qui leve avant terminal, ou du contenu apres terminal comme une erreur de protocole / de finalisation, et synthetise alors un terminal `error`.
 - Cote frontend, `sendToServer()` parse ce terminal en flux, n'injecte jamais le controle dans la prose rendue, et traite un terminal `error` comme un echec exploitable au lieu d'une fin silencieuse.
+- Politique minimale de coherence UI/DB retenue par le correctif du lot 1: un terminal `error` ne persiste plus de fragment assistant; le frontend remplace la bulle locale par un message d'interruption sans ajouter ce fragment au thread cache, ce qui garde la rehydratation coherente avec la DB.
 
 ### Lot 2 — Feedback UX pendant l'attente
 - Objectif: l'utilisateur dispose d'un etat visible de la reponse en cours, sans modifier dans ce lot le contrat du flux ni la politique de normalisation.
