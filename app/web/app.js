@@ -1,5 +1,74 @@
 const STREAM_CONTROL_PREFIX = "\x1e";
 const STREAM_CONTROL_KIND = "frida-stream-control";
+const STREAMING_UI_STATE_PREPARING = "preparing";
+const STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT = "waiting_visible_content";
+const STREAMING_UI_STATE_STREAMING = "streaming";
+const STREAMING_UI_STATE_DONE = "done";
+const STREAMING_UI_STATE_INTERRUPTED = "interrupted";
+const STREAMING_UI_EVENT_REQUEST_STARTED = "request_started";
+const STREAMING_UI_EVENT_RESPONSE_OPENED = "response_opened";
+const STREAMING_UI_EVENT_VISIBLE_CONTENT = "visible_content";
+const STREAMING_UI_EVENT_TERMINAL_DONE = "terminal_done";
+const STREAMING_UI_EVENT_TERMINAL_ERROR = "terminal_error";
+const STREAMING_UI_EVENT_NETWORK_ERROR = "network_error";
+
+const STREAMING_UI_STATE_META = Object.freeze({
+  [STREAMING_UI_STATE_PREPARING]: {
+    label: "Préparation…",
+    tone: "pending",
+    visible: true,
+  },
+  [STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT]: {
+    label: "Réponse en attente…",
+    tone: "pending",
+    visible: true,
+  },
+  [STREAMING_UI_STATE_STREAMING]: {
+    label: "Réponse en cours",
+    tone: "live",
+    visible: true,
+  },
+  [STREAMING_UI_STATE_DONE]: {
+    label: "",
+    tone: "done",
+    visible: false,
+  },
+  [STREAMING_UI_STATE_INTERRUPTED]: {
+    label: "Interrompu",
+    tone: "error",
+    visible: true,
+  },
+});
+
+function reduceStreamingUiState(currentState, event) {
+  if (currentState === STREAMING_UI_STATE_DONE || currentState === STREAMING_UI_STATE_INTERRUPTED) {
+    return currentState;
+  }
+  switch (event) {
+    case STREAMING_UI_EVENT_REQUEST_STARTED:
+      return STREAMING_UI_STATE_PREPARING;
+    case STREAMING_UI_EVENT_RESPONSE_OPENED:
+      if (currentState === STREAMING_UI_STATE_STREAMING) return currentState;
+      return STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT;
+    case STREAMING_UI_EVENT_VISIBLE_CONTENT:
+      return STREAMING_UI_STATE_STREAMING;
+    case STREAMING_UI_EVENT_TERMINAL_DONE:
+      return STREAMING_UI_STATE_DONE;
+    case STREAMING_UI_EVENT_TERMINAL_ERROR:
+    case STREAMING_UI_EVENT_NETWORK_ERROR:
+      return STREAMING_UI_STATE_INTERRUPTED;
+    default:
+      return currentState || null;
+  }
+}
+
+function getStreamingUiStateMeta(state) {
+  return STREAMING_UI_STATE_META[state] || null;
+}
+
+function hasVisibleAssistantContent(text) {
+  return /\S/u.test(String(text || ""));
+}
 
 function parseStreamControlFrame(frameText) {
   const text = String(frameText || "");
@@ -117,10 +186,24 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     STREAM_CONTROL_PREFIX,
     STREAM_CONTROL_KIND,
+    STREAMING_UI_STATE_PREPARING,
+    STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT,
+    STREAMING_UI_STATE_STREAMING,
+    STREAMING_UI_STATE_DONE,
+    STREAMING_UI_STATE_INTERRUPTED,
+    STREAMING_UI_EVENT_REQUEST_STARTED,
+    STREAMING_UI_EVENT_RESPONSE_OPENED,
+    STREAMING_UI_EVENT_VISIBLE_CONTENT,
+    STREAMING_UI_EVENT_TERMINAL_DONE,
+    STREAMING_UI_EVENT_TERMINAL_ERROR,
+    STREAMING_UI_EVENT_NETWORK_ERROR,
     parseStreamControlFrame,
     createStreamControlParser,
     createStreamTerminalError,
     createStreamProtocolError,
+    reduceStreamingUiState,
+    getStreamingUiStateMeta,
+    hasVisibleAssistantContent,
   };
 }
 
@@ -220,12 +303,23 @@ if (typeof module !== "undefined" && module.exports) {
     const hourStr = fmtHour(timestamp);
     by.textContent = hourStr ? `${resolveDisplayName(role)} · ${hourStr}` : resolveDisplayName(role);
 
+    let status = null;
+    if (role === "assistant") {
+      status = document.createElement("div");
+      status.className = "msg-stream-status";
+      status.hidden = true;
+      status.setAttribute("aria-live", "polite");
+    }
+
     wrapper.appendChild(bubble);
+    if (status) {
+      wrapper.appendChild(status);
+    }
     wrapper.appendChild(by);
     log.appendChild(wrapper);
 
     scrollToBottom(true);
-    return { bubble, byline: by };
+    return { wrapper, bubble, status, byline: by, streamingState: null };
   };
 
   const setHero = async () => {
@@ -234,6 +328,31 @@ if (typeof module !== "undefined" && module.exports) {
   };
 
   const addMsg = (role, text, timestamp = null) => createMessageNode(role, text, timestamp);
+
+  const renderAssistantStreamingUiState = (assistantNode, state) => {
+    if (!assistantNode || !assistantNode.status) return;
+    const meta = getStreamingUiStateMeta(state);
+    assistantNode.status.textContent = meta && meta.visible ? meta.label : "";
+    assistantNode.status.hidden = !(meta && meta.visible);
+    if (meta && meta.visible) {
+      assistantNode.status.dataset.state = state;
+      assistantNode.status.dataset.tone = meta.tone;
+    } else {
+      delete assistantNode.status.dataset.state;
+      delete assistantNode.status.dataset.tone;
+    }
+  };
+
+  const applyAssistantStreamingUiEvent = (assistantNode, event) => {
+    if (!assistantNode) return null;
+    const nextState = reduceStreamingUiState(assistantNode.streamingState || null, event);
+    if (nextState === assistantNode.streamingState) {
+      return nextState;
+    }
+    assistantNode.streamingState = nextState;
+    renderAssistantStreamingUiState(assistantNode, nextState);
+    return nextState;
+  };
 
   const threadStatus = document.createElement('div');
   threadStatus.className = 'threads-status';
@@ -761,6 +880,7 @@ if (typeof module !== "undefined" && module.exports) {
     const assistantNode = createMessageNode("assistant", "…");
     let assistantText = "";
 
+    applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);
     chatRequestInFlight = true;
     syncDictationUi();
     try {
@@ -768,8 +888,15 @@ if (typeof module !== "undefined" && module.exports) {
         if (!chunk) return;
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
+        if (hasVisibleAssistantContent(assistantText)) {
+          applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);
+        }
         scrollToBottom(false);
-      }, getCurrentId(), inputMode);
+      }, getCurrentId(), inputMode, {
+        onStreamEvent(event) {
+          applyAssistantStreamingUiEvent(assistantNode, event);
+        },
+      });
 
       assistantText = reply || assistantText;
       assistantNode.bubble.textContent = assistantText || "(vide)";
@@ -786,6 +913,7 @@ if (typeof module !== "undefined" && module.exports) {
         scrollToBottom(true);
       }
     } catch (err) {
+      applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_NETWORK_ERROR);
       assistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
     } finally {
@@ -795,8 +923,13 @@ if (typeof module !== "undefined" && module.exports) {
   });
 
   // ---- Endpoint réseau
-  async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard"){
+  async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){
     const thread = threadId ? getThreadById(threadId) : null;
+    const emitStreamEvent = (event) => {
+      if (typeof options?.onStreamEvent === "function") {
+        options.onStreamEvent(event);
+      }
+    };
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -821,6 +954,7 @@ if (typeof module !== "undefined" && module.exports) {
     const convId = res.headers.get("X-Conversation-Id");
     const createdAt = res.headers.get("X-Conversation-Created-At");
     const updatedAt = res.headers.get("X-Conversation-Updated-At");
+    emitStreamEvent(STREAMING_UI_EVENT_RESPONSE_OPENED);
     if (contentType.includes("application/json")) {
       if (threadId && (convId || createdAt || updatedAt)) {
         setThreadMeta(threadId, {
@@ -844,6 +978,7 @@ if (typeof module !== "undefined" && module.exports) {
         renderThreads();
       }
       if (typeof onChunk === "function" && text) onChunk(text);
+      emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
       return text;
     }
 
@@ -855,7 +990,10 @@ if (typeof module !== "undefined" && module.exports) {
       renderThreads();
     }
 
-    if (!res.body) return "";
+    if (!res.body) {
+      emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
+      return "";
+    }
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8", { fatal: false });
@@ -884,9 +1022,11 @@ if (typeof module !== "undefined" && module.exports) {
 
     const terminal = parser.finish();
     if (!terminal || terminal.event !== "done") {
+      emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_ERROR);
       throw createStreamTerminalError(terminal);
     }
 
+    emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);
     return finalText;
   }
 

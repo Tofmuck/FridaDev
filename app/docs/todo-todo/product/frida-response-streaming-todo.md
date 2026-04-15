@@ -126,17 +126,24 @@ Validation implementation 2026-04-15:
 
 ### Lot 2 — Feedback UX pendant l'attente
 - Objectif: l'utilisateur dispose d'un etat visible de la reponse en cours, sans modifier dans ce lot le contrat du flux ni la politique de normalisation.
-- Fichiers: `app/web/app.js`.
+- Fichiers: `app/web/app.js`, `app/web/styles.css`.
 - Done: l'UI distingue au minimum `preparation`, `aucun contenu visible`, `contenu en cours`, `terminee` et `interrompue`, a partir de faits observables cote frontend.
+Validation implementation 2026-04-15:
+
+- Machine d'etats frontend retenue: `preparing` -> `waiting_visible_content` -> `streaming` -> `done`, avec sortie `interrupted` sur terminal `error` ou erreur reseau; elle reste purement fondee sur les evenements observables cote navigateur.
+- Representation UI retenue: une ligne de statut discrete (`.msg-stream-status`) rattachee a la bulle assistant en cours, sans nouveau panneau ni metadata backend supplementaire.
+- Politique d'observation retenue: `preparing` = requete lancee; `waiting_visible_content` = reponse ouverte mais aucun contenu visible; `streaming` = premier contenu non blanc affiche; `done` = statut retire; `interrupted` = statut visible + bulle remplacee par le message d'interruption existant.
+- La preuve runtime normale montre `Preparation...` -> `Reponse en attente...` -> `Reponse en cours` -> disparition propre du statut sur fin `done`.
+- La preuve runtime ciblee d'erreur montre `Preparation...` -> `Reponse en attente...` -> `Interrompu` sans contenu visible, via un terminal `error` conforme au protocole deja retenu.
 Checklist:
-- [ ] Definir une petite machine d'etats UI fondee sur les evenements deja observables (`requete envoyee`, `premier byte`, `premier contenu visible`, `terminal`, `erreur reseau`).
-- [ ] Afficher un indicateur de preparation des l'envoi de la requete.
-- [ ] Rendre visible l'etat `aucun contenu visible` tant qu'aucun texte n'est affichable pendant le buffering.
-- [ ] Basculer explicitement vers l'etat `contenu en cours` des qu'un contenu visible arrive.
-- [ ] Retirer proprement l'etat d'attente a la fin normale du stream.
-- [ ] Retirer proprement l'etat d'attente en cas d'erreur mid-stream ou de coupure reseau.
-- [ ] Verifier que le feedback ne pretend pas a une activite backend que le frontend ne peut pas observer.
-- [ ] Garder hors de ce lot toute evolution plus intrusive du flux ou de la normalisation.
+- [x] Definir une petite machine d'etats UI fondee sur les evenements deja observables (`requete envoyee`, `premier byte`, `premier contenu visible`, `terminal`, `erreur reseau`).
+- [x] Afficher un indicateur de preparation des l'envoi de la requete.
+- [x] Rendre visible l'etat `aucun contenu visible` tant qu'aucun texte n'est affichable pendant le buffering.
+- [x] Basculer explicitement vers l'etat `contenu en cours` des qu'un contenu visible arrive.
+- [x] Retirer proprement l'etat d'attente a la fin normale du stream.
+- [x] Retirer proprement l'etat d'attente en cas d'erreur mid-stream ou de coupure reseau.
+- [x] Verifier que le feedback ne pretend pas a une activite backend que le frontend ne peut pas observer.
+- [x] Garder hors de ce lot toute evolution plus intrusive du flux ou de la normalisation.
 
 ### Lot 3 — Metadonnees post-stream
 - Objectif: rendre `updated_at` et le statut terminal disponibles au frontend sans dependre uniquement de la rehydratation/fetch secondaire post-stream.

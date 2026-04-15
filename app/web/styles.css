@@ -480,6 +480,21 @@ body {
   letter-spacing: 0.2px;
 }
 
+.msg-stream-status {
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--fg-subtle);
+}
+
+.msg-stream-status[data-state="streaming"] {
+  color: var(--fg-muted);
+}
+
+.msg-stream-status[data-state="interrupted"] {
+  color: #b85050;
+}
+
 /* ===== Zone de saisie ===== */
 .ask {
   position: fixed;

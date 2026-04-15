@@ -149,6 +149,35 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('await hydrateThreadMessages(activeThreadId, { force: true });', catch_block)
         self.assertNotIn('messageCache.set(', catch_block)
 
+    def test_streaming_front_wires_observable_ux_states_without_changing_the_stream_contract(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        submit_block = app_source.split('ask.addEventListener("submit", async (e) => {', 1)[1]
+        send_block = app_source.split('async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){', 1)[1]
+
+        self.assertIn('const STREAMING_UI_STATE_PREPARING = "preparing";', app_source)
+        self.assertIn('const STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT = "waiting_visible_content";', app_source)
+        self.assertIn('const STREAMING_UI_STATE_STREAMING = "streaming";', app_source)
+        self.assertIn('const STREAMING_UI_STATE_DONE = "done";', app_source)
+        self.assertIn('const STREAMING_UI_STATE_INTERRUPTED = "interrupted";', app_source)
+        self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);', submit_block)
+        self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);', submit_block)
+        self.assertIn('onStreamEvent(event) {', submit_block)
+        self.assertIn('applyAssistantStreamingUiEvent(assistantNode, event);', submit_block)
+        self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_NETWORK_ERROR);', submit_block)
+        self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_RESPONSE_OPENED);', send_block)
+        self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);', send_block)
+        self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_ERROR);', send_block)
+
+    def test_streaming_front_has_a_discreet_status_line_for_the_live_assistant_bubble(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        styles_source = (APP_DIR / "web" / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('status.className = "msg-stream-status";', app_source)
+        self.assertIn('status.setAttribute("aria-live", "polite");', app_source)
+        self.assertIn('.msg-stream-status {', styles_source)
+        self.assertIn('.msg-stream-status[data-state="streaming"] {', styles_source)
+        self.assertIn('.msg-stream-status[data-state="interrupted"] {', styles_source)
+
 
 if __name__ == "__main__":
     unittest.main()
