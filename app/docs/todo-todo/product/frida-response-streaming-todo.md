@@ -12,11 +12,11 @@ Le streaming des reponses de Frida existe **deja de bout en bout**.
 Ce n'est pas un chantier "ajouter le streaming", mais un chantier "fiabiliser, durcir et completer l'existant".
 
 Le systeme actuel fonctionne dans la configuration suivante:
-- le frontend envoie toujours `stream: true` a `POST /api/chat` (`app/web/app.js:624`);
-- le backend parse la SSE OpenRouter dans `app/core/chat_llm_flow.py:191-196`;
-- le texte extrait est envoye au navigateur en flux brut `text/plain; charset=utf-8` (`app/server.py:609`);
-- le frontend lit le corps via `ReadableStream + TextDecoder` (`app/web/app.js:677-689`);
-- la persistance conversation se fait dans le `finally` du generateur (`app/core/chat_llm_flow.py:240-276`).
+- le frontend envoie toujours `stream: true` a `POST /api/chat` depuis `sendToServer()` dans `app/web/app.js`;
+- le backend parse la SSE OpenRouter dans `event_stream()` de `app/core/chat_llm_flow.py`;
+- le texte extrait est envoye au navigateur en flux brut `text/plain; charset=utf-8` par la branche stream de `app/server.py`;
+- le frontend lit le corps via `ReadableStream + TextDecoder` dans `sendToServer()` de `app/web/app.js`;
+- la persistance conversation se fait dans le `finally` de `event_stream()` dans `app/core/chat_llm_flow.py`.
 
 ## Etat actuel
 
@@ -29,8 +29,8 @@ Le systeme actuel fonctionne dans la configuration suivante:
 ### Ce qui reste fragile ou incomplet
 - **Pas de signal de fin applicatif**: le frontend ne distingue pas fin normale de coupure reseau — il ne voit que la fermeture TCP.
 - **Pas de signal d'erreur mid-stream**: une `RequestException` dans `chat_llm_flow.py:213` est loggee mais ne produit aucun signal visible cote frontend. Le texte partiel accumule est envoye sans indication d'erreur.
-- **UX du buffering**: en mode plain text (cas le plus frequent), rien n'est affiche pendant toute la generation LLM. Le frontend attend en silence puis recoit tout d'un coup.
-- **Pas de `X-Conversation-Updated-At` dans le stream**: les headers initiaux du stream omettent cette metadonnee (`chat_session_flow.py:61-65`). Le frontend ne connait jamais la date de mise a jour finale.
+- **UX du buffering**: en mode plain text (cas le plus frequent), le frontend n'affiche qu'une bulle d'attente minimale (`…`) sans distinguer preparation, buffering et reponse effectivement visible. Le texte utile arrive ensuite d'un coup en fin de generation.
+- **Pas de `X-Conversation-Updated-At` dans le stream**: les headers initiaux du stream omettent cette metadonnee (`chat_session_flow.conversation_stream_headers()`). Le frontend recupere bien `updated_at` apres rehydratation/fetch secondaire, mais pas via le flux lui-meme ni via un signal terminal explicite.
 - **Persistance inconditionnelle en cas d'erreur**: si le stream avorte avec 3 caracteres de texte, ces 3 caracteres sont sauvegardes comme message assistant complet en DB.
 - **Observabilite asymetrique**: les erreurs `RequestException` dans le generateur ne remontent pas au turn logger. Le turn se termine avec `status='ok'` meme si une erreur LLM s'est produite.
 - **Comptage chars dans le wrapper**: le comptage `stream_response_chars` (`server.py:554-556`) est correct pour le flux actuel, mais devra etre re-verifie si le transport ajoute un signal de controle applicatif.
@@ -40,7 +40,7 @@ Le systeme actuel fonctionne dans la configuration suivante:
 Ces limites ne sont pas des bugs bloquants, mais elles degradent l'experience conversationnelle:
 - l'utilisateur ne sait pas si Frida a fini de repondre ou si la connexion a coupe;
 - une erreur mid-stream produit un message d'erreur generique au lieu d'un statut clair de la reponse;
-- le silence pendant le buffering donne l'impression que Frida ne repond pas;
+- le feedback minimal pendant le buffering donne l'impression que Frida ne repond pas ou qu'elle reste bloquee;
 - un texte partiel sauvegarde en DB fausse l'historique de conversation et la memoire.
 
 ## Contraintes / hors-scope
@@ -49,6 +49,7 @@ Ces limites ne sont pas des bugs bloquants, mais elles degradent l'experience co
 - Le transport actuel est `text/plain` sur `POST /api/chat` avec `fetch + ReadableStream`. C'est fonctionnel et teste.
 - EventSource ne fait pas POST nativement — passer a SSE standard exigerait de mettre le message utilisateur en query string (exposition URL) ou de garder fetch avec un parse SSE manuel.
 - Le buffering est dicte par `assistant_output_contract`. Modifier ce comportement peut changer la presentation des reponses.
+- Depuis les lots Whisper du 2026-04-15, `app/web/app.js` porte aussi `input_mode`, `chatRequestInFlight` et `syncDictationUi()`. Tout lot streaming qui touche `sendToServer()` ou le submit handler devra preserver ce contrat frontend.
 
 ### Hors-scope de ce chantier (a moins que specifie ulterieurement)
 - Refonte complete du transport vers SSE/WebSocket.
@@ -123,11 +124,12 @@ Checklist:
 - [ ] Garder hors de ce lot toute evolution plus intrusive du flux ou de la normalisation.
 
 ### Lot 3 — Metadonnees post-stream
-- Objectif: `X-Conversation-Updated-At` et le statut terminal soient propages au frontend post-stream.
-- Fichiers: `app/core/chat_llm_flow.py`, `app/web/app.js`.
+- Objectif: rendre `updated_at` et le statut terminal disponibles au frontend sans dependre uniquement de la rehydratation/fetch secondaire post-stream.
+- Fichiers: `app/core/chat_llm_flow.py`, `app/core/chat_session_flow.py`, `app/web/app.js`.
 - Done: le frontend recoit, a la fin du stream, un paquet terminal minimal contenant au moins le statut final et `updated_at` ou leur equivalent retenu.
 Checklist:
 - [ ] Choisir le canal de propagation post-stream des metadonnees terminales.
+- [ ] Preciser si la rehydratation/fetch secondaire actuelle reste un simple fallback UI ou une dependance du contrat cible.
 - [ ] Rendre `updated_at` disponible a la fin d'un stream complet.
 - [ ] Definir la place du statut terminal dans ce meme canal de fin.
 - [ ] Reinjecter correctement cette valeur dans le thread cote frontend.
