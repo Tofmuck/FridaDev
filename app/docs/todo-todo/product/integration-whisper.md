@@ -174,6 +174,7 @@ Le futur lot code doit viser une separation de cette forme:
 
 Mais il faut assumer des coutures reelles dans:
 - `app/web/app.js` pour le wiring du composer et du submit;
+- `app/web/index.html` et `app/web/styles.css` pour charger proprement un helper frontend dedie et etendre un composer aujourd'hui pense pour `textarea + web + send`;
 - `app/server.py` pour la nouvelle route HTTP;
 - `app/core/chat_session_flow.py` pour lire `input_mode`;
 - `app/core/chat_service.py` pour persister `meta.input_mode` et propager l'information utile;
@@ -201,7 +202,9 @@ Il doit:
 
 Contrainte de modularite:
 - la logique de capture et de transcription frontend doit vivre dans un module dedie;
-- `app.js` doit seulement l'initialiser et brancher ses callbacks sur la textarea existante;
+- `app.js` doit surtout deleguer l'etat et l'appel STT a ce module, mais il faudra assumer un vrai seam de bootstrapping dans un frontend qui charge aujourd'hui un seul script classique;
+- selon le choix retenu, cela pourra demander soit un script supplementaire charge depuis `index.html`, soit une petite refonte du bootstrap de `app.js`;
+- l'ajout du micro n'est pas un simple bouton "gratuit": le composer actuel devra etre explicitement etendu cote HTML/CSS;
 - il faut prevoir explicitement les types MIME acceptes, le nettoyage des tracks micro, l'etat `busy`, le cancel et les erreurs permission navigateur.
 
 ### 2. Backend Frida comme proxy simple
@@ -278,6 +281,11 @@ Defaut:
 
 `resolve_chat_session()` doit lire `input_mode` en plus de `message`, `stream` et `web_search`.
 
+Attendu minimal:
+- valider les valeurs admises `keyboard | voice`;
+- normaliser l'absence vers `keyboard`;
+- renvoyer cet etat au service chat sans disperser la validation dans plusieurs couches.
+
 ### Persistance conversationnelle
 
 Le message utilisateur doit etre persiste avec:
@@ -295,10 +303,19 @@ Le bon niveau est plus modeste:
 - un helper prompt ou guard block conditionnel peut deriver un indice interpretatif faible pour le tour courant;
 - cet indice n'a pas vocation a redefinir tout `user_turn_input` ni toute la doctrine d'enonciation du systeme.
 
+Point de doctrine operatoire important:
+- `meta.input_mode` seul n'a aucun effet direct sur le LLM final;
+- dans l'etat actuel du depot, le LLM principal ne voit que ce qui est injecte textuellement dans le prompt augmente;
+- la persistence en `meta` sert la trace, la relecture et l'observabilite, mais pas l'interpretation du tour sans injection explicite.
+
 ### Prompt systemique
 
 Un petit guard block conditionnel peut etre injecte seulement pour les tours `voice`.
 Il ne doit pas changer la voix globale de Frida, mais seulement la lecture du tour present.
+
+Consequence structurelle:
+- si aucun bloc conditionnel n'est injecte, `input_mode` reste une metadonnee backend sans effet interpretatif sur la reponse;
+- le seam naturel pour cet effet est un helper dedie branche dans `app/core/chat_prompt_context.py`, plutot qu'une hypothese implicite sur la persistence seule.
 
 Il doit au minimum rappeler:
 - que le tour courant provient d'une transcription vocale;
@@ -315,6 +332,11 @@ Configuration cible minimale cote Frida:
 - `WHISPER_API_URL`
 - `WHISPER_API_TIMEOUT_S`
 - eventuellement un branchement vers `WHISPER_API_KEY` si le backend l'exige
+
+Etat reel du depot Frida au moment de ce TODO:
+- aucune variable `WHISPER_*` n'est encore exposee cote `app/config.py`;
+- le futur lot devra donc creer ce seam de configuration explicitement, puis consommer ces valeurs via `config`, pas via des `os.getenv` disperses;
+- si ce seam est ajoute, la documentation operateur associee devra etre mise a jour dans le meme cycle.
 
 Le service vise par defaut sur OVH est l'interne:
 - `http://platform-whisper-api:9001`
