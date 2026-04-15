@@ -58,7 +58,7 @@ Notes:
 - note archivee de cloture prompt-first voix / identite / gap du chat: `todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
 - TODO ouvert fiabilisation du streaming des reponses: `todo-todo/product/frida-response-streaming-todo.md`
-- TODO ouvert integration Whisper pour la saisie vocale: `todo-todo/product/integration-whisper.md`
+- note archivee de cloture V1 integration Whisper pour la saisie vocale: `todo-done/notes/integration-whisper-v1-closure.md`
 - trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
 - mini-lot admin archive `mode depuis / observation du mode`: `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`

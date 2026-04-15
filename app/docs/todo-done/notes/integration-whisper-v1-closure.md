@@ -1,4 +1,4 @@
-# Integration Whisper
+# Integration Whisper - cloture V1
 
 ## Intention
 
@@ -12,13 +12,24 @@ Le gain recherche est d'abord ergonomique:
 - possibilite de nourrir Frida a l'oral;
 - conservation du meme systeme de conversation, de memoire et d'enonciation.
 
+## Statut
+
+Statut: V1 terminee et archivee le `2026-04-15`.
+
+Cette note archive la roadmap executee et sert de reference de cloture pour la V1 effectivement livree.
+
+Decision de cloture lot 4:
+- pas d'observabilite runtime supplementaire sur `input_mode` dans cette V1;
+- `meta.input_mode` sur le message utilisateur, les tests d'integration et les preuves lot par lot suffisent comme trace utile a faible cout;
+- une observabilite tour additionnelle ne se justifiera que si un besoin diagnostic reel apparait plus tard.
+
 ## Statut des lots
 
 - [x] Lot 0 - fondation backend de transcription
 - [x] Lot 1 - frontend micro, capture audio et reinjection du transcript
 - [x] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
 - [x] Lot 3 - lecture faible de l'oralite via helper prompt dedie
-- [ ] Lot 4 - finitions UX, observabilite et documentation de cloture
+- [x] Lot 4 - finitions UX, observabilite et documentation de cloture
 
 ## Principe directeur
 
@@ -435,9 +446,25 @@ Hors-scope de cette V1:
 - [x] absence de nouvel objet canonique dur `enunciation_mode`
 - [x] tests / preuves sur l'effet prompt attendu
 
-### [ ] Lot 4 - finitions UX, observabilite et documentation
+### [x] Lot 4 - finitions UX, observabilite et documentation
 
-- [ ] observabilite minimale du mode d'entree si utile
-- [ ] documentation runtime associee a la V1 effectivement codee
-- [ ] verification finale de la coherence lot par lot
-- [ ] cloture du TODO ou decoupage d'une V2 si le scope depasse la V1
+- [x] decision explicite: pas d'observabilite runtime additionnelle retenue pour la V1
+- [x] documentation runtime associee a la V1 effectivement codee
+- [x] verification finale de la coherence lot par lot
+- [x] cloture du TODO et archivage dans `todo-done/notes/`
+
+## Statut final
+
+La V1 Whisper est close.
+
+Ce qui est effectivement livre:
+- route backend `/api/chat/transcribe` et service Whisper dedie;
+- bouton micro frontend, capture navigateur, transcription et reinjection dans le draft;
+- transport `input_mode` dans `/api/chat` avec validation `keyboard | voice`;
+- persistance `meta.input_mode=voice` sur les messages utilisateur vocaux;
+- guard block vocal faible et local au prompt augmente pour les tours `voice`;
+- absence de TTS, de transcript live, d'objet canonique fort et d'integration dans la `stimmung`.
+
+Aucun reliquat V1 bloquant n'est identifie.
+Il n'y a pas de V2 ouverte dans ce cycle.
+Si un futur chantier apparait, il devra etre ouvre explicitement comme nouveau document actif.
