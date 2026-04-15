@@ -16,7 +16,7 @@ Le gain recherche est d'abord ergonomique:
 
 - [x] Lot 0 - fondation backend de transcription
 - [x] Lot 1 - frontend micro, capture audio et reinjection du transcript
-- [ ] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
+- [x] Lot 2 - transport `input_mode` dans `/api/chat` et persistance `meta.input_mode`
 - [ ] Lot 3 - lecture faible de l'oralite via helper prompt dedie
 - [ ] Lot 4 - finitions UX, observabilite et documentation de cloture
 
@@ -419,13 +419,13 @@ Hors-scope de cette V1:
 - [x] gestion UX des etats `recording`, `transcribing`, `error`, `busy`
 - [x] tests frontend / integration adaptes a ce lot
 
-### [ ] Lot 2 - transport `input_mode` dans le chat
+### [x] Lot 2 - transport `input_mode` dans le chat
 
-- [ ] ajout de `input_mode` dans `/api/chat`
-- [ ] lecture et validation de `input_mode` dans l'orchestration de session
-- [ ] persistance `meta.input_mode` sur le message utilisateur
-- [ ] maintien du comportement par defaut `keyboard` sans regression
-- [ ] tests backend / integration sur le transport du mode d'entree
+- [x] ajout de `input_mode` dans `/api/chat`
+- [x] lecture et validation de `input_mode` dans l'orchestration de session
+- [x] persistance `meta.input_mode` sur le message utilisateur
+- [x] maintien du comportement par defaut `keyboard` sans regression
+- [x] tests backend / integration sur le transport du mode d'entree
 
 ### [ ] Lot 3 - lecture faible de l'oralite
 

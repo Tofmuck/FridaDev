@@ -4,6 +4,16 @@ from typing import Any, Mapping
 
 
 ChatError = tuple[dict[str, Any], int]
+_VALID_INPUT_MODES = {'keyboard', 'voice'}
+
+
+def _normalize_input_mode(raw_input_mode: Any) -> str | None:
+    normalized = str(raw_input_mode or '').strip().lower()
+    if not normalized:
+        return 'keyboard'
+    if normalized in _VALID_INPUT_MODES:
+        return normalized
+    return None
 
 
 def resolve_chat_session(
@@ -18,9 +28,12 @@ def resolve_chat_session(
     conversation_id_raw = data.get('conversation_id')
     stream_req = bool(data.get('stream'))
     web_search_on = bool(data.get('web_search'))
+    input_mode = _normalize_input_mode(data.get('input_mode'))
 
     if not user_msg:
         return None, ({'ok': False, 'error': 'message vide'}, 400)
+    if input_mode is None:
+        return None, ({'ok': False, 'error': 'input_mode invalide'}, 400)
 
     conversation_id = conv_store_module.normalize_conversation_id(conversation_id_raw)
     if conversation_id:
@@ -45,6 +58,7 @@ def resolve_chat_session(
             'conversation': conversation,
             'stream_req': stream_req,
             'web_search_on': web_search_on,
+            'input_mode': input_mode,
         },
         None,
     )

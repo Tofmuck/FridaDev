@@ -177,6 +177,7 @@ test('createWhisperDictation reinjects the transcript into the existing draft', 
   const textareaEl = createTextarea('Bonjour');
   const stream = createStream();
   const fetchCalls = [];
+  const observedInputModes = [];
 
   const controller = whisperDictation.createWhisperDictation({
     buttonEl,
@@ -193,6 +194,9 @@ test('createWhisperDictation reinjects the transcript into the existing draft', 
     fetchImpl: async (url, options) => {
       fetchCalls.push({ url, options });
       return jsonResponse(200, { ok: true, text: 'voici le transcript', input_mode: 'voice' });
+    },
+    onDraftInputMode: (value) => {
+      observedInputModes.push(value);
     },
     isBusy: () => false,
     setTimeoutFn: () => 1,
@@ -225,6 +229,7 @@ test('createWhisperDictation reinjects the transcript into the existing draft', 
   assert.equal(fetchCalls[0].options.method, 'POST');
   assert.equal(fetchCalls[0].options.body.entries[0].name, 'file');
   assert.equal(fetchCalls[0].options.body.entries[0].filename, 'dictation.webm');
+  assert.deepEqual(observedInputModes, ['voice']);
 });
 
 test('createWhisperDictation preserves the draft when transcription fails', async () => {

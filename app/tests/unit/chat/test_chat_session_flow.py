@@ -21,6 +21,19 @@ from core import chat_session_flow
 
 
 class ChatSessionFlowTests(unittest.TestCase):
+    def _conv_store_stub(self):
+        return SimpleNamespace(
+            normalize_conversation_id=lambda _raw: None,
+            load_conversation=lambda *_args, **_kwargs: None,
+            new_conversation=lambda _system: {
+                'id': 'conv-session-flow',
+                'created_at': '2026-03-26T00:00:00Z',
+                'messages': [],
+            },
+            save_conversation=lambda *_args, **_kwargs: None,
+            conversation_path=lambda _id: 'conv/placeholder.json',
+        )
+
     def test_resolve_chat_session_rejects_empty_message(self) -> None:
         conv_store = SimpleNamespace(
             normalize_conversation_id=lambda _raw: None,
@@ -122,6 +135,70 @@ class ChatSessionFlowTests(unittest.TestCase):
         self.assertTrue(observed['decay_called'])
         self.assertTrue(any('conv_id_invalid raw=@@bad@@' in message for message in observed['log_messages']))
         self.assertTrue(any('conv_created id=conv-new-session' in message for message in observed['log_messages']))
+
+    def test_resolve_chat_session_defaults_input_mode_to_keyboard_when_absent(self) -> None:
+        conv_store = self._conv_store_stub()
+        memory_store = SimpleNamespace(decay_identities=lambda: None)
+        logger = SimpleNamespace(info=lambda *_args, **_kwargs: None)
+
+        session, error = chat_session_flow.resolve_chat_session(
+            {'message': 'Bonjour'},
+            system_prompt='SYSTEM',
+            conv_store_module=conv_store,
+            memory_store_module=memory_store,
+            logger=logger,
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(session['input_mode'], 'keyboard')
+
+    def test_resolve_chat_session_accepts_voice_input_mode(self) -> None:
+        conv_store = self._conv_store_stub()
+        memory_store = SimpleNamespace(decay_identities=lambda: None)
+        logger = SimpleNamespace(info=lambda *_args, **_kwargs: None)
+
+        session, error = chat_session_flow.resolve_chat_session(
+            {'message': 'Bonjour', 'input_mode': 'voice'},
+            system_prompt='SYSTEM',
+            conv_store_module=conv_store,
+            memory_store_module=memory_store,
+            logger=logger,
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(session['input_mode'], 'voice')
+
+    def test_resolve_chat_session_accepts_keyboard_input_mode(self) -> None:
+        conv_store = self._conv_store_stub()
+        memory_store = SimpleNamespace(decay_identities=lambda: None)
+        logger = SimpleNamespace(info=lambda *_args, **_kwargs: None)
+
+        session, error = chat_session_flow.resolve_chat_session(
+            {'message': 'Bonjour', 'input_mode': 'keyboard'},
+            system_prompt='SYSTEM',
+            conv_store_module=conv_store,
+            memory_store_module=memory_store,
+            logger=logger,
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(session['input_mode'], 'keyboard')
+
+    def test_resolve_chat_session_rejects_invalid_input_mode(self) -> None:
+        conv_store = self._conv_store_stub()
+        memory_store = SimpleNamespace(decay_identities=lambda: None)
+        logger = SimpleNamespace(info=lambda *_args, **_kwargs: None)
+
+        session, error = chat_session_flow.resolve_chat_session(
+            {'message': 'Bonjour', 'input_mode': 'dictaphone'},
+            system_prompt='SYSTEM',
+            conv_store_module=conv_store,
+            memory_store_module=memory_store,
+            logger=logger,
+        )
+
+        self.assertIsNone(session)
+        self.assertEqual(error, ({'ok': False, 'error': 'input_mode invalide'}, 400))
 
     def test_conversation_headers_returns_expected_contract(self) -> None:
         headers = chat_session_flow.conversation_headers(

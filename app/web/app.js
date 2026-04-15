@@ -139,10 +139,15 @@
   const messageCache = new Map();
   let chatRequestInFlight = false;
   let dictationController = null;
+  let currentDraftInputMode = "keyboard";
 
   const syncDictationUi = () => {
     if (!dictationController || typeof dictationController.refreshUi !== "function") return;
     dictationController.refreshUi();
+  };
+
+  const setCurrentDraftInputMode = (nextMode) => {
+    currentDraftInputMode = nextMode === "voice" ? "voice" : "keyboard";
   };
 
   const clampTitle = (value, fallback = 'Nouvelle conversation') => {
@@ -601,8 +606,17 @@
       },
       focusDraft: focusMessageDraft,
       isBusy: () => chatRequestInFlight,
+      onDraftInputMode: setCurrentDraftInputMode,
     });
     syncDictationUi();
+  }
+
+  if (message) {
+    message.addEventListener("input", () => {
+      if (!(message.value || "").trim()) {
+        setCurrentDraftInputMode("keyboard");
+      }
+    });
   }
 
   // ---- Envoi
@@ -610,10 +624,12 @@
     e.preventDefault();
     const text = (message.value || "").trim();
     if (!text) return;
+    const inputMode = currentDraftInputMode;
 
     addMsg("user", text);
     appendToThread("user", text);
     message.value = "";
+    setCurrentDraftInputMode("keyboard");
 
     const assistantNode = createMessageNode("assistant", "…");
     let assistantText = "";
@@ -626,7 +642,7 @@
         assistantText += chunk;
         assistantNode.bubble.textContent = assistantText;
         scrollToBottom(false);
-      }, getCurrentId());
+      }, getCurrentId(), inputMode);
 
       assistantText = reply || assistantText;
       assistantNode.bubble.textContent = assistantText || "(vide)";
@@ -652,7 +668,7 @@
   });
 
   // ---- Endpoint réseau
-  async function sendToServer(userText, onChunk, threadId){
+  async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard"){
     const thread = threadId ? getThreadById(threadId) : null;
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -662,6 +678,7 @@
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
         web_search: webSearchEnabled,
+        input_mode: inputMode === "voice" ? "voice" : "keyboard",
       })
     });
 

@@ -26,20 +26,23 @@ class FrontendWhisperContractTests(unittest.TestCase):
         self.assertIn('id="dictationStatus"', source)
         self.assertIn('<script src="whisper/whisper_dictation.js"></script>', source)
 
-    def test_frontend_chat_wires_dictation_without_touching_api_chat_payload(self) -> None:
+    def test_frontend_chat_wires_dictation_transport_into_api_chat_payload(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         dictation_source = (APP_DIR / "web" / "whisper" / "whisper_dictation.js").read_text(encoding="utf-8")
 
         self.assertIn('window.FridaWhisperDictation.createWhisperDictation({', app_source)
         self.assertIn('endpoint: "/api/chat/transcribe"', app_source)
         self.assertIn('isBusy: () => chatRequestInFlight,', app_source)
+        self.assertIn('let currentDraftInputMode = "keyboard";', app_source)
+        self.assertIn('onDraftInputMode: setCurrentDraftInputMode,', app_source)
         self.assertIn('message: userText,', app_source)
         self.assertIn('conversation_id: thread ? thread.conversation_id : null,', app_source)
         self.assertIn('stream: true,', app_source)
         self.assertIn('web_search: webSearchEnabled,', app_source)
-        self.assertNotIn('input_mode:', app_source)
+        self.assertIn('input_mode: inputMode === "voice" ? "voice" : "keyboard",', app_source)
         self.assertIn('function joinTranscriptToDraft(currentDraft, transcript)', dictation_source)
         self.assertIn('const DEFAULT_ENDPOINT = "/api/chat/transcribe";', dictation_source)
+        self.assertIn('onDraftInputMode("voice");', dictation_source)
 
 
 if __name__ == "__main__":

@@ -196,6 +196,7 @@
     const isBusy = (options && options.isBusy) || (() => false);
     const endpoint = (options && options.endpoint) || DEFAULT_ENDPOINT;
     const maxRecordingMs = Number((options && options.maxRecordingMs) || DEFAULT_MAX_RECORDING_MS);
+    const onDraftInputMode = (options && options.onDraftInputMode) || (() => {});
 
     let state = STATES.IDLE;
     let recorder = null;
@@ -310,6 +311,7 @@
         });
         const nextDraft = joinTranscriptToDraft(getDraftValue(), transcript);
         setDraftValue(nextDraft);
+        onDraftInputMode("voice");
         triggerInputEvent(textareaEl);
         focusDraft();
         state = STATES.IDLE;

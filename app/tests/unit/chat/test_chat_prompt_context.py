@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import sys
 import unittest
 from pathlib import Path
@@ -22,6 +23,12 @@ from core.hermeneutic_node.inputs import time_input
 
 
 class ChatPromptContextTests(unittest.TestCase):
+    def test_lot2_keeps_chat_prompt_context_free_of_input_mode_transport_logic(self) -> None:
+        source = inspect.getsource(chat_prompt_context)
+
+        self.assertNotIn('input_mode', source)
+        self.assertNotIn('orality_hint', source)
+
     def test_build_time_input_exposes_canonical_time_fields(self) -> None:
         payload = time_input.build_time_input(
             now_utc_iso='2026-01-15T08:15:00Z',

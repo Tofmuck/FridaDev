@@ -481,6 +481,7 @@ def chat_response(
     conversation = session['conversation']
     stream_req = bool(session['stream_req'])
     web_search_on = bool(session['web_search_on'])
+    input_mode = str(session['input_mode'])
 
     runtime_main_view = runtime_settings_module.get_main_model_settings()
     runtime_main_payload = runtime_main_view.payload
@@ -498,7 +499,14 @@ def chat_response(
         estimated_user_tokens=estimated_user_tokens,
         message_timestamp=user_timestamp,
     )
-    conv_store_module.append_message(conversation, 'user', user_msg, timestamp=user_timestamp)
+    user_message_meta = {'input_mode': 'voice'} if input_mode == 'voice' else None
+    conv_store_module.append_message(
+        conversation,
+        'user',
+        user_msg,
+        meta=user_message_meta,
+        timestamp=user_timestamp,
+    )
 
     if summarizer_module.maybe_summarize(conversation, runtime_main_model):
         conv_store_module.save_conversation(conversation)
