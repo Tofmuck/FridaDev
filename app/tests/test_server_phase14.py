@@ -344,6 +344,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {'event': 'done', 'updated_at': conversation['messages'][-1]['timestamp']},
         )
         self.assertEqual(conversation['messages'][-1]['content'], text)
+        self.assertNotIn('assistant_turn', conversation['messages'][-1].get('meta') or {})
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
     def test_api_chat_stream_removes_unrequested_fenced_code_blocks_for_first_party_surface(self) -> None:
@@ -457,7 +458,22 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'updated_at': observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
             },
         )
-        self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
+        assistant_message = conversation['messages'][-1]
+        self.assertEqual(assistant_message.get('role'), 'assistant')
+        self.assertEqual(assistant_message.get('content'), '')
+        self.assertEqual(
+            assistant_message.get('timestamp'),
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+        )
+        self.assertEqual(
+            assistant_message.get('meta'),
+            {
+                'assistant_turn': {
+                    'status': 'interrupted',
+                    'error_code': 'upstream_error',
+                }
+            },
+        )
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
 
     def test_api_chat_stream_emits_error_terminal_when_local_finalize_breaks_and_does_not_persist_fragment(self) -> None:
@@ -514,7 +530,22 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'updated_at': observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
             },
         )
-        self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
+        assistant_message = conversation['messages'][-1]
+        self.assertEqual(assistant_message.get('role'), 'assistant')
+        self.assertEqual(assistant_message.get('content'), '')
+        self.assertEqual(
+            assistant_message.get('timestamp'),
+            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+        )
+        self.assertEqual(
+            assistant_message.get('meta'),
+            {
+                'assistant_turn': {
+                    'status': 'interrupted',
+                    'error_code': 'stream_finalize_error',
+                }
+            },
+        )
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
 
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:

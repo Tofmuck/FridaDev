@@ -126,7 +126,16 @@ class ServerPhase13Tests(unittest.TestCase):
             'messages': [
                 {'role': 'system', 'content': 'system'},
                 {'role': 'user', 'content': 'hello'},
-                {'role': 'assistant', 'content': 'world'},
+                {
+                    'role': 'assistant',
+                    'content': '',
+                    'meta': {
+                        'assistant_turn': {
+                            'status': 'interrupted',
+                            'error_code': 'upstream_error',
+                        }
+                    },
+                },
             ],
         }
 
@@ -152,6 +161,15 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertEqual(data['updated_at'], '2026-03-26T00:05:00Z')
         self.assertIsNone(data['deleted_at'])
         self.assertEqual(len(data['messages']), 3)
+        self.assertEqual(
+            data['messages'][-1].get('meta'),
+            {
+                'assistant_turn': {
+                    'status': 'interrupted',
+                    'error_code': 'upstream_error',
+                }
+            },
+        )
         self.assertEqual(observed['conv_id'], 'conv-phase4')
         self.assertTrue(observed['include_deleted'])
 

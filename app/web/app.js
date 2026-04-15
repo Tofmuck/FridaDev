@@ -42,6 +42,8 @@ const STREAM_ERROR_META = Object.freeze({
     bubbleMessage: "Connexion interrompue pendant la réponse.",
   },
 });
+const ASSISTANT_TURN_META_KEY = "assistant_turn";
+const ASSISTANT_TURN_STATUS_INTERRUPTED = "interrupted";
 
 const STREAMING_UI_STATE_META = Object.freeze({
   [STREAMING_UI_STATE_PREPARING]: {
@@ -165,6 +167,34 @@ function getObservableStreamErrorMeta(err) {
       : baseMeta.bubbleMessage,
     terminal,
   };
+}
+
+function buildInterruptedAssistantTurnMeta(errorCode) {
+  const normalizedErrorCode = String(errorCode || "").trim();
+  const payload = {
+    status: ASSISTANT_TURN_STATUS_INTERRUPTED,
+  };
+  if (normalizedErrorCode) {
+    payload.error_code = normalizedErrorCode;
+  }
+  return {
+    [ASSISTANT_TURN_META_KEY]: payload,
+  };
+}
+
+function getPersistedAssistantTurnErrorMeta(message) {
+  if (!message || message.role !== "assistant" || !message.meta || typeof message.meta !== "object") {
+    return null;
+  }
+  const assistantTurn = message.meta[ASSISTANT_TURN_META_KEY];
+  if (!assistantTurn || typeof assistantTurn !== "object") {
+    return null;
+  }
+  if (String(assistantTurn.status || "").trim().toLowerCase() !== ASSISTANT_TURN_STATUS_INTERRUPTED) {
+    return null;
+  }
+  const errorCode = String(assistantTurn.error_code || "stream_protocol_error").trim();
+  return getObservableStreamErrorMeta({ code: errorCode });
 }
 
 function parseStreamControlFrame(frameText) {
@@ -315,11 +345,15 @@ if (typeof module !== "undefined" && module.exports) {
     STREAM_ERROR_KIND_UPSTREAM,
     STREAM_ERROR_KIND_SERVER,
     STREAM_ERROR_KIND_NETWORK,
+    ASSISTANT_TURN_META_KEY,
+    ASSISTANT_TURN_STATUS_INTERRUPTED,
     parseStreamControlFrame,
     createStreamControlParser,
     createStreamTerminalError,
     createStreamProtocolError,
     getObservableStreamErrorMeta,
+    buildInterruptedAssistantTurnMeta,
+    getPersistedAssistantTurnErrorMeta,
     reduceStreamingUiState,
     getStreamingUiStateMeta,
     hasVisibleAssistantContent,
@@ -452,6 +486,18 @@ if (typeof module !== "undefined" && module.exports) {
   };
 
   const addMsg = (role, text, timestamp = null) => createMessageNode(role, text, timestamp);
+
+  const renderConversationMessage = (messageRecord) => {
+    const role = String(messageRecord && messageRecord.role || "");
+    const timestamp = messageRecord && messageRecord.timestamp ? messageRecord.timestamp : null;
+    const persistedErrorMeta = getPersistedAssistantTurnErrorMeta(messageRecord);
+    if (persistedErrorMeta) {
+      const assistantNode = createMessageNode("assistant", persistedErrorMeta.bubbleMessage, timestamp);
+      applyAssistantStreamingFailure(assistantNode, persistedErrorMeta);
+      return assistantNode;
+    }
+    return addMsg(role, String(messageRecord && messageRecord.content || ""), timestamp);
+  };
 
   const renderAssistantStreamingUiState = (assistantNode, state) => {
     if (!assistantNode || !assistantNode.status) return;
@@ -919,7 +965,17 @@ if (typeof module !== "undefined" && module.exports) {
     const messages = Array.isArray(data.messages) ? data.messages : [];
     const sanitized = messages
       .filter((m) => m && typeof m.content === 'string')
-      .map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp || null }));
+      .map((m) => {
+        const sanitizedMessage = {
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp || null,
+        };
+        if (m.meta && typeof m.meta === "object") {
+          sanitizedMessage.meta = m.meta;
+        }
+        return sanitizedMessage;
+      });
 
     messageCache.set(conversationId, sanitized);
 
@@ -954,24 +1010,28 @@ if (typeof module !== "undefined" && module.exports) {
     const refreshed = getThreadById(id);
     (refreshed?.messages || []).forEach((m) => {
       if (m.role !== 'user' && m.role !== 'assistant') return;
-      addMsg(m.role, m.content, m.timestamp || null);
+      renderConversationMessage(m);
     });
 
     scrollToBottom(false);
   };
 
-  const appendMessageToThread = (threadId, role, content, timestamp = null) => {
+  const appendMessageToThread = (threadId, role, content, timestamp = null, meta = null) => {
     const id = threadId || null;
     if (!id) return;
     const thread = getThreadById(id);
     if (!thread) return;
 
     const existing = Array.isArray(messageCache.get(id)) ? messageCache.get(id) : [];
-    const nextMessages = [...existing, { role, content, timestamp }];
+    const nextMessage = { role, content, timestamp };
+    if (meta && typeof meta === "object") {
+      nextMessage.meta = meta;
+    }
+    const nextMessages = [...existing, nextMessage];
     messageCache.set(id, nextMessages);
 
     thread.messages = nextMessages;
-    thread.updated_at = new Date().toISOString();
+    thread.updated_at = timestamp || new Date().toISOString();
     thread.message_count = nextMessages.filter((m) => m.role === 'user' || m.role === 'assistant').length;
     if (role === 'user') {
       thread.last_message_preview = String(content || '').slice(0, 180);
@@ -979,8 +1039,8 @@ if (typeof module !== "undefined" && module.exports) {
     saveThreads([...getThreads()]);
   };
 
-  const appendToThread = (role, content, timestamp = null) => {
-    appendMessageToThread(getCurrentId(), role, content, timestamp);
+  const appendToThread = (role, content, timestamp = null, meta = null) => {
+    appendMessageToThread(getCurrentId(), role, content, timestamp, meta);
   };
 
   // ---- Nouveau chat
@@ -1074,6 +1134,16 @@ if (typeof module !== "undefined" && module.exports) {
       const errorMeta = getObservableStreamErrorMeta(err);
       const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;
       if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
+        renderThreads();
+      }
+      if (requestThreadId && errorTerminal && errorTerminal.event === "error") {
+        appendMessageToThread(
+          requestThreadId,
+          "assistant",
+          "",
+          errorTerminal.updated_at || null,
+          buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error"),
+        );
         renderThreads();
       }
       applyAssistantStreamingFailure(assistantNode, errorMeta);

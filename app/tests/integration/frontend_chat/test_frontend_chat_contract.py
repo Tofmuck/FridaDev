@@ -139,7 +139,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("Restart", index_source)
         self.assertNotIn("admin-old", index_source)
 
-    def test_streaming_error_path_replaces_visible_bubble_without_appending_assistant_to_thread_cache(self) -> None:
+    def test_streaming_error_path_replaces_visible_bubble_and_caches_the_canonical_interrupted_marker(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         submit_block = app_source.split('ask.addEventListener("submit", async (e) => {', 1)[1]
         success_block, error_and_finally = submit_block.split('} catch (err) {', 1)
@@ -152,9 +152,10 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('const errorMeta = getObservableStreamErrorMeta(err);', catch_block)
         self.assertIn('applyAssistantStreamingFailure(assistantNode, errorMeta);', catch_block)
         self.assertIn('assistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
-        self.assertNotIn('appendMessageToThread(', catch_block)
+        self.assertIn('if (requestThreadId && errorTerminal && errorTerminal.event === "error") {', catch_block)
+        self.assertIn('appendMessageToThread(', catch_block)
+        self.assertIn('buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error")', catch_block)
         self.assertNotIn('await hydrateThreadMessages(requestThreadId, { force: true });', catch_block)
-        self.assertNotIn('messageCache.set(', catch_block)
 
     def test_streaming_front_wires_observable_ux_states_without_changing_the_stream_contract(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
@@ -169,6 +170,8 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('const STREAM_ERROR_KIND_UPSTREAM = "upstream_error";', app_source)
         self.assertIn('const STREAM_ERROR_KIND_SERVER = "server_error";', app_source)
         self.assertIn('const STREAM_ERROR_KIND_NETWORK = "network_error";', app_source)
+        self.assertIn('const ASSISTANT_TURN_META_KEY = "assistant_turn";', app_source)
+        self.assertIn('const ASSISTANT_TURN_STATUS_INTERRUPTED = "interrupted";', app_source)
         self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);', submit_block)
         self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);', submit_block)
         self.assertIn('onStreamEvent(event) {', submit_block)
@@ -192,6 +195,16 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('bubbleMessage: "Connexion interrompue pendant la réponse."', app_source)
         self.assertIn('STREAM_SERVER_ERROR_CODES = new Set([', app_source)
         self.assertIn('errorCode === STREAM_ERROR_KIND_UPSTREAM', app_source)
+
+    def test_streaming_front_rehydrates_persisted_interrupted_assistant_markers_via_message_meta(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('function buildInterruptedAssistantTurnMeta(errorCode) {', app_source)
+        self.assertIn('function getPersistedAssistantTurnErrorMeta(message) {', app_source)
+        self.assertIn('if (m.meta && typeof m.meta === "object") {', app_source)
+        self.assertIn('sanitizedMessage.meta = m.meta;', app_source)
+        self.assertIn('const persistedErrorMeta = getPersistedAssistantTurnErrorMeta(messageRecord);', app_source)
+        self.assertIn('applyAssistantStreamingFailure(assistantNode, persistedErrorMeta);', app_source)
 
     def test_streaming_front_has_a_discreet_status_line_for_the_live_assistant_bubble(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

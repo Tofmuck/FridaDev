@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Mapping, Sequence
 
+from core import assistant_turn_state
 from core import assistant_output_contract
 from core import chat_stream_control
 
@@ -176,26 +177,70 @@ def run_llm_exchange(
             assistant_appended = False
             appended_assistant_content = ''
             appended_assistant_timestamp: str | None = None
+            appended_assistant_meta: dict[str, Any] | None = None
             buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
                 assistant_output_policy,
             )
 
             def _rollback_appended_assistant() -> None:
                 nonlocal assistant_appended, buffered_output
+                nonlocal appended_assistant_content, appended_assistant_timestamp, appended_assistant_meta
                 if not assistant_appended:
                     return
                 messages = conversation.get('messages')
                 if isinstance(messages, list) and messages:
                     last_message = messages[-1]
+                    last_meta = last_message.get('meta') if isinstance(last_message, dict) else None
+                    meta_matches = (
+                        last_meta == appended_assistant_meta
+                        if appended_assistant_meta is not None
+                        else last_meta is None
+                    )
                     if (
                         isinstance(last_message, dict)
                         and str(last_message.get('role') or '') == 'assistant'
                         and str(last_message.get('content') or '') == appended_assistant_content
                         and str(last_message.get('timestamp') or '') == str(appended_assistant_timestamp or '')
+                        and meta_matches
                     ):
                         messages.pop()
                 assistant_appended = False
                 buffered_output = ''
+                appended_assistant_content = ''
+                appended_assistant_timestamp = None
+                appended_assistant_meta = None
+
+            def _append_persisted_assistant_message(
+                content: str,
+                *,
+                timestamp: str | None = None,
+                meta: Mapping[str, Any] | None = None,
+            ) -> None:
+                nonlocal assistant_appended, appended_assistant_content
+                nonlocal appended_assistant_timestamp, appended_assistant_meta
+                append_kwargs: dict[str, Any] = {}
+                if timestamp is not None:
+                    append_kwargs['timestamp'] = timestamp
+                if meta is None:
+                    conv_store_module.append_message(
+                        conversation,
+                        'assistant',
+                        content,
+                        **append_kwargs,
+                    )
+                    appended_assistant_meta = None
+                else:
+                    conv_store_module.append_message(
+                        conversation,
+                        'assistant',
+                        content,
+                        meta=dict(meta),
+                        **append_kwargs,
+                    )
+                    appended_assistant_meta = dict(meta)
+                appended_assistant_content = content
+                appended_assistant_timestamp = timestamp
+                assistant_appended = True
 
             try:
                 with requests_module.post(
@@ -269,15 +314,10 @@ def run_llm_exchange(
                         )
                     if assistant_text:
                         buffered_output = assistant_text if buffer_stream_output else ''
-                        appended_assistant_content = assistant_text
-                        appended_assistant_timestamp = final_updated_at
-                        conv_store_module.append_message(
-                            conversation,
-                            'assistant',
+                        _append_persisted_assistant_message(
                             assistant_text,
                             timestamp=final_updated_at,
                         )
-                        assistant_appended = True
                         estimated_assistant_tokens = token_utils_module.estimate_tokens(
                             [{'content': assistant_text}],
                             runtime_main_model,
@@ -305,6 +345,14 @@ def run_llm_exchange(
                     )
                     if identity_ids and mode_enforces_identity(current_mode):
                         memory_store_module.reactivate_identities(identity_ids)
+                elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
+                    _append_persisted_assistant_message(
+                        '',
+                        timestamp=final_updated_at,
+                        meta=assistant_turn_state.build_interrupted_assistant_turn_meta(
+                            terminal_error_code or 'stream_protocol_error',
+                        ),
+                    )
                 conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
             except Exception as exc:
                 _rollback_appended_assistant()
@@ -324,6 +372,13 @@ def run_llm_exchange(
                         final_updated_at = now_iso_func()
                     except Exception:
                         final_updated_at = None
+                _append_persisted_assistant_message(
+                    '',
+                    timestamp=final_updated_at,
+                    meta=assistant_turn_state.build_interrupted_assistant_turn_meta(
+                        terminal_error_code,
+                    ),
+                )
                 try:
                     if final_updated_at is None:
                         conv_store_module.save_conversation(conversation)

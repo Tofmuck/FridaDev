@@ -5,12 +5,22 @@ from typing import Any, Callable, Optional
 
 from psycopg.rows import dict_row
 
+from core import assistant_turn_state
 from core.hermeneutic_node.inputs import time_input
 
 CONTEXT_HINTS_BLOCK_HEADER = "[Indices contextuels recents]"
 CONTEXT_HINTS_COUNT_MARKER = "(confidence: "
 MEMORY_CONTEXT_BLOCK_HEADER_PREFIX = "[Contexte du souvenir"
 MEMORY_TRACES_BLOCK_HEADER = "[Mémoire — souvenirs pertinents]"
+
+
+def is_prompt_eligible_message(message: dict[str, Any]) -> bool:
+    role = str(message.get("role") or "")
+    if role not in {"user", "assistant"}:
+        return False
+    if assistant_turn_state.is_interrupted_assistant_turn(message):
+        return False
+    return True
 
 
 def delta_t_label(ts_msg: str, ts_now: str, *, timezone_name: str) -> str:
@@ -239,11 +249,11 @@ def build_prompt_messages(
         candidates = [
             m
             for m in messages
-            if m.get("role") in {"user", "assistant"}
+            if is_prompt_eligible_message(m)
             and message_is_after_summary_func(m, active_summary_cutoff)
         ]
     else:
-        candidates = [m for m in messages if m.get("role") in {"user", "assistant"}]
+        candidates = [m for m in messages if is_prompt_eligible_message(m)]
 
     ts_now = now or now_iso_func()
     prefix: list[dict[str, Any]] = [system_msg]

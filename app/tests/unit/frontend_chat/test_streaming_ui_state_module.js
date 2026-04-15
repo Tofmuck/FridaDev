@@ -13,12 +13,16 @@ const {
   STREAM_ERROR_KIND_UPSTREAM,
   STREAM_ERROR_KIND_SERVER,
   STREAM_ERROR_KIND_NETWORK,
+  ASSISTANT_TURN_META_KEY,
+  ASSISTANT_TURN_STATUS_INTERRUPTED,
   STREAMING_UI_EVENT_REQUEST_STARTED,
   STREAMING_UI_EVENT_RESPONSE_OPENED,
   STREAMING_UI_EVENT_VISIBLE_CONTENT,
   STREAMING_UI_EVENT_TERMINAL_DONE,
   STREAMING_UI_EVENT_TERMINAL_ERROR,
   STREAMING_UI_EVENT_NETWORK_ERROR,
+  buildInterruptedAssistantTurnMeta,
+  getPersistedAssistantTurnErrorMeta,
   reduceStreamingUiState,
   getStreamingUiStateMeta,
   getObservableStreamErrorMeta,
@@ -145,6 +149,42 @@ test('getObservableStreamErrorMeta distinguishes upstream, server, network and f
       bubbleMessage: 'Conversation introuvable.',
       terminal: null,
     },
+  );
+});
+
+test('buildInterruptedAssistantTurnMeta and getPersistedAssistantTurnErrorMeta keep interrupted assistant markers explicit', () => {
+  assert.deepEqual(
+    buildInterruptedAssistantTurnMeta('upstream_error'),
+    {
+      [ASSISTANT_TURN_META_KEY]: {
+        status: ASSISTANT_TURN_STATUS_INTERRUPTED,
+        error_code: 'upstream_error',
+      },
+    },
+  );
+
+  assert.deepEqual(
+    getPersistedAssistantTurnErrorMeta({
+      role: 'assistant',
+      content: '',
+      meta: buildInterruptedAssistantTurnMeta('stream_finalize_error'),
+    }),
+    {
+      kind: STREAM_ERROR_KIND_SERVER,
+      errorCode: 'stream_finalize_error',
+      statusLabel: 'Interrompu côté serveur',
+      bubbleMessage: 'Réponse interrompue côté serveur.',
+      terminal: null,
+    },
+  );
+
+  assert.equal(
+    getPersistedAssistantTurnErrorMeta({
+      role: 'assistant',
+      content: 'Bonjour',
+      meta: { [ASSISTANT_TURN_META_KEY]: { status: 'complete' } },
+    }),
+    null,
   );
 });
 

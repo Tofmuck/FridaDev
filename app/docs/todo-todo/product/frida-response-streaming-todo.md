@@ -184,17 +184,24 @@ Checklist:
 
 ### Lot 5 — Persistance robuste en cas d'echec
 - Objectif: eviter qu'une reponse interrompue soit persistee comme message assistant complet, et donner un statut explicite au fragment s'il est conserve.
-- Fichiers: `app/core/chat_llm_flow.py`.
+- Fichiers: `app/core/chat_llm_flow.py`, `app/core/assistant_turn_state.py`, `app/core/conversations_prompt_window.py`, `app/web/app.js`.
 - Done: la regle produit de persistance en cas d'echec est explicite, implementee et testee. Une reponse interrompue n'est plus confondue avec une reponse breve mais complete.
+Validation implementation 2026-04-15:
+
+- Meilleur plan retenu: non. Le plus petit pas robuste et reversible etait une variante equivalente entre non-persistance pure et persistance partielle brute: ne pas persister le fragment texte interrompu, mais persister un message assistant marqueur avec `content=""` et `meta.assistant_turn.status="interrupted"` plus `error_code`.
+- Regle produit retenue: un message assistant canonique n'existe que pour un `done`; un stream `error` persiste un tour assistant interrompu explicite, sans texte partiel, afin que DB, historique recharge et UI convergent vers la meme lecture de l'echec.
+- Support canonique retenu: une meta de message, sobre et testable, plutot qu'un nouveau schema. Le marqueur vit sur le message assistant persiste via `meta.assistant_turn`, et le frontend le rehydrate pour rendre la meme interruption qu'en live.
+- Garde canonique retenue: les marqueurs `assistant_turn.status="interrupted"` sont exclus de `build_prompt_messages()`, donc ils ne polluent ni le contexte prompt ni la memoire conversationnelle comme s'il s'agissait d'une reponse complete.
+- Effet frontend minimal retenu: la rehydratation conserve `meta` et rerend un message assistant interrompu avec le mapping observable du lot 4; aucun nouveau statut produit riche n'est ajoute cote transport ou persistance.
 Checklist:
-- [ ] Formaliser un statut terminal canonique du tour assistant (`complete`, `interrupted`, `failed_before_output`, ou equivalent retenu par le lot).
-- [ ] Formaliser la regle produit de persistance en cas de stream interrompu.
-- [ ] Choisir explicitement entre non-persistance, persistance partielle qualifiee, ou variante equivalente.
-- [ ] Decider ou porte ce statut terminal: message, metadonnee laterale, ou structure equivalente.
-- [ ] Implementer la garde retenue sans presenter un fragment comme reponse complete.
-- [ ] Verifier qu'un echec court ne cree pas de message assistant fantome.
-- [ ] Verifier qu'un fragment interrompu ne pollue ni la memoire ni l'historique comme s'il etait canonique.
-- [ ] Documenter le choix retenu s'il depend d'une heuristique ou d'un statut d'interruption.
+- [x] Formaliser un statut terminal canonique du tour assistant (`complete`, `interrupted`, `failed_before_output`, ou equivalent retenu par le lot).
+- [x] Formaliser la regle produit de persistance en cas de stream interrompu.
+- [x] Choisir explicitement entre non-persistance, persistance partielle qualifiee, ou variante equivalente.
+- [x] Decider ou porte ce statut terminal: message, metadonnee laterale, ou structure equivalente.
+- [x] Implementer la garde retenue sans presenter un fragment comme reponse complete.
+- [x] Verifier qu'un echec court ne cree pas de message assistant fantome.
+- [x] Verifier qu'un fragment interrompu ne pollue ni la memoire ni l'historique comme s'il etait canonique.
+- [x] Documenter le choix retenu s'il depend d'une heuristique ou d'un statut d'interruption.
 
 ### Lot 6 — Adaptation des tests
 - Objectif: adapter les tests existants au signal applicatif retenu et ajouter les tests des nouveaux comportements.

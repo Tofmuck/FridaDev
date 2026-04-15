@@ -96,8 +96,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
@@ -290,8 +290,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: observed.update({'reactivate_called': True}),
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
@@ -738,6 +738,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertNotIn('"nom"', streamed)
         self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
+        self.assertNotIn('meta', conversation['messages'][-1])
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_request_exception(self) -> None:
         events = []
@@ -777,8 +778,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
@@ -849,8 +850,21 @@ class ChatLlmFlowTests(unittest.TestCase):
             },
         )
         self.assertEqual(
-            [message['role'] for message in conversation['messages']],
-            ['user'],
+            conversation['messages'],
+            [
+                {'role': 'user', 'content': 'hello'},
+                {
+                    'role': 'assistant',
+                    'content': '',
+                    'timestamp': '2026-03-26T00:11:00Z',
+                    'meta': {
+                        'assistant_turn': {
+                            'status': 'interrupted',
+                            'error_code': 'upstream_error',
+                        }
+                    },
+                },
+            ],
         )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertEqual(
@@ -904,8 +918,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
             save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
         )
@@ -976,8 +990,21 @@ class ChatLlmFlowTests(unittest.TestCase):
             },
         )
         self.assertEqual(
-            [message['role'] for message in conversation['messages']],
-            ['user'],
+            conversation['messages'],
+            [
+                {'role': 'user', 'content': 'hello'},
+                {
+                    'role': 'assistant',
+                    'content': '',
+                    'timestamp': '2026-03-26T00:11:00Z',
+                    'meta': {
+                        'assistant_turn': {
+                            'status': 'interrupted',
+                            'error_code': 'stream_finalize_error',
+                        }
+                    },
+                },
+            ],
         )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertEqual(

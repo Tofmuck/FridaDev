@@ -101,6 +101,47 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
         assistant_idx = next(i for i, msg in enumerate(result) if msg.get("role") == "assistant")
         self.assertLess(silence_idx, assistant_idx)
 
+    def test_build_prompt_messages_skips_persisted_interrupted_assistant_markers(self) -> None:
+        conversation = {
+            "id": "conv-interrupted-marker",
+            "messages": [
+                {"role": "system", "content": "SYSTEM", "timestamp": "2026-03-28T11:00:00Z"},
+                {"role": "user", "content": "Salut", "timestamp": "2026-03-28T11:59:30Z"},
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "timestamp": "2026-03-28T11:59:40Z",
+                    "meta": {
+                        "assistant_turn": {
+                            "status": "interrupted",
+                            "error_code": "upstream_error",
+                        }
+                    },
+                },
+            ],
+        }
+
+        with (
+            mock.patch.object(conv_store, "_get_active_summary", return_value=None),
+            mock.patch.object(conv_store, "count_tokens", return_value=1),
+            mock.patch.object(conv_store.admin_logs, "log_event", return_value=None),
+        ):
+            result = conv_store.build_prompt_messages(
+                conversation,
+                model="fake-model",
+                now="2026-03-28T12:00:00Z",
+                memory_traces=None,
+                context_hints=None,
+            )
+
+        self.assertEqual(
+            result,
+            [
+                {"role": "system", "content": "SYSTEM"},
+                {"role": "user", "content": "[à l'instant] Salut"},
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
