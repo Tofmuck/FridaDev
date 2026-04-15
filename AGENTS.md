@@ -41,6 +41,7 @@ Cette instance OVH est l'environnement actif pour le travail courant. Il n'y a a
 - Ne pas rouvrir silencieusement les decisions archivees dans `app/docs/todo-done/` sauf demande explicite.
 - Quand l'utilisateur colle des `Review findings`, re-verifier chaque finding dans l'etat courant du depot; marquer comme `stale` ce qui est deja corrige.
 - Apres chaque pas complet: valider, commit, puis push.
+- Avant tout commit/push, checker explicitement le repo: ?? .roomodes, , puis relire le diff utile des fichiers touches; ne jamais pousser a l aveugle.
 - Sur OVH, Git doit pouvoir pousser directement vers GitHub via le credential helper local `store --file ~/.git-credentials-github`; ne pas contourner par une autre machine sauf incident d'authentification.
 
 ## Environnement OVH courant
