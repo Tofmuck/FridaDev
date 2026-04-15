@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const whisperDictation = require('../../../web/whisper_dictation.js');
+const whisperDictation = require('../../../web/whisper/whisper_dictation.js');
 
 class FakeClassList {
   constructor() {

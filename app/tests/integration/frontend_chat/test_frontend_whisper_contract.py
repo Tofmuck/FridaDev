@@ -24,11 +24,11 @@ class FrontendWhisperContractTests(unittest.TestCase):
         self.assertIn('id="btnMic"', source)
         self.assertIn('class="btn-dictation"', source)
         self.assertIn('id="dictationStatus"', source)
-        self.assertIn('<script src="whisper_dictation.js"></script>', source)
+        self.assertIn('<script src="whisper/whisper_dictation.js"></script>', source)
 
     def test_frontend_chat_wires_dictation_without_touching_api_chat_payload(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
-        dictation_source = (APP_DIR / "web" / "whisper_dictation.js").read_text(encoding="utf-8")
+        dictation_source = (APP_DIR / "web" / "whisper" / "whisper_dictation.js").read_text(encoding="utf-8")
 
         self.assertIn('window.FridaWhisperDictation.createWhisperDictation({', app_source)
         self.assertIn('endpoint: "/api/chat/transcribe"', app_source)
