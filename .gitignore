@@ -54,3 +54,5 @@ htmlcov/
 
 # Local Claude/Codex desktop settings
 .claude/
+
+.roomodes
