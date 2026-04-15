@@ -60,6 +60,8 @@ _HYBRID_INTERNAL_LIMIT_MIN = 12
 _HYBRID_INTERNAL_LIMIT_MULTIPLIER = 3
 _SUMMARY_LANE_LIMIT_MAX = 3
 _PRE_ARBITER_TOTAL_LIMIT = 8
+_ASSISTANT_TURN_META_KEY = 'assistant_turn'
+_ASSISTANT_TURN_STATUS_INTERRUPTED = 'interrupted'
 
 
 def _normalize_lexical_text(text: str) -> str:
@@ -578,6 +580,31 @@ def _embed_with_purpose(
         return embed_fn(text, mode=mode)
 
 
+def _is_interrupted_assistant_turn(message: dict[str, Any]) -> bool:
+    if str(message.get('role') or '').strip() != 'assistant':
+        return False
+    raw_meta = message.get('meta')
+    if not isinstance(raw_meta, dict):
+        return False
+    raw_turn = raw_meta.get(_ASSISTANT_TURN_META_KEY)
+    if not isinstance(raw_turn, dict):
+        return False
+    return str(raw_turn.get('status') or '').strip().lower() == _ASSISTANT_TURN_STATUS_INTERRUPTED
+
+
+def _message_is_trace_eligible(message: dict[str, Any]) -> bool:
+    role = str(message.get('role') or '').strip()
+    if role not in {'user', 'assistant'}:
+        return False
+    if message.get('embedded'):
+        return False
+    if not str(message.get('content') or '').strip():
+        return False
+    if role == 'assistant' and _is_interrupted_assistant_turn(message):
+        return False
+    return True
+
+
 def _trace_exists_for_message(
     conversation_id: str,
     message: dict[str, Any],
@@ -641,7 +668,7 @@ def save_new_traces(
     to_embed = [
         m
         for m in conversation.get('messages', [])
-        if m.get('role') in {'user', 'assistant'} and not m.get('embedded')
+        if _message_is_trace_eligible(m)
     ]
     if not to_embed:
         return

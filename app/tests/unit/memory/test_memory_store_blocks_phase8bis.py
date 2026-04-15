@@ -81,6 +81,78 @@ class MemoryTracesSummariesBlockTests(unittest.TestCase):
         self.assertEqual(enriched[0]["parent_summary"]["id"], "sum-1")
         self.assertEqual(enriched[1]["parent_summary"]["id"], "sum-1")
 
+    def test_save_new_traces_skips_interrupted_assistant_markers_even_on_later_passes(self) -> None:
+        observed_inserts: list[tuple[Any, ...]] = []
+        original_trace_exists = memory_traces_summaries._trace_exists_for_message
+
+        class FakeCursor:
+            def __enter__(self) -> "FakeCursor":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                if "INSERT INTO traces" in query:
+                    observed_inserts.append(params)
+
+        class FakeConn:
+            def __enter__(self) -> "FakeConn":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+            def commit(self) -> None:
+                return None
+
+        conversation = {
+            "id": "conv-interrupted-traces",
+            "messages": [
+                {"role": "user", "content": "Salut", "timestamp": "2026-03-28T11:59:30Z"},
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "timestamp": "2026-03-28T11:59:40Z",
+                    "meta": {
+                        "assistant_turn": {
+                            "status": "interrupted",
+                            "error_code": "upstream_error",
+                        }
+                    },
+                },
+                {"role": "assistant", "content": "Réponse complète", "timestamp": "2026-03-28T12:00:00Z"},
+            ],
+        }
+
+        memory_traces_summaries._trace_exists_for_message = lambda *_args, **_kwargs: False
+        try:
+            memory_traces_summaries.save_new_traces(
+                conversation,
+                conn_factory=lambda: FakeConn(),
+                embed_fn=lambda *_args, **_kwargs: [0.1, 0.2, 0.3],
+                logger=_NoopLogger(),
+            )
+            memory_traces_summaries.save_new_traces(
+                conversation,
+                conn_factory=lambda: FakeConn(),
+                embed_fn=lambda *_args, **_kwargs: [0.1, 0.2, 0.3],
+                logger=_NoopLogger(),
+            )
+        finally:
+            memory_traces_summaries._trace_exists_for_message = original_trace_exists
+
+        self.assertEqual(
+            [(params[1], params[2]) for params in observed_inserts],
+            [
+                ("user", "Salut"),
+                ("assistant", "Réponse complète"),
+            ],
+        )
+
 
 class MemoryContextReadBlockTests(unittest.TestCase):
     def test_get_recent_context_hints_deduplicates_content_norm_and_respects_max_items(self) -> None:

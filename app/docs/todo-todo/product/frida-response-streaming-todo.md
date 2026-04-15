@@ -192,6 +192,7 @@ Validation implementation 2026-04-15:
 - Regle produit retenue: un message assistant canonique n'existe que pour un `done`; un stream `error` persiste un tour assistant interrompu explicite, sans texte partiel, afin que DB, historique recharge et UI convergent vers la meme lecture de l'echec.
 - Support canonique retenu: une meta de message, sobre et testable, plutot qu'un nouveau schema. Le marqueur vit sur le message assistant persiste via `meta.assistant_turn`, et le frontend le rehydrate pour rendre la meme interruption qu'en live.
 - Garde canonique retenue: les marqueurs `assistant_turn.status="interrupted"` sont exclus de `build_prompt_messages()`, donc ils ne polluent ni le contexte prompt ni la memoire conversationnelle comme s'il s'agissait d'une reponse complete.
+- Correctif de cloture 2026-04-15 au soir: les traces memoire ne sont plus ecrites avant la canonisation finale du tour streaming, et un message `assistant_turn.status="interrupted"` n'est jamais eligible a `save_new_traces()`, y compris lors d'un tour suivant.
 - Effet frontend minimal retenu: la rehydratation conserve `meta` et rerend un message assistant interrompu avec le mapping observable du lot 4; aucun nouveau statut produit riche n'est ajoute cote transport ou persistance.
 Checklist:
 - [x] Formaliser un statut terminal canonique du tour assistant (`complete`, `interrupted`, `failed_before_output`, ou equivalent retenu par le lot).

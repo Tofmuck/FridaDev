@@ -644,6 +644,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_removes_unrequested_fenced_code_blocks(self) -> None:
+        observed = {'save_calls': [], 'save_new_traces_calls': [], 'sequence': []}
         conversation = {
             'id': 'conv-stream-no-code',
             'created_at': '2026-03-26T00:00:00Z',
@@ -678,15 +679,24 @@ class ChatLlmFlowTests(unittest.TestCase):
             RuntimeSettingsSecretRequiredError=RuntimeError,
             RuntimeSettingsSecretResolutionError=ValueError,
         )
+
+        def fake_save_new_traces(_conversation):
+            observed['sequence'].append('save_new_traces')
+            observed['save_new_traces_calls'].append([dict(message) for message in _conversation['messages']])
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['sequence'].append('save_conversation')
+            observed['save_calls'].append(dict(kwargs))
+
         memory_store_module = SimpleNamespace(
-            save_new_traces=lambda _conversation: None,
+            save_new_traces=fake_save_new_traces,
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
                 {'role': role, 'content': content, 'timestamp': timestamp}
             ),
-            save_conversation=lambda *_args, **_kwargs: None,
+            save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
@@ -739,6 +749,9 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
         self.assertNotIn('meta', conversation['messages'][-1])
+        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
+        self.assertEqual(observed['sequence'], ['save_conversation', 'save_new_traces'])
+        self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_request_exception(self) -> None:
         events = []
@@ -773,6 +786,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             RuntimeSettingsSecretRequiredError=RuntimeError,
             RuntimeSettingsSecretResolutionError=ValueError,
         )
+
         memory_store_module = SimpleNamespace(
             save_new_traces=lambda _conversation: None,
             reactivate_identities=lambda _identity_ids: None,
@@ -882,7 +896,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_local_finalize_exception(self) -> None:
         events = []
-        observed = {'save_calls': [], 'provider_log_calls': []}
+        observed = {'save_calls': [], 'provider_log_calls': [], 'save_new_traces_calls': []}
         conversation = {
             'id': 'conv-stream-finalize-error',
             'created_at': '2026-03-26T00:00:00Z',
@@ -913,8 +927,12 @@ class ChatLlmFlowTests(unittest.TestCase):
             RuntimeSettingsSecretRequiredError=RuntimeError,
             RuntimeSettingsSecretResolutionError=ValueError,
         )
+
+        def fake_save_new_traces(_conversation):
+            observed['save_new_traces_calls'].append([dict(message) for message in _conversation['messages']])
+
         memory_store_module = SimpleNamespace(
-            save_new_traces=lambda _conversation: None,
+            save_new_traces=fake_save_new_traces,
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
@@ -1007,6 +1025,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             ],
         )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
+        self.assertEqual(observed['save_new_traces_calls'], [])
         self.assertEqual(
             _event_payloads(events, 'llm_stream_finalize_error'),
             [

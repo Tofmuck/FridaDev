@@ -42,7 +42,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
 
     def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
         originals = []
-        observed = {'save_calls': []}
+        observed = {'save_calls': [], 'save_new_traces_calls': []}
 
         def patch_attr(obj, name, value):
             originals.append((obj, name, getattr(obj, name)))
@@ -148,7 +148,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         patch_attr(self.server.llm, 'build_payload', fake_build_payload)
         patch_attr(self.server.requests, 'post', requests_post)
         patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
-        patch_attr(self.server.memory_store, 'save_new_traces', lambda *_args, **_kwargs: None)
+        patch_attr(
+            self.server.memory_store,
+            'save_new_traces',
+            lambda conv, *_args, **_kwargs: observed['save_new_traces_calls'].append(
+                [dict(message) for message in conv.get('messages', [])]
+            ),
+        )
         patch_attr(self.server.chat_service, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
         patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
         patch_attr(
@@ -293,6 +299,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['role'], 'assistant')
         self.assertEqual(conversation['messages'][-1]['content'], text)
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
+        self.assertEqual(len(observed_state['save_new_traces_calls']), 1)
+        self.assertEqual(observed_state['save_new_traces_calls'][-1][-1]['content'], text)
 
     def test_api_chat_stream_preserves_explicit_plan_structure_for_first_party_surface(self) -> None:
         conversation = {
@@ -475,6 +483,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             },
         )
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
+        self.assertEqual(observed_state['save_new_traces_calls'], [])
 
     def test_api_chat_stream_emits_error_terminal_when_local_finalize_breaks_and_does_not_persist_fragment(self) -> None:
         conversation = {

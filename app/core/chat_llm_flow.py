@@ -242,6 +242,12 @@ def run_llm_exchange(
                 appended_assistant_timestamp = timestamp
                 assistant_appended = True
 
+            def _save_new_traces_safely() -> None:
+                try:
+                    memory_store_module.save_new_traces(conversation)
+                except Exception as exc:
+                    logger.error('llm_stream_trace_persist_error id=%s err=%s', conversation['id'], exc)
+
             try:
                 with requests_module.post(
                     url,
@@ -328,7 +334,6 @@ def run_llm_exchange(
                             estimated_assistant_tokens=estimated_assistant_tokens,
                             message_timestamp=final_updated_at,
                         )
-                    memory_store_module.save_new_traces(conversation)
                     recent_2 = [
                         message
                         for message in conversation.get('messages', [])
@@ -394,6 +399,8 @@ def run_llm_exchange(
                         error=str(persist_exc),
                         error_code=terminal_error_code,
                     )
+            if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
+                _save_new_traces_safely()
             if buffered_output and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
                 yield buffered_output
             yield chat_stream_control.build_terminal_chunk(
