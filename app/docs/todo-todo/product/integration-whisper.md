@@ -12,6 +12,11 @@ Le gain recherche est d'abord ergonomique:
 - possibilite de nourrir Frida a l'oral;
 - conservation du meme systeme de conversation, de memoire et d'enonciation.
 
+## Statut des lots
+
+- Lot 0: fait
+- Lot 1 et la suite: ouverts
+
 ## Principe directeur
 
 La V1 doit rester sobre:
@@ -334,9 +339,9 @@ Configuration cible minimale cote Frida:
 - eventuellement un branchement vers `WHISPER_API_KEY` si le backend l'exige
 
 Etat reel du depot Frida au moment de ce TODO:
-- aucune variable `WHISPER_*` n'est encore exposee cote `app/config.py`;
-- le futur lot devra donc creer ce seam de configuration explicitement, puis consommer ces valeurs via `config`, pas via des `os.getenv` disperses;
-- si ce seam est ajoute, la documentation operateur associee devra etre mise a jour dans le meme cycle.
+- le lot 0 a deja introduit le seam `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S` et `WHISPER_API_KEY` dans `app/config.py`;
+- les usages backend doivent continuer a consommer ces valeurs via `config`, pas via des `os.getenv` disperses;
+- toute extension future de ce seam devra mettre a jour la documentation operateur associee dans le meme cycle.
 
 Le service vise par defaut sur OVH est l'interne:
 - `http://platform-whisper-api:9001`
