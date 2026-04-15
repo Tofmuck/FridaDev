@@ -87,13 +87,21 @@ Les marqueurs inline de type `::FRIDA::DONE` / `::FRIDA::ERROR:...` font partie 
 
 ### Lot 0 — Preuves de comportement actuel
 - Objectif: valider chaque scenario (stream normal, buffering, erreur) en runtime reel.
-- Fichiers: aucun (preuves curl uniquement).
+- Fichiers runtime: aucun. Doc eventuelle: ce TODO pour figer la matrice observee.
 - Done: matrice documentee comportement x mode.
 Checklist:
-- [ ] Verifier le comportement du stream non-bufferise en runtime reel.
-- [ ] Verifier le comportement du buffering plain text en runtime reel.
-- [ ] Verifier le comportement observable en cas d'erreur upstream pendant le stream.
-- [ ] Consigner une matrice simple comportement x mode x issue.
+- [x] Verifier le comportement du stream non-bufferise en runtime reel.
+- [x] Verifier le comportement du buffering plain text en runtime reel.
+- [x] Verifier le comportement observable en cas d'erreur upstream pendant le stream.
+- [x] Consigner une matrice simple comportement x mode x issue.
+
+Validation runtime 2026-04-15:
+
+| Scenario | Comportement reseau observable | Comportement UI observable | Persistance | Logging / observabilite | Limites connues |
+| --- | --- | --- | --- | --- | --- |
+| Stream progressif non-bufferise | `POST /api/chat` repond `200 text/plain`; premier chunk utile observe vers `6.7s`, puis emission progressive sur des centaines de chunks jusqu'a la fin; pas de header `X-Conversation-Updated-At` pendant le flux. | La bulle assistant `…` est creee tout de suite, puis le texte visible s'allonge au fil des chunks. | La reponse complete est sauvegardee; `updated_at` est recupere ensuite par fetch / rehydratation secondaire, pas par le flux. | `llm_call`, `persist_response` et `turn_end` sont `ok`; pas de signal terminal applicatif distinct. | Le frontend ne peut toujours pas distinguer fin normale et simple fermeture reseau. |
+| Buffering plain text | `POST /api/chat` repond `200 text/plain`; aucun texte utile avant le bloc final; un seul chunk utile observe vers `18.1s`, puis fin immediate; pas de header `X-Conversation-Updated-At`. | La bulle assistant reste a `…` pendant toute la generation, puis le texte complet apparait d'un coup. | La reponse complete est sauvegardee normalement. | `llm_call`, `persist_response` et `turn_end` sont `ok`; aucune metadonnee terminale supplementaire dans le flux. | L'UI ne distingue pas `preparation`, `buffering sans contenu visible` et `reponse terminee`. |
+| Erreur upstream pendant le stream | Preuve provoquee via un upstream de test temporaire et reversible: `POST /api/chat` repond quand meme `200 text/plain`, mais ne livre qu'un texte partiel (`Segment 1. Segment 2.`) sans signal d'erreur applicatif; pas de header `X-Conversation-Updated-At`. | L'utilisateur voit seulement l'attente puis un texte partiel, sans statut clair indiquant que le flux a echoue. | Le fragment partiel est persiste comme message assistant complet. | Une entree `error` avec `llm_stream_error` / `upstream_error` apparait dans la timeline et dans les logs serveur, mais `llm_call` et `turn_end` restent `ok`: le turn logger ne porte donc pas l'echec terminal. | La preuve d'erreur repose sur un upstream temporaire remis en etat apres test; le contrat utilisateur reste muet sur l'interruption. |
 
 ### Lot 1 — Signal applicatif de fin et d'erreur
 - Objectif: le frontend puisse distinguer fin normale d'erreur mid-stream, avec une frontiere nette entre contenu et controle.
