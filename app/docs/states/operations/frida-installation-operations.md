@@ -91,6 +91,10 @@ Schema global de base a date (lecture rapide):
 - source: `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`, `CRAWL4AI_TOP_N`, `CRAWL4AI_MAX_CHARS`, `CRAWL4AI_EXPLICIT_URL_MAX_CHARS`
 - impact si indisponible: enrichissement web degrade.
 
+4. Dictation vocale Whisper
+- source: `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S`
+- si le service Whisper amont active une authentification par cle, `FridaDev` doit recevoir la meme `WHISPER_API_KEY` pour que `/api/chat/transcribe` reste utilisable.
+
 ## 4.3 Point reseau critique en mode Docker
 
 En mode conteneur, `127.0.0.1` vise le conteneur lui-meme.
@@ -117,6 +121,7 @@ Fortement recommande:
 Selon usages actives:
 - embeddings: `EMBED_BASE_URL`, `EMBED_TOKEN`, `EMBED_DIM`;
 - web: `SEARXNG_URL`, `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`.
+- dictation vocale: `WHISPER_API_URL`; si l'amont Whisper exige une auth Bearer, fournir aussi `WHISPER_API_KEY` au runtime Frida.
 
 Option identites statiques (sinon bloc identite vide):
 - `FRIDA_LLM_IDENTITY_PATH` (defaut: `data/identity/llm_identity.txt`);

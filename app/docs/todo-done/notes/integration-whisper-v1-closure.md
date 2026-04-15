@@ -350,7 +350,7 @@ Pas de nouvelle section admin.
 Configuration cible minimale cote Frida:
 - `WHISPER_API_URL`
 - `WHISPER_API_TIMEOUT_S`
-- eventuellement un branchement vers `WHISPER_API_KEY` si le backend l'exige
+- `WHISPER_API_KEY` lorsque le service Whisper amont active une authentification (`WHISPER_AUTH_MODE` avec cle configuree)
 
 Etat reel du depot Frida au moment de ce TODO:
 - le lot 0 a deja introduit le seam `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S` et `WHISPER_API_KEY` dans `app/config.py`;
