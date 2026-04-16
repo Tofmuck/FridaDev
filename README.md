@@ -5,42 +5,34 @@
 One-glance current response-construction path. Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 Cartographie one-glance du chemin courant de fabrication de la reponse. Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 
-```mermaid
-flowchart TD
-    U["User message / message utilisateur<br/>chat surface `/` or voice draft"]
-    VT["Optional voice path / voie vocale optionnelle<br/>`/api/chat/transcribe`"]
-    API["`POST /api/chat`<br/>`message`, `conversation_id`, `stream`, `web_search`, `input_mode`"]
-    SESSION["Session + thread resolution<br/>load/create conversation<br/>persist user turn"]
-    BASE["Augmented system base<br/>system prompt + time grounding + identity block"]
-    MEM["Memory preparation<br/>retrieve traces + summaries<br/>context hints"]
-    ARB["Memory arbitration<br/>mode-dependent prompt candidates<br/>identity relevance"]
-    HERM["Hermeneutic qualification<br/>`stimmung_agent` -> `primary_node` -> `validation_agent`"]
-    JUDGE["Final context build<br/>inject `[JUGEMENT HERMENEUTIQUE]`<br/>+ guard blocks + optional web context"]
-    LLM["Main LLM call<br/>OpenRouter caller=`llm`"]
-    OUT["Output contract<br/>plain-text normalization<br/>buffering + stream terminal"]
-    PERSIST["Canonical persistence<br/>`done` => full assistant<br/>`error` => interrupted marker"]
-    DERIVED["Post-turn derivatives<br/>`save_new_traces()` only after canonical `done`<br/>identity writes/reactivation if mode"]
-    FRONT["Frontend render + rehydration<br/>assistant bubble<br/>terminal `updated_at`<br/>interruption taxonomy"]
-    OBS["Observability<br/>chat_turn_logger + `/log`<br/>hermeneutic node logger"]
-
-    VT --> U
-    U --> API --> SESSION
-    SESSION --> BASE
-    SESSION --> MEM --> ARB
-    SESSION --> HERM
-    BASE --> JUDGE
-    ARB --> JUDGE
-    HERM --> JUDGE
-    JUDGE --> LLM --> OUT
-    OUT --> PERSIST
-    OUT --> FRONT
-    PERSIST --> DERIVED
-    PERSIST --> FRONT
-    SESSION -.-> OBS
-    MEM -.-> OBS
-    HERM -.-> OBS
-    LLM -.-> OBS
-    OUT -.-> OBS
+```text
+User message / message utilisateur
+  -> optional voice path / voie vocale optionnelle: /api/chat/transcribe
+  -> POST /api/chat {message, conversation_id, stream, web_search, input_mode}
+  -> session + thread resolution / resolution session + thread
+  -> persist user turn / persistance du tour user
+  -> augmented system base / base systeme augmentee
+     system prompt + time grounding + identity block
+  -> memory preparation / preparation memoire
+     retrieve traces + summaries + context hints
+  -> memory arbitration / arbitrage memoire
+     mode-dependent prompt candidates + identity relevance
+  -> hermeneutic qualification / qualification hermeneutique
+     stimmung_agent -> primary_node -> validation_agent
+  -> final context build / construction du contexte final
+     inject [JUGEMENT HERMENEUTIQUE] + guard blocks + optional web context
+  -> main LLM call / appel LLM principal
+  -> output contract / contrat de sortie
+     plain-text normalization + buffering + stream terminal
+  -> canonical persistence / persistance canonique
+     done  -> full assistant message
+     error -> interrupted assistant marker
+  -> post-turn derivatives / derives post-tour
+     save_new_traces() only after canonical done
+     identity writes/reactivation if mode
+  -> frontend render + rehydration / rendu frontend + rehydratation
+  -> observability / observabilite
+     chat_turn_logger + /log + hermeneutic node logger
 ```
 
 ## English
