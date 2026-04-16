@@ -36,6 +36,7 @@ Primary references for the current repository state:
 - Canonical repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
@@ -117,6 +118,7 @@ References principales pour l'etat actuel du depot:
 - Audit canonique du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`

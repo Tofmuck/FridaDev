@@ -225,14 +225,20 @@ Checklist:
 - Objectif: spec du protocole de streaming dans `app/docs/states/specs/`, pensee comme une grammaire d'evenements et non comme un simple format de bytes.
 - Fichiers: `app/docs/states/specs/streaming-protocol.md` (nouveau).
 - Done: un developpeur peut comprendre le protocole sans lire le code.
+Validation implementation 2026-04-16:
+
+- Meilleur plan retenu: non. Le plus petit pas utile etait de documenter le protocole courant a partir du code reel et des tests, en separant explicitement transport public Frida, evenements logiques, wrapper serveur, frontend et persistance.
+- Structure retenue: objet/perimetre, transport physique actuel, grammaire logique minimale, terminal de controle, invariants, taxonomie d'erreurs, comportement du wrapper serveur, obligations frontend, metadata terminales, regle de persistance, cas nominaux et cas d'erreur, references code/tests.
+- Perimetre retenu: la spec couvre le protocole public de `/api/chat` quand `stream=true`; elle n'inclut ni le flux amont du provider LLM, ni une cible SSE/WebSocket future, ni une UX ideale au-dela des obligations frontend minimales.
+- Regle cle explicitee: `network_error` reste une inference frontend locale, tandis que `done` et `error` sont les seuls terminaux backend emis; cote persistance, `done` canonise un message assistant complet et `error` canonise un marqueur `assistant_turn.status="interrupted"` exclu du prompt et des traces.
 Checklist:
-- [ ] Decrire le format de stream retenu et son contrat minimal.
-- [ ] Decrire les types d'evenements ou signaux logiques du flux (`content`, `terminal success`, `terminal error`, `network interruption inferee`, ou equivalent retenu).
-- [ ] Documenter les invariants du protocole (terminal unique, absence de contenu apres terminal, absence de controle dans la prose rendue).
-- [ ] Documenter les cas de fin normale, d'erreur et de coupure reseau.
-- [ ] Documenter la propagation des metadonnees utiles post-stream.
-- [ ] Documenter la regle de persistance applicable en cas d'interruption.
-- [ ] Relire la spec pour qu'elle reste comprensible sans retour au chat ni au code.
+- [x] Decrire le format de stream retenu et son contrat minimal.
+- [x] Decrire les types d'evenements ou signaux logiques du flux (`content`, `terminal success`, `terminal error`, `network interruption inferee`, ou equivalent retenu).
+- [x] Documenter les invariants du protocole (terminal unique, absence de contenu apres terminal, absence de controle dans la prose rendue).
+- [x] Documenter les cas de fin normale, d'erreur et de coupure reseau.
+- [x] Documenter la propagation des metadonnees utiles post-stream.
+- [x] Documenter la regle de persistance applicable en cas d'interruption.
+- [x] Relire la spec pour qu'elle reste comprensible sans retour au chat ni au code.
 
 ## Risques
 
