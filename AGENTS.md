@@ -166,7 +166,8 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 
 - `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: trace archivee du clonage/migration OVH, chemins runtime, backups, mode operatoire vacances et decisions admin OVH.
 - `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`: mini-lot admin archive sur l'affichage `mode depuis` / `observation du mode`.
-- `app/docs/todo-todo/memory/hermeneutical-add-todo.md`: roadmap memoire/hermeneutique active, a relire avant tout lot memoire.
+- `app/docs/todo-done/notes/hermeneutical-add-todo.md`: archive de la grande roadmap hermeneutique, utile pour relire le chantier de stabilisation deja livre.
+- `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`: reliquat memoire/hermeneutique encore actif, borne aux preuves post-rollout / post-stabilisation.
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.

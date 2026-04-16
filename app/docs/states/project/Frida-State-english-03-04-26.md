@@ -138,7 +138,7 @@ Important note:
 1. Keep slimming `app/server.py` through route sub-surfaces without changing HTTP contracts.
 2. Continue reducing `app/admin/runtime_settings.py` while keeping explicit boundaries between facade, repo, validation, and secrets.
 3. Continue useful modularization of `app/web/admin.js` and `app/web/log/log.js`.
-4. Keep Lot 9 closed; carry the next steps through `app/docs/todo-todo/memory/hermeneutical-add-todo.md` and `app/docs/todo-todo/product/Frida-installation-config.md`.
+4. Keep Lot 9 closed; carry the remaining next steps through `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` and `app/docs/todo-todo/product/Frida-installation-config.md`.
 
 ## 8. Related references
 - previous EN state: `app/docs/states/project/Frida-State-english-28-03-26.md`

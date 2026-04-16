@@ -8,7 +8,8 @@ References liees:
 - `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 - `app/docs/states/specs/memory-rag-summaries-lane-contract.md`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
-- `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- `app/docs/todo-done/notes/hermeneutical-add-todo.md`
+- `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
 
 ## 1. Objet
 

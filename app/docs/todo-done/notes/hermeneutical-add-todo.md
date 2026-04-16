@@ -1,6 +1,16 @@
-# Hermeneutical Add - TODO implementation roadmap (v2)
+# Hermeneutical Add - archive de chantier (v2)
 
-## Objectif
+Statut: archive le `2026-04-16`  
+Classement: `app/docs/todo-done/notes/`  
+Portee: archive documentaire de la grande roadmap d'implementation hermeneutique  
+Reliquat actif extrait: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+
+Note de cloture:
+- l'essentiel du chantier d'implementation est maintenant livre dans le repo courant;
+- les derniers points honnetement ouverts relevent de preuves post-rollout / post-stabilisation, plus d'un gate runtime d'implementation;
+- ce document est conserve comme archive de chantier et ne pilote plus un lot runtime actif.
+
+## Objectif historique
 Implementer une "indetermination orientee" dans Frida-mini:
 - laisser le LLM libre sur le contenu,
 - contraindre la methode de jugement,
@@ -16,14 +26,18 @@ Implementer une "indetermination orientee" dans Frida-mini:
 - [x] Le maillon faible (classification LLM) est couvert par override humain + feedback loop.
 
 ## Definition of done globale
-- [ ] Le pipeline distingue explicitement durable vs passager.
-- [ ] Le pipeline distingue auto-description vs projection vs role-play/ironie.
-- [ ] Le pipeline distingue recurrence vs accident.
-- [ ] Le pipeline distingue ce qui qualifie la personne vs la situation.
+- [x] Le pipeline distingue explicitement durable vs passager.
+- [x] Le pipeline distingue auto-description vs projection vs role-play/ironie.
+- [x] Le pipeline distingue recurrence vs accident.
+- [x] Le pipeline distingue ce qui qualifie la personne vs la situation.
 - [x] Les decisions arbitre + identite sont journalisees avec motifs et scores.
 - [x] Les identites mutables ne polluent plus le bloc identite durable.
 - [x] Le mode `shadow` produit des metriques comparables avant `enforced`.
 - [x] Un operateur humain peut corriger les erreurs de classification.
+
+Note de realignement `2026-04-16`:
+- ces quatre premieres cases sont maintenant tenues par la spec normative `app/docs/states/specs/hermeneutic-judgment-spec.md`, la policy runtime `app/memory/hermeneutics_policy.py` et le bloc prompt/contextuel `app/core/conversations_prompt_window.py`;
+- la correction operateur active ne passe plus par les mutateurs legacy fragmentaires, mais par le chemin canonique `static + mutable narrative` / `identity_mutables`.
 
 ## Parametres par defaut (a poser en Phase 0)
 
@@ -208,6 +222,7 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [x] Ajouter line break et labels stables pour lisibilite des prompts.
 
 ## Phase 10 - Override humain et boucle de feedback (point critique)
+- Note de realignement `2026-04-16`: la lecture historique de cette phase doit etre nuancée. Les routes legacy `force_accept`, `force_reject` et `relabel` existent encore comme surface evidence-only, mais elles sont maintenant neutralisees cote admin legacy; la correction operateur active passe par `identity_mutables` et le contrat `static + mutable narrative`.
 - [x] Ajouter endpoint admin lecture:
 - [x] `/api/admin/hermeneutics/identity-candidates`.
 - [x] `/api/admin/hermeneutics/arbiter-decisions`.
@@ -265,23 +280,21 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [x] `state/data/prompts/identity_extractor.txt`: schema epistemique + regles anti-derive.
 - [x] `docs/states/hermeneutic-judgment-spec.md`: spec normative.
 
-## Criteres d'acceptation finaux
-- Note de realignement 2026-04-05: le runtime live est deja en `enforced_all`; ces criteres ne sont donc plus des portes de rollout a franchir avant activation. Ils servent desormais de preuves post-rollout / post-stabilisation a consolider honnetement, et ne doivent etre coches qu'avec une mesure ou une revalidation explicite.
-- [ ] Mesurer a posteriori sur corpus de stabilisation si les identites circonstancielles baissent d'au moins `50%` par rapport a la baseline de reference.
-- [ ] Verifier sur corpus de stabilisation qu'aucune entree `irony|role_play` n'arrive en identite durable sans override humain explicite.
-- [ ] Mesurer sur conversations longues / corpus de stabilisation si le rappel memoire utile reste stable (pas de chute > `10%`).
-- [ ] Consolider la comparaison a la cible Phase 0 pour le `p95` de latence additionnelle arbitre+extracteur; le dashboard live expose deja des `p95` runtime, mais pas encore la conclusion cible/non-cible.
-- [ ] Verifier sur une fenetre post-stabilisation qu'aucun fallback global "garder tout" n'apparait; le dashboard live retourne actuellement `fallback_rate=0.0`, `runtime_fallback_rate=0.0` et `parse_error_rate=0.0`, mais ce n'est pas encore une preuve de cloture durable.
-- [ ] Verifier sur un echantillon post-rollout que chaque souvenir/trait injecte reste explicable via les logs admin existants.
-- [ ] Revalider en conditions reelles que les overrides humains sont bien pris en compte au tour suivant, et pas seulement journalises; des routes/tests existent deja, mais la preuve finale n'est pas encore consolidee ici.
-- [ ] Revalider sur echantillon post-rollout / post-stabilisation que le bloc `[Contexte du souvenir]` injecte est effectivement exploite dans la reponse et n'ajoute pas de bruit.
+## Reliquats extraits vers le suivi post-stabilisation
+- [x] Extraire les derniers points encore ouverts vers `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`.
+- [x] Requalifier cette archive comme chantier majoritairement accompli, sans gates runtime encore ouverts.
 
-## Suivis post-rollout / post-stabilisation issus de `memory-todo.md`
-- [ ] Consolider un suivi post-stabilisation du surcout tokens + latence du pipeline memoire complet (resume actif + contexte + RAG + arbitre), en complement des KPIs runtime deja exposes pour `retrieve`, `arbiter` et `identity_extractor`.
-- Note: ces points ne sont plus des gates de rollout pre-activation; la validation qualitative du bloc `[Contexte du souvenir]` est rattachee aux criteres d'acceptation finaux, tandis que le surcout global reste un suivi post-stabilisation distinct.
+Le suivi actif distinct porte maintenant seulement:
+- la validation corpus de la baisse du bruit identitaire circonstanciel;
+- la verification qu'aucune entree `irony|role_play` ne devient durable sans override explicite;
+- la stabilite du rappel memoire utile;
+- le surcout global `tokens + latence` du pipeline memoire complet;
+- la preuve durable d'absence de fallback global;
+- l'explicabilite echantillonnee via les logs admin;
+- le statut reel du bloc `[Contexte du souvenir]`, encore special car `summaries=0` sur OVH et `parent_summary` reste nul en pratique.
 
-## Notes de pilotage
-- [ ] Toujours preferer une erreur explicable a une heuristique opaque.
-- [ ] Ne jamais bloquer la reponse utilisateur sur erreur hermeneutique.
-- [ ] Le prompt seul ne suffit pas: la politique doit vivre dans le code.
-- [ ] Toute decision non reversible doit etre precedee d'une periode shadow mesuree.
+## Notes de pilotage conservees
+- Toujours preferer une erreur explicable a une heuristique opaque.
+- Ne jamais bloquer la reponse utilisateur sur erreur hermeneutique.
+- Le prompt seul ne suffit pas: la politique doit vivre dans le code.
+- Toute decision non reversible doit etre precedee d'une periode shadow mesuree.

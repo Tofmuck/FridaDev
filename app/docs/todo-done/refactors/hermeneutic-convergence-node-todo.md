@@ -14,7 +14,7 @@ Resultat reel cloture:
 Regle de lecture:
 - ce document est conserve comme trace de chantier cloture;
 - il ne pilote plus un travail actif;
-- la reference active memoire/hermeneutique restante est `app/docs/todo-todo/memory/hermeneutical-add-todo.md`.
+- la reference active memoire/hermeneutique restante est maintenant `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`; la grande roadmap d'implementation est archivee dans `app/docs/todo-done/notes/hermeneutical-add-todo.md`.
 
 ## Cadrage
 Objet historique: piloter la construction du futur noeud de convergence hermeneutique a partir des references:

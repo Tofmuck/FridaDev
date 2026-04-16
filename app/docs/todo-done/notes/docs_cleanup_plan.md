@@ -111,8 +111,8 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 | `app/docs/todo-done/patch_done.md` | doublon / faible valeur | maintainer historique | supprimer | n/a | log ponctuel ancien, contenu partiellement obsolete et redondant avec git history | risque faible (perte de contexte mineur seulement) |
 | `app/docs/todo-todo/Frida-installation-config.md` | chantier ouvert | maintainer product/ops | deplacer | `app/docs/todo-todo/product/Frida-installation-config.md` | vrai chantier ouvert infra/config produit | faible |
 | `app/docs/todo-todo/Migration_FridaDev-todo.md` | doublon / faible valeur | maintainer migration | fusionner | `app/docs/todo-done/refactors/fridadev_refactor_todo.md` (open items) + archive `app/docs/todo-done/migrations/` | roadmap quasi closee, overlap fort avec pilotage refactor actuel | risque de perdre un reliquat ouvert si fusion baclee |
-| `app/docs/todo-todo/hermeneutical-add-todo.md` | chantier ouvert | maintainer memory | deplacer | `app/docs/todo-todo/memory/hermeneutical-add-todo.md` | roadmap encore exploitable, a ranger par domaine | faible |
-| `app/docs/todo-todo/memory-todo.md` | doublon / faible valeur | maintainer memory | fusionner | `app/docs/todo-todo/memory/hermeneutical-add-todo.md` (extraire seulement residuels utiles) | overlap massif + architecture obsolete dans le bas du doc | risque de perdre un detail residuel si extraction non rigoureuse |
+| `app/docs/todo-todo/hermeneutical-add-todo.md` | chantier ouvert | maintainer memory | deplacer | `app/docs/todo-done/notes/hermeneutical-add-todo.md` | la grande roadmap a finalement ete archivee comme chantier majoritairement accompli | faible |
+| `app/docs/todo-todo/memory-todo.md` | doublon / faible valeur | maintainer memory | fusionner | `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` (extraire seulement residuels utiles) | overlap massif + architecture obsolete dans le bas du doc | risque de perdre un detail residuel si extraction non rigoureuse |
 | `app/docs/todo-todo/smart-todo.md` | obsolete / legacy | personne (historique) | supprimer | n/a | references directes `kiki-mini`, `Olive`, chemins legacy non cibles | risque faible (interet historique tres limite) |
 
 ## 5) Fichiers suspects / obsoletes majeurs (priorite revue humaine)
@@ -134,7 +134,7 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 - statut propose: suppression
 
 5. `app/docs/todo-todo/memory-todo.md`
-- roadmap tres longue, partiellement obsolete et redondante avec `hermeneutical-add-todo.md`
+- roadmap tres longue, partiellement obsolete et redondante avec l'archive `hermeneutical-add-todo.md`
 - statut propose: fusion partielle puis suppression
 
 ## 6) Fichiers a conserver comme references fortes
@@ -183,7 +183,7 @@ Matrice de decision initiale (avant execution des lots de rangement/nettoyage):
 ### Lot 3 (risque moyen) — Consolidation des roadmaps ouvertes [FAIT]
 - Fusionner les doublons de roadmap:
   - `Migration_FridaDev-todo.md` -> archive en `todo-done/migrations/` (aucun reliquat vivant transfere vers `fridadev_refactor_todo.md`)
-  - `memory-todo.md` -> reliquats ouverts utiles fusionnes dans `todo-todo/memory/hermeneutical-add-todo.md`, puis archive en `todo-done/migrations/`
+  - `memory-todo.md` -> reliquats ouverts utiles fusionnes dans `todo-todo/memory/hermeneutical-post-stabilization-todo.md`, avec la grande roadmap hermeneutique archivee en `todo-done/notes/`
 - Archiver les versions historiques utiles en `todo-done/migrations/`
 - Verifier qu'aucun item ouvert n'est perdu
 

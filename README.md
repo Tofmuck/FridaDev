@@ -137,7 +137,8 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- Active memory roadmap: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- Active hermeneutic post-stabilization TODO: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- Archived hermeneutic implementation roadmap: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
 - Archived chat enunciation prompt-first closure note: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
@@ -317,7 +318,8 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- Roadmap memoire active: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+- TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- Archive de la grande roadmap hermeneutique: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
 - Note archivee de cloture prompt-first voix / identite / gap du chat: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`

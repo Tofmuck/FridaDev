@@ -5,7 +5,7 @@ Classement: `app/docs/todo-done/refactors/`
 Portee: roadmap de travail pour la pertinence du retrieval memoire/RAG en amont de l'arbitre
 Derniere revue documentaire: `2026-04-12`
 Origine: audit doc + code + runtime OVH du `2026-04-10`
-Doc liee: `app/docs/todo-todo/memory/hermeneutical-add-todo.md`
+Doc liee: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 
 Legende minimale:
 - `[x]` = ferme
@@ -93,7 +93,7 @@ La doctrine conservee est explicite:
 - Aucun melange avec le fix separe de `record_arbiter_decisions()`.
 - Aucun rebuild applicatif pour ce tour.
 
-## Coherence avec `hermeneutical-add-todo.md`
+## Coherence avec la roadmap hermeneutique archivee
 
 - Cette roadmap traite la qualite des candidats memoire remis a l'arbitre.
 - Elle ne reouvre pas silencieusement la doctrine `accept | defer | reject`, la politique identitaire ni le rollout hermeneutique deja cadres ailleurs.
