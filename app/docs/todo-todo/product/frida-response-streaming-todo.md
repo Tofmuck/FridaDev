@@ -206,14 +206,20 @@ Checklist:
 
 ### Lot 6 — Adaptation des tests
 - Objectif: adapter les tests existants au signal applicatif retenu et ajouter les tests des nouveaux comportements.
-- Fichiers: `app/tests/test_server_phase14.py`, `app/tests/test_server_logs_phase3.py`, `app/tests/unit/chat/test_chat_llm_flow.py`.
-- Done: suite complete et verte.
+- Fichiers: `app/tests/unit/chat/test_chat_stream_control.py`, `app/tests/unit/chat/test_chat_llm_flow.py`, `app/tests/test_server_phase14.py`, `app/tests/test_server_logs_phase3.py`, `app/tests/test_server_phase13.py`, `app/tests/integration/frontend_chat/test_frontend_chat_contract.py`, `app/tests/unit/frontend_chat/test_stream_control_parser_module.js`, `app/tests/unit/frontend_chat/test_streaming_ui_state_module.js`, `app/tests/unit/memory/test_memory_store_blocks_phase8bis.py`.
+- Done: batterie streaming canonique complete et verte.
+Validation implementation 2026-04-16:
+
+- Meilleur plan retenu: non. Le plus petit pas honnete etait de traiter le lot 6 comme une consolidation de batterie, en distinguant les fichiers entierement streaming des fichiers mixtes, puis en ne corrigeant que les trous reels encore visibles.
+- Batterie canonique retenue: helpers de controle de flux, chemin `run_llm_exchange()` en `done` / `upstream_error` / `stream_finalize_error`, contrat endpoint streaming, observabilite serveur du wrapper de stream, contrat frontend de parsing / etats UX / rehydratation, recharge historique du marqueur `assistant_turn`, et exclusion des tours interrompus des traces memoire.
+- Perimetre volontairement borne: `test_server_phase14.py`, `test_server_logs_phase3.py`, `test_server_phase13.py`, `test_chat_llm_flow.py` et `test_frontend_chat_contract.py` ne sont retenus que pour leurs cas streaming; `test_phase4_transversal.py` reste hors lot 6 car il couvre des contrats runtime generaux sans lien direct avec le stream.
+- Trou reel ferme: ajout d'un test serveur pour le chemin `missing_stream_terminal -> stream_protocol_error`, et verrou explicite sur l'absence de `save_new_traces()` lors d'un `stream_finalize_error` cote endpoint.
 Checklist:
-- [ ] Adapter les tests serveur au comportement de stream retenu.
-- [ ] Ajouter un cas de fin normale avec signal applicatif.
-- [ ] Ajouter un cas d'erreur mid-stream avec comportement frontend attendu.
-- [ ] Ajouter ou ajuster les preuves d'observabilite associees.
-- [ ] Revalider une suite complete verte apres adaptation.
+- [x] Adapter les tests serveur au comportement de stream retenu.
+- [x] Ajouter un cas de fin normale avec signal applicatif.
+- [x] Ajouter un cas d'erreur mid-stream avec comportement frontend attendu.
+- [x] Ajouter ou ajuster les preuves d'observabilite associees.
+- [x] Revalider une suite complete verte apres adaptation.
 
 ### Lot 7 — Documentation du protocole
 - Objectif: spec du protocole de streaming dans `app/docs/states/specs/`, pensee comme une grammaire d'evenements et non comme un simple format de bytes.

@@ -556,6 +556,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             },
         )
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
+        self.assertEqual(observed_state['save_new_traces_calls'], [])
 
     def test_api_chat_rejects_empty_message_with_400_contract(self) -> None:
         response = self.client.post('/api/chat', json={'message': '   '})
