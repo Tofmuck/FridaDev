@@ -6,45 +6,104 @@ One-glance current response-construction path. Detailed companion: `app/docs/sta
 Cartographie one-glance du chemin courant de fabrication de la reponse. Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 
 ```text
-User message / message utilisateur
-  -> optional voice path / voie vocale optionnelle: /api/chat/transcribe
-  -> POST /api/chat {message, conversation_id, stream, web_search, input_mode}
-  -> session + thread resolution / resolution session + thread
-  -> persist user turn / persistance du tour user
-  -> augmented system base / base systeme augmentee
-     system prompt + time grounding + identity block
-  -> memory preparation / preparation memoire
-     retrieve traces + summaries + context hints
-  -> memory arbitration / arbitrage memoire
-     mode-dependent prompt candidates + identity relevance
-  -> hermeneutic qualification / qualification hermeneutique
-     stimmung_agent -> primary_node -> validation_agent
-  -> final context build / construction du contexte final
-     inject [JUGEMENT HERMENEUTIQUE] + guard blocks + optional web context
-  -> main LLM call / appel LLM principal
-  -> output contract / contrat de sortie
-     plain-text normalization + buffering + stream terminal
-  -> canonical persistence / persistance canonique
-     done  -> full assistant message
-     error -> interrupted assistant marker
-  -> post-turn derivatives / derives post-tour
-     save_new_traces() only after canonical done
-     identity writes/reactivation if mode
-  -> frontend render + rehydration / rendu frontend + rehydratation
-  -> observability / observabilite
-     chat_turn_logger + /log + hermeneutic node logger
++----------------------------------+
+| User message / optional voice    |
+| message utilisateur / voix opt.  |
+| /api/chat/transcribe if needed   |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| POST /api/chat                   |
+| message, conversation_id,        |
+| stream, web_search, input_mode   |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| Session / thread resolution      |
+| + persist user turn              |
+| resolution session + thread      |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| Augmented system base            |
+| system prompt + time grounding   |
+| + identity block                 |
++----------------------------------+
+                |
+        +-------+--------+
+        |                |
+        v                v
++--------------------+  +----------------------+
+| Memory prep        |  | Hermeneutic branch   |
+| traces, summaries  |  | stimmung_agent       |
+| context hints      |  | primary_node         |
+|                    |  | validation_agent     |
++--------------------+  +----------------------+
+        |                        |
+        v                        |
++--------------------+             v
+| Memory arbiter     |  +----------------------+
+| prompt candidates  |  | Final context build  |
+| identity relevance |  | inject [JUGEMENT     |
+|                    |  | HERMENEUTIQUE]       |
++--------------------+  | + guards + web ctx   |
+        \               +----------------------+
+         \
+          \____________________/
+                   |
+                   v
+        +-------------------------+
+        | Main LLM call           |
+        +-------------------------+
+                   |
+                   v
+        +-------------------------+
+        | Output contract         |
+        | plain text + buffering  |
+        | + stream terminal       |
+        +-------------------------+
+                   |
+                   v
+        +-------------------------+
+        | Canonical assistant     |
+        | persistence             |
+        | done=full msg           |
+        | error=interrupted mark  |
+        +-------------------------+
+               |            |
+               v            v
++-----------------------+  +----------------------+
+| Derived traces /      |  | Frontend render /    |
+| identity writes       |  | rehydration          |
+| after canonical done  |  | bubble + terminal    |
++-----------------------+  | updated_at + errors  |
+               \           +----------------------+
+                \__________________/
+                         |
+                         v
+              +----------------------+
+              | Observability        |
+              | chat_turn_logger     |
+              | /log + node logger   |
+              +----------------------+
 ```
 
 ## English
 
 Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
-This repository tracks the real engineering state of the system; dated state documents below keep **April 3, 2026** as an explicit historical anchor.
+This README describes the current FridaDev repository, runtime pipeline, and operator surfaces first.
 
-Primary references for the current repository state:
+Primary current-state references:
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- `app/docs/README.md`
+
+Historical milestone documents:
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- `app/docs/README.md`
 
 ### What the system does today
 - Flask runtime exposing `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*`, and the read-only Memory Admin route `GET /api/admin/memory/dashboard`.
@@ -66,10 +125,10 @@ Primary references for the current repository state:
 - Structured documentation in `app/docs/`
 
 ### Documentation anchors
-- Current EN project state: `app/docs/states/project/Frida-State-english-03-04-26.md`
-- Current FR project state: `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Canonical current-state repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Current runtime pipeline one-glance: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- Historical EN state milestone (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
+- Historical FR state milestone (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
@@ -122,13 +181,16 @@ This repository is distributed under the **MIT License**. See [LICENSE](LICENSE)
 ## Francais
 
 Frida est un runtime IA de travail centre sur le dialogue, la memoire, le jugement hermeneutique et l'observabilite operateur.
-Ce depot suit l'etat d'ingenierie reel du systeme; les etats dates ci-dessous gardent le **3 avril 2026** comme ancrage historique explicite.
+Ce README raconte d'abord le depot FridaDev courant, son pipeline runtime et ses surfaces operateur.
 
-References principales pour l'etat actuel du depot:
+References principales pour l'etat courant:
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- `app/docs/README.md`
+
+Jalons historiques:
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- `app/docs/README.md`
 
 ### Ce que fait aujourd'hui le systeme
 - Runtime Flask exposant `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*` et la route read-only `GET /api/admin/memory/dashboard`.
@@ -150,10 +212,10 @@ References principales pour l'etat actuel du depot:
 - Documentation structuree dans `app/docs/`
 
 ### Ancres documentaires
-- Etat projet FR courant: `app/docs/states/project/Frida-State-french-03-04-26.md`
-- Etat projet EN courant: `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Audit canonique current-state du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Cartographie one-glance du pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- Jalon historique FR (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
+- Jalon historique EN (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
