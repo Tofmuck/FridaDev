@@ -1,14 +1,28 @@
 # Frida
 
-## Response Pipeline / Pipeline de reponse
+Current repository state as of Thursday, April 16, 2026.
+Etat courant du repository au jeudi 16 avril 2026.
 
-One-glance current response-construction path. Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-Cartographie one-glance du chemin courant de fabrication de la reponse. Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+## English
+
+Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
+This README describes the current FridaDev repository, runtime pipeline, and operator surfaces first.
+
+Primary current-state references:
+- `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- `app/docs/README.md`
+
+Historical milestone documents:
+- `app/docs/states/project/Frida-State-english-03-04-26.md`
+- `app/docs/states/project/Frida-State-french-03-04-26.md`
+
+### Response Pipeline
+Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 
 ```text
 +----------------------------------+
 | User message / optional voice    |
-| message utilisateur / voix opt.  |
 | /api/chat/transcribe if needed   |
 +----------------------------------+
                 |
@@ -23,7 +37,6 @@ Cartographie one-glance du chemin courant de fabrication de la reponse. Document
 +----------------------------------+
 | Session / thread resolution      |
 | + persist user turn              |
-| resolution session + thread      |
 +----------------------------------+
                 |
                 v
@@ -44,7 +57,7 @@ Cartographie one-glance du chemin courant de fabrication de la reponse. Document
 +--------------------+  +----------------------+
         |                        |
         v                        |
-+--------------------+             v
++--------------------+           v
 | Memory arbiter     |  +----------------------+
 | prompt candidates  |  | Final context build  |
 | identity relevance |  | inject [JUGEMENT     |
@@ -68,9 +81,8 @@ Cartographie one-glance du chemin courant de fabrication de la reponse. Document
                    |
                    v
         +-------------------------+
-        | Canonical assistant     |
-        | persistence             |
-        | done=full msg           |
+        | Canonical persistence   |
+        | done=full assistant msg |
         | error=interrupted mark  |
         +-------------------------+
                |            |
@@ -91,28 +103,12 @@ Cartographie one-glance du chemin courant de fabrication de la reponse. Document
               +----------------------+
 ```
 
-## English
-
-Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
-This README describes the current FridaDev repository, runtime pipeline, and operator surfaces first.
-
-Primary current-state references:
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-- `app/docs/README.md`
-
-Historical milestone documents:
-- `app/docs/states/project/Frida-State-english-03-04-26.md`
-- `app/docs/states/project/Frida-State-french-03-04-26.md`
-
 ### What the system does today
-- Flask runtime exposing `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*`, and the read-only Memory Admin route `GET /api/admin/memory/dashboard`.
-- Verified local stack on `http://127.0.0.1:8093`, currently running with `HERMENEUTIC_MODE=enforced_all`.
-- Chat flow wired as: session resolution -> time grounding -> memory retrieval/arbitration -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> `[JUGEMENT HERMENEUTIQUE]` injection -> main LLM call -> persistence and logs.
-- Operator observability keeping local `estimated_*` counters distinct from post-call OpenRouter `provider_*` truth.
-- OpenRouter transport identity split by caller (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) through dedicated `HTTP-Referer` and `X-OpenRouter-Title`.
-- Main system prompt now framing Frida as a work/reflection interlocutor rather than a generic execution assistant.
-- Main chat surface `/` remains plain-text; the main LLM is instructed to answer in strict plain text, without visible Markdown formatting unless code is explicitly requested.
+- The browser chat surface sends either a typed turn or an optional voice transcript into `POST /api/chat`; the server validates `input_mode`, resolves or creates the thread, and persists the user turn before the assistant reply is built.
+- Prompt construction combines the main and hermeneutical system prompts, time grounding, the identity block, retrieved memory traces and summaries, recent context hints, memory arbitration, and the hermeneutic branch `stimmung_agent -> primary_node -> validation_agent` before injecting `[JUGEMENT HERMENEUTIQUE]`.
+- The main LLM call runs under a plain-text output contract. In streaming mode, visible content is emitted with a single terminal control chunk, while buffering depends on whether the turn must stay plain text or may expose structure/code.
+- Canonical persistence distinguishes complete and interrupted assistant turns: `done` stores the full assistant message, while `error` stores an interrupted marker without canonical partial text; derived traces and identity writes follow only the allowed canonical path for the current mode.
+- The frontend renders and rehydrates the thread from persisted conversation state, including terminal timestamps and interruption taxonomy, while `chat_turn_logger`, `/log`, and the hermeneutic node logger expose the main observability path.
 
 ### What the repository contains
 - Flask backend orchestration in `app/server.py`
@@ -192,14 +188,99 @@ Jalons historiques:
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
 
+### Pipeline de reponse
+Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+
+```text
++----------------------------------+
+| Message utilisateur / voix       |
+| optionnelle si necessaire        |
+| /api/chat/transcribe             |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| POST /api/chat                   |
+| message, conversation_id,        |
+| stream, web_search, input_mode   |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| Resolution session + thread      |
+| + persistance du tour user       |
++----------------------------------+
+                |
+                v
++----------------------------------+
+| Base systeme augmentee           |
+| prompt systeme + grounding temps |
+| + bloc identitaire               |
++----------------------------------+
+                |
+        +-------+--------+
+        |                |
+        v                v
++--------------------+  +----------------------+
+| Preparation memoire|  | Branche hermeneutique|
+| traces, summaries  |  | stimmung_agent       |
+| context hints      |  | primary_node         |
+|                    |  | validation_agent     |
++--------------------+  +----------------------+
+        |                        |
+        v                        |
++--------------------+           v
+| Arbitrage memoire  |  +----------------------+
+| candidats prompt   |  | Construction du      |
+| pertinence identite|  | contexte final       |
+|                    |  | inject [JUGEMENT     |
++--------------------+  | HERMENEUTIQUE]       |
+        \               | + gardes + web ctx   |
+         \              +----------------------+
+          \____________________/
+                   |
+                   v
+        +-------------------------+
+        | Appel LLM principal     |
+        +-------------------------+
+                   |
+                   v
+        +-------------------------+
+        | Contrat de sortie       |
+        | texte brut + buffering  |
+        | + terminal de stream    |
+        +-------------------------+
+                   |
+                   v
+        +--------------------------+
+        | Persistance canonique    |
+        | done=message complet     |
+        | error=marqueur interrompu|
+        +--------------------------+
+               |             |
+               v             v
++------------------------+  +----------------------+
+| Traces derivees /      |  | Rendu frontend /     |
+| ecritures identitaires |  | rehydratation        |
+| apres done canonique   |  | bulle + terminal     |
++------------------------+  | updated_at + erreurs |
+               \           +----------------------+
+                \__________________/
+                         |
+                         v
+              +----------------------+
+              | Observabilite        |
+              | chat_turn_logger     |
+              | /log + node logger   |
+              +----------------------+
+```
+
 ### Ce que fait aujourd'hui le systeme
-- Runtime Flask exposant `/`, `/admin`, `/log`, `/identity`, `/hermeneutic-admin`, `/memory-admin`, `/api/chat`, `/api/admin/settings/*`, `/api/admin/hermeneutics/*` et la route read-only `GET /api/admin/memory/dashboard`.
-- Stack locale verifiee sur `http://127.0.0.1:8093`, actuellement en `HERMENEUTIC_MODE=enforced_all`.
-- Pipeline chat branche ainsi: resolution de session -> grounding temporel -> retrieval/arbitrage memoire -> `stimmung_agent` -> `primary_node` -> `validation_agent` -> injection `[JUGEMENT HERMENEUTIQUE]` -> appel LLM principal -> persistance et logs.
-- Observabilite operateur distinguant les compteurs locaux `estimated_*` et la verite OpenRouter post-call `provider_*`.
-- Identite transport OpenRouter differenciee par composant (`llm`, `arbiter`, `identity_extractor`, `resumer`, `stimmung_agent`, `validation_agent`) via des `HTTP-Referer` et `X-OpenRouter-Title` dedies.
-- Prompt systeme principal recadre comme interlocuteur de travail et de reflexion, et non comme simple assistant d'execution.
-- La surface chat principale `/` reste en texte brut ; le LLM principal est desormais contraint a repondre en texte brut strict, sans Markdown visible sauf si du code est explicitement demande.
+- La surface chat navigateur envoie soit un tour tape au clavier, soit une transcription vocale optionnelle vers `POST /api/chat`; le serveur valide `input_mode`, resolve ou cree le thread, puis persiste le tour user avant de fabriquer la reponse assistant.
+- La construction du prompt combine le prompt systeme principal, le prompt hermeneutique, le grounding temporel, le bloc identitaire, les traces memoire recuperees et leurs summaries, les context hints, l'arbitrage memoire, puis la branche `stimmung_agent -> primary_node -> validation_agent` avant l'injection du bloc `[JUGEMENT HERMENEUTIQUE]`.
+- L'appel au LLM principal passe sous contrat de sortie texte brut. En mode streaming, Frida emet le contenu visible puis un unique terminal de controle, avec buffering ou non selon que le tour doit rester strictement texte brut ou peut exposer structure/code.
+- La persistance canonique distingue une fin complete d'une interruption: `done` persiste le vrai message assistant complet; `error` persiste un marqueur interrompu sans texte partiel canonique; les traces derivees et ecritures identitaires ne suivent que le chemin canonique autorise par le mode courant.
+- Le frontend rerend et rehydrate le thread a partir de l'etat persiste, y compris `updated_at` terminal et taxonomie des interruptions, tandis que `chat_turn_logger`, `/log` et le node logger hermeneutique exposent l'observabilite principale.
 
 ### Ce que contient le depot
 - Orchestration backend Flask dans `app/server.py`
