@@ -81,16 +81,24 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
                    |
                    v
         +-------------------------+
+        | Done finalization       |
+        | append assistant text   |
+        | identity writes         |
+        | + possible reactivate   |
+        +-------------------------+
+                   |
+                   v
+        +-------------------------+
         | Canonical persistence   |
-        | done=full assistant msg |
-        | error=interrupted mark  |
+        | save_conversation       |
+        | done or interrupted     |
         +-------------------------+
                |            |
                v            v
 +-----------------------+  +----------------------+
-| Derived traces /      |  | Frontend render /    |
-| identity writes       |  | rehydration          |
-| after canonical done  |  | bubble + terminal    |
+| Derived traces only   |  | Frontend render /    |
+| save_new_traces()     |  | rehydration          |
+| after canonical save  |  | bubble + terminal    |
 +-----------------------+  | updated_at + errors  |
                \           +----------------------+
                 \__________________/
@@ -107,7 +115,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - The browser chat surface sends either a typed turn or an optional voice transcript into `POST /api/chat`; the server validates `input_mode`, resolves or creates the thread, and persists the user turn before the assistant reply is built.
 - Prompt construction combines the main and hermeneutical system prompts, time grounding, the identity block, retrieved memory traces and summaries, recent context hints, memory arbitration, and the hermeneutic branch `stimmung_agent -> primary_node -> validation_agent` before injecting `[JUGEMENT HERMENEUTIQUE]`.
 - The main LLM call runs under a plain-text output contract. In streaming mode, visible content is emitted with a single terminal control chunk, while buffering depends on whether the turn must stay plain text or may expose structure/code.
-- Canonical persistence distinguishes complete and interrupted assistant turns: `done` stores the full assistant message, while `error` stores an interrupted marker without canonical partial text; derived traces and identity writes follow only the allowed canonical path for the current mode.
+- In the `done` path, Frida first appends the full assistant text, records identity entries for the current mode, and may reactivate identities before `save_conversation(...)`; only `save_new_traces()` is explicitly deferred until after the canonical save. In the `error` path, Frida stores an interrupted marker without canonical partial text.
 - The frontend renders and rehydrates the thread from persisted conversation state, including terminal timestamps and interruption taxonomy, while `chat_turn_logger`, `/log`, and the hermeneutic node logger expose the main observability path.
 
 ### What the repository contains
@@ -253,16 +261,24 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
                    |
                    v
         +--------------------------+
+        | Finalisation du done     |
+        | append assistant complet |
+        | ecritures identitaires   |
+        | + reactivation eventuelle|
+        +--------------------------+
+                   |
+                   v
+        +--------------------------+
         | Persistance canonique    |
-        | done=message complet     |
-        | error=marqueur interrompu|
+        | save_conversation        |
+        | done ou interruption     |
         +--------------------------+
                |             |
                v             v
 +------------------------+  +----------------------+
-| Traces derivees /      |  | Rendu frontend /     |
-| ecritures identitaires |  | rehydratation        |
-| apres done canonique   |  | bulle + terminal     |
+| Traces derivees seules |  | Rendu frontend /     |
+| save_new_traces()      |  | rehydratation        |
+| apres sauvegarde canon.|  | bulle + terminal     |
 +------------------------+  | updated_at + erreurs |
                \           +----------------------+
                 \__________________/
@@ -279,7 +295,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - La surface chat navigateur envoie soit un tour tape au clavier, soit une transcription vocale optionnelle vers `POST /api/chat`; le serveur valide `input_mode`, resolve ou cree le thread, puis persiste le tour user avant de fabriquer la reponse assistant.
 - La construction du prompt combine le prompt systeme principal, le prompt hermeneutique, le grounding temporel, le bloc identitaire, les traces memoire recuperees et leurs summaries, les context hints, l'arbitrage memoire, puis la branche `stimmung_agent -> primary_node -> validation_agent` avant l'injection du bloc `[JUGEMENT HERMENEUTIQUE]`.
 - L'appel au LLM principal passe sous contrat de sortie texte brut. En mode streaming, Frida emet le contenu visible puis un unique terminal de controle, avec buffering ou non selon que le tour doit rester strictement texte brut ou peut exposer structure/code.
-- La persistance canonique distingue une fin complete d'une interruption: `done` persiste le vrai message assistant complet; `error` persiste un marqueur interrompu sans texte partiel canonique; les traces derivees et ecritures identitaires ne suivent que le chemin canonique autorise par le mode courant.
+- Dans le chemin `done`, Frida ajoute d'abord le texte assistant complet, enregistre les ecritures identitaires du mode courant, puis peut reactiver des identites avant `save_conversation(...)`; seul `save_new_traces()` est explicitement repousse apres la sauvegarde canonique. Dans le chemin `error`, Frida persiste un marqueur interrompu sans texte partiel canonique.
 - Le frontend rerend et rehydrate le thread a partir de l'etat persiste, y compris `updated_at` terminal et taxonomie des interruptions, tandis que `chat_turn_logger`, `/log` et le node logger hermeneutique exposent l'observabilite principale.
 
 ### Ce que contient le depot
