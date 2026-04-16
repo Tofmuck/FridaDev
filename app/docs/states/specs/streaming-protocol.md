@@ -3,7 +3,7 @@
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: contrat public du streaming de `/api/chat` quand `stream=true`
-Roadmap liee: `app/docs/todo-todo/product/frida-response-streaming-todo.md`
+Roadmap archivee liee: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 
 ## 1. Objet et perimetre
 

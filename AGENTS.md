@@ -145,6 +145,7 @@ Destinations:
 - `app/docs/todo-done/refactors/`: roadmaps/refactors termines;
 - `app/docs/todo-done/migrations/`: roadmaps de migration archivees;
 - `app/docs/todo-done/notes/`: notes de cloture/support;
+- `app/docs/todo-done/product/`: roadmaps produit cloturees;
 - `app/docs/todo-todo/memory/`: travaux actifs memoire/hermeneutique;
 - `app/docs/todo-todo/product/`: travaux actifs produit/installation;
 - `app/docs/todo-todo/admin/`: travaux actifs admin;

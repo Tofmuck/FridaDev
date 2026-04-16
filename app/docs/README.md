@@ -3,7 +3,7 @@
 Organisation finale retenue:
 
 - `states/`: references stables (specs, baselines, policies, etats projet) + archive `legacy/`
-- `todo-done/`: preuves de chantiers termines (audits, validations, refactors, notes, migrations)
+- `todo-done/`: preuves de chantiers termines (audits, validations, refactors, notes, migrations, archives produit)
 - `todo-todo/`: chantiers ouverts organises par domaine
 
 Regle simple:
@@ -27,6 +27,7 @@ Sous-structure en place:
 - `todo-done/refactors/`: roadmaps de refacto cloturees
 - `todo-done/migrations/`: roadmaps de migration archivees
 - `todo-done/notes/`: notes de nettoyage et cadrage documentaire
+- `todo-done/product/`: roadmaps produit cloturees
 
 - `todo-todo/memory/`: roadmaps memoire/hermeneutique ouvertes
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
@@ -58,7 +59,7 @@ Notes:
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
 - note archivee de cloture prompt-first voix / identite / gap du chat: `todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
-- TODO ouvert fiabilisation du streaming des reponses: `todo-todo/product/frida-response-streaming-todo.md`
+- roadmap archivee fiabilisation du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
 - note archivee de cloture V1 integration Whisper pour la saisie vocale: `todo-done/notes/integration-whisper-v1-closure.md`
 - trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
 - roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`

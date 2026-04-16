@@ -1,9 +1,20 @@
 # Frida Response Streaming TODO
 
-Statut: ouvert
-Classement: `app/docs/todo-todo/product/`
-Nature: TODO canonique produit — fiabilisation du streaming des reponses Frida
+Statut: termine
+Classement: `app/docs/todo-done/product/`
+Nature: roadmap produit archivee — fiabilisation du streaming des reponses Frida
 Portee: `/api/chat`, transport de reponse, UX frontend, persistance, observabilite
+
+## Cloture
+
+Cloture documentaire au 2026-04-16.
+
+Le chantier est ferme: les lots 0 a 7 ont ete implementes, testes, audites et documentes.
+
+Points de reference finaux:
+- spec source-of-truth: `app/docs/states/specs/streaming-protocol.md`
+- batterie canonique de tests streaming: voir le lot 6 ci-dessous
+- les sections "Etat actuel" et "Ce qui reste fragile ou incomplet" capturent le cadrage d'ouverture du chantier et restent archivees comme contexte historique
 
 ## Contexte
 
@@ -270,13 +281,13 @@ Specifiquement:
 ## Definition of done
 
 Le streaming des reponses Frida est considere produit-pret quand:
-- [ ] Le frontend distingue explicitement fin normale, erreur mid-stream, et coupure reseau.
-- [ ] Le protocole distingue explicitement contenu et signaux de controle, meme si le transport physique reste unique.
-- [ ] L'utilisateur a un feedback visuel pendant toute la generation (y compris buffering).
-- [ ] Les etats UX affiches correspondent a des faits observables et non a une inference opaque sur l'activite backend.
-- [ ] Les metadonnees de conversation sont completes post-stream.
-- [ ] Aucun message assistant tronque ou fantome n'est persiste en DB.
-- [ ] Aucun fragment interrompu n'est traite par defaut comme une reponse canonique pour l'historique ou la memoire.
-- [ ] Tous les tests existants sont adaptes et passent.
-- [ ] Le protocole est documente dans `app/docs/states/specs/`.
-- [ ] L'observabilite du turn logger couvre les erreurs stream.
+- [x] Le frontend distingue explicitement fin normale, erreur mid-stream, et coupure reseau.
+- [x] Le protocole distingue explicitement contenu et signaux de controle, meme si le transport physique reste unique.
+- [x] L'utilisateur a un feedback visuel pendant toute la generation (y compris buffering).
+- [x] Les etats UX affiches correspondent a des faits observables et non a une inference opaque sur l'activite backend.
+- [x] Les metadonnees de conversation sont completes post-stream.
+- [x] Aucun message assistant tronque ou fantome n'est persiste en DB.
+- [x] Aucun fragment interrompu n'est traite par defaut comme une reponse canonique pour l'historique ou la memoire.
+- [x] Tous les tests existants sont adaptes et passent.
+- [x] Le protocole est documente dans `app/docs/states/specs/`.
+- [x] L'observabilite du turn logger couvre les erreurs stream.
