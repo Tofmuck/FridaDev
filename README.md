@@ -3,7 +3,7 @@
 ## English
 
 Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
-This repository tracks the real engineering state of the system as of **April 3, 2026**.
+This repository tracks the real engineering state of the system; dated state documents below keep **April 3, 2026** as an explicit historical anchor.
 
 Primary references for the current repository state:
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
@@ -33,7 +33,8 @@ Primary references for the current repository state:
 ### Documentation anchors
 - Current EN project state: `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Current FR project state: `app/docs/states/project/Frida-State-french-03-04-26.md`
-- Canonical repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Canonical current-state repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Current runtime pipeline one-glance: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
@@ -86,7 +87,7 @@ This repository is distributed under the **MIT License**. See [LICENSE](LICENSE)
 ## Francais
 
 Frida est un runtime IA de travail centre sur le dialogue, la memoire, le jugement hermeneutique et l'observabilite operateur.
-Ce depot suit l'etat d'ingenierie reel du systeme au **3 avril 2026**.
+Ce depot suit l'etat d'ingenierie reel du systeme; les etats dates ci-dessous gardent le **3 avril 2026** comme ancrage historique explicite.
 
 References principales pour l'etat actuel du depot:
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
@@ -116,7 +117,8 @@ References principales pour l'etat actuel du depot:
 ### Ancres documentaires
 - Etat projet FR courant: `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Etat projet EN courant: `app/docs/states/project/Frida-State-english-03-04-26.md`
-- Audit canonique du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Audit canonique current-state du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
+- Cartographie one-glance du pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`

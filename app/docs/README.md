@@ -37,7 +37,8 @@ Sous-structure en place:
 
 Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
-- audit general canonique: `todo-done/audits/fridadev_repo_audit.md`
+- audit repo canonique current-state: `todo-done/audits/fridadev_repo_audit.md`
+- cartographie one-glance du pipeline runtime FridaDev: `states/architecture/fridadev-current-runtime-pipeline.md`
 - etat projet FR 03/04/2026: `states/project/Frida-State-french-03-04-26.md`
 - etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
 - decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
