@@ -245,7 +245,25 @@ Le point cle n'est pas seulement:
 Le point cle est:
 - selon quel contrat d'admission cette decision est prise.
 
-### 8.2 Forme runtime
+### 8.2 Garde-fou metier entre `static` et `mutable`
+
+La future mise en oeuvre ne devra pas seulement juger ce qui entre dans `mutable`.
+
+Elle devra aussi verifier explicitement la frontiere avec `static`.
+
+Contrat cible:
+- ne pas recopier dans `mutable` un trait deja porte clairement par `static`;
+- ne pas reformuler faiblement dans `mutable` ce qui est deja fixe dans `static`;
+- ne pas laisser `mutable` contredire silencieusement `static`;
+- ne laisser entrer dans `mutable` qu'un trait qui ajoute, precise ou densifie l'identite sans dupliquer ni annuler le socle fige.
+
+Regle de decision:
+- si une proposition candidate est deja couverte par `static`, elle ne doit pas etre canonisee dans `mutable`;
+- si elle affine `static` sans le redire, elle peut etre integree;
+- si elle entre en contradiction avec `static`, elle ne doit pas etre appliquee comme simple rewrite du `mutable`;
+- une tension `static` / `mutable` doit rester visible comme sujet d'arbitrage ou de validation, pas comme contradiction silencieuse dans le canon actif.
+
+### 8.3 Forme runtime
 
 La mise en oeuvre future devra rester compatible avec l'etat reel courant:
 - `static` reste file-backed;
@@ -253,7 +271,7 @@ La mise en oeuvre future devra rester compatible avec l'etat reel courant:
 - l'injection runtime reste `static + mutable narrative`;
 - le read-model continue de montrer `static` et `mutable` comme couches canoniques actives.
 
-### 8.3 Observabilite
+### 8.4 Observabilite
 
 L'observabilite n'est pas le centre de ce TODO, mais elle reste une contrainte dure:
 - ne pas casser `identities_read`;
@@ -290,10 +308,11 @@ Ordre de travail recommande:
 
 1. figer ce contrat doctrinal `static` / `mutable`;
 2. rediger le contrat d'admission du rewriter de fin de tour a partir des criteres de recevabilite et d'irrecevabilite ci-dessus;
-3. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-4. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-5. seulement ensuite traiter la forme finale cible du texte `mutable` et la gestion des contradictions en implementation;
-6. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
+3. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
+4. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
+5. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
+6. seulement ensuite traiter la forme finale cible du texte `mutable` et la gestion des contradictions en implementation;
+7. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
 
 Definition of done doctrinale pour ce lot:
 - `static` est defini comme fond et noeud identitaire;
@@ -301,4 +320,5 @@ Definition of done doctrinale pour ce lot:
 - les entrees recevables et irrecevables sont clairement tranchees;
 - la forme textuelle cible du `mutable` est claire;
 - la gestion des contradictions est fixee;
+- un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
 - les couches laterales ne brouillent plus le centre du document.
