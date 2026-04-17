@@ -255,6 +255,7 @@ Son travail cible:
 - extraire de cette matiere des candidats identitaires recevables;
 - comparer semantiquement chaque candidat au `static` et au `mutable` existants;
 - comparer aussi les candidats entre eux avant toute ecriture;
+- ponderer les candidats selon leur recence et leur frequence dans la fenetre travaillee;
 - refuser toute canonisation en cas de doute, de contradiction non resolue, de doublon, de reformulation faible ou de derive vers l'utile non identitaire.
 
 Le point cle n'est plus seulement:
@@ -368,14 +369,18 @@ Le regime cible doit assumer qu'un `mutable` vivant peut finir par saturer.
 
 Contrat de travail retenu a ce stade:
 - quand le `mutable` approche de sa limite utile, il ne s'agit pas d'empiler indefiniment;
-- il faut ponderer les traits selon leur force, leur stabilite et leur caractere marquant;
-- les traits les plus stabilises et les plus structurants peuvent alors etre promus vers `static`;
+- il faut ponderer les traits selon leur recence et leur frequence, qui servent ici de premiers indicateurs de force, de stabilite et de caractere marquant;
+- lorsque le `mutable` est plein, ce sont le ou les traits les plus forts qui doivent etre promus vers `static`;
 - cette promotion libere de la place dans `mutable` pour des traits plus recents, moins fixes ou encore en voie de stabilisation.
 
 Consequences:
 - `mutable` doit rester la couche mouvante de l'identite, pas son tombeau sature;
 - `static` doit pouvoir s'enrichir quand une determination identitaire cesse d'etre seulement mouvante;
 - la future mise en oeuvre devra donc revoir aussi le budget effectif de projection du `static`.
+
+Hypothese provisoire de travail pour la saturation haute:
+- si `mutable` est plein et que `static` est lui aussi arrive a sa limite utile de projection, il n'est pas souhaitable de forcer une nouvelle canonisation automatique;
+- dans ce cas, le systeme doit plutot suspendre l'ajout automatique de nouveaux traits canoniques, en attendant une reprise plus structurelle du canon identitaire.
 
 Point technique deja visible dans le runtime courant:
 - il n'existe pas aujourd'hui de quota `static` dedie aussi simple que pour `mutable`;
@@ -402,7 +407,11 @@ Implications minimales pour logs et surfaces admin:
   - le statut du dernier passage de l'agent;
   - le nombre de paires considerees;
   - le nombre de candidats traites;
+  - la base minimale de ponderation retenue pour les candidats (`recence`, `frequence`);
   - les operations retenues par sujet (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`);
+  - l'existence ou non d'une promotion vers `static`;
+  - l'etat de saturation de `mutable` et, si pertinent, de `static`;
+  - l'eventuelle suspension de canonisation automatique en cas de double saturation;
   - la presence d'un conflit ouvert;
   - le mode d'execution si l'agent devient asynchrone.
 
@@ -437,7 +446,7 @@ Ordre de travail recommande:
 6. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
 7. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
 8. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-9. formaliser le regime de saturation du `mutable`: ponderation des traits, promotion des traits les plus stabilises vers `static`, recalage du budget de projection du `static`;
+9. formaliser le regime de saturation du `mutable`: ponderation des traits par recence et frequence, promotion des traits les plus forts vers `static`, recalage du budget de projection du `static`, puis suspension provisoire de canonisation si `static` et `mutable` sont tous deux satures;
 10. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
 11. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
 12. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
@@ -458,6 +467,6 @@ Definition of done doctrinale pour ce lot:
 - le controle semantique explicite avant ajout au `mutable` est pose;
 - la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
-- un premier regime de saturation est pose, avec promotion possible des traits les plus stabilises du `mutable` vers `static` et recalage du budget de projection du `static`;
+- un premier regime de saturation est pose, avec ponderation des traits par recence et frequence, promotion possible des traits les plus forts du `mutable` vers `static`, recalage du budget de projection du `static` et suspension provisoire de canonisation en cas de double saturation;
 - l'observabilite et les surfaces admin identity sont explicitement a realigner sur ce nouveau regime;
 - les couches laterales ne brouillent plus le centre du document.
