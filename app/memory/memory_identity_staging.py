@@ -155,8 +155,13 @@ def append_identity_staging_pair(
                 )
                 current_state = _row_to_staging_state(cur.fetchone())
                 current_pairs = list((current_state or {}).get('buffer_pairs') or [])
-                buffer_frozen = len(current_pairs) >= buffer_target
-                next_pairs = list(current_pairs[:buffer_target]) if buffer_frozen else current_pairs + [normalized_pair]
+                buffer_already_frozen = len(current_pairs) >= buffer_target
+                next_pairs = (
+                    list(current_pairs[:buffer_target])
+                    if buffer_already_frozen
+                    else current_pairs + [normalized_pair]
+                )
+                buffer_frozen = len(next_pairs) >= buffer_target
                 next_status = _text((current_state or {}).get('last_agent_status')) or 'buffering'
                 if len(current_pairs) == 0 and next_status in {'applied', 'completed_no_change', 'not_run'}:
                     next_status = 'buffering'
@@ -208,7 +213,7 @@ def append_identity_staging_pair(
         state = _row_to_staging_state(row)
         if state is not None:
             state['buffer_frozen'] = bool(buffer_frozen)
-            state['pair_appended'] = not bool(buffer_frozen)
+            state['pair_appended'] = not bool(buffer_already_frozen)
         return state
     except Exception as exc:
         logger.error('append_identity_staging_pair_error conversation_id=%s err=%s', conversation_key, exc)

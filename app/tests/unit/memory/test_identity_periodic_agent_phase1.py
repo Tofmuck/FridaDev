@@ -86,14 +86,14 @@ class _InMemoryIdentityStore:
             )
         )
         current_pairs = list(state['buffer_pairs'])
-        buffer_frozen = len(current_pairs) >= int(target_pairs)
-        if buffer_frozen:
+        buffer_already_frozen = len(current_pairs) >= int(target_pairs)
+        if buffer_already_frozen:
             state['buffer_pairs'] = current_pairs[: int(target_pairs)]
         else:
             state['buffer_pairs'] = current_pairs + [copy.deepcopy({'user': pair[0], 'assistant': pair[1]})]
         state['buffer_pairs_count'] = len(state['buffer_pairs'])
         state['buffer_target_pairs'] = int(target_pairs)
-        state['buffer_frozen'] = bool(buffer_frozen)
+        state['buffer_frozen'] = state['buffer_pairs_count'] >= int(target_pairs)
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
 
@@ -313,6 +313,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['last_agent_status'], 'contract_invalid')
         self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(store.get_identity_staging_state('conv-invalid-contract')['buffer_pairs_count'], 15)
         self.assertEqual(store.upsert_calls, [])
