@@ -33,7 +33,7 @@ Formule cle du lot:
 - mais tout ne doit pas y entrer.
 
 Autrement dit:
-- le centre du chantier est le contrat d'admission du mini-modele / agent de fin de tour qui propose une reecriture du `mutable`;
+- le centre du chantier est le contrat d'admission de l'agent d'identite periodique qui intervient sur `mutable`;
 - si ce contrat est flou, le `mutable` devient vite un depot de preferences, de conforts locaux ou de pseudo-narration;
 - si ce contrat est ferme, `static` et `mutable` retrouvent chacun leur fonction propre.
 
@@ -214,7 +214,8 @@ Taille cible de travail a ce stade:
 - viser 3000 caracteres par `mutable` (`llm` et `user`);
 - comprendre cette hausse comme la consequence du nouveau regime de travail, et non comme un simple elargissement du systeme actuel;
 - ne pas l'interpreter comme une permission de stocker davantage de bruit, de preferences ou de pseudo-contextes;
-- l'assumer seulement si le writer devient plus costaud, plus selectif et moins frequent.
+- l'assumer seulement si le writer devient plus costaud, plus selectif et moins frequent;
+- prevoir qu'en regime de saturation, les traits devenus les plus stables et les plus marquants puissent quitter `mutable` pour completer `static`, afin de liberer de la place sans perdre l'identite acquise.
 
 ## 7. Gestion des contradictions dans le `mutable`
 
@@ -243,10 +244,10 @@ Ce document n'ouvre pas encore l'implementation, mais il fixe les contraintes mi
 Le rewriter actuel doit cesser d'etre pense comme un rewriter global du texte entier a chaque passage.
 
 Le futur writer de `mutable`, pense ici comme un agent d'identite, devra:
-- intervenir sur une fenetre elargie plutot que sur les 2 derniers tours;
+- intervenir sur une fenetre elargie plutot que sur les 2 derniers messages seulement;
 - lire `llm.static` et `user.static` courants;
 - lire `llm.mutable` et `user.mutable` courants;
-- lire la fenetre temporaire de tours accumules avant passage;
+- lire la fenetre temporaire de paires accumulees avant passage;
 - lire les evidences identitaires recentes retenues comme durables;
 - lire les tensions ou contradictions deja ouvertes autour du canon identitaire.
 
@@ -262,6 +263,11 @@ Le point cle n'est plus seulement:
 Le point cle devient:
 - selon quel contrat d'admission une proposition est jugee;
 - et selon quelle operation locale le `mutable` est modifie sans etre integralement reecrit.
+
+Unite de travail retenue a ce stade:
+- l'agent ne travaille pas d'abord sur des messages bruts, ni sur des phrases prises comme de simples morceaux de texte;
+- il travaille sur des propositions identitaires canonisables, c'est-a-dire des traits ou determinations identitaires susceptibles d'entrer dans le canon;
+- le bloc textuel final du `mutable` n'est que la forme de sortie de ces propositions stabilisees.
 
 Sorties cibles a ce stade:
 - `no_change`
@@ -282,6 +288,12 @@ Controle semantique minimal avant toute operation:
 - pas de contradiction semantique avec le `mutable` existant;
 - pas de contradiction semantique entre plusieurs candidats que l'agent s'appreterait a ajouter.
 
+Sens minimal des operations:
+- `add`: ajouter au canon une proposition identitaire nouvelle et recevable;
+- `tighten`: resserrer une proposition deja presente sans en changer le sens profond;
+- `merge`: fusionner deux propositions trop proches ou partiellement redondantes en une formulation plus nette;
+- `raise_conflict`: laisser visible une tension non resolue au lieu de l'ecrire comme si elle etait deja canonisee.
+
 ### 8.2 Cadence, buffer temporaire et contexte de travail
 
 L'agent d'identite pour `mutable` ne doit pas travailler a chaque fin de tour.
@@ -289,12 +301,12 @@ L'agent d'identite pour `mutable` ne doit pas travailler a chaque fin de tour.
 Cadence cible retenue a ce stade:
 - cadence fixe;
 - pas de declenchement `trigger-based`;
-- seuil simple: `N = 15` tours.
+- seuil simple: `N = 15` paires `user/assistant`.
 
 Premier regime cible:
 - a chaque tour, on ne reecrit plus le `mutable`;
 - on accumule a la place une fenetre temporaire de tours dans un espace distinct du `mutable` canonique;
-- quand cette fenetre atteint 15 tours, on appelle l'agent d'identite;
+- quand cette fenetre atteint 15 paires `user/assistant`, on appelle l'agent d'identite;
 - l'agent travaille alors sur cette fenetre elargie au lieu de travailler sur 2 tours seulement.
 
 Le probleme actuel est double:
@@ -304,7 +316,7 @@ Le probleme actuel est double:
 Contexte cible a fournir a l'agent lors de son passage:
 - `llm.static` et `user.static` courants;
 - `llm.mutable` et `user.mutable` courants;
-- la fenetre temporaire de 15 tours;
+- la fenetre temporaire de 15 paires `user/assistant`;
 - les evidences identitaires recentes pertinentes deja retenues comme durables;
 - les tensions ou contradictions deja ouvertes autour du `mutable`.
 
@@ -312,9 +324,10 @@ Regles de conception:
 - un agent qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
 - la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant;
 - le stockage temporaire de cette fenetre doit rester distinct du `mutable` canonique;
-- la modalite exacte de consommation de la fenetre (reset complet, glissement, autre) reste a fixer plus tard;
+- une fois que l'agent a termine son passage, le buffer de 15 paires est efface puis remplace par un nouveau buffer qui recommence a zero;
 - parce qu'il n'intervient plus a chaque tour, cet agent peut devenir plus couteux et plus rigoureux;
-- il peut etre pense, plus tard, comme une tache asynchrone ou un module separe, afin de ne pas peser sur la latence de la reponse courante.
+- il peut etre pense, plus tard, comme une tache asynchrone ou un module separe, afin de ne pas peser sur la latence de la reponse courante;
+- ce regime accepte explicitement un retard d'integration identitaire jusqu'au prochain passage periodique de l'agent.
 
 ### 8.3 Garde-fou metier entre `static` et `mutable`
 
@@ -346,10 +359,30 @@ Evolution cible deja retenue dans ce brouillon:
 - la capacite cible du `mutable` doit etre portee a 3000 caracteres pour `llm` comme pour `user`;
 - ce changement doit etre implemente avec le nouveau regime de writer periodique et plus agentique, pas sur la base du mecanisme actuel de reecriture a chaque tour;
 - le plafond dur exact devra etre recale en coherence avec cette nouvelle cible.
-- un espace de staging temporaire doit etre introduit pour accumuler la fenetre de 15 tours sans la confondre avec le `mutable` canonique;
+- un espace de staging temporaire doit etre introduit pour accumuler la fenetre de 15 paires `user/assistant` sans la confondre avec le `mutable` canonique;
 - si l'agent devient asynchrone, son etat d'execution doit rester lisible sans brouiller la lecture des couches identitaires actives.
 
-### 8.5 Observabilite
+### 8.5 Saturation du `mutable` et promotion vers `static`
+
+Le regime cible doit assumer qu'un `mutable` vivant peut finir par saturer.
+
+Contrat de travail retenu a ce stade:
+- quand le `mutable` approche de sa limite utile, il ne s'agit pas d'empiler indefiniment;
+- il faut ponderer les traits selon leur force, leur stabilite et leur caractere marquant;
+- les traits les plus stabilises et les plus structurants peuvent alors etre promus vers `static`;
+- cette promotion libere de la place dans `mutable` pour des traits plus recents, moins fixes ou encore en voie de stabilisation.
+
+Consequences:
+- `mutable` doit rester la couche mouvante de l'identite, pas son tombeau sature;
+- `static` doit pouvoir s'enrichir quand une determination identitaire cesse d'etre seulement mouvante;
+- la future mise en oeuvre devra donc revoir aussi le budget effectif de projection du `static`.
+
+Point technique deja visible dans le runtime courant:
+- il n'existe pas aujourd'hui de quota `static` dedie aussi simple que pour `mutable`;
+- en revanche, la projection finale peut tronquer `llm.static` et `user.static` a l'injection si le budget global du bloc identitaire est depasse;
+- toute promotion de traits depuis `mutable` vers `static` devra donc s'accompagner d'un recalage explicite de ce budget de projection, pour ne pas faire grandir `static` d'une main puis le couper silencieusement de l'autre.
+
+### 8.6 Observabilite
 
 L'observabilite n'est pas le centre de ce TODO, mais elle reste une contrainte dure:
 - ne pas casser `identities_read`;
@@ -364,10 +397,10 @@ Implications minimales pour logs et surfaces admin:
 - la page `/identity` doit pouvoir montrer, a terme, non seulement le canon actif, mais aussi l'etat du buffer temporaire et le dernier passage de l'agent d'identite;
 - `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` devront rester coherents avec cette separation entre canon actif et staging temporaire;
 - les logs identity doivent rester compacts, sans dump de contenu brut, mais rendre visibles au minimum:
-  - le nombre de tours actuellement bufferises;
-  - le seuil configure (`15`);
+  - le nombre de paires `user/assistant` actuellement bufferisees;
+  - le seuil configure (`15` paires);
   - le statut du dernier passage de l'agent;
-  - le nombre de tours consideres;
+  - le nombre de paires considerees;
   - le nombre de candidats traites;
   - les operations retenues par sujet (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`);
   - la presence d'un conflit ouvert;
@@ -398,16 +431,18 @@ Ordre de travail recommande:
 
 1. figer ce contrat doctrinal `static` / `mutable`;
 2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;
-3. remplacer le declenchement a chaque tour par un buffer temporaire de 15 tours distinct du `mutable` canonique;
-4. faire travailler l'agent d'identite sur cette fenetre de 15 tours, avec `static`, `mutable`, evidences durables et tensions ouvertes;
-5. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
-6. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
-7. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-8. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-9. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-10. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
-11. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone de l'agent;
-12. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
+3. remplacer le declenchement a chaque tour par un buffer temporaire de 15 paires `user/assistant` distinct du `mutable` canonique;
+4. faire travailler l'agent d'identite sur cette fenetre de 15 paires, puis effacer le buffer une fois son passage termine;
+5. formaliser l'unite de travail de l'agent comme proposition identitaire canonisable, et non comme simple morceau de texte;
+6. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
+7. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
+8. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
+9. formaliser le regime de saturation du `mutable`: ponderation des traits, promotion des traits les plus stabilises vers `static`, recalage du budget de projection du `static`;
+10. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
+11. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
+12. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
+13. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone de l'agent;
+14. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
 
 Definition of done doctrinale pour ce lot:
 - `static` est defini comme fond et noeud identitaire;
@@ -417,10 +452,12 @@ Definition of done doctrinale pour ce lot:
 - la gestion des contradictions est fixee;
 - le writer de `mutable` n'est plus pense comme une reecriture globale a chaque tour;
 - le contrat d'operations locales (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`) est pose;
-- le regime `buffer temporaire de 15 tours -> appel de l'agent d'identite` est pose;
+- le regime `buffer temporaire de 15 paires user/assistant -> appel de l'agent d'identite -> effacement du buffer` est pose;
 - le besoin d'un contexte elargi, distinct du simple dernier tour, est pose;
+- l'unite de travail de l'agent est posee comme proposition identitaire canonisable;
 - le controle semantique explicite avant ajout au `mutable` est pose;
 - la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
+- un premier regime de saturation est pose, avec promotion possible des traits les plus stabilises du `mutable` vers `static` et recalage du budget de projection du `static`;
 - l'observabilite et les surfaces admin identity sont explicitement a realigner sur ce nouveau regime;
 - les couches laterales ne brouillent plus le centre du document.
