@@ -5,12 +5,12 @@ Classement: `app/docs/todo-todo/memory/`
 Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
 Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
-Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique, et laisse B5/B6 ouverts
+Decision runtime du 2026-04-17: les lots B1-B5 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique, et ne laisse plus en B6 qu'une decision residuelle sur la persistence explicite des tensions ouvertes du nouvel agent
 
 ## 1. Regle de travail
 
 - [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
-- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5/B6 restent ouverts.
+- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5 est ferme et B6 ne laisse plus ouverte que la persistence explicite des tensions ouvertes du nouvel agent.
 - [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
 
 ## A. Audit code-first de l'existant
@@ -103,16 +103,16 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 ### B6. Revoir l'articulation avec le legacy identity
 
-- [ ] Decider explicitement si `persist_identity_entries(...)`, `identity_evidence` et `identity_conflicts` restent strictement legacy/diagnostic ou s'ils servent aussi le nouvel agent comme matiere auxiliaire.
-- [ ] Ne pas laisser le staging devenir une resurrection masquee du legacy fragmentaire `accepted|deferred|rejected`.
+- [x] Decider explicitement si `persist_identity_entries(...)`, `identity_evidence` et `identity_conflicts` restent strictement legacy/diagnostic ou s'ils servent aussi le nouvel agent comme matiere auxiliaire.
+- [x] Ne pas laisser le staging devenir une resurrection masquee du legacy fragmentaire `accepted|deferred|rejected`.
 - [ ] Trancher le sort des tensions ouvertes du nouvel agent: reutilisation explicite de `identity_conflicts` ou nouvelle persistence dediee.
-- [ ] Maintenir `identities`, `identity_evidence` et `identity_conflicts` hors injection active tant qu'une migration explicite n'a pas ete decidee.
+- [x] Maintenir `identities`, `identity_evidence` et `identity_conflicts` hors injection active tant qu'une migration explicite n'a pas ete decidee.
 
 ## C. Nettoyage de l'ancien systeme
 
 ### C1. Ce qui devra disparaitre
 
-- [ ] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
+- [x] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
 - [ ] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
 - [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
 - [ ] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
@@ -135,9 +135,9 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 ### C4. Ce qui devra seulement etre requalifie
 
 - [ ] Requalifier `identity-governance` pour distinguer les caps doctrinaux cibles du nouveau regime et les caps encore actifs du runtime non migre.
-- [ ] Requalifier `identity-read-model` et `/identity` pour distinguer canon actif, staging temporaire et verdict agent sans les confondre.
+- [x] Requalifier `identity-read-model` et `/identity` pour distinguer canon actif, staging temporaire et verdict agent sans les confondre.
 - [ ] Requalifier les roadmaps/clotures archivees qui parlaient d'une `mutable narrative` reecrite, afin qu'elles restent historiques sans redevenir une verite active.
-- [ ] Requalifier les tests qui continueraient a passer tout en validant en fait l'ancien monde.
+- [x] Requalifier les tests qui continueraient a passer tout en validant en fait l'ancien monde.
 
 ### C5. Decisions B6 appliquees
 
@@ -177,9 +177,9 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 - [ ] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
 - [ ] Requalifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` au-dela du simple budget `3000/3300` pour rendre visibles scoring, promotion, staging et suspension sans les traiter comme de simples caps.
-- [ ] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
-- [ ] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.
-- [ ] Modifier les textes UI `/identity` et `/hermeneutic-admin` qui presentent encore la mutable unique comme seule couche mouvante.
+- [x] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
+- [x] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.
+- [x] Modifier les textes UI `/identity` et `/hermeneutic-admin` qui presentent encore la mutable unique comme seule couche mouvante.
 
 ### E2. Documents a relire avant patch runtime, puis a traiter comme sources historiques
 
@@ -196,16 +196,16 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 ## F. Sort explicite de l'ancien prompt `identity_mutable_rewriter`
 
 - [x] Requalifier `app/prompts/identity_mutable_rewriter.txt` comme repere legacy retire pour qu'il ne puisse plus etre lu comme consigne runtime active.
-- [ ] Retirer du prompt legacy tout ce qui autorise encore `tone`, `relational positioning`, `continuity of voice`, `durable interests` ou `conversational preferences` comme porte d'entree generale du `mutable`.
-- [ ] Remplacer l'instruction de reecriture globale du bloc par un contrat d'agent qui travaille sur des propositions identitaires canonisables et des operations locales.
+- [x] Retirer du prompt legacy tout ce qui autorise encore `tone`, `relational positioning`, `continuity of voice`, `durable interests` ou `conversational preferences` comme porte d'entree generale du `mutable`.
+- [x] Remplacer l'instruction de reecriture globale du bloc par un contrat d'agent qui travaille sur des propositions identitaires canonisables et des operations locales.
 - [x] Verifier qu'aucun autre appel, test, doc ou nom d'event ne continue a presenter ce prompt legacy comme la source active du nouveau regime.
 - [ ] Traiter comme risque majeur le cas ou ce prompt serait oublie: il pourrait continuer a recanoniser des preferences ou du positionnement relationnel meme si une partie de l'applicateur Python a deja migre.
 
 ## G. Definition of done operatoire
 
-- [ ] Le runtime n'appelle plus un rewriter global par tour et n'utilise plus `recent_2` comme base identitaire canonique.
+- [x] Le runtime n'appelle plus un rewriter global par tour et n'utilise plus `recent_2` comme base identitaire canonique.
 - [ ] Le staging de 15 paires existe, reste distinct du canon actif et est observable cote admin.
 - [ ] L'agent identitaire periodique renvoie un JSON strict par operations, applique par une couche deterministe et fail-closed.
 - [ ] Les scores `frequency_norm`, `recency_norm` et `strength`, les seuils, la promotion `mutable -> static` et la suspension automatique sont implementes et testes.
-- [ ] Le read-model, les runtime representations, `/identity`, `/hermeneutic-admin` et les logs disent vrai sur le nouveau regime sans exposer de contenu brut.
-- [ ] Les specs vivantes et les tests ne valident plus silencieusement l'ancien monde `rewrite/no_change` par tour.
+- [x] Le read-model, les runtime representations, `/identity`, `/hermeneutic-admin` et les logs disent vrai sur le nouveau regime sans exposer de contenu brut.
+- [x] Les specs vivantes et les tests ne valident plus silencieusement l'ancien monde `rewrite/no_change` par tour.
