@@ -238,21 +238,29 @@ Regle de prudence:
 
 Ce document n'ouvre pas encore l'implementation, mais il fixe les contraintes minimales de la future mise en oeuvre.
 
-### 8.1 Contrat du writer de `mutable`
+### 8.1 Contrat de l'agent d'identite pour `mutable`
 
 Le rewriter actuel doit cesser d'etre pense comme un rewriter global du texte entier a chaque passage.
 
-Le futur writer de `mutable` devra etre recadre pour:
-- juger l'admissibilite identitaire d'une proposition;
-- conserver par defaut le `mutable` existant;
-- n'ajouter, resserrer ou fusionner que ce qui merite vraiment d'entrer dans le canon evolutif;
-- refuser la canonisation en cas de doute, de contradiction non resolue ou de derive vers l'utile non identitaire.
+Le futur writer de `mutable`, pense ici comme un agent d'identite, devra:
+- intervenir sur une fenetre elargie plutot que sur les 2 derniers tours;
+- lire `llm.static` et `user.static` courants;
+- lire `llm.mutable` et `user.mutable` courants;
+- lire la fenetre temporaire de tours accumules avant passage;
+- lire les evidences identitaires recentes retenues comme durables;
+- lire les tensions ou contradictions deja ouvertes autour du canon identitaire.
+
+Son travail cible:
+- extraire de cette matiere des candidats identitaires recevables;
+- comparer semantiquement chaque candidat au `static` et au `mutable` existants;
+- comparer aussi les candidats entre eux avant toute ecriture;
+- refuser toute canonisation en cas de doute, de contradiction non resolue, de doublon, de reformulation faible ou de derive vers l'utile non identitaire.
 
 Le point cle n'est plus seulement:
 - `rewrite` ou `no_change`.
 
 Le point cle devient:
-- selon quel contrat d'admission cette decision est prise;
+- selon quel contrat d'admission une proposition est jugee;
 - et selon quelle operation locale le `mutable` est modifie sans etre integralement reecrit.
 
 Sorties cibles a ce stade:
@@ -263,36 +271,49 @@ Sorties cibles a ce stade:
 - `raise_conflict`
 
 Regle directrice:
-- le writer ne doit pas reecrire tout le `mutable` a chaque intervention;
+- l'agent ne doit pas reecrire tout le `mutable` a chaque intervention;
 - il doit d'abord voir si quelque chose s'ajoute, se resserre, se fusionne ou doit rester en conflit ouvert;
 - une reecriture globale du bloc entier ne peut etre pensee, plus tard, que comme une operation rare de compaction distincte.
-- ce writer doit tendre vers un fonctionnement plus agentique, avec un vrai travail de consolidation plutot qu'une reecriture pauvre de fin de tour.
 
-### 8.2 Cadence et contexte de travail du writer
+Controle semantique minimal avant toute operation:
+- pas de doublon semantique avec `static`;
+- pas de doublon semantique avec le `mutable` existant;
+- pas de contradiction semantique avec `static`;
+- pas de contradiction semantique avec le `mutable` existant;
+- pas de contradiction semantique entre plusieurs candidats que l'agent s'appreterait a ajouter.
 
-Le writer de `mutable` ne doit pas travailler a chaque fin de tour.
+### 8.2 Cadence, buffer temporaire et contexte de travail
 
-Cadence cible a ce stade:
+L'agent d'identite pour `mutable` ne doit pas travailler a chaque fin de tour.
+
+Cadence cible retenue a ce stade:
 - cadence fixe;
 - pas de declenchement `trigger-based`;
-- passage tous les 10 tours par defaut;
-- variante a comparer plus tard: tous les 15 tours si 10 reste trop frequent ou trop sensible au bruit.
+- seuil simple: `N = 15` tours.
+
+Premier regime cible:
+- a chaque tour, on ne reecrit plus le `mutable`;
+- on accumule a la place une fenetre temporaire de tours dans un espace distinct du `mutable` canonique;
+- quand cette fenetre atteint 15 tours, on appelle l'agent d'identite;
+- l'agent travaille alors sur cette fenetre elargie au lieu de travailler sur 2 tours seulement.
 
 Le probleme actuel est double:
 - il travaille trop souvent;
 - il voit trop peu de matiere.
 
-Contexte cible a fournir au writer lors de son passage:
+Contexte cible a fournir a l'agent lors de son passage:
 - `llm.static` et `user.static` courants;
 - `llm.mutable` et `user.mutable` courants;
-- une fenetre elargie des 10 derniers tours, ou 15 si la cadence retenue est 15;
+- la fenetre temporaire de 15 tours;
 - les evidences identitaires recentes pertinentes deja retenues comme durables;
 - les tensions ou contradictions deja ouvertes autour du `mutable`.
 
-Regle de conception:
-- un writer qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
-- la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant.
-- parce qu'il n'intervient plus a chaque tour, ce writer peut devenir plus couteux et plus rigoureux.
+Regles de conception:
+- un agent qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
+- la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant;
+- le stockage temporaire de cette fenetre doit rester distinct du `mutable` canonique;
+- la modalite exacte de consommation de la fenetre (reset complet, glissement, autre) reste a fixer plus tard;
+- parce qu'il n'intervient plus a chaque tour, cet agent peut devenir plus couteux et plus rigoureux;
 - il peut etre pense, plus tard, comme une tache asynchrone ou un module separe, afin de ne pas peser sur la latence de la reponse courante.
 
 ### 8.3 Garde-fou metier entre `static` et `mutable`
@@ -325,18 +346,32 @@ Evolution cible deja retenue dans ce brouillon:
 - la capacite cible du `mutable` doit etre portee a 3000 caracteres pour `llm` comme pour `user`;
 - ce changement doit etre implemente avec le nouveau regime de writer periodique et plus agentique, pas sur la base du mecanisme actuel de reecriture a chaque tour;
 - le plafond dur exact devra etre recale en coherence avec cette nouvelle cible.
+- un espace de staging temporaire doit etre introduit pour accumuler la fenetre de 15 tours sans la confondre avec le `mutable` canonique;
+- si l'agent devient asynchrone, son etat d'execution doit rester lisible sans brouiller la lecture des couches identitaires actives.
 
 ### 8.5 Observabilite
 
 L'observabilite n'est pas le centre de ce TODO, mais elle reste une contrainte dure:
 - ne pas casser `identities_read`;
 - ne pas casser `identity_write`;
-- ne pas casser `identity_mutable_rewrite`;
-- ne pas casser `identity_mutable_rewrite_apply`;
+- faire evoluer `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` pour qu'ils decrivent le nouveau regime reel plutot qu'une reecriture globale par tour;
 - ne pas casser les lectures `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations`.
 
 Si le contrat change plus tard:
 - traiter ce changement comme sujet de compatibilite et, si besoin, de versionnement explicite.
+
+Implications minimales pour logs et surfaces admin:
+- la page `/identity` doit pouvoir montrer, a terme, non seulement le canon actif, mais aussi l'etat du buffer temporaire et le dernier passage de l'agent d'identite;
+- `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` devront rester coherents avec cette separation entre canon actif et staging temporaire;
+- les logs identity doivent rester compacts, sans dump de contenu brut, mais rendre visibles au minimum:
+  - le nombre de tours actuellement bufferises;
+  - le seuil configure (`15`);
+  - le statut du dernier passage de l'agent;
+  - le nombre de tours consideres;
+  - le nombre de candidats traites;
+  - les operations retenues par sujet (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`);
+  - la presence d'un conflit ouvert;
+  - le mode d'execution si l'agent devient asynchrone.
 
 ## 9. Hors-scope de ce lot
 
@@ -363,14 +398,16 @@ Ordre de travail recommande:
 
 1. figer ce contrat doctrinal `static` / `mutable`;
 2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;
-3. fixer une cadence periodique sobre pour le writer de `mutable` (10 tours par defaut, 15 comme variante a comparer), sans `trigger-based`;
-4. elargir le contexte de travail du writer au-dela des 2 derniers tours;
-5. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
-6. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-7. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-8. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-9. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone du writer;
-10. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
+3. remplacer le declenchement a chaque tour par un buffer temporaire de 15 tours distinct du `mutable` canonique;
+4. faire travailler l'agent d'identite sur cette fenetre de 15 tours, avec `static`, `mutable`, evidences durables et tensions ouvertes;
+5. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
+6. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
+7. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
+8. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
+9. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
+10. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
+11. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone de l'agent;
+12. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
 
 Definition of done doctrinale pour ce lot:
 - `static` est defini comme fond et noeud identitaire;
@@ -380,7 +417,10 @@ Definition of done doctrinale pour ce lot:
 - la gestion des contradictions est fixee;
 - le writer de `mutable` n'est plus pense comme une reecriture globale a chaque tour;
 - le contrat d'operations locales (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`) est pose;
-- la cadence periodique fixe et le besoin d'un contexte elargi sont poses;
+- le regime `buffer temporaire de 15 tours -> appel de l'agent d'identite` est pose;
+- le besoin d'un contexte elargi, distinct du simple dernier tour, est pose;
+- le controle semantique explicite avant ajout au `mutable` est pose;
 - la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
+- l'observabilite et les surfaces admin identity sont explicitement a realigner sur ce nouveau regime;
 - les couches laterales ne brouillent plus le centre du document.
