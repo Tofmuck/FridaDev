@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 
 from memory import memory_lexical_sql
@@ -141,6 +142,36 @@ def init_db(
                     );
                     '''
                 )
+                cur.execute(
+                    '''
+                    CREATE TABLE IF NOT EXISTS identity_mutable_staging (
+                        conversation_id             TEXT PRIMARY KEY,
+                        buffer_pairs_json           JSONB       NOT NULL DEFAULT '[]'::jsonb,
+                        buffer_pairs_count          INTEGER     NOT NULL DEFAULT 0,
+                        buffer_target_pairs         INTEGER     NOT NULL DEFAULT 15,
+                        auto_canonization_suspended BOOLEAN     NOT NULL DEFAULT FALSE,
+                        last_agent_status           TEXT,
+                        last_agent_reason           TEXT,
+                        last_agent_run_ts           TIMESTAMPTZ,
+                        created_ts                  TIMESTAMPTZ DEFAULT now(),
+                        updated_ts                  TIMESTAMPTZ DEFAULT now()
+                    );
+                    '''
+                )
+                cur.execute(
+                    '''
+                    ALTER TABLE identity_mutable_staging
+                    ALTER COLUMN buffer_pairs_json SET DEFAULT '[]'::jsonb
+                    '''
+                )
+                cur.execute(
+                    '''
+                    UPDATE identity_mutable_staging
+                    SET buffer_pairs_json = %s::jsonb
+                    WHERE buffer_pairs_json IS NULL
+                    ''',
+                    (json.dumps([]),),
+                )
 
                 # identities migration (idempotent)
                 cur.execute("ALTER TABLE identities ADD COLUMN IF NOT EXISTS conversation_id TEXT;")
@@ -255,6 +286,12 @@ def init_db(
                     '''
                     CREATE INDEX IF NOT EXISTS summaries_embedding_hnsw
                     ON summaries USING hnsw (embedding vector_cosine_ops);
+                    '''
+                )
+                cur.execute(
+                    '''
+                    CREATE INDEX IF NOT EXISTS identity_mutable_staging_updated_ts_idx
+                    ON identity_mutable_staging (updated_ts DESC);
                     '''
                 )
 

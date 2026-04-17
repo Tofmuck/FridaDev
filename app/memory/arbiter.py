@@ -36,9 +36,11 @@ _METRICS: Dict[str, int] = {
     'arbiter_call_count': 0,
     'identity_extractor_call_count': 0,
     'identity_mutable_rewriter_call_count': 0,
+    'identity_periodic_agent_call_count': 0,
     'arbiter_parse_error_count': 0,
     'identity_parse_error_count': 0,
     'identity_mutable_rewriter_parse_error_count': 0,
+    'identity_periodic_agent_parse_error_count': 0,
     'arbiter_fallback_count': 0,
 }
 
@@ -681,6 +683,67 @@ def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] |
         parse_count = _inc_metric('identity_mutable_rewriter_parse_error_count')
         logger.error(
             'identity_mutable_rewriter_error err=%s parse_error_count=%s',
+            exc,
+            parse_count,
+        )
+        return None
+
+
+def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any] | None:
+    _inc_metric('identity_periodic_agent_call_count')
+    if not isinstance(payload_input, dict):
+        return None
+
+    arbiter_model = _runtime_arbiter_model_name()
+    system_prompt = _load_prompt(
+        config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
+        'identity_periodic_agent',
+    )
+    if not system_prompt:
+        return None
+
+    payload = {
+        'model': arbiter_model,
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {
+                'role': 'user',
+                'content': json.dumps(payload_input, ensure_ascii=False, indent=2),
+            },
+        ],
+        'temperature': 0.0,
+        'top_p': 1.0,
+        'max_tokens': 1400,
+    }
+
+    try:
+        response = requests.post(
+            f'{config.OR_BASE}/chat/completions',
+            json=payload,
+            headers=llm_client.or_headers(caller='identity_periodic_agent'),
+            timeout=config.ARBITER_TIMEOUT_S,
+        )
+        response.raise_for_status()
+        response_payload = llm_client.read_openrouter_response_payload(response)
+        llm_client.log_provider_metadata(
+            logger,
+            'identity_periodic_agent_provider_response',
+            llm_client.extract_openrouter_provider_metadata(
+                response_payload,
+                requested_model=arbiter_model,
+            ),
+        )
+        raw = llm_client.extract_openrouter_text(response_payload)
+        result = _safe_json_loads(raw)
+        logger.info('identity_periodic_agent_result keys=%s', sorted(result.keys()))
+        return result
+    except requests.exceptions.Timeout:
+        logger.warning('identity_periodic_agent_timeout model=%s', arbiter_model)
+        return None
+    except Exception as exc:
+        parse_count = _inc_metric('identity_periodic_agent_parse_error_count')
+        logger.error(
+            'identity_periodic_agent_error err=%s parse_error_count=%s',
             exc,
             parse_count,
         )

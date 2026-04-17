@@ -188,7 +188,7 @@ Forbidden by default:
 - embedding vectors
 
 Identity exception:
-- `identities_read`, `identity_write`, `identity_mutable_rewrite_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
+- `identities_read`, `identity_write`, `identity_periodic_agent`, `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
 - forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts
 

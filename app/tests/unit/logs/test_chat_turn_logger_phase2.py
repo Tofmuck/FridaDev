@@ -174,7 +174,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
         self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
 
-    def test_identity_mutable_rewrite_event_stays_compact_without_content_preview(self) -> None:
+    def test_identity_periodic_agent_event_stays_compact_without_content_preview(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -184,17 +184,19 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
 
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
-            conversation_id='conv-mutable-rewrite',
+            conversation_id='conv-periodic-agent',
             user_msg='bonjour',
             web_search_enabled=False,
         )
         try:
             chat_turn_logger.emit(
-                'identity_mutable_rewrite',
+                'identity_periodic_agent',
                 status='ok',
                 payload={
-                    'request_status': 'ok',
-                    'reason_code': 'processed',
+                    'buffer_pairs_count': 15,
+                    'buffer_target_pairs': 15,
+                    'buffer_cleared': True,
+                    'writes_applied': True,
                     'outcomes': [
                         {
                             'subject': 'llm',
@@ -214,15 +216,15 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         },
                     ],
                 },
-                prompt_kind='identity_mutable_rewriter',
+                prompt_kind='identity_periodic_agent',
             )
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
 
-        rewrite_event = next(event for event in observed if event['stage'] == 'identity_mutable_rewrite')
-        payload = rewrite_event['payload_json']
-        self.assertEqual(payload['prompt_kind'], 'identity_mutable_rewriter')
+        periodic_event = next(event for event in observed if event['stage'] == 'identity_periodic_agent')
+        payload = periodic_event['payload_json']
+        self.assertEqual(payload['prompt_kind'], 'identity_periodic_agent')
         self.assertNotIn('preview', payload)
         self.assertEqual(len(payload['outcomes']), 2)
         self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))

@@ -60,6 +60,17 @@ class _MutableStore:
         return {'subject': subject, 'content': previous}
 
 
+class _MutableStoreWithStagingGuard(_MutableStore):
+    def append_identity_staging_pair(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not write into identity staging')
+
+    def mark_identity_staging_status(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not touch identity staging metadata')
+
+    def clear_identity_staging_buffer(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not clear identity staging')
+
+
 class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
     def test_service_module_stays_below_repo_size_limit(self) -> None:
         service_path = APP_DIR / 'admin' / 'admin_identity_mutable_edit_service.py'
@@ -117,6 +128,28 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['reason_code'], 'set_applied')
         self.assertIn('runtime', store.state['user'])
+        self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
+
+    def test_set_valid_keeps_admin_edit_on_canonical_mutable_not_staging(self) -> None:
+        store = _MutableStoreWithStagingGuard({'llm': 'Frida reste sobre.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'llm',
+                'action': 'set',
+                'content': 'Frida reste sobre, concise et stable.',
+                'reason': 'correction operateur',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(store.state['llm'], 'Frida reste sobre, concise et stable.')
+        self.assertEqual(store.upsert_calls[0][2], 'admin_identity_mutable_edit')
         self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
 
     def test_clear_valid_removes_canonical_mutable(self) -> None:

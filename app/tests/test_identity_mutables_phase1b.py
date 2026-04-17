@@ -153,6 +153,8 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertIn('create table if not exists identity_mutables', joined)
         self.assertIn('constraint identity_mutables_subject_chk', joined)
         self.assertIn('create index if not exists identity_mutables_updated_ts_idx', joined)
+        self.assertIn('create table if not exists identity_mutable_staging', joined)
+        self.assertIn('create index if not exists identity_mutable_staging_updated_ts_idx', joined)
 
     def test_mutable_identity_round_trip_keeps_one_canonical_row_per_subject(self) -> None:
         state: dict[str, dict[str, object]] = {}

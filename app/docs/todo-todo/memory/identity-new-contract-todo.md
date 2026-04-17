@@ -5,36 +5,36 @@ Classement: `app/docs/todo-todo/memory/`
 Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
 Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
-Contrainte dure: aucun patch runtime n'est realise dans ce document; ce fichier prepare les futurs lots
+Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit desormais l'etat reel post-staging/agent periodique et laisse B3/B4/B5/B6 ouverts
 
 ## 1. Regle de travail
 
 - [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
-- [x] La baseline auditee du 2026-04-17 est encore le regime `static + mutable narrative` avec reecriture globale du `mutable` par tour, sans buffer de 15 paires ni agent identitaire periodique.
+- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped et agent identitaire periodique fail-closed; B3/B4/B5/B6 restent ouverts.
 - [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
 
 ## A. Audit code-first de l'existant
 
 ### A1. Cadence, point d'appel runtime et payload actuel
 
-- [x] `app/core/chat_llm_flow.py` appelle `record_identity_entries_for_mode(...)` apres finalisation assistant avec `recent_2`; la couture active travaille donc sur les 2 derniers messages `user/assistant`, pas sur 15 paires.
-- [x] `app/core/chat_memory_flow.py` persiste d'abord les entrees legacy via `persist_identity_entries(...)`, puis appelle `_refresh_mutable_identities(...)`; la mutable canonique reste donc un sous-produit du chemin legacy en mode `enforced_all`.
-- [x] `app/core/chat_memory_flow.py` garde le chemin rewriter en `fail-open`: si le rewriter casse, `identity_mode_apply.action=persist_enforced` reste vrai et la conversation continue.
-- [x] `app/memory/memory_identity_mutable_rewriter.py::_build_rewriter_payload()` n'envoie aujourd'hui que `recent_turns`, `identities.{llm,user}.{static,mutable_current}` et `mutable_budget.{target_chars,max_chars}`.
-- [x] Le runtime courant ne possede aucun staging identitaire distinct de `identity_mutables`; aucun compteur de paires, aucun statut de dernier run, aucun flag de suspension n'existe encore.
+- [x] `app/core/chat_llm_flow.py` appelle `record_identity_entries_for_mode(...)` apres finalisation assistant avec une paire complete `user/assistant`; la couture active n'utilise plus `recent_2`.
+- [x] `app/core/chat_memory_flow.py` persiste d'abord les entrees legacy via `persist_identity_entries(...)`, puis appelle `_run_periodic_identity_agent(...)`; la maintenance canonique ne passe plus par un rewriter per-turn.
+- [x] `app/core/chat_memory_flow.py` garde le chemin agent periodique en `fail-closed` sur le canon: si le staging, l'appel agent ou l'applicateur cassent, `identity_mode_apply.action=persist_enforced_buffered` reste vrai, la conversation continue et le buffer n'est pas purge.
+- [x] `app/memory/memory_identity_periodic_agent.py::_build_agent_payload()` envoie aujourd'hui `buffer_pairs`, `buffer_pairs_count`, `buffer_target_pairs`, `identities.{llm,user}.{static,mutable_current}` et `mutable_budget.{target_chars,max_chars}`.
+- [x] `app/memory/memory_identity_staging.py` introduit un staging identitaire distinct de `identity_mutables` avec buffer temporaire, compteur de paires, statut du dernier run et flag `auto_canonization_suspended` encore passif.
 
-### A2. Prompt legacy, contrat agent et garde d'admission actuelle
+### A2. Prompt actuel, contrat agent et garde d'admission
 
-- [x] `app/prompts/identity_mutable_rewriter.txt` demande encore une reecriture globale par sujet avec schema strict `{action: no_change|rewrite, content, reason}`.
-- [x] Le prompt legacy autorise encore `tone`, `relational positioning`, `continuity of voice` et des `durable interests or conversational preferences`; ce vocabulaire n'est pas compatible avec le nouveau contrat d'admission centre sur l'identitaire fort.
-- [x] `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` n'accepte que `no_change|rewrite` et valide un texte complet, pas des operations locales sur propositions.
-- [x] `app/identity/mutable_identity_validation.py` filtre seulement le contenu prompt-like/system/tool/runtime meta; il ne ferme pas encore l'admission aux preferences, conforts conversationnels, positionnements relationnels ou reprises utilitaires.
-- [x] `app/memory/arbiter.py::rewrite_identity_mutables()` appelle encore un LLM unique `identity_mutable_rewriter` avec `temperature=0.0`, `max_tokens=1200` et une sortie attendue `no_change|rewrite`.
+- [x] `app/prompts/identity_periodic_agent.txt` remplace le prompt runtime actif et demande un JSON strict par sujet avec operations locales et bloc `meta`.
+- [x] Le contrat technique actif n'accepte plus `rewrite/no_change`; il attend `no_change|add|tighten|merge|raise_conflict`, plus `meta.execution_status`, `meta.buffer_pairs_count` et `meta.window_complete`.
+- [x] `app/memory/memory_identity_periodic_apply.py::validate_periodic_agent_contract()` ferme la structure du JSON, interdit les mixes `no_change + autres ops` et exige les ancres explicites de `tighten` et `merge`.
+- [x] `app/identity/mutable_identity_validation.py` reste seulement un garde prompt-like/system/tool/runtime meta; la fermeture metier contre preferences, conforts conversationnels et reprises utilitaires reste a enrichir.
+- [x] `app/memory/arbiter.py::run_identity_periodic_agent()` appelle maintenant un LLM unique `identity_periodic_agent` avec `temperature=0.0`, `max_tokens=1400` et une sortie attendue a operations locales.
 
 ### A3. Persistence de la mutable et projection active
 
-- [x] `app/memory/memory_identity_mutables.py` stocke une seule ligne `identity_mutables` par sujet avec `content`, `source_trace_id`, `updated_by`, `update_reason`, `created_ts`, `updated_ts`; aucun espace n'est prevu pour le staging, les scores, les operations ou les conflits ouverts du nouvel agent.
-- [x] `app/memory/memory_identity_mutable_rewriter.py::refresh_mutable_identities()` upsert directement le texte final dans `identity_mutables`; aucune application deterministe de `add`, `tighten`, `merge` ou `raise_conflict` n'existe.
+- [x] `app/memory/memory_identity_mutables.py` reste le stockage canonique actif du `mutable` par sujet; le staging est desormais distinct et additif.
+- [x] `app/memory/memory_identity_periodic_apply.py` applique cote Python les operations locales au canon actif, degrade vers `no_change` en cas de doute et n'efface jamais le buffer sur contrat casse.
 - [x] `app/identity/active_identity_projection.py` compile encore simplement `[STATIQUE]` + `[MUTABLE]` par sujet; aucune projection du buffer temporaire, du dernier verdict agent ou d'une suspension automatique n'est disponible.
 - [x] `app/core/hermeneutic_node/inputs/identity_input.py` n'expose que `static` et `mutable`; le noeud hermeneutique ne lit pas encore un staging identitaire ni des metadonnees d'agent.
 - [x] `app/identity/identity.py` et `build_identity_block()` supposent encore que le canon actif se limite a `static` et `mutable`, sans couche intermediaire.
@@ -46,7 +46,7 @@ Contrainte dure: aucun patch runtime n'est realise dans ce document; ce fichier 
 - [x] `app/web/hermeneutic_admin/render_identity_mutable_editor.js` encode en dur `TARGET_CHARS = 1500` et `MAX_CHARS = 1650` et raconte encore une mutable canonique unique, pas un regime `canon actif + staging`.
 - [x] `app/admin/admin_identity_mutable_edit_contract.py` expose encore `mutable_budget` depuis `config.IDENTITY_MUTABLE_TARGET_CHARS` et `config.IDENTITY_MUTABLE_MAX_CHARS`, tandis que `app/admin/admin_identity_mutable_edit_service.py` continue a rejeter une edition admin au-dela de `config.IDENTITY_MUTABLE_MAX_CHARS`; l'API admin mutable raconte donc encore et enforce l'ancien regime budgetaire meme si l'UI ou la gouvernance evoluent plus tard.
 - [x] `app/web/hermeneutic_admin/render_identity_read_model.js` et `app/web/identity/render_identity_runtime_representations.js` ne savent montrer ni buffer, ni dernier run, ni suspension de canonisation.
-- [x] `app/core/chat_memory_flow.py` journalise `identity_mutable_rewrite_apply` et `app/memory/memory_identity_mutable_rewriter.py` journalise `identity_mutable_rewrite`; ces events racontent encore une reecriture globale par tour.
+- [x] `app/core/chat_memory_flow.py` journalise maintenant `identity_periodic_agent_apply` et `app/memory/memory_identity_periodic_agent.py` journalise `identity_periodic_agent`; les anciennes surfaces `identity_mutable_rewrite*` ne sont plus la couture runtime active.
 - [x] `app/docs/states/specs/log-module-contract.md` impose deja des logs identity compacts, mais ne couvre pas encore les champs du nouveau regime `buffer/staging/scores/operations/promotion/suspension`.
 
 ### A5. Specs, docs et tests qui encodent encore l'ancien regime
@@ -55,27 +55,27 @@ Contrainte dure: aucun patch runtime n'est realise dans ce document; ce fichier 
 - [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent encore `IDENTITY_MUTABLE_TARGET_CHARS = 1500` et `IDENTITY_MUTABLE_MAX_CHARS = 1650` comme doctrine verrouillee du rewriter actif.
 - [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` decrivent encore une base active sans staging, sans verdict agent et sans suspension automatique.
 - [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` encode `rewrite/no_change`, accepte des preferences et des interets techniques comme contenu mutable valide, et suppose `updated_by = identity_mutable_rewriter`.
-- [x] `app/tests/unit/chat/test_chat_memory_flow.py` suppose encore que le rewriter tourne juste apres `persist_identity_entries(...)` et voit seulement le dernier tour ou la derniere paire nettoyee.
-- [x] `app/tests/unit/memory/test_arbiter_phase4.py` attend encore que `arbiter.rewrite_identity_mutables(...)` renvoie un schema `no_change|rewrite` et charge le prompt `identity_mutable_rewriter`.
+- [x] `app/tests/unit/chat/test_chat_memory_flow.py` couvre maintenant la couture `persist_identity_entries(...) -> staging/agent periodique`, le fail-closed et la paire bufferisee nettoyee.
+- [x] `app/tests/unit/memory/test_arbiter_phase4.py` couvre maintenant `arbiter.run_identity_periodic_agent(...)`, le nouveau caller OpenRouter et le prompt runtime actif.
 - [x] `app/tests/unit/logs/test_chat_turn_logger_phase2.py` et plusieurs tests serveur/admin encodent encore les reason codes `rewrite_applied`, `no_change`, `update_reason = rewrite` et l'absence de staging dans les surfaces `/identity`.
 
 ## B. Checklist de migration du runtime
 
 ### B1. Introduire le buffer de 15 paires et la nouvelle couture d'execution
 
-- [ ] Remplacer la dependance a `recent_2` dans `app/core/chat_llm_flow.py` par une accumulation de 15 paires `user/assistant` distincte du `mutable` canonique.
-- [ ] Definir un module proprietaire de staging sous `app/memory/` pour stocker le buffer temporaire, `buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status` et `auto_canonization_suspended`.
-- [ ] Choisir explicitement la persistence du staging sans reutiliser `identity_mutables` comme faux buffer.
-- [ ] Faire en sorte que le buffer soit consomme puis efface seulement apres un passage agent termine; interdire tout effacement silencieux sur timeout, exception, JSON invalide ou rejet deterministe.
-- [ ] Requalifier `identity_mode_apply` pour qu'il ne laisse plus croire qu'une canonisation mutable se produit a chaque tour.
+- [x] Remplacer la dependance a `recent_2` dans `app/core/chat_llm_flow.py` par une accumulation de paires completes `user/assistant` distincte du `mutable` canonique.
+- [x] Definir un module proprietaire de staging sous `app/memory/` pour stocker le buffer temporaire, `buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status` et `auto_canonization_suspended`.
+- [x] Choisir explicitement une persistence additive du staging sans reutiliser `identity_mutables` comme faux buffer.
+- [x] Faire en sorte que le buffer soit consomme puis efface seulement apres un passage agent termine; interdire tout effacement silencieux sur timeout, exception, JSON invalide ou rejet deterministe.
+- [x] Requalifier `identity_mode_apply` pour qu'il ne laisse plus croire qu'une canonisation mutable se produit a chaque tour.
 
 ### B2. Remplacer le rewriter per-turn par un agent identitaire periodique
 
-- [ ] Remplacer `app/memory/memory_identity_mutable_rewriter.py` par une couture d'agent identitaire periodique qui lit `static`, `mutable`, staging buffer, evidences utiles et tensions ouvertes.
-- [ ] Revoir `app/memory/arbiter.py` pour sortir du label et de l'appel `identity_mutable_rewriter` actuels, ou documenter explicitement pourquoi le nom est conserve malgre le changement de contrat.
-- [ ] Remplacer le schema binaire `no_change|rewrite` par un JSON strict d'operations `no_change|add|tighten|merge|raise_conflict`, avec bloc `meta` et bornes fermees.
-- [ ] Introduire un applicateur deterministe cote Python qui verifie types, champs obligatoires, plages de score, garde-fous de doublon/contradiction et degrade vers `no_change` en cas de doute.
-- [ ] Garder l'agent periodique decouple de l'edition admin `POST /api/admin/identity/mutable`, qui doit continuer a toucher le canon actif et jamais le staging.
+- [x] Introduire une couture d'agent identitaire periodique qui lit `static`, `mutable` et staging buffer; l'alimentation explicite en evidences utiles et tensions ouvertes reste reportee a B6.
+- [x] Revoir `app/memory/arbiter.py` pour sortir du label et de l'appel `identity_mutable_rewriter` actifs.
+- [x] Remplacer le schema binaire `no_change|rewrite` par un JSON strict d'operations `no_change|add|tighten|merge|raise_conflict`, avec bloc `meta` ferme.
+- [x] Introduire un applicateur deterministe cote Python qui verifie types, champs obligatoires, meta, ancres explicites de `tighten|merge` et doublons exacts; les scores/plages complets restent reportes a B3.
+- [x] Garder l'agent periodique decouple de l'edition admin `POST /api/admin/identity/mutable`, qui continue a toucher le canon actif et jamais le staging.
 
 ### B3. Introduire la ponderation et les seuils deterministes
 
