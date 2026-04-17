@@ -232,20 +232,61 @@ Regle de prudence:
 
 Ce document n'ouvre pas encore l'implementation, mais il fixe les contraintes minimales de la future mise en oeuvre.
 
-### 8.1 Contrat du rewriter
+### 8.1 Contrat du writer de `mutable`
 
-Le rewriter de fin de tour devra etre recadre pour:
+Le rewriter actuel doit cesser d'etre pense comme un rewriter global du texte entier a chaque passage.
+
+Le futur writer de `mutable` devra etre recadre pour:
 - juger l'admissibilite identitaire d'une proposition;
-- produire un texte `mutable` recevable au sens fort;
+- conserver par defaut le `mutable` existant;
+- n'ajouter, resserrer ou fusionner que ce qui merite vraiment d'entrer dans le canon evolutif;
 - refuser la canonisation en cas de doute, de contradiction non resolue ou de derive vers l'utile non identitaire.
 
-Le point cle n'est pas seulement:
+Le point cle n'est plus seulement:
 - `rewrite` ou `no_change`.
 
-Le point cle est:
-- selon quel contrat d'admission cette decision est prise.
+Le point cle devient:
+- selon quel contrat d'admission cette decision est prise;
+- et selon quelle operation locale le `mutable` est modifie sans etre integralement reecrit.
 
-### 8.2 Garde-fou metier entre `static` et `mutable`
+Sorties cibles a ce stade:
+- `no_change`
+- `add`
+- `tighten`
+- `merge`
+- `raise_conflict`
+
+Regle directrice:
+- le writer ne doit pas reecrire tout le `mutable` a chaque intervention;
+- il doit d'abord voir si quelque chose s'ajoute, se resserre, se fusionne ou doit rester en conflit ouvert;
+- une reecriture globale du bloc entier ne peut etre pensee, plus tard, que comme une operation rare de compaction distincte.
+
+### 8.2 Cadence et contexte de travail du writer
+
+Le writer de `mutable` ne doit pas travailler a chaque fin de tour.
+
+Cadence cible a ce stade:
+- cadence fixe;
+- pas de declenchement `trigger-based`;
+- passage tous les 10 tours par defaut;
+- variante a comparer plus tard: tous les 15 tours si 10 reste trop frequent ou trop sensible au bruit.
+
+Le probleme actuel est double:
+- il travaille trop souvent;
+- il voit trop peu de matiere.
+
+Contexte cible a fournir au writer lors de son passage:
+- `llm.static` et `user.static` courants;
+- `llm.mutable` et `user.mutable` courants;
+- une fenetre elargie des 10 derniers tours, ou 15 si la cadence retenue est 15;
+- les evidences identitaires recentes pertinentes deja retenues comme durables;
+- les tensions ou contradictions deja ouvertes autour du `mutable`.
+
+Regle de conception:
+- un writer qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
+- la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant.
+
+### 8.3 Garde-fou metier entre `static` et `mutable`
 
 La future mise en oeuvre ne devra pas seulement juger ce qui entre dans `mutable`.
 
@@ -263,7 +304,7 @@ Regle de decision:
 - si elle entre en contradiction avec `static`, elle ne doit pas etre appliquee comme simple rewrite du `mutable`;
 - une tension `static` / `mutable` doit rester visible comme sujet d'arbitrage ou de validation, pas comme contradiction silencieuse dans le canon actif.
 
-### 8.3 Forme runtime
+### 8.4 Forme runtime
 
 La mise en oeuvre future devra rester compatible avec l'etat reel courant:
 - `static` reste file-backed;
@@ -271,7 +312,7 @@ La mise en oeuvre future devra rester compatible avec l'etat reel courant:
 - l'injection runtime reste `static + mutable narrative`;
 - le read-model continue de montrer `static` et `mutable` comme couches canoniques actives.
 
-### 8.4 Observabilite
+### 8.5 Observabilite
 
 L'observabilite n'est pas le centre de ce TODO, mais elle reste une contrainte dure:
 - ne pas casser `identities_read`;
@@ -307,12 +348,14 @@ Ils ne doivent pas piloter la premiere decision, qui est plus simple:
 Ordre de travail recommande:
 
 1. figer ce contrat doctrinal `static` / `mutable`;
-2. rediger le contrat d'admission du rewriter de fin de tour a partir des criteres de recevabilite et d'irrecevabilite ci-dessus;
-3. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-4. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-5. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-6. seulement ensuite traiter la forme finale cible du texte `mutable` et la gestion des contradictions en implementation;
-7. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
+2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;
+3. fixer une cadence periodique sobre pour le writer de `mutable` (10 tours par defaut, 15 comme variante a comparer), sans `trigger-based`;
+4. elargir le contexte de travail du writer au-dela des 2 derniers tours;
+5. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
+6. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
+7. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
+8. seulement ensuite traiter la forme finale cible du texte `mutable` et une eventuelle compaction rare du bloc;
+9. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
 
 Definition of done doctrinale pour ce lot:
 - `static` est defini comme fond et noeud identitaire;
@@ -320,5 +363,8 @@ Definition of done doctrinale pour ce lot:
 - les entrees recevables et irrecevables sont clairement tranchees;
 - la forme textuelle cible du `mutable` est claire;
 - la gestion des contradictions est fixee;
+- le writer de `mutable` n'est plus pense comme une reecriture globale a chaque tour;
+- le contrat d'operations locales (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`) est pose;
+- la cadence periodique fixe et le besoin d'un contexte elargi sont poses;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
 - les couches laterales ne brouillent plus le centre du document.
