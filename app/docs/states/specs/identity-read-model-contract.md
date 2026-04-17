@@ -35,6 +35,9 @@ Le read-model doit exposer explicitement:
 - `active_prompt_contract = "static + mutable narrative"`
 - `active_prompt_contract` reste le nom technique du contrat de compilation identity runtime, pas un prompt canonique source-of-truth
 - `identity_input_schema_version = "v2"`
+- `legacy_identity_pipeline_status = "legacy_diagnostic_only"`
+- `legacy_identity_pipeline_recorded_via = "persist_identity_entries"`
+- `legacy_identity_pipeline_storage = "identities + identity_evidence + identity_conflicts"`
 - `read_surface_stage = "lot_b5_identity_operator_truth"`
 - `used_identity_ids = []`
 - `used_identity_ids_count = 0`
@@ -159,6 +162,8 @@ Bloc read-only du legacy fragmentaire issu de `identities`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
@@ -167,8 +172,9 @@ Champs minimaux:
 - `items[]`
 
 Semantique:
-- conserve l'historique fragmentaire legacy;
-- n'est plus une verite d'injection active.
+- conserve l'historique fragmentaire legacy du pipeline diagnostique `persist_identity_entries(...)`;
+- n'est plus une verite d'injection active;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"` pour empecher toute lecture canonique.
 
 ### `evidence`
 
@@ -176,12 +182,19 @@ Bloc read-only des evidences brutes/historiques issues de `identity_evidence`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
 - `total_count`
 - `limit`
 - `items[]`
+
+Semantique:
+- couche legacy diagnostique/historique seulement;
+- hors injection active et hors staging;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`.
 
 ### `conflicts`
 
@@ -189,12 +202,19 @@ Bloc read-only des contradictions issues de `identity_conflicts`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
 - `total_count`
 - `limit`
 - `items[]`
+
+Semantique:
+- couche legacy diagnostique/historique seulement;
+- hors injection active et hors staging;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`.
 
 ## Affichage operateur
 

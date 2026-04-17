@@ -897,8 +897,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'mutable': {
                     'content': 'Frida aime les raisonnements structurés',
                     'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                    'updated_by': 'identity_mutable_rewriter',
-                    'update_reason': 'new durable preference',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
                     'updated_ts': '2026-03-24T12:00:00Z',
                 },
             },
@@ -907,8 +907,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'mutable': {
                     'content': 'Utilisateur prefere les réponses concises',
                     'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                    'updated_by': 'identity_mutable_rewriter',
-                    'update_reason': 'new durable preference',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
                     'updated_ts': '2026-03-25T09:30:00Z',
                 },
             },
@@ -937,7 +937,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertEqual(
             observed['identity_input']['frida']['mutable']['updated_by'],
-            'identity_mutable_rewriter',
+            'identity_periodic_agent',
         )
         self.assertEqual(observed['identity_input']['user']['static']['content'], 'Utilisateur statique')
         self.assertNotIn('staging', observed['identity_input']['user'])
@@ -947,7 +947,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertEqual(
             observed['identity_input']['user']['mutable']['updated_by'],
-            'identity_mutable_rewriter',
+            'identity_periodic_agent',
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
@@ -966,15 +966,15 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'llm': {
                 'content': 'Frida mutable narrative retenue',
                 'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-03-24T12:00:00Z',
             },
             'user': {
                 'content': 'User mutable narrative retenue',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-03-25T09:30:00Z',
             },
         }
@@ -1098,8 +1098,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'content': 'Je suis Christophe Muck',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-04-04T19:00:00Z',
             }
             if subject == 'user'
@@ -1142,8 +1142,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'content': 'Je suis Christophe Muck',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-04-04T19:00:00Z',
             }
             if subject == 'user'

@@ -64,6 +64,7 @@ La surface `Identity` reemploie les contrats deja fermes:
 - `GET /api/admin/hermeneutics/corrections-export`
 
 Le legacy `identity-candidates` reste visible seulement comme couche legacy/evidence-only et ne redevient pas une verite d'injection active.
+Depuis B6, il doit etre lu comme pipeline legacy diagnostique (`persist_identity_entries` -> `identities` / `identity_evidence` / `identity_conflicts`) et non comme une source active concurrente.
 
 ## Contrat JSON runtime representations
 

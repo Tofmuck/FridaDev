@@ -128,6 +128,7 @@ ARBITER_MODEL = os.environ.get('ARBITER_MODEL', 'openai/gpt-5.4-mini')
 ARBITER_TIMEOUT_S = _env_int('ARBITER_TIMEOUT_S', 10)
 ARBITER_PROMPT_PATH = os.environ.get('ARBITER_PROMPT_PATH', 'prompts/arbiter.txt')
 IDENTITY_EXTRACTOR_PROMPT_PATH = os.environ.get('IDENTITY_EXTRACTOR_PROMPT_PATH', 'prompts/identity_extractor.txt')
+# Legacy retired in B6; kept only for compatibility/documentary reference.
 IDENTITY_MUTABLE_REWRITER_PROMPT_PATH = os.environ.get(
     'IDENTITY_MUTABLE_REWRITER_PROMPT_PATH',
     'prompts/identity_mutable_rewriter.txt',

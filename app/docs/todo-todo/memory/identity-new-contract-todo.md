@@ -19,7 +19,7 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 - [x] `app/core/chat_llm_flow.py` appelle `record_identity_entries_for_mode(...)` apres finalisation assistant avec une paire complete `user/assistant`; la couture active n'utilise plus `recent_2`.
 - [x] `app/core/chat_memory_flow.py` persiste d'abord les entrees legacy via `persist_identity_entries(...)`, puis appelle `_run_periodic_identity_agent(...)`; la maintenance canonique ne passe plus par un rewriter per-turn.
-- [x] `app/core/chat_memory_flow.py` garde le chemin agent periodique en `fail-closed` sur le canon: si le staging, l'appel agent ou l'applicateur cassent, `identity_mode_apply.action=persist_enforced_buffered` reste vrai, la conversation continue et le buffer n'est pas purge.
+- [x] `app/core/chat_memory_flow.py` garde le chemin agent periodique en `fail-closed` sur le canon: si le staging, l'appel agent ou l'applicateur cassent, `identity_mode_apply.action=record_legacy_identity_diagnostics_and_stage` reste vrai, la conversation continue et le buffer n'est pas purge.
 - [x] `app/memory/memory_identity_periodic_agent.py::_build_agent_payload()` envoie aujourd'hui `buffer_pairs`, `buffer_pairs_count`, `buffer_target_pairs`, `identities.{llm,user}.{static,mutable_current}` et `mutable_budget.{target_chars,max_chars}`.
 - [x] `app/memory/memory_identity_staging.py` introduit un staging identitaire distinct de `identity_mutables` avec buffer temporaire, compteur de paires, statut du dernier run et flag `auto_canonization_suspended` maintenant actif.
 
@@ -41,11 +41,11 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 ### A4. Surfaces admin, `/identity` et observabilite
 
-- [x] `app/admin/admin_identity_read_model_service.py` expose `static`, `mutable`, `legacy_fragments`, `evidence`, `conflicts`; aucun bloc `identity_staging` ni resume du dernier passage agent n'est prevu.
-- [x] `app/admin/admin_identity_runtime_representations_service.py` expose seulement `structured_identity` et `injected_identity_text`; aucun etat du buffer ni verdict compact du dernier agent.
+- [x] `app/admin/admin_identity_read_model_service.py` expose maintenant `identity_staging`, le canon actif et les couches `legacy_fragments` / `evidence` / `conflicts`; B6 y requalifie aussi le legacy comme diagnostique seulement.
+- [x] `app/admin/admin_identity_runtime_representations_service.py` expose maintenant `structured_identity`, `injected_identity_text` et `identity_staging` avec scope conversationnel compact.
 - [x] `app/web/hermeneutic_admin/render_identity_mutable_editor.js` encode encore en dur `TARGET_CHARS = 3000` et `MAX_CHARS = 3300` et raconte une mutable canonique unique, pas encore un regime `canon actif + staging + promotion + suspension`.
 - [x] `app/admin/admin_identity_mutable_edit_contract.py` expose toujours `mutable_budget` depuis `config.IDENTITY_MUTABLE_TARGET_CHARS` et `config.IDENTITY_MUTABLE_MAX_CHARS`, tandis que `app/admin/admin_identity_mutable_edit_service.py` continue a rejeter une edition admin au-dela de `config.IDENTITY_MUTABLE_MAX_CHARS`; l'API admin mutable raconte donc encore le budget canonique courant sans exposer staging, promotion ni suspension.
-- [x] `app/web/hermeneutic_admin/render_identity_read_model.js` et `app/web/identity/render_identity_runtime_representations.js` ne savent montrer ni buffer, ni dernier run, ni suspension de canonisation.
+- [x] `app/web/hermeneutic_admin/render_identity_read_model.js` et `app/web/identity/render_identity_runtime_representations.js` montrent maintenant le staging, le dernier run utile et la qualification legacy diagnostique hors canon actif.
 - [x] `app/core/chat_memory_flow.py` journalise maintenant `identity_periodic_agent_apply` et `app/memory/memory_identity_periodic_agent.py` journalise `identity_periodic_agent`; les anciennes surfaces `identity_mutable_rewrite*` ne sont plus la couture runtime active.
 - [x] `app/docs/states/specs/log-module-contract.md` impose des logs identity compacts et couvre maintenant les champs du regime `buffer/staging/scores/operations/promotion/suspension`.
 
@@ -53,11 +53,11 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 - [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne maintenant le budget admin sur le regime periodique actif, mais autorise encore des preferences de conversation sur des themes techniques et n'expose pas le staging.
 - [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent maintenant `IDENTITY_MUTABLE_TARGET_CHARS = 3000` et `IDENTITY_MUTABLE_MAX_CHARS = 3300` comme doctrine verrouillee du regime periodique actif; la requalification complete des surfaces admin reste a faire.
-- [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` decrivent encore une base active sans staging, sans verdict agent et sans suspension automatique.
-- [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` encode `rewrite/no_change`, accepte des preferences et des interets techniques comme contenu mutable valide, et suppose `updated_by = identity_mutable_rewriter`.
+- [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` racontent maintenant le staging, le verdict agent utile et la separation legacy diagnostique / canon actif.
+- [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` est maintenant borne a une compatibilite legacy retiree: il ne valide plus `rewrite/no_change` comme verite runtime active et n'attend plus d'ecriture canonique.
 - [x] `app/tests/unit/chat/test_chat_memory_flow.py` couvre maintenant la couture `persist_identity_entries(...) -> staging/agent periodique`, le fail-closed et la paire bufferisee nettoyee.
 - [x] `app/tests/unit/memory/test_arbiter_phase4.py` couvre maintenant `arbiter.run_identity_periodic_agent(...)`, le nouveau caller OpenRouter et le prompt runtime actif.
-- [x] `app/tests/unit/logs/test_chat_turn_logger_phase2.py` et plusieurs tests serveur/admin encodent encore les reason codes `rewrite_applied`, `no_change`, `update_reason = rewrite` et l'absence de staging dans les surfaces `/identity`.
+- [x] `app/tests/unit/logs/test_chat_turn_logger_phase2.py` et les tests serveur/admin racontent maintenant le legacy comme `legacy_diagnostic*` ou `identity_periodic_agent`, sans revalider silencieusement `update_reason = rewrite`.
 
 ## B. Checklist de migration du runtime
 
@@ -119,11 +119,11 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 ### C2. Ce qui devra etre remplace
 
-- [ ] Remplacer `app/prompts/identity_mutable_rewriter.txt` par un prompt d'agent identitaire periodique fonde sur des propositions identitaires et des operations locales.
-- [ ] Remplacer `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` par un validateur de contrat multi-operations et multi-scores.
+- [x] Requalifier `app/prompts/identity_mutable_rewriter.txt` en repere legacy retire, pour qu'il ne puisse plus se faire passer pour un prompt runtime actif.
+- [x] Requalifier `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` en shim legacy retire fail-closed, hors regime runtime actif.
 - [ ] Remplacer `app/identity/mutable_identity_validation.py` comme simple garde prompt-like par une garde d'admission plus riche qui refuse aussi preferences, conforts conversationnels et formulations utilitaires.
-- [ ] Remplacer les evenements `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` par un contrat d'observabilite qui raconte le nouveau regime reel, ou versionner explicitement ces events.
-- [ ] Remplacer les assumptions `updated_by = identity_mutable_rewriter` et `update_reason = rewrite` dans les surfaces admin/tests par une semantique qui distingue agent periodique, application deterministe, promotion et correction operateur.
+- [x] Retirer les evenements `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` de l'observabilite active, au profit d'un contrat qui raconte le regime reel.
+- [x] Remplacer les assumptions `updated_by = identity_mutable_rewriter` et `update_reason = rewrite` dans les surfaces admin/tests par une semantique qui distingue agent periodique, application deterministe, promotion et correction operateur.
 
 ### C3. Ce qui devra etre garde
 
@@ -138,6 +138,14 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 - [ ] Requalifier `identity-read-model` et `/identity` pour distinguer canon actif, staging temporaire et verdict agent sans les confondre.
 - [ ] Requalifier les roadmaps/clotures archivees qui parlaient d'une `mutable narrative` reecrite, afin qu'elles restent historiques sans redevenir une verite active.
 - [ ] Requalifier les tests qui continueraient a passer tout en validant en fait l'ancien monde.
+
+### C5. Decisions B6 appliquees
+
+- [x] `persist_identity_entries(...)` reste en service seulement comme pipeline legacy diagnostique vers `identities`, `identity_evidence` et `identity_conflicts`; il ne pilote plus le canon actif ni le staging.
+- [x] `identity_evidence` et `identity_conflicts` restent relisibles pour support/historique, mais sont explicitement qualifies legacy diagnostiques hors injection active.
+- [x] `memory_identity_mutable_rewriter.py` est requalifie en shim legacy retire fail-closed; il ne pilote plus la mutable canonique ni aucun appel LLM actif.
+- [x] `app/prompts/identity_mutable_rewriter.txt` devient un repere historique retire, pas un prompt runtime actif.
+- [x] Les evenements et labels qui racontaient encore `identity_mutable_rewriter` / `rewrite` comme verite active sont remplaces par des coutures qui disent `legacy diagnostique` ou `identity_periodic_agent`.
 
 ## D. Garde-fous de regression
 
@@ -187,10 +195,10 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 ## F. Sort explicite de l'ancien prompt `identity_mutable_rewriter`
 
-- [ ] Relire ligne par ligne `app/prompts/identity_mutable_rewriter.txt` avant tout patch runtime et marquer chaque consigne comme `a retirer`, `a remplacer` ou `a conserver`.
+- [x] Requalifier `app/prompts/identity_mutable_rewriter.txt` comme repere legacy retire pour qu'il ne puisse plus etre lu comme consigne runtime active.
 - [ ] Retirer du prompt legacy tout ce qui autorise encore `tone`, `relational positioning`, `continuity of voice`, `durable interests` ou `conversational preferences` comme porte d'entree generale du `mutable`.
 - [ ] Remplacer l'instruction de reecriture globale du bloc par un contrat d'agent qui travaille sur des propositions identitaires canonisables et des operations locales.
-- [ ] Verifier qu'aucun autre appel, test, doc ou nom d'event ne continue a presenter ce prompt legacy comme la source active du nouveau regime.
+- [x] Verifier qu'aucun autre appel, test, doc ou nom d'event ne continue a presenter ce prompt legacy comme la source active du nouveau regime.
 - [ ] Traiter comme risque majeur le cas ou ce prompt serait oublie: il pourrait continuer a recanoniser des preferences ou du positionnement relationnel meme si une partie de l'applicateur Python a deja migre.
 
 ## G. Definition of done operatoire

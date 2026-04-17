@@ -15,10 +15,11 @@ Business memory (source of truth, unchanged by log deletion):
 - conversations / messages
 - traces
 - summaries
-- identities
-- identity_evidence
+- identities (legacy diagnostic history, not active canon)
+- identity_evidence (legacy diagnostic history, not active canon)
 - context hints
 - arbiter decisions
+- identity_conflicts (legacy diagnostic history, not active canon)
 
 Application logs (observability only):
 - per-stage events,
@@ -132,10 +133,15 @@ Minimum event-specific details:
   - `target_side` (mandatory): `frida` | `user`
   - one event is emitted per side; if both sides are written in one turn, emit two `identity_write` events
   - `persisted_count`, `evidence_count`, `observed_count`, `retained_count`
+  - `write_mode`, `write_effect`
   - `content_present`, `observed_total_chars`, `observed_max_chars`
   - `actions_count` map with stable action keys:
     - `add`, `update`, `override`, `reject`, `defer`
-  - goal: visibility on what arbiter/identity policy effectively retained for write-path, without raw dump
+  - stable `write_mode` values on the active B6 seam:
+    - `legacy_diagnostic`
+    - `legacy_diagnostic_shadow`
+    - `disabled`
+  - goal: visibility on the legacy diagnostic persistence path (`persist_identity_entries`) without raw dump and without presenting it as the active canon write path
   - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
 - `web_search`
@@ -189,6 +195,7 @@ Forbidden by default:
 
 Identity exception:
 - `identities_read`, `identity_write`, `identity_periodic_agent`, `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
+- legacy `identity_mutable_rewrite*` observability is retired in B6; the live regime is described through `identity_write`, `identity_mode_apply`, `identity_periodic_agent` and `identity_periodic_agent_apply`
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
 - `identity_periodic_agent` and `identity_periodic_agent_apply` may also expose compact staging/governance fields such as `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, compact `rejection_reasons`, compact per-operation score fields (`support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm`, `strength`, `threshold_verdict`) and promotion summaries without raw proposition text
 - forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts

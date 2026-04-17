@@ -312,8 +312,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         'mutable': {
                             'content': 'Frida mutable',
                             'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                            'updated_by': 'identity_mutable_rewriter',
-                            'update_reason': 'rewrite',
+                            'updated_by': 'identity_periodic_agent',
+                            'update_reason': 'periodic_agent',
                             'updated_ts': '2026-03-30T12:00:00Z',
                         },
                     },
@@ -322,8 +322,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         'mutable': {
                             'content': 'Utilisateur mutable',
                             'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                            'updated_by': 'identity_mutable_rewriter',
-                            'update_reason': 'rewrite',
+                            'updated_by': 'identity_periodic_agent',
+                            'update_reason': 'periodic_agent',
                             'updated_ts': '2026-03-30T12:30:00Z',
                         },
                     },
@@ -934,7 +934,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertNotIn('preview', payload)
             self.assertNotIn('keys', payload)
 
-    def test_persist_identity_entries_emits_identity_write_for_both_sides(self) -> None:
+    def test_persist_identity_entries_emits_legacy_diagnostic_identity_write_for_both_sides(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1025,8 +1025,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertGreater(user_payload.get('observed_max_chars', 0), 0)
         for event in identity_write_events:
             payload = event['payload_json']
-            self.assertEqual(payload.get('write_mode'), 'durable')
-            self.assertEqual(payload.get('write_effect'), 'durable_write')
+            self.assertEqual(payload.get('write_mode'), 'legacy_diagnostic')
+            self.assertEqual(payload.get('write_effect'), 'legacy_diagnostic_write')
             self.assertGreaterEqual(int(payload.get('persisted_count') or 0), int(payload.get('retained_count') or 0))
             self.assertIn('evidence_count', payload)
             self.assertIn('observed_count', payload)
@@ -1040,7 +1040,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 
-    def test_persist_identity_entries_emits_per_side_visibility_when_one_side_has_no_data(self) -> None:
+    def test_persist_identity_entries_emits_per_side_legacy_diagnostic_visibility_when_one_side_has_no_data(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1091,8 +1091,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         frida_event = by_side['frida']
         self.assertEqual(frida_event['status'], 'ok')
-        self.assertEqual(frida_event['payload_json']['write_mode'], 'durable')
-        self.assertEqual(frida_event['payload_json']['write_effect'], 'durable_write')
+        self.assertEqual(frida_event['payload_json']['write_mode'], 'legacy_diagnostic')
+        self.assertEqual(frida_event['payload_json']['write_effect'], 'legacy_diagnostic_write')
         self.assertEqual(frida_event['payload_json']['persisted_count'], 1)
         self.assertEqual(frida_event['payload_json']['evidence_count'], 1)
         self.assertEqual(frida_event['payload_json']['retained_count'], 1)
@@ -1100,7 +1100,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         user_event = by_side['user']
         self.assertEqual(user_event['status'], 'skipped')
         self.assertEqual(user_event['payload_json']['reason_code'], 'no_data')
-        self.assertEqual(user_event['payload_json']['write_mode'], 'durable')
+        self.assertEqual(user_event['payload_json']['write_mode'], 'legacy_diagnostic')
         self.assertEqual(user_event['payload_json']['write_effect'], 'none')
         self.assertEqual(user_event['payload_json']['persisted_count'], 0)
         self.assertEqual(user_event['payload_json']['evidence_count'], 0)
@@ -1116,7 +1116,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 
-    def test_persist_identity_entries_tracks_persisted_count_for_rejected_entries(self) -> None:
+    def test_persist_identity_entries_tracks_persisted_count_for_rejected_entries_in_legacy_diagnostic_pipeline(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1166,8 +1166,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         frida_payload = by_side['frida']['payload_json']
         self.assertEqual(by_side['frida']['status'], 'ok')
-        self.assertEqual(frida_payload.get('write_mode'), 'durable')
-        self.assertEqual(frida_payload.get('write_effect'), 'durable_write')
+        self.assertEqual(frida_payload.get('write_mode'), 'legacy_diagnostic')
+        self.assertEqual(frida_payload.get('write_effect'), 'legacy_diagnostic_write')
         self.assertEqual(frida_payload.get('persisted_count'), 1)
         self.assertEqual(frida_payload.get('retained_count'), 0)
         self.assertEqual(frida_payload.get('actions_count', {}).get('reject'), 1)

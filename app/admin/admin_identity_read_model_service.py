@@ -16,6 +16,9 @@ GOVERNANCE_ROUTE = '/api/admin/identity/governance'
 RUNTIME_REPRESENTATIONS_ROUTE = '/api/admin/identity/runtime-representations'
 READ_SURFACE_STAGE = 'lot_b5_identity_operator_truth'
 STAGING_STORAGE_KIND = 'identity_mutable_staging'
+LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_diagnostic_only'
+LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
+LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
 
 
 def _optional_text(value: Any) -> str | None:
@@ -224,6 +227,8 @@ def _build_collection_layer(*, storage_kind: str, snapshot: Mapping[str, Any]) -
     total_count = int(snapshot.get('total_count') or len(items))
     return {
         'storage_kind': storage_kind,
+        'classification': LEGACY_IDENTITY_PIPELINE_STATUS,
+        'runtime_authority': 'historical_only',
         'stored': total_count > 0,
         'loaded_for_runtime': False,
         'actively_injected': False,
@@ -335,6 +340,9 @@ def identity_read_model_response(
                 'used_identity_ids': used_identity_ids_list,
                 'used_identity_ids_count': len(used_identity_ids_list),
                 'legacy_drives_active_injection': False,
+                'legacy_identity_pipeline_status': LEGACY_IDENTITY_PIPELINE_STATUS,
+                'legacy_identity_pipeline_recorded_via': LEGACY_IDENTITY_PIPELINE_RECORDED_VIA,
+                'legacy_identity_pipeline_storage': LEGACY_IDENTITY_PIPELINE_STORAGE,
                 'read_surface_stage': READ_SURFACE_STAGE,
                 'identity_runtime_regime': build_identity_runtime_regime(),
             },

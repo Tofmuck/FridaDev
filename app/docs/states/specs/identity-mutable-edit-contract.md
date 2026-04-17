@@ -20,6 +20,7 @@ Ici, `dynamique` veut dire:
 Donc:
 - la mutable editee ici ne doit pas devenir une zone d'instructions de methode, de securite, de format, d'outils ou de contraintes runtime;
 - le fait qu'elle soit ensuite injectee dans le runtime n'en fait pas une source de prompt canonique.
+- depuis B6, l'ancien `identity_mutable_rewriter` est retire du runtime actif; hors edition admin, la mutable canonique n'est plus mise a jour que par le regime periodique actif et son applicateur deterministe.
 
 ## Route
 

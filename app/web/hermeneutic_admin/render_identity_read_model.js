@@ -304,6 +304,12 @@
     layerMeta.appendChild(createChip(`stored=${Boolean(layer.stored)}`));
     layerMeta.appendChild(createChip(`charge=${Boolean(layer.loaded_for_runtime)}`));
     layerMeta.appendChild(createChip(`injection_active=${Boolean(layer.actively_injected)}`));
+    if (toText(layer.classification)) {
+      layerMeta.appendChild(createChip(`couche=${toText(layer.classification)}`));
+    }
+    if (toText(layer.runtime_authority)) {
+      layerMeta.appendChild(createChip(`runtime=${toText(layer.runtime_authority)}`));
+    }
     if (layer.total_count != null) {
       layerMeta.appendChild(createChip(`count=${Number(layer.total_count) || 0}`));
     }
@@ -340,7 +346,7 @@
 
     subjectGroup.appendChild(
       createNote(
-        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes historiques utiles.",
+        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes legacy diagnostiques utiles.",
       ),
     );
 
@@ -381,24 +387,24 @@
       [
         "legacy_summary",
         {
-          label: "Fragments legacy",
-          value: `${Number(legacyLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Fragments legacy diagnostiques",
+          value: `${Number(legacyLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
       [
         "evidence_summary",
         {
-          label: "Evidences",
-          value: `${Number(evidenceLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Evidences legacy diagnostiques",
+          value: `${Number(evidenceLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
       [
         "conflicts_summary",
         {
-          label: "Conflits",
-          value: `${Number(conflictsLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Conflits legacy diagnostiques",
+          value: `${Number(conflictsLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
@@ -447,21 +453,21 @@
       },
       {
         key: "legacy_fragments",
-        label: "Fragments legacy",
-        identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment ${index + 1}`,
-        emptyMessage: "Aucun fragment legacy pour ce sujet.",
+        label: "Fragments legacy diagnostiques",
+        identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment legacy ${index + 1}`,
+        emptyMessage: "Aucun fragment legacy diagnostique pour ce sujet.",
       },
       {
         key: "evidence",
-        label: "Evidences",
+        label: "Evidences legacy diagnostiques",
         identifyTitle: (item, index) => toText(item?.evidence_id) || `Evidence ${index + 1}`,
-        emptyMessage: "Aucune evidence pour ce sujet.",
+        emptyMessage: "Aucune evidence legacy diagnostique pour ce sujet.",
       },
       {
         key: "conflicts",
-        label: "Conflits",
+        label: "Conflits legacy diagnostiques",
         identifyTitle: (item, index) => toText(item?.conflict_id) || `Conflict ${index + 1}`,
-        emptyMessage: "Aucun conflit pour ce sujet.",
+        emptyMessage: "Aucun conflit legacy diagnostique pour ce sujet.",
       },
     ].forEach((layerSpec) => {
       renderLayer(subjectGroup, layerSpec, subject[layerSpec.key]);
@@ -495,6 +501,9 @@
       appendMetaChip(metaTarget, "compile", toText(activeRuntime.active_prompt_contract));
       metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
       metaTarget.appendChild(createChip("staging=separe"));
+      if (toText(activeRuntime.legacy_identity_pipeline_status)) {
+        metaTarget.appendChild(createChip(`legacy=${toText(activeRuntime.legacy_identity_pipeline_status)}`));
+      }
       appendMetaChip(metaTarget, "identity_input", toText(activeRuntime.identity_input_schema_version));
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
       if (toText(staging.last_agent_status)) {

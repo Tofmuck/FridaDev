@@ -585,7 +585,7 @@ def persist_identity_entries(
     apply_defer_policy_for_content_fn: Callable[[str, str], None],
     expire_stale_deferred_global_fn: Callable[[], None],
 ) -> None:
-    """Persist extractor outputs into evidence + identities with defer/promote/reject policy."""
+    """Persist extractor outputs into the legacy diagnostic identity pipeline only."""
     processed = preview_identity_entries_fn(entries)
     if not processed:
         for side in ('frida', 'user'):
@@ -595,7 +595,7 @@ def persist_identity_entries(
                 reason_code='no_data',
                 payload=identity_observability.build_identity_write_payload(
                     target_side=side,
-                    write_mode='durable',
+                    write_mode='legacy_diagnostic',
                     write_effect='none',
                     persisted_count=0,
                     evidence_count=0,
@@ -684,8 +684,8 @@ def persist_identity_entries(
             reason_code=reason_code,
             payload=identity_observability.build_identity_write_payload(
                 target_side=side,
-                write_mode='durable',
-                write_effect='durable_write' if int(summary['persisted_count']) > 0 else 'none',
+                write_mode='legacy_diagnostic',
+                write_effect='legacy_diagnostic_write' if int(summary['persisted_count']) > 0 else 'none',
                 persisted_count=int(summary['persisted_count']),
                 evidence_count=int(summary['evidence_count']),
                 observed_count=int(summary['evidence_count']),

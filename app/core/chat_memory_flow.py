@@ -521,6 +521,8 @@ def record_identity_entries_for_mode(
     )
 
     if mode_enforces_identity(mode):
+        # This legacy pipeline remains diagnostic/history only; active canon writes
+        # still happen exclusively through the periodic staging -> apply path.
         memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
         periodic_summary = _run_periodic_identity_agent(
             conversation_id,
@@ -533,7 +535,7 @@ def record_identity_entries_for_mode(
             'identity_mode_apply',
             conversation_id=conversation_id,
             mode=mode,
-            action='persist_enforced_buffered',
+            action='record_legacy_identity_diagnostics_and_stage',
             entries=len(filtered_entries),
             extracted_entries=len(id_entries),
             guard_filtered_count=guard_filtered_count,
@@ -568,7 +570,7 @@ def record_identity_entries_for_mode(
         reason_code='not_applicable',
         reason_short='identity_write_shadow_mode',
         mode=mode,
-        write_mode='shadow',
+        write_mode='legacy_diagnostic_shadow',
         write_effect='evidence_only',
         side_entry_counts=side_counts,
     )
@@ -576,7 +578,7 @@ def record_identity_entries_for_mode(
         'identity_mode_apply',
         conversation_id=conversation_id,
         mode=mode,
-        action='record_evidence_shadow',
+        action='record_legacy_identity_evidence_shadow',
         entries=len(preview_entries),
         extracted_entries=len(id_entries),
         guard_filtered_count=guard_filtered_count,

@@ -12,9 +12,9 @@
   ];
 
   const LEGACY_LAYERS = [
-    { key: "legacy_fragments", label: "Fragments legacy" },
-    { key: "evidence", label: "Evidences" },
-    { key: "conflicts", label: "Conflits" },
+    { key: "legacy_fragments", label: "Fragments legacy diagnostiques" },
+    { key: "evidence", label: "Evidences legacy diagnostiques" },
+    { key: "conflicts", label: "Conflits legacy diagnostiques" },
   ];
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -316,6 +316,12 @@
     meta.appendChild(createChip(`count=${Number(safeLayer.total_count) || 0}`));
     meta.appendChild(createChip(`stored=${Boolean(safeLayer.stored)}`));
     meta.appendChild(createChip(`injected=${Boolean(safeLayer.actively_injected)}`));
+    if (toText(safeLayer.classification)) {
+      meta.appendChild(createChip(`couche=${toText(safeLayer.classification)}`));
+    }
+    if (toText(safeLayer.runtime_authority)) {
+      meta.appendChild(createChip(`runtime=${toText(safeLayer.runtime_authority)}`));
+    }
     layerGroup.appendChild(meta);
 
     const summary = document.createElement("div");
@@ -354,7 +360,7 @@
       labelWrap.appendChild(kicker);
       labelWrap.appendChild(itemTitle);
       itemHead.appendChild(labelWrap);
-      itemHead.appendChild(createChip("visible seulement"));
+      itemHead.appendChild(createChip("legacy diagnostique"));
       itemPanel.appendChild(itemHead);
 
       const itemGrid = document.createElement("div");
@@ -373,7 +379,7 @@
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
 
     if (!Object.keys(subjects).length) {
-      renderEmpty(target, "Aucune couche legacy disponible.");
+      renderEmpty(target, "Aucune couche legacy diagnostique disponible.");
       return;
     }
 
@@ -396,7 +402,7 @@
       const note = document.createElement("p");
       note.className = "admin-section-note admin-section-note-left";
       note.textContent =
-        "Ces couches restent consultables pour comprendre l'historique et les contradictions, mais elles restent hors injection active.";
+        "Ces couches viennent du pipeline legacy diagnostique (`persist_identity_entries`) et restent hors canon actif comme hors staging.";
       group.appendChild(note);
 
       LEGACY_LAYERS.forEach(({ key: layerKey, label: layerLabel }) => {

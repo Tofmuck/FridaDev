@@ -213,6 +213,13 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             data['active_runtime']['runtime_representations_read_via'],
             '/api/admin/identity/runtime-representations',
         )
+        self.assertEqual(data['active_runtime']['legacy_identity_pipeline_status'], 'legacy_diagnostic_only')
+        self.assertEqual(data['active_runtime']['legacy_identity_pipeline_recorded_via'], 'persist_identity_entries')
+        self.assertEqual(
+            data['active_runtime']['legacy_identity_pipeline_storage'],
+            'identities + identity_evidence + identity_conflicts',
+        )
+        self.assertFalse(data['active_runtime']['legacy_drives_active_injection'])
         self.assertEqual(data['active_runtime']['read_surface_stage'], 'lot_b5_identity_operator_truth')
         self.assertTrue(data['active_runtime']['identity_runtime_regime']['staging_not_injected'])
         self.assertEqual(data['active_runtime']['identity_runtime_regime']['mutable_budget']['target_chars'], 3000)
@@ -238,8 +245,14 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertTrue(data['subjects']['llm']['mutable']['actively_injected'])
         self.assertFalse(data['subjects']['llm']['legacy_fragments']['actively_injected'])
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['storage_kind'], 'identities')
+        self.assertEqual(data['subjects']['llm']['legacy_fragments']['classification'], 'legacy_diagnostic_only')
+        self.assertEqual(data['subjects']['llm']['legacy_fragments']['runtime_authority'], 'historical_only')
         self.assertEqual(data['subjects']['llm']['evidence']['storage_kind'], 'identity_evidence')
+        self.assertEqual(data['subjects']['llm']['evidence']['classification'], 'legacy_diagnostic_only')
+        self.assertEqual(data['subjects']['llm']['evidence']['runtime_authority'], 'historical_only')
         self.assertEqual(data['subjects']['llm']['conflicts']['storage_kind'], 'identity_conflicts')
+        self.assertEqual(data['subjects']['llm']['conflicts']['classification'], 'legacy_diagnostic_only')
+        self.assertEqual(data['subjects']['llm']['conflicts']['runtime_authority'], 'historical_only')
         self.assertEqual(data['subjects']['user']['mutable']['content'], 'User mutable canonique')
 
     def test_identity_read_model_static_layer_distinguishes_raw_storage_from_runtime_trimmed_content(self) -> None:

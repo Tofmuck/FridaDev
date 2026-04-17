@@ -942,7 +942,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(observed['preview_called'], 0)
         self.assertEqual(observed['evidence_called'], 0)
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'skip_mode_off')
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[1]['action'], 'persist_enforced_buffered')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[1]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
     def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self) -> None:
         events = []
@@ -1013,7 +1016,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(stage_event['status'], 'buffering')
         self.assertEqual(stage_event['reason_code'], 'below_threshold')
         self.assertEqual(stage_event['buffer_pairs_count'], 1)
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced_buffered')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
     def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_periodic_agent_raises(self) -> None:
         events = []
@@ -1055,7 +1061,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         stage_event = _event_payloads(events, 'identity_periodic_agent_apply')[0]
         self.assertEqual(stage_event['status'], 'skipped')
         self.assertEqual(stage_event['reason_code'], 'periodic_agent_flow_error')
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced_buffered')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
     def test_record_identity_entries_for_mode_does_not_pass_partial_read_overclaim_to_identity_buffer(self) -> None:
         events = []
@@ -1198,7 +1207,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertSetEqual(set(by_side.keys()), {'frida', 'user'})
         self.assertTrue(all(event['status'] == 'skipped' for event in identity_events))
         self.assertTrue(all(event['reason_code'] == 'not_applicable' for event in identity_events))
-        self.assertEqual(by_side['frida']['payload']['write_mode'], 'shadow')
+        self.assertEqual(by_side['frida']['payload']['write_mode'], 'legacy_diagnostic_shadow')
         self.assertEqual(by_side['frida']['payload']['write_effect'], 'evidence_only')
         self.assertEqual(by_side['frida']['payload']['evidence_count'], 1)
         self.assertEqual(by_side['frida']['payload']['observed_count'], 1)
@@ -1210,7 +1219,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertTrue(all('preview' not in event['payload'] for event in identity_events))
         self.assertTrue(all('entries' not in event['payload'] for event in identity_events))
         self.assertEqual(branch_events, [('not_applicable', 'identity_write_shadow_mode')])
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'record_evidence_shadow')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_evidence_shadow',
+        )
 
     def test_record_identity_entries_for_mode_filters_unsupported_web_reading_claim_in_enforced_mode(self) -> None:
         events = []
@@ -1251,7 +1263,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
 
         self.assertEqual(observed['persisted'], ('conv-identity-guard-enforced', []))
         event = _event_payloads(events, 'identity_mode_apply')[0]
-        self.assertEqual(event['action'], 'persist_enforced_buffered')
+        self.assertEqual(event['action'], 'record_legacy_identity_diagnostics_and_stage')
         self.assertEqual(event['entries'], 0)
         self.assertEqual(event['extracted_entries'], 1)
         self.assertEqual(event['guard_filtered_count'], 1)
