@@ -115,6 +115,8 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertFalse(payload['active_canon']['staging_included'])
         self.assertTrue(payload['identity_staging']['present'])
         self.assertFalse(payload['identity_staging']['actively_injected'])
+        self.assertEqual(payload['identity_staging']['scope_kind'], 'conversation_scoped_latest')
+        self.assertEqual(payload['identity_staging']['conversation_id'], 'conv-stage-2')
         self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
         self.assertEqual(payload['identity_staging']['latest_agent_activity']['reason_code'], 'double_saturation')
         self.assertTrue(payload['structured_identity']['present'])

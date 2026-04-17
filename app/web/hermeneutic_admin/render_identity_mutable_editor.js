@@ -100,11 +100,32 @@
     return layer;
   };
 
+  const describeStagingObservation = (staging) => {
+    const scopeKind = toText(staging.scope_kind) || "n/a";
+    const conversationId = toText(staging.conversation_id);
+    if (!Boolean(staging.present)) {
+      return {
+        scopeKind,
+        conversationId: "",
+        note:
+          "Aucun staging conversationnel recent observe. Cette carte reste reservee a l'edition de la mutable canonique globale.",
+      };
+    }
+    const sourceSuffix = conversationId ? ` pour la conversation ${conversationId}` : "";
+    return {
+      scopeKind,
+      conversationId,
+      note:
+        `Le staging affiche a cote n'est pas un etat global: c'est le dernier snapshot conversationnel connu (${scopeKind})${sourceSuffix}. Il reste observe seulement et n'est pas edite ici.`,
+    };
+  };
+
   const buildOperatorState = (subject, mutableLayer, currentContent, payload) => {
     const hasContent = currentContent.length > 0;
     const loadedForRuntime = Boolean(mutableLayer.loaded_for_runtime);
     const activelyInjected = Boolean(mutableLayer.actively_injected);
     const staging = identityStaging(payload);
+    const stagingObservation = describeStagingObservation(staging);
 
     let message = "Presente: modulation identitaire canonique editable.";
     if (!hasContent && subject === "llm") {
@@ -116,6 +137,7 @@
 
     return {
       message,
+      stagingNote: stagingObservation.note,
       chips: [
         createChip(`Etat: ${hasContent ? "Presente" : "Absente"}`, {
           status: hasContent ? "ok" : "skipped",
@@ -126,7 +148,13 @@
         createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
           status: activelyInjected ? "ok" : "skipped",
         }),
-        createChip(`Staging: ${Boolean(staging.present) ? "Separe" : "Aucun"}`, {
+        createChip(`Staging observe: ${Boolean(staging.present) ? "Dernier snapshot conversationnel" : "Aucun"}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Portee staging: ${stagingObservation.scopeKind}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Conversation staging: ${stagingObservation.conversationId || "n/a"}`, {
           status: Boolean(staging.present) ? "ok" : "skipped",
         }),
         createChip(`Agent: ${toText(staging.last_agent_status) || "n/a"}`, {
@@ -174,6 +202,11 @@
     operatorState.chips.forEach((chip) => operatorMeta.appendChild(chip));
     card.appendChild(operatorMeta);
 
+    const stagingObservation = document.createElement("p");
+    stagingObservation.className = "admin-section-note admin-section-note-left";
+    stagingObservation.textContent = operatorState.stagingNote;
+    card.appendChild(stagingObservation);
+
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`stored=${Boolean(mutableLayer.stored)}`));
@@ -211,6 +244,8 @@
           update_reason: toText(mutableLayer.update_reason),
           updated_ts: toText(mutableLayer.updated_ts),
           staging_target_pairs: Number(regime.staging_target_pairs) || 0,
+          staging_scope_kind: toText(staging.scope_kind) || "n/a",
+          staging_conversation_id: toText(staging.conversation_id) || "n/a",
           last_agent_status: toText(staging.last_agent_status),
           auto_canonization_suspended: Boolean(staging.auto_canonization_suspended),
         },
@@ -239,7 +274,7 @@
     textarea.value = currentContent;
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
-    contentMeta.textContent = `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`;
+    contentMeta.textContent = `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique conversationnel le plus recent ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`;
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);
 

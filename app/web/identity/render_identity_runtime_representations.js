@@ -47,7 +47,6 @@
     card.appendChild(meta);
     return card;
   };
-
   const createNote = (text) => {
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
@@ -436,7 +435,8 @@
       : {};
     const staging = identityStaging(safePayload);
     const activity = latestAgentActivity(staging);
-
+    const stagingScope = toText(staging.scope_kind);
+    const stagingConversationId = toText(staging.conversation_id);
     renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
     summaryTarget.appendChild(
       createSummaryCard({
@@ -464,11 +464,13 @@
     );
     summaryTarget.appendChild(
       createSummaryCard({
-        title: "Staging periodique",
+        title: "Staging periodique observe",
         body:
-          "Repere compact du buffer hors canon actif: il alimente l'agent identitaire mais n'est injecte ni au jugement ni a la reponse finale.",
+          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente l'agent identitaire, n'est pas un etat global du systeme, et n'est injecte ni au jugement ni a la reponse finale.`,
         chips: [
           `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+          `scope=${stagingScope || "n/a"}`,
+          ...(stagingConversationId ? [`conversation=${stagingConversationId}`] : []),
           `agent=${toText(staging.last_agent_status) || "n/a"}`,
           `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
           `promotions=${Number(activity.promotion_count) || 0}`,

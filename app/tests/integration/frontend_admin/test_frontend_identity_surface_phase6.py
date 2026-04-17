@@ -158,7 +158,10 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("staging=separe", render_source)
         self.assertIn("Projection runtime compilee pour le jugement", render_source)
         self.assertIn("Forme runtime compilee injectee", render_source)
-        self.assertIn("Staging periodique", render_source)
+        self.assertIn("Staging periodique observe", render_source)
+        self.assertIn("dernier snapshot conversationnel connu", render_source)
+        self.assertIn("n'est pas un etat global du systeme", render_source)
+        self.assertIn("scope=", render_source)
         self.assertNotIn("prompt=", render_source)
 
     def test_identity_current_state_uses_summary_read_model_mode(self) -> None:
@@ -235,6 +238,12 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             mutable_source,
         )
         self.assertIn("staging periodique, la promotion vers le statique", mutable_source)
+        self.assertIn("Le staging affiche a cote n'est pas un etat global", mutable_source)
+        self.assertIn("dernier snapshot conversationnel connu", mutable_source)
+        self.assertIn("Portee staging:", mutable_source)
+        self.assertIn("Conversation staging:", mutable_source)
+        self.assertIn("staging_scope_kind", mutable_source)
+        self.assertIn("staging_conversation_id", mutable_source)
         self.assertIn('`Etat: ${hasContent ? "Presente" : "Absente"}`', mutable_source)
         self.assertIn('`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`', mutable_source)
         self.assertIn('`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`', mutable_source)
