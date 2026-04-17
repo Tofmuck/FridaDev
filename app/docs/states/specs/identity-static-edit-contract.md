@@ -45,6 +45,12 @@ Le perimetre autorise reste borne aux racines identity canoniques:
 - un chemin absolu n'est accepte que s'il resolve dans une de ces racines;
 - tout fichier existant hors de ce perimetre est refuse fail-closed.
 
+Depuis le regime periodique identity, cette verite file-backed inclut aussi un fichier compagnon de metadata d'ecriture:
+- `.{nom-du-fichier}.identity-meta.json` a cote de la ressource statique active;
+- ce sidecar stocke `updated_by`, `update_reason` et `updated_ts`;
+- il reste file-backed, pas DB-backed, et ne cree pas une deuxieme verite canonique du statique;
+- il sert a distinguer un edit operateur recent d'une auto-promotion du `identity_periodic_agent`.
+
 Sur OVH et dans le deploiement Docker standard actuellement retenu:
 - la source canonique de `llm.static` est le fichier operateur local `state/data/identity/llm_identity.txt`, non versionne dans Git;
 - la source canonique de `user.static` est le fichier operateur local `state/data/identity/user_identity.txt`, non versionne dans Git;
@@ -110,7 +116,13 @@ La route peut seulement:
 - lire la ressource statique active resolue par le runtime;
 - ecrire atomiquement le contenu du fichier resolu;
 - ecrire un contenu vide pour `clear`;
+- ecrire ou mettre a jour le sidecar `.{nom-du-fichier}.identity-meta.json` associe a cette ressource;
+- y tracer `updated_by`, `update_reason` et `updated_ts` comme write-trace file-backed du statique;
 - emettre un audit admin compact.
+
+Cette write-trace file-backed sert aussi de source de verite operateur pour le garde `recent static operator edit`:
+- un edit `admin_identity_static_edit` recent peut suspendre une auto-promotion `mutable -> static`;
+- une auto-promotion `identity_periodic_agent` ne doit pas etre relue comme un edit operateur humain.
 
 La route ne doit pas:
 - modifier `identity_mutables`;
