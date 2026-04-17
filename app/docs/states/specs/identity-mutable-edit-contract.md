@@ -133,6 +133,12 @@ Reponse compacte attendue:
 - `active_prompt_contract = "static + mutable narrative"`
 - `identity_input_schema_version = "v2"`
 - `mutable_budget`
+- `identity_runtime_regime`
+
+Semantique:
+- `mutable_budget` continue de borner uniquement la mutable canonique (`3000 / 3300`);
+- `identity_runtime_regime` recontextualise cette couture en rappelant que le regime actif inclut aussi staging separe, promotion vers le statique et suspension automatique;
+- cette route continue a agir seulement sur le canon mutable actif, jamais sur le staging.
 
 ## Audit compact
 

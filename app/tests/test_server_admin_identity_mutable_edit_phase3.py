@@ -106,6 +106,8 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertEqual(data['active_identity_source'], 'identity_mutables')
         self.assertEqual(data['active_prompt_contract'], 'static + mutable narrative')
         self.assertEqual(data['identity_input_schema_version'], 'v2')
+        self.assertTrue(data['identity_runtime_regime']['staging_not_injected'])
+        self.assertEqual(data['identity_runtime_regime']['mutable_budget']['target_chars'], 3000)
         self.assertEqual(len(observed['upsert']), 1)
         self.assertEqual(observed['clear'], [])
         self.assertEqual(observed['logs'][0][0], 'identity_mutable_admin_edit')

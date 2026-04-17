@@ -155,8 +155,10 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
 
         self.assertIn("compile=", render_source)
         self.assertIn("pilotage_systeme=distinct", render_source)
+        self.assertIn("staging=separe", render_source)
         self.assertIn("Projection runtime compilee pour le jugement", render_source)
         self.assertIn("Forme runtime compilee injectee", render_source)
+        self.assertIn("Staging periodique", render_source)
         self.assertNotIn("prompt=", render_source)
 
     def test_identity_current_state_uses_summary_read_model_mode(self) -> None:
@@ -171,6 +173,8 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif.",
             read_model_source,
         )
+        self.assertIn("Staging identitaire", read_model_source)
+        self.assertIn("hors canon actif", read_model_source)
         self.assertIn("element(s) visibles plus bas", read_model_source)
         self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
 
@@ -230,6 +234,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             "La mutable reste editable sans signaler un degrade critique.",
             mutable_source,
         )
+        self.assertIn("staging periodique, la promotion vers le statique", mutable_source)
         self.assertIn('`Etat: ${hasContent ? "Presente" : "Absente"}`', mutable_source)
         self.assertIn('`Runtime: ${loadedForRuntime ? "Charge" : "Non charge"}`', mutable_source)
         self.assertIn('`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`', mutable_source)

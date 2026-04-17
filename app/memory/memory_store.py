@@ -48,6 +48,7 @@ __all__ = [
     'upsert_mutable_identity',
     'clear_mutable_identity',
     'get_identity_staging_state',
+    'get_latest_identity_staging_state',
     'append_identity_staging_pair',
     'mark_identity_staging_status',
     'clear_identity_staging_buffer',
@@ -348,6 +349,13 @@ def clear_mutable_identity(subject: str) -> dict[str, Any] | None:
 def get_identity_staging_state(conversation_id: str) -> dict[str, Any] | None:
     return memory_identity_staging.get_identity_staging_state(
         conversation_id,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def get_latest_identity_staging_state() -> dict[str, Any] | None:
+    return memory_identity_staging.get_latest_identity_staging_state(
         conn_factory=_conn,
         logger=logger,
     )

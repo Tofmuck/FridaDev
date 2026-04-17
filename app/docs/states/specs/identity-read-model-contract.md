@@ -6,7 +6,7 @@ Lot ferme: `Lot 2`
 
 ## But
 
-Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
+Ce contrat definit une lecture unifiee et honnete du systeme identity reel, y compris le regime periodique `staging -> agent -> canon`, sans rouvrir le canon injecte lui-meme.
 
 Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4` et `Lot 5`, des editions ou lectures distinctes documentees a part.
 
@@ -35,16 +35,20 @@ Le read-model doit exposer explicitement:
 - `active_prompt_contract = "static + mutable narrative"`
 - `active_prompt_contract` reste le nom technique du contrat de compilation identity runtime, pas un prompt canonique source-of-truth
 - `identity_input_schema_version = "v2"`
+- `read_surface_stage = "lot_b5_identity_operator_truth"`
 - `used_identity_ids = []`
 - `used_identity_ids_count = 0`
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
 - `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
+- `identity_runtime_regime` comme rappel compact des caps/seuils actifs (`mutable_budget`, `staging_target_pairs`, seuils `0.35 / 0.60`, promotion et suspension)
+- `identity_staging` comme verite read-only distincte du canon actif injecte
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
 - laisser croire que `active_prompt_contract` designe le pilotage systeme source;
 - laisser croire que `identities` pilote encore l'injection active;
+- laisser croire que le staging fait partie du canon `static + mutable`;
 - masquer la separation entre runtime actif et couches legacy.
 
 ## Structure canonique
@@ -54,8 +58,9 @@ Top-level:
 ```json
 {
   "ok": true,
-  "read_model_version": "v1",
+  "read_model_version": "v2",
   "active_runtime": {},
+  "identity_staging": {},
   "subjects": {
     "llm": {},
     "user": {}
@@ -69,6 +74,31 @@ Chaque sujet expose exactement ces couches:
 - `legacy_fragments`
 - `evidence`
 - `conflicts`
+
+## `identity_staging`
+
+Bloc read-only compact du staging identitaire conversation-scoped le plus recent connu par le runtime operateur.
+
+Champs minimaux:
+- `storage_kind = "identity_mutable_staging"`
+- `scope_kind = "conversation_scoped_latest"`
+- `present`
+- `actively_injected = false`
+- `conversation_id`
+- `buffer_pairs_count`
+- `buffer_target_pairs`
+- `buffer_frozen`
+- `last_agent_status`
+- `last_agent_reason`
+- `last_agent_run_ts`
+- `updated_ts`
+- `auto_canonization_suspended`
+- `latest_agent_activity`
+
+Semantique:
+- ce bloc ne requalifie pas le staging en canon actif;
+- il montre l'etat du buffer et du dernier passage agent sans dump du buffer brut;
+- `latest_agent_activity` resume compactement le dernier verdict utile et les promotions recentes pour cette conversation.
 
 ## Couches par sujet
 

@@ -198,6 +198,16 @@
       metaTarget.appendChild(createChip(`active_subpipeline=${Number(safePayload.active_subpipeline_count) || 0}`));
     }
 
+    target.appendChild(
+      (() => {
+        const note = document.createElement("p");
+        note.className = "admin-section-note admin-section-note-left";
+        note.textContent =
+          "Les caps 3000/3300 bornent seulement la mutable canonique. Le regime actif comprend aussi le staging a 15 paires, le scoring Python, les promotions vers le statique et la suspension automatique.";
+        return note;
+      })(),
+    );
+
     items.forEach((item) => renderItem(target, item));
   };
 

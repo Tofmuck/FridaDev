@@ -56,6 +56,37 @@
       ]);
   };
 
+  const runtimeRegime = (payload) => {
+    const activeRuntime =
+      payload?.active_runtime && typeof payload.active_runtime === "object" && !Array.isArray(payload.active_runtime)
+        ? payload.active_runtime
+        : {};
+    const regime =
+      activeRuntime.identity_runtime_regime &&
+      typeof activeRuntime.identity_runtime_regime === "object" &&
+      !Array.isArray(activeRuntime.identity_runtime_regime)
+        ? activeRuntime.identity_runtime_regime
+        : {};
+    return regime;
+  };
+
+  const identityStaging = (payload) =>
+    payload?.identity_staging && typeof payload.identity_staging === "object" && !Array.isArray(payload.identity_staging)
+      ? payload.identity_staging
+      : {};
+
+  const mutableBudget = (payload) => {
+    const regime = runtimeRegime(payload);
+    const budget =
+      regime.mutable_budget && typeof regime.mutable_budget === "object" && !Array.isArray(regime.mutable_budget)
+        ? regime.mutable_budget
+        : {};
+    return {
+      target_chars: Number(budget.target_chars) || TARGET_CHARS,
+      max_chars: Number(budget.max_chars) || MAX_CHARS,
+    };
+  };
+
   const subjectMutableLayer = (payload, subject) => {
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
     const subjectBlock = subjects[subject];
@@ -69,10 +100,11 @@
     return layer;
   };
 
-  const buildOperatorState = (subject, mutableLayer, currentContent) => {
+  const buildOperatorState = (subject, mutableLayer, currentContent, payload) => {
     const hasContent = currentContent.length > 0;
     const loadedForRuntime = Boolean(mutableLayer.loaded_for_runtime);
     const activelyInjected = Boolean(mutableLayer.actively_injected);
+    const staging = identityStaging(payload);
 
     let message = "Presente: modulation identitaire canonique editable.";
     if (!hasContent && subject === "llm") {
@@ -94,6 +126,12 @@
         createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
           status: activelyInjected ? "ok" : "skipped",
         }),
+        createChip(`Staging: ${Boolean(staging.present) ? "Separe" : "Aucun"}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Agent: ${toText(staging.last_agent_status) || "n/a"}`, {
+          status: Boolean(staging.auto_canonization_suspended) ? "error" : "ok",
+        }),
       ],
     };
   };
@@ -101,11 +139,14 @@
   const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const mutableLayer = subjectMutableLayer(payload, subject);
     const currentContent = toText(mutableLayer.content);
-    const operatorState = buildOperatorState(subject, mutableLayer, currentContent);
+    const operatorState = buildOperatorState(subject, mutableLayer, currentContent, payload);
+    const regime = runtimeRegime(payload);
+    const budget = mutableBudget(payload);
+    const staging = identityStaging(payload);
     const titleText = toText(options.title) || `${subject} mutable canonique`;
     const noteText =
       toText(options.noteText) ||
-      "Edition controlee de la mutable canonique injectee activement. Le statique dispose d'un editeur distinct; le legacy, les evidences et les conflits restent read-only.";
+      "Edition controlee de la mutable canonique injectee activement. Le staging periodique, la promotion vers le statique et la suspension automatique restent des coutures distinctes de cet editeur.";
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -139,8 +180,14 @@
     meta.appendChild(createChip(`loaded=${Boolean(mutableLayer.loaded_for_runtime)}`));
     meta.appendChild(createChip(`injected=${Boolean(mutableLayer.actively_injected)}`));
     meta.appendChild(createChip(`len=${currentContent.length}`));
-    meta.appendChild(createChip(`target=${TARGET_CHARS}`));
-    meta.appendChild(createChip(`max=${MAX_CHARS}`));
+    meta.appendChild(createChip(`target=${budget.target_chars}`));
+    meta.appendChild(createChip(`max=${budget.max_chars}`));
+    meta.appendChild(
+      createChip(
+        `staging=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+      ),
+    );
+    meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
     if (toText(mutableLayer.updated_by)) {
       meta.appendChild(createChip(`updated_by=${toText(mutableLayer.updated_by)}`));
     }
@@ -163,6 +210,9 @@
           updated_by: toText(mutableLayer.updated_by),
           update_reason: toText(mutableLayer.update_reason),
           updated_ts: toText(mutableLayer.updated_ts),
+          staging_target_pairs: Number(regime.staging_target_pairs) || 0,
+          last_agent_status: toText(staging.last_agent_status),
+          auto_canonization_suspended: Boolean(staging.auto_canonization_suspended),
         },
         "identity_mutable_editor",
       ),
@@ -189,7 +239,7 @@
     textarea.value = currentContent;
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
-    contentMeta.textContent = `Cible ${TARGET_CHARS} caracteres, plafond dur ${MAX_CHARS}, aucune troncature.`;
+    contentMeta.textContent = `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`;
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);
 

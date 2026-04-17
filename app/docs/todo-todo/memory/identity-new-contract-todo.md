@@ -94,12 +94,12 @@ Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO s
 
 ### B5. Adapter la projection active, le read-model et les representations runtime
 
-- [ ] Etendre `app/core/hermeneutic_node/inputs/identity_input.py` seulement quand le staging a une forme stable, en preservant la compatibilite du noeud hermeneutique.
-- [ ] Etendre `app/identity/active_identity_projection.py` et `app/identity/identity.py` pour conserver le canon actif `static + mutable` tout en exposant separement l'etat staging.
-- [ ] Ajouter a `app/admin/admin_identity_read_model_service.py` un bloc `identity_staging` coherent avec le plan (`buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status`, `auto_canonization_suspended`).
-- [ ] Ajouter a `app/admin/admin_identity_runtime_representations_service.py` le staging et le resume compact du dernier verdict agent, sans mentir sur la base active injectee.
-- [ ] Migrer explicitement la seam admin budget encore active: `app/admin/admin_identity_mutable_edit_contract.py` expose maintenant `mutable_budget` depuis les caps courants `3000/3300` de `app/config.py`, `app/admin/admin_identity_mutable_edit_service.py` continue a faire respecter `IDENTITY_MUTABLE_MAX_CHARS`, et ce raccord doit encore etre requalifie ou remplace pour raconter staging, promotion et suspension comme verite du nouveau regime.
-- [ ] Adapter les frontends `app/web/hermeneutic_admin/render_identity_read_model.js`, `app/web/hermeneutic_admin/render_identity_mutable_editor.js`, `app/web/hermeneutic_admin/render_identity_governance.js` et `app/web/identity/render_identity_runtime_representations.js` au nouveau regime.
+- [x] Preserver `app/core/hermeneutic_node/inputs/identity_input.py` en `v2` et garder le staging hors injection tant qu'aucune forme stable n'a ete explicitement ajoutee au noeud hermeneutique.
+- [x] Preserver le canon actif `static + mutable` dans `app/identity/active_identity_projection.py` et `app/identity/identity.py`, puis exposer separement l'etat staging dans les surfaces admin/runtime au lieu de l'absorber dans la projection active.
+- [x] Ajouter a `app/admin/admin_identity_read_model_service.py` un bloc `identity_staging` coherent avec le plan (`buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status`, `last_agent_reason`, `buffer_frozen`, `auto_canonization_suspended`) ainsi qu'un resume compact de la derniere activite agent et des promotions recentes.
+- [x] Ajouter a `app/admin/admin_identity_runtime_representations_service.py` le staging, le resume compact du dernier verdict agent et la distinction explicite entre canon actif injecte et staging non injecte.
+- [x] Recontextualiser la seam admin budget encore active: `app/admin/admin_identity_mutable_edit_contract.py` expose toujours `mutable_budget` depuis `app/config.py`, `app/admin/admin_identity_mutable_edit_service.py` continue a faire respecter `IDENTITY_MUTABLE_MAX_CHARS`, mais la reponse operateur raconte maintenant aussi staging, promotion et suspension comme verite du regime actif.
+- [x] Adapter les frontends `app/web/hermeneutic_admin/render_identity_read_model.js`, `app/web/hermeneutic_admin/render_identity_mutable_editor.js`, `app/web/hermeneutic_admin/render_identity_governance.js` et `app/web/identity/render_identity_runtime_representations.js` au nouveau regime sans afficher le staging comme deja canonise.
 
 ### B6. Revoir l'articulation avec le legacy identity
 

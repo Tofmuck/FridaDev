@@ -48,43 +48,86 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
     def test_identity_runtime_representations_route_exposes_structured_identity_and_injected_text(self) -> None:
         original_build_identity_input = self.server.identity.build_identity_input
         original_build_identity_block = self.server.identity.build_identity_block
+        original_get_latest_identity_staging_state = self.server.memory_store.get_latest_identity_staging_state
+        original_read_chat_log_events = self.server.log_store.read_chat_log_events
         self.server.identity.build_identity_input = lambda: {
             'schema_version': 'v2',
             'frida': {
                 'static': {'content': 'Frida statique', 'source': 'data/identity/llm_identity.txt'},
-                'mutable': {'content': 'Frida mutable', 'updated_by': 'identity_mutable_rewriter'},
+                'mutable': {'content': 'Frida mutable', 'updated_by': 'identity_periodic_agent'},
             },
             'user': {
                 'static': {'content': 'User statique', 'source': 'data/identity/user_identity.txt'},
-                'mutable': {'content': 'User mutable', 'updated_by': 'identity_mutable_rewriter'},
+                'mutable': {'content': 'User mutable', 'updated_by': 'identity_periodic_agent'},
             },
         }
         self.server.identity.build_identity_block = lambda: (
             "[IDENTITY]\n[STATIQUE]\nFrida statique\n[MUTABLE]\nFrida mutable",
             ['legacy-1'],
         )
+        self.server.memory_store.get_latest_identity_staging_state = lambda: {
+            'conversation_id': 'conv-stage-2',
+            'buffer_pairs_count': 15,
+            'buffer_target_pairs': 15,
+            'buffer_frozen': True,
+            'auto_canonization_suspended': True,
+            'last_agent_status': 'auto_canonization_suspended',
+            'last_agent_reason': 'double_saturation',
+            'last_agent_run_ts': '2026-04-16T11:00:00Z',
+            'updated_ts': '2026-04-16T11:00:01Z',
+        }
+        self.server.log_store.read_chat_log_events = lambda **_kwargs: {
+            'items': [
+                {
+                    'event_id': 'evt-stage-2',
+                    'conversation_id': 'conv-stage-2',
+                    'turn_id': 'turn-30',
+                    'ts': '2026-04-16T11:00:01Z',
+                    'stage': 'identity_periodic_agent',
+                    'status': 'skipped',
+                    'payload': {
+                        'reason_code': 'double_saturation',
+                        'writes_applied': False,
+                        'promotion_count': 0,
+                        'promotions': [],
+                        'rejection_reasons': {'llm': 'double_saturation'},
+                    },
+                }
+            ],
+        }
         try:
             response = self.client.get('/api/admin/identity/runtime-representations')
         finally:
             self.server.identity.build_identity_input = original_build_identity_input
             self.server.identity.build_identity_block = original_build_identity_block
+            self.server.memory_store.get_latest_identity_staging_state = original_get_latest_identity_staging_state
+            self.server.log_store.read_chat_log_events = original_read_chat_log_events
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(payload['ok'])
-        self.assertEqual(payload['representations_version'], 'v1')
+        self.assertEqual(payload['representations_version'], 'v2')
         self.assertEqual(payload['read_via'], '/api/admin/identity/runtime-representations')
         self.assertEqual(payload['active_prompt_contract'], 'static + mutable narrative')
         self.assertEqual(payload['identity_input_schema_version'], 'v2')
         self.assertTrue(payload['same_identity_basis'])
+        self.assertEqual(payload['active_canon']['source_kind'], 'static + mutable')
+        self.assertFalse(payload['active_canon']['staging_included'])
+        self.assertTrue(payload['identity_staging']['present'])
+        self.assertFalse(payload['identity_staging']['actively_injected'])
+        self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
+        self.assertEqual(payload['identity_staging']['latest_agent_activity']['reason_code'], 'double_saturation')
         self.assertTrue(payload['structured_identity']['present'])
         self.assertEqual(payload['structured_identity']['technical_name'], 'identity_input')
         self.assertEqual(payload['structured_identity']['role'], 'hermeneutic_judgment')
+        self.assertFalse(payload['structured_identity']['staging_included'])
         self.assertEqual(payload['structured_identity']['data']['frida']['static']['content'], 'Frida statique')
         self.assertEqual(payload['structured_identity']['data']['user']['mutable']['content'], 'User mutable')
+        self.assertNotIn('staging', payload['structured_identity']['data']['frida'])
         self.assertTrue(payload['injected_identity_text']['present'])
         self.assertEqual(payload['injected_identity_text']['technical_name'], 'identity_block')
         self.assertEqual(payload['injected_identity_text']['role'], 'final_model_system_prompt')
+        self.assertFalse(payload['injected_identity_text']['staging_included'])
         self.assertIn('Frida mutable', payload['injected_identity_text']['content'])
         self.assertEqual(payload['used_identity_ids'], ['legacy-1'])
         self.assertEqual(payload['used_identity_ids_count'], 1)

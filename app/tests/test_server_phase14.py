@@ -930,6 +930,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertTrue(response.get_json()['ok'])
         self.assertEqual(observed['identity_input']['schema_version'], 'v2')
         self.assertEqual(observed['identity_input']['frida']['static']['content'], 'Frida statique')
+        self.assertNotIn('staging', observed['identity_input']['frida'])
         self.assertEqual(
             observed['identity_input']['frida']['mutable']['source_trace_id'],
             '11111111-1111-1111-1111-111111111111',
@@ -939,6 +940,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'identity_mutable_rewriter',
         )
         self.assertEqual(observed['identity_input']['user']['static']['content'], 'Utilisateur statique')
+        self.assertNotIn('staging', observed['identity_input']['user'])
         self.assertEqual(
             observed['identity_input']['user']['mutable']['source_trace_id'],
             '22222222-2222-2222-2222-222222222222',
@@ -1009,6 +1011,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['schema_version'], 'v2')
         self.assertNotIn('dynamic', payload['frida'])
         self.assertNotIn('dynamic', payload['user'])
+        self.assertNotIn('staging', payload['frida'])
+        self.assertNotIn('staging', payload['user'])
         self.assertEqual(payload['frida']['static']['content'], 'Frida static baseline')
         self.assertEqual(payload['user']['static']['content'], 'User static baseline')
         self.assertEqual(payload['frida']['mutable']['content'], 'Frida mutable narrative retenue')

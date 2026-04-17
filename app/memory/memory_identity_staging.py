@@ -65,11 +65,14 @@ def _row_to_staging_state(row: Any) -> dict[str, Any] | None:
             buffer_pairs = []
     if not isinstance(buffer_pairs, list):
         buffer_pairs = []
+    buffer_pairs_count = int(row[2] or 0)
+    buffer_target_pairs = int(row[3] or DEFAULT_BUFFER_TARGET_PAIRS)
     return {
         'conversation_id': _text(row[0]),
         'buffer_pairs': list(buffer_pairs),
-        'buffer_pairs_count': int(row[2] or 0),
-        'buffer_target_pairs': int(row[3] or DEFAULT_BUFFER_TARGET_PAIRS),
+        'buffer_pairs_count': buffer_pairs_count,
+        'buffer_target_pairs': buffer_target_pairs,
+        'buffer_frozen': bool(buffer_pairs_count >= buffer_target_pairs),
         'auto_canonization_suspended': bool(row[4]),
         'last_agent_status': _text(row[5]) or None,
         'last_agent_reason': _text(row[6]) or None,
@@ -114,6 +117,38 @@ def get_identity_staging_state(
                 return _row_to_staging_state(cur.fetchone())
     except Exception as exc:
         logger.error('get_identity_staging_state_error conversation_id=%s err=%s', conversation_key, exc)
+        return None
+
+
+def get_latest_identity_staging_state(
+    *,
+    conn_factory: Callable[[], Any],
+    logger: Any,
+) -> dict[str, Any] | None:
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT
+                        conversation_id,
+                        buffer_pairs_json,
+                        buffer_pairs_count,
+                        buffer_target_pairs,
+                        auto_canonization_suspended,
+                        last_agent_status,
+                        last_agent_reason,
+                        last_agent_run_ts,
+                        created_ts,
+                        updated_ts
+                    FROM identity_mutable_staging
+                    ORDER BY updated_ts DESC, conversation_id DESC
+                    LIMIT 1
+                    '''
+                )
+                return _row_to_staging_state(cur.fetchone())
+    except Exception as exc:
+        logger.error('get_latest_identity_staging_state_error err=%s', exc)
         return None
 
 
@@ -212,7 +247,6 @@ def append_identity_staging_pair(
             conn.commit()
         state = _row_to_staging_state(row)
         if state is not None:
-            state['buffer_frozen'] = bool(buffer_frozen)
             state['pair_appended'] = not bool(buffer_already_frozen)
         return state
     except Exception as exc:

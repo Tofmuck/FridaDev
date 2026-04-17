@@ -126,6 +126,164 @@
     return parts.join(", ");
   };
 
+  const identityStaging = (payload) =>
+    payload?.identity_staging &&
+    typeof payload.identity_staging === "object" &&
+    !Array.isArray(payload.identity_staging)
+      ? payload.identity_staging
+      : {};
+
+  const latestAgentActivity = (staging) =>
+    staging?.latest_agent_activity &&
+    typeof staging.latest_agent_activity === "object" &&
+    !Array.isArray(staging.latest_agent_activity)
+      ? staging.latest_agent_activity
+      : {};
+
+  const renderIdentityStaging = (target, staging, viewMode) => {
+    const group = document.createElement("section");
+    group.className = "admin-readonly-group";
+
+    const head = document.createElement("div");
+    head.className = "admin-readonly-group-head";
+    const title = document.createElement("h4");
+    title.textContent = "Staging identitaire";
+    head.appendChild(title);
+    group.appendChild(head);
+
+    group.appendChild(
+      createNote(
+        "Le staging periodique garde des paires user/assistant hors canon actif. Il alimente l'agent identitaire, mais n'est injecte ni dans `identity_input`, ni dans le bloc runtime final.",
+      ),
+    );
+
+    const activity = latestAgentActivity(staging);
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    meta.appendChild(createChip(`present=${Boolean(staging.present)}`));
+    meta.appendChild(createChip(`injecte=${Boolean(staging.actively_injected)}`));
+    meta.appendChild(
+      createChip(
+        `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+      ),
+    );
+    meta.appendChild(createChip(`gele=${Boolean(staging.buffer_frozen)}`));
+    meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
+    if (toText(staging.last_agent_status)) {
+      meta.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+    }
+    if (Number(activity.promotion_count) > 0) {
+      meta.appendChild(createChip(`promotions=${Number(activity.promotion_count)}`));
+    }
+    group.appendChild(meta);
+
+    const summaryEntries = [
+      [
+        "scope_kind",
+        {
+          label: "Portee",
+          value: toText(staging.scope_kind) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "conversation_id",
+        {
+          label: "Conversation",
+          value: toText(staging.conversation_id) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "buffer_pairs_count",
+        {
+          label: "Buffer courant",
+          value: `${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_status",
+        {
+          label: "Dernier statut agent",
+          value: toText(staging.last_agent_status) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_reason",
+        {
+          label: "Derniere raison",
+          value: toText(staging.last_agent_reason) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_run_ts",
+        {
+          label: "Dernier passage",
+          value: toText(staging.last_agent_run_ts) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "auto_canonization_suspended",
+        {
+          label: "Suspension automatique",
+          value: String(Boolean(staging.auto_canonization_suspended)),
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "latest_agent_verdict",
+        {
+          label: "Dernier verdict utile",
+          value: toText(activity.reason_code) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+    ];
+
+    const summaryGrid = document.createElement("div");
+    summaryGrid.className = "admin-readonly-grid";
+    renderReadonlyEntries(summaryGrid, summaryEntries);
+    group.appendChild(summaryGrid);
+
+    if (viewMode === "full" && activity.present) {
+      const activityGroup = document.createElement("section");
+      activityGroup.className = "admin-readonly-group";
+      const activityHead = document.createElement("div");
+      activityHead.className = "admin-readonly-group-head";
+      const activityTitle = document.createElement("h4");
+      activityTitle.textContent = "Derniere activite agent";
+      activityHead.appendChild(activityTitle);
+      activityGroup.appendChild(activityHead);
+
+      const activityGrid = document.createElement("div");
+      activityGrid.className = "admin-readonly-grid";
+      renderReadonlyEntries(
+        activityGrid,
+        mappingToDetailEntries(activity, "identity_read_model", ["promotions"]),
+      );
+      activityGroup.appendChild(activityGrid);
+
+      if (Array.isArray(activity.promotions) && activity.promotions.length) {
+        const promotionsHost = document.createElement("div");
+        renderReadonlyCollectionDetailed(promotionsHost, activity.promotions, {
+          emptyMessage: "Aucune promotion recente.",
+          source: "identity_read_model",
+          identifyTitle: (item, index) =>
+            toText(item?.subject) || `Promotion ${index + 1}`,
+        });
+        activityGroup.appendChild(promotionsHost);
+      }
+
+      group.appendChild(activityGroup);
+    }
+
+    target.appendChild(group);
+  };
+
   const renderLayer = (subjectGroup, layerSpec, layer) => {
     if (!layer || typeof layer !== "object" || Array.isArray(layer)) {
       return;
@@ -328,6 +486,7 @@
       safePayload.subjects && typeof safePayload.subjects === "object" && !Array.isArray(safePayload.subjects)
         ? safePayload.subjects
         : {};
+    const staging = identityStaging(safePayload);
     const viewMode = toText(options.viewMode).toLowerCase() === "summary" ? "summary" : "full";
 
     if (metaTarget) {
@@ -335,8 +494,12 @@
       appendMetaChip(metaTarget, "canonique_mutable", toText(activeRuntime.active_identity_source));
       appendMetaChip(metaTarget, "compile", toText(activeRuntime.active_prompt_contract));
       metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
+      metaTarget.appendChild(createChip("staging=separe"));
       appendMetaChip(metaTarget, "identity_input", toText(activeRuntime.identity_input_schema_version));
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
+      if (toText(staging.last_agent_status)) {
+        metaTarget.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+      }
     }
 
     if (viewMode === "full") {
@@ -359,6 +522,8 @@
       runtimeGroup.appendChild(runtimeGrid);
       target.appendChild(runtimeGroup);
     }
+
+    renderIdentityStaging(target, staging, viewMode);
 
     [["llm", "llm"], ["user", "user"]].forEach(([subjectKey, label]) => {
       const subject = subjects[subjectKey];

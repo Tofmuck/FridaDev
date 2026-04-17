@@ -100,6 +100,8 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(payload['reason_code'], 'set_applied')
         self.assertTrue(payload['stored_after'])
         self.assertEqual(payload['active_identity_source'], 'identity_mutables')
+        self.assertTrue(payload['identity_runtime_regime']['staging_not_injected'])
+        self.assertEqual(payload['identity_runtime_regime']['mutable_budget']['max_chars'], 3300)
         self.assertEqual(store.state['llm'], 'Frida reste sobre, concise et structuree.')
         self.assertEqual(store.upsert_calls[0][2], 'admin_identity_mutable_edit')
         event_name, event_payload = observed_logs[0]
@@ -149,6 +151,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(payload['ok'])
         self.assertEqual(store.state['llm'], 'Frida reste sobre, concise et stable.')
+        self.assertEqual(payload['identity_runtime_regime']['active_canon_layers'], ['static', 'mutable'])
         self.assertEqual(store.upsert_calls[0][2], 'admin_identity_mutable_edit')
         self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
 

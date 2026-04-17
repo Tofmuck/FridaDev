@@ -15,9 +15,10 @@ La page doit montrer, en francais clair:
 - `llm.static` vide comme etat degrade critique visible immediatement;
 - `llm.mutable` vide comme etat explicite `Absente`, sans la surqualifier comme la meme anomalie fondamentale;
 - la structure reelle du systeme identity;
+- le staging periodique comme espace distinct, non injecte;
 - la difference entre source canonique, pilotage systeme distinct et formes runtime compilees;
 - l'etat courant par sujet comme synthese compacte, sans recopier exhaustivement les cartes canoniques;
-- un rappel compact des formes runtime compilees utile au pilotage immediat;
+- un rappel compact des formes runtime compilees utile au pilotage immediat, plus le statut staging / suspension / promotions recentes;
 - un acces explicite vers leur detail diagnostique sur `/hermeneutic-admin`;
 - l'edition du statique et de la mutable;
 - les seuils et limites;
@@ -71,12 +72,14 @@ Top-level:
 ```json
 {
   "ok": true,
-  "representations_version": "v1",
+  "representations_version": "v2",
   "read_via": "/api/admin/identity/runtime-representations",
   "active_prompt_contract": "static + mutable narrative",
   "active_identity_source": "identity_mutables",
   "identity_input_schema_version": "v2",
   "same_identity_basis": true,
+  "active_canon": {},
+  "identity_staging": {},
   "structured_identity": {},
   "injected_identity_text": {},
   "used_identity_ids": [],
@@ -97,6 +100,7 @@ La projection structuree compilee pour le jugement expose:
 
 Cette representation:
 - est une projection runtime compilee a partir de la base canonique;
+- garde `staging_included = false`;
 - ne decrit pas le prompt systeme;
 - ne devient pas pour autant une source canonique concurrente;
 - sert a lire la base identitaire et sa projection de jugement sans la confondre avec des consignes operatoires.
@@ -116,12 +120,32 @@ La forme runtime compilee injectee au modele expose:
 
 Cette representation:
 - est une forme compilee d'injection runtime;
+- garde `staging_included = false`;
 - occupe un slot technique `final_model_system_prompt` sans devenir pour autant le pilotage systeme source;
 - ne doit pas etre lue comme la source canonique de l'identite;
 - ne doit pas faire oublier que la source canonique reste `llm.static` / `user.static` plus les mutables canoniques.
 
 Sur `/identity`, elle n'apparait plus comme long texte detaille dans le flux principal.
 Le detail complet reste disponible sur `/hermeneutic-admin`.
+
+### `identity_staging`
+
+Le bloc `identity_staging` raconte le nouveau regime operateur sans mentir sur l'injection active.
+
+Il expose au minimum:
+- `buffer_pairs_count`
+- `buffer_target_pairs`
+- `buffer_frozen`
+- `last_agent_status`
+- `last_agent_reason`
+- `last_agent_run_ts`
+- `auto_canonization_suspended`
+- `latest_agent_activity`
+
+Semantique:
+- le staging reste hors canon actif;
+- la suspension automatique doit y etre lisible noir sur blanc;
+- les promotions recentes peuvent y etre resumees de facon compacte.
 
 ## Pilotage systeme distinct
 
@@ -150,7 +174,7 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - dans ces 4 blocs, un etat visible sans clic pour `Present / Absente`, `Charge / Non charge` et `Injecte / Non injecte`;
 - la structure reelle du systeme identity;
 - l'etat courant par sujet comme synthese compacte;
-- un repere runtime compile utile au pilotage, avec lien explicite vers le detail diagnostique;
+- un repere runtime compile utile au pilotage, avec lien explicite vers le detail diagnostique et rappel que le staging reste non injecte;
 - les seuils et limites;
 - `Diagnostics / historique`, replie par defaut;
 - dans ce bloc replie, le legacy / evidence-only, les conflits et les corrections recentes utiles.

@@ -58,6 +58,7 @@ def response_payload(
     reason_code: str,
     validation_error: str | None = None,
     error: str | None = None,
+    identity_runtime_regime: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         'ok': bool(ok),
@@ -74,6 +75,11 @@ def response_payload(
         'active_prompt_contract': ACTIVE_PROMPT_CONTRACT,
         'identity_input_schema_version': IDENTITY_INPUT_SCHEMA_VERSION,
         'mutable_budget': budget_payload(),
+        'identity_runtime_regime': (
+            dict(identity_runtime_regime)
+            if isinstance(identity_runtime_regime, Mapping)
+            else {}
+        ),
     }
     if error:
         payload['error'] = error

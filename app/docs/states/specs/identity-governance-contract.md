@@ -122,7 +122,8 @@ Important:
 - `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent exposes pour dire vrai sur les survivances legacy;
 - ils ne doivent pas etre requalifies comme knobs actifs ni redevenir editables;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
-- la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee.
+- la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
+- ces caps ne racontent pas a eux seuls tout le regime actif: le staging a 15 paires, le scoring Python, la promotion vers le statique et la suspension automatique restent visibles ailleurs dans les surfaces operateur.
 
 ## Contrat JSON d'update
 
@@ -208,6 +209,7 @@ Cet event alimente aussi `Corrections recentes` via:
 
 `Gouvernance identity` doit:
 - montrer la classification de chaque knob;
+- rappeler que `3000 / 3300` borne seulement la mutable canonique et non tout le regime identity;
 - rendre editable uniquement le sous-ensemble runtime-safe retenu;
 - rester distincte du read-model et des editeurs static/mutable.
 
