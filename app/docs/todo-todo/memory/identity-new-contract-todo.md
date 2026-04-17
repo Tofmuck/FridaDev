@@ -295,6 +295,68 @@ Sens minimal des operations:
 - `merge`: fusionner deux propositions trop proches ou partiellement redondantes en une formulation plus nette;
 - `raise_conflict`: laisser visible une tension non resolue au lieu de l'ecrire comme si elle etait deja canonisee.
 
+Formule de ponderation fermee:
+- `support_pairs` = nombre de paires `user/assistant` de la fenetre de 15 paires qui soutiennent effectivement une proposition candidate;
+- `last_occurrence_distance` = distance, en nombre de paires, entre la fin de la fenetre et la derniere occurrence soutenant cette proposition;
+- `frequency_norm = support_pairs / 15`;
+- `recency_norm = 1 - (last_occurrence_distance / 14)`;
+- `strength = 0.7 * frequency_norm + 0.3 * recency_norm`.
+
+Regle d'usage de ce score:
+- si `strength < 0.35`, la proposition est rejetee;
+- si `0.35 <= strength < 0.60`, la proposition n'est pas canonisee; elle peut au mieux rester en attente ou en tension ouverte;
+- si `strength >= 0.60`, la proposition devient recevable pour `mutable`, sous reserve des garde-fous de doublon et de contradiction.
+
+### 8.1.b Contrat technique ferme de l'agent
+
+L'agent doit renvoyer un JSON strict, et rien d'autre.
+
+Structure cible:
+
+```json
+{
+  "llm": {
+    "operations": [
+      {
+        "kind": "no_change|add|tighten|merge|raise_conflict",
+        "proposition": "string",
+        "strength": 0.0,
+        "frequency_norm": 0.0,
+        "recency_norm": 0.0,
+        "support_pairs": 0,
+        "last_occurrence_distance": 0,
+        "reason": "string"
+      }
+    ]
+  },
+  "user": {
+    "operations": [
+      {
+        "kind": "no_change|add|tighten|merge|raise_conflict",
+        "proposition": "string",
+        "strength": 0.0,
+        "frequency_norm": 0.0,
+        "recency_norm": 0.0,
+        "support_pairs": 0,
+        "last_occurrence_distance": 0,
+        "reason": "string"
+      }
+    ]
+  },
+  "meta": {
+    "buffer_pairs_count": 15,
+    "window_complete": true,
+    "model_may_write": true
+  }
+}
+```
+
+Regles fermes:
+- si le JSON est invalide, rien n'est ecrit;
+- si une operation manque ses champs obligatoires, elle est rejetee;
+- si une proposition echoue aux garde-fous deterministes, elle n'est pas appliquee;
+- en cas de doute, l'application finale degrade vers `no_change`.
+
 ### 8.2 Cadence, buffer temporaire et contexte de travail
 
 L'agent d'identite pour `mutable` ne doit pas travailler a chaque fin de tour.
@@ -378,9 +440,9 @@ Consequences:
 - `static` doit pouvoir s'enrichir quand une determination identitaire cesse d'etre seulement mouvante;
 - la future mise en oeuvre devra donc revoir aussi le budget effectif de projection du `static`.
 
-Hypothese provisoire de travail pour la saturation haute:
-- si `mutable` est plein et que `static` est lui aussi arrive a sa limite utile de projection, il n'est pas souhaitable de forcer une nouvelle canonisation automatique;
-- dans ce cas, le systeme doit plutot suspendre l'ajout automatique de nouveaux traits canoniques, en attendant une reprise plus structurelle du canon identitaire.
+Regle fermee pour la saturation haute:
+- si `mutable` est plein et que `static` est lui aussi arrive a sa limite utile de projection, il n'est pas permis de forcer une nouvelle canonisation automatique;
+- dans ce cas, le systeme suspend l'ajout automatique de nouveaux traits canoniques jusqu'a reprise structurelle explicite du canon identitaire.
 
 Point technique deja visible dans le runtime courant:
 - il n'existe pas aujourd'hui de quota `static` dedie aussi simple que pour `mutable`;
@@ -415,6 +477,24 @@ Implications minimales pour logs et surfaces admin:
   - la presence d'un conflit ouvert;
   - le mode d'execution si l'agent devient asynchrone.
 
+Traduction fermee cote admin et logs:
+- `/api/admin/identity/read-model` doit exposer, en plus du canon actif, un bloc `identity_staging` indiquant:
+  - `buffer_pairs_count`
+  - `buffer_target_pairs`
+  - `last_agent_run_ts`
+  - `last_agent_status`
+  - `auto_canonization_suspended`
+- `/api/admin/identity/runtime-representations` doit exposer:
+  - le canon actif injecte
+  - l'etat du staging
+  - le resume compact du dernier verdict de l'agent
+- les logs compacts du dernier passage doivent rendre visibles, pour `llm` et `user`:
+  - le nombre de candidats
+  - le detail compact des scores (`strength`, `frequency_norm`, `recency_norm`)
+  - les operations retenues
+  - la promotion vers `static`
+  - la suspension ou non de canonisation automatique.
+
 ## 9. Hors-scope de ce lot
 
 Ce lot ne traite pas:
@@ -446,7 +526,7 @@ Ordre de travail recommande:
 6. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
 7. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
 8. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-9. formaliser le regime de saturation du `mutable`: ponderation des traits par recence et frequence, promotion des traits les plus forts vers `static`, recalage du budget de projection du `static`, puis suspension provisoire de canonisation si `static` et `mutable` sont tous deux satures;
+9. formaliser le regime de saturation du `mutable`: ponderation des traits par recence et frequence, promotion des traits les plus forts vers `static`, recalage du budget de projection du `static`, puis suspension fermee de canonisation si `static` et `mutable` sont tous deux satures;
 10. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
 11. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
 12. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
@@ -464,9 +544,11 @@ Definition of done doctrinale pour ce lot:
 - le regime `buffer temporaire de 15 paires user/assistant -> appel de l'agent d'identite -> effacement du buffer` est pose;
 - le besoin d'un contexte elargi, distinct du simple dernier tour, est pose;
 - l'unite de travail de l'agent est posee comme proposition identitaire canonisable;
+- la formule exacte de ponderation (`frequency_norm`, `recency_norm`, `strength`) est posee;
+- le contrat JSON ferme de l'agent est pose;
 - le controle semantique explicite avant ajout au `mutable` est pose;
 - la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
-- un premier regime de saturation est pose, avec ponderation des traits par recence et frequence, promotion possible des traits les plus forts du `mutable` vers `static`, recalage du budget de projection du `static` et suspension provisoire de canonisation en cas de double saturation;
+- un regime de saturation ferme est pose, avec ponderation des traits par recence et frequence, promotion des traits les plus forts du `mutable` vers `static`, recalage du budget de projection du `static` et suspension automatique de canonisation en cas de double saturation;
 - l'observabilite et les surfaces admin identity sont explicitement a realigner sur ce nouveau regime;
 - les couches laterales ne brouillent plus le centre du document.
