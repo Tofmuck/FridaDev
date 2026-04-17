@@ -72,7 +72,8 @@ Notes:
 - note archivee de cloture mini-lot dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - TODO ouvert de post-stabilisation memoire/hermeneutique: `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
-- TODO ouvert du contrat identitaire `static` / `mutable`: `todo-todo/memory/identity-new-contract-todo.md`
+- plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `todo-todo/memory/identity-new-contract-plan.md`
+- TODO operatoire code-first du nouveau contrat identitaire: `todo-todo/memory/identity-new-contract-todo.md`
 - archive de la grande roadmap hermeneutique: `todo-done/notes/hermeneutical-add-todo.md`
 - roadmap ouverte memoire de moment contextuel: `todo-todo/memory/memory-contextual-moments-todo.md`
 - roadmap archivee pertinence memoire/RAG: `todo-done/refactors/memory-rag-relevance-todo.md`

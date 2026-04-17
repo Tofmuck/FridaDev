@@ -319,7 +319,8 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
-- TODO actif du contrat identitaire `static` / `mutable`: `app/docs/todo-todo/memory/identity-new-contract-todo.md`
+- Plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
+- TODO operatoire code-first du nouveau contrat identitaire: `app/docs/todo-todo/memory/identity-new-contract-todo.md`
 - Archive de la grande roadmap hermeneutique: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`

@@ -1,554 +1,201 @@
-# Identity New Contract - TODO static et mutable
+# Identity New Contract - TODO operatoire code-first
 
-Statut: chantier documentaire ouvert
+Statut: TODO operatoire ouvert
 Classement: `app/docs/todo-todo/memory/`
-Portee: contrat cible de `static`, de `mutable` et du contrat d'admission du `mutable`
-Etat runtime vise: aucun patch runtime dans ce document
-Contrainte dure: la future mise en oeuvre devra preserver le runtime actif `static + mutable narrative` et l'observabilite identity deja en place
-
-References liees:
-- `app/docs/states/specs/identity-static-edit-contract.md`
-- `app/docs/states/specs/identity-mutable-edit-contract.md`
-- `app/docs/states/specs/identity-read-model-contract.md`
-- `app/memory/memory_identity_mutable_rewriter.py`
-- `app/identity/active_identity_projection.py`
-
-## 1. Objet du chantier
-
-Question centrale:
-
-Comment decide-t-on ce qui a le droit d'entrer dans `mutable` comme identite ?
-
-Ce document ne traite pas d'abord:
-- d'une destination pour ce qui n'entre pas;
-- d'une architecture laterale supplementaire;
-- d'un grand chantier memoire;
-- d'une refonte runtime.
-
-Il traite d'abord d'une seule chose:
-- fermer rigoureusement la porte d'entree du `mutable`.
-
-Formule cle du lot:
-- rien ne doit sortir de `mutable` comme sujet principal de ce lot;
-- mais tout ne doit pas y entrer.
-
-Autrement dit:
-- le centre du chantier est le contrat d'admission de l'agent d'identite periodique qui intervient sur `mutable`;
-- si ce contrat est flou, le `mutable` devient vite un depot de preferences, de conforts locaux ou de pseudo-narration;
-- si ce contrat est ferme, `static` et `mutable` retrouvent chacun leur fonction propre.
-
-## 2. Definition cible de `static`
-
-`static` designe:
-- le fond;
-- le noeud;
-- le socle fige de l'identite;
-- ce qui demeure assez stable pour relever de l'etre profond plutot que du dialogue courant.
-
-`static` porte donc:
-- les traits forts;
-- la posture profonde;
-- la voix de fond;
-- la maniere d'etre durable;
-- les continuites identitaires les plus stables.
-
-`static` ne doit pas porter:
-- des consignes de travail;
-- des preferences de reponse;
-- un mode d'emploi relationnel;
-- des rappels circonstanciels;
-- des strategies de reprise;
-- des formulations dictees par le tour courant.
-
-Position retenue:
-- `static` est la couche la plus proche de l'etre;
-- `static` n'est pas la somme de tout ce qui a l'air important;
-- `static` n'est pas un prompt operatoire;
-- `static` n'est pas une memoire du recent.
-
-## 3. Definition cible de `mutable`
-
-`mutable` designe:
-- l'identite qui ressort du dialogue;
-- mais toujours au sens fort de l'identite;
-- donc non comme narration vague;
-- non comme bloc de preferences;
-- non comme petit mode d'emploi relationnel.
-
-`mutable` dit:
-- ce qu'est Frida;
-- ce qu'est Tof;
-- comment une identite se precise, se revele ou se fige progressivement dans le dialogue;
-- comment un trait identitaire deja perceptible devient assez solide pour entrer dans le texte canonique mouvant.
-
-`mutable` ne dit pas:
-- ce qui aide seulement a mieux repondre dans cette phase du dialogue;
-- ce que l'autre prefere entendre ou recevoir;
-- comment reformuler localement la reprise;
-- ce qu'il faudrait garder en tete pour le confort conversationnel recent.
-
-Position retenue:
-- `mutable` n'est pas un recit;
-- `mutable` n'est pas une interface de pilotage relationnel;
-- `mutable` reste de l'identite, simplement sous forme encore mouvante;
-- si une proposition n'exprime pas une verite identitaire forte, elle ne doit pas entrer.
-
-## 4. Entree identitaire recevable
-
-Une entree est recevable dans `mutable` si, ensemble, les conditions suivantes sont tenues.
-
-### 4.1 Condition de sens
-
-La proposition doit dire ce qu'est Frida ou Tof.
-
-Elle doit exprimer:
-- un trait;
-- une posture;
-- une maniere d'etre;
-- une continuite;
-- une determination identitaire qui depasse l'utilite locale.
-
-### 4.2 Condition de tenue
-
-La proposition doit rester vraie au-dela de la situation locale.
-
-Test simple:
-- si l'on retire la tache du moment, la forme exacte de la demande et le contexte recent, la phrase dit-elle encore quelque chose de vrai sur ce qu'est Frida ou Tof ?
-
-Si non:
-- la proposition n'est pas recevable dans `mutable`.
-
-### 4.3 Condition de formulation
-
-La proposition doit pouvoir etre dite comme verite identitaire et non comme aide de dialogue.
-
-Recevable en principe:
-- une formulation qui dit une sobriete durable;
-- une formulation qui dit une retenue stable;
-- une formulation qui dit une facon constante de se tenir;
-- une formulation qui dit une clarification progressive de ce qu'est Tof ou de ce qu'est Frida.
-
-Non recevable en principe:
-- une formulation qui ne vaut que comme truc utile pour le prochain tour;
-- une formulation qui ne vaut que comme preference de reponse;
-- une formulation qui n'est stable qu'en apparence parce qu'elle generalise une commodite locale.
-
-### 4.4 Condition d'admission
-
-Le contrat cible du rewriter doit donc etre:
-- ne canoniser que ce qui peut etre soutenu comme verite identitaire forte;
-- rejeter ce qui est simplement utile, confortable, narratif ou circonstanciel;
-- preferer l'absence de canonisation a une canonisation floue.
-
-Regle de prudence:
-- en cas de doute, ne pas faire entrer.
-
-## 5. Entree identitaire explicitement irrecevable
-
-Sont irrecevables par principe:
-- preferences de reponse;
-- conforts conversationnels;
-- consignes locales de reprise;
-- attentes de formulation;
-- recap de contexte;
-- formulations d'aide au dialogue qui ne disent rien de fort sur l'identite.
-
-Formulations explicitement suspectes ou a rejeter par defaut:
-- `Tof prefere que`
-- `Frida aime bien quand`
-- `il veut qu'on`
-- `elle attend une reponse`
-- `il faut lui repondre`
-- `elle souhaite qu'on reprenne`
-- `il vaut mieux formuler ainsi`
-
-Plus generalement, est irrecevable:
-- tout ce qui est utile sans etre identitaire;
-- tout ce qui est prescriptif plutot que descriptif;
-- tout ce qui adresse l'autre au lieu de decrire l'etre;
-- tout ce qui resume le contexte recent au lieu de dire un trait durable;
-- tout ce qui glisse vers un petit reglage de confort relationnel.
-
-Regle ferme:
-- `mutable` n'accueille pas une preference parce qu'elle revient;
-- `mutable` n'accueille pas une commodite parce qu'elle aide;
-- `mutable` n'accueille pas une reprise parce qu'elle a bien fonctionne;
-- `mutable` n'accueille que de l'identitaire.
-
-## 6. Forme textuelle cible du `mutable`
-
-Le `mutable` cible doit etre:
-- court;
-- declaratif;
-- sobre;
-- non narratif au sens flou;
-- non prescriptif;
-- non adresse a l'autre;
-- au present de verite actuelle;
-- compose de phrases compactes;
-- forme en bloc coherent et non contradictoire.
-
-Le `mutable` ne doit pas prendre la forme:
-- d'un petit portrait lyrique;
-- d'une adresse a l'utilisateur;
-- d'une liste de preferences;
-- d'une notice de comportement;
-- d'un commentaire sur la qualite de la relation;
-- d'un recap de ce qui vient de se passer.
-
-Forme cible souhaitee:
-- phrases breves;
-- chaque phrase portant une determination identitaire nette;
-- peu de phrases;
-- pas de digression;
-- pas de justification integree dans le texte canonique.
-
-Exigence de style:
-- decrire;
-- ne pas recommander;
-- ne pas instruire;
-- ne pas raconter plus que necessaire;
-- ne pas psychologiser gratuitement.
-
-Taille cible de travail a ce stade:
-- viser 3000 caracteres par `mutable` (`llm` et `user`);
-- comprendre cette hausse comme la consequence du nouveau regime de travail, et non comme un simple elargissement du systeme actuel;
-- ne pas l'interpreter comme une permission de stocker davantage de bruit, de preferences ou de pseudo-contextes;
-- l'assumer seulement si le writer devient plus costaud, plus selectif et moins frequent;
-- prevoir qu'en regime de saturation, les traits devenus les plus stables et les plus marquants puissent quitter `mutable` pour completer `static`, afin de liberer de la place sans perdre l'identite acquise.
-
-## 7. Gestion des contradictions dans le `mutable`
-
-Le `mutable` final ne doit pas contenir de contradiction explicite.
-
-Contrat cible:
-- si une nouvelle proposition complete sans contredire, on integre;
-- si elle contredit reellement, on tente une formulation plus haute qui absorbe la tension;
-- si cette synthese est impossible, on ne canonise pas encore la proposition dans `mutable`.
-
-Donc:
-- la contradiction ne doit pas etre recopiee telle quelle dans le texte canonique;
-- le texte final doit rester coherent comme texte identitaire unique;
-- une tension non resolue reste un sujet d'arbitrage, d'evidence ou de validation ulterieure;
-- elle ne devient pas une phrase canonique tant que la forme haute n'est pas trouvee.
-
-Regle de prudence:
-- mieux vaut laisser une proposition hors `mutable` que casser la coherence interne du texte canonique.
-
-## 8. Contraintes de mise en oeuvre futures
-
-Ce document n'ouvre pas encore l'implementation, mais il fixe les contraintes minimales de la future mise en oeuvre.
-
-### 8.1 Contrat de l'agent d'identite pour `mutable`
-
-Le rewriter actuel doit cesser d'etre pense comme un rewriter global du texte entier a chaque passage.
-
-Le futur writer de `mutable`, pense ici comme un agent d'identite, devra:
-- intervenir sur une fenetre elargie plutot que sur les 2 derniers messages seulement;
-- lire `llm.static` et `user.static` courants;
-- lire `llm.mutable` et `user.mutable` courants;
-- lire la fenetre temporaire de paires accumulees avant passage;
-- lire les evidences identitaires recentes retenues comme durables;
-- lire les tensions ou contradictions deja ouvertes autour du canon identitaire.
-
-Son travail cible:
-- extraire de cette matiere des candidats identitaires recevables;
-- comparer semantiquement chaque candidat au `static` et au `mutable` existants;
-- comparer aussi les candidats entre eux avant toute ecriture;
-- ponderer les candidats selon leur recence et leur frequence dans la fenetre travaillee;
-- refuser toute canonisation en cas de doute, de contradiction non resolue, de doublon, de reformulation faible ou de derive vers l'utile non identitaire.
-
-Le point cle n'est plus seulement:
-- `rewrite` ou `no_change`.
-
-Le point cle devient:
-- selon quel contrat d'admission une proposition est jugee;
-- et selon quelle operation locale le `mutable` est modifie sans etre integralement reecrit.
-
-Unite de travail retenue a ce stade:
-- l'agent ne travaille pas d'abord sur des messages bruts, ni sur des phrases prises comme de simples morceaux de texte;
-- il travaille sur des propositions identitaires canonisables, c'est-a-dire des traits ou determinations identitaires susceptibles d'entrer dans le canon;
-- le bloc textuel final du `mutable` n'est que la forme de sortie de ces propositions stabilisees.
-
-Sorties cibles a ce stade:
-- `no_change`
-- `add`
-- `tighten`
-- `merge`
-- `raise_conflict`
-
-Regle directrice:
-- l'agent ne doit pas reecrire tout le `mutable` a chaque intervention;
-- il doit d'abord voir si quelque chose s'ajoute, se resserre, se fusionne ou doit rester en conflit ouvert;
-- une reecriture globale du bloc entier ne peut etre pensee, plus tard, que comme une operation rare de compaction distincte.
-
-Controle semantique minimal avant toute operation:
-- pas de doublon semantique avec `static`;
-- pas de doublon semantique avec le `mutable` existant;
-- pas de contradiction semantique avec `static`;
-- pas de contradiction semantique avec le `mutable` existant;
-- pas de contradiction semantique entre plusieurs candidats que l'agent s'appreterait a ajouter.
-
-Sens minimal des operations:
-- `add`: ajouter au canon une proposition identitaire nouvelle et recevable;
-- `tighten`: resserrer une proposition deja presente sans en changer le sens profond;
-- `merge`: fusionner deux propositions trop proches ou partiellement redondantes en une formulation plus nette;
-- `raise_conflict`: laisser visible une tension non resolue au lieu de l'ecrire comme si elle etait deja canonisee.
-
-Formule de ponderation fermee:
-- `support_pairs` = nombre de paires `user/assistant` de la fenetre de 15 paires qui soutiennent effectivement une proposition candidate;
-- `last_occurrence_distance` = distance, en nombre de paires, entre la fin de la fenetre et la derniere occurrence soutenant cette proposition;
-- `frequency_norm = support_pairs / 15`;
-- `recency_norm = 1 - (last_occurrence_distance / 14)`;
-- `strength = 0.7 * frequency_norm + 0.3 * recency_norm`.
-
-Regle d'usage de ce score:
-- si `strength < 0.35`, la proposition est rejetee;
-- si `0.35 <= strength < 0.60`, la proposition n'est pas canonisee; elle peut au mieux rester en attente ou en tension ouverte;
-- si `strength >= 0.60`, la proposition devient recevable pour `mutable`, sous reserve des garde-fous de doublon et de contradiction.
-
-### 8.1.b Contrat technique ferme de l'agent
-
-L'agent doit renvoyer un JSON strict, et rien d'autre.
-
-Structure cible:
-
-```json
-{
-  "llm": {
-    "operations": [
-      {
-        "kind": "no_change|add|tighten|merge|raise_conflict",
-        "proposition": "string",
-        "strength": 0.0,
-        "frequency_norm": 0.0,
-        "recency_norm": 0.0,
-        "support_pairs": 0,
-        "last_occurrence_distance": 0,
-        "reason": "string"
-      }
-    ]
-  },
-  "user": {
-    "operations": [
-      {
-        "kind": "no_change|add|tighten|merge|raise_conflict",
-        "proposition": "string",
-        "strength": 0.0,
-        "frequency_norm": 0.0,
-        "recency_norm": 0.0,
-        "support_pairs": 0,
-        "last_occurrence_distance": 0,
-        "reason": "string"
-      }
-    ]
-  },
-  "meta": {
-    "buffer_pairs_count": 15,
-    "window_complete": true,
-    "model_may_write": true
-  }
-}
-```
-
-Regles fermes:
-- si le JSON est invalide, rien n'est ecrit;
-- si une operation manque ses champs obligatoires, elle est rejetee;
-- si une proposition echoue aux garde-fous deterministes, elle n'est pas appliquee;
-- en cas de doute, l'application finale degrade vers `no_change`.
-
-### 8.2 Cadence, buffer temporaire et contexte de travail
-
-L'agent d'identite pour `mutable` ne doit pas travailler a chaque fin de tour.
-
-Cadence cible retenue a ce stade:
-- cadence fixe;
-- pas de declenchement `trigger-based`;
-- seuil simple: `N = 15` paires `user/assistant`.
-
-Premier regime cible:
-- a chaque tour, on ne reecrit plus le `mutable`;
-- on accumule a la place une fenetre temporaire de tours dans un espace distinct du `mutable` canonique;
-- quand cette fenetre atteint 15 paires `user/assistant`, on appelle l'agent d'identite;
-- l'agent travaille alors sur cette fenetre elargie au lieu de travailler sur 2 tours seulement.
-
-Le probleme actuel est double:
-- il travaille trop souvent;
-- il voit trop peu de matiere.
-
-Contexte cible a fournir a l'agent lors de son passage:
-- `llm.static` et `user.static` courants;
-- `llm.mutable` et `user.mutable` courants;
-- la fenetre temporaire de 15 paires `user/assistant`;
-- les evidences identitaires recentes pertinentes deja retenues comme durables;
-- les tensions ou contradictions deja ouvertes autour du `mutable`.
-
-Regles de conception:
-- un agent qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
-- la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant;
-- le stockage temporaire de cette fenetre doit rester distinct du `mutable` canonique;
-- une fois que l'agent a termine son passage, le buffer de 15 paires est efface puis remplace par un nouveau buffer qui recommence a zero;
-- parce qu'il n'intervient plus a chaque tour, cet agent peut devenir plus couteux et plus rigoureux;
-- il peut etre pense, plus tard, comme une tache asynchrone ou un module separe, afin de ne pas peser sur la latence de la reponse courante;
-- ce regime accepte explicitement un retard d'integration identitaire jusqu'au prochain passage periodique de l'agent.
-
-### 8.3 Garde-fou metier entre `static` et `mutable`
-
-La future mise en oeuvre ne devra pas seulement juger ce qui entre dans `mutable`.
-
-Elle devra aussi verifier explicitement la frontiere avec `static`.
-
-Contrat cible:
-- ne pas recopier dans `mutable` un trait deja porte clairement par `static`;
-- ne pas reformuler faiblement dans `mutable` ce qui est deja fixe dans `static`;
-- ne pas laisser `mutable` contredire silencieusement `static`;
-- ne laisser entrer dans `mutable` qu'un trait qui ajoute, precise ou densifie l'identite sans dupliquer ni annuler le socle fige.
-
-Regle de decision:
-- si une proposition candidate est deja couverte par `static`, elle ne doit pas etre canonisee dans `mutable`;
-- si elle affine `static` sans le redire, elle peut etre integree;
-- si elle entre en contradiction avec `static`, elle ne doit pas etre appliquee comme simple rewrite du `mutable`;
-- une tension `static` / `mutable` doit rester visible comme sujet d'arbitrage ou de validation, pas comme contradiction silencieuse dans le canon actif.
-
-### 8.4 Forme runtime
-
-La mise en oeuvre future devra rester compatible avec l'etat reel courant:
-- `static` reste file-backed;
-- `mutable` reste stocke dans `identity_mutables`;
-- l'injection runtime reste `static + mutable narrative`;
-- le read-model continue de montrer `static` et `mutable` comme couches canoniques actives.
-
-Evolution cible deja retenue dans ce brouillon:
-- la capacite cible du `mutable` doit etre portee a 3000 caracteres pour `llm` comme pour `user`;
-- ce changement doit etre implemente avec le nouveau regime de writer periodique et plus agentique, pas sur la base du mecanisme actuel de reecriture a chaque tour;
-- le plafond dur exact devra etre recale en coherence avec cette nouvelle cible.
-- un espace de staging temporaire doit etre introduit pour accumuler la fenetre de 15 paires `user/assistant` sans la confondre avec le `mutable` canonique;
-- si l'agent devient asynchrone, son etat d'execution doit rester lisible sans brouiller la lecture des couches identitaires actives.
-
-### 8.5 Saturation du `mutable` et promotion vers `static`
-
-Le regime cible doit assumer qu'un `mutable` vivant peut finir par saturer.
-
-Contrat de travail retenu a ce stade:
-- quand le `mutable` approche de sa limite utile, il ne s'agit pas d'empiler indefiniment;
-- il faut ponderer les traits selon leur recence et leur frequence, qui servent ici de premiers indicateurs de force, de stabilite et de caractere marquant;
-- lorsque le `mutable` est plein, ce sont le ou les traits les plus forts qui doivent etre promus vers `static`;
-- cette promotion libere de la place dans `mutable` pour des traits plus recents, moins fixes ou encore en voie de stabilisation.
-
-Consequences:
-- `mutable` doit rester la couche mouvante de l'identite, pas son tombeau sature;
-- `static` doit pouvoir s'enrichir quand une determination identitaire cesse d'etre seulement mouvante;
-- la future mise en oeuvre devra donc revoir aussi le budget effectif de projection du `static`.
-
-Regle fermee pour la saturation haute:
-- si `mutable` est plein et que `static` est lui aussi arrive a sa limite utile de projection, il n'est pas permis de forcer une nouvelle canonisation automatique;
-- dans ce cas, le systeme suspend l'ajout automatique de nouveaux traits canoniques jusqu'a reprise structurelle explicite du canon identitaire.
-
-Point technique deja visible dans le runtime courant:
-- il n'existe pas aujourd'hui de quota `static` dedie aussi simple que pour `mutable`;
-- en revanche, la projection finale peut tronquer `llm.static` et `user.static` a l'injection si le budget global du bloc identitaire est depasse;
-- toute promotion de traits depuis `mutable` vers `static` devra donc s'accompagner d'un recalage explicite de ce budget de projection, pour ne pas faire grandir `static` d'une main puis le couper silencieusement de l'autre.
-
-### 8.6 Observabilite
-
-L'observabilite n'est pas le centre de ce TODO, mais elle reste une contrainte dure:
-- ne pas casser `identities_read`;
-- ne pas casser `identity_write`;
-- faire evoluer `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` pour qu'ils decrivent le nouveau regime reel plutot qu'une reecriture globale par tour;
-- ne pas casser les lectures `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations`.
-
-Si le contrat change plus tard:
-- traiter ce changement comme sujet de compatibilite et, si besoin, de versionnement explicite.
-
-Implications minimales pour logs et surfaces admin:
-- la page `/identity` doit pouvoir montrer, a terme, non seulement le canon actif, mais aussi l'etat du buffer temporaire et le dernier passage de l'agent d'identite;
-- `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` devront rester coherents avec cette separation entre canon actif et staging temporaire;
-- les logs identity doivent rester compacts, sans dump de contenu brut, mais rendre visibles au minimum:
-  - le nombre de paires `user/assistant` actuellement bufferisees;
-  - le seuil configure (`15` paires);
-  - le statut du dernier passage de l'agent;
-  - le nombre de paires considerees;
-  - le nombre de candidats traites;
-  - la base minimale de ponderation retenue pour les candidats (`recence`, `frequence`);
-  - les operations retenues par sujet (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`);
-  - l'existence ou non d'une promotion vers `static`;
-  - l'etat de saturation de `mutable` et, si pertinent, de `static`;
-  - l'eventuelle suspension de canonisation automatique en cas de double saturation;
-  - la presence d'un conflit ouvert;
-  - le mode d'execution si l'agent devient asynchrone.
-
-Traduction fermee cote admin et logs:
-- `/api/admin/identity/read-model` doit exposer, en plus du canon actif, un bloc `identity_staging` indiquant:
-  - `buffer_pairs_count`
-  - `buffer_target_pairs`
-  - `last_agent_run_ts`
-  - `last_agent_status`
-  - `auto_canonization_suspended`
-- `/api/admin/identity/runtime-representations` doit exposer:
-  - le canon actif injecte
-  - l'etat du staging
-  - le resume compact du dernier verdict de l'agent
-- les logs compacts du dernier passage doivent rendre visibles, pour `llm` et `user`:
-  - le nombre de candidats
-  - le detail compact des scores (`strength`, `frequency_norm`, `recency_norm`)
-  - les operations retenues
-  - la promotion vers `static`
-  - la suspension ou non de canonisation automatique.
-
-## 9. Hors-scope de ce lot
-
-Ce lot ne traite pas:
-- `context_hints`;
-- une `voie contextuelle` hors canon;
-- les `moments contextuels`;
-- `Frida from herself`;
-- une destination laterale pour ce qui n'entre pas;
-- une migration du contenu identitaire existant;
-- un patch runtime;
-- une modification de `/identity` ou de `/hermeneutic-admin`;
-- une refonte des surfaces admin;
-- une reouverture du legacy comme source active.
-
-Ces sujets peuvent revenir plus tard.
-
-Ils ne doivent pas piloter la premiere decision, qui est plus simple:
-- qu'est-ce qui entre dans `mutable` ?
-
-## 10. Plan de travail suivant
-
-Ordre de travail recommande:
-
-1. figer ce contrat doctrinal `static` / `mutable`;
-2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;
-3. remplacer le declenchement a chaque tour par un buffer temporaire de 15 paires `user/assistant` distinct du `mutable` canonique;
-4. faire travailler l'agent d'identite sur cette fenetre de 15 paires, puis effacer le buffer une fois son passage termine;
-5. formaliser l'unite de travail de l'agent comme proposition identitaire canonisable, et non comme simple morceau de texte;
-6. formaliser le controle semantique complet avant ajout: non-doublon et non-contradiction avec `static`, avec le `mutable` existant et entre nouveaux candidats;
-7. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
-8. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-9. formaliser le regime de saturation du `mutable`: ponderation des traits par recence et frequence, promotion des traits les plus forts vers `static`, recalage du budget de projection du `static`, puis suspension fermee de canonisation si `static` et `mutable` sont tous deux satures;
-10. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-11. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-12. realigner les logs identity, `/identity`, `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` sur ce nouveau regime;
-13. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone de l'agent;
-14. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
-
-Definition of done doctrinale pour ce lot:
-- `static` est defini comme fond et noeud identitaire;
-- `mutable` est defini comme identite issue du dialogue, mais au sens fort;
-- les entrees recevables et irrecevables sont clairement tranchees;
-- la forme textuelle cible du `mutable` est claire;
-- la gestion des contradictions est fixee;
-- le writer de `mutable` n'est plus pense comme une reecriture globale a chaque tour;
-- le contrat d'operations locales (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`) est pose;
-- le regime `buffer temporaire de 15 paires user/assistant -> appel de l'agent d'identite -> effacement du buffer` est pose;
-- le besoin d'un contexte elargi, distinct du simple dernier tour, est pose;
-- l'unite de travail de l'agent est posee comme proposition identitaire canonisable;
-- la formule exacte de ponderation (`frequency_norm`, `recency_norm`, `strength`) est posee;
-- le contrat JSON ferme de l'agent est pose;
-- le controle semantique explicite avant ajout au `mutable` est pose;
-- la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
-- un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
-- un regime de saturation ferme est pose, avec ponderation des traits par recence et frequence, promotion des traits les plus forts du `mutable` vers `static`, recalage du budget de projection du `static` et suspension automatique de canonisation en cas de double saturation;
-- l'observabilite et les surfaces admin identity sont explicitement a realigner sur ce nouveau regime;
-- les couches laterales ne brouillent plus le centre du document.
+Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
+Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
+Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
+Contrainte dure: aucun patch runtime n'est realise dans ce document; ce fichier prepare les futurs lots
+
+## 1. Regle de travail
+
+- [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
+- [x] La baseline auditee du 2026-04-17 est encore le regime `static + mutable narrative` avec reecriture globale du `mutable` par tour, sans buffer de 15 paires ni agent identitaire periodique.
+- [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
+
+## A. Audit code-first de l'existant
+
+### A1. Cadence, point d'appel runtime et payload actuel
+
+- [x] `app/core/chat_llm_flow.py` appelle `record_identity_entries_for_mode(...)` apres finalisation assistant avec `recent_2`; la couture active travaille donc sur les 2 derniers messages `user/assistant`, pas sur 15 paires.
+- [x] `app/core/chat_memory_flow.py` persiste d'abord les entrees legacy via `persist_identity_entries(...)`, puis appelle `_refresh_mutable_identities(...)`; la mutable canonique reste donc un sous-produit du chemin legacy en mode `enforced_all`.
+- [x] `app/core/chat_memory_flow.py` garde le chemin rewriter en `fail-open`: si le rewriter casse, `identity_mode_apply.action=persist_enforced` reste vrai et la conversation continue.
+- [x] `app/memory/memory_identity_mutable_rewriter.py::_build_rewriter_payload()` n'envoie aujourd'hui que `recent_turns`, `identities.{llm,user}.{static,mutable_current}` et `mutable_budget.{target_chars,max_chars}`.
+- [x] Le runtime courant ne possede aucun staging identitaire distinct de `identity_mutables`; aucun compteur de paires, aucun statut de dernier run, aucun flag de suspension n'existe encore.
+
+### A2. Prompt legacy, contrat agent et garde d'admission actuelle
+
+- [x] `app/prompts/identity_mutable_rewriter.txt` demande encore une reecriture globale par sujet avec schema strict `{action: no_change|rewrite, content, reason}`.
+- [x] Le prompt legacy autorise encore `tone`, `relational positioning`, `continuity of voice` et des `durable interests or conversational preferences`; ce vocabulaire n'est pas compatible avec le nouveau contrat d'admission centre sur l'identitaire fort.
+- [x] `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` n'accepte que `no_change|rewrite` et valide un texte complet, pas des operations locales sur propositions.
+- [x] `app/identity/mutable_identity_validation.py` filtre seulement le contenu prompt-like/system/tool/runtime meta; il ne ferme pas encore l'admission aux preferences, conforts conversationnels, positionnements relationnels ou reprises utilitaires.
+- [x] `app/memory/arbiter.py::rewrite_identity_mutables()` appelle encore un LLM unique `identity_mutable_rewriter` avec `temperature=0.0`, `max_tokens=1200` et une sortie attendue `no_change|rewrite`.
+
+### A3. Persistence de la mutable et projection active
+
+- [x] `app/memory/memory_identity_mutables.py` stocke une seule ligne `identity_mutables` par sujet avec `content`, `source_trace_id`, `updated_by`, `update_reason`, `created_ts`, `updated_ts`; aucun espace n'est prevu pour le staging, les scores, les operations ou les conflits ouverts du nouvel agent.
+- [x] `app/memory/memory_identity_mutable_rewriter.py::refresh_mutable_identities()` upsert directement le texte final dans `identity_mutables`; aucune application deterministe de `add`, `tighten`, `merge` ou `raise_conflict` n'existe.
+- [x] `app/identity/active_identity_projection.py` compile encore simplement `[STATIQUE]` + `[MUTABLE]` par sujet; aucune projection du buffer temporaire, du dernier verdict agent ou d'une suspension automatique n'est disponible.
+- [x] `app/core/hermeneutic_node/inputs/identity_input.py` n'expose que `static` et `mutable`; le noeud hermeneutique ne lit pas encore un staging identitaire ni des metadonnees d'agent.
+- [x] `app/identity/identity.py` et `build_identity_block()` supposent encore que le canon actif se limite a `static` et `mutable`, sans couche intermediaire.
+
+### A4. Surfaces admin, `/identity` et observabilite
+
+- [x] `app/admin/admin_identity_read_model_service.py` expose `static`, `mutable`, `legacy_fragments`, `evidence`, `conflicts`; aucun bloc `identity_staging` ni resume du dernier passage agent n'est prevu.
+- [x] `app/admin/admin_identity_runtime_representations_service.py` expose seulement `structured_identity` et `injected_identity_text`; aucun etat du buffer ni verdict compact du dernier agent.
+- [x] `app/web/hermeneutic_admin/render_identity_mutable_editor.js` encode en dur `TARGET_CHARS = 1500` et `MAX_CHARS = 1650` et raconte encore une mutable canonique unique, pas un regime `canon actif + staging`.
+- [x] `app/web/hermeneutic_admin/render_identity_read_model.js` et `app/web/identity/render_identity_runtime_representations.js` ne savent montrer ni buffer, ni dernier run, ni suspension de canonisation.
+- [x] `app/core/chat_memory_flow.py` journalise `identity_mutable_rewrite_apply` et `app/memory/memory_identity_mutable_rewriter.py` journalise `identity_mutable_rewrite`; ces events racontent encore une reecriture globale par tour.
+- [x] `app/docs/states/specs/log-module-contract.md` impose deja des logs identity compacts, mais ne couvre pas encore les champs du nouveau regime `buffer/staging/scores/operations/promotion/suspension`.
+
+### A5. Specs, docs et tests qui encodent encore l'ancien regime
+
+- [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne encore l'edition admin sur le `identity_mutable_rewriter` courant et autorise des preferences de conversation sur des themes techniques.
+- [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent encore `IDENTITY_MUTABLE_TARGET_CHARS = 1500` et `IDENTITY_MUTABLE_MAX_CHARS = 1650` comme doctrine verrouillee du rewriter actif.
+- [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` decrivent encore une base active sans staging, sans verdict agent et sans suspension automatique.
+- [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` encode `rewrite/no_change`, accepte des preferences et des interets techniques comme contenu mutable valide, et suppose `updated_by = identity_mutable_rewriter`.
+- [x] `app/tests/unit/chat/test_chat_memory_flow.py` suppose encore que le rewriter tourne juste apres `persist_identity_entries(...)` et voit seulement le dernier tour ou la derniere paire nettoyee.
+- [x] `app/tests/unit/memory/test_arbiter_phase4.py` attend encore que `arbiter.rewrite_identity_mutables(...)` renvoie un schema `no_change|rewrite` et charge le prompt `identity_mutable_rewriter`.
+- [x] `app/tests/unit/logs/test_chat_turn_logger_phase2.py` et plusieurs tests serveur/admin encodent encore les reason codes `rewrite_applied`, `no_change`, `update_reason = rewrite` et l'absence de staging dans les surfaces `/identity`.
+
+## B. Checklist de migration du runtime
+
+### B1. Introduire le buffer de 15 paires et la nouvelle couture d'execution
+
+- [ ] Remplacer la dependance a `recent_2` dans `app/core/chat_llm_flow.py` par une accumulation de 15 paires `user/assistant` distincte du `mutable` canonique.
+- [ ] Definir un module proprietaire de staging sous `app/memory/` pour stocker le buffer temporaire, `buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status` et `auto_canonization_suspended`.
+- [ ] Choisir explicitement la persistence du staging sans reutiliser `identity_mutables` comme faux buffer.
+- [ ] Faire en sorte que le buffer soit consomme puis efface seulement apres un passage agent termine; interdire tout effacement silencieux sur timeout, exception, JSON invalide ou rejet deterministe.
+- [ ] Requalifier `identity_mode_apply` pour qu'il ne laisse plus croire qu'une canonisation mutable se produit a chaque tour.
+
+### B2. Remplacer le rewriter per-turn par un agent identitaire periodique
+
+- [ ] Remplacer `app/memory/memory_identity_mutable_rewriter.py` par une couture d'agent identitaire periodique qui lit `static`, `mutable`, staging buffer, evidences utiles et tensions ouvertes.
+- [ ] Revoir `app/memory/arbiter.py` pour sortir du label et de l'appel `identity_mutable_rewriter` actuels, ou documenter explicitement pourquoi le nom est conserve malgre le changement de contrat.
+- [ ] Remplacer le schema binaire `no_change|rewrite` par un JSON strict d'operations `no_change|add|tighten|merge|raise_conflict`, avec bloc `meta` et bornes fermees.
+- [ ] Introduire un applicateur deterministe cote Python qui verifie types, champs obligatoires, plages de score, garde-fous de doublon/contradiction et degrade vers `no_change` en cas de doute.
+- [ ] Garder l'agent periodique decouple de l'edition admin `POST /api/admin/identity/mutable`, qui doit continuer a toucher le canon actif et jamais le staging.
+
+### B3. Introduire la ponderation et les seuils deterministes
+
+- [ ] Calculer `support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm` et `strength` dans une couche deterministe, pas seulement dans le prompt.
+- [ ] Encoder les seuils `strength < 0.35`, `0.35 <= strength < 0.60` et `strength >= 0.60` dans l'applicateur final, avec journalisation compacte des verdicts.
+- [ ] Interdire qu'un LLM invente ses propres scores sans reconciliation deterministe cote Python.
+- [ ] Rendre visibles les scores compacts par sujet et par operation dans les surfaces admin/logs sans exposer de texte brut.
+
+### B4. Introduire la promotion `mutable -> static` et la double saturation
+
+- [ ] Definir un detecteur de saturation du `mutable` compatible avec la cible `3000` caracteres et la projection active `static + mutable narrative`.
+- [ ] Choisir l'algorithme deterministe qui promeut vers `static` le ou les traits les plus forts sans dupliquer ce qui est deja fixe.
+- [ ] Recaler explicitement le budget de projection du `static` pour qu'une promotion n'agrandisse pas `static` d'une main puis ne le fasse pas tronquer silencieusement de l'autre.
+- [ ] Introduire la suspension automatique de canonisation si `mutable` et `static` sont tous deux satures, puis l'exposer comme verite operateur.
+- [ ] Garantir qu'une promotion automatique n'ecrase ni les editions operateur du statique ni les corrections humaines recentes.
+
+### B5. Adapter la projection active, le read-model et les representations runtime
+
+- [ ] Etendre `app/core/hermeneutic_node/inputs/identity_input.py` seulement quand le staging a une forme stable, en preservant la compatibilite du noeud hermeneutique.
+- [ ] Etendre `app/identity/active_identity_projection.py` et `app/identity/identity.py` pour conserver le canon actif `static + mutable` tout en exposant separement l'etat staging.
+- [ ] Ajouter a `app/admin/admin_identity_read_model_service.py` un bloc `identity_staging` coherent avec le plan (`buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status`, `auto_canonization_suspended`).
+- [ ] Ajouter a `app/admin/admin_identity_runtime_representations_service.py` le staging et le resume compact du dernier verdict agent, sans mentir sur la base active injectee.
+- [ ] Adapter les frontends `app/web/hermeneutic_admin/render_identity_read_model.js`, `app/web/hermeneutic_admin/render_identity_mutable_editor.js`, `app/web/hermeneutic_admin/render_identity_governance.js` et `app/web/identity/render_identity_runtime_representations.js` au nouveau regime.
+
+### B6. Revoir l'articulation avec le legacy identity
+
+- [ ] Decider explicitement si `persist_identity_entries(...)`, `identity_evidence` et `identity_conflicts` restent strictement legacy/diagnostic ou s'ils servent aussi le nouvel agent comme matiere auxiliaire.
+- [ ] Ne pas laisser le staging devenir une resurrection masquee du legacy fragmentaire `accepted|deferred|rejected`.
+- [ ] Trancher le sort des tensions ouvertes du nouvel agent: reutilisation explicite de `identity_conflicts` ou nouvelle persistence dediee.
+- [ ] Maintenir `identities`, `identity_evidence` et `identity_conflicts` hors injection active tant qu'une migration explicite n'a pas ete decidee.
+
+## C. Nettoyage de l'ancien systeme
+
+### C1. Ce qui devra disparaitre
+
+- [ ] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
+- [ ] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
+- [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
+- [ ] Supprimer les valeurs UI en dur `target=1500` et `max=1650` une fois la nouvelle gouvernance livree.
+
+### C2. Ce qui devra etre remplace
+
+- [ ] Remplacer `app/prompts/identity_mutable_rewriter.txt` par un prompt d'agent identitaire periodique fonde sur des propositions identitaires et des operations locales.
+- [ ] Remplacer `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` par un validateur de contrat multi-operations et multi-scores.
+- [ ] Remplacer `app/identity/mutable_identity_validation.py` comme simple garde prompt-like par une garde d'admission plus riche qui refuse aussi preferences, conforts conversationnels et formulations utilitaires.
+- [ ] Remplacer les evenements `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` par un contrat d'observabilite qui raconte le nouveau regime reel, ou versionner explicitement ces events.
+- [ ] Remplacer les assumptions `updated_by = identity_mutable_rewriter` et `update_reason = rewrite` dans les surfaces admin/tests par une semantique qui distingue agent periodique, application deterministe, promotion et correction operateur.
+
+### C3. Ce qui devra etre garde
+
+- [ ] Garder `identity_mutables` comme stockage du canon actif `mutable`, distinct du staging.
+- [ ] Garder la projection runtime active `static + mutable narrative` tant qu'aucune autre projection n'a ete explicitement decidee.
+- [ ] Garder les routes admin `POST /api/admin/identity/static`, `POST /api/admin/identity/mutable`, `GET /api/admin/identity/read-model` et `GET /api/admin/identity/runtime-representations`, mais les faire dire vrai sur le nouveau regime.
+- [ ] Garder la politique de logs compacts sans dump de contenu brut.
+
+### C4. Ce qui devra seulement etre requalifie
+
+- [ ] Requalifier `identity-governance` pour distinguer les caps doctrinaux cibles du nouveau regime et les caps encore actifs du runtime non migre.
+- [ ] Requalifier `identity-read-model` et `/identity` pour distinguer canon actif, staging temporaire et verdict agent sans les confondre.
+- [ ] Requalifier les roadmaps/clotures archivees qui parlaient d'une `mutable narrative` reecrite, afin qu'elles restent historiques sans redevenir une verite active.
+- [ ] Requalifier les tests qui continueraient a passer tout en validant en fait l'ancien monde.
+
+## D. Garde-fous de regression
+
+### D1. Tests unitaires a ecrire ou remplacer
+
+- [ ] Ecrire des tests de buffer: accumulation tour par tour, declenchement a 15 paires exactes, absence d'appel agent avant seuil, effacement du buffer seulement apres application reussie.
+- [ ] Ecrire des tests de contrat JSON strict: root invalide, champs manquants, types invalides, scores hors bornes, operation inconnue, bloc `meta` incoherent.
+- [ ] Ecrire des tests deterministes pour `frequency_norm`, `recency_norm`, `strength` et les seuils `0.35/0.60`.
+- [ ] Ecrire des tests d'application deterministe pour `add`, `tighten`, `merge`, `raise_conflict`, non-doublon avec `static`, non-doublon avec `mutable`, et contradiction semantique.
+- [ ] Ecrire des tests de promotion `mutable -> static`, de recalage du budget de projection et de suspension automatique en cas de double saturation.
+
+### D2. Tests d'integration admin, read-model et representations runtime
+
+- [ ] Adapter les tests serveur/admin pour verifier `identity_staging`, `last_agent_status`, `buffer_pairs_count` et `auto_canonization_suspended`.
+- [ ] Verifier que `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` continuent a dire vrai sur le canon actif injecte tout en montrant le staging separement.
+- [ ] Verifier que `/identity` et `/hermeneutic-admin` n'affichent jamais le staging comme s'il etait deja canonise.
+- [ ] Verifier que l'edition operateur du `mutable` reste coherente avec le read-model et ne consomme jamais le buffer temporaire.
+
+### D3. Compatibilite runtime et comportement fail-closed
+
+- [ ] Verifier que `build_identity_input()` et `build_identity_block()` restent compatibles avec le noeud hermeneutique et le main LLM pendant toute la migration.
+- [ ] Verifier qu'un JSON agent invalide, partiel ou contradictoire n'ecrit rien dans le canon actif, ne purge pas le buffer et laisse un statut observable.
+- [ ] Verifier qu'un timeout ou une exception agent laisse la conversation principale saine et observable, sans fausse canonisation.
+- [ ] Verifier que l'observabilite reste compacte: pas de dump brut du buffer, pas de dump brut des candidats, pas de dump brut des textes canoniques.
+
+## E. Sort explicite des documents et specs existants
+
+### E1. Documents a modifier quand la migration runtime commencera
+
+- [ ] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
+- [ ] Modifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` pour sortir du cadrage doctrinal ferme `1500/1650` propre au rewriter courant.
+- [ ] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
+- [ ] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.
+- [ ] Modifier les textes UI `/identity` et `/hermeneutic-admin` qui presentent encore la mutable unique comme seule couche mouvante.
+
+### E2. Documents a relire avant patch runtime, puis a traiter comme sources historiques
+
+- [ ] Relire `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` comme base historique de separation `identity/prompt`, sans en reutiliser tel quel le contrat `rewrite narrative`.
+- [ ] Relire `app/docs/todo-done/refactors/identity-control-surface-todo.md` comme historique de la surface actuelle `static + mutable narrative`, pas comme cible du nouveau staging.
+- [ ] Relire `app/docs/todo-done/notes/hermeneutical-add-todo.md` uniquement pour les dependances historiques avec l'hermeneutique.
+- [ ] Relire `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` pour identifier les coutures actives avec le noeud hermeneutique et les preuves post-rollout a conserver.
+
+### E3. References depot a garder separees
+
+- [ ] Garder `README.md`, `app/docs/README.md` et `AGENTS.md` avec deux references distinctes: `identity-new-contract-plan.md` pour la doctrine cible et `identity-new-contract-todo.md` pour le chantier operatoire.
+- [ ] Eviter de re-fusionner plus tard le plan doctrinal et le TODO operatoire dans un meme fichier.
+
+## F. Sort explicite de l'ancien prompt `identity_mutable_rewriter`
+
+- [ ] Relire ligne par ligne `app/prompts/identity_mutable_rewriter.txt` avant tout patch runtime et marquer chaque consigne comme `a retirer`, `a remplacer` ou `a conserver`.
+- [ ] Retirer du prompt legacy tout ce qui autorise encore `tone`, `relational positioning`, `continuity of voice`, `durable interests` ou `conversational preferences` comme porte d'entree generale du `mutable`.
+- [ ] Remplacer l'instruction de reecriture globale du bloc par un contrat d'agent qui travaille sur des propositions identitaires canonisables et des operations locales.
+- [ ] Verifier qu'aucun autre appel, test, doc ou nom d'event ne continue a presenter ce prompt legacy comme la source active du nouveau regime.
+- [ ] Traiter comme risque majeur le cas ou ce prompt serait oublie: il pourrait continuer a recanoniser des preferences ou du positionnement relationnel meme si une partie de l'applicateur Python a deja migre.
+
+## G. Definition of done operatoire
+
+- [ ] Le runtime n'appelle plus un rewriter global par tour et n'utilise plus `recent_2` comme base identitaire canonique.
+- [ ] Le staging de 15 paires existe, reste distinct du canon actif et est observable cote admin.
+- [ ] L'agent identitaire periodique renvoie un JSON strict par operations, applique par une couche deterministe et fail-closed.
+- [ ] Les scores `frequency_norm`, `recency_norm` et `strength`, les seuils, la promotion `mutable -> static` et la suspension automatique sont implementes et testes.
+- [ ] Le read-model, les runtime representations, `/identity`, `/hermeneutic-admin` et les logs disent vrai sur le nouveau regime sans exposer de contenu brut.
+- [ ] Les specs vivantes et les tests ne valident plus silencieusement l'ancien monde `rewrite/no_change` par tour.
