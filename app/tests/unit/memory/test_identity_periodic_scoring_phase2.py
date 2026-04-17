@@ -87,6 +87,74 @@ class IdentityPeriodicScoringPhase2Tests(unittest.TestCase):
         self.assertEqual(score['strength'], 0.6733)
         self.assertEqual(score['threshold_verdict'], 'accepted')
 
+    def test_tighten_scoring_ignores_support_for_legacy_target_text(self) -> None:
+        target = 'Tof garde une clarte durable.'
+        proposition = 'Tof garde une clarte durable, sobre et ritualisee.'
+        score = memory_identity_periodic_scoring.score_operation(
+            {
+                'kind': 'tighten',
+                'target': target,
+                'proposition': proposition,
+                'reason': 'target support alone is not enough',
+            },
+            buffer_pairs=_buffer_pairs(
+                proposition=target,
+                supporting_indexes=set(range(15)),
+            ),
+        )
+
+        self.assertEqual(score['support_pairs'], 0)
+        self.assertEqual(score['last_occurrence_distance'], 15)
+        self.assertEqual(score['frequency_norm'], 0.0)
+        self.assertEqual(score['recency_norm'], 0.0)
+        self.assertEqual(score['strength'], 0.0)
+        self.assertEqual(score['threshold_verdict'], 'rejected')
+
+    def test_merge_scoring_ignores_support_for_legacy_targets_when_merge_text_is_absent(self) -> None:
+        target_a = 'Tof garde une clarte durable.'
+        target_b = 'Tof garde un axe de travail stable.'
+        proposition = 'Tof garde une clarte durable et un axe de travail stable.'
+        pairs: list[dict[str, object]] = []
+        for index in range(15):
+            pairs.append(
+                {
+                    'user': {'role': 'user', 'content': f'Utilisateur confirme {target_a} {target_b}'},
+                    'assistant': {'role': 'assistant', 'content': f'Assistant reprend {target_a} {target_b}'},
+                }
+            )
+
+        score = memory_identity_periodic_scoring.score_operation(
+            {
+                'kind': 'merge',
+                'targets': [target_a, target_b],
+                'proposition': proposition,
+                'reason': 'merge text itself is not supported',
+            },
+            buffer_pairs=pairs,
+        )
+
+        self.assertEqual(score['support_pairs'], 0)
+        self.assertEqual(score['strength'], 0.0)
+        self.assertEqual(score['threshold_verdict'], 'rejected')
+
+    def test_tighten_scoring_keeps_supported_final_proposition_admissible(self) -> None:
+        proposition = 'Tof garde une clarte durable, sobre et ritualisee.'
+        score = memory_identity_periodic_scoring.score_operation(
+            {
+                'kind': 'tighten',
+                'target': 'Tof garde une clarte durable.',
+                'proposition': proposition,
+                'reason': 'supported final wording',
+            },
+            buffer_pairs=_buffer_pairs(
+                proposition=proposition,
+                supporting_indexes={0, 2, 4, 6, 8, 10, 12, 14},
+            ),
+        )
+
+        self.assertEqual(score['support_pairs'], 8)
+        self.assertEqual(score['threshold_verdict'], 'accepted')
+
     def test_threshold_verdict_boundaries_follow_contract(self) -> None:
         self.assertEqual(memory_identity_periodic_scoring.threshold_verdict(0.3499), 'rejected')
         self.assertEqual(memory_identity_periodic_scoring.threshold_verdict(0.35), 'deferred')

@@ -135,6 +135,134 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['threshold_verdict'], 'deferred')
         self.assertEqual(user_outcome['support_pairs'], 5)
 
+    def test_tighten_with_target_only_support_does_not_canonize_new_formulation(self) -> None:
+        current = 'Tof garde une clarte durable.'
+        proposition = 'Tof garde une clarte durable, sobre et ritualisee.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': current,
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'tighten',
+                    'target': current,
+                    'proposition': proposition,
+                    'reason': 'legacy target support only',
+                },
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=current,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], current)
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['reason_code'], 'strength_below_threshold')
+        self.assertEqual(user_outcome['support_pairs'], 0)
+        self.assertEqual(user_outcome['threshold_verdict'], 'rejected')
+
+    def test_merge_with_targets_only_support_does_not_canonize_merged_formulation(self) -> None:
+        target_a = 'Tof garde une clarte durable.'
+        target_b = 'Tof garde un axe de travail stable.'
+        proposition = 'Tof garde une clarte durable et un axe de travail stable.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': '\n'.join([target_a, target_b]),
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+        buffer_pairs: list[dict[str, Any]] = []
+        for index in range(15):
+            buffer_pairs.append(
+                {
+                    'user': {'role': 'user', 'content': f'Utilisateur confirme {target_a} {target_b}'},
+                    'assistant': {'role': 'assistant', 'content': f'Assistant reprend {target_a} {target_b}'},
+                }
+            )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'merge',
+                    'targets': [target_a, target_b],
+                    'proposition': proposition,
+                    'reason': 'legacy targets support only',
+                },
+            ),
+            buffer_pairs=buffer_pairs,
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], '\n'.join([target_a, target_b]))
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['reason_code'], 'strength_below_threshold')
+        self.assertEqual(user_outcome['support_pairs'], 0)
+        self.assertEqual(user_outcome['threshold_verdict'], 'rejected')
+
+    def test_supported_tighten_still_rewrites_canonical_mutable(self) -> None:
+        current = 'Tof garde une clarte durable.'
+        proposition = 'Tof garde une clarte durable, sobre et ritualisee.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': current,
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'tighten',
+                    'target': current,
+                    'proposition': proposition,
+                    'reason': 'supported final wording',
+                },
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], proposition)
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['reason_code'], 'tighten_applied')
+        self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
     def test_promotes_strongest_candidate_to_static_when_mutable_is_full(self) -> None:
         strong = 'Tof maintient une orientation stable et ritualisee.'
         medium = 'Tof garde un gout stable pour les architectures lisibles.'
@@ -167,7 +295,7 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
                     resolved_path=path,
                 )
 
-            def write_static(subject: str, content: str) -> None:
+            def write_static(subject: str, content: str, **_kwargs: Any) -> None:
                 path = llm_path if subject == 'llm' else user_path
                 path.write_text(content, encoding='utf-8')
 
@@ -255,7 +383,7 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
                     resolved_path=path,
                 )
 
-            def write_static(subject: str, content: str) -> None:
+            def write_static(subject: str, content: str, **_kwargs: Any) -> None:
                 path = llm_path if subject == 'llm' else user_path
                 path.write_text(content, encoding='utf-8')
 
@@ -321,6 +449,63 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(store.mutable['user']['content'], current)
 
+    def test_recent_auto_static_write_does_not_trigger_operator_guard(self) -> None:
+        proposition = 'Tof maintient une orientation stable et ritualisee.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': _build_near_target_mutable(slack=20),
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            llm_path = Path(tmpdir) / 'llm_identity.txt'
+            user_path = Path(tmpdir) / 'user_identity.txt'
+            llm_path.write_text('Frida garde une tenue sobre.', encoding='utf-8')
+            user_path.write_text('Tof garde une orientation stable.', encoding='utf-8')
+
+            def read_snapshot(subject: str) -> SimpleNamespace:
+                path = llm_path if subject == 'llm' else user_path
+                raw_content = path.read_text(encoding='utf-8')
+                return SimpleNamespace(
+                    content=raw_content.strip(),
+                    raw_content=raw_content,
+                    resolved_path=path,
+                    updated_by='identity_periodic_agent',
+                    update_reason='periodic_agent_promotion',
+                    updated_ts=datetime.now(timezone.utc).isoformat(),
+                )
+
+            def write_static(subject: str, content: str, **_kwargs: Any) -> None:
+                path = llm_path if subject == 'llm' else user_path
+                path.write_text(content, encoding='utf-8')
+
+            summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+                _contract_for_user_operations(
+                    {'kind': 'add', 'proposition': proposition, 'reason': 'strong signal'},
+                ),
+                buffer_pairs=_supportive_buffer(
+                    proposition=proposition,
+                    support_indexes=set(range(15)),
+                ),
+                memory_store_module=store,
+                load_llm_identity_fn=lambda: llm_path.read_text(encoding='utf-8').strip(),
+                load_user_identity_fn=lambda: user_path.read_text(encoding='utf-8').strip(),
+                read_static_identity_snapshot_fn=read_snapshot,
+                write_static_identity_content_fn=write_static,
+            )
+
+            self.assertEqual(summary['status'], 'ok')
+            self.assertEqual(summary['reason_code'], 'applied')
+            self.assertTrue(summary['writes_applied'])
+            self.assertEqual(summary['promotion_count'], 1)
+            self.assertEqual(summary['promotions'][0]['promotion_reason_code'], 'promoted_to_static')
+            self.assertIn(proposition, user_path.read_text(encoding='utf-8').strip())
+
     def test_recent_static_edit_guard_suspends_promotion(self) -> None:
         proposition = 'Tof maintient une orientation stable et ritualisee.'
         store = _MutableStore(
@@ -347,9 +532,12 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
                     content=raw_content.strip(),
                     raw_content=raw_content,
                     resolved_path=path,
+                    updated_by='admin_identity_static_edit',
+                    update_reason='correction operateur',
+                    updated_ts=datetime.now(timezone.utc).isoformat(),
                 )
 
-            def write_static(subject: str, content: str) -> None:
+            def write_static(subject: str, content: str, **_kwargs: Any) -> None:
                 path = llm_path if subject == 'llm' else user_path
                 path.write_text(content, encoding='utf-8')
 

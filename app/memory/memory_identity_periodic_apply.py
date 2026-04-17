@@ -204,14 +204,12 @@ def _is_recent_admin_mutable_update(current_item: Mapping[str, Any]) -> bool:
 
 
 def _is_recent_static_operator_edit(static_snapshot: Mapping[str, Any]) -> bool:
-    path = static_snapshot.get('resolved_path')
-    if path is None or not hasattr(path, 'stat'):
+    if _text(static_snapshot.get('updated_by')) != 'admin_identity_static_edit':
         return False
-    try:
-        modified_ts = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
-    except OSError:
+    updated_ts = _parse_ts(static_snapshot.get('updated_ts'))
+    if updated_ts is None:
         return False
-    return modified_ts >= (datetime.now(timezone.utc) - timedelta(hours=_RECENT_ADMIN_GUARD_HOURS))
+    return updated_ts >= (datetime.now(timezone.utc) - timedelta(hours=_RECENT_ADMIN_GUARD_HOURS))
 
 
 def _subject_outcome(
@@ -305,12 +303,18 @@ def _build_static_snapshot(
                 'content': content,
                 'raw_content': raw_content,
                 'resolved_path': getattr(snapshot, 'resolved_path', None),
+                'updated_by': _text(getattr(snapshot, 'updated_by', '')),
+                'update_reason': _text(getattr(snapshot, 'update_reason', '')),
+                'updated_ts': _text(getattr(snapshot, 'updated_ts', '')),
             }
     content = _text(load_static_identity_fn())
     return {
         'content': content,
         'raw_content': content,
         'resolved_path': None,
+        'updated_by': '',
+        'update_reason': '',
+        'updated_ts': '',
     }
 
 
@@ -544,6 +548,31 @@ def _restore_mutable_identity(
         clear_mutable_identity(subject)
 
 
+def _write_static_identity_content(
+    write_static_identity_content_fn: Callable[..., Any] | None,
+    *,
+    subject: str,
+    content: str,
+    updated_by: str,
+    update_reason: str,
+    updated_ts: str | None = None,
+) -> None:
+    if not callable(write_static_identity_content_fn):
+        raise RuntimeError('static_writer_unavailable')
+    try:
+        write_static_identity_content_fn(
+            subject,
+            content,
+            updated_by=updated_by,
+            update_reason=update_reason,
+            updated_ts=updated_ts,
+        )
+    except TypeError as exc:
+        if 'unexpected keyword' not in str(exc) and 'positional arguments' not in str(exc):
+            raise
+        write_static_identity_content_fn(subject, content)
+
+
 def _apply_canonical_writes_with_rollback(
     *,
     next_static_by_subject: Mapping[str, str],
@@ -564,9 +593,13 @@ def _apply_canonical_writes_with_rollback(
             current_static_content = _text(_mapping(current_static_by_subject.get(subject)).get('content'))
             if next_static_content == current_static_content:
                 continue
-            if not callable(write_static_identity_content_fn):
-                raise RuntimeError('static_writer_unavailable')
-            write_static_identity_content_fn(subject, next_static_content)
+            _write_static_identity_content(
+                write_static_identity_content_fn,
+                subject=subject,
+                content=next_static_content,
+                updated_by=_UPDATED_BY,
+                update_reason=_PROMOTION_UPDATE_REASON if subject in promoted_subjects else 'periodic_agent',
+            )
             applied_static_subjects.append(subject)
             writes_applied = True
 
@@ -601,7 +634,14 @@ def _apply_canonical_writes_with_rollback(
         if callable(write_static_identity_content_fn):
             for subject in reversed(applied_static_subjects):
                 original_static = _mapping(current_static_by_subject.get(subject))
-                write_static_identity_content_fn(subject, str(original_static.get('raw_content') or original_static.get('content') or ''))
+                _write_static_identity_content(
+                    write_static_identity_content_fn,
+                    subject=subject,
+                    content=str(original_static.get('raw_content') or original_static.get('content') or ''),
+                    updated_by=_text(original_static.get('updated_by')) or 'system',
+                    update_reason=_text(original_static.get('update_reason')),
+                    updated_ts=_text(original_static.get('updated_ts')) or None,
+                )
         raise
     return writes_applied
 

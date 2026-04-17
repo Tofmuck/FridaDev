@@ -99,17 +99,9 @@ def _meaningful_tokens(text: str) -> list[str]:
     return [token for token in raw_tokens if len(token) >= 2]
 
 
-def _candidate_texts(operation: Mapping[str, Any]) -> list[str]:
+def _scored_candidate_text(operation: Mapping[str, Any]) -> str:
     payload = _mapping(operation)
-    kind = _text(payload.get('kind')).lower()
-    texts = [_text(payload.get('proposition'))]
-    if kind == 'tighten':
-        texts.append(_text(payload.get('target')))
-    elif kind == 'merge':
-        targets = payload.get('targets')
-        if isinstance(targets, Sequence) and not isinstance(targets, (str, bytes, bytearray)):
-            texts.extend(_text(item) for item in list(targets))
-    return [item for item in texts if item]
+    return _text(payload.get('proposition'))
 
 
 def _pair_blob(pair: Mapping[str, Any]) -> str:
@@ -131,10 +123,13 @@ def _pair_supports_candidate(
     pair_blob_norm: str,
     pair_tokens: set[str],
     candidate_text: str,
+    require_exact_phrase: bool = False,
 ) -> bool:
     candidate_norm = _normalize_ascii(candidate_text)
     if candidate_norm and candidate_norm in pair_blob_norm:
         return True
+    if require_exact_phrase:
+        return False
 
     candidate_tokens = set(_meaningful_tokens(candidate_text))
     if not candidate_tokens:
@@ -159,8 +154,9 @@ def score_operation(
     buffer_pairs: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     buffer_size = max(1, int(len(list(buffer_pairs))))
-    candidate_texts = _candidate_texts(operation)
-    if not candidate_texts:
+    kind = _text(_mapping(operation).get('kind')).lower()
+    candidate_text = _scored_candidate_text(operation)
+    if not candidate_text:
         return {
             'support_pairs': 0,
             'last_occurrence_distance': buffer_size,
@@ -175,13 +171,11 @@ def score_operation(
         pair_blob = _pair_blob(_mapping(pair))
         pair_blob_norm = _normalize_ascii(pair_blob)
         pair_tokens = set(_meaningful_tokens(pair_blob))
-        if any(
-            _pair_supports_candidate(
-                pair_blob_norm=pair_blob_norm,
-                pair_tokens=pair_tokens,
-                candidate_text=text,
-            )
-            for text in candidate_texts
+        if _pair_supports_candidate(
+            pair_blob_norm=pair_blob_norm,
+            pair_tokens=pair_tokens,
+            candidate_text=candidate_text,
+            require_exact_phrase=kind in {'tighten', 'merge'},
         ):
             support_indexes.append(index)
 
