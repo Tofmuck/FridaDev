@@ -260,7 +260,7 @@ def _abort_success_outcomes_for_all_or_nothing(
             for key, value in payload.items()
             if key not in {'subject', 'action', 'reason_code', 'old_len', 'new_len'}
         }
-        if action == 'rewrite' or reason_code.endswith('_applied'):
+        if reason_code.endswith('_applied'):
             aborted.append(
                 _subject_outcome(
                     subject=subject,
@@ -718,7 +718,7 @@ def _apply_subject_operations(
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
-                    action='rewrite',
+                    action='add',
                     reason_code='add_applied',
                     old_len=len(current_content),
                     new_len=len(_joined_content(next_lines)),
@@ -757,7 +757,7 @@ def _apply_subject_operations(
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
-                    action='rewrite',
+                    action='tighten',
                     reason_code='tighten_applied',
                     old_len=len(current_content),
                     new_len=len(_joined_content(next_lines)),
@@ -816,7 +816,7 @@ def _apply_subject_operations(
         outcomes.append(
             _subject_outcome(
                 subject=subject,
-                action='rewrite',
+                action='merge',
                 reason_code='merge_applied',
                 old_len=len(current_content),
                 new_len=len(_joined_content(next_lines)),

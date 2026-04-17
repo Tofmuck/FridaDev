@@ -200,11 +200,11 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'outcomes': [
                         {
                             'subject': 'llm',
-                            'action': 'rewrite',
+                            'action': 'tighten',
                             'old_len': 10,
                             'new_len': 42,
                             'validation_ok': True,
-                            'reason_code': 'rewrite_applied',
+                            'reason_code': 'tighten_applied',
                         },
                         {
                             'subject': 'user',
@@ -228,6 +228,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertNotIn('preview', payload)
         self.assertEqual(len(payload['outcomes']), 2)
         self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))
+        self.assertTrue(all(outcome['action'] != 'rewrite' for outcome in payload['outcomes']))
+        self.assertTrue(all(outcome['reason_code'] != 'rewrite_applied' for outcome in payload['outcomes']))
 
     def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
         observed: list[dict[str, Any]] = []

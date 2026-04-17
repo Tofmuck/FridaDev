@@ -223,7 +223,7 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['support_pairs'], 0)
         self.assertEqual(user_outcome['threshold_verdict'], 'rejected')
 
-    def test_supported_tighten_still_rewrites_canonical_mutable(self) -> None:
+    def test_supported_tighten_uses_local_operation_semantics(self) -> None:
         current = 'Tof garde une clarte durable.'
         proposition = 'Tof garde une clarte durable, sobre et ritualisee.'
         store = _MutableStore(
@@ -260,6 +260,7 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertTrue(summary['writes_applied'])
         self.assertEqual(store.mutable['user']['content'], proposition)
         user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'tighten')
         self.assertEqual(user_outcome['reason_code'], 'tighten_applied')
         self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
 
