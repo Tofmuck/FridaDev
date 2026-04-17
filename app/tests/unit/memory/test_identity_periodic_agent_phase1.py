@@ -85,9 +85,15 @@ class _InMemoryIdentityStore:
                 },
             )
         )
-        state['buffer_pairs'].append(copy.deepcopy({'user': pair[0], 'assistant': pair[1]}))
+        current_pairs = list(state['buffer_pairs'])
+        buffer_frozen = len(current_pairs) >= int(target_pairs)
+        if buffer_frozen:
+            state['buffer_pairs'] = current_pairs[: int(target_pairs)]
+        else:
+            state['buffer_pairs'] = current_pairs + [copy.deepcopy({'user': pair[0], 'assistant': pair[1]})]
         state['buffer_pairs_count'] = len(state['buffer_pairs'])
         state['buffer_target_pairs'] = int(target_pairs)
+        state['buffer_frozen'] = bool(buffer_frozen)
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
 
@@ -214,6 +220,72 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertIn('attention durable', store.mutable['user']['content'])
         self.assertEqual(store.upsert_calls[0][2], 'identity_periodic_agent')
 
+    def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
+        store = _InMemoryIdentityStore()
+
+        def fake_run_identity_periodic_agent(_payload: dict[str, Any]) -> dict[str, Any]:
+            return {
+                'llm': {
+                    'operations': [
+                        {
+                            'kind': 'add',
+                            'proposition': 'x' * 1651,
+                            'reason': 'overflow',
+                        }
+                    ]
+                },
+                'user': {
+                    'operations': [
+                        {
+                            'kind': 'add',
+                            'proposition': 'Tof maintient un fil identitaire stable.',
+                            'reason': 'durable identity signal',
+                        }
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+
+        arbiter_module = SimpleNamespace(run_identity_periodic_agent=fake_run_identity_periodic_agent)
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-all-or-nothing',
+                _pair(index),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-all-or-nothing',
+            _pair(15),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'all_or_nothing_rejected')
+        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(summary['rejection_reasons'], {'llm': 'mutable_content_too_long'})
+        self.assertEqual(store.upsert_calls, [])
+        self.assertEqual(store.mutable, {})
+        self.assertEqual(store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'], 15)
+        self.assertIn(
+            {
+                'subject': 'user',
+                'action': 'no_change',
+                'reason_code': 'not_committed_due_to_peer_rejection',
+                'old_len': 0,
+                'new_len': 0,
+            },
+            summary['outcomes'],
+        )
+
     def test_preserves_buffer_when_agent_returns_invalid_contract(self) -> None:
         store = _InMemoryIdentityStore()
         arbiter_module = SimpleNamespace(
@@ -244,6 +316,79 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(store.get_identity_staging_state('conv-invalid-contract')['buffer_pairs_count'], 15)
         self.assertEqual(store.upsert_calls, [])
+
+    def test_retry_reuses_exact_same_fifteen_pair_window_after_failed_attempt(self) -> None:
+        store = _InMemoryIdentityStore()
+        observed_payloads: list[dict[str, Any]] = []
+        responses = [
+            {
+                'llm': {'operations': []},
+                'user': {'operations': []},
+            },
+            {
+                'llm': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'},
+                    ]
+                },
+                'user': {
+                    'operations': [
+                        {
+                            'kind': 'add',
+                            'proposition': 'Tof maintient une attention stable.',
+                            'reason': 'durable identity signal',
+                        }
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            },
+        ]
+
+        def fake_run_identity_periodic_agent(payload: dict[str, Any]) -> dict[str, Any]:
+            observed_payloads.append(copy.deepcopy(payload))
+            return copy.deepcopy(responses.pop(0))
+
+        arbiter_module = SimpleNamespace(run_identity_periodic_agent=fake_run_identity_periodic_agent)
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-retry-frozen',
+                _pair(index),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        first_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-retry-frozen',
+            _pair(15),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+        second_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-retry-frozen',
+            _pair(16),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(first_summary['status'], 'skipped')
+        self.assertEqual(first_summary['last_agent_status'], 'contract_invalid')
+        self.assertFalse(first_summary['buffer_cleared'])
+        self.assertEqual(len(observed_payloads), 2)
+        self.assertEqual(observed_payloads[0]['buffer_pairs_count'], 15)
+        self.assertEqual(observed_payloads[1]['buffer_pairs_count'], 15)
+        self.assertEqual(observed_payloads[0]['buffer_pairs'], observed_payloads[1]['buffer_pairs'])
+        self.assertEqual(
+            observed_payloads[1]['buffer_pairs'][-1]['user']['content'],
+            'utilisateur 15',
+        )
+        self.assertTrue(second_summary['buffer_frozen'])
+        self.assertTrue(second_summary['buffer_cleared'])
+        self.assertEqual(store.get_identity_staging_state('conv-retry-frozen')['buffer_pairs_count'], 0)
+        self.assertIn('attention stable', store.mutable['user']['content'])
 
     def test_preserves_buffer_when_agent_raises_timeout(self) -> None:
         store = _InMemoryIdentityStore()

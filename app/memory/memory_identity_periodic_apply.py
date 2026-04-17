@@ -186,6 +186,39 @@ def _subject_outcome(*, subject: str, action: str, reason_code: str, old_len: in
     }
 
 
+def _abort_success_outcomes_for_all_or_nothing(
+    outcomes: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    aborted: list[dict[str, Any]] = []
+    for outcome in outcomes:
+        payload = _mapping(outcome)
+        subject = _text(payload.get('subject'))
+        action = _text(payload.get('action')) or 'no_change'
+        reason_code = _text(payload.get('reason_code'))
+        old_len = int(payload.get('old_len') or 0)
+        if action == 'rewrite' or reason_code.endswith('_applied'):
+            aborted.append(
+                _subject_outcome(
+                    subject=subject,
+                    action='no_change',
+                    reason_code='not_committed_due_to_peer_rejection',
+                    old_len=old_len,
+                    new_len=old_len,
+                )
+            )
+            continue
+        aborted.append(
+            _subject_outcome(
+                subject=subject,
+                action=action,
+                reason_code=reason_code or 'no_change',
+                old_len=old_len,
+                new_len=int(payload.get('new_len') or old_len),
+            )
+        )
+    return aborted
+
+
 def _apply_subject_operations(
     *,
     subject: str,
@@ -402,7 +435,7 @@ def apply_periodic_agent_contract(
     }
     next_by_subject = dict(current_by_subject)
     all_outcomes: list[dict[str, Any]] = []
-    writes_applied = False
+    rejection_reasons: dict[str, str] = {}
 
     for subject in _ALLOWED_SUBJECTS:
         next_content, outcomes, rejection_reason = _apply_subject_operations(
@@ -413,9 +446,20 @@ def apply_periodic_agent_contract(
         )
         all_outcomes.extend(outcomes)
         if rejection_reason:
-            next_by_subject[subject] = current_by_subject[subject]
+            rejection_reasons[subject] = str(rejection_reason)
             continue
         next_by_subject[subject] = next_content
+
+    if rejection_reasons:
+        return {
+            'status': 'skipped',
+            'reason_code': 'all_or_nothing_rejected',
+            'rejection_reasons': dict(rejection_reasons),
+            'outcomes': _abort_success_outcomes_for_all_or_nothing(all_outcomes),
+            'writes_applied': False,
+        }
+
+    writes_applied = False
 
     for subject in _ALLOWED_SUBJECTS:
         if next_by_subject[subject] == current_by_subject[subject]:

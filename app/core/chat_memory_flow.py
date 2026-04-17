@@ -183,7 +183,9 @@ def _run_periodic_identity_agent(
             buffer_pairs_count=0,
             buffer_target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
             buffer_cleared=False,
+            buffer_frozen=False,
             writes_applied=False,
+            rejection_reasons={},
             outcomes=[],
             error_class=exc.__class__.__name__,
         )
@@ -198,7 +200,9 @@ def _run_periodic_identity_agent(
                 summary.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
             ),
             buffer_cleared=bool(summary.get('buffer_cleared')),
+            buffer_frozen=bool(summary.get('buffer_frozen')),
             writes_applied=bool(summary.get('writes_applied')),
+            rejection_reasons=dict(summary.get('rejection_reasons') or {}),
             last_agent_status=str(summary.get('last_agent_status') or ''),
             outcomes=list(summary.get('outcomes') or []),
         )
@@ -532,6 +536,8 @@ def record_identity_entries_for_mode(
             ),
             canonical_write_applied=bool(periodic_summary.get('writes_applied')),
             buffer_cleared=bool(periodic_summary.get('buffer_cleared')),
+            buffer_frozen=bool(periodic_summary.get('buffer_frozen')),
+            rejection_reasons=dict(periodic_summary.get('rejection_reasons') or {}),
         )
         return
 

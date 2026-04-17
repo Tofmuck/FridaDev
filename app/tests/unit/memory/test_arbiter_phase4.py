@@ -176,8 +176,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             if len(observed_models) == 2:
                 return FakeResponse('{"entries":[]}', generation_id='gen-2')
             return FakeResponse(
-                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
-                '"user":{"action":"no_change","content":"","reason":"no update"}}',
+                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}',
                 generation_id='gen-3',
             )
 
@@ -226,8 +227,21 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(
             periodic,
             {
-                'llm': {'action': 'no_change', 'content': '', 'reason': 'no update'},
-                'user': {'action': 'no_change', 'content': '', 'reason': 'no update'},
+                'llm': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
+                    ],
+                },
+                'user': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
+                    ],
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
             },
         )
         self.assertEqual(
@@ -311,8 +325,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             if len(observed_models) == 2:
                 return FakeResponse('{"entries":[]}')
             return FakeResponse(
-                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
-                '"user":{"action":"no_change","content":"","reason":"no update"}}'
+                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings

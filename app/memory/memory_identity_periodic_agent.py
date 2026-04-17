@@ -72,9 +72,11 @@ def _emit_periodic_agent_event(
             'buffer_pairs_count': int(summary.get('buffer_pairs_count') or 0),
             'buffer_target_pairs': int(summary.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS),
             'buffer_cleared': bool(summary.get('buffer_cleared')),
+            'buffer_frozen': bool(summary.get('buffer_frozen')),
             'writes_applied': bool(summary.get('writes_applied')),
             'last_agent_status': _text(summary.get('last_agent_status')),
             'outcomes': list(summary.get('outcomes') or []),
+            'rejection_reasons': dict(summary.get('rejection_reasons') or {}),
         },
         prompt_kind='identity_periodic_agent',
     )
@@ -118,14 +120,17 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': BUFFER_TARGET_PAIRS,
             'last_agent_status': 'staging_append_failed',
             'buffer_cleared': False,
+            'buffer_frozen': False,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='error', reason_code='staging_append_failed', summary=summary)
         return summary
 
     buffer_pairs_count = int(staging_state.get('buffer_pairs_count') or 0)
     buffer_target_pairs = int(staging_state.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS)
+    buffer_frozen = bool(staging_state.get('buffer_frozen'))
     if buffer_pairs_count < buffer_target_pairs:
         return {
             'status': 'buffering',
@@ -134,8 +139,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': _text(staging_state.get('last_agent_status')) or 'buffering',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
 
     mark_status(
@@ -159,8 +166,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': 'agent_unavailable',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='skipped', reason_code='agent_unavailable', summary=summary)
         return summary
@@ -176,8 +185,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': 'agent_call_error',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='error', reason_code='agent_call_error', summary=summary)
         return summary
@@ -191,8 +202,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': 'agent_call_failed',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='skipped', reason_code='agent_call_failed', summary=summary)
         return summary
@@ -211,8 +224,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': 'contract_invalid',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='skipped', reason_code=validation_reason or 'contract_invalid', summary=summary)
         return summary
@@ -237,8 +252,10 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': buffer_target_pairs,
             'last_agent_status': 'apply_failed',
             'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
             'writes_applied': False,
             'outcomes': list(apply_summary.get('outcomes') or []),
+            'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
         }
         _emit_periodic_agent_event(
             status='error',
@@ -260,8 +277,10 @@ def stage_identity_turn_pair(
         'buffer_target_pairs': buffer_target_pairs,
         'last_agent_status': completion_status,
         'buffer_cleared': True,
+        'buffer_frozen': buffer_frozen,
         'writes_applied': bool(apply_summary.get('writes_applied')),
         'outcomes': list(apply_summary.get('outcomes') or []),
+        'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
     }
     _emit_periodic_agent_event(status='ok', reason_code=str(summary['reason_code']), summary=summary)
     return summary
