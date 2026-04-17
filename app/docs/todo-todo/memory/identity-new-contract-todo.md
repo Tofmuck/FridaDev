@@ -14,6 +14,7 @@ References liees:
 - `app/memory/memory_identity_mutables.py`
 - `app/core/chat_memory_flow.py`
 - `app/core/chat_prompt_context.py`
+- `app/core/conversations_prompt_window.py`
 - `app/core/hermeneutic_node/inputs/identity_input.py`
 - `app/docs/states/specs/identity-read-model-contract.md`
 - `app/docs/states/specs/identity-mutable-edit-contract.md`
@@ -113,6 +114,27 @@ Le contrat de logs deja pose interdit les dumps bruts:
 - sont permis: compteurs, drapeaux de presence, longueurs, reason codes, flags de validation;
 - sont interdits: preview, raw identity text, raw filtered excerpts.
 
+### 2.5 Ce qui existe deja hors canon identitaire: `context_hints`
+
+Le runtime actuel dispose deja d'une premiere lane hors canon identitaire:
+- `context_hints`, lus via `get_recent_context_hints()`;
+- gouvernes par `CONTEXT_HINTS_MAX_ITEMS`, `CONTEXT_HINTS_MAX_TOKENS`, `CONTEXT_HINTS_MAX_AGE_DAYS`, `CONTEXT_HINTS_MIN_CONFIDENCE`;
+- selectionnes dans `prepare_memory_context()`;
+- injectes dans un bloc dedie `[Indices contextuels recents]`;
+- distincts du canon `static` / `mutable`;
+- distincts aussi de la memoire de moment contextuel, qui reste un chantier separe, et de `Frida from herself`, qui reste un artefact reflexif distinct.
+
+Semantique actuelle de `context_hints`:
+- hints recents, non durables, orientes rappel contextuel;
+- issus aujourd'hui d'evidences user-side `episodic` ou `situation`;
+- budgetes et bornes pour le prompt;
+- explicitement hors promotion vers l'identite durable.
+
+Conclusion de diagnostic:
+- le systeme ne part pas de zero pour le hors canon identitaire;
+- `context_hints` est deja la premiere forme operative de cette famille;
+- le probleme restant n'est donc pas d'inventer une deuxieme lane, mais de fermer proprement son articulation doctrinale avec le futur contrat cible.
+
 ## 3. Probleme doctrinal actuel
 
 Le probleme n'est plus de savoir si une couche identity existe. Elle existe.
@@ -123,7 +145,7 @@ Constat doctrinal:
 - le `mutable` actuel reste trop narratif et trop permissif;
 - il peut encore absorber du non-identitaire important, mais non identitaire;
 - la frontiere entre identite forte et preferences relationnelles/conversationnelles n'est pas assez fermee;
-- le systeme ne possede pas encore de destination propre pour certains contenus utiles mais hors canon identitaire;
+- le systeme dispose deja d'une premiere voie hors canon via `context_hints`, mais cette voie n'est pas encore formulee comme contrat general ferme pour tout le non-identitaire important;
 - le risque n'est donc plus seulement la fuite du prompt dans l'identite, mais aussi la fuite du relationnel local, du contextuel et du quasi-narratif dans la mutable canonique.
 
 Point de tension explicite dans l'etat courant:
@@ -183,7 +205,7 @@ Regle forte:
 - `mutable` n'est pas un refuge pour ce qu'on ne sait pas encore classer;
 - si un contenu n'est pas identitaire au sens fort, il doit sortir de `mutable`, meme s'il semble utile.
 
-### 4.3 Ce qui doit sortir du canon identitaire
+### 4.3 Ce qui doit sortir du canon identitaire, et ou cela doit aller
 
 Doivent sortir du canon identitaire:
 - preferences conversationnelles locales ou semi-locales;
@@ -193,11 +215,30 @@ Doivent sortir du canon identitaire:
 - traces de moment ou de phase dialogique;
 - formulations d'attente qui dependent surtout d'un contexte de conversation.
 
-Destination cible a penser plus tard:
-- une couche distincte de `dialogue context`, hors canon identitaire, pour les contenus relationnels ou conversationnels importants mais non identitaires;
-- cette couche ne doit pas etre un nouveau `fourre-tout`;
-- elle devra etre definie par contrat propre, observabilite propre et source-of-truth propre;
-- elle pourra eventuellement croiser le chantier `memory-contextual-moments`, mais sans l'absorber ni le remplacer.
+Decision doctrinale explicite:
+- la formule `dialogue context` est abandonnee ici, car trop flottante et trop proche d'un pseudo-concept vide;
+- la formule retenue est `voie contextuelle hors canon`;
+- `context_hints` en est deja aujourd'hui la premiere forme operative;
+- le futur chantier ne doit donc pas inventer une deuxieme lane parallele, mais durcir, clarifier ou requalifier cette voie existante si son scope doit s'elargir.
+
+Ce que `context_hints` est aujourd'hui:
+- une lane non canonique deja active;
+- une voie de rappel contextuel recent, distincte de l'identite forte;
+- une selection gouvernee, bornee et injectee hors canon sous `[Indices contextuels recents]`;
+- une voie aujourd'hui surtout centree sur des indices user-side `episodic` / `situation`;
+- une voie qui aide la reprise contextuelle sans devenir canon identitaire.
+
+Pourquoi cela ne suffit pas encore a fermer tout le hors canon:
+- `context_hints` reste aujourd'hui une voie recente, budgetee et orientee injection prompt;
+- il ne couvre pas encore a lui seul toute la taxonomie future du non-identitaire important;
+- il ne tranche pas encore completement ce qui doit rester hint recent, ce qui pourrait relever plus tard d'un moment contextuel, et ce qui doit rester hors canon reflexif.
+
+Regle pour la suite:
+- toute evolution du hors canon identitaire doit partir de `context_hints` comme base existante;
+- si une extension de scope devient necessaire, elle devra etre presentee comme durcissement, requalification ou versionnement de cette `voie contextuelle hors canon`;
+- il est interdit de creer plus tard une couche concurrente qui redirait silencieusement `context_hints` sous un autre nom;
+- le chantier `memory-contextual-moments` reste distinct: il traite des objets memoire asynchrones de signifiance dialogique, pas une simple lane de hints recents;
+- `Frida from herself` reste distincte aussi: artefact reflexif, non destination par defaut des contenus expulses du canon identitaire.
 
 ### 4.4 Place future de `Frida from herself`
 
@@ -385,7 +426,7 @@ Ordre de travail recommande:
 1. figer ce contrat doctrinal de separation;
 2. auditer le contenu actuel de `llm.static`, `user.static`, `llm.mutable`, `user.mutable` ligne a ligne selon les nouvelles categories;
 3. classer chaque bloc en `garder dans static`, `garder dans mutable`, `sortir du canon identitaire`, `laisser hors canon`, `candidat reflexif futur`;
-4. definir la destination distincte du non-identitaire important avant toute migration de contenu;
+4. durcir la `voie contextuelle hors canon` a partir de `context_hints` avant toute migration de contenu non identitaire;
 5. seulement ensuite penser l'evolution versionnee des read-models, surfaces et schemas si elle devient necessaire;
 6. seulement ensuite purifier le contenu reel statique/mutable;
 7. seulement apres cette purification, rouvrir le chantier `Frida from herself`;
@@ -401,6 +442,6 @@ Invariants de ce plan:
 Decision principale:
 - `identity` doit desormais parler de ce que Frida est et de ce que Tof est, au sens fort;
 - `mutable` doit devenir une modulation identitaire compacte, pas un patchwork narratif;
-- ce qui est important mais non identitaire doit recevoir plus tard sa propre destination;
+- le hors canon identitaire doit partir de `context_hints` comme base existante, puis etre durci ou requalifie sans dupliquer cette lane;
 - `Frida from herself` doit rester un artefact reflexif separe;
 - l'observabilite identity existante est une contrainte dure de compatibilite, pas un detail de mise en oeuvre.
