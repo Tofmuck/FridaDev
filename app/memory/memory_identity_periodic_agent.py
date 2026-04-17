@@ -4,6 +4,7 @@ from typing import Any, Mapping, Sequence
 
 import config
 from identity import identity
+from identity import static_identity_content
 from memory import memory_identity_periodic_apply
 from observability import chat_turn_logger
 
@@ -73,7 +74,10 @@ def _emit_periodic_agent_event(
             'buffer_target_pairs': int(summary.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS),
             'buffer_cleared': bool(summary.get('buffer_cleared')),
             'buffer_frozen': bool(summary.get('buffer_frozen')),
+            'auto_canonization_suspended': bool(summary.get('auto_canonization_suspended')),
             'writes_applied': bool(summary.get('writes_applied')),
+            'promotion_count': int(summary.get('promotion_count') or 0),
+            'promotions': list(summary.get('promotions') or []),
             'last_agent_status': _text(summary.get('last_agent_status')),
             'outcomes': list(summary.get('outcomes') or []),
             'rejection_reasons': dict(summary.get('rejection_reasons') or {}),
@@ -101,8 +105,13 @@ def stage_identity_turn_pair(
             'buffer_target_pairs': BUFFER_TARGET_PAIRS,
             'last_agent_status': 'store_unavailable',
             'buffer_cleared': False,
+            'buffer_frozen': False,
+            'auto_canonization_suspended': False,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
+            'rejection_reasons': {},
         }
         _emit_periodic_agent_event(status='skipped', reason_code='staging_store_unavailable', summary=summary)
         return summary
@@ -121,7 +130,10 @@ def stage_identity_turn_pair(
             'last_agent_status': 'staging_append_failed',
             'buffer_cleared': False,
             'buffer_frozen': False,
+            'auto_canonization_suspended': False,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -131,6 +143,7 @@ def stage_identity_turn_pair(
     buffer_pairs_count = int(staging_state.get('buffer_pairs_count') or 0)
     buffer_target_pairs = int(staging_state.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS)
     buffer_frozen = bool(staging_state.get('buffer_frozen'))
+    auto_canonization_suspended = bool(staging_state.get('auto_canonization_suspended'))
     if buffer_pairs_count < buffer_target_pairs:
         return {
             'status': 'buffering',
@@ -140,7 +153,10 @@ def stage_identity_turn_pair(
             'last_agent_status': _text(staging_state.get('last_agent_status')) or 'buffering',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -167,7 +183,10 @@ def stage_identity_turn_pair(
             'last_agent_status': 'agent_unavailable',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -186,7 +205,10 @@ def stage_identity_turn_pair(
             'last_agent_status': 'agent_call_error',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -203,7 +225,10 @@ def stage_identity_turn_pair(
             'last_agent_status': 'agent_call_failed',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -225,7 +250,10 @@ def stage_identity_turn_pair(
             'last_agent_status': 'contract_invalid',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
             'rejection_reasons': {},
         }
@@ -234,31 +262,39 @@ def stage_identity_turn_pair(
 
     apply_summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
         validated_contract,
+        buffer_pairs=list(staging_state.get('buffer_pairs') or []),
         memory_store_module=memory_store_module,
         load_llm_identity_fn=identity.load_llm_identity,
         load_user_identity_fn=identity.load_user_identity,
+        read_static_identity_snapshot_fn=static_identity_content.read_static_identity_snapshot,
+        write_static_identity_content_fn=static_identity_content.write_static_identity_content,
     )
     if str(apply_summary.get('status') or '') != 'ok':
+        suspended = bool(apply_summary.get('auto_canonization_suspended'))
         mark_status(
             conversation_id,
-            status='apply_failed',
+            status='auto_canonization_suspended' if suspended else 'apply_failed',
             reason=str(apply_summary.get('reason_code') or 'apply_failed'),
             touch_run_ts=False,
+            auto_canonization_suspended=suspended,
         )
         summary = {
             'status': str(apply_summary.get('status') or 'skipped'),
             'reason_code': str(apply_summary.get('reason_code') or 'apply_failed'),
             'buffer_pairs_count': buffer_pairs_count,
             'buffer_target_pairs': buffer_target_pairs,
-            'last_agent_status': 'apply_failed',
+            'last_agent_status': 'auto_canonization_suspended' if suspended else 'apply_failed',
             'buffer_cleared': False,
             'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': suspended,
             'writes_applied': False,
+            'promotion_count': int(apply_summary.get('promotion_count') or 0),
+            'promotions': list(apply_summary.get('promotions') or []),
             'outcomes': list(apply_summary.get('outcomes') or []),
             'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
         }
         _emit_periodic_agent_event(
-            status='error',
+            status='skipped' if suspended else 'error',
             reason_code=str(summary['reason_code']),
             summary=summary,
         )
@@ -269,6 +305,7 @@ def stage_identity_turn_pair(
         conversation_id,
         status=completion_status,
         reason=str(apply_summary.get('reason_code') or completion_status),
+        auto_canonization_suspended=bool(apply_summary.get('auto_canonization_suspended')),
     )
     summary = {
         'status': str(apply_summary.get('status') or 'ok'),
@@ -278,7 +315,10 @@ def stage_identity_turn_pair(
         'last_agent_status': completion_status,
         'buffer_cleared': True,
         'buffer_frozen': buffer_frozen,
+        'auto_canonization_suspended': bool(apply_summary.get('auto_canonization_suspended')),
         'writes_applied': bool(apply_summary.get('writes_applied')),
+        'promotion_count': int(apply_summary.get('promotion_count') or 0),
+        'promotions': list(apply_summary.get('promotions') or []),
         'outcomes': list(apply_summary.get('outcomes') or []),
         'rejection_reasons': dict(apply_summary.get('rejection_reasons') or {}),
     }

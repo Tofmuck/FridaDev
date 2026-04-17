@@ -65,11 +65,11 @@ Regles:
 ## Validation mutable
 
 La mutable canonique editee par l'operateur suit la meme discipline doctrinale que le runtime:
-- cible: `1500` caracteres
-- plafond dur: `1650` caracteres
+- cible: `3000` caracteres
+- plafond dur: `3300` caracteres
 - aucune troncature cachee
-- si `content > 1650`: rejet, aucune ecriture
-- le meme validateur canonique est applique a l'edition admin et au `identity_mutable_rewriter`
+- si `content > 3300`: rejet, aucune ecriture
+- le meme validateur canonique est applique a l'edition admin et a l'applicateur du `identity_periodic_agent`
 - tout contenu prompt-like est rejete fail-closed avant ecriture
 
 Contenus explicitement interdits:

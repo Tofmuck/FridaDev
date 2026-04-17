@@ -5,12 +5,12 @@ Classement: `app/docs/todo-todo/memory/`
 Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
 Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
-Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit desormais l'etat reel post-staging/agent periodique et laisse B3/B4/B5/B6 ouverts
+Decision runtime du 2026-04-17: les lots B1+B4 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique, et laisse B5/B6 ouverts
 
 ## 1. Regle de travail
 
 - [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
-- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped et agent identitaire periodique fail-closed; B3/B4/B5/B6 restent ouverts.
+- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5/B6 restent ouverts.
 - [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
 
 ## A. Audit code-first de l'existant
@@ -21,7 +21,7 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 - [x] `app/core/chat_memory_flow.py` persiste d'abord les entrees legacy via `persist_identity_entries(...)`, puis appelle `_run_periodic_identity_agent(...)`; la maintenance canonique ne passe plus par un rewriter per-turn.
 - [x] `app/core/chat_memory_flow.py` garde le chemin agent periodique en `fail-closed` sur le canon: si le staging, l'appel agent ou l'applicateur cassent, `identity_mode_apply.action=persist_enforced_buffered` reste vrai, la conversation continue et le buffer n'est pas purge.
 - [x] `app/memory/memory_identity_periodic_agent.py::_build_agent_payload()` envoie aujourd'hui `buffer_pairs`, `buffer_pairs_count`, `buffer_target_pairs`, `identities.{llm,user}.{static,mutable_current}` et `mutable_budget.{target_chars,max_chars}`.
-- [x] `app/memory/memory_identity_staging.py` introduit un staging identitaire distinct de `identity_mutables` avec buffer temporaire, compteur de paires, statut du dernier run et flag `auto_canonization_suspended` encore passif.
+- [x] `app/memory/memory_identity_staging.py` introduit un staging identitaire distinct de `identity_mutables` avec buffer temporaire, compteur de paires, statut du dernier run et flag `auto_canonization_suspended` maintenant actif.
 
 ### A2. Prompt actuel, contrat agent et garde d'admission
 
@@ -43,16 +43,16 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 
 - [x] `app/admin/admin_identity_read_model_service.py` expose `static`, `mutable`, `legacy_fragments`, `evidence`, `conflicts`; aucun bloc `identity_staging` ni resume du dernier passage agent n'est prevu.
 - [x] `app/admin/admin_identity_runtime_representations_service.py` expose seulement `structured_identity` et `injected_identity_text`; aucun etat du buffer ni verdict compact du dernier agent.
-- [x] `app/web/hermeneutic_admin/render_identity_mutable_editor.js` encode en dur `TARGET_CHARS = 1500` et `MAX_CHARS = 1650` et raconte encore une mutable canonique unique, pas un regime `canon actif + staging`.
-- [x] `app/admin/admin_identity_mutable_edit_contract.py` expose encore `mutable_budget` depuis `config.IDENTITY_MUTABLE_TARGET_CHARS` et `config.IDENTITY_MUTABLE_MAX_CHARS`, tandis que `app/admin/admin_identity_mutable_edit_service.py` continue a rejeter une edition admin au-dela de `config.IDENTITY_MUTABLE_MAX_CHARS`; l'API admin mutable raconte donc encore et enforce l'ancien regime budgetaire meme si l'UI ou la gouvernance evoluent plus tard.
+- [x] `app/web/hermeneutic_admin/render_identity_mutable_editor.js` encode encore en dur `TARGET_CHARS = 3000` et `MAX_CHARS = 3300` et raconte une mutable canonique unique, pas encore un regime `canon actif + staging + promotion + suspension`.
+- [x] `app/admin/admin_identity_mutable_edit_contract.py` expose toujours `mutable_budget` depuis `config.IDENTITY_MUTABLE_TARGET_CHARS` et `config.IDENTITY_MUTABLE_MAX_CHARS`, tandis que `app/admin/admin_identity_mutable_edit_service.py` continue a rejeter une edition admin au-dela de `config.IDENTITY_MUTABLE_MAX_CHARS`; l'API admin mutable raconte donc encore le budget canonique courant sans exposer staging, promotion ni suspension.
 - [x] `app/web/hermeneutic_admin/render_identity_read_model.js` et `app/web/identity/render_identity_runtime_representations.js` ne savent montrer ni buffer, ni dernier run, ni suspension de canonisation.
 - [x] `app/core/chat_memory_flow.py` journalise maintenant `identity_periodic_agent_apply` et `app/memory/memory_identity_periodic_agent.py` journalise `identity_periodic_agent`; les anciennes surfaces `identity_mutable_rewrite*` ne sont plus la couture runtime active.
-- [x] `app/docs/states/specs/log-module-contract.md` impose deja des logs identity compacts, mais ne couvre pas encore les champs du nouveau regime `buffer/staging/scores/operations/promotion/suspension`.
+- [x] `app/docs/states/specs/log-module-contract.md` impose des logs identity compacts et couvre maintenant les champs du regime `buffer/staging/scores/operations/promotion/suspension`.
 
 ### A5. Specs, docs et tests qui encodent encore l'ancien regime
 
-- [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne encore l'edition admin sur le `identity_mutable_rewriter` courant et autorise des preferences de conversation sur des themes techniques.
-- [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent encore `IDENTITY_MUTABLE_TARGET_CHARS = 1500` et `IDENTITY_MUTABLE_MAX_CHARS = 1650` comme doctrine verrouillee du rewriter actif.
+- [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne maintenant le budget admin sur le regime periodique actif, mais autorise encore des preferences de conversation sur des themes techniques et n'expose pas le staging.
+- [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent maintenant `IDENTITY_MUTABLE_TARGET_CHARS = 3000` et `IDENTITY_MUTABLE_MAX_CHARS = 3300` comme doctrine verrouillee du regime periodique actif; la requalification complete des surfaces admin reste a faire.
 - [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` decrivent encore une base active sans staging, sans verdict agent et sans suspension automatique.
 - [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` encode `rewrite/no_change`, accepte des preferences et des interets techniques comme contenu mutable valide, et suppose `updated_by = identity_mutable_rewriter`.
 - [x] `app/tests/unit/chat/test_chat_memory_flow.py` couvre maintenant la couture `persist_identity_entries(...) -> staging/agent periodique`, le fail-closed et la paire bufferisee nettoyee.
@@ -79,18 +79,18 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 
 ### B3. Introduire la ponderation et les seuils deterministes
 
-- [ ] Calculer `support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm` et `strength` dans une couche deterministe, pas seulement dans le prompt.
-- [ ] Encoder les seuils `strength < 0.35`, `0.35 <= strength < 0.60` et `strength >= 0.60` dans l'applicateur final, avec journalisation compacte des verdicts.
-- [ ] Interdire qu'un LLM invente ses propres scores sans reconciliation deterministe cote Python.
-- [ ] Rendre visibles les scores compacts par sujet et par operation dans les surfaces admin/logs sans exposer de texte brut.
+- [x] Calculer `support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm` et `strength` dans une couche deterministe `app/memory/memory_identity_periodic_scoring.py`, pas seulement dans le prompt.
+- [x] Encoder les seuils `strength < 0.35`, `0.35 <= strength < 0.60` et `strength >= 0.60` dans l'applicateur final, avec verdicts `rejected|deferred|accepted`.
+- [x] Interdire qu'un LLM invente ses propres scores sans reconciliation deterministe cote Python; le prompt runtime lui interdit maintenant d'emettre des champs de score.
+- [x] Rendre visibles les scores compacts par sujet et par operation dans `identity_periodic_agent`, `identity_periodic_agent_apply` et les summaries runtime, sans exposer de texte brut.
 
 ### B4. Introduire la promotion `mutable -> static` et la double saturation
 
-- [ ] Definir un detecteur de saturation du `mutable` compatible avec la cible `3000` caracteres et la projection active `static + mutable narrative`.
-- [ ] Choisir l'algorithme deterministe qui promeut vers `static` le ou les traits les plus forts sans dupliquer ce qui est deja fixe.
-- [ ] Recaler explicitement le budget de projection du `static` pour qu'une promotion n'agrandisse pas `static` d'une main puis ne le fasse pas tronquer silencieusement de l'autre.
-- [ ] Introduire la suspension automatique de canonisation si `mutable` et `static` sont tous deux satures, puis l'exposer comme verite operateur.
-- [ ] Garantir qu'une promotion automatique n'ecrase ni les editions operateur du statique ni les corrections humaines recentes.
+- [x] Definir un detecteur de saturation du `mutable` compatible avec la cible `3000` caracteres et la projection active `static + mutable narrative`.
+- [x] Choisir l'algorithme deterministe qui promeut vers `static` le ou les traits les plus forts sans dupliquer ce qui est deja fixe.
+- [x] Recaler explicitement le budget utile du `static` a `3000` caracteres pour qu'une promotion n'agrandisse pas `static` d'une main puis ne le fasse pas tronquer silencieusement de l'autre.
+- [x] Introduire la suspension automatique de canonisation si `mutable` et `static` sont tous deux satures, puis l'exposer comme verite operateur via `auto_canonization_suspended`, les reason codes et le staging preserve.
+- [x] Garantir qu'une promotion automatique n'ecrase ni les editions operateur recentes du `mutable`, ni les edits recents du statique utilises comme garde-fou minimal avant auto-promotion.
 
 ### B5. Adapter la projection active, le read-model et les representations runtime
 
@@ -98,7 +98,7 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 - [ ] Etendre `app/identity/active_identity_projection.py` et `app/identity/identity.py` pour conserver le canon actif `static + mutable` tout en exposant separement l'etat staging.
 - [ ] Ajouter a `app/admin/admin_identity_read_model_service.py` un bloc `identity_staging` coherent avec le plan (`buffer_pairs_count`, `buffer_target_pairs`, `last_agent_run_ts`, `last_agent_status`, `auto_canonization_suspended`).
 - [ ] Ajouter a `app/admin/admin_identity_runtime_representations_service.py` le staging et le resume compact du dernier verdict agent, sans mentir sur la base active injectee.
-- [ ] Migrer explicitement la seam admin budget encore active: `app/admin/admin_identity_mutable_edit_contract.py` ne doit plus exposer `mutable_budget` depuis les caps legacy de `app/config.py`, `app/admin/admin_identity_mutable_edit_service.py` ne doit plus enforce implicitement `IDENTITY_MUTABLE_MAX_CHARS` comme verite du nouveau regime, et le raccord `app/config.py` doit etre requalifie ou remplace en coherence avec la nouvelle doctrine.
+- [ ] Migrer explicitement la seam admin budget encore active: `app/admin/admin_identity_mutable_edit_contract.py` expose maintenant `mutable_budget` depuis les caps courants `3000/3300` de `app/config.py`, `app/admin/admin_identity_mutable_edit_service.py` continue a faire respecter `IDENTITY_MUTABLE_MAX_CHARS`, et ce raccord doit encore etre requalifie ou remplace pour raconter staging, promotion et suspension comme verite du nouveau regime.
 - [ ] Adapter les frontends `app/web/hermeneutic_admin/render_identity_read_model.js`, `app/web/hermeneutic_admin/render_identity_mutable_editor.js`, `app/web/hermeneutic_admin/render_identity_governance.js` et `app/web/identity/render_identity_runtime_representations.js` au nouveau regime.
 
 ### B6. Revoir l'articulation avec le legacy identity
@@ -115,7 +115,7 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 - [ ] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
 - [ ] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
 - [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
-- [ ] Supprimer les valeurs UI en dur `target=1500` et `max=1650` une fois la nouvelle gouvernance livree.
+- [ ] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
 
 ### C2. Ce qui devra etre remplace
 
@@ -168,7 +168,7 @@ Decision runtime du 2026-04-17: le lot B1+B2 est maintenant actif; ce TODO suit 
 ### E1. Documents a modifier quand la migration runtime commencera
 
 - [ ] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
-- [ ] Modifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` pour sortir du cadrage doctrinal ferme `1500/1650` propre au rewriter courant.
+- [ ] Requalifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` au-dela du simple budget `3000/3300` pour rendre visibles scoring, promotion, staging et suspension sans les traiter comme de simples caps.
 - [ ] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
 - [ ] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.
 - [ ] Modifier les textes UI `/identity` et `/hermeneutic-admin` qui presentent encore la mutable unique comme seule couche mouvante.

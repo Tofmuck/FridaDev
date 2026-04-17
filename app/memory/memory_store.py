@@ -374,12 +374,14 @@ def mark_identity_staging_status(
     status: str,
     reason: str = '',
     touch_run_ts: bool = False,
+    auto_canonization_suspended: bool | None = None,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.mark_identity_staging_status(
         conversation_id,
         status=status,
         reason=reason,
         touch_run_ts=touch_run_ts,
+        auto_canonization_suspended=auto_canonization_suspended,
         conn_factory=_conn,
         logger=logger,
     )
@@ -390,11 +392,13 @@ def clear_identity_staging_buffer(
     *,
     status: str,
     reason: str = '',
+    auto_canonization_suspended: bool = False,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.clear_identity_staging_buffer(
         conversation_id,
         status=status,
         reason=reason,
+        auto_canonization_suspended=auto_canonization_suspended,
         conn_factory=_conn,
         logger=logger,
     )

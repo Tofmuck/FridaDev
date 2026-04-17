@@ -122,7 +122,7 @@ Important:
 - `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent exposes pour dire vrai sur les survivances legacy;
 - ils ne doivent pas etre requalifies comme knobs actifs ni redevenir editables;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
-- la mutable garde sa doctrine `1500 / 1650`, visible mais verrouillee.
+- la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee.
 
 ## Contrat JSON d'update
 

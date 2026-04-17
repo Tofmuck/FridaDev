@@ -203,7 +203,7 @@ def append_identity_staging_pair(
                         json.dumps(next_pairs, ensure_ascii=False),
                         len(next_pairs),
                         buffer_target,
-                        False,
+                        bool((current_state or {}).get('auto_canonization_suspended')),
                         next_status,
                         _text((current_state or {}).get('last_agent_reason')) or None,
                     ),
@@ -226,6 +226,7 @@ def mark_identity_staging_status(
     status: str,
     reason: str = '',
     touch_run_ts: bool = False,
+    auto_canonization_suspended: bool | None = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -244,6 +245,7 @@ def mark_identity_staging_status(
                         last_agent_status = %s,
                         last_agent_reason = %s,
                         last_agent_run_ts = CASE WHEN %s THEN now() ELSE last_agent_run_ts END,
+                        auto_canonization_suspended = COALESCE(%s, auto_canonization_suspended),
                         updated_ts = now()
                     WHERE conversation_id = %s
                     RETURNING
@@ -262,6 +264,7 @@ def mark_identity_staging_status(
                         status_text,
                         _text(reason) or None,
                         bool(touch_run_ts),
+                        auto_canonization_suspended,
                         conversation_key,
                     ),
                 )
@@ -278,6 +281,7 @@ def clear_identity_staging_buffer(
     *,
     status: str,
     reason: str = '',
+    auto_canonization_suspended: bool = False,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -298,6 +302,7 @@ def clear_identity_staging_buffer(
                         last_agent_status = %s,
                         last_agent_reason = %s,
                         last_agent_run_ts = now(),
+                        auto_canonization_suspended = %s,
                         updated_ts = now()
                     WHERE conversation_id = %s
                     RETURNING
@@ -316,6 +321,7 @@ def clear_identity_staging_buffer(
                         json.dumps([], ensure_ascii=False),
                         status_text,
                         _text(reason) or None,
+                        bool(auto_canonization_suspended),
                         conversation_key,
                     ),
                 )

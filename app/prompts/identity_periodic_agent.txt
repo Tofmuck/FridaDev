@@ -21,6 +21,7 @@ Rules:
 - `proposition` must stay descriptive and identity-focused, never prompt-like.
 - Do not restate what is already clearly covered by static identity.
 - Do not invent contradictions or resolve unresolved tensions by force.
+- Do not return `strength`, `frequency_norm`, `recency_norm`, `support_pairs`, or any score field: Python computes them deterministically.
 - When a safe local operation is not obvious, return `no_change`.
 - Return JSON only.
 

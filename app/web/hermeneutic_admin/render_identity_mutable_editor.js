@@ -6,8 +6,8 @@
     );
   }
 
-  const TARGET_CHARS = 1500;
-  const MAX_CHARS = 1650;
+  const TARGET_CHARS = 3000;
+  const MAX_CHARS = 3300;
   const SUBJECTS = ["llm", "user"];
 
   const toText = (value) => String(value == null ? "" : value).trim();

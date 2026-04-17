@@ -190,6 +190,7 @@ Forbidden by default:
 Identity exception:
 - `identities_read`, `identity_write`, `identity_periodic_agent`, `identity_periodic_agent_apply`, and identity admin/runtime summaries such as `identity_mode_apply` must stay compact-only
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
+- `identity_periodic_agent` and `identity_periodic_agent_apply` may also expose compact staging/governance fields such as `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, compact `rejection_reasons`, compact per-operation score fields (`support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm`, `strength`, `threshold_verdict`) and promotion summaries without raw proposition text
 - forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts
 
 `preview` contract (all events):

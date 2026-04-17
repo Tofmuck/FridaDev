@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +28,13 @@ def _pair(index: int) -> list[dict[str, Any]]:
     return [
         {'role': 'user', 'content': f'utilisateur {index}'},
         {'role': 'assistant', 'content': f'assistant {index}'},
+    ]
+
+
+def _support_pair(index: int, proposition: str) -> list[dict[str, Any]]:
+    return [
+        {'role': 'user', 'content': f'utilisateur {index} {proposition}'},
+        {'role': 'assistant', 'content': f'assistant {index} confirme {proposition}'},
     ]
 
 
@@ -104,12 +113,15 @@ class _InMemoryIdentityStore:
         status: str,
         reason: str = '',
         touch_run_ts: bool = False,
+        auto_canonization_suspended: bool | None = None,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
             return None
         state['last_agent_status'] = status
         state['last_agent_reason'] = reason or None
+        if auto_canonization_suspended is not None:
+            state['auto_canonization_suspended'] = bool(auto_canonization_suspended)
         if touch_run_ts:
             state['last_agent_run_ts'] = '2026-04-17T00:00:00Z'
         self.staging[conversation_id] = copy.deepcopy(state)
@@ -121,6 +133,7 @@ class _InMemoryIdentityStore:
         *,
         status: str,
         reason: str = '',
+        auto_canonization_suspended: bool = False,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
@@ -130,6 +143,7 @@ class _InMemoryIdentityStore:
         state['last_agent_status'] = status
         state['last_agent_reason'] = reason or None
         state['last_agent_run_ts'] = '2026-04-17T00:00:00Z'
+        state['auto_canonization_suspended'] = bool(auto_canonization_suspended)
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
 
@@ -138,12 +152,22 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def setUp(self) -> None:
         self.original_load_llm = memory_identity_periodic_agent.identity.load_llm_identity
         self.original_load_user = memory_identity_periodic_agent.identity.load_user_identity
+        self.original_read_static_snapshot = memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot
+        self.original_write_static_content = memory_identity_periodic_agent.static_identity_content.write_static_identity_content
         memory_identity_periodic_agent.identity.load_llm_identity = lambda: 'Frida garde une tenue sobre.'
         memory_identity_periodic_agent.identity.load_user_identity = lambda: 'Tof garde une orientation stable.'
+        memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = lambda subject: SimpleNamespace(
+            content='Frida garde une tenue sobre.' if subject == 'llm' else 'Tof garde une orientation stable.',
+            raw_content='Frida garde une tenue sobre.' if subject == 'llm' else 'Tof garde une orientation stable.',
+            resolved_path=None,
+        )
+        memory_identity_periodic_agent.static_identity_content.write_static_identity_content = lambda _subject, _content: None
 
     def tearDown(self) -> None:
         memory_identity_periodic_agent.identity.load_llm_identity = self.original_load_llm
         memory_identity_periodic_agent.identity.load_user_identity = self.original_load_user
+        memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = self.original_read_static_snapshot
+        memory_identity_periodic_agent.static_identity_content.write_static_identity_content = self.original_write_static_content
 
     def test_does_not_call_agent_before_fifteen_pairs(self) -> None:
         store = _InMemoryIdentityStore()
@@ -169,6 +193,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_calls_agent_at_exact_threshold_and_clears_buffer_only_after_clean_completion(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
+        proposition = 'Tof maintient une attention durable aux details stables.'
 
         def fake_run_identity_periodic_agent(payload: dict[str, Any]) -> dict[str, Any]:
             observed_payloads.append(copy.deepcopy(payload))
@@ -182,7 +207,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                     'operations': [
                         {
                             'kind': 'add',
-                            'proposition': 'Tof maintient une attention durable aux details stables.',
+                            'proposition': proposition,
                             'reason': 'durable identity signal',
                         }
                     ]
@@ -198,14 +223,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         for index in range(1, 15):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-threshold',
-                _pair(index),
+                _support_pair(index, proposition),
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-threshold',
-            _pair(15),
+            _support_pair(15, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -222,6 +247,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
     def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
         store = _InMemoryIdentityStore()
+        store.mutable['llm'] = {
+            'subject': 'llm',
+            'content': 'x' * 3290,
+            'updated_by': 'identity_periodic_agent',
+            'update_reason': 'periodic_agent',
+        }
+        llm_proposition = 'Frida conserve un axe de synthese stable.'
+        user_proposition = 'Tof maintient un fil identitaire stable.'
 
         def fake_run_identity_periodic_agent(_payload: dict[str, Any]) -> dict[str, Any]:
             return {
@@ -229,7 +262,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                     'operations': [
                         {
                             'kind': 'add',
-                            'proposition': 'x' * 1651,
+                            'proposition': llm_proposition,
                             'reason': 'overflow',
                         }
                     ]
@@ -238,7 +271,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                     'operations': [
                         {
                             'kind': 'add',
-                            'proposition': 'Tof maintient un fil identitaire stable.',
+                            'proposition': user_proposition,
                             'reason': 'durable identity signal',
                         }
                     ]
@@ -254,14 +287,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         for index in range(1, 15):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-all-or-nothing',
-                _pair(index),
+                _support_pair(index, f'{llm_proposition} {user_proposition}'),
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
 
         summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-all-or-nothing',
-            _pair(15),
+            _support_pair(15, f'{llm_proposition} {user_proposition}'),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -273,18 +306,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['rejection_reasons'], {'llm': 'mutable_content_too_long'})
         self.assertEqual(store.upsert_calls, [])
-        self.assertEqual(store.mutable, {})
+        self.assertEqual(store.mutable['llm']['content'], 'x' * 3290)
+        self.assertNotIn('user', store.mutable)
         self.assertEqual(store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'], 15)
-        self.assertIn(
-            {
-                'subject': 'user',
-                'action': 'no_change',
-                'reason_code': 'not_committed_due_to_peer_rejection',
-                'old_len': 0,
-                'new_len': 0,
-            },
-            summary['outcomes'],
-        )
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'no_change')
+        self.assertEqual(user_outcome['reason_code'], 'not_committed_due_to_peer_rejection')
+        self.assertEqual(user_outcome['old_len'], 0)
+        self.assertEqual(user_outcome['new_len'], 0)
 
     def test_preserves_buffer_when_agent_returns_invalid_contract(self) -> None:
         store = _InMemoryIdentityStore()
@@ -321,6 +350,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_retry_reuses_exact_same_fifteen_pair_window_after_failed_attempt(self) -> None:
         store = _InMemoryIdentityStore()
         observed_payloads: list[dict[str, Any]] = []
+        proposition = 'Tof maintient une attention stable.'
         responses = [
             {
                 'llm': {'operations': []},
@@ -336,7 +366,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                     'operations': [
                         {
                             'kind': 'add',
-                            'proposition': 'Tof maintient une attention stable.',
+                            'proposition': proposition,
                             'reason': 'durable identity signal',
                         }
                     ]
@@ -357,20 +387,20 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         for index in range(1, 15):
             memory_identity_periodic_agent.stage_identity_turn_pair(
                 'conv-retry-frozen',
-                _pair(index),
+                _support_pair(index, proposition),
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
 
         first_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-retry-frozen',
-            _pair(15),
+            _support_pair(15, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
         second_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
             'conv-retry-frozen',
-            _pair(16),
+            _support_pair(16, proposition),
             arbiter_module=arbiter_module,
             memory_store_module=store,
         )
@@ -384,12 +414,95 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(observed_payloads[0]['buffer_pairs'], observed_payloads[1]['buffer_pairs'])
         self.assertEqual(
             observed_payloads[1]['buffer_pairs'][-1]['user']['content'],
-            'utilisateur 15',
+            f'utilisateur 15 {proposition}',
         )
         self.assertTrue(second_summary['buffer_frozen'])
         self.assertTrue(second_summary['buffer_cleared'])
         self.assertEqual(store.get_identity_staging_state('conv-retry-frozen')['buffer_pairs_count'], 0)
         self.assertIn('attention stable', store.mutable['user']['content'])
+
+    def test_marks_auto_canonization_suspension_and_preserves_buffer_when_double_saturation_blocks_promotion(self) -> None:
+        store = _InMemoryIdentityStore()
+        proposition = 'Tof maintient une orientation stable et ritualisee.'
+        filler = 'Trait stable. ' * 220
+        store.mutable['user'] = {
+            'subject': 'user',
+            'content': filler,
+            'updated_by': 'identity_periodic_agent',
+            'update_reason': 'periodic_agent',
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            user_path = Path(tmpdir) / 'user_identity.txt'
+            user_path.write_text('Statique plein. ' * 220, encoding='utf-8')
+            old_ts = 1_700_000_000
+            os.utime(user_path, (old_ts, old_ts))
+
+            def fake_read_snapshot(subject: str) -> SimpleNamespace:
+                if subject == 'user':
+                    content = user_path.read_text(encoding='utf-8')
+                    return SimpleNamespace(
+                        content=content.strip(),
+                        raw_content=content,
+                        resolved_path=user_path,
+                    )
+                return SimpleNamespace(
+                    content='Frida garde une tenue sobre.',
+                    raw_content='Frida garde une tenue sobre.',
+                    resolved_path=None,
+                )
+
+            def fake_write_static(_subject: str, _content: str) -> None:
+                raise AssertionError('double saturation must not write static content')
+
+            memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = fake_read_snapshot
+            memory_identity_periodic_agent.static_identity_content.write_static_identity_content = fake_write_static
+
+            arbiter_module = SimpleNamespace(
+                run_identity_periodic_agent=lambda _payload: {
+                    'llm': {
+                        'operations': [
+                            {'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'},
+                        ]
+                    },
+                    'user': {
+                        'operations': [
+                            {'kind': 'add', 'proposition': proposition, 'reason': 'durable identity signal'},
+                        ]
+                    },
+                    'meta': {
+                        'execution_status': 'complete',
+                        'buffer_pairs_count': 15,
+                        'window_complete': True,
+                    },
+                }
+            )
+
+            for index in range(1, 15):
+                memory_identity_periodic_agent.stage_identity_turn_pair(
+                    'conv-double-saturation',
+                    _support_pair(index, proposition),
+                    arbiter_module=arbiter_module,
+                    memory_store_module=store,
+                )
+
+            summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-double-saturation',
+                _support_pair(15, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'double_saturation')
+        self.assertEqual(summary['last_agent_status'], 'auto_canonization_suspended')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
+        self.assertTrue(summary['auto_canonization_suspended'])
+        self.assertFalse(summary['writes_applied'])
+        staging_state = store.get_identity_staging_state('conv-double-saturation')
+        self.assertEqual(staging_state['buffer_pairs_count'], 15)
+        self.assertTrue(staging_state['auto_canonization_suspended'])
 
     def test_preserves_buffer_when_agent_raises_timeout(self) -> None:
         store = _InMemoryIdentityStore()

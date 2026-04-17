@@ -186,7 +186,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
             {
                 'subject': 'llm',
                 'action': 'set',
-                'content': 'x' * 1651,
+                'content': 'x' * 3301,
                 'reason': 'too long',
             },
             memory_store_module=store,
@@ -198,7 +198,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(payload['validation_error'], 'mutable_content_too_long')
         self.assertEqual(store.state['llm'], 'Frida reste sobre.')
         self.assertEqual(store.upsert_calls, [])
-        self.assertEqual(observed_logs[0][1]['new_len'], 1651)
+        self.assertEqual(observed_logs[0][1]['new_len'], 3301)
         self.assertNotIn('content', observed_logs[0][1])
 
     def test_rejects_prompt_like_content_in_english_without_write(self) -> None:

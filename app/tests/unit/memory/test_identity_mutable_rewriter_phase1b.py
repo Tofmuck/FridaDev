@@ -78,7 +78,7 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
             {
                 'llm': {
                     'action': 'rewrite',
-                    'content': 'x' * 1651,
+                    'content': 'x' * 3301,
                     'reason': 'too long',
                 },
                 'user': {
@@ -93,7 +93,7 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
         self.assertEqual(len(rejections), 1)
         self.assertEqual(rejections[0]['subject'], 'llm')
         self.assertEqual(rejections[0]['reason_code'], 'mutable_content_too_long')
-        self.assertEqual(rejections[0]['new_len'], 1651)
+        self.assertEqual(rejections[0]['new_len'], 3301)
 
     def test_validate_rewriter_contract_rejects_subject_without_explicit_content_key(self) -> None:
         validated, rejections = memory_identity_mutable_rewriter.validate_rewriter_contract(
@@ -296,7 +296,7 @@ class IdentityMutableRewriterPhase1BTests(unittest.TestCase):
                         lambda _payload: {
                             'llm': {
                                 'action': 'rewrite',
-                                'content': 'x' * 1651,
+                                'content': 'x' * 3301,
                                 'reason': 'too long',
                             },
                             'user': {

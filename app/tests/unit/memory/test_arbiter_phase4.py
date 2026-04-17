@@ -211,7 +211,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
                     },
-                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                    'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
                 }
             )
         finally:
@@ -355,7 +355,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
                     },
-                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                    'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
                 }
             )
         finally:
