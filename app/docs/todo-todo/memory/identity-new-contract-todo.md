@@ -210,6 +210,12 @@ Exigence de style:
 - ne pas raconter plus que necessaire;
 - ne pas psychologiser gratuitement.
 
+Taille cible de travail a ce stade:
+- viser 3000 caracteres par `mutable` (`llm` et `user`);
+- comprendre cette hausse comme la consequence du nouveau regime de travail, et non comme un simple elargissement du systeme actuel;
+- ne pas l'interpreter comme une permission de stocker davantage de bruit, de preferences ou de pseudo-contextes;
+- l'assumer seulement si le writer devient plus costaud, plus selectif et moins frequent.
+
 ## 7. Gestion des contradictions dans le `mutable`
 
 Le `mutable` final ne doit pas contenir de contradiction explicite.
@@ -260,6 +266,7 @@ Regle directrice:
 - le writer ne doit pas reecrire tout le `mutable` a chaque intervention;
 - il doit d'abord voir si quelque chose s'ajoute, se resserre, se fusionne ou doit rester en conflit ouvert;
 - une reecriture globale du bloc entier ne peut etre pensee, plus tard, que comme une operation rare de compaction distincte.
+- ce writer doit tendre vers un fonctionnement plus agentique, avec un vrai travail de consolidation plutot qu'une reecriture pauvre de fin de tour.
 
 ### 8.2 Cadence et contexte de travail du writer
 
@@ -285,6 +292,8 @@ Contexte cible a fournir au writer lors de son passage:
 Regle de conception:
 - un writer qui ne voit que 2 tours recents ne peut pas juger correctement une inflexion identitaire durable;
 - la consolidation du `mutable` doit travailler sur une fenetre plus large que la simple derniere alternance user/assistant.
+- parce qu'il n'intervient plus a chaque tour, ce writer peut devenir plus couteux et plus rigoureux.
+- il peut etre pense, plus tard, comme une tache asynchrone ou un module separe, afin de ne pas peser sur la latence de la reponse courante.
 
 ### 8.3 Garde-fou metier entre `static` et `mutable`
 
@@ -311,6 +320,11 @@ La mise en oeuvre future devra rester compatible avec l'etat reel courant:
 - `mutable` reste stocke dans `identity_mutables`;
 - l'injection runtime reste `static + mutable narrative`;
 - le read-model continue de montrer `static` et `mutable` comme couches canoniques actives.
+
+Evolution cible deja retenue dans ce brouillon:
+- la capacite cible du `mutable` doit etre portee a 3000 caracteres pour `llm` comme pour `user`;
+- ce changement doit etre implemente avec le nouveau regime de writer periodique et plus agentique, pas sur la base du mecanisme actuel de reecriture a chaque tour;
+- le plafond dur exact devra etre recale en coherence avec cette nouvelle cible.
 
 ### 8.5 Observabilite
 
@@ -351,11 +365,12 @@ Ordre de travail recommande:
 2. remplacer le schema binaire `rewrite/no_change` par un contrat d'operations locales: `no_change`, `add`, `tighten`, `merge`, `raise_conflict`;
 3. fixer une cadence periodique sobre pour le writer de `mutable` (10 tours par defaut, 15 comme variante a comparer), sans `trigger-based`;
 4. elargir le contexte de travail du writer au-dela des 2 derniers tours;
-5. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
-6. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
-7. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
-8. seulement ensuite traiter la forme finale cible du texte `mutable` et une eventuelle compaction rare du bloc;
-9. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
+5. acter la cible de 3000 caracteres par `mutable` dans le cadre de ce nouveau regime;
+6. formaliser le garde-fou metier entre `static` et `mutable`, avec non-doublon et non-contradiction silencieuse;
+7. relire le contenu actuel de `llm.mutable` et `user.mutable` a l'aune de ce contrat;
+8. identifier ce qui releve de l'identitaire recevable et ce qui releve d'un bruit utile mais irrecevable;
+9. seulement ensuite traiter la forme finale cible du texte `mutable`, une eventuelle compaction rare du bloc, et le statut asynchrone du writer;
+10. seulement ensuite ouvrir, si necessaire, les questions laterales laissees hors-scope ici.
 
 Definition of done doctrinale pour ce lot:
 - `static` est defini comme fond et noeud identitaire;
@@ -366,5 +381,6 @@ Definition of done doctrinale pour ce lot:
 - le writer de `mutable` n'est plus pense comme une reecriture globale a chaque tour;
 - le contrat d'operations locales (`no_change`, `add`, `tighten`, `merge`, `raise_conflict`) est pose;
 - la cadence periodique fixe et le besoin d'un contexte elargi sont poses;
+- la cible de 3000 caracteres par `mutable` est posee comme consequence du nouveau regime de writer;
 - un garde-fou metier explicite interdit duplication et contradiction silencieuse entre `static` et `mutable`;
 - les couches laterales ne brouillent plus le centre du document.
