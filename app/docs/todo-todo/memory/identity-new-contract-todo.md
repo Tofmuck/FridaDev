@@ -184,15 +184,15 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### E2. Documents a relire avant patch runtime, puis a traiter comme sources historiques
 
-- [ ] Relire `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` comme base historique de separation `identity/prompt`, sans en reutiliser tel quel le contrat `rewrite narrative`.
-- [ ] Relire `app/docs/todo-done/refactors/identity-control-surface-todo.md` comme historique de la surface actuelle `static + mutable narrative`, pas comme cible du nouveau staging.
-- [ ] Relire `app/docs/todo-done/notes/hermeneutical-add-todo.md` uniquement pour les dependances historiques avec l'hermeneutique.
-- [ ] Relire `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` pour identifier les coutures actives avec le noeud hermeneutique et les preuves post-rollout a conserver.
+- [x] Relire `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` comme base historique de separation `identity/prompt`, sans en reutiliser tel quel le contrat `rewrite narrative`.
+- [x] Relire `app/docs/todo-done/refactors/identity-control-surface-todo.md` comme historique de la surface actuelle `static + mutable narrative`, pas comme cible du nouveau staging.
+- [x] Relire `app/docs/todo-done/notes/hermeneutical-add-todo.md` uniquement pour les dependances historiques avec l'hermeneutique.
+- [x] Relire `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` pour identifier les coutures actives avec le noeud hermeneutique et les preuves post-rollout a conserver.
 
 ### E3. References depot a garder separees
 
-- [ ] Garder `README.md`, `app/docs/README.md` et `AGENTS.md` avec deux references distinctes: `identity-new-contract-plan.md` pour la doctrine cible et `identity-new-contract-todo.md` pour le chantier operatoire.
-- [ ] Eviter de re-fusionner plus tard le plan doctrinal et le TODO operatoire dans un meme fichier.
+- [x] Garder `README.md`, `app/docs/README.md` et `AGENTS.md` avec deux references distinctes: `identity-new-contract-plan.md` pour la doctrine cible et `identity-new-contract-todo.md` pour le chantier operatoire.
+- [x] Eviter de re-fusionner plus tard le plan doctrinal et le TODO operatoire dans un meme fichier.
 
 ## F. Sort explicite de l'ancien prompt `identity_mutable_rewriter`
 
@@ -200,7 +200,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 - [x] Retirer du prompt legacy tout ce qui autorise encore `tone`, `relational positioning`, `continuity of voice`, `durable interests` ou `conversational preferences` comme porte d'entree generale du `mutable`.
 - [x] Remplacer l'instruction de reecriture globale du bloc par un contrat d'agent qui travaille sur des propositions identitaires canonisables et des operations locales.
 - [x] Verifier qu'aucun autre appel, test, doc ou nom d'event ne continue a presenter ce prompt legacy comme la source active du nouveau regime.
-- [ ] Traiter comme risque majeur le cas ou ce prompt serait oublie: il pourrait continuer a recanoniser des preferences ou du positionnement relationnel meme si une partie de l'applicateur Python a deja migre.
+- [x] Traiter comme risque majeur le cas ou ce prompt serait oublie: il pourrait continuer a recanoniser des preferences ou du positionnement relationnel meme si une partie de l'applicateur Python a deja migre.
 
 ## G. Definition of done operatoire
 

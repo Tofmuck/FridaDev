@@ -10,6 +10,11 @@ Note de cloture:
 - les derniers points honnetement ouverts relevent de preuves post-rollout / post-stabilisation, plus d'un gate runtime d'implementation;
 - ce document est conserve comme archive de chantier et ne pilote plus un lot runtime actif.
 
+Note de requalification identity `2026-04-18`:
+- cette archive reste utile pour relire les dependances historiques entre l'hermeneutique, l'extracteur identity et les anciennes surfaces legacy;
+- elle ne doit plus etre reutilisee comme contrat runtime actif du regime identity courant;
+- pour le regime identity actif, la source doctrinale reste `app/docs/todo-todo/memory/identity-new-contract-plan.md` et le chantier operatoire reste `app/docs/todo-todo/memory/identity-new-contract-todo.md`.
+
 ## Objectif historique
 Implementer une "indetermination orientee" dans Frida-mini:
 - laisser le LLM libre sur le contenu,

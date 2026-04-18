@@ -8,3 +8,10 @@ Active mutable canon updates now flow through:
 
 Keep this file only as a historical pointer during B6 cleanup.
 It is not a source of truth for the live identity regime.
+
+MAJOR RISK
+
+If this retired prompt is forgotten, rewired, or reread as active doctrine, it could
+reintroduce global mutable rewrites and recanonize conversational preferences,
+weak relational positioning, or other non-canonical operator comfort phrasing into
+the mutable canon.

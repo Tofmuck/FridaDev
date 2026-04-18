@@ -170,6 +170,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`: reliquat memoire/hermeneutique encore actif, borne aux preuves post-rollout / post-stabilisation.
 - `app/docs/todo-todo/memory/identity-new-contract-plan.md`: plan doctrinal cible du nouveau systeme d'identite; source de verite pour `static`, `mutable`, staging, ponderation et saturation.
 - `app/docs/todo-todo/memory/identity-new-contract-todo.md`: TODO operatoire code-first du chantier; cartographie des surfaces runtime/admin/logs/tests/docs a migrer, nettoyer ou requalifier.
+- conserver `identity-new-contract-plan.md` et `identity-new-contract-todo.md` comme deux references distinctes: le plan fixe la doctrine cible, le TODO pilote le chantier operatoire; ne pas les refusionner.
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
