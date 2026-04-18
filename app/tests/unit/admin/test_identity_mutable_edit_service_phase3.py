@@ -132,6 +132,33 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertIn('architectures lisibles', store.state['user'])
         self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
 
+    def test_set_valid_accepts_multiline_identity_block_with_continuations(self) -> None:
+        store = _MutableStore({'user': 'Utilisateur garde une orientation stable.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'user',
+                'action': 'set',
+                'content': (
+                    "Tof est attentif aux conditions reelles d'un dialogue et a sa continuite dans le temps.\n"
+                    "Il travaille avec une exigence marquee de precision, de sobriete et de justesse relationnelle.\n"
+                    "Il traite volontiers la voix de l'echange, ses reprises et ses seuils comme des objets de reflexion a part entiere.\n"
+                    "Il part souvent du contexte concret et sensible avant d'aller vers l'interpretation ou la mise en forme."
+                ),
+                'reason': 'canon narratif multiline',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'set_applied')
+        self.assertIn('justesse relationnelle', store.state['user'])
+        self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
+
     def test_set_valid_keeps_admin_edit_on_canonical_mutable_not_staging(self) -> None:
         store = _MutableStoreWithStagingGuard({'llm': 'Frida reste sobre.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []

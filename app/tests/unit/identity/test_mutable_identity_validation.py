@@ -28,6 +28,14 @@ class MutableIdentityValidationTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.reason_code, 'ok')
 
+    def test_accepts_identity_tone_statement(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Frida garde un ton sobre et precis.'
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, 'ok')
+
     def test_rejects_prompt_like_operator_instruction_in_french(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
             'Tu dois verifier les sources et citer chaque point important.'
@@ -84,6 +92,17 @@ class MutableIdentityValidationTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.reason_code, 'ok')
 
+    def test_accepts_multiline_identity_block_with_pronoun_continuations(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            "Tof est attentif aux conditions reelles d'un dialogue et a sa continuite dans le temps.\n"
+            "Il travaille avec une exigence marquee de precision, de sobriete et de justesse relationnelle.\n"
+            "Il traite volontiers la voix de l'echange, ses reprises et ses seuils comme des objets de reflexion a part entiere.\n"
+            "Il part souvent du contexte concret et sensible avant d'aller vers l'interpretation ou la mise en forme."
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, 'ok')
+
     def test_rejects_conversational_comfort_statement(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
             'Tof se sent rassure quand on reformule calmement les reponses.'
@@ -115,6 +134,15 @@ class MutableIdentityValidationTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertEqual(result.reason_code, 'mutable_content_not_identity_statement')
+
+    def test_rejects_multiline_block_when_one_proposition_is_conversational_preference(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Tof garde une attention stable aux architectures lisibles.\n'
+            'Il prefere des reponses courtes et directes.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_conversational_preference')
 
 
 if __name__ == '__main__':

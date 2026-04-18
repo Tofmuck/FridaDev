@@ -96,7 +96,11 @@ _CONVERSATIONAL_PREFERENCE_PATTERNS = (
         re.DOTALL,
     ),
     re.compile(
-        r"\b(?:reponses?|explications?|formulations?|ton|style|echanges?|conversation)\b.{0,32}\b(?:courtes?|longues?|direct(?:es?)?|detaille(?:es?)?|simples?|calmes?|chaleureu(?:x|se)|sobres?)\b",
+        r"\b(?:reponses?|explications?|formulations?|style(?:s)?\s+de\s+reponse|style(?:s)?\s+des\s+reponses|echanges?|conversation)\b.{0,32}\b(?:courtes?|longues?|direct(?:es?)?|detaille(?:es?)?|simples?|calmes?|chaleureu(?:x|se)|sobres?)\b",
+        re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:repond(?:re|s|ez)?|formul(?:er|e|es)|expliqu(?:er|e|es))\b.{0,32}\b(?:simplement|calmement|sobrement|directement|longuement|brievement|en detail)\b",
         re.DOTALL,
     ),
     re.compile(
@@ -147,13 +151,16 @@ _CONTINUATION_PRONOUN_RE = re.compile(r"^(?:il|elle)\b")
 _IDENTITY_VERB_PATTERNS = (
     re.compile(r"\b(?:est|reste|demeure|garde|maintient|porte|manifeste|cultive|assume)\b"),
     re.compile(r"\bse\s+(?:tient|montre|deploie)\b"),
+    re.compile(
+        r"\b(?:travaille|traite|part|revient|aborde|approche|considere|regarde|pense|insiste|privilegie|accorde)\b"
+    ),
 )
 _IDENTITY_TRAIT_PATTERNS = (
     re.compile(
-        r"\b(?:stable|durable|sobre|calme|precis(?:e)?|structure(?:e)?|compact(?:e)?|ritualise(?:e)?|retenu(?:e)?|mesure(?:e)?|coheren(?:t|te)|constant(?:e)?|non intrusive?)\b"
+        r"\b(?:stable|durable|sobre|calme|precis(?:e)?|structure(?:e)?|compact(?:e)?|ritualise(?:e)?|retenu(?:e)?|mesure(?:e)?|coheren(?:t|te)|constant(?:e)?|non intrusive?|attentif|attentive|sensible)\b"
     ),
     re.compile(
-        r"\b(?:voix|tenue|posture|orientation|clarte|presence|attention|axe|maniere|trait|continuite|ancrage|discipline|mesure|justesse|distance|gout|retenue)\b"
+        r"\b(?:voix|ton|tenue|posture|orientation|clarte|presence|attention|curiosite|axe|maniere|trait|continuite|ancrage|discipline|mesure|justesse|distance|gout|retenue|exigence|precision|reflexion|reprises?|seuils?|contexte|interpretation|mise\s+en\s+forme|architectures?|structures?|conditions?\s+reelles?)\b"
     ),
 )
 
@@ -178,6 +185,15 @@ def _split_sentences(text: str) -> list[str]:
 
 def _matches_any(text: str, patterns: tuple[re.Pattern[str], ...]) -> bool:
     return any(pattern.search(text) for pattern in patterns)
+
+
+def _semantic_reason_for_block(text: str) -> str | None:
+    for sentence in _split_sentences(text):
+        normalized = _normalized_text(sentence)
+        for reason_code, patterns in _SEMANTIC_ADMISSION_RULES:
+            if _matches_any(normalized, patterns):
+                return reason_code
+    return None
 
 
 def _looks_identity_sentence(sentence: str, *, allow_pronoun: bool) -> bool:
@@ -217,9 +233,9 @@ def validate_mutable_identity_content(content: object) -> MutableIdentityValidat
         if _matches_any(normalized, patterns):
             return MutableIdentityValidationResult(ok=False, reason_code=reason_code)
 
-    for reason_code, patterns in _SEMANTIC_ADMISSION_RULES:
-        if _matches_any(normalized, patterns):
-            return MutableIdentityValidationResult(ok=False, reason_code=reason_code)
+    semantic_reason = _semantic_reason_for_block(text)
+    if semantic_reason:
+        return MutableIdentityValidationResult(ok=False, reason_code=semantic_reason)
 
     if not _is_identity_declarative(text):
         return MutableIdentityValidationResult(ok=False, reason_code='mutable_content_not_identity_statement')

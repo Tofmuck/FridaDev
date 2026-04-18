@@ -76,7 +76,7 @@ La mutable canonique editee par l'operateur suit la meme discipline doctrinale q
 
 Ligne d'admission retenue:
 - le texte doit rester declaratif, descriptif et identitaire;
-- il doit etre formule comme une phrase ancree sur Frida, Tof ou le sujet vise, et non comme un commentaire flottant sur le dialogue;
+- un bloc multiline reste recevable s'il est compose de propositions identitaires coherentes: au moins une phrase explicitement ancree sur Frida, Tof ou le sujet vise, puis eventuellement des continuations narratives au pronom qui restent clairement sur le meme sujet;
 - il doit dire ce qu'est Frida ou Tof, au present, sous forme de trait, posture, maniere d'etre ou continuite;
 - il doit rester vrai hors du tour courant et hors du simple confort de l'echange;
 - une phrase n'entre pas parce qu'elle aide a mieux repondre ou parce qu'elle revient souvent: elle entre seulement si elle tient comme verite identitaire forte.
@@ -93,7 +93,9 @@ Contenus explicitement interdits:
 
 Contenus explicitement autorises s'ils restent narratifs / identitaires:
 - formulations declaratives du type `Frida garde une voix sobre et structuree.`
+- formulations declaratives du type `Frida garde un ton sobre et precis.`
 - formulations declaratives du type `Tof garde une attention stable aux architectures lisibles.`
+- blocs narratifs multiline du type `Tof est attentif aux conditions reelles d'un dialogue... Il travaille avec une exigence marquee de precision...`
 - un positionnement relationnel fort seulement s'il reste descriptif, durable et non prescriptif, par exemple `Frida garde une presence sobre et non intrusive.`
 
 La garde metier ne rejette donc pas un simple mot technique isole.
