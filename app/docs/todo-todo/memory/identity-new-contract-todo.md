@@ -154,9 +154,9 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 - [x] Ecrire des tests de buffer: accumulation tour par tour, declenchement a 15 paires exactes, absence d'appel agent avant seuil, effacement du buffer seulement apres application reussie.
 - [x] Ecrire des tests de contrat JSON strict: root invalide, champs manquants, types invalides, operation inconnue, bloc `meta` incoherent et payload contradictoire.
-- [ ] Ecrire des tests deterministes pour `frequency_norm`, `recency_norm`, `strength` et les seuils `0.35/0.60`.
-- [ ] Ecrire des tests d'application deterministe pour `add`, `tighten`, `merge`, `raise_conflict`, non-doublon avec `static`, non-doublon avec `mutable`, et contradiction semantique.
-- [ ] Ecrire des tests de promotion `mutable -> static`, de recalage du budget de projection et de suspension automatique en cas de double saturation.
+- [x] Ecrire des tests deterministes pour `frequency_norm`, `recency_norm`, `strength` et les seuils `0.35/0.60`.
+- [x] Ecrire des tests d'application deterministe pour `add`, `tighten`, `merge`, `raise_conflict`, non-doublon avec `static`, non-doublon avec `mutable`, et contradiction semantique.
+- [x] Ecrire des tests de promotion `mutable -> static`, de recalage du budget de projection et de suspension automatique en cas de double saturation.
 
 ### D2. Tests d'integration admin, read-model et representations runtime
 
@@ -206,7 +206,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 - [x] Le runtime n'appelle plus un rewriter global par tour et n'utilise plus `recent_2` comme base identitaire canonique.
 - [x] Le staging de 15 paires existe, reste distinct du canon actif et est observable cote admin.
-- [ ] L'agent identitaire periodique renvoie un JSON strict par operations, applique par une couche deterministe et fail-closed.
+- [x] L'agent identitaire periodique renvoie un JSON strict par operations, applique par une couche deterministe et fail-closed.
 - [ ] Les scores `frequency_norm`, `recency_norm` et `strength`, les seuils, la promotion `mutable -> static` et la suspension automatique sont implementes et testes.
 - [x] Le read-model, les runtime representations, `/identity`, `/hermeneutic-admin` et les logs disent vrai sur le nouveau regime sans exposer de contenu brut.
 - [x] Les specs vivantes et les tests ne valident plus silencieusement l'ancien monde `rewrite/no_change` par tour.

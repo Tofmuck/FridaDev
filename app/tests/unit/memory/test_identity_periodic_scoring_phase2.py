@@ -36,6 +36,23 @@ def _buffer_pairs(*, proposition: str, supporting_indexes: set[int]) -> list[dic
 
 
 class IdentityPeriodicScoringPhase2Tests(unittest.TestCase):
+    def test_score_operation_with_no_support_stays_rejected(self) -> None:
+        proposition = 'Tof garde une orientation stable et ritualisee.'
+        score = memory_identity_periodic_scoring.score_operation(
+            {'kind': 'add', 'proposition': proposition, 'reason': 'no support'},
+            buffer_pairs=_buffer_pairs(
+                proposition=proposition,
+                supporting_indexes=set(),
+            ),
+        )
+
+        self.assertEqual(score['support_pairs'], 0)
+        self.assertEqual(score['last_occurrence_distance'], 15)
+        self.assertEqual(score['frequency_norm'], 0.0)
+        self.assertEqual(score['recency_norm'], 0.0)
+        self.assertEqual(score['strength'], 0.0)
+        self.assertEqual(score['threshold_verdict'], 'rejected')
+
     def test_score_operation_reports_support_frequency_recency_and_strength(self) -> None:
         proposition = 'Tof maintient une orientation stable et ritualisee.'
         score = memory_identity_periodic_scoring.score_operation(
