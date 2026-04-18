@@ -13,7 +13,7 @@ Note de cloture:
 Note de requalification identity `2026-04-18`:
 - cette archive reste utile pour relire les dependances historiques entre l'hermeneutique, l'extracteur identity et les anciennes surfaces legacy;
 - elle ne doit plus etre reutilisee comme contrat runtime actif du regime identity courant;
-- pour le regime identity actif, la source doctrinale reste `app/docs/todo-todo/memory/identity-new-contract-plan.md` et la trace operatoire de cloture est maintenant `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
+- pour le regime identity actif, la source doctrinale reste `app/docs/states/policies/identity-new-contract-plan.md` et la trace operatoire de cloture est maintenant `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
 
 ## Objectif historique
 Implementer une "indetermination orientee" dans Frida-mini:

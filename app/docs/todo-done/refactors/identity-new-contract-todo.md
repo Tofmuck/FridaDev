@@ -2,7 +2,7 @@
 
 Statut: chantier termine, archive le 2026-04-18
 Classement: `app/docs/todo-done/refactors/`
-Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
+Source doctrinale: `app/docs/states/policies/identity-new-contract-plan.md`
 Portee: conserver la trace lotable du chantier operatoire termine, ses preuves, ses lots fermes et ses decisions de migration
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
 Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique; les tensions `raise_conflict` restent des verdicts conversation-scoped compacts dans la derniere activite periodique, sans reutiliser `identity_conflicts`

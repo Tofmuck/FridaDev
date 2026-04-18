@@ -1,10 +1,11 @@
 # Identity New Contract - Plan doctrinal static et mutable
 
 Statut: plan doctrinal actif
-Classement: `app/docs/todo-todo/memory/`
+Classement: `app/docs/states/policies/`
 Portee: contrat cible de `static`, de `mutable` et du contrat d'admission du `mutable`
 Etat runtime vise: aucun patch runtime dans ce document
 Contrainte dure: la future mise en oeuvre devra preserver le runtime actif `static + mutable narrative` et l'observabilite identity deja en place
+Decision de reclassement du 2026-04-18: ce plan quitte `todo-todo` et devient une reference doctrinale active sous `states/policies`; le chantier operatoire associe est maintenant archive dans `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
 
 References liees:
 - `app/docs/states/specs/identity-static-edit-contract.md`
