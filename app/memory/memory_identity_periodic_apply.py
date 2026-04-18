@@ -239,13 +239,32 @@ def _meaningful_contradiction_tokens(text: str) -> set[str]:
     }
 
 
+def _negated_scope_tokens(text: str) -> set[str]:
+    tokens = [token.lower() for token in _CONTRADICTION_TOKEN_RE.findall(_text(text))]
+    last_negation_index: int | None = None
+    for index, token in enumerate(tokens):
+        if token in hermeneutics_policy.NEGATION_HINTS:
+            last_negation_index = index
+    if last_negation_index is None:
+        return set()
+    return {
+        token
+        for token in tokens[last_negation_index + 1 :]
+        if len(token) > 2
+        and token not in hermeneutics_policy.NEGATION_HINTS
+        and token not in _CONTRADICTION_OVERLAP_STOPWORDS
+    }
+
+
 def _has_explicit_contradiction_cue(text_a: str, text_b: str) -> bool:
     a = _text(text_a).lower()
     b = _text(text_b).lower()
     if not a or not b:
         return False
 
-    overlap = _meaningful_contradiction_tokens(a).intersection(_meaningful_contradiction_tokens(b))
+    meaningful_a = _meaningful_contradiction_tokens(a)
+    meaningful_b = _meaningful_contradiction_tokens(b)
+    overlap = meaningful_a.intersection(meaningful_b)
     if not overlap:
         return False
 
@@ -253,12 +272,14 @@ def _has_explicit_contradiction_cue(text_a: str, text_b: str) -> bool:
     tokens_b = _contradiction_tokens(b)
     neg_a = bool(tokens_a.intersection(hermeneutics_policy.NEGATION_HINTS))
     neg_b = bool(tokens_b.intersection(hermeneutics_policy.NEGATION_HINTS))
-    if neg_a ^ neg_b:
-        return True
-
     for left, right in _CONTRADICTION_POLARITY_PAIRS:
         if (left in a and right in b) or (left in b and right in a):
             return True
+
+    if neg_a ^ neg_b:
+        if neg_a:
+            return bool(_negated_scope_tokens(a).intersection(meaningful_b))
+        return bool(_negated_scope_tokens(b).intersection(meaningful_a))
 
     return False
 

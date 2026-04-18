@@ -258,6 +258,20 @@ class IdentityPeriodicContractValidationPhase2Tests(unittest.TestCase):
 
 
 class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
+    def test_contradiction_helper_ignores_local_negative_refinement(self) -> None:
+        self.assertFalse(
+            memory_identity_periodic_apply._has_explicit_contradiction_cue(
+                'Tof garde une voix sobre.',
+                'Tof garde une voix sobre, pas froide.',
+            )
+        )
+        self.assertTrue(
+            memory_identity_periodic_apply._has_explicit_contradiction_cue(
+                'Tof garde une presence discrete.',
+                'Tof ne garde pas une presence discrete.',
+            )
+        )
+
     def test_supported_add_writes_canonical_mutable_without_promotion(self) -> None:
         proposition = 'Tof maintient une orientation stable et ritualisee.'
         store = _MutableStore()
@@ -419,6 +433,47 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
                     'target': current,
                     'proposition': proposition,
                     'reason': 'supported final wording',
+                },
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], proposition)
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'tighten')
+        self.assertEqual(user_outcome['reason_code'], 'tighten_applied')
+        self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
+    def test_tighten_allows_local_negative_refinement_without_raise_conflict(self) -> None:
+        current = 'Tof garde une voix sobre.'
+        proposition = 'Tof garde une voix sobre, pas froide.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': current,
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'tighten',
+                    'target': current,
+                    'proposition': proposition,
+                    'reason': 'supported refinement',
                 },
             ),
             buffer_pairs=_supportive_buffer(
