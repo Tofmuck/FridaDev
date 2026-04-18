@@ -126,12 +126,20 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertFalse(payload['identity_staging']['actively_injected'])
         self.assertEqual(payload['identity_staging']['scope_kind'], 'conversation_scoped_latest')
         self.assertEqual(payload['identity_staging']['conversation_id'], 'conv-stage-2')
+        self.assertNotIn('buffer_pairs', payload['identity_staging'])
+        self.assertNotIn('buffer_pairs_json', payload['identity_staging'])
         self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
         self.assertEqual(payload['identity_staging']['latest_agent_activity']['reason_code'], 'double_saturation')
         self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertNotIn('buffer_pairs', payload['identity_staging']['latest_agent_activity'])
+        self.assertNotIn('outcomes', payload['identity_staging']['latest_agent_activity'])
         self.assertEqual(
             payload['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
             'identity_periodic_agent_latest_activity',
+        )
+        self.assertNotIn(
+            'content',
+            payload['identity_staging']['latest_agent_activity']['open_tensions'][0],
         )
         self.assertTrue(payload['structured_identity']['present'])
         self.assertEqual(payload['structured_identity']['technical_name'], 'identity_input')

@@ -238,12 +238,16 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['identity_staging']['buffer_pairs_count'], 4)
         self.assertEqual(data['identity_staging']['buffer_target_pairs'], 15)
         self.assertEqual(data['identity_staging']['last_agent_status'], 'buffering')
+        self.assertNotIn('buffer_pairs', data['identity_staging'])
+        self.assertNotIn('buffer_pairs_json', data['identity_staging'])
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['reason_code'],
             'completed_with_open_tension',
         )
         self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 1)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertNotIn('buffer_pairs', data['identity_staging']['latest_agent_activity'])
+        self.assertNotIn('outcomes', data['identity_staging']['latest_agent_activity'])
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
             'identity_periodic_agent_latest_activity',
@@ -256,6 +260,10 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions'][0]['action'],
             'raise_conflict',
+        )
+        self.assertNotIn(
+            'content',
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0],
         )
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['open_tensions'][0]['reason_code'],
@@ -271,6 +279,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['subjects']['llm']['static']['configured_path'], 'data/identity/llm_identity.txt')
         self.assertEqual(data['subjects']['llm']['static']['resolution_kind'], 'absolute')
         self.assertEqual(data['subjects']['llm']['static']['editable_via'], '/api/admin/identity/static')
+        self.assertNotIn('raw_content', data['subjects']['llm']['static'])
         self.assertEqual(data['subjects']['llm']['mutable']['content'], 'Frida mutable canonique')
         self.assertTrue(data['subjects']['llm']['mutable']['actively_injected'])
         self.assertFalse(data['subjects']['llm']['legacy_fragments']['actively_injected'])

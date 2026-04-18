@@ -197,6 +197,15 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                     'buffer_target_pairs': 15,
                     'buffer_cleared': True,
                     'writes_applied': True,
+                    'promotions': [
+                        {
+                            'subject': 'llm',
+                            'operation_kind': 'add',
+                            'promotion_reason_code': 'promoted_to_static',
+                            'threshold_verdict': 'accepted',
+                            'strength': 0.91,
+                        }
+                    ],
                     'outcomes': [
                         {
                             'subject': 'llm',
@@ -226,10 +235,14 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         payload = periodic_event['payload_json']
         self.assertEqual(payload['prompt_kind'], 'identity_periodic_agent')
         self.assertNotIn('preview', payload)
+        self.assertNotIn('buffer_pairs', payload)
+        self.assertNotIn('candidates', payload)
         self.assertEqual(len(payload['outcomes']), 2)
         self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))
         self.assertTrue(all(outcome['action'] != 'rewrite' for outcome in payload['outcomes']))
         self.assertTrue(all(outcome['reason_code'] != 'rewrite_applied' for outcome in payload['outcomes']))
+        self.assertEqual(len(payload['promotions']), 1)
+        self.assertTrue(all('content' not in promotion for promotion in payload['promotions']))
 
     def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -933,6 +946,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertGreater(payload['total_chars'], 0)
             self.assertEqual(payload['total_chars'], payload['max_chars'])
             self.assertFalse(payload['truncated'])
+            self.assertNotIn('content', payload)
+            self.assertNotIn('raw_content', payload)
             self.assertNotIn('preview', payload)
             self.assertNotIn('keys', payload)
 

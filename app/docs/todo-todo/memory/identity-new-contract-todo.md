@@ -113,7 +113,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 ### C1. Ce qui devra disparaitre
 
 - [x] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
-- [ ] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
+- [x] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
 - [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
 - [x] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
 
@@ -127,10 +127,10 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### C3. Ce qui devra etre garde
 
-- [ ] Garder `identity_mutables` comme stockage du canon actif `mutable`, distinct du staging.
-- [ ] Garder la projection runtime active `static + mutable narrative` tant qu'aucune autre projection n'a ete explicitement decidee.
+- [x] Garder `identity_mutables` comme stockage du canon actif `mutable`, distinct du staging.
+- [x] Garder la projection runtime active `static + mutable narrative` tant qu'aucune autre projection n'a ete explicitement decidee.
 - [ ] Garder les routes admin `POST /api/admin/identity/static`, `POST /api/admin/identity/mutable`, `GET /api/admin/identity/read-model` et `GET /api/admin/identity/runtime-representations`, mais les faire dire vrai sur le nouveau regime.
-- [ ] Garder la politique de logs compacts sans dump de contenu brut.
+- [x] Garder la politique de logs compacts sans dump de contenu brut.
 
 ### C4. Ce qui devra seulement etre requalifie
 
@@ -163,14 +163,14 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 - [x] Adapter les tests serveur/admin pour verifier `identity_staging`, `last_agent_status`, `buffer_pairs_count` et `auto_canonization_suspended`.
 - [x] Verifier que `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` continuent a dire vrai sur le canon actif injecte tout en montrant le staging separement.
 - [x] Verifier que `/identity` et `/hermeneutic-admin` n'affichent jamais le staging comme s'il etait deja canonise.
-- [ ] Verifier que l'edition operateur du `mutable` reste coherente avec le read-model et ne consomme jamais le buffer temporaire.
+- [x] Verifier que l'edition operateur du `mutable` reste coherente avec le read-model et ne consomme jamais le buffer temporaire.
 
 ### D3. Compatibilite runtime et comportement fail-closed
 
-- [ ] Verifier que `build_identity_input()` et `build_identity_block()` restent compatibles avec le noeud hermeneutique et le main LLM pendant toute la migration.
+- [x] Verifier que `build_identity_input()` et `build_identity_block()` restent compatibles avec le noeud hermeneutique et le main LLM pendant toute la migration.
 - [x] Verifier qu'un JSON agent invalide, partiel ou contradictoire n'ecrit rien dans le canon actif, ne purge pas le buffer et laisse un statut observable.
 - [x] Verifier qu'un timeout ou une exception agent laisse la conversation principale saine et observable, sans fausse canonisation.
-- [ ] Verifier que l'observabilite reste compacte: pas de dump brut du buffer, pas de dump brut des candidats, pas de dump brut des textes canoniques.
+- [x] Verifier que l'observabilite reste compacte: pas de dump brut du buffer, pas de dump brut des candidats, pas de dump brut des textes canoniques.
 
 ## E. Sort explicite des documents et specs existants
 
