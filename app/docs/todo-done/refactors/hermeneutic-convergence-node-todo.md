@@ -4,11 +4,15 @@
 Cloture documentaire: 2026-04-03
 Statut: archivee dans `app/docs/todo-done/refactors/`
 
+Note de requalification `2026-04-18`:
+- le marqueur identity cite plus bas (`identity_mode_apply.action=persist_enforced`) decrit l'etat observe a la date de cloture de cette roadmap mere, pas le regime identity actif actuel;
+- depuis `identity-new-contract`, `identity_mode_apply` raconte `record_legacy_identity_diagnostics_and_stage` et la verite canonique/staging passe par `identity_periodic_agent` et `identity_periodic_agent_apply`.
+
 Resultat reel cloture:
 - Lot 9 est ferme et la cible runtime retenue est active: `HERMENEUTIC_MODE=enforced_all`
 - pipeline observable: `stimmung_agent -> primary_node -> validation_agent -> aval`
 - surfaces live: `/log`, `/hermeneutic-admin`, `GET /api/admin/hermeneutics/dashboard`
-- marqueurs d'enforcement reel: `memory_mode_apply.source=arbiter_enforced`, `identity_mode_apply.action=persist_enforced`
+- marqueurs d'enforcement reel a la date de cloture: `memory_mode_apply.source=arbiter_enforced`, `identity_mode_apply.action=persist_enforced`
 - observabilite OpenRouter: distinction `estimated_*` / `provider_*`, `HTTP-Referer` et `X-OpenRouter-Title` distincts par composant
 
 Regle de lecture:
