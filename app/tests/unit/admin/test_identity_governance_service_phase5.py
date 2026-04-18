@@ -163,6 +163,7 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(payload['active_prompt_contract'], 'static + mutable narrative')
         self.assertEqual(payload['identity_input_schema_version'], 'v2')
         items_by_key = {item['key']: item for item in payload['items']}
+        sections_by_key = {section['key']: section for section in payload['regime_sections']}
         self.assertTrue(items_by_key['IDENTITY_MIN_CONFIDENCE']['editable'])
         self.assertEqual(items_by_key['IDENTITY_MIN_CONFIDENCE']['category'], 'active_subpipeline_editable')
         self.assertEqual(items_by_key['CONTEXT_HINTS_MAX_ITEMS']['category'], 'active_runtime_editable')
@@ -171,11 +172,30 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['source_kind'], 'hardcoded')
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
+        self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
+        self.assertEqual(sections_by_key['staging_contract']['details']['buffer_target_pairs'], 15)
+        self.assertFalse(sections_by_key['staging_contract']['details']['actively_injected'])
+        self.assertEqual(sections_by_key['scoring_contract']['details']['engine'], 'python_deterministic')
+        self.assertEqual(sections_by_key['scoring_contract']['details']['local_strength_accept_from'], 0.6)
+        self.assertEqual(sections_by_key['promotion_and_suspension_contract']['details']['promotion_to_layer'], 'static')
+        self.assertEqual(
+            sections_by_key['promotion_and_suspension_contract']['details']['auto_suspension_reason_codes'],
+            ['double_saturation', 'static_recent_operator_edit_guard'],
+        )
+        self.assertEqual(sections_by_key['mutable_budget_contract']['classification'], 'doctrine_locked')
+        self.assertEqual(sections_by_key['mutable_budget_contract']['details']['target_chars'], 3000)
+        self.assertEqual(sections_by_key['legacy_identity_contract']['classification'], 'legacy_inactive')
+        self.assertFalse(sections_by_key['legacy_identity_contract']['details']['actively_injected'])
         self.assertGreater(payload['editable_count'], 0)
         self.assertGreater(payload['readonly_count'], 0)
+        self.assertGreater(payload['doctrine_locked_count'], 0)
         self.assertGreaterEqual(payload['legacy_inactive_count'], 2)
         self.assertGreater(payload['active_runtime_count'], 0)
         self.assertGreater(payload['active_subpipeline_count'], 0)
+        self.assertEqual(payload['regime_section_count'], 6)
+        self.assertGreater(payload['regime_active_readonly_count'], 0)
+        self.assertGreater(payload['regime_doctrine_locked_count'], 0)
+        self.assertGreater(payload['regime_legacy_inactive_count'], 0)
 
     def test_update_response_applies_editable_change_and_keeps_audit_compact(self) -> None:
         runtime_module = _FakeRuntimeSettings({'CONTEXT_HINTS_MAX_ITEMS': 2})

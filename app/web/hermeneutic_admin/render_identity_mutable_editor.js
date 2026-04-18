@@ -6,8 +6,6 @@
     );
   }
 
-  const TARGET_CHARS = 3000;
-  const MAX_CHARS = 3300;
   const SUBJECTS = ["llm", "user"];
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -81,9 +79,12 @@
       regime.mutable_budget && typeof regime.mutable_budget === "object" && !Array.isArray(regime.mutable_budget)
         ? regime.mutable_budget
         : {};
+    const targetChars = Number(budget.target_chars);
+    const maxChars = Number(budget.max_chars);
     return {
-      target_chars: Number(budget.target_chars) || TARGET_CHARS,
-      max_chars: Number(budget.max_chars) || MAX_CHARS,
+      target_chars: Number.isFinite(targetChars) && targetChars > 0 ? targetChars : null,
+      max_chars: Number.isFinite(maxChars) && maxChars > 0 ? maxChars : null,
+      source_ready: Number.isFinite(targetChars) && targetChars > 0 && Number.isFinite(maxChars) && maxChars > 0,
     };
   };
 
@@ -213,8 +214,16 @@
     meta.appendChild(createChip(`loaded=${Boolean(mutableLayer.loaded_for_runtime)}`));
     meta.appendChild(createChip(`injected=${Boolean(mutableLayer.actively_injected)}`));
     meta.appendChild(createChip(`len=${currentContent.length}`));
-    meta.appendChild(createChip(`target=${budget.target_chars}`));
-    meta.appendChild(createChip(`max=${budget.max_chars}`));
+    meta.appendChild(
+      createChip(`target=${budget.target_chars == null ? "n/a" : budget.target_chars}`, {
+        status: budget.source_ready ? "ok" : "error",
+      }),
+    );
+    meta.appendChild(
+      createChip(`max=${budget.max_chars == null ? "n/a" : budget.max_chars}`, {
+        status: budget.source_ready ? "ok" : "error",
+      }),
+    );
     meta.appendChild(
       createChip(
         `staging=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
@@ -274,7 +283,9 @@
     textarea.value = currentContent;
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
-    contentMeta.textContent = `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique conversationnel le plus recent ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`;
+    contentMeta.textContent = budget.source_ready
+      ? `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique conversationnel le plus recent ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`
+      : "Budget mutable runtime indisponible dans le payload actif. Cette surface n'invente plus de caps locaux et attend la source canonique exposee par le regime identity.";
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);
 

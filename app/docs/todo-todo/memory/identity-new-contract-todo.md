@@ -115,7 +115,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 - [x] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
 - [ ] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
 - [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
-- [ ] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
+- [x] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
 
 ### C2. Ce qui devra etre remplace
 
@@ -134,7 +134,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### C4. Ce qui devra seulement etre requalifie
 
-- [ ] Requalifier `identity-governance` pour distinguer les caps doctrinaux cibles du nouveau regime et les caps encore actifs du runtime non migre.
+- [x] Requalifier `identity-governance` pour distinguer les caps doctrinaux cibles du nouveau regime et les caps encore actifs du runtime non migre.
 - [x] Requalifier `identity-read-model` et `/identity` pour distinguer canon actif, staging temporaire et verdict agent sans les confondre.
 - [ ] Requalifier les roadmaps/clotures archivees qui parlaient d'une `mutable narrative` reecrite, afin qu'elles restent historiques sans redevenir une verite active.
 - [x] Requalifier les tests qui continueraient a passer tout en validant en fait l'ancien monde.
@@ -177,7 +177,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 ### E1. Documents a modifier quand la migration runtime commencera
 
 - [x] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
-- [ ] Requalifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` au-dela du simple budget `3000/3300` pour rendre visibles scoring, promotion, staging et suspension sans les traiter comme de simples caps.
+- [x] Requalifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` au-dela du simple budget `3000/3300` pour rendre visibles scoring, promotion, staging et suspension sans les traiter comme de simples caps.
 - [x] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
 - [x] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.
 - [x] Modifier les textes UI `/identity` et `/hermeneutic-admin` qui presentent encore la mutable unique comme seule couche mouvante.
