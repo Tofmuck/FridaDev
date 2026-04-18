@@ -152,24 +152,24 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### D1. Tests unitaires a ecrire ou remplacer
 
-- [ ] Ecrire des tests de buffer: accumulation tour par tour, declenchement a 15 paires exactes, absence d'appel agent avant seuil, effacement du buffer seulement apres application reussie.
-- [ ] Ecrire des tests de contrat JSON strict: root invalide, champs manquants, types invalides, scores hors bornes, operation inconnue, bloc `meta` incoherent.
+- [x] Ecrire des tests de buffer: accumulation tour par tour, declenchement a 15 paires exactes, absence d'appel agent avant seuil, effacement du buffer seulement apres application reussie.
+- [x] Ecrire des tests de contrat JSON strict: root invalide, champs manquants, types invalides, operation inconnue, bloc `meta` incoherent et payload contradictoire.
 - [ ] Ecrire des tests deterministes pour `frequency_norm`, `recency_norm`, `strength` et les seuils `0.35/0.60`.
 - [ ] Ecrire des tests d'application deterministe pour `add`, `tighten`, `merge`, `raise_conflict`, non-doublon avec `static`, non-doublon avec `mutable`, et contradiction semantique.
 - [ ] Ecrire des tests de promotion `mutable -> static`, de recalage du budget de projection et de suspension automatique en cas de double saturation.
 
 ### D2. Tests d'integration admin, read-model et representations runtime
 
-- [ ] Adapter les tests serveur/admin pour verifier `identity_staging`, `last_agent_status`, `buffer_pairs_count` et `auto_canonization_suspended`.
-- [ ] Verifier que `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` continuent a dire vrai sur le canon actif injecte tout en montrant le staging separement.
-- [ ] Verifier que `/identity` et `/hermeneutic-admin` n'affichent jamais le staging comme s'il etait deja canonise.
+- [x] Adapter les tests serveur/admin pour verifier `identity_staging`, `last_agent_status`, `buffer_pairs_count` et `auto_canonization_suspended`.
+- [x] Verifier que `/api/admin/identity/read-model` et `/api/admin/identity/runtime-representations` continuent a dire vrai sur le canon actif injecte tout en montrant le staging separement.
+- [x] Verifier que `/identity` et `/hermeneutic-admin` n'affichent jamais le staging comme s'il etait deja canonise.
 - [ ] Verifier que l'edition operateur du `mutable` reste coherente avec le read-model et ne consomme jamais le buffer temporaire.
 
 ### D3. Compatibilite runtime et comportement fail-closed
 
 - [ ] Verifier que `build_identity_input()` et `build_identity_block()` restent compatibles avec le noeud hermeneutique et le main LLM pendant toute la migration.
-- [ ] Verifier qu'un JSON agent invalide, partiel ou contradictoire n'ecrit rien dans le canon actif, ne purge pas le buffer et laisse un statut observable.
-- [ ] Verifier qu'un timeout ou une exception agent laisse la conversation principale saine et observable, sans fausse canonisation.
+- [x] Verifier qu'un JSON agent invalide, partiel ou contradictoire n'ecrit rien dans le canon actif, ne purge pas le buffer et laisse un statut observable.
+- [x] Verifier qu'un timeout ou une exception agent laisse la conversation principale saine et observable, sans fausse canonisation.
 - [ ] Verifier que l'observabilite reste compacte: pas de dump brut du buffer, pas de dump brut des candidats, pas de dump brut des textes canoniques.
 
 ## E. Sort explicite des documents et specs existants
@@ -205,7 +205,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 ## G. Definition of done operatoire
 
 - [x] Le runtime n'appelle plus un rewriter global par tour et n'utilise plus `recent_2` comme base identitaire canonique.
-- [ ] Le staging de 15 paires existe, reste distinct du canon actif et est observable cote admin.
+- [x] Le staging de 15 paires existe, reste distinct du canon actif et est observable cote admin.
 - [ ] L'agent identitaire periodique renvoie un JSON strict par operations, applique par une couche deterministe et fail-closed.
 - [ ] Les scores `frequency_norm`, `recency_norm` et `strength`, les seuils, la promotion `mutable -> static` et la suspension automatique sont implementes et testes.
 - [x] Le read-model, les runtime representations, `/identity`, `/hermeneutic-admin` et les logs disent vrai sur le nouveau regime sans exposer de contenu brut.

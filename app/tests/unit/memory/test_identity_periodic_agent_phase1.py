@@ -38,6 +38,17 @@ def _support_pair(index: int, proposition: str) -> list[dict[str, Any]]:
     ]
 
 
+def _build_large_identity_block(subject: str, *, min_length: int) -> str:
+    lines: list[str] = []
+    content = ''
+    index = 1
+    while len(content) < int(min_length):
+        lines.append(f'{subject} garde un axe stable {index}.')
+        content = '\n'.join(lines)
+        index += 1
+    return content
+
+
 class _InMemoryIdentityStore:
     def __init__(self) -> None:
         self.mutable: dict[str, dict[str, Any]] = {}
@@ -190,6 +201,16 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
                 arbiter_module=arbiter_module,
                 memory_store_module=store,
             )
+            self.assertEqual(summary['status'], 'buffering')
+            self.assertEqual(summary['reason_code'], 'below_threshold')
+            self.assertEqual(summary['buffer_pairs_count'], index)
+            self.assertEqual(summary['buffer_target_pairs'], 15)
+            self.assertFalse(summary['buffer_cleared'])
+            self.assertFalse(summary['writes_applied'])
+            self.assertEqual(
+                store.get_identity_staging_state('conv-before-threshold')['buffer_pairs_count'],
+                index,
+            )
 
         self.assertEqual(summary['status'], 'buffering')
         self.assertEqual(summary['reason_code'], 'below_threshold')
@@ -319,13 +340,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
     def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
         store = _InMemoryIdentityStore()
+        existing_llm_content = _build_large_identity_block('Frida', min_length=3290)
         store.mutable['llm'] = {
             'subject': 'llm',
-            'content': 'x' * 3290,
+            'content': existing_llm_content,
             'updated_by': 'identity_periodic_agent',
             'update_reason': 'periodic_agent',
         }
-        llm_proposition = 'Frida conserve un axe de synthese stable.'
+        llm_proposition = 'Frida garde un axe de synthese stable.'
         user_proposition = 'Tof maintient un fil identitaire stable.'
 
         def fake_run_identity_periodic_agent(_payload: dict[str, Any]) -> dict[str, Any]:
@@ -378,7 +400,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['rejection_reasons'], {'llm': 'mutable_content_too_long'})
         self.assertEqual(store.upsert_calls, [])
-        self.assertEqual(store.mutable['llm']['content'], 'x' * 3290)
+        self.assertEqual(store.mutable['llm']['content'], existing_llm_content)
         self.assertNotIn('user', store.mutable)
         self.assertEqual(store.get_identity_staging_state('conv-all-or-nothing')['buffer_pairs_count'], 15)
         user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
@@ -417,6 +439,54 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(store.get_identity_staging_state('conv-invalid-contract')['buffer_pairs_count'], 15)
+        self.assertEqual(store.upsert_calls, [])
+
+    def test_preserves_buffer_when_agent_returns_contradictory_no_change_mix(self) -> None:
+        store = _InMemoryIdentityStore()
+        proposition = 'Tof maintient une tension encore mal tranchee.'
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'llm': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'},
+                    ]
+                },
+                'user': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'contradiction'},
+                        {'kind': 'add', 'proposition': proposition, 'reason': 'contradiction'},
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+        )
+
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-no-change-mixed',
+                _support_pair(index, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-no-change-mixed',
+            _support_pair(15, proposition),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'contract_user_no_change_mixed')
+        self.assertEqual(summary['last_agent_status'], 'contract_invalid')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.get_identity_staging_state('conv-no-change-mixed')['buffer_pairs_count'], 15)
         self.assertEqual(store.upsert_calls, [])
 
     def test_retry_reuses_exact_same_fifteen_pair_window_after_failed_attempt(self) -> None:
@@ -496,7 +566,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
     def test_marks_auto_canonization_suspension_and_preserves_buffer_when_double_saturation_blocks_promotion(self) -> None:
         store = _InMemoryIdentityStore()
         proposition = 'Tof maintient une orientation stable et ritualisee.'
-        filler = 'Trait stable. ' * 220
+        filler = _build_large_identity_block('Tof', min_length=2980)
         store.mutable['user'] = {
             'subject': 'user',
             'content': filler,
@@ -603,6 +673,36 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['last_agent_status'], 'agent_call_error')
         self.assertFalse(summary['buffer_cleared'])
         self.assertEqual(store.get_identity_staging_state('conv-timeout')['buffer_pairs_count'], 15)
+        self.assertEqual(store.upsert_calls, [])
+
+    def test_preserves_buffer_when_agent_raises_runtime_error(self) -> None:
+        store = _InMemoryIdentityStore()
+
+        def boom(_payload: dict[str, Any]) -> dict[str, Any]:
+            raise RuntimeError('provider blew up')
+
+        arbiter_module = SimpleNamespace(run_identity_periodic_agent=boom)
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-runtime-error',
+                _pair(index),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-runtime-error',
+            _pair(15),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'agent_call_error')
+        self.assertEqual(summary['last_agent_status'], 'agent_call_error')
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertTrue(summary['buffer_frozen'])
+        self.assertEqual(store.get_identity_staging_state('conv-runtime-error')['buffer_pairs_count'], 15)
         self.assertEqual(store.upsert_calls, [])
 
 

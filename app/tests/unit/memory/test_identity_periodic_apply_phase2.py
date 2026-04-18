@@ -108,6 +108,155 @@ class _MutableStore:
         return copy.deepcopy(previous) if previous is not None else None
 
 
+class IdentityPeriodicContractValidationPhase2Tests(unittest.TestCase):
+    def test_validate_periodic_agent_contract_rejects_invalid_topology_meta_and_types(self) -> None:
+        cases = [
+            (
+                'invalid_root',
+                [],
+                'contract_top_level_keys_invalid',
+            ),
+            (
+                'missing_meta',
+                {
+                    'llm': {'operations': []},
+                    'user': {'operations': []},
+                },
+                'contract_top_level_keys_invalid',
+            ),
+            (
+                'subject_missing_operations_key',
+                {
+                    'llm': {},
+                    'user': {'operations': []},
+                    'meta': {
+                        'execution_status': 'complete',
+                        'buffer_pairs_count': 15,
+                        'window_complete': True,
+                    },
+                },
+                'contract_llm_keys_invalid',
+            ),
+            (
+                'operations_wrong_type',
+                {
+                    'llm': {'operations': []},
+                    'user': {'operations': 'oops'},
+                    'meta': {
+                        'execution_status': 'complete',
+                        'buffer_pairs_count': 15,
+                        'window_complete': True,
+                    },
+                },
+                'contract_user_operations_invalid',
+            ),
+            (
+                'meta_window_complete_false',
+                {
+                    'llm': {'operations': []},
+                    'user': {'operations': []},
+                    'meta': {
+                        'execution_status': 'complete',
+                        'buffer_pairs_count': 15,
+                        'window_complete': False,
+                    },
+                },
+                'contract_window_complete_invalid',
+            ),
+            (
+                'meta_buffer_mismatch',
+                {
+                    'llm': {'operations': []},
+                    'user': {'operations': []},
+                    'meta': {
+                        'execution_status': 'complete',
+                        'buffer_pairs_count': 14,
+                        'window_complete': True,
+                    },
+                },
+                'contract_buffer_pairs_count_mismatch',
+            ),
+        ]
+
+        for label, payload, expected_reason in cases:
+            with self.subTest(label=label):
+                contract, reason = memory_identity_periodic_apply.validate_periodic_agent_contract(
+                    payload,
+                    buffer_pairs_count=15,
+                    target_pairs=15,
+                )
+
+                self.assertIsNone(contract)
+                self.assertEqual(reason, expected_reason)
+
+    def test_validate_periodic_agent_contract_rejects_unknown_partial_and_contradictory_operations(self) -> None:
+        cases = [
+            (
+                'unknown_operation_kind',
+                _contract_for_user_operations(
+                    {'kind': 'rewrite', 'proposition': 'Tof garde un axe stable.', 'reason': 'legacy wording'},
+                ),
+                'contract_operation_kind_invalid',
+            ),
+            (
+                'add_missing_reason',
+                _contract_for_user_operations(
+                    {'kind': 'add', 'proposition': 'Tof garde un axe stable.'},
+                ),
+                'contract_operation_reason_missing',
+            ),
+            (
+                'no_change_with_payload',
+                _contract_for_user_operations(
+                    {'kind': 'no_change', 'proposition': 'Tof garde un axe stable.', 'reason': 'bad payload'},
+                ),
+                'contract_no_change_proposition_not_empty',
+            ),
+            (
+                'tighten_without_target',
+                _contract_for_user_operations(
+                    {
+                        'kind': 'tighten',
+                        'proposition': 'Tof garde un axe stable et sobre.',
+                        'reason': 'missing target',
+                    },
+                ),
+                'contract_tighten_keys_invalid',
+            ),
+            (
+                'merge_duplicated_targets',
+                _contract_for_user_operations(
+                    {
+                        'kind': 'merge',
+                        'targets': ['Tof garde un axe stable.', 'Tof garde un axe stable.'],
+                        'proposition': 'Tof garde un axe stable.',
+                        'reason': 'duplicate targets',
+                    },
+                ),
+                'contract_merge_targets_duplicated',
+            ),
+            (
+                'no_change_mixed_with_add',
+                _contract_for_user_operations(
+                    {'kind': 'no_change', 'proposition': '', 'reason': 'contradiction'},
+                    {'kind': 'add', 'proposition': 'Tof garde un axe stable.', 'reason': 'contradiction'},
+                ),
+                'contract_user_no_change_mixed',
+            ),
+        ]
+
+        for label, payload, expected_reason in cases:
+            with self.subTest(label=label):
+                contract, reason = memory_identity_periodic_apply.validate_periodic_agent_contract(
+                    payload,
+                    buffer_pairs_count=15,
+                    target_pairs=15,
+                )
+
+                self.assertIsNone(contract)
+                self.assertEqual(reason, expected_reason)
+
+
 class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
     def test_deferred_candidate_does_not_write_canonical_mutable(self) -> None:
         proposition = 'Tof revient souvent a une attention patiente.'

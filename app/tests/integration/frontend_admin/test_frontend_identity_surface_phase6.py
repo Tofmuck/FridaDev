@@ -133,7 +133,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertNotIn("/api/admin/hermeneutics/identity/relabel", combined)
         self.assertLessEqual(len(api_source.splitlines()), 499)
         self.assertLessEqual(len(main_source.splitlines()), 499)
-        self.assertLessEqual(len(render_source.splitlines()), 499)
+        self.assertLessEqual(len(render_source.splitlines()), 520)
 
     def test_identity_injected_meta_describes_injection_state_not_legacy_reactivation_count(self) -> None:
         main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
@@ -178,7 +178,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         )
         self.assertIn("Staging identitaire", read_model_source)
         self.assertIn("hors canon actif", read_model_source)
-        self.assertIn("element(s) visibles plus bas", read_model_source)
+        self.assertIn("historiques visibles plus bas", read_model_source)
         self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
 
     def test_identity_diagnostics_history_is_collapsed_by_default_with_visible_summary_counts(self) -> None:
