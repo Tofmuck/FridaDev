@@ -187,6 +187,24 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = self.original_read_static_snapshot
         memory_identity_periodic_agent.static_identity_content.write_static_identity_content = self.original_write_static_content
 
+    def test_completed_summary_state_keeps_contradiction_raise_conflict_visible(self) -> None:
+        status, reason = memory_identity_periodic_agent._completed_summary_state(
+            {
+                'reason_code': 'completed_no_change',
+                'writes_applied': False,
+                'outcomes': [
+                    {
+                        'subject': 'user',
+                        'action': 'raise_conflict',
+                        'reason_code': 'contradiction_with_static',
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(status, 'completed_with_open_tension')
+        self.assertEqual(reason, 'completed_with_open_tension')
+
     def test_does_not_call_agent_before_fifteen_pairs(self) -> None:
         store = _InMemoryIdentityStore()
         calls: list[dict[str, Any]] = []

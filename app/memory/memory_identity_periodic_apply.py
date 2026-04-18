@@ -6,16 +6,60 @@ from typing import Any, Callable, Mapping, Sequence
 
 import config
 from identity import mutable_identity_validation
+from memory import hermeneutics_policy
 from memory import memory_identity_periodic_scoring
 
 
 _ALLOWED_SUBJECTS = ('llm', 'user')
 _ALLOWED_OPERATION_KINDS = {'no_change', 'add', 'tighten', 'merge', 'raise_conflict'}
 _SENTENCE_SPLIT_RE = re.compile(r'\n+|(?<=[.!?])\s+')
+_CONTRADICTION_TOKEN_RE = re.compile(r"[a-zA-ZÀ-ÿ0-9']+")
 _UPDATED_BY = 'identity_periodic_agent'
 _PROMOTION_UPDATE_REASON = 'periodic_agent_promotion'
 _STATIC_TARGET_CHARS = 3000
 _RECENT_ADMIN_GUARD_HOURS = 24
+_CONTRADICTION_POLARITY_PAIRS = (
+    ('aime', "n'aime"),
+    ('prefere', 'deteste'),
+    ('likes', 'dislikes'),
+    ('want', "don't want"),
+)
+_CONTRADICTION_OVERLAP_STOPWORDS = {
+    'frida',
+    'tof',
+    'assistant',
+    'utilisateur',
+    'user',
+    'llm',
+    'une',
+    'des',
+    'les',
+    'ses',
+    'son',
+    'garde',
+    'maintient',
+    'reste',
+    'demeure',
+    'porte',
+    'manifeste',
+    'cultive',
+    'assume',
+    'travaille',
+    'traite',
+    'part',
+    'revient',
+    'aborde',
+    'approche',
+    'considere',
+    'regarde',
+    'pense',
+    'insiste',
+    'privilegie',
+    'accorde',
+    'tient',
+    'montre',
+    'deploie',
+}
 
 
 def _text(value: Any) -> str:
@@ -179,6 +223,74 @@ def _validation_reason_for_text(text: str) -> str | None:
     if validation.ok:
         return None
     return validation.reason_code
+
+
+def _contradiction_tokens(text: str) -> set[str]:
+    return {token.lower() for token in _CONTRADICTION_TOKEN_RE.findall(_text(text))}
+
+
+def _meaningful_contradiction_tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in _contradiction_tokens(text)
+        if len(token) > 2
+        and token not in set(hermeneutics_policy.NEGATION_HINTS)
+        and token not in _CONTRADICTION_OVERLAP_STOPWORDS
+    }
+
+
+def _has_explicit_contradiction_cue(text_a: str, text_b: str) -> bool:
+    a = _text(text_a).lower()
+    b = _text(text_b).lower()
+    if not a or not b:
+        return False
+
+    overlap = _meaningful_contradiction_tokens(a).intersection(_meaningful_contradiction_tokens(b))
+    if not overlap:
+        return False
+
+    tokens_a = _contradiction_tokens(a)
+    tokens_b = _contradiction_tokens(b)
+    neg_a = bool(tokens_a.intersection(hermeneutics_policy.NEGATION_HINTS))
+    neg_b = bool(tokens_b.intersection(hermeneutics_policy.NEGATION_HINTS))
+    if neg_a ^ neg_b:
+        return True
+
+    for left, right in _CONTRADICTION_POLARITY_PAIRS:
+        if (left in a and right in b) or (left in b and right in a):
+            return True
+
+    return False
+
+
+def _contains_semantic_contradiction(proposition: str, lines: Sequence[str]) -> bool:
+    candidate = _text(proposition)
+    candidate_norm = _norm(candidate)
+    if not candidate:
+        return False
+    for line in lines:
+        other = _text(line)
+        if not other or _norm(other) == candidate_norm:
+            continue
+        if _has_explicit_contradiction_cue(candidate, other):
+            return True
+    return False
+
+
+def _contradiction_reason_for_proposition(
+    *,
+    proposition: str,
+    static_lines: Sequence[str],
+    original_lines: Sequence[str],
+    accepted_candidate_lines: Sequence[str],
+) -> str | None:
+    if _contains_semantic_contradiction(proposition, static_lines):
+        return 'contradiction_with_static'
+    if _contains_semantic_contradiction(proposition, original_lines):
+        return 'contradiction_with_mutable'
+    if _contains_semantic_contradiction(proposition, accepted_candidate_lines):
+        return 'contradiction_with_candidate'
+    return None
 
 
 def _parse_ts(value: Any) -> datetime | None:
@@ -657,8 +769,10 @@ def _apply_subject_operations(
     current_content: str,
 ) -> tuple[str, list[dict[str, Any]], str | None]:
     original_lines = _split_propositions(current_content)
+    static_lines = _split_propositions(static_content)
     next_lines = list(original_lines)
     static_norms = {_norm(item) for item in _split_propositions(static_content)}
+    accepted_candidate_lines: list[str] = []
     outcomes: list[dict[str, Any]] = []
 
     for operation in operations:
@@ -717,7 +831,26 @@ def _apply_subject_operations(
                     )
                 )
                 continue
+            contradiction_reason = _contradiction_reason_for_proposition(
+                proposition=proposition,
+                static_lines=static_lines,
+                original_lines=original_lines,
+                accepted_candidate_lines=accepted_candidate_lines,
+            )
+            if contradiction_reason:
+                outcomes.append(
+                    _subject_outcome(
+                        subject=subject,
+                        action='raise_conflict',
+                        reason_code=contradiction_reason,
+                        old_len=len(current_content),
+                        new_len=len(_joined_content(next_lines)),
+                        **score_fields,
+                    )
+                )
+                continue
             next_lines.append(proposition)
+            accepted_candidate_lines.append(proposition)
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
@@ -756,7 +889,26 @@ def _apply_subject_operations(
                     )
                 )
                 continue
+            contradiction_reason = _contradiction_reason_for_proposition(
+                proposition=proposition,
+                static_lines=static_lines,
+                original_lines=original_lines,
+                accepted_candidate_lines=accepted_candidate_lines,
+            )
+            if contradiction_reason:
+                outcomes.append(
+                    _subject_outcome(
+                        subject=subject,
+                        action='raise_conflict',
+                        reason_code=contradiction_reason,
+                        old_len=len(current_content),
+                        new_len=len(_joined_content(next_lines)),
+                        **score_fields,
+                    )
+                )
+                continue
             next_lines[target_index] = proposition
+            accepted_candidate_lines.append(proposition)
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
@@ -812,10 +964,29 @@ def _apply_subject_operations(
                 )
             )
             continue
+        contradiction_reason = _contradiction_reason_for_proposition(
+            proposition=proposition,
+            static_lines=static_lines,
+            original_lines=original_lines,
+            accepted_candidate_lines=accepted_candidate_lines,
+        )
+        if contradiction_reason:
+            outcomes.append(
+                _subject_outcome(
+                    subject=subject,
+                    action='raise_conflict',
+                    reason_code=contradiction_reason,
+                    old_len=len(current_content),
+                    new_len=len(_joined_content(next_lines)),
+                    **score_fields,
+                )
+            )
+            continue
         merged_lines = [line for index, line in enumerate(next_lines) if index not in unique_target_indexes]
         insert_at = unique_target_indexes[0]
         merged_lines.insert(insert_at, proposition)
         next_lines = merged_lines
+        accepted_candidate_lines.append(proposition)
         outcomes.append(
             _subject_outcome(
                 subject=subject,

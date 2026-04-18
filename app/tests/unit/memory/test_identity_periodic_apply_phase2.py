@@ -500,6 +500,69 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['reason_code'], 'already_present')
         self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
 
+    def test_add_raises_open_tension_when_it_contradicts_static(self) -> None:
+        static_line = 'Tof ne garde pas une presence discrete.'
+        proposition = 'Tof garde une presence discrete.'
+        store = _MutableStore()
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {'kind': 'add', 'proposition': proposition, 'reason': 'strong but contradictory'},
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: static_line,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.upsert_calls, [])
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'raise_conflict')
+        self.assertEqual(user_outcome['reason_code'], 'contradiction_with_static')
+        self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
+    def test_add_raises_open_tension_when_it_contradicts_existing_mutable(self) -> None:
+        current = 'Tof ne garde pas une presence discrete.'
+        proposition = 'Tof garde une presence discrete.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': current,
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {'kind': 'add', 'proposition': proposition, 'reason': 'strong but contradictory'},
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], current)
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'raise_conflict')
+        self.assertEqual(user_outcome['reason_code'], 'contradiction_with_mutable')
+        self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
     def test_supported_merge_uses_local_operation_semantics(self) -> None:
         target_a = 'Tof garde une clarte durable.'
         target_b = 'Tof garde un axe de travail stable.'
@@ -541,6 +604,47 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['action'], 'merge')
         self.assertEqual(user_outcome['reason_code'], 'merge_applied')
         self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
+    def test_second_candidate_raises_open_tension_when_it_contradicts_first_candidate(self) -> None:
+        proposition_a = 'Tof garde une presence discrete.'
+        proposition_b = 'Tof ne garde pas une presence discrete.'
+        buffer_pairs: list[dict[str, Any]] = []
+        for index in range(15):
+            buffer_pairs.append(
+                {
+                    'user': {
+                        'role': 'user',
+                        'content': f'Utilisateur confirme {proposition_a} puis {proposition_b}',
+                    },
+                    'assistant': {
+                        'role': 'assistant',
+                        'content': f'Assistant reprend {proposition_a} puis {proposition_b}',
+                    },
+                }
+            )
+        store = _MutableStore()
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {'kind': 'add', 'proposition': proposition_a, 'reason': 'first strong signal'},
+                {'kind': 'add', 'proposition': proposition_b, 'reason': 'second contradictory signal'},
+            ),
+            buffer_pairs=buffer_pairs,
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], proposition_a)
+        user_outcomes = [item for item in summary['outcomes'] if item['subject'] == 'user']
+        self.assertEqual(user_outcomes[0]['action'], 'add')
+        self.assertEqual(user_outcomes[0]['reason_code'], 'add_applied')
+        self.assertEqual(user_outcomes[1]['action'], 'raise_conflict')
+        self.assertEqual(user_outcomes[1]['reason_code'], 'contradiction_with_candidate')
+        self.assertEqual(user_outcomes[1]['threshold_verdict'], 'accepted')
 
     def test_raise_conflict_stays_conversation_scoped_without_writing_canon(self) -> None:
         proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
