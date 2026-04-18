@@ -7,6 +7,32 @@
   }
 
   const toText = (value) => String(value == null ? "" : value).trim();
+  const ITEM_CATEGORY_LABELS = Object.freeze({
+    active_runtime_editable: "Runtime editable",
+    active_subpipeline_editable: "Sous-pipeline editable",
+    doctrine_locked_readonly: "Doctrine verrouillee",
+    active_runtime_readonly: "Readonly runtime actif",
+    active_subpipeline_readonly: "Readonly actif",
+    legacy_inactive_readonly: "Legacy inactif",
+  });
+  const ITEM_CATEGORY_ORDER = Object.freeze([
+    "active_runtime_editable",
+    "active_subpipeline_editable",
+    "doctrine_locked_readonly",
+    "active_runtime_readonly",
+    "active_subpipeline_readonly",
+    "legacy_inactive_readonly",
+  ]);
+  const REGIME_CLASSIFICATION_LABELS = Object.freeze({
+    active_readonly: "Regime actif readonly",
+    doctrine_locked: "Doctrine verrouillee",
+    legacy_inactive: "Legacy inactif",
+  });
+  const REGIME_CLASSIFICATION_ORDER = Object.freeze([
+    "active_readonly",
+    "doctrine_locked",
+    "legacy_inactive",
+  ]);
 
   const createChip = (text, options = {}) => {
     const chip = document.createElement("span");
@@ -60,6 +86,12 @@
     const items = payload?.items;
     if (!Array.isArray(items)) return [];
     return items.filter((item) => item && typeof item === "object" && !Array.isArray(item));
+  };
+
+  const normalizeRegimeSections = (payload) => {
+    const sections = payload?.regime_sections;
+    if (!Array.isArray(sections)) return [];
+    return sections.filter((section) => section && typeof section === "object" && !Array.isArray(section));
   };
 
   const inputTypeFor = (valueType) => {
@@ -129,6 +161,27 @@
     target.appendChild(form);
   };
 
+  const renderGroupTitle = (target, titleText, noteText = "") => {
+    const wrapper = document.createElement("section");
+    wrapper.className = "admin-readonly-group";
+
+    const head = document.createElement("div");
+    head.className = "admin-readonly-group-head";
+    const title = document.createElement("h4");
+    title.textContent = titleText;
+    head.appendChild(title);
+    wrapper.appendChild(head);
+
+    if (noteText) {
+      const note = document.createElement("p");
+      note.className = "admin-section-note admin-section-note-left";
+      note.textContent = noteText;
+      wrapper.appendChild(note);
+    }
+
+    target.appendChild(wrapper);
+  };
+
   const renderItem = (target, item) => {
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -177,6 +230,99 @@
     target.appendChild(card);
   };
 
+  const renderRegimeSection = (target, section) => {
+    const card = document.createElement("section");
+    card.className = "admin-readonly-group";
+    card.dataset.identityGovernanceSection = toText(section.key);
+
+    const head = document.createElement("div");
+    head.className = "admin-readonly-group-head";
+    const title = document.createElement("h4");
+    title.textContent = toText(section.label) || toText(section.key) || "Regime";
+    head.appendChild(title);
+    card.appendChild(head);
+
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    meta.appendChild(
+      createChip(
+        REGIME_CLASSIFICATION_LABELS[toText(section.classification)] || `classification=${toText(section.classification) || "n/a"}`,
+      ),
+    );
+    meta.appendChild(createChip(`scope=${toText(section.active_scope) || "n/a"}`));
+    meta.appendChild(createChip(`editable=${Boolean(section.editable)}`));
+    card.appendChild(meta);
+
+    const summary = document.createElement("div");
+    summary.className = "admin-readonly-grid";
+    renderReadonlyEntries(
+      summary,
+      mappingToEntries(
+        {
+          source_kind: section.source_kind,
+          source_ref: section.source_ref,
+          details: section.details,
+          operator_note: section.operator_note,
+        },
+        "identity_governance_regime",
+      ),
+    );
+    card.appendChild(summary);
+    target.appendChild(card);
+  };
+
+  const renderItemsByCategory = (target, items) => {
+    const grouped = new Map();
+    ITEM_CATEGORY_ORDER.forEach((category) => grouped.set(category, []));
+    items.forEach((item) => {
+      const category = toText(item.category);
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category).push(item);
+    });
+
+    Array.from(grouped.entries()).forEach(([category, groupItems]) => {
+      if (!groupItems.length) return;
+      renderGroupTitle(
+        target,
+        ITEM_CATEGORY_LABELS[category] || category,
+        category === "doctrine_locked_readonly"
+          ? "Caps visibles mais non reouverts a l edition."
+          : category === "legacy_inactive_readonly"
+            ? "Survivances legacy relisibles sans role actif dans le regime runtime."
+            : "",
+      );
+      groupItems.forEach((item) => renderItem(target, item));
+    });
+  };
+
+  const renderRegimeSectionsByClassification = (target, sections) => {
+    const grouped = new Map();
+    REGIME_CLASSIFICATION_ORDER.forEach((classification) => grouped.set(classification, []));
+    sections.forEach((section) => {
+      const classification = toText(section.classification);
+      if (!grouped.has(classification)) {
+        grouped.set(classification, []);
+      }
+      grouped.get(classification).push(section);
+    });
+
+    Array.from(grouped.entries()).forEach(([classification, groupSections]) => {
+      if (!groupSections.length) return;
+      renderGroupTitle(
+        target,
+        REGIME_CLASSIFICATION_LABELS[classification] || classification,
+        classification === "active_readonly"
+          ? "Contrat du regime identity actif: staging, scoring, promotion et suspension restent visibles ici sans etre edites comme de simples knobs."
+          : classification === "doctrine_locked"
+            ? "Doctrine visible, bornee et volontairement non editable."
+            : "Legacy conserve pour diagnostic seulement.",
+      );
+      groupSections.forEach((section) => renderRegimeSection(target, section));
+    });
+  };
+
   const renderIdentityGovernance = (metaTarget, target, payload) => {
     if (!target) return;
     target.innerHTML = "";
@@ -184,7 +330,8 @@
 
     const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
     const items = normalizeItems(safePayload);
-    if (!items.length) {
+    const regimeSections = normalizeRegimeSections(safePayload);
+    if (!items.length && !regimeSections.length) {
       renderEmpty(target, "Aucun knob identity gouvernable ou visible.");
       return;
     }
@@ -193,12 +340,29 @@
       metaTarget.appendChild(createChip(`version=${toText(safePayload.governance_version) || "n/a"}`));
       metaTarget.appendChild(createChip(`editable=${Number(safePayload.editable_count) || 0}`));
       metaTarget.appendChild(createChip(`readonly=${Number(safePayload.readonly_count) || 0}`));
+      metaTarget.appendChild(createChip(`doctrine_locked=${Number(safePayload.doctrine_locked_count) || 0}`));
       metaTarget.appendChild(createChip(`legacy=${Number(safePayload.legacy_inactive_count) || 0}`));
       metaTarget.appendChild(createChip(`active_runtime=${Number(safePayload.active_runtime_count) || 0}`));
       metaTarget.appendChild(createChip(`active_subpipeline=${Number(safePayload.active_subpipeline_count) || 0}`));
+      metaTarget.appendChild(createChip(`regime_sections=${Number(safePayload.regime_section_count) || 0}`));
     }
 
-    items.forEach((item) => renderItem(target, item));
+    target.appendChild(
+      (() => {
+        const note = document.createElement("p");
+        note.className = "admin-section-note admin-section-note-left";
+        note.textContent =
+          "La gouvernance identity ne se limite pas aux caps 3000/3300: elle distingue les knobs editables, le regime actif readonly, la doctrine verrouillee et le legacy inactif.";
+        return note;
+      })(),
+    );
+
+    if (regimeSections.length) {
+      renderRegimeSectionsByClassification(target, regimeSections);
+    }
+    if (items.length) {
+      renderItemsByCategory(target, items);
+    }
   };
 
   const coerceDraftValue = (input) => {

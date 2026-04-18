@@ -39,6 +39,26 @@ def _audit_and_return(
     return response, status
 
 
+def _write_static_content(
+    write_content: Any,
+    *,
+    subject: str,
+    content: str,
+    reason: str,
+) -> Any:
+    try:
+        return write_content(
+            subject,
+            content,
+            updated_by=contract.EDIT_UPDATED_BY,
+            update_reason=reason,
+        )
+    except TypeError as exc:
+        if 'unexpected keyword' not in str(exc) and 'positional arguments' not in str(exc):
+            raise
+        return write_content(subject, content)
+
+
 def identity_static_edit_response(
     data: Mapping[str, Any],
     *,
@@ -280,7 +300,12 @@ def identity_static_edit_response(
         return _audit_and_return(admin_logs_module, response, reason_len=reason_len)
 
     try:
-        next_snapshot = write_content(subject, '' if action == 'clear' else content)
+        next_snapshot = _write_static_content(
+            write_content,
+            subject=subject,
+            content='' if action == 'clear' else content,
+            reason=reason,
+        )
     except Exception as exc:
         error_code = getattr(exc, 'error_code', 'static_write_failed')
         response = contract.response_payload(

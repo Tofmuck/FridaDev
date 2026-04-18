@@ -126,6 +126,186 @@
     return parts.join(", ");
   };
 
+  const identityStaging = (payload) =>
+    payload?.identity_staging &&
+    typeof payload.identity_staging === "object" &&
+    !Array.isArray(payload.identity_staging)
+      ? payload.identity_staging
+      : {};
+
+  const latestAgentActivity = (staging) =>
+    staging?.latest_agent_activity &&
+    typeof staging.latest_agent_activity === "object" &&
+    !Array.isArray(staging.latest_agent_activity)
+      ? staging.latest_agent_activity
+      : {};
+
+  const renderIdentityStaging = (target, staging, viewMode) => {
+    const group = document.createElement("section");
+    group.className = "admin-readonly-group";
+
+    const head = document.createElement("div");
+    head.className = "admin-readonly-group-head";
+    const title = document.createElement("h4");
+    title.textContent = "Staging identitaire";
+    head.appendChild(title);
+    group.appendChild(head);
+
+    group.appendChild(
+      createNote(
+        "Le staging periodique garde des paires user/assistant hors canon actif. Il alimente l'agent identitaire, mais n'est injecte ni dans `identity_input`, ni dans le bloc runtime final.",
+      ),
+    );
+
+    const activity = latestAgentActivity(staging);
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    meta.appendChild(createChip(`present=${Boolean(staging.present)}`));
+    meta.appendChild(createChip(`injecte=${Boolean(staging.actively_injected)}`));
+    meta.appendChild(
+      createChip(
+        `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+      ),
+    );
+    meta.appendChild(createChip(`gele=${Boolean(staging.buffer_frozen)}`));
+    meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
+    if (toText(staging.last_agent_status)) {
+      meta.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+    }
+    if (Number(activity.promotion_count) > 0) {
+      meta.appendChild(createChip(`promotions=${Number(activity.promotion_count)}`));
+    }
+    if (Number(activity.open_tension_count) > 0) {
+      meta.appendChild(createChip(`tensions=${Number(activity.open_tension_count)}`));
+    }
+    group.appendChild(meta);
+
+    const summaryEntries = [
+      [
+        "scope_kind",
+        {
+          label: "Portee",
+          value: toText(staging.scope_kind) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "conversation_id",
+        {
+          label: "Conversation",
+          value: toText(staging.conversation_id) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "buffer_pairs_count",
+        {
+          label: "Buffer courant",
+          value: `${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_status",
+        {
+          label: "Dernier statut agent",
+          value: toText(staging.last_agent_status) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_reason",
+        {
+          label: "Derniere raison",
+          value: toText(staging.last_agent_reason) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_agent_run_ts",
+        {
+          label: "Dernier passage",
+          value: toText(staging.last_agent_run_ts) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "auto_canonization_suspended",
+        {
+          label: "Suspension automatique",
+          value: String(Boolean(staging.auto_canonization_suspended)),
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "latest_agent_verdict",
+        {
+          label: "Dernier verdict utile",
+          value: toText(activity.reason_code) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "open_tension_count",
+        {
+          label: "Tensions ouvertes",
+          value: String(Number(activity.open_tension_count) || 0),
+          source: "identity_read_model",
+        },
+      ],
+    ];
+
+    const summaryGrid = document.createElement("div");
+    summaryGrid.className = "admin-readonly-grid";
+    renderReadonlyEntries(summaryGrid, summaryEntries);
+    group.appendChild(summaryGrid);
+
+    if (viewMode === "full" && activity.present) {
+      const activityGroup = document.createElement("section");
+      activityGroup.className = "admin-readonly-group";
+      const activityHead = document.createElement("div");
+      activityHead.className = "admin-readonly-group-head";
+      const activityTitle = document.createElement("h4");
+      activityTitle.textContent = "Derniere activite agent";
+      activityHead.appendChild(activityTitle);
+      activityGroup.appendChild(activityHead);
+
+      const activityGrid = document.createElement("div");
+      activityGrid.className = "admin-readonly-grid";
+      renderReadonlyEntries(
+        activityGrid,
+        mappingToDetailEntries(activity, "identity_read_model", ["promotions", "open_tensions"]),
+      );
+      activityGroup.appendChild(activityGrid);
+
+      if (Array.isArray(activity.promotions) && activity.promotions.length) {
+        const promotionsHost = document.createElement("div");
+        renderReadonlyCollectionDetailed(promotionsHost, activity.promotions, {
+          emptyMessage: "Aucune promotion recente.",
+          source: "identity_read_model",
+          identifyTitle: (item, index) =>
+            toText(item?.subject) || `Promotion ${index + 1}`,
+        });
+        activityGroup.appendChild(promotionsHost);
+      }
+
+      if (Array.isArray(activity.open_tensions) && activity.open_tensions.length) {
+        const tensionsHost = document.createElement("div");
+        renderReadonlyCollectionDetailed(tensionsHost, activity.open_tensions, {
+          emptyMessage: "Aucune tension ouverte recente.",
+          source: "identity_read_model",
+          identifyTitle: (item, index) =>
+            toText(item?.subject) || `Tension ${index + 1}`,
+        });
+        activityGroup.appendChild(tensionsHost);
+      }
+
+      group.appendChild(activityGroup);
+    }
+
+    target.appendChild(group);
+  };
+
   const renderLayer = (subjectGroup, layerSpec, layer) => {
     if (!layer || typeof layer !== "object" || Array.isArray(layer)) {
       return;
@@ -146,6 +326,12 @@
     layerMeta.appendChild(createChip(`stored=${Boolean(layer.stored)}`));
     layerMeta.appendChild(createChip(`charge=${Boolean(layer.loaded_for_runtime)}`));
     layerMeta.appendChild(createChip(`injection_active=${Boolean(layer.actively_injected)}`));
+    if (toText(layer.classification)) {
+      layerMeta.appendChild(createChip(`couche=${toText(layer.classification)}`));
+    }
+    if (toText(layer.runtime_authority)) {
+      layerMeta.appendChild(createChip(`runtime=${toText(layer.runtime_authority)}`));
+    }
     if (layer.total_count != null) {
       layerMeta.appendChild(createChip(`count=${Number(layer.total_count) || 0}`));
     }
@@ -182,7 +368,7 @@
 
     subjectGroup.appendChild(
       createNote(
-        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes historiques utiles.",
+        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes legacy diagnostiques utiles.",
       ),
     );
 
@@ -223,24 +409,24 @@
       [
         "legacy_summary",
         {
-          label: "Fragments legacy",
-          value: `${Number(legacyLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Fragments legacy diagnostiques",
+          value: `${Number(legacyLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
       [
         "evidence_summary",
         {
-          label: "Evidences",
-          value: `${Number(evidenceLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Evidences legacy diagnostiques",
+          value: `${Number(evidenceLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
       [
         "conflicts_summary",
         {
-          label: "Conflits",
-          value: `${Number(conflictsLayer.total_count) || 0} element(s) visibles plus bas`,
+          label: "Conflits legacy diagnostiques",
+          value: `${Number(conflictsLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
       ],
@@ -289,21 +475,21 @@
       },
       {
         key: "legacy_fragments",
-        label: "Fragments legacy",
-        identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment ${index + 1}`,
-        emptyMessage: "Aucun fragment legacy pour ce sujet.",
+        label: "Fragments legacy diagnostiques",
+        identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment legacy ${index + 1}`,
+        emptyMessage: "Aucun fragment legacy diagnostique pour ce sujet.",
       },
       {
         key: "evidence",
-        label: "Evidences",
+        label: "Evidences legacy diagnostiques",
         identifyTitle: (item, index) => toText(item?.evidence_id) || `Evidence ${index + 1}`,
-        emptyMessage: "Aucune evidence pour ce sujet.",
+        emptyMessage: "Aucune evidence legacy diagnostique pour ce sujet.",
       },
       {
         key: "conflicts",
-        label: "Conflits",
+        label: "Conflits legacy diagnostiques",
         identifyTitle: (item, index) => toText(item?.conflict_id) || `Conflict ${index + 1}`,
-        emptyMessage: "Aucun conflit pour ce sujet.",
+        emptyMessage: "Aucun conflit legacy diagnostique pour ce sujet.",
       },
     ].forEach((layerSpec) => {
       renderLayer(subjectGroup, layerSpec, subject[layerSpec.key]);
@@ -328,6 +514,7 @@
       safePayload.subjects && typeof safePayload.subjects === "object" && !Array.isArray(safePayload.subjects)
         ? safePayload.subjects
         : {};
+    const staging = identityStaging(safePayload);
     const viewMode = toText(options.viewMode).toLowerCase() === "summary" ? "summary" : "full";
 
     if (metaTarget) {
@@ -335,8 +522,15 @@
       appendMetaChip(metaTarget, "canonique_mutable", toText(activeRuntime.active_identity_source));
       appendMetaChip(metaTarget, "compile", toText(activeRuntime.active_prompt_contract));
       metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
+      metaTarget.appendChild(createChip("staging=separe"));
+      if (toText(activeRuntime.legacy_identity_pipeline_status)) {
+        metaTarget.appendChild(createChip(`legacy=${toText(activeRuntime.legacy_identity_pipeline_status)}`));
+      }
       appendMetaChip(metaTarget, "identity_input", toText(activeRuntime.identity_input_schema_version));
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
+      if (toText(staging.last_agent_status)) {
+        metaTarget.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+      }
     }
 
     if (viewMode === "full") {
@@ -359,6 +553,8 @@
       runtimeGroup.appendChild(runtimeGrid);
       target.appendChild(runtimeGroup);
     }
+
+    renderIdentityStaging(target, staging, viewMode);
 
     [["llm", "llm"], ["user", "user"]].forEach(([subjectKey, label]) => {
       const subject = subjects[subjectKey];

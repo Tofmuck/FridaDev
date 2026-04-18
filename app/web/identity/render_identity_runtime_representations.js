@@ -12,9 +12,9 @@
   ];
 
   const LEGACY_LAYERS = [
-    { key: "legacy_fragments", label: "Fragments legacy" },
-    { key: "evidence", label: "Evidences" },
-    { key: "conflicts", label: "Conflits" },
+    { key: "legacy_fragments", label: "Fragments legacy diagnostiques" },
+    { key: "evidence", label: "Evidences legacy diagnostiques" },
+    { key: "conflicts", label: "Conflits legacy diagnostiques" },
   ];
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -47,13 +47,24 @@
     card.appendChild(meta);
     return card;
   };
-
   const createNote = (text) => {
     const note = document.createElement("p");
     note.className = "admin-section-note admin-section-note-left";
     note.textContent = text;
     return note;
   };
+
+  const identityStaging = (payload) =>
+    payload?.identity_staging && typeof payload.identity_staging === "object" && !Array.isArray(payload.identity_staging)
+      ? payload.identity_staging
+      : {};
+
+  const latestAgentActivity = (staging) =>
+    staging?.latest_agent_activity &&
+    typeof staging.latest_agent_activity === "object" &&
+    !Array.isArray(staging.latest_agent_activity)
+      ? staging.latest_agent_activity
+      : {};
 
   const renderReadonlyEntries = (target, entries) => {
     adminUi.renderReadonlyInfoEntries(target, entries);
@@ -118,7 +129,7 @@
 
     target.appendChild(
       createNote(
-        "Cette vue montre une projection structuree compilee pour le jugement hermeneutique. La source canonique reste le statique et la mutable; le pilotage systeme reste distinct.",
+        "Cette vue montre une projection structuree compilee pour le jugement hermeneutique. La source canonique reste le statique et la mutable; le staging periodique reste separe et non injecte.",
       ),
     );
 
@@ -151,6 +162,7 @@
             source: "identity_runtime_representations",
           },
         ],
+        ["staging_included", { label: "Staging injecte", value: "False", source: "identity_runtime_representations" }],
         [
           "technical_name",
           {
@@ -212,7 +224,7 @@
 
     target.appendChild(
       createNote(
-        "Ce texte est la forme runtime compilee de l'identite injectee pour la reponse finale. Il ne remplace ni la source canonique statique/mutable, ni le pilotage systeme distinct.",
+        "Ce texte est la forme runtime compilee de l'identite injectee pour la reponse finale. Il ne remplace ni la source canonique statique/mutable, ni le staging periodique distinct.",
       ),
     );
 
@@ -245,6 +257,7 @@
             source: "identity_runtime_representations",
           },
         ],
+        ["staging_included", { label: "Staging injecte", value: "False", source: "identity_runtime_representations" }],
         [
           "technical_name",
           {
@@ -303,6 +316,12 @@
     meta.appendChild(createChip(`count=${Number(safeLayer.total_count) || 0}`));
     meta.appendChild(createChip(`stored=${Boolean(safeLayer.stored)}`));
     meta.appendChild(createChip(`injected=${Boolean(safeLayer.actively_injected)}`));
+    if (toText(safeLayer.classification)) {
+      meta.appendChild(createChip(`couche=${toText(safeLayer.classification)}`));
+    }
+    if (toText(safeLayer.runtime_authority)) {
+      meta.appendChild(createChip(`runtime=${toText(safeLayer.runtime_authority)}`));
+    }
     layerGroup.appendChild(meta);
 
     const summary = document.createElement("div");
@@ -341,7 +360,7 @@
       labelWrap.appendChild(kicker);
       labelWrap.appendChild(itemTitle);
       itemHead.appendChild(labelWrap);
-      itemHead.appendChild(createChip("visible seulement"));
+      itemHead.appendChild(createChip("legacy diagnostique"));
       itemPanel.appendChild(itemHead);
 
       const itemGrid = document.createElement("div");
@@ -360,7 +379,7 @@
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
 
     if (!Object.keys(subjects).length) {
-      renderEmpty(target, "Aucune couche legacy disponible.");
+      renderEmpty(target, "Aucune couche legacy diagnostique disponible.");
       return;
     }
 
@@ -383,7 +402,7 @@
       const note = document.createElement("p");
       note.className = "admin-section-note admin-section-note-left";
       note.textContent =
-        "Ces couches restent consultables pour comprendre l'historique et les contradictions, mais elles restent hors injection active.";
+        "Ces couches viennent du pipeline legacy diagnostique (`persist_identity_entries`) et restent hors canon actif comme hors staging.";
       group.appendChild(note);
 
       LEGACY_LAYERS.forEach(({ key: layerKey, label: layerLabel }) => {
@@ -404,6 +423,7 @@
       metaTarget.appendChild(createChip(`compile=${toText(safePayload.active_prompt_contract) || "n/a"}`));
       metaTarget.appendChild(createChip(`schema=${toText(safePayload.identity_input_schema_version) || "n/a"}`));
       metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
+      metaTarget.appendChild(createChip("staging=separe"));
       metaTarget.appendChild(createChip(`meme_base=${Boolean(safePayload.same_identity_basis)}`));
       metaTarget.appendChild(createChip(`used_ids=${Number(safePayload.used_identity_ids_count) || 0}`));
     }
@@ -419,7 +439,10 @@
     const injected = safePayload.injected_identity_text && typeof safePayload.injected_identity_text === "object"
       ? safePayload.injected_identity_text
       : {};
-
+    const staging = identityStaging(safePayload);
+    const activity = latestAgentActivity(staging);
+    const stagingScope = toText(staging.scope_kind);
+    const stagingConversationId = toText(staging.conversation_id);
     renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
     summaryTarget.appendChild(
       createSummaryCard({
@@ -442,6 +465,22 @@
           `present=${Boolean(injected.present)}`,
           `len=${String((injected.content || "").length)}`,
           `used_ids=${Number(safePayload.used_identity_ids_count) || 0}`,
+        ],
+      }),
+    );
+    summaryTarget.appendChild(
+      createSummaryCard({
+        title: "Staging periodique observe",
+        body:
+          `Repere compact du dernier snapshot conversationnel connu${stagingScope ? ` (${stagingScope})` : ""} hors canon actif: il alimente l'agent identitaire, n'est pas un etat global du systeme, et n'est injecte ni au jugement ni a la reponse finale.`,
+        chips: [
+          `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+          `scope=${stagingScope || "n/a"}`,
+          ...(stagingConversationId ? [`conversation=${stagingConversationId}`] : []),
+          `agent=${toText(staging.last_agent_status) || "n/a"}`,
+          `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
+          `promotions=${Number(activity.promotion_count) || 0}`,
+          `tensions=${Number(activity.open_tension_count) || 0}`,
         ],
       }),
     );

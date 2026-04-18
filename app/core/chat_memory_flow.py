@@ -9,7 +9,7 @@ from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
 from identity import identity_governance
 from memory import hermeneutics_policy
-from memory import memory_identity_mutable_rewriter
+from memory import memory_identity_periodic_agent
 from memory import memory_pre_arbiter_basket
 from observability import chat_turn_logger
 from observability import identity_observability
@@ -110,13 +110,13 @@ def _guard_filtered_summary(
     return identity_observability.summarize_guard_filtered_entries(filtered_entries)
 
 
-def _sanitize_recent_turns_for_mutable_rewriter(
-    recent_turns: Sequence[Mapping[str, Any]],
+def _sanitize_turn_pair_for_identity_buffer(
+    turn_pair: Sequence[Mapping[str, Any]],
     *,
     web_input: Mapping[str, Any] | None,
 ) -> list[dict[str, Any]]:
     sanitized: list[dict[str, Any]] = []
-    for turn in recent_turns:
+    for turn in list(turn_pair)[:2]:
         canonical_turn = dict(turn or {})
         role = str(canonical_turn.get('role') or '').strip().lower()
         content = str(canonical_turn.get('content') or '').strip()
@@ -127,8 +127,7 @@ def _sanitize_recent_turns_for_mutable_rewriter(
             )
             if reason:
                 canonical_turn['content'] = ''
-        if str(canonical_turn.get('content') or '').strip():
-            sanitized.append(canonical_turn)
+        sanitized.append(canonical_turn)
     return sanitized
 
 
@@ -149,60 +148,82 @@ def _log_stage_latency(
     return duration_ms
 
 
-def _refresh_mutable_identities(
+def _run_periodic_identity_agent(
     conversation_id: str,
-    recent_turns: Sequence[Mapping[str, Any]],
+    turn_pair: Sequence[Mapping[str, Any]],
     *,
     arbiter_module: Any,
     memory_store_module: Any,
     admin_logs_module: Any,
-) -> None:
-    rewrite_t0 = time.perf_counter()
+) -> dict[str, Any]:
+    staging_t0 = time.perf_counter()
     try:
-        summary = memory_identity_mutable_rewriter.refresh_mutable_identities(
-            recent_turns,
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            conversation_id,
+            turn_pair,
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
         )
     except Exception as exc:
         summary = {
             'status': 'skipped',
-            'reason_code': 'rewriter_flow_error',
+            'reason_code': 'periodic_agent_flow_error',
+            'buffer_pairs_count': 0,
+            'buffer_target_pairs': memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            'last_agent_status': 'periodic_agent_flow_error',
+            'buffer_cleared': False,
+            'buffer_frozen': False,
+            'auto_canonization_suspended': False,
+            'writes_applied': False,
+            'promotion_count': 0,
+            'promotions': [],
             'outcomes': [],
+            'rejection_reasons': {},
         }
         admin_logs_module.log_event(
-            'identity_mutable_rewrite_apply',
+            'identity_periodic_agent_apply',
             conversation_id=conversation_id,
             status='skipped',
-            reason_code='rewriter_flow_error',
+            reason_code='periodic_agent_flow_error',
+            buffer_pairs_count=0,
+            buffer_target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            buffer_cleared=False,
+            buffer_frozen=False,
+            auto_canonization_suspended=False,
+            writes_applied=False,
+            promotion_count=0,
+            promotions=[],
+            rejection_reasons={},
             outcomes=[],
-        )
-        chat_turn_logger.emit(
-            'identity_mutable_rewrite',
-            status='skipped',
-            reason_code='rewriter_flow_error',
-            payload={
-                'request_status': 'skipped',
-                'reason_code': 'rewriter_flow_error',
-                'outcomes': [],
-                'error_class': exc.__class__.__name__,
-            },
-            prompt_kind='identity_mutable_rewriter',
+            error_class=exc.__class__.__name__,
         )
     else:
         admin_logs_module.log_event(
-            'identity_mutable_rewrite_apply',
+            'identity_periodic_agent_apply',
             conversation_id=conversation_id,
             status=str(summary.get('status') or 'ok'),
             reason_code=str(summary.get('reason_code') or ''),
+            buffer_pairs_count=int(summary.get('buffer_pairs_count') or 0),
+            buffer_target_pairs=int(
+                summary.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
+            ),
+            buffer_cleared=bool(summary.get('buffer_cleared')),
+            buffer_frozen=bool(summary.get('buffer_frozen')),
+            auto_canonization_suspended=bool(summary.get('auto_canonization_suspended')),
+            writes_applied=bool(summary.get('writes_applied')),
+            promotion_count=int(summary.get('promotion_count') or 0),
+            promotions=list(summary.get('promotions') or []),
+            rejection_reasons=dict(summary.get('rejection_reasons') or {}),
+            last_agent_status=str(summary.get('last_agent_status') or ''),
             outcomes=list(summary.get('outcomes') or []),
         )
     _log_stage_latency(
         conversation_id,
-        'identity_mutable_rewriter',
-        rewrite_t0,
+        'identity_periodic_agent',
+        staging_t0,
         admin_logs_module=admin_logs_module,
     )
+    return summary
 
 
 def _safe_int(value: Any) -> int | None:
@@ -455,7 +476,7 @@ def prepare_memory_context(
 
 def record_identity_entries_for_mode(
     conversation_id: str,
-    recent_turns: Sequence[Mapping[str, Any]],
+    turn_pair: Sequence[Mapping[str, Any]],
     *,
     mode: str,
     web_input: Mapping[str, Any] | None = None,
@@ -481,7 +502,7 @@ def record_identity_entries_for_mode(
         return
 
     extract_t0 = time.perf_counter()
-    id_entries = arbiter_module.extract_identities(recent_turns)
+    id_entries = arbiter_module.extract_identities(turn_pair)
     _log_stage_latency(
         conversation_id,
         'identity_extractor',
@@ -494,16 +515,18 @@ def record_identity_entries_for_mode(
     )
     guard_filtered_count = len(guard_filtered_entries)
     guard_counts_by_side, guard_reason_codes_by_side = _guard_filtered_summary(guard_filtered_entries)
-    mutable_rewriter_turns = _sanitize_recent_turns_for_mutable_rewriter(
-        recent_turns,
+    buffered_turn_pair = _sanitize_turn_pair_for_identity_buffer(
+        turn_pair,
         web_input=web_input,
     )
 
     if mode_enforces_identity(mode):
+        # This legacy pipeline remains diagnostic/history only; active canon writes
+        # still happen exclusively through the periodic staging -> apply path.
         memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
-        _refresh_mutable_identities(
+        periodic_summary = _run_periodic_identity_agent(
             conversation_id,
-            mutable_rewriter_turns,
+            buffered_turn_pair,
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
             admin_logs_module=admin_logs_module,
@@ -512,12 +535,25 @@ def record_identity_entries_for_mode(
             'identity_mode_apply',
             conversation_id=conversation_id,
             mode=mode,
-            action='persist_enforced',
+            action='record_legacy_identity_diagnostics_and_stage',
             entries=len(filtered_entries),
             extracted_entries=len(id_entries),
             guard_filtered_count=guard_filtered_count,
             guard_filtered_by_side=guard_counts_by_side,
             guard_reason_codes_by_side=guard_reason_codes_by_side,
+            staging_status=str(periodic_summary.get('status') or ''),
+            staging_reason_code=str(periodic_summary.get('reason_code') or ''),
+            buffer_pairs_count=int(periodic_summary.get('buffer_pairs_count') or 0),
+            buffer_target_pairs=int(
+                periodic_summary.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS
+            ),
+            canonical_write_applied=bool(periodic_summary.get('writes_applied')),
+            buffer_cleared=bool(periodic_summary.get('buffer_cleared')),
+            buffer_frozen=bool(periodic_summary.get('buffer_frozen')),
+            auto_canonization_suspended=bool(periodic_summary.get('auto_canonization_suspended')),
+            promotion_count=int(periodic_summary.get('promotion_count') or 0),
+            promotions=list(periodic_summary.get('promotions') or []),
+            rejection_reasons=dict(periodic_summary.get('rejection_reasons') or {}),
         )
         return
 
@@ -534,7 +570,7 @@ def record_identity_entries_for_mode(
         reason_code='not_applicable',
         reason_short='identity_write_shadow_mode',
         mode=mode,
-        write_mode='shadow',
+        write_mode='legacy_diagnostic_shadow',
         write_effect='evidence_only',
         side_entry_counts=side_counts,
     )
@@ -542,7 +578,7 @@ def record_identity_entries_for_mode(
         'identity_mode_apply',
         conversation_id=conversation_id,
         mode=mode,
-        action='record_evidence_shadow',
+        action='record_legacy_identity_evidence_shadow',
         entries=len(preview_entries),
         extracted_entries=len(id_entries),
         guard_filtered_count=guard_filtered_count,

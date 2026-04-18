@@ -361,7 +361,7 @@ def _check_prompt_files() -> Dict[str, Any]:
         "web_reformulation_prompt": _resolve_app_path(config.WEB_REFORMULATION_PROMPT_PATH),
         "arbiter_prompt": _resolve_app_path(config.ARBITER_PROMPT_PATH),
         "identity_extractor_prompt": _resolve_app_path(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
-        "identity_mutable_rewriter_prompt": _resolve_app_path(config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+        "identity_periodic_agent_prompt": _resolve_app_path(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
     }
 
     app_js = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

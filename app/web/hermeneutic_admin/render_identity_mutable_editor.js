@@ -6,8 +6,6 @@
     );
   }
 
-  const TARGET_CHARS = 1500;
-  const MAX_CHARS = 1650;
   const SUBJECTS = ["llm", "user"];
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -56,6 +54,40 @@
       ]);
   };
 
+  const runtimeRegime = (payload) => {
+    const activeRuntime =
+      payload?.active_runtime && typeof payload.active_runtime === "object" && !Array.isArray(payload.active_runtime)
+        ? payload.active_runtime
+        : {};
+    const regime =
+      activeRuntime.identity_runtime_regime &&
+      typeof activeRuntime.identity_runtime_regime === "object" &&
+      !Array.isArray(activeRuntime.identity_runtime_regime)
+        ? activeRuntime.identity_runtime_regime
+        : {};
+    return regime;
+  };
+
+  const identityStaging = (payload) =>
+    payload?.identity_staging && typeof payload.identity_staging === "object" && !Array.isArray(payload.identity_staging)
+      ? payload.identity_staging
+      : {};
+
+  const mutableBudget = (payload) => {
+    const regime = runtimeRegime(payload);
+    const budget =
+      regime.mutable_budget && typeof regime.mutable_budget === "object" && !Array.isArray(regime.mutable_budget)
+        ? regime.mutable_budget
+        : {};
+    const targetChars = Number(budget.target_chars);
+    const maxChars = Number(budget.max_chars);
+    return {
+      target_chars: Number.isFinite(targetChars) && targetChars > 0 ? targetChars : null,
+      max_chars: Number.isFinite(maxChars) && maxChars > 0 ? maxChars : null,
+      source_ready: Number.isFinite(targetChars) && targetChars > 0 && Number.isFinite(maxChars) && maxChars > 0,
+    };
+  };
+
   const subjectMutableLayer = (payload, subject) => {
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
     const subjectBlock = subjects[subject];
@@ -69,10 +101,32 @@
     return layer;
   };
 
-  const buildOperatorState = (subject, mutableLayer, currentContent) => {
+  const describeStagingObservation = (staging) => {
+    const scopeKind = toText(staging.scope_kind) || "n/a";
+    const conversationId = toText(staging.conversation_id);
+    if (!Boolean(staging.present)) {
+      return {
+        scopeKind,
+        conversationId: "",
+        note:
+          "Aucun staging conversationnel recent observe. Cette carte reste reservee a l'edition de la mutable canonique globale.",
+      };
+    }
+    const sourceSuffix = conversationId ? ` pour la conversation ${conversationId}` : "";
+    return {
+      scopeKind,
+      conversationId,
+      note:
+        `Le staging affiche a cote n'est pas un etat global: c'est le dernier snapshot conversationnel connu (${scopeKind})${sourceSuffix}. Il reste observe seulement et n'est pas edite ici.`,
+    };
+  };
+
+  const buildOperatorState = (subject, mutableLayer, currentContent, payload) => {
     const hasContent = currentContent.length > 0;
     const loadedForRuntime = Boolean(mutableLayer.loaded_for_runtime);
     const activelyInjected = Boolean(mutableLayer.actively_injected);
+    const staging = identityStaging(payload);
+    const stagingObservation = describeStagingObservation(staging);
 
     let message = "Presente: modulation identitaire canonique editable.";
     if (!hasContent && subject === "llm") {
@@ -84,6 +138,7 @@
 
     return {
       message,
+      stagingNote: stagingObservation.note,
       chips: [
         createChip(`Etat: ${hasContent ? "Presente" : "Absente"}`, {
           status: hasContent ? "ok" : "skipped",
@@ -94,6 +149,18 @@
         createChip(`Injection: ${activelyInjected ? "Injecte" : "Non injecte"}`, {
           status: activelyInjected ? "ok" : "skipped",
         }),
+        createChip(`Staging observe: ${Boolean(staging.present) ? "Dernier snapshot conversationnel" : "Aucun"}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Portee staging: ${stagingObservation.scopeKind}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Conversation staging: ${stagingObservation.conversationId || "n/a"}`, {
+          status: Boolean(staging.present) ? "ok" : "skipped",
+        }),
+        createChip(`Agent: ${toText(staging.last_agent_status) || "n/a"}`, {
+          status: Boolean(staging.auto_canonization_suspended) ? "error" : "ok",
+        }),
       ],
     };
   };
@@ -101,11 +168,14 @@
   const renderSubjectEditor = (target, payload, subject, options = {}) => {
     const mutableLayer = subjectMutableLayer(payload, subject);
     const currentContent = toText(mutableLayer.content);
-    const operatorState = buildOperatorState(subject, mutableLayer, currentContent);
+    const operatorState = buildOperatorState(subject, mutableLayer, currentContent, payload);
+    const regime = runtimeRegime(payload);
+    const budget = mutableBudget(payload);
+    const staging = identityStaging(payload);
     const titleText = toText(options.title) || `${subject} mutable canonique`;
     const noteText =
       toText(options.noteText) ||
-      "Edition controlee de la mutable canonique injectee activement. Le statique dispose d'un editeur distinct; le legacy, les evidences et les conflits restent read-only.";
+      "Edition controlee de la mutable canonique injectee activement. Le staging periodique, la promotion vers le statique et la suspension automatique restent des coutures distinctes de cet editeur.";
 
     const card = document.createElement("section");
     card.className = "admin-readonly-group";
@@ -133,14 +203,33 @@
     operatorState.chips.forEach((chip) => operatorMeta.appendChild(chip));
     card.appendChild(operatorMeta);
 
+    const stagingObservation = document.createElement("p");
+    stagingObservation.className = "admin-section-note admin-section-note-left";
+    stagingObservation.textContent = operatorState.stagingNote;
+    card.appendChild(stagingObservation);
+
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`stored=${Boolean(mutableLayer.stored)}`));
     meta.appendChild(createChip(`loaded=${Boolean(mutableLayer.loaded_for_runtime)}`));
     meta.appendChild(createChip(`injected=${Boolean(mutableLayer.actively_injected)}`));
     meta.appendChild(createChip(`len=${currentContent.length}`));
-    meta.appendChild(createChip(`target=${TARGET_CHARS}`));
-    meta.appendChild(createChip(`max=${MAX_CHARS}`));
+    meta.appendChild(
+      createChip(`target=${budget.target_chars == null ? "n/a" : budget.target_chars}`, {
+        status: budget.source_ready ? "ok" : "error",
+      }),
+    );
+    meta.appendChild(
+      createChip(`max=${budget.max_chars == null ? "n/a" : budget.max_chars}`, {
+        status: budget.source_ready ? "ok" : "error",
+      }),
+    );
+    meta.appendChild(
+      createChip(
+        `staging=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
+      ),
+    );
+    meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
     if (toText(mutableLayer.updated_by)) {
       meta.appendChild(createChip(`updated_by=${toText(mutableLayer.updated_by)}`));
     }
@@ -163,6 +252,11 @@
           updated_by: toText(mutableLayer.updated_by),
           update_reason: toText(mutableLayer.update_reason),
           updated_ts: toText(mutableLayer.updated_ts),
+          staging_target_pairs: Number(regime.staging_target_pairs) || 0,
+          staging_scope_kind: toText(staging.scope_kind) || "n/a",
+          staging_conversation_id: toText(staging.conversation_id) || "n/a",
+          last_agent_status: toText(staging.last_agent_status),
+          auto_canonization_suspended: Boolean(staging.auto_canonization_suspended),
         },
         "identity_mutable_editor",
       ),
@@ -189,7 +283,9 @@
     textarea.value = currentContent;
     contentField.appendChild(textarea);
     const contentMeta = document.createElement("small");
-    contentMeta.textContent = `Cible ${TARGET_CHARS} caracteres, plafond dur ${MAX_CHARS}, aucune troncature.`;
+    contentMeta.textContent = budget.source_ready
+      ? `Cible ${budget.target_chars} caracteres, plafond dur ${budget.max_chars}, aucune troncature. Le staging periodique conversationnel le plus recent ${Number(staging.buffer_target_pairs) || 0} paires reste distinct et non edite ici.`
+      : "Budget mutable runtime indisponible dans le payload actif. Cette surface n'invente plus de caps locaux et attend la source canonique exposee par le regime identity.";
     contentField.appendChild(contentMeta);
     grid.appendChild(contentField);
 

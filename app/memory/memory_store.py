@@ -25,6 +25,7 @@ from memory import memory_arbiter_audit
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
 from memory import memory_identity_dynamics
+from memory import memory_identity_staging
 from memory import memory_identity_read_model
 from memory import memory_identity_mutables
 from memory import memory_identity_write
@@ -46,6 +47,11 @@ __all__ = [
     'list_mutable_identities',
     'upsert_mutable_identity',
     'clear_mutable_identity',
+    'get_identity_staging_state',
+    'get_latest_identity_staging_state',
+    'append_identity_staging_pair',
+    'mark_identity_staging_status',
+    'clear_identity_staging_buffer',
     'list_identity_fragments',
     'list_identity_evidence',
     'list_identity_conflicts',
@@ -335,6 +341,72 @@ def upsert_mutable_identity(
 def clear_mutable_identity(subject: str) -> dict[str, Any] | None:
     return memory_identity_mutables.clear_mutable_identity(
         subject,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def get_identity_staging_state(conversation_id: str) -> dict[str, Any] | None:
+    return memory_identity_staging.get_identity_staging_state(
+        conversation_id,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def get_latest_identity_staging_state() -> dict[str, Any] | None:
+    return memory_identity_staging.get_latest_identity_staging_state(
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def append_identity_staging_pair(
+    conversation_id: str,
+    pair: Any,
+    *,
+    target_pairs: int = 15,
+) -> dict[str, Any] | None:
+    return memory_identity_staging.append_identity_staging_pair(
+        conversation_id,
+        pair,
+        target_pairs=target_pairs,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def mark_identity_staging_status(
+    conversation_id: str,
+    *,
+    status: str,
+    reason: str = '',
+    touch_run_ts: bool = False,
+    auto_canonization_suspended: bool | None = None,
+) -> dict[str, Any] | None:
+    return memory_identity_staging.mark_identity_staging_status(
+        conversation_id,
+        status=status,
+        reason=reason,
+        touch_run_ts=touch_run_ts,
+        auto_canonization_suspended=auto_canonization_suspended,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def clear_identity_staging_buffer(
+    conversation_id: str,
+    *,
+    status: str,
+    reason: str = '',
+    auto_canonization_suspended: bool = False,
+) -> dict[str, Any] | None:
+    return memory_identity_staging.clear_identity_staging_buffer(
+        conversation_id,
+        status=status,
+        reason=reason,
+        auto_canonization_suspended=auto_canonization_suspended,
         conn_factory=_conn,
         logger=logger,
     )

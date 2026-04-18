@@ -153,6 +153,8 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertIn('create table if not exists identity_mutables', joined)
         self.assertIn('constraint identity_mutables_subject_chk', joined)
         self.assertIn('create index if not exists identity_mutables_updated_ts_idx', joined)
+        self.assertIn('create table if not exists identity_mutable_staging', joined)
+        self.assertIn('create index if not exists identity_mutable_staging_updated_ts_idx', joined)
 
     def test_mutable_identity_round_trip_keeps_one_canonical_row_per_subject(self) -> None:
         state: dict[str, dict[str, object]] = {}
@@ -171,12 +173,12 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
                 'llm',
                 'Frida garde une voix structuree et compacte.',
                 source_trace_id='00000000-0000-0000-0000-000000000002',
-                updated_by='identity-extractor',
-                update_reason='rewrite',
+                updated_by='identity_periodic_agent',
+                update_reason='periodic_agent',
             )
             user_item = memory_store.upsert_mutable_identity(
                 'user',
-                'L utilisateur prefere des reponses courtes.',
+                'L utilisateur garde une orientation stable et concise.',
                 updated_by='identity-extractor',
                 update_reason='initial_seed',
             )
@@ -189,7 +191,7 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertIsNotNone(second_llm)
         self.assertIsNotNone(user_item)
         self.assertEqual(llm_item['content'], 'Frida garde une voix structuree et compacte.')
-        self.assertEqual(llm_item['update_reason'], 'rewrite')
+        self.assertEqual(llm_item['update_reason'], 'periodic_agent')
         self.assertEqual(llm_item['source_trace_id'], '00000000-0000-0000-0000-000000000002')
         self.assertEqual([item['subject'] for item in items], ['llm', 'user'])
         self.assertEqual(len([item for item in items if item['subject'] == 'llm']), 1)

@@ -174,7 +174,7 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
         self.assertTrue(all(len(item) <= 120 for item in payload['preview']))
         self.assertTrue(all(len(item) <= 64 for item in payload['keys']))
 
-    def test_identity_mutable_rewrite_event_stays_compact_without_content_preview(self) -> None:
+    def test_identity_periodic_agent_event_stays_compact_without_content_preview(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -184,48 +184,65 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
 
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
-            conversation_id='conv-mutable-rewrite',
+            conversation_id='conv-periodic-agent',
             user_msg='bonjour',
             web_search_enabled=False,
         )
         try:
             chat_turn_logger.emit(
-                'identity_mutable_rewrite',
+                'identity_periodic_agent',
                 status='ok',
                 payload={
-                    'request_status': 'ok',
-                    'reason_code': 'processed',
+                    'buffer_pairs_count': 15,
+                    'buffer_target_pairs': 15,
+                    'buffer_cleared': True,
+                    'writes_applied': True,
+                    'promotions': [
+                        {
+                            'subject': 'llm',
+                            'operation_kind': 'add',
+                            'promotion_reason_code': 'promoted_to_static',
+                            'threshold_verdict': 'accepted',
+                            'strength': 0.91,
+                        }
+                    ],
                     'outcomes': [
                         {
                             'subject': 'llm',
-                            'action': 'rewrite',
+                            'action': 'tighten',
                             'old_len': 10,
                             'new_len': 42,
                             'validation_ok': True,
-                            'reason_code': 'rewrite_applied',
+                            'reason_code': 'tighten_applied',
                         },
                         {
                             'subject': 'user',
-                            'action': 'no_change',
+                            'action': 'raise_conflict',
                             'old_len': 20,
                             'new_len': 20,
                             'validation_ok': True,
-                            'reason_code': 'no_change',
+                            'reason_code': 'raise_conflict',
                         },
                     ],
                 },
-                prompt_kind='identity_mutable_rewriter',
+                prompt_kind='identity_periodic_agent',
             )
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
 
-        rewrite_event = next(event for event in observed if event['stage'] == 'identity_mutable_rewrite')
-        payload = rewrite_event['payload_json']
-        self.assertEqual(payload['prompt_kind'], 'identity_mutable_rewriter')
+        periodic_event = next(event for event in observed if event['stage'] == 'identity_periodic_agent')
+        payload = periodic_event['payload_json']
+        self.assertEqual(payload['prompt_kind'], 'identity_periodic_agent')
         self.assertNotIn('preview', payload)
+        self.assertNotIn('buffer_pairs', payload)
+        self.assertNotIn('candidates', payload)
         self.assertEqual(len(payload['outcomes']), 2)
         self.assertTrue(all('content' not in outcome for outcome in payload['outcomes']))
+        self.assertTrue(all(outcome['action'] != 'rewrite' for outcome in payload['outcomes']))
+        self.assertTrue(all(outcome['reason_code'] != 'rewrite_applied' for outcome in payload['outcomes']))
+        self.assertEqual(len(payload['promotions']), 1)
+        self.assertTrue(all('content' not in promotion for promotion in payload['promotions']))
 
     def test_event_contract_required_fields_and_status_taxonomy(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -310,8 +327,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         'mutable': {
                             'content': 'Frida mutable',
                             'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                            'updated_by': 'identity_mutable_rewriter',
-                            'update_reason': 'rewrite',
+                            'updated_by': 'identity_periodic_agent',
+                            'update_reason': 'periodic_agent',
                             'updated_ts': '2026-03-30T12:00:00Z',
                         },
                     },
@@ -320,8 +337,8 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         'mutable': {
                             'content': 'Utilisateur mutable',
                             'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                            'updated_by': 'identity_mutable_rewriter',
-                            'update_reason': 'rewrite',
+                            'updated_by': 'identity_periodic_agent',
+                            'update_reason': 'periodic_agent',
                             'updated_ts': '2026-03-30T12:30:00Z',
                         },
                     },
@@ -929,10 +946,12 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertGreater(payload['total_chars'], 0)
             self.assertEqual(payload['total_chars'], payload['max_chars'])
             self.assertFalse(payload['truncated'])
+            self.assertNotIn('content', payload)
+            self.assertNotIn('raw_content', payload)
             self.assertNotIn('preview', payload)
             self.assertNotIn('keys', payload)
 
-    def test_persist_identity_entries_emits_identity_write_for_both_sides(self) -> None:
+    def test_persist_identity_entries_emits_legacy_diagnostic_identity_write_for_both_sides(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1023,8 +1042,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertGreater(user_payload.get('observed_max_chars', 0), 0)
         for event in identity_write_events:
             payload = event['payload_json']
-            self.assertEqual(payload.get('write_mode'), 'durable')
-            self.assertEqual(payload.get('write_effect'), 'durable_write')
+            self.assertEqual(payload.get('write_mode'), 'legacy_diagnostic')
+            self.assertEqual(payload.get('write_effect'), 'legacy_diagnostic_write')
             self.assertGreaterEqual(int(payload.get('persisted_count') or 0), int(payload.get('retained_count') or 0))
             self.assertIn('evidence_count', payload)
             self.assertIn('observed_count', payload)
@@ -1038,7 +1057,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 
-    def test_persist_identity_entries_emits_per_side_visibility_when_one_side_has_no_data(self) -> None:
+    def test_persist_identity_entries_emits_per_side_legacy_diagnostic_visibility_when_one_side_has_no_data(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1089,8 +1108,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         frida_event = by_side['frida']
         self.assertEqual(frida_event['status'], 'ok')
-        self.assertEqual(frida_event['payload_json']['write_mode'], 'durable')
-        self.assertEqual(frida_event['payload_json']['write_effect'], 'durable_write')
+        self.assertEqual(frida_event['payload_json']['write_mode'], 'legacy_diagnostic')
+        self.assertEqual(frida_event['payload_json']['write_effect'], 'legacy_diagnostic_write')
         self.assertEqual(frida_event['payload_json']['persisted_count'], 1)
         self.assertEqual(frida_event['payload_json']['evidence_count'], 1)
         self.assertEqual(frida_event['payload_json']['retained_count'], 1)
@@ -1098,7 +1117,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         user_event = by_side['user']
         self.assertEqual(user_event['status'], 'skipped')
         self.assertEqual(user_event['payload_json']['reason_code'], 'no_data')
-        self.assertEqual(user_event['payload_json']['write_mode'], 'durable')
+        self.assertEqual(user_event['payload_json']['write_mode'], 'legacy_diagnostic')
         self.assertEqual(user_event['payload_json']['write_effect'], 'none')
         self.assertEqual(user_event['payload_json']['persisted_count'], 0)
         self.assertEqual(user_event['payload_json']['evidence_count'], 0)
@@ -1114,7 +1133,7 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
             self.assertNotIn('entries', payload)
             self.assertNotIn('raw_identities', payload)
 
-    def test_persist_identity_entries_tracks_persisted_count_for_rejected_entries(self) -> None:
+    def test_persist_identity_entries_tracks_persisted_count_for_rejected_entries_in_legacy_diagnostic_pipeline(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -1164,8 +1183,8 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
 
         frida_payload = by_side['frida']['payload_json']
         self.assertEqual(by_side['frida']['status'], 'ok')
-        self.assertEqual(frida_payload.get('write_mode'), 'durable')
-        self.assertEqual(frida_payload.get('write_effect'), 'durable_write')
+        self.assertEqual(frida_payload.get('write_mode'), 'legacy_diagnostic')
+        self.assertEqual(frida_payload.get('write_effect'), 'legacy_diagnostic_write')
         self.assertEqual(frida_payload.get('persisted_count'), 1)
         self.assertEqual(frida_payload.get('retained_count'), 0)
         self.assertEqual(frida_payload.get('actions_count', {}).get('reject'), 1)

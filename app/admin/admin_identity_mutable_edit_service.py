@@ -6,7 +6,18 @@ import config
 
 from admin import admin_identity_mutable_edit_audit as audit
 from admin import admin_identity_mutable_edit_contract as contract
+from admin import admin_identity_read_model_service
 from identity import mutable_identity_validation
+
+
+def _identity_runtime_regime(memory_store_module: Any) -> dict[str, Any]:
+    get_latest_state = getattr(memory_store_module, 'get_latest_identity_staging_state', None)
+    staging_state = get_latest_state() if callable(get_latest_state) else None
+    staging = staging_state if isinstance(staging_state, Mapping) else {}
+    regime = admin_identity_read_model_service.build_identity_runtime_regime()
+    regime['last_agent_status'] = contract.text(staging.get('last_agent_status')) or None
+    regime['auto_canonization_suspended'] = bool(staging.get('auto_canonization_suspended'))
+    return regime
 
 
 def identity_mutable_edit_response(
@@ -29,8 +40,13 @@ def identity_mutable_edit_response(
     get_mutable_identity = getattr(memory_store_module, 'get_mutable_identity', None)
     upsert_mutable_identity = getattr(memory_store_module, 'upsert_mutable_identity', None)
     clear_mutable_identity = getattr(memory_store_module, 'clear_mutable_identity', None)
+    runtime_regime = _identity_runtime_regime(memory_store_module)
+
+    def response_payload(**kwargs: Any) -> dict[str, Any]:
+        return contract.response_payload(identity_runtime_regime=runtime_regime, **kwargs)
+
     if not callable(get_mutable_identity) or not callable(upsert_mutable_identity) or not callable(clear_mutable_identity):
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject or raw_subject,
             action=action or raw_action,
@@ -62,7 +78,7 @@ def identity_mutable_edit_response(
     old_len = len(current_content)
 
     if not subject:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=raw_subject,
             action=raw_action,
@@ -91,7 +107,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if not action:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=raw_action,
@@ -120,7 +136,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if not reason:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -149,7 +165,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if reason_len > contract.REASON_MAX_CHARS:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -178,7 +194,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if action == 'clear' and content:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -207,7 +223,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if action == 'set' and not content:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -236,7 +252,7 @@ def identity_mutable_edit_response(
         return response, 400
 
     if action == 'set' and len(content) > int(config.IDENTITY_MUTABLE_MAX_CHARS):
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -267,7 +283,7 @@ def identity_mutable_edit_response(
     if action == 'set':
         validation = mutable_identity_validation.validate_mutable_identity_content(content)
         if not validation.ok:
-            response = contract.response_payload(
+            response = response_payload(
                 ok=False,
                 subject=subject,
                 action=action,
@@ -278,7 +294,7 @@ def identity_mutable_edit_response(
                 validation_ok=False,
                 validation_error=validation.reason_code,
                 reason_code=validation.reason_code,
-                error='mutable prompt-like interdite',
+                error='contenu mutable irrecevable',
             )
             audit.log_compact_edit(
                 admin_logs_module,
@@ -296,7 +312,7 @@ def identity_mutable_edit_response(
             return response, 400
 
     if action == 'set' and content == current_content:
-        response = contract.response_payload(
+        response = response_payload(
             ok=True,
             subject=subject,
             action=action,
@@ -323,7 +339,7 @@ def identity_mutable_edit_response(
         return response, 200
 
     if action == 'clear' and not current_content:
-        response = contract.response_payload(
+        response = response_payload(
             ok=True,
             subject=subject,
             action=action,
@@ -358,7 +374,7 @@ def identity_mutable_edit_response(
         )
         stored_after = contract.current_content(updated) == content if updated is not None else False
         if not stored_after:
-            response = contract.response_payload(
+            response = response_payload(
                 ok=False,
                 subject=subject,
                 action=action,
@@ -386,7 +402,7 @@ def identity_mutable_edit_response(
             )
             return response, 500
 
-        response = contract.response_payload(
+        response = response_payload(
             ok=True,
             subject=subject,
             action=action,
@@ -415,7 +431,7 @@ def identity_mutable_edit_response(
     cleared = clear_mutable_identity(subject)
     stored_after = bool(contract.current_content(get_mutable_identity(subject)))
     if stored_after:
-        response = contract.response_payload(
+        response = response_payload(
             ok=False,
             subject=subject,
             action=action,
@@ -444,7 +460,7 @@ def identity_mutable_edit_response(
         return response, 500
 
     changed = cleared is not None or old_len > 0
-    response = contract.response_payload(
+    response = response_payload(
         ok=True,
         subject=subject,
         action=action,

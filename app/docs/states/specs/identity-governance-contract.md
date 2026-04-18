@@ -1,13 +1,14 @@
 # Identity Governance Contract
 
 Statut: spec vivante  
-Portee: caps, seuils et budgets identity visibles dans `/hermeneutic-admin` puis reemployes par `/identity`
+Portee: gouvernance identity visible dans `/hermeneutic-admin` puis reemployee par `/identity`
 Lot ferme: `Lot 5`
 
 ## But
 
 Ce contrat expose une gouvernance identity distincte du read-model:
 - lecture compacte des knobs identity reels;
+- lecture structuree du regime actif readonly, sans le traiter comme une simple liste de caps;
 - classification honnete entre actif, editable, readonly doctrinal et legacy inactif;
 - edition bornee du sous-ensemble runtime-safe;
 - aucun melange avec le legacy fragmentaire ni avec l'edition du contenu static/mutable.
@@ -43,16 +44,23 @@ Top-level:
   "ok": true,
   "governance_version": "v1",
   "item_count": 0,
+  "regime_section_count": 0,
   "editable_count": 0,
   "readonly_count": 0,
   "legacy_inactive_count": 0,
+  "doctrine_locked_count": 0,
+  "active_readonly_count": 0,
   "active_runtime_count": 0,
   "active_subpipeline_count": 0,
+  "regime_active_readonly_count": 0,
+  "regime_doctrine_locked_count": 0,
+  "regime_legacy_inactive_count": 0,
   "read_via": "/api/admin/identity/governance",
   "editable_via": "/api/admin/identity/governance",
   "source_of_truth": "runtime_settings.identity_governance",
   "active_prompt_contract": "static + mutable narrative",
   "identity_input_schema_version": "v2",
+  "regime_sections": [],
   "items": []
 }
 ```
@@ -76,6 +84,17 @@ Pour les knobs runtime-backed editables, l'item expose aussi:
 - `source_state`
 - `source_reason`
 
+Chaque `regime_section` expose au minimum:
+- `key`
+- `label`
+- `classification`
+- `active_scope`
+- `source_kind`
+- `source_ref`
+- `editable = false`
+- `operator_note`
+- `details`
+
 ## Taxonomie retenue
 
 Categories utilisees:
@@ -84,6 +103,11 @@ Categories utilisees:
 - `doctrine_locked_readonly`
 - `active_subpipeline_readonly`
 - `legacy_inactive_readonly`
+
+Classifications utilisees pour `regime_sections`:
+- `active_readonly`
+- `doctrine_locked`
+- `legacy_inactive`
 
 Semantique:
 - `active_runtime_*`: agit encore sur le runtime actif `static + mutable narrative`
@@ -122,7 +146,18 @@ Important:
 - `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent exposes pour dire vrai sur les survivances legacy;
 - ils ne doivent pas etre requalifies comme knobs actifs ni redevenir editables;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
-- la mutable garde sa doctrine `1500 / 1650`, visible mais verrouillee.
+- la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
+- ces caps ne racontent pas a eux seuls tout le regime actif: la gouvernance expose aussi des sections readonly pour le staging a 15 paires, le scoring Python deterministe, la promotion vers le statique et la suspension automatique.
+
+## Sections readonly du regime actif
+
+`regime_sections` complete les `items` sans dupliquer le read-model:
+- `active_canon_contract`: rappelle que le canon actif injecte reste `static + mutable narrative`, distinct du staging;
+- `staging_contract`: rappelle le staging `conversation_scoped_latest`, sa cible a `15` paires et son statut non injecte / non editable;
+- `scoring_contract`: rappelle le scoring Python deterministe, les operations `add|tighten|merge|raise_conflict`, les seuils de force locale `0.35/0.60` et les seuils de durabilite operator-gouvernables;
+- `promotion_and_suspension_contract`: rappelle la promotion `mutable -> static` et la suspension automatique sur `double_saturation` ou `static_recent_operator_edit_guard`;
+- `mutable_budget_contract`: rappelle que `3000 / 3300` borne seulement la mutable canonique, doctrine verrouillee;
+- `legacy_identity_contract`: rappelle que `identities`, `identity_evidence` et `identity_conflicts` restent `legacy_diagnostic_only`, hors injection active.
 
 ## Contrat JSON d'update
 
@@ -208,8 +243,15 @@ Cet event alimente aussi `Corrections recentes` via:
 
 `Gouvernance identity` doit:
 - montrer la classification de chaque knob;
+- montrer aussi les sections readonly du regime actif, distinctes des simples knobs;
+- rappeler que `3000 / 3300` borne seulement la mutable canonique et non tout le regime identity;
 - rendre editable uniquement le sous-ensemble runtime-safe retenu;
 - rester distincte du read-model et des editeurs static/mutable.
+
+L'editeur mutable:
+- lit le budget runtime depuis le payload identity actif expose (`mutable_budget`);
+- ne doit plus embarquer un fallback UI silencieux `3000 / 3300`;
+- si ce budget manque, doit le signaler explicitement au lieu d'inventer une pseudo source locale.
 
 Depuis `Lot 6`, la page `/identity` reemploie ce meme contrat:
 - sans changer les routes `GET/POST /api/admin/identity/governance`;

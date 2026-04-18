@@ -4,6 +4,11 @@ Statut: ferme
 Classement: `app/docs/todo-done/refactors/`
 Origine: audit identity read-only revalide le `2026-04-05`
 
+Note de requalification `2026-04-18`:
+- cette archive fige la phase precedente ou la doctrine mutable etait encore racontee autour d'une `mutable narrative` administree via des coutures legacy de reecriture;
+- les passages ci-dessous qui parlent de `reecriture narrative`, de `no_change` ou du lot `1B-B` doivent etre lus comme des jalons historiques de cette phase, pas comme la verite runtime active;
+- la verite active actuelle reste: projection `static + mutable narrative` pour l'injection, mais maintien du canon mutable par staging periodique et applicateur deterministe, hors reecriture globale par tour.
+
 ## Objectif
 
 Ouvrir un chantier unique pour rendre le systeme identity lisible, controlable et gouvernable par l'operateur, maintenant que la requalification runtime doctrinale est fermee.

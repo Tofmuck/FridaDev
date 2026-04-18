@@ -101,8 +101,8 @@ def _identity(*, static: bool = False, mutable: bool = False) -> dict[str, objec
     mutable_block = {
         "content": "identity mutable",
         "source_trace_id": "11111111-1111-1111-1111-111111111111",
-        "updated_by": "identity_mutable_rewriter",
-        "update_reason": "rewrite",
+        "updated_by": "identity_periodic_agent",
+        "update_reason": "periodic_agent",
         "updated_ts": "2026-04-01T10:00:00Z",
     } if mutable else {
         "content": "",

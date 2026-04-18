@@ -5,6 +5,11 @@ Classement: `app/docs/todo-done/refactors/`
 Surface conceptuelle: identite canonique, prompt systeme, prompt hermeneutique, rewriter de mutable, representations runtime injectees
 Origine: clarification doctrinale apres fixation de la surface `/identity` et constat d'un melange conceptuel entre personnalite, instructions et formes compilees d'injection.
 
+Note de requalification `2026-04-18`:
+- cette archive decrit un etat doctrinal anterieur au regime identitaire periodique maintenant actif sur `identity-new-contract`;
+- les mentions ci-dessous de `identity_mutable_rewriter`, de `reecriture narrative`, de `rewrite/no_change` ou d'un prompt rewriter actif doivent etre lues comme une trace historique de ce chantier, pas comme le contrat runtime courant;
+- dans le runtime actif, la mutable canonique n'est plus reecrite globalement par tour: elle est maintenue par staging periodique, scoring deterministe et applicateur local `add|tighten|merge|raise_conflict`.
+
 ## Objectif
 
 - [x] Fixer une doctrine lisible qui separe `identity` et `prompt`.

@@ -79,8 +79,8 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
         self.assertEqual(
-            details['identity_mutable_rewriter_prompt']['path'],
-            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+            details['identity_periodic_agent_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
         )
         self.assertIn('const SYSTEM_PROMPT =', details['forbidden_inline_markers']['app_js'])
         self.assertIn('cfg.system', details['forbidden_inline_markers']['app_js'])
@@ -154,8 +154,8 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
             str(APP_DIR / config.WEB_REFORMULATION_PROMPT_PATH),
         )
         self.assertEqual(
-            details['identity_mutable_rewriter_prompt']['path'],
-            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+            details['identity_periodic_agent_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
         )
 
     def test_check_prompt_files_rejects_identity_resource_outside_allowed_roots(self) -> None:
@@ -242,8 +242,8 @@ class MinimalValidationPhase4ResourcesTests(unittest.TestCase):
         self.assertEqual(details['llm_identity']['resolution'], 'host_state_mirror')
         self.assertEqual(details['user_identity']['resolution'], 'host_state_mirror')
         self.assertEqual(
-            details['identity_mutable_rewriter_prompt']['path'],
-            str(APP_DIR / config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH),
+            details['identity_periodic_agent_prompt']['path'],
+            str(APP_DIR / config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
         )
 
 

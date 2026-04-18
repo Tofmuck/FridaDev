@@ -37,6 +37,23 @@ def _build_stream_headers(
     }
 
 
+def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    dialog_messages = [
+        dict(message or {})
+        for message in messages
+        if str(message.get('role') or '').strip().lower() in {'user', 'assistant'}
+    ]
+    if not dialog_messages:
+        return []
+    assistant_message = dialog_messages[-1]
+    if str(assistant_message.get('role') or '').strip().lower() != 'assistant':
+        return []
+    for candidate in reversed(dialog_messages[:-1]):
+        if str(candidate.get('role') or '').strip().lower() == 'user':
+            return [candidate, assistant_message]
+    return []
+
+
 def run_llm_exchange(
     *,
     conversation: dict[str, Any],
@@ -136,15 +153,11 @@ def run_llm_exchange(
                 message_timestamp=updated_at,
             )
             memory_store_module.save_new_traces(conversation)
-            recent_2 = [
-                message
-                for message in conversation.get('messages', [])
-                if message.get('role') in {'user', 'assistant'}
-            ][-2:]
+            completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
             record_identity_entries_for_mode(
                 conversation['id'],
-                recent_2,
-                current_mode,
+                completed_turn_pair,
+                mode=current_mode,
                 web_input=web_input,
                 arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
@@ -334,15 +347,11 @@ def run_llm_exchange(
                             estimated_assistant_tokens=estimated_assistant_tokens,
                             message_timestamp=final_updated_at,
                         )
-                    recent_2 = [
-                        message
-                        for message in conversation.get('messages', [])
-                        if message.get('role') in {'user', 'assistant'}
-                    ][-2:]
+                    completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
                     record_identity_entries_for_mode(
                         conversation['id'],
-                        recent_2,
-                        current_mode,
+                        completed_turn_pair,
+                        mode=current_mode,
                         web_input=web_input,
                         arbiter_module=arbiter_module,
                         memory_store_module=memory_store_module,

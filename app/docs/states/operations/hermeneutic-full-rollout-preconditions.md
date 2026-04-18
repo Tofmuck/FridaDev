@@ -23,7 +23,7 @@ Justification code:
 - `enforced_identities` n'est qu'un mode partiel
 - `enforced_all` est le seul mode qui active a la fois:
   - l'enforcement memoire (`memory_mode_apply.source=arbiter_enforced`)
-  - l'enforcement identite (`identity_mode_apply.action=persist_enforced`)
+  - l'enforcement identite conversationnelle (`identity_mode_apply.action=record_legacy_identity_diagnostics_and_stage`, puis `identity_periodic_agent_apply` pour la verite staging/apply)
 
 ## Sens operationnel de `full + observability`
 
@@ -70,7 +70,11 @@ Juste apres redemarrage:
    - `observed_since` est donc une premiere observation honnete du segment courant, pas un faux timestamp de transition.
 5. Verifier cote backend via `GET /api/admin/logs` que les tours post-restart portent bien les marqueurs d'enforcement reel:
    - `memory_mode_apply` avec `mode=enforced_all` et `source=arbiter_enforced`
-   - `identity_mode_apply` avec `mode=enforced_all` et `action=persist_enforced`
+   - `identity_mode_apply` avec `mode=enforced_all` et `action=record_legacy_identity_diagnostics_and_stage`
+   - `identity_periodic_agent_apply` avec un statut staging/apply coherent (`buffering`, `ok`, `skipped`, `auto_canonization_suspended`, etc.)
+   Notes:
+   - `identity_mode_apply` ne raconte plus une reecriture mutable immediate;
+   - les ecritures canoniques eventuelles restent visibles via le regime periodique et ses coutures `identity_periodic_agent` / `identity_periodic_agent_apply`.
 
 ## Regle de decision operatoire
 

@@ -6,7 +6,7 @@ Lot ferme: `Lot 2`
 
 ## But
 
-Ce contrat definit une lecture unifiee et honnete du systeme identity reel, sans rouvrir le runtime actif.
+Ce contrat definit une lecture unifiee et honnete du systeme identity reel, y compris le regime periodique `staging -> agent -> canon`, sans rouvrir le canon injecte lui-meme.
 
 Le read-model lui-meme reste read-only, meme si les surfaces operator-facing peuvent aussi porter, depuis `Lot 3`, `Lot 4` et `Lot 5`, des editions ou lectures distinctes documentees a part.
 
@@ -35,16 +35,23 @@ Le read-model doit exposer explicitement:
 - `active_prompt_contract = "static + mutable narrative"`
 - `active_prompt_contract` reste le nom technique du contrat de compilation identity runtime, pas un prompt canonique source-of-truth
 - `identity_input_schema_version = "v2"`
+- `legacy_identity_pipeline_status = "legacy_diagnostic_only"`
+- `legacy_identity_pipeline_recorded_via = "persist_identity_entries"`
+- `legacy_identity_pipeline_storage = "identities + identity_evidence + identity_conflicts"`
+- `read_surface_stage = "lot_b5_identity_operator_truth"`
 - `used_identity_ids = []`
 - `used_identity_ids_count = 0`
 - `governance_read_via = "/api/admin/identity/governance"`
 - `governance_editable_via = "/api/admin/identity/governance"`
 - `runtime_representations_read_via = "/api/admin/identity/runtime-representations"`
+- `identity_runtime_regime` comme rappel compact des caps/seuils actifs (`mutable_budget`, `staging_target_pairs`, seuils `0.35 / 0.60`, promotion et suspension)
+- `identity_staging` comme verite read-only distincte du canon actif injecte
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
 - laisser croire que `active_prompt_contract` designe le pilotage systeme source;
 - laisser croire que `identities` pilote encore l'injection active;
+- laisser croire que le staging fait partie du canon `static + mutable`;
 - masquer la separation entre runtime actif et couches legacy.
 
 ## Structure canonique
@@ -54,8 +61,9 @@ Top-level:
 ```json
 {
   "ok": true,
-  "read_model_version": "v1",
+  "read_model_version": "v2",
   "active_runtime": {},
+  "identity_staging": {},
   "subjects": {
     "llm": {},
     "user": {}
@@ -69,6 +77,34 @@ Chaque sujet expose exactement ces couches:
 - `legacy_fragments`
 - `evidence`
 - `conflicts`
+
+## `identity_staging`
+
+Bloc read-only compact du staging identitaire conversation-scoped le plus recent connu par le runtime operateur.
+
+Champs minimaux:
+- `storage_kind = "identity_mutable_staging"`
+- `scope_kind = "conversation_scoped_latest"`
+- `present`
+- `actively_injected = false`
+- `conversation_id`
+- `buffer_pairs_count`
+- `buffer_target_pairs`
+- `buffer_frozen`
+- `last_agent_status`
+- `last_agent_reason`
+- `last_agent_run_ts`
+- `updated_ts`
+- `auto_canonization_suspended`
+- `latest_agent_activity`
+
+Semantique:
+- ce bloc ne requalifie pas le staging en canon actif;
+- il montre l'etat du buffer et du dernier passage agent sans dump du buffer brut;
+- `latest_agent_activity` resume compactement le dernier verdict utile, les promotions recentes et les tensions ouvertes `raise_conflict` pour cette conversation;
+- quand un run se termine sans write canonique mais garde au moins une tension ouverte, son resume compact ne doit pas etre aplati en `completed_no_change` et utilise `completed_with_open_tension`;
+- les tensions ouvertes du nouvel agent y vivent seulement comme activite periodique compacte conversation-scoped, avec `open_tension_count`, `open_tensions_storage_kind = "identity_periodic_agent_latest_activity"`, `open_tensions_scope_kind = "conversation_scoped_latest"` et `open_tensions_actively_injected = false`;
+- ces tensions ouvertes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
 
 ## Couches par sujet
 
@@ -129,6 +165,8 @@ Bloc read-only du legacy fragmentaire issu de `identities`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
@@ -137,8 +175,9 @@ Champs minimaux:
 - `items[]`
 
 Semantique:
-- conserve l'historique fragmentaire legacy;
-- n'est plus une verite d'injection active.
+- conserve l'historique fragmentaire legacy du pipeline diagnostique `persist_identity_entries(...)`;
+- n'est plus une verite d'injection active;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"` pour empecher toute lecture canonique.
 
 ### `evidence`
 
@@ -146,12 +185,20 @@ Bloc read-only des evidences brutes/historiques issues de `identity_evidence`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
 - `total_count`
 - `limit`
 - `items[]`
+
+Semantique:
+- couche legacy diagnostique/historique seulement;
+- hors injection active et hors staging;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
+- ne sert pas de persistence aux tensions `raise_conflict` du regime periodique actif, qui restent dans `latest_agent_activity` seulement.
 
 ### `conflicts`
 
@@ -159,12 +206,20 @@ Bloc read-only des contradictions issues de `identity_conflicts`.
 
 Champs minimaux:
 - `storage_kind`
+- `classification`
+- `runtime_authority`
 - `stored`
 - `loaded_for_runtime`
 - `actively_injected`
 - `total_count`
 - `limit`
 - `items[]`
+
+Semantique:
+- couche legacy diagnostique/historique seulement;
+- hors injection active et hors staging;
+- expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"`;
+- ne sert pas de persistence aux tensions `raise_conflict` du regime periodique actif, qui restent dans `latest_agent_activity` seulement.
 
 ## Affichage operateur
 

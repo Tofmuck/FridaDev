@@ -176,8 +176,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             if len(observed_models) == 2:
                 return FakeResponse('{"entries":[]}', generation_id='gen-2')
             return FakeResponse(
-                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
-                '"user":{"action":"no_change","content":"","reason":"no update"}}',
+                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}',
                 generation_id='gen-3',
             )
 
@@ -196,14 +197,21 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             entries = arbiter.extract_identities(
                 [{'role': 'user', 'content': 'je suis chercheur'}],
             )
-            rewrite = arbiter.rewrite_identity_mutables(
+            periodic = arbiter.run_identity_periodic_agent(
                 {
-                    'recent_turns': [{'role': 'user', 'content': 'bonjour'}],
+                    'buffer_pairs': [
+                        {
+                            'user': {'role': 'user', 'content': 'bonjour'},
+                            'assistant': {'role': 'assistant', 'content': 'salut'},
+                        }
+                    ],
+                    'buffer_pairs_count': 15,
+                    'buffer_target_pairs': 15,
                     'identities': {
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
                     },
-                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                    'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
                 }
             )
         finally:
@@ -217,10 +225,23 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(len(decisions), 1)
         self.assertEqual(entries, [])
         self.assertEqual(
-            rewrite,
+            periodic,
             {
-                'llm': {'action': 'no_change', 'content': '', 'reason': 'no update'},
-                'user': {'action': 'no_change', 'content': '', 'reason': 'no update'},
+                'llm': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
+                    ],
+                },
+                'user': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'no update'},
+                    ],
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
             },
         )
         self.assertEqual(
@@ -232,7 +253,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             [
                 {'Authorization': 'caller=arbiter'},
                 {'Authorization': 'caller=identity_extractor'},
-                {'Authorization': 'caller=identity_mutable_rewriter'},
+                {'Authorization': 'caller=identity_periodic_agent'},
             ],
         )
         self.assertEqual(
@@ -259,7 +280,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     },
                 ),
                 (
-                    'identity_mutable_rewriter_provider_response',
+                    'identity_periodic_agent_provider_response',
                     {
                         'provider_generation_id': 'gen-3',
                         'provider_model': 'openai/gpt-5.4-mini',
@@ -304,8 +325,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             if len(observed_models) == 2:
                 return FakeResponse('{"entries":[]}')
             return FakeResponse(
-                '{"llm":{"action":"no_change","content":"","reason":"no update"},'
-                '"user":{"action":"no_change","content":"","reason":"no update"}}'
+                '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
@@ -319,14 +341,21 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             arbiter.extract_identities(
                 [{'role': 'user', 'content': 'je suis chercheur'}],
             )
-            arbiter.rewrite_identity_mutables(
+            arbiter.run_identity_periodic_agent(
                 {
-                    'recent_turns': [{'role': 'user', 'content': 'bonjour'}],
+                    'buffer_pairs': [
+                        {
+                            'user': {'role': 'user', 'content': 'bonjour'},
+                            'assistant': {'role': 'assistant', 'content': 'salut'},
+                        }
+                    ],
+                    'buffer_pairs_count': 15,
+                    'buffer_target_pairs': 15,
                     'identities': {
                         'llm': {'static': 'Frida statique', 'mutable_current': ''},
                         'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
                     },
-                    'mutable_budget': {'target_chars': 1500, 'max_chars': 1650},
+                    'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
                 }
             )
         finally:

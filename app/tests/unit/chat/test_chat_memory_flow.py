@@ -942,35 +942,40 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertEqual(observed['preview_called'], 0)
         self.assertEqual(observed['evidence_called'], 0)
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'skip_mode_off')
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[1]['action'], 'persist_enforced')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[1]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
-    def test_record_identity_entries_for_mode_enforced_runs_mutable_rewriter_after_legacy_persist(self) -> None:
+    def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self) -> None:
         events = []
         order: list[str] = []
-        observed = {'rewrite_turns': None}
-        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+        observed = {'turn_pair': None}
+        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
 
         arbiter_module = SimpleNamespace(
             extract_identities=lambda _turns: [{'identity_id': 'id-1'}],
-            rewrite_identity_mutables=lambda _payload: None,
         )
         memory_store_module = SimpleNamespace(
             persist_identity_entries=lambda conversation_id, entries: order.append(
                 f'persist:{conversation_id}:{len(list(entries))}'
             ),
-            get_mutable_identity=lambda _subject: None,
-            upsert_mutable_identity=lambda *_args, **_kwargs: None,
             preview_identity_entries=lambda entries: list(entries),
             record_identity_evidence=lambda *_args, **_kwargs: None,
         )
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
-        def fake_refresh(recent_turns, **_kwargs):
-            order.append('rewrite')
-            observed['rewrite_turns'] = list(recent_turns)
+        def fake_stage(conversation_id, turn_pair, **_kwargs):
+            order.append(f'stage:{conversation_id}')
+            observed['turn_pair'] = list(turn_pair)
             return {
-                'status': 'ok',
-                'reason_code': 'processed',
+                'status': 'buffering',
+                'reason_code': 'below_threshold',
+                'buffer_pairs_count': 1,
+                'buffer_target_pairs': 15,
+                'buffer_cleared': False,
+                'writes_applied': False,
+                'last_agent_status': 'buffering',
                 'outcomes': [
                     {
                         'subject': 'llm',
@@ -983,31 +988,43 @@ class ChatMemoryFlowTests(unittest.TestCase):
                 ],
             }
 
-        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = fake_refresh
+        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
         try:
             chat_memory_flow.record_identity_entries_for_mode(
                 'conv-identity-enforced',
-                [{'role': 'assistant', 'content': 'y'}],
+                [
+                    {'role': 'user', 'content': 'x'},
+                    {'role': 'assistant', 'content': 'y'},
+                ],
                 mode='enforced_all',
                 arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
                 admin_logs_module=admin_logs_module,
             )
         finally:
-            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
 
-        self.assertEqual(order, ['persist:conv-identity-enforced:1', 'rewrite'])
-        self.assertEqual(observed['rewrite_turns'], [{'role': 'assistant', 'content': 'y'}])
-        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
-        self.assertEqual(rewrite_event['status'], 'ok')
-        self.assertEqual(rewrite_event['reason_code'], 'processed')
-        self.assertEqual(rewrite_event['outcomes'][0]['subject'], 'llm')
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced')
+        self.assertEqual(order, ['persist:conv-identity-enforced:1', 'stage:conv-identity-enforced'])
+        self.assertEqual(
+            observed['turn_pair'],
+            [
+                {'role': 'user', 'content': 'x'},
+                {'role': 'assistant', 'content': 'y'},
+            ],
+        )
+        stage_event = _event_payloads(events, 'identity_periodic_agent_apply')[0]
+        self.assertEqual(stage_event['status'], 'buffering')
+        self.assertEqual(stage_event['reason_code'], 'below_threshold')
+        self.assertEqual(stage_event['buffer_pairs_count'], 1)
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
-    def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_mutable_rewriter_raises(self) -> None:
+    def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_periodic_agent_raises(self) -> None:
         events = []
         observed = {'persisted': None}
-        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
 
         arbiter_module = SimpleNamespace(
             extract_identities=lambda _turns: [{'identity_id': 'id-1'}],
@@ -1022,34 +1039,40 @@ class ChatMemoryFlowTests(unittest.TestCase):
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
         def boom(*_args, **_kwargs):
-            raise RuntimeError('rewrite exploded')
+            raise RuntimeError('periodic staging exploded')
 
-        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = boom
+        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = boom
         try:
             chat_memory_flow.record_identity_entries_for_mode(
                 'conv-identity-enforced',
-                [{'role': 'assistant', 'content': 'y'}],
+                [
+                    {'role': 'user', 'content': 'x'},
+                    {'role': 'assistant', 'content': 'y'},
+                ],
                 mode='enforced_all',
                 arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
                 admin_logs_module=admin_logs_module,
             )
         finally:
-            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
 
         self.assertEqual(observed['persisted'], ('conv-identity-enforced', [{'identity_id': 'id-1'}]))
-        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
-        self.assertEqual(rewrite_event['status'], 'skipped')
-        self.assertEqual(rewrite_event['reason_code'], 'rewriter_flow_error')
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'persist_enforced')
+        stage_event = _event_payloads(events, 'identity_periodic_agent_apply')[0]
+        self.assertEqual(stage_event['status'], 'skipped')
+        self.assertEqual(stage_event['reason_code'], 'periodic_agent_flow_error')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_diagnostics_and_stage',
+        )
 
-    def test_record_identity_entries_for_mode_does_not_pass_partial_read_overclaim_to_mutable_rewriter(self) -> None:
+    def test_record_identity_entries_for_mode_does_not_pass_partial_read_overclaim_to_identity_buffer(self) -> None:
         events = []
         observed = {
             'persisted': None,
-            'rewrite_turns': None,
+            'buffered_turn_pair': None,
         }
-        original_refresh = chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities
+        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
 
         arbiter_module = SimpleNamespace(
             extract_identities=lambda _turns: [
@@ -1074,11 +1097,16 @@ class ChatMemoryFlowTests(unittest.TestCase):
         )
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
-        def fake_refresh(recent_turns, **_kwargs):
-            observed['rewrite_turns'] = list(recent_turns)
+        def fake_stage(_conversation_id, turn_pair, **_kwargs):
+            observed['buffered_turn_pair'] = list(turn_pair)
             return {
-                'status': 'ok',
-                'reason_code': 'processed',
+                'status': 'buffering',
+                'reason_code': 'below_threshold',
+                'buffer_pairs_count': 1,
+                'buffer_target_pairs': 15,
+                'buffer_cleared': False,
+                'writes_applied': False,
+                'last_agent_status': 'buffering',
                 'outcomes': [
                     {
                         'subject': 'llm',
@@ -1091,7 +1119,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
                 ],
             }
 
-        chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = fake_refresh
+        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
         try:
             chat_memory_flow.record_identity_entries_for_mode(
                 'conv-identity-partial-guard',
@@ -1106,13 +1134,19 @@ class ChatMemoryFlowTests(unittest.TestCase):
                 admin_logs_module=admin_logs_module,
             )
         finally:
-            chat_memory_flow.memory_identity_mutable_rewriter.refresh_mutable_identities = original_refresh
+            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
 
         self.assertEqual(observed['persisted'], ('conv-identity-partial-guard', []))
-        self.assertEqual(observed['rewrite_turns'], [{'role': 'user', 'content': 'Peux-tu le lire ?'}])
-        rewrite_event = _event_payloads(events, 'identity_mutable_rewrite_apply')[0]
-        self.assertEqual(rewrite_event['status'], 'ok')
-        self.assertEqual(rewrite_event['reason_code'], 'processed')
+        self.assertEqual(
+            observed['buffered_turn_pair'],
+            [
+                {'role': 'user', 'content': 'Peux-tu le lire ?'},
+                {'role': 'assistant', 'content': ''},
+            ],
+        )
+        stage_event = _event_payloads(events, 'identity_periodic_agent_apply')[0]
+        self.assertEqual(stage_event['status'], 'buffering')
+        self.assertEqual(stage_event['reason_code'], 'below_threshold')
         self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['guard_filtered_count'], 1)
 
     def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self) -> None:
@@ -1173,7 +1207,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertSetEqual(set(by_side.keys()), {'frida', 'user'})
         self.assertTrue(all(event['status'] == 'skipped' for event in identity_events))
         self.assertTrue(all(event['reason_code'] == 'not_applicable' for event in identity_events))
-        self.assertEqual(by_side['frida']['payload']['write_mode'], 'shadow')
+        self.assertEqual(by_side['frida']['payload']['write_mode'], 'legacy_diagnostic_shadow')
         self.assertEqual(by_side['frida']['payload']['write_effect'], 'evidence_only')
         self.assertEqual(by_side['frida']['payload']['evidence_count'], 1)
         self.assertEqual(by_side['frida']['payload']['observed_count'], 1)
@@ -1185,7 +1219,10 @@ class ChatMemoryFlowTests(unittest.TestCase):
         self.assertTrue(all('preview' not in event['payload'] for event in identity_events))
         self.assertTrue(all('entries' not in event['payload'] for event in identity_events))
         self.assertEqual(branch_events, [('not_applicable', 'identity_write_shadow_mode')])
-        self.assertEqual(_event_payloads(events, 'identity_mode_apply')[0]['action'], 'record_evidence_shadow')
+        self.assertEqual(
+            _event_payloads(events, 'identity_mode_apply')[0]['action'],
+            'record_legacy_identity_evidence_shadow',
+        )
 
     def test_record_identity_entries_for_mode_filters_unsupported_web_reading_claim_in_enforced_mode(self) -> None:
         events = []
@@ -1226,7 +1263,7 @@ class ChatMemoryFlowTests(unittest.TestCase):
 
         self.assertEqual(observed['persisted'], ('conv-identity-guard-enforced', []))
         event = _event_payloads(events, 'identity_mode_apply')[0]
-        self.assertEqual(event['action'], 'persist_enforced')
+        self.assertEqual(event['action'], 'record_legacy_identity_diagnostics_and_stage')
         self.assertEqual(event['entries'], 0)
         self.assertEqual(event['extracted_entries'], 1)
         self.assertEqual(event['guard_filtered_count'], 1)

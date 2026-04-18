@@ -83,13 +83,19 @@ def identity_governance_response(
     identity_module: Any,
 ) -> Tuple[dict[str, Any], int]:
     items = identity_governance.build_item_payloads(runtime_settings_module=runtime_settings_module)
+    regime_sections = identity_governance.build_regime_section_payloads(
+        runtime_settings_module=runtime_settings_module
+    )
     summary = identity_governance.summarize_items(items)
+    regime_summary = identity_governance.summarize_regime_sections(regime_sections)
     return (
         _response_with_runtime(
             {
                 'ok': True,
                 'governance_version': identity_governance.GOVERNANCE_VERSION,
                 'item_count': len(items),
+                'regime_sections': regime_sections,
+                **regime_summary,
                 **summary,
                 'read_via': identity_governance.READ_ROUTE,
                 'editable_via': identity_governance.UPDATE_ROUTE,

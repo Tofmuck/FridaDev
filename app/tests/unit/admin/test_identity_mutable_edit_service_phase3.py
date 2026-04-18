@@ -60,6 +60,17 @@ class _MutableStore:
         return {'subject': subject, 'content': previous}
 
 
+class _MutableStoreWithStagingGuard(_MutableStore):
+    def append_identity_staging_pair(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not write into identity staging')
+
+    def mark_identity_staging_status(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not touch identity staging metadata')
+
+    def clear_identity_staging_buffer(self, *_args: Any, **_kwargs: Any) -> None:
+        raise AssertionError('admin mutable edit must not clear identity staging')
+
+
 class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
     def test_service_module_stays_below_repo_size_limit(self) -> None:
         service_path = APP_DIR / 'admin' / 'admin_identity_mutable_edit_service.py'
@@ -89,6 +100,8 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(payload['reason_code'], 'set_applied')
         self.assertTrue(payload['stored_after'])
         self.assertEqual(payload['active_identity_source'], 'identity_mutables')
+        self.assertTrue(payload['identity_runtime_regime']['staging_not_injected'])
+        self.assertEqual(payload['identity_runtime_regime']['mutable_budget']['max_chars'], 3300)
         self.assertEqual(store.state['llm'], 'Frida reste sobre, concise et structuree.')
         self.assertEqual(store.upsert_calls[0][2], 'admin_identity_mutable_edit')
         event_name, event_payload = observed_logs[0]
@@ -97,8 +110,8 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertNotIn('reason', event_payload)
         self.assertEqual(event_payload['reason_code'], 'set_applied')
 
-    def test_set_valid_accepts_narrative_technical_interest(self) -> None:
-        store = _MutableStore({'user': 'Utilisateur prefere la clarte.'})
+    def test_set_valid_accepts_durable_technical_orientation(self) -> None:
+        store = _MutableStore({'user': 'Utilisateur garde une orientation stable.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
 
@@ -106,8 +119,8 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
             {
                 'subject': 'user',
                 'action': 'set',
-                'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
-                'reason': 'interet durable',
+                'content': 'Tof garde une attention stable aux architectures lisibles et aux structures techniques coherentes.',
+                'reason': 'orientation identitaire durable',
             },
             memory_store_module=store,
             admin_logs_module=admin_logs_module,
@@ -116,11 +129,61 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(payload['ok'])
         self.assertEqual(payload['reason_code'], 'set_applied')
-        self.assertIn('runtime', store.state['user'])
+        self.assertIn('architectures lisibles', store.state['user'])
+        self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
+
+    def test_set_valid_accepts_multiline_identity_block_with_continuations(self) -> None:
+        store = _MutableStore({'user': 'Utilisateur garde une orientation stable.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'user',
+                'action': 'set',
+                'content': (
+                    "Tof est attentif aux conditions reelles d'un dialogue et a sa continuite dans le temps.\n"
+                    "Il travaille avec une exigence marquee de precision, de sobriete et de justesse relationnelle.\n"
+                    "Il traite volontiers la voix de l'echange, ses reprises et ses seuils comme des objets de reflexion a part entiere.\n"
+                    "Il part souvent du contexte concret et sensible avant d'aller vers l'interpretation ou la mise en forme."
+                ),
+                'reason': 'canon narratif multiline',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'set_applied')
+        self.assertIn('justesse relationnelle', store.state['user'])
+        self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
+
+    def test_set_valid_keeps_admin_edit_on_canonical_mutable_not_staging(self) -> None:
+        store = _MutableStoreWithStagingGuard({'llm': 'Frida reste sobre.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'llm',
+                'action': 'set',
+                'content': 'Frida reste sobre, concise et stable.',
+                'reason': 'correction operateur',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload['ok'])
+        self.assertEqual(store.state['llm'], 'Frida reste sobre, concise et stable.')
+        self.assertEqual(payload['identity_runtime_regime']['active_canon_layers'], ['static', 'mutable'])
+        self.assertEqual(store.upsert_calls[0][2], 'admin_identity_mutable_edit')
         self.assertEqual(observed_logs[0][1]['reason_code'], 'set_applied')
 
     def test_clear_valid_removes_canonical_mutable(self) -> None:
-        store = _MutableStore({'user': 'Utilisateur prefere la clarte.'})
+        store = _MutableStore({'user': 'Utilisateur garde une orientation stable.'})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
 
@@ -153,7 +216,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
             {
                 'subject': 'llm',
                 'action': 'set',
-                'content': 'x' * 1651,
+                'content': 'x' * 3301,
                 'reason': 'too long',
             },
             memory_store_module=store,
@@ -165,7 +228,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(payload['validation_error'], 'mutable_content_too_long')
         self.assertEqual(store.state['llm'], 'Frida reste sobre.')
         self.assertEqual(store.upsert_calls, [])
-        self.assertEqual(observed_logs[0][1]['new_len'], 1651)
+        self.assertEqual(observed_logs[0][1]['new_len'], 3301)
         self.assertNotIn('content', observed_logs[0][1])
 
     def test_rejects_prompt_like_content_in_english_without_write(self) -> None:
@@ -197,6 +260,32 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
             'mutable_content_prompt_like_operator_instruction',
         )
         self.assertNotIn('content', observed_logs[0][1])
+
+    def test_rejects_conversational_preference_without_write(self) -> None:
+        store = _MutableStore({'user': 'Utilisateur garde une orientation stable.'})
+        observed_logs: list[tuple[str, dict[str, Any]]] = []
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: observed_logs.append((event, kwargs)))
+
+        payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
+            {
+                'subject': 'user',
+                'action': 'set',
+                'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
+                'reason': 'preference conversationnelle',
+            },
+            memory_store_module=store,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(status, 400)
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['validation_error'], 'mutable_content_conversational_preference')
+        self.assertEqual(store.state['user'], 'Utilisateur garde une orientation stable.')
+        self.assertEqual(store.upsert_calls, [])
+        self.assertEqual(
+            observed_logs[0][1]['validation_error'],
+            'mutable_content_conversational_preference',
+        )
 
 
 if __name__ == '__main__':

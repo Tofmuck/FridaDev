@@ -897,8 +897,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'mutable': {
                     'content': 'Frida aime les raisonnements structurés',
                     'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                    'updated_by': 'identity_mutable_rewriter',
-                    'update_reason': 'new durable preference',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
                     'updated_ts': '2026-03-24T12:00:00Z',
                 },
             },
@@ -907,8 +907,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'mutable': {
                     'content': 'Utilisateur prefere les réponses concises',
                     'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                    'updated_by': 'identity_mutable_rewriter',
-                    'update_reason': 'new durable preference',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
                     'updated_ts': '2026-03-25T09:30:00Z',
                 },
             },
@@ -930,23 +930,117 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertTrue(response.get_json()['ok'])
         self.assertEqual(observed['identity_input']['schema_version'], 'v2')
         self.assertEqual(observed['identity_input']['frida']['static']['content'], 'Frida statique')
+        self.assertNotIn('staging', observed['identity_input']['frida'])
         self.assertEqual(
             observed['identity_input']['frida']['mutable']['source_trace_id'],
             '11111111-1111-1111-1111-111111111111',
         )
         self.assertEqual(
             observed['identity_input']['frida']['mutable']['updated_by'],
-            'identity_mutable_rewriter',
+            'identity_periodic_agent',
         )
         self.assertEqual(observed['identity_input']['user']['static']['content'], 'Utilisateur statique')
+        self.assertNotIn('staging', observed['identity_input']['user'])
         self.assertEqual(
             observed['identity_input']['user']['mutable']['source_trace_id'],
             '22222222-2222-2222-2222-222222222222',
         )
         self.assertEqual(
             observed['identity_input']['user']['mutable']['updated_by'],
-            'identity_mutable_rewriter',
+            'identity_periodic_agent',
         )
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_uses_same_static_plus_mutable_basis_for_identity_input_and_prompt_block(self) -> None:
+        observed = {'identity_input': None}
+        conversation = {
+            'id': 'conv-identity-basis-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok same basis'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_build_identity_input = self.server.identity.build_identity_input
+        original_build_identity_block = self.server.identity.build_identity_block
+        original_insertion = self.server.chat_service._run_hermeneutic_node_insertion_point
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        identity_input = {
+            'schema_version': 'v2',
+            'frida': {
+                'static': {'content': 'Frida statique', 'source': '/runtime/llm_identity.txt'},
+                'mutable': {
+                    'content': 'Frida garde une voix sobre.',
+                    'source_trace_id': '11111111-1111-1111-1111-111111111111',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                    'updated_ts': '2026-03-24T12:00:00Z',
+                },
+            },
+            'user': {
+                'static': {'content': 'Utilisateur statique', 'source': '/runtime/user_identity.txt'},
+                'mutable': {
+                    'content': 'Tof garde une orientation stable vers les architectures lisibles.',
+                    'source_trace_id': '22222222-2222-2222-2222-222222222222',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                    'updated_ts': '2026-03-25T09:30:00Z',
+                },
+            },
+        }
+        identity_block = (
+            "[IDENTITE ACTIVE]\n"
+            "[STATIQUE]\n"
+            "Frida statique\n"
+            "Utilisateur statique\n"
+            "[MUTABLE]\n"
+            "Frida garde une voix sobre.\n"
+            "Tof garde une orientation stable vers les architectures lisibles."
+        )
+        self.server.identity.build_identity_input = lambda: identity_input
+        self.server.identity.build_identity_block = lambda: (identity_block, [])
+
+        def fake_insertion(**kwargs):
+            observed['identity_input'] = kwargs.get('identity_input')
+            return None
+
+        self.server.chat_service._run_hermeneutic_node_insertion_point = fake_insertion
+        self.server.conv_store.build_prompt_messages = lambda conversation_arg, *_args, **_kwargs: [
+            {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+            {'role': 'user', 'content': 'Bonjour'},
+        ]
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.identity.build_identity_input = original_build_identity_input
+            self.server.identity.build_identity_block = original_build_identity_block
+            self.server.chat_service._run_hermeneutic_node_insertion_point = original_insertion
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(observed['identity_input'], identity_input)
+        system_prompt = observed_state['payload_messages'][0]['content']
+        self.assertIn('BACKEND SYSTEM PROMPT', system_prompt)
+        self.assertIn(identity_block, system_prompt)
+        self.assertIn('Frida garde une voix sobre.', system_prompt)
+        self.assertIn('Tof garde une orientation stable vers les architectures lisibles.', system_prompt)
+        self.assertNotIn('identity_staging', system_prompt)
+        self.assertNotIn('conversation_scoped_latest', system_prompt)
+        self.assertNotIn('recent_2', system_prompt)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_identity_block_and_payload_use_same_canonical_mutables_without_legacy_ids(self) -> None:
@@ -964,15 +1058,15 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             'llm': {
                 'content': 'Frida mutable narrative retenue',
                 'source_trace_id': '11111111-1111-1111-1111-111111111111',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-03-24T12:00:00Z',
             },
             'user': {
                 'content': 'User mutable narrative retenue',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-03-25T09:30:00Z',
             },
         }
@@ -1009,6 +1103,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(payload['schema_version'], 'v2')
         self.assertNotIn('dynamic', payload['frida'])
         self.assertNotIn('dynamic', payload['user'])
+        self.assertNotIn('staging', payload['frida'])
+        self.assertNotIn('staging', payload['user'])
         self.assertEqual(payload['frida']['static']['content'], 'Frida static baseline')
         self.assertEqual(payload['user']['static']['content'], 'User static baseline')
         self.assertEqual(payload['frida']['mutable']['content'], 'Frida mutable narrative retenue')
@@ -1094,8 +1190,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'content': 'Je suis Christophe Muck',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-04-04T19:00:00Z',
             }
             if subject == 'user'
@@ -1138,8 +1234,8 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'content': 'Je suis Christophe Muck',
                 'source_trace_id': '22222222-2222-2222-2222-222222222222',
-                'updated_by': 'identity_mutable_rewriter',
-                'update_reason': 'rewrite',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
                 'updated_ts': '2026-04-04T19:00:00Z',
             }
             if subject == 'user'

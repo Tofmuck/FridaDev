@@ -14,12 +14,14 @@ Ce contrat ouvre une edition controlee de la mutable canonique active, sans rouv
 Ici, `dynamique` veut dire:
 - la mutable canonique narrative stockee dans `identity_mutables`;
 - injectee activement via `static + mutable narrative`;
-- une couche identitaire mouvante (`ton`, `positionnement`, `continuite personnelle`) et non un pseudo-system-prompt;
+- une couche identitaire mouvante faite de traits, postures et continuites encore mobiles, mais deja assez fortes pour dire ce qu'est Frida ou Tof;
 - et non plus le legacy fragmentaire `accepted|deferred|rejected`.
 
 Donc:
 - la mutable editee ici ne doit pas devenir une zone d'instructions de methode, de securite, de format, d'outils ou de contraintes runtime;
+- elle ne doit pas non plus devenir un depot de preferences de conversation, de conforts relationnels, de formulations utilitaires ou de petits reglages de reponse;
 - le fait qu'elle soit ensuite injectee dans le runtime n'en fait pas une source de prompt canonique.
+- depuis B6, l'ancien `identity_mutable_rewriter` est retire du runtime actif; hors edition admin, la mutable canonique n'est plus mise a jour que par le regime periodique actif et son applicateur deterministe.
 
 ## Route
 
@@ -65,26 +67,39 @@ Regles:
 ## Validation mutable
 
 La mutable canonique editee par l'operateur suit la meme discipline doctrinale que le runtime:
-- cible: `1500` caracteres
-- plafond dur: `1650` caracteres
+- cible: `3000` caracteres
+- plafond dur: `3300` caracteres
 - aucune troncature cachee
-- si `content > 1650`: rejet, aucune ecriture
-- le meme validateur canonique est applique a l'edition admin et au `identity_mutable_rewriter`
-- tout contenu prompt-like est rejete fail-closed avant ecriture
+- si `content > 3300`: rejet, aucune ecriture
+- le meme validateur canonique est applique a l'edition admin et a l'applicateur du `identity_periodic_agent`
+- tout contenu prompt-like ou identitairement trop faible est rejete fail-closed avant ecriture
+
+Ligne d'admission retenue:
+- le texte doit rester declaratif, descriptif et identitaire;
+- un bloc multiline reste recevable s'il est compose de propositions identitaires coherentes: au moins une phrase explicitement ancree sur Frida, Tof ou le sujet vise, puis eventuellement des continuations narratives au pronom qui restent clairement sur le meme sujet;
+- il doit dire ce qu'est Frida ou Tof, au present, sous forme de trait, posture, maniere d'etre ou continuite;
+- il doit rester vrai hors du tour courant et hors du simple confort de l'echange;
+- une phrase n'entre pas parce qu'elle aide a mieux repondre ou parce qu'elle revient souvent: elle entre seulement si elle tient comme verite identitaire forte.
 
 Contenus explicitement interdits:
 - instructions de tache ou de methode
 - consignes de securite, d'outils ou de contraintes runtime
 - politiques de formatage `markdown` / `JSON` / formats de sortie
 - meta `system prompt`, `prompt hermeneutique`, `source de verite`, `pipeline`, `admin`
+- preferences de conversation ou de style de reponse (`prefere des reponses courtes`, `aime discuter de`, `souhaite qu'on reformule`)
+- conforts conversationnels ou demandes de reassurance (`se sent rassure quand`, `met a l'aise`, `apaise l'echange`)
+- formulations utilitaires (`utile pour mieux repondre`, `sert a guider`, `repere pratique pour la reprise`)
+- positionnements relationnels trop faibles, trop situationnels ou trop regles par l'echange (`cherche une proximite rassurante dans l'echange`)
 
 Contenus explicitement autorises s'ils restent narratifs / identitaires:
-- interets durables pour des sujets techniques (`runtime`, `pipelines`, `architectures`, `Markdown`, `JSON`)
-- preferences de conversation sur des themes techniques
-- formulations du type `aime discuter de`, `prefere des echanges sur`, `garde une voix`
+- formulations declaratives du type `Frida garde une voix sobre et structuree.`
+- formulations declaratives du type `Frida garde un ton sobre et precis.`
+- formulations declaratives du type `Tof garde une attention stable aux architectures lisibles.`
+- blocs narratifs multiline du type `Tof est attentif aux conditions reelles d'un dialogue... Il travaille avec une exigence marquee de precision...`
+- un positionnement relationnel fort seulement s'il reste descriptif, durable et non prescriptif, par exemple `Frida garde une presence sobre et non intrusive.`
 
 La garde metier ne rejette donc pas un simple mot technique isole.
-Elle rejette une formulation injonctive ou politique de ce mot technique.
+Elle rejette un mot technique quand il est pris dans une preference de conversation, un cadrage utilitaire ou une aide de dialogue.
 
 Reason codes metier stables attendus:
 - `mutable_content_prompt_like_operator_instruction`
@@ -92,6 +107,10 @@ Reason codes metier stables attendus:
 - `mutable_content_prompt_like_tool_policy`
 - `mutable_content_prompt_like_runtime_meta`
 - `mutable_content_prompt_like_system_meta`
+- `mutable_content_conversational_preference`
+- `mutable_content_utilitarian_framing`
+- `mutable_content_weak_relational_positioning`
+- `mutable_content_not_identity_statement`
 
 Ces deux caps restent visibles dans la gouvernance identity:
 - `IDENTITY_MUTABLE_TARGET_CHARS`
@@ -133,6 +152,12 @@ Reponse compacte attendue:
 - `active_prompt_contract = "static + mutable narrative"`
 - `identity_input_schema_version = "v2"`
 - `mutable_budget`
+- `identity_runtime_regime`
+
+Semantique:
+- `mutable_budget` continue de borner uniquement la mutable canonique (`3000 / 3300`);
+- `identity_runtime_regime` recontextualise cette couture en rappelant que le regime actif inclut aussi staging separe, promotion vers le statique et suspension automatique;
+- cette route continue a agir seulement sur le canon mutable actif, jamais sur le staging.
 
 ## Audit compact
 

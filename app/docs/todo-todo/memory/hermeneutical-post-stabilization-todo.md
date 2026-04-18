@@ -5,6 +5,11 @@ Classement: `app/docs/todo-todo/memory/`
 Portee: reliquat post-rollout / post-stabilisation du pipeline hermeneutique deja livre  
 Origine: extraction du chantier archive `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 
+Note de cadrage identity `2026-04-18`:
+- ce TODO residuel peut encore servir a suivre les coutures actives avec le noeud hermeneutique et les preuves post-rollout;
+- il n'est pas la source de verite du regime identity actif;
+- pour la doctrine identity courante et la trace operatoire closee du chantier, utiliser separement `app/docs/states/policies/identity-new-contract-plan.md` puis `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
+
 ## Objet
 
 Ce document ne reouvre pas la grande implementation hermeneutique.

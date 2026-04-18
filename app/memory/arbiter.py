@@ -35,10 +35,11 @@ _ALLOWED_EVIDENCE_KIND = {'explicit', 'inferred', 'weak'}
 _METRICS: Dict[str, int] = {
     'arbiter_call_count': 0,
     'identity_extractor_call_count': 0,
-    'identity_mutable_rewriter_call_count': 0,
+    'identity_legacy_rewriter_disabled_count': 0,
+    'identity_periodic_agent_call_count': 0,
     'arbiter_parse_error_count': 0,
     'identity_parse_error_count': 0,
-    'identity_mutable_rewriter_parse_error_count': 0,
+    'identity_periodic_agent_parse_error_count': 0,
     'arbiter_fallback_count': 0,
 }
 
@@ -623,18 +624,23 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
 
 
 def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] | None:
-    _inc_metric('identity_mutable_rewriter_call_count')
-    """
-    Rewrite canonical mutable identities with a strict JSON contract.
-    Returns None on any runtime/parse failure to keep the chat flow fail-open.
-    """
+    _inc_metric('identity_legacy_rewriter_disabled_count')
+    if isinstance(payload_input, dict):
+        logger.info('identity_legacy_rewriter_retired payload_keys=%s', sorted(payload_input.keys()))
+    else:
+        logger.info('identity_legacy_rewriter_retired payload_type=%s', payload_input.__class__.__name__)
+    return None
+
+
+def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any] | None:
+    _inc_metric('identity_periodic_agent_call_count')
     if not isinstance(payload_input, dict):
         return None
 
     arbiter_model = _runtime_arbiter_model_name()
     system_prompt = _load_prompt(
-        config.IDENTITY_MUTABLE_REWRITER_PROMPT_PATH,
-        'identity_mutable_rewriter',
+        config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
+        'identity_periodic_agent',
     )
     if not system_prompt:
         return None
@@ -650,21 +656,21 @@ def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] |
         ],
         'temperature': 0.0,
         'top_p': 1.0,
-        'max_tokens': 1200,
+        'max_tokens': 1400,
     }
 
     try:
         response = requests.post(
             f'{config.OR_BASE}/chat/completions',
             json=payload,
-            headers=llm_client.or_headers(caller='identity_mutable_rewriter'),
+            headers=llm_client.or_headers(caller='identity_periodic_agent'),
             timeout=config.ARBITER_TIMEOUT_S,
         )
         response.raise_for_status()
         response_payload = llm_client.read_openrouter_response_payload(response)
         llm_client.log_provider_metadata(
             logger,
-            'identity_mutable_rewriter_provider_response',
+            'identity_periodic_agent_provider_response',
             llm_client.extract_openrouter_provider_metadata(
                 response_payload,
                 requested_model=arbiter_model,
@@ -672,15 +678,15 @@ def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] |
         )
         raw = llm_client.extract_openrouter_text(response_payload)
         result = _safe_json_loads(raw)
-        logger.info('identity_mutable_rewriter_result keys=%s', sorted(result.keys()))
+        logger.info('identity_periodic_agent_result keys=%s', sorted(result.keys()))
         return result
     except requests.exceptions.Timeout:
-        logger.warning('identity_mutable_rewriter_timeout model=%s', arbiter_model)
+        logger.warning('identity_periodic_agent_timeout model=%s', arbiter_model)
         return None
     except Exception as exc:
-        parse_count = _inc_metric('identity_mutable_rewriter_parse_error_count')
+        parse_count = _inc_metric('identity_periodic_agent_parse_error_count')
         logger.error(
-            'identity_mutable_rewriter_error err=%s parse_error_count=%s',
+            'identity_periodic_agent_error err=%s parse_error_count=%s',
             exc,
             parse_count,
         )

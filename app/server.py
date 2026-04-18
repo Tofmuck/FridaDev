@@ -1047,6 +1047,7 @@ def api_admin_identity_read_model():
         memory_store_module=memory_store,
         identity_module=identity,
         static_identity_content_module=static_identity_content,
+        log_store_module=log_store,
     )
     return jsonify(payload), status
 
@@ -1055,6 +1056,8 @@ def api_admin_identity_read_model():
 def api_admin_identity_runtime_representations():
     payload, status = admin_identity_runtime_representations_service.identity_runtime_representations_response(
         identity_module=identity,
+        memory_store_module=memory_store,
+        log_store_module=log_store,
     )
     return jsonify(payload), status
 
