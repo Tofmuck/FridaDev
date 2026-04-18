@@ -355,11 +355,14 @@ def _evaluate_subject_operations(
             continue
 
         if kind == 'raise_conflict':
+            # `raise_conflict` stays a conversation-scoped, non-canonical tension verdict.
+            # It does not write the canon and is surfaced later through compact agent activity,
+            # not through the legacy `identity_conflicts` pipeline.
             reason_code = 'strength_below_threshold' if verdict == 'rejected' else 'raise_conflict_open'
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
-                    action='no_change',
+                    action='no_change' if verdict == 'rejected' else 'raise_conflict',
                     reason_code=reason_code,
                     old_len=len(current_content),
                     new_len=len(current_content),
@@ -681,7 +684,7 @@ def _apply_subject_operations(
             outcomes.append(
                 _subject_outcome(
                     subject=subject,
-                    action='no_change',
+                    action='raise_conflict',
                     reason_code='raise_conflict',
                     old_len=len(current_content),
                     new_len=len(_joined_content(next_lines)),

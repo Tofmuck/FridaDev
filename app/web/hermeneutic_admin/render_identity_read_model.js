@@ -175,6 +175,9 @@
     if (Number(activity.promotion_count) > 0) {
       meta.appendChild(createChip(`promotions=${Number(activity.promotion_count)}`));
     }
+    if (Number(activity.open_tension_count) > 0) {
+      meta.appendChild(createChip(`tensions=${Number(activity.open_tension_count)}`));
+    }
     group.appendChild(meta);
 
     const summaryEntries = [
@@ -242,6 +245,14 @@
           source: "identity_read_model",
         },
       ],
+      [
+        "open_tension_count",
+        {
+          label: "Tensions ouvertes",
+          value: String(Number(activity.open_tension_count) || 0),
+          source: "identity_read_model",
+        },
+      ],
     ];
 
     const summaryGrid = document.createElement("div");
@@ -263,7 +274,7 @@
       activityGrid.className = "admin-readonly-grid";
       renderReadonlyEntries(
         activityGrid,
-        mappingToDetailEntries(activity, "identity_read_model", ["promotions"]),
+        mappingToDetailEntries(activity, "identity_read_model", ["promotions", "open_tensions"]),
       );
       activityGroup.appendChild(activityGrid);
 
@@ -276,6 +287,17 @@
             toText(item?.subject) || `Promotion ${index + 1}`,
         });
         activityGroup.appendChild(promotionsHost);
+      }
+
+      if (Array.isArray(activity.open_tensions) && activity.open_tensions.length) {
+        const tensionsHost = document.createElement("div");
+        renderReadonlyCollectionDetailed(tensionsHost, activity.open_tensions, {
+          emptyMessage: "Aucune tension ouverte recente.",
+          source: "identity_read_model",
+          identifyTitle: (item, index) =>
+            toText(item?.subject) || `Tension ${index + 1}`,
+        });
+        activityGroup.appendChild(tensionsHost);
       }
 
       group.appendChild(activityGroup);

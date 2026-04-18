@@ -144,6 +144,10 @@ Minimum event-specific details:
   - goal: visibility on the legacy diagnostic persistence path (`persist_identity_entries`) without raw dump and without presenting it as the active canon write path
   - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
+- `identity_periodic_agent`
+  - `outcomes` may include `action = "raise_conflict"` with compact scoring fields when the agent keeps an unresolved tension open instead of canonizing it
+  - these open tensions remain conversation-scoped latest activity only; they do not write `identity_conflicts` and do not become active canon
+
 - `web_search`
   - dedicated event (not only a boolean in `turn_start`)
   - `enabled`, `query_preview`, `results_count`, `context_injected`, `truncated`
@@ -198,6 +202,7 @@ Identity exception:
 - legacy `identity_mutable_rewrite*` observability is retired in B6; the live regime is described through `identity_write`, `identity_mode_apply`, `identity_periodic_agent` and `identity_periodic_agent_apply`
 - allowed for identity: counts, presence/absence, char lengths, update flags, reason codes, budget/shape validation flags
 - `identity_periodic_agent` and `identity_periodic_agent_apply` may also expose compact staging/governance fields such as `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, `auto_canonization_suspended`, compact `rejection_reasons`, compact per-operation score fields (`support_pairs`, `last_occurrence_distance`, `frequency_norm`, `recency_norm`, `strength`, `threshold_verdict`) and promotion summaries without raw proposition text
+- when present, `raise_conflict` remains a compact latest-activity seam only; it is allowed through compact `outcomes` summaries but must not be presented as a write into legacy `identity_conflicts`
 - forbidden for identity: `preview`, `keys`, `guard_filtered_preview`, raw identity text, raw filtered excerpts
 
 `preview` contract (all events):

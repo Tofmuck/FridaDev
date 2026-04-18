@@ -480,6 +480,7 @@
           `agent=${toText(staging.last_agent_status) || "n/a"}`,
           `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
           `promotions=${Number(activity.promotion_count) || 0}`,
+          `tensions=${Number(activity.open_tension_count) || 0}`,
         ],
       }),
     );

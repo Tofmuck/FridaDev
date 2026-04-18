@@ -5,12 +5,12 @@ Classement: `app/docs/todo-todo/memory/`
 Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
 Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
-Decision runtime du 2026-04-17: les lots B1-B5 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique, et ne laisse plus en B6 qu'une decision residuelle sur la persistence explicite des tensions ouvertes du nouvel agent
+Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique; les tensions `raise_conflict` restent des verdicts conversation-scoped compacts dans la derniere activite periodique, sans reutiliser `identity_conflicts`
 
 ## 1. Regle de travail
 
 - [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
-- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5 est ferme et B6 ne laisse plus ouverte que la persistence explicite des tensions ouvertes du nouvel agent.
+- [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5 et B6 sont fermes dans l'etat courant.
 - [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
 
 ## A. Audit code-first de l'existant
@@ -105,7 +105,7 @@ Decision runtime du 2026-04-17: les lots B1-B5 sont maintenant actifs; ce TODO s
 
 - [x] Decider explicitement si `persist_identity_entries(...)`, `identity_evidence` et `identity_conflicts` restent strictement legacy/diagnostic ou s'ils servent aussi le nouvel agent comme matiere auxiliaire.
 - [x] Ne pas laisser le staging devenir une resurrection masquee du legacy fragmentaire `accepted|deferred|rejected`.
-- [ ] Trancher le sort des tensions ouvertes du nouvel agent: reutilisation explicite de `identity_conflicts` ou nouvelle persistence dediee.
+- [x] Trancher le sort des tensions ouvertes du nouvel agent: `raise_conflict` reste une tension ouverte conversation-scoped visible seulement dans la derniere activite periodique compacte (`identity_periodic_agent.latest_activity` / `identity_staging.latest_agent_activity`), sans reutiliser `identity_conflicts` ni creer une nouvelle source active de canon.
 - [x] Maintenir `identities`, `identity_evidence` et `identity_conflicts` hors injection active tant qu'une migration explicite n'a pas ete decidee.
 
 ## C. Nettoyage de l'ancien systeme
@@ -146,6 +146,7 @@ Decision runtime du 2026-04-17: les lots B1-B5 sont maintenant actifs; ce TODO s
 - [x] `memory_identity_mutable_rewriter.py` est requalifie en shim legacy retire fail-closed; il ne pilote plus la mutable canonique ni aucun appel LLM actif.
 - [x] `app/prompts/identity_mutable_rewriter.txt` devient un repere historique retire, pas un prompt runtime actif.
 - [x] Les evenements et labels qui racontaient encore `identity_mutable_rewriter` / `rewrite` comme verite active sont remplaces par des coutures qui disent `legacy diagnostique` ou `identity_periodic_agent`.
+- [x] `raise_conflict` ne reutilise pas `identity_conflicts`: il reste une tension ouverte conversation-scoped, compacte, non injectee et visible seulement dans la derniere activite periodique utile.
 
 ## D. Garde-fous de regression
 

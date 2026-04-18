@@ -90,6 +90,15 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
                         'writes_applied': False,
                         'promotion_count': 0,
                         'promotions': [],
+                        'outcomes': [
+                            {
+                                'subject': 'user',
+                                'action': 'raise_conflict',
+                                'reason_code': 'raise_conflict_open',
+                                'threshold_verdict': 'deferred',
+                                'strength': 0.5,
+                            }
+                        ],
                         'rejection_reasons': {'llm': 'double_saturation'},
                     },
                 }
@@ -119,6 +128,11 @@ class ServerAdminIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertEqual(payload['identity_staging']['conversation_id'], 'conv-stage-2')
         self.assertTrue(payload['identity_staging']['auto_canonization_suspended'])
         self.assertEqual(payload['identity_staging']['latest_agent_activity']['reason_code'], 'double_saturation')
+        self.assertEqual(payload['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertEqual(
+            payload['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
+            'identity_periodic_agent_latest_activity',
+        )
         self.assertTrue(payload['structured_identity']['present'])
         self.assertEqual(payload['structured_identity']['technical_name'], 'identity_input')
         self.assertEqual(payload['structured_identity']['role'], 'hermeneutic_judgment')

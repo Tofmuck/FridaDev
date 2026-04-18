@@ -264,6 +264,45 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['reason_code'], 'tighten_applied')
         self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
 
+    def test_raise_conflict_stays_conversation_scoped_without_writing_canon(self) -> None:
+        proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': 'Tof garde une orientation stable.',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'raise_conflict',
+                    'proposition': proposition,
+                    'reason': 'tension durable non resolue',
+                },
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], 'Tof garde une orientation stable.')
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'raise_conflict')
+        self.assertEqual(user_outcome['reason_code'], 'raise_conflict_open')
+        self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
     def test_promotes_strongest_candidate_to_static_when_mutable_is_full(self) -> None:
         strong = 'Tof maintient une orientation stable et ritualisee.'
         medium = 'Tof garde un gout stable pour les architectures lisibles.'

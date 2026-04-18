@@ -19,6 +19,8 @@ STAGING_STORAGE_KIND = 'identity_mutable_staging'
 LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_diagnostic_only'
 LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
 LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
+OPEN_TENSIONS_STORAGE_KIND = 'identity_periodic_agent_latest_activity'
+OPEN_TENSIONS_SCOPE_KIND = 'conversation_scoped_latest'
 
 
 def _optional_text(value: Any) -> str | None:
@@ -66,6 +68,31 @@ def _compact_promotions(values: Any) -> list[dict[str, Any]]:
     return compact
 
 
+def _compact_open_tensions(values: Any) -> list[dict[str, Any]]:
+    items = values if isinstance(values, list) else []
+    compact: list[dict[str, Any]] = []
+    for item in items:
+        payload = _mapping(item)
+        action = _optional_text(payload.get('action'))
+        reason_code = _optional_text(payload.get('reason_code'))
+        if action != 'raise_conflict' and reason_code not in {'raise_conflict', 'raise_conflict_open'}:
+            continue
+        summary: dict[str, Any] = {}
+        for key in ('subject', 'action', 'reason_code', 'threshold_verdict'):
+            text = _optional_text(payload.get(key))
+            if text:
+                summary[key] = text
+        try:
+            strength = float(payload.get('strength'))
+        except (TypeError, ValueError):
+            strength = None
+        if strength is not None:
+            summary['strength'] = round(strength, 4)
+        if summary:
+            compact.append(summary)
+    return compact
+
+
 def _latest_periodic_agent_event(
     *,
     log_store_module: Any,
@@ -98,6 +125,7 @@ def _build_latest_agent_activity(
         conversation_id=conversation_id,
     )
     payload = _mapping(event.get('payload'))
+    open_tensions = _compact_open_tensions(payload.get('outcomes'))
     return {
         'present': bool(event),
         'conversation_id': _optional_text(event.get('conversation_id')),
@@ -109,6 +137,11 @@ def _build_latest_agent_activity(
         'promotion_count': int(payload.get('promotion_count') or 0),
         'promotions': _compact_promotions(payload.get('promotions')),
         'rejection_reasons': dict(payload.get('rejection_reasons') or {}),
+        'open_tension_count': len(open_tensions),
+        'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
+        'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
+        'open_tensions_actively_injected': False,
+        'open_tensions': open_tensions,
     }
 
 
@@ -159,6 +192,11 @@ def build_identity_staging_block(
             'promotion_count': 0,
             'promotions': [],
             'rejection_reasons': {},
+            'open_tension_count': 0,
+            'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
+            'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
+            'open_tensions_actively_injected': False,
+            'open_tensions': [],
         }
     )
     return {

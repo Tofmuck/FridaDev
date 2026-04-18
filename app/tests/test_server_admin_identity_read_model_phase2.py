@@ -165,6 +165,15 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                         'reason_code': 'completed_no_change',
                         'writes_applied': False,
                         'promotion_count': 1,
+                        'outcomes': [
+                            {
+                                'subject': 'user',
+                                'action': 'raise_conflict',
+                                'reason_code': 'raise_conflict',
+                                'threshold_verdict': 'accepted',
+                                'strength': 0.7333,
+                            }
+                        ],
                         'promotions': [
                             {
                                 'subject': 'llm',
@@ -231,6 +240,24 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['identity_staging']['last_agent_status'], 'buffering')
         self.assertEqual(data['identity_staging']['latest_agent_activity']['reason_code'], 'completed_no_change')
         self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 1)
+        self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['open_tensions_storage_kind'],
+            'identity_periodic_agent_latest_activity',
+        )
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['open_tensions_scope_kind'],
+            'conversation_scoped_latest',
+        )
+        self.assertFalse(data['identity_staging']['latest_agent_activity']['open_tensions_actively_injected'])
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['action'],
+            'raise_conflict',
+        )
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['open_tensions'][0]['reason_code'],
+            'raise_conflict',
+        )
         self.assertEqual(observed['fragments'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['evidence'], [('llm', 20), ('user', 20)])
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])

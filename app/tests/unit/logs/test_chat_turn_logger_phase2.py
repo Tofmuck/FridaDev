@@ -208,11 +208,11 @@ class ChatTurnLoggerPhase2Tests(unittest.TestCase):
                         },
                         {
                             'subject': 'user',
-                            'action': 'no_change',
+                            'action': 'raise_conflict',
                             'old_len': 20,
                             'new_len': 20,
                             'validation_ok': True,
-                            'reason_code': 'no_change',
+                            'reason_code': 'raise_conflict',
                         },
                     ],
                 },
