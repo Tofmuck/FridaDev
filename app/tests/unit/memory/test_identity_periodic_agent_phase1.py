@@ -96,6 +96,13 @@ class _InMemoryIdentityStore:
         )
         current_pairs = list(state['buffer_pairs'])
         buffer_already_frozen = len(current_pairs) >= int(target_pairs)
+        if not current_pairs and state.get('last_agent_status') in {
+            'applied',
+            'completed_no_change',
+            'completed_with_open_tension',
+            'not_run',
+        }:
+            state['last_agent_status'] = 'buffering'
         if buffer_already_frozen:
             state['buffer_pairs'] = current_pairs[: int(target_pairs)]
         else:
@@ -244,6 +251,71 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(store.get_identity_staging_state('conv-threshold')['buffer_pairs_count'], 0)
         self.assertIn('attention durable', store.mutable['user']['content'])
         self.assertEqual(store.upsert_calls[0][2], 'identity_periodic_agent')
+
+    def test_marks_open_tension_without_flattening_it_to_completed_no_change(self) -> None:
+        store = _InMemoryIdentityStore()
+        proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
+
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'llm': {
+                    'operations': [
+                        {'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'},
+                    ]
+                },
+                'user': {
+                    'operations': [
+                        {
+                            'kind': 'raise_conflict',
+                            'proposition': proposition,
+                            'reason': 'tension durable non resolue',
+                        }
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+        )
+
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-open-tension',
+                _support_pair(index, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-open-tension',
+            _support_pair(15, proposition),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
+        self.assertEqual(summary['last_agent_status'], 'completed_with_open_tension')
+        self.assertTrue(summary['buffer_cleared'])
+        self.assertFalse(summary['writes_applied'])
+        user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
+        self.assertEqual(user_outcome['action'], 'raise_conflict')
+        staging_state = store.get_identity_staging_state('conv-open-tension')
+        self.assertEqual(staging_state['buffer_pairs_count'], 0)
+        self.assertEqual(staging_state['last_agent_status'], 'completed_with_open_tension')
+        self.assertEqual(staging_state['last_agent_reason'], 'completed_with_open_tension')
+
+        next_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-open-tension',
+            _support_pair(16, proposition),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(next_summary['status'], 'buffering')
+        self.assertEqual(next_summary['last_agent_status'], 'buffering')
 
     def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
         store = _InMemoryIdentityStore()

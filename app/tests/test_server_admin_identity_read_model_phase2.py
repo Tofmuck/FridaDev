@@ -162,7 +162,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                     'stage': 'identity_periodic_agent',
                     'status': 'ok',
                     'payload': {
-                        'reason_code': 'completed_no_change',
+                        'reason_code': 'completed_with_open_tension',
                         'writes_applied': False,
                         'promotion_count': 1,
                         'outcomes': [
@@ -238,7 +238,10 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['identity_staging']['buffer_pairs_count'], 4)
         self.assertEqual(data['identity_staging']['buffer_target_pairs'], 15)
         self.assertEqual(data['identity_staging']['last_agent_status'], 'buffering')
-        self.assertEqual(data['identity_staging']['latest_agent_activity']['reason_code'], 'completed_no_change')
+        self.assertEqual(
+            data['identity_staging']['latest_agent_activity']['reason_code'],
+            'completed_with_open_tension',
+        )
         self.assertEqual(data['identity_staging']['latest_agent_activity']['promotion_count'], 1)
         self.assertEqual(data['identity_staging']['latest_agent_activity']['open_tension_count'], 1)
         self.assertEqual(

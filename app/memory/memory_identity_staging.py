@@ -198,7 +198,12 @@ def append_identity_staging_pair(
                 )
                 buffer_frozen = len(next_pairs) >= buffer_target
                 next_status = _text((current_state or {}).get('last_agent_status')) or 'buffering'
-                if len(current_pairs) == 0 and next_status in {'applied', 'completed_no_change', 'not_run'}:
+                if len(current_pairs) == 0 and next_status in {
+                    'applied',
+                    'completed_no_change',
+                    'completed_with_open_tension',
+                    'not_run',
+                }:
                     next_status = 'buffering'
                 cur.execute(
                     '''

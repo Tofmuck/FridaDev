@@ -22,6 +22,22 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return {}
 
 
+def _completed_summary_state(apply_summary: Mapping[str, Any]) -> tuple[str, str]:
+    reason_code = _text(apply_summary.get('reason_code'))
+    if bool(apply_summary.get('writes_applied')):
+        return 'applied', reason_code or 'applied'
+
+    outcomes = list(apply_summary.get('outcomes') or [])
+    for item in outcomes:
+        payload = _mapping(item)
+        action = _text(payload.get('action'))
+        outcome_reason = _text(payload.get('reason_code'))
+        if action == 'raise_conflict' or outcome_reason in {'raise_conflict', 'raise_conflict_open'}:
+            return 'completed_with_open_tension', 'completed_with_open_tension'
+
+    return 'completed_no_change', reason_code or 'completed_no_change'
+
+
 def _subject_identity_payload(
     *,
     subject: str,
@@ -300,16 +316,16 @@ def stage_identity_turn_pair(
         )
         return summary
 
-    completion_status = 'applied' if bool(apply_summary.get('writes_applied')) else 'completed_no_change'
+    completion_status, completion_reason = _completed_summary_state(apply_summary)
     clear_buffer(
         conversation_id,
         status=completion_status,
-        reason=str(apply_summary.get('reason_code') or completion_status),
+        reason=completion_reason,
         auto_canonization_suspended=bool(apply_summary.get('auto_canonization_suspended')),
     )
     summary = {
         'status': str(apply_summary.get('status') or 'ok'),
-        'reason_code': str(apply_summary.get('reason_code') or completion_status),
+        'reason_code': completion_reason,
         'buffer_pairs_count': buffer_pairs_count,
         'buffer_target_pairs': buffer_target_pairs,
         'last_agent_status': completion_status,
