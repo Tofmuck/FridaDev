@@ -54,6 +54,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
             'get_resources_settings': self.server.runtime_settings.get_resources_settings,
             'log_event': self.server.admin_logs.log_event,
             '_get_mutable_identity': self.server.identity._get_mutable_identity,
+            'append_identity_staging_pair': self.server.memory_store.append_identity_staging_pair,
+            'mark_identity_staging_status': self.server.memory_store.mark_identity_staging_status,
+            'clear_identity_staging_buffer': self.server.memory_store.clear_identity_staging_buffer,
             'app_root': static_identity_paths.APP_ROOT,
             'repo_root': static_identity_paths.REPO_ROOT,
             'host_state_root': static_identity_paths.HOST_STATE_ROOT,
@@ -83,7 +86,20 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
 
             self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
             self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
-            self.server.identity._get_mutable_identity = lambda _subject: None
+            self.server.identity._get_mutable_identity = lambda subject: (
+                {'subject': 'llm', 'content': 'Frida mutable canonique'}
+                if subject == 'llm'
+                else None
+            )
+            self.server.memory_store.append_identity_staging_pair = lambda *_args, **_kwargs: self.fail(
+                'static edit must not append staging pairs'
+            )
+            self.server.memory_store.mark_identity_staging_status = lambda *_args, **_kwargs: self.fail(
+                'static edit must not rewrite staging status'
+            )
+            self.server.memory_store.clear_identity_staging_buffer = lambda *_args, **_kwargs: self.fail(
+                'static edit must not clear staging buffer'
+            )
             static_identity_paths.APP_ROOT = tmp_path / 'app'
             static_identity_paths.REPO_ROOT = tmp_path
             static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
@@ -103,6 +119,9 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
                 self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
                 self.server.admin_logs.log_event = originals['log_event']
                 self.server.identity._get_mutable_identity = originals['_get_mutable_identity']
+                self.server.memory_store.append_identity_staging_pair = originals['append_identity_staging_pair']
+                self.server.memory_store.mark_identity_staging_status = originals['mark_identity_staging_status']
+                self.server.memory_store.clear_identity_staging_buffer = originals['clear_identity_staging_buffer']
                 static_identity_paths.APP_ROOT = originals['app_root']
                 static_identity_paths.REPO_ROOT = originals['repo_root']
                 static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
@@ -115,6 +134,7 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         self.assertEqual(data['resource_field'], 'llm_identity_path')
         self.assertEqual(stored_text, 'Frida statique revisee\n')
         self.assertEqual(runtime_payload['frida']['static']['content'], 'Frida statique revisee')
+        self.assertEqual(runtime_payload['frida']['mutable']['content'], 'Frida mutable canonique')
         self.assertEqual(runtime_payload['user']['static']['content'], 'Utilisateur initial')
         self.assertEqual(observed_logs[0][0], 'identity_static_admin_edit')
         self.assertNotIn('content', observed_logs[0][1])

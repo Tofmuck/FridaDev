@@ -114,7 +114,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 - [x] Supprimer le schema binaire `rewrite/no_change` des contrats agent, des parseurs, des tests et des reason codes qui presentent encore la reecriture globale comme verite active.
 - [x] Supprimer le declenchement a chaque tour branche sur `recent_2` dans `app/core/chat_llm_flow.py`.
-- [ ] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
+- [x] Supprimer les hypotheses tests/docs qui lient automatiquement `identity_mode_apply.action=persist_enforced` a une reecriture mutable immediate.
 - [x] Supprimer les valeurs UI en dur `target=3000` et `max=3300` une fois la nouvelle gouvernance livree.
 
 ### C2. Ce qui devra etre remplace
@@ -129,7 +129,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 - [x] Garder `identity_mutables` comme stockage du canon actif `mutable`, distinct du staging.
 - [x] Garder la projection runtime active `static + mutable narrative` tant qu'aucune autre projection n'a ete explicitement decidee.
-- [ ] Garder les routes admin `POST /api/admin/identity/static`, `POST /api/admin/identity/mutable`, `GET /api/admin/identity/read-model` et `GET /api/admin/identity/runtime-representations`, mais les faire dire vrai sur le nouveau regime.
+- [x] Garder les routes admin `POST /api/admin/identity/static`, `POST /api/admin/identity/mutable`, `GET /api/admin/identity/read-model` et `GET /api/admin/identity/runtime-representations`, mais les faire dire vrai sur le nouveau regime.
 - [x] Garder la politique de logs compacts sans dump de contenu brut.
 
 ### C4. Ce qui devra seulement etre requalifie
