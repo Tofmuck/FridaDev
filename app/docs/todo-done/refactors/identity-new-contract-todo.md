@@ -1,17 +1,18 @@
-# Identity New Contract - TODO operatoire code-first
+# Identity New Contract - Archive operatoire de cloture
 
-Statut: TODO operatoire ouvert
-Classement: `app/docs/todo-todo/memory/`
+Statut: chantier termine, archive le 2026-04-18
+Classement: `app/docs/todo-done/refactors/`
 Source doctrinale: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
-Portee: traduire le plan doctrinal en lots d'implementation, de migration, de nettoyage legacy, d'admin, d'observabilite et de tests
+Portee: conserver la trace lotable du chantier operatoire termine, ses preuves, ses lots fermes et ses decisions de migration
 Decision du 2026-04-17: conserver le document doctrinal existant comme plan cible, puis produire ici un TODO operatoire fonde sur l'etat reel du code courant
 Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO suit desormais l'etat reel post-staging/agent periodique, scoring deterministe, promotion et suspension automatique; les tensions `raise_conflict` restent des verdicts conversation-scoped compacts dans la derniere activite periodique, sans reutiliser `identity_conflicts`
+Decision de cloture du 2026-04-18: le chantier operatoire `identity-new-contract` est termine; ce document devient une archive de reference et ne doit plus etre traite comme un TODO actif.
 
 ## 1. Regle de travail
 
 - [x] Le plan doctrinal reste dans `identity-new-contract-plan.md`; ce TODO ne re-raconte pas la doctrine, il la traduit en travail executable.
 - [x] La baseline auditee du 2026-04-17 est maintenant le regime `static + mutable narrative` avec staging distinct, buffer de 15 paires conversation-scoped, agent identitaire periodique fail-closed, scoring deterministe, promotion vers `static` et suspension automatique; B5 et B6 sont fermes dans l'etat courant.
-- [ ] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
+- [x] Garder ce TODO comme check-list lotable: chaque case future doit correspondre a un patch ferme, testable et reversible.
 
 ## A. Audit code-first de l'existant
 
@@ -191,8 +192,8 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### E3. References depot a garder separees
 
-- [x] Garder `README.md`, `app/docs/README.md` et `AGENTS.md` avec deux references distinctes: `identity-new-contract-plan.md` pour la doctrine cible et `identity-new-contract-todo.md` pour le chantier operatoire.
-- [x] Eviter de re-fusionner plus tard le plan doctrinal et le TODO operatoire dans un meme fichier.
+- [x] Garder `README.md`, `app/docs/README.md` et `AGENTS.md` avec deux references distinctes: `identity-new-contract-plan.md` pour la doctrine cible active et `app/docs/todo-done/refactors/identity-new-contract-todo.md` pour l'archive operatoire de cloture.
+- [x] Eviter de re-fusionner plus tard le plan doctrinal actif et l'archive operatoire de cloture dans un meme fichier.
 
 ## F. Sort explicite de l'ancien prompt `identity_mutable_rewriter`
 

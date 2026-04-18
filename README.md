@@ -139,8 +139,8 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - Active hermeneutic post-stabilization TODO: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
 - Active doctrinal plan for the new identity contract: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
-- Active operational TODO for the new identity contract: `app/docs/todo-todo/memory/identity-new-contract-todo.md`
-- Identity reading rule: keep those two references distinct; the `plan` stays doctrinal, the `TODO` stays operational, and they should not be merged back together.
+- Archived operational closure for the new identity contract: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
+- Identity reading rule: keep those two references distinct; the `plan` stays doctrinal and active, the archive preserves the closed operational workstream, and they should not be merged back together.
 - Archived hermeneutic implementation roadmap: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
@@ -323,8 +323,8 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
 - Plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `app/docs/todo-todo/memory/identity-new-contract-plan.md`
-- TODO operatoire code-first du nouveau contrat identitaire: `app/docs/todo-todo/memory/identity-new-contract-todo.md`
-- Regle de lecture identity: garder ces deux references distinctes; le `plan` fixe la doctrine cible, le `TODO` pilote le chantier operatoire, et ils ne doivent pas etre refusionnes.
+- Archive operatoire de cloture du nouveau contrat identitaire: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
+- Regle de lecture identity: garder ces deux references distinctes; le `plan` fixe la doctrine cible active, l'archive preserve la trace du chantier operatoire termine, et ils ne doivent pas etre refusionnes.
 - Archive de la grande roadmap hermeneutique: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
