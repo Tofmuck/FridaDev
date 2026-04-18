@@ -294,7 +294,7 @@ def identity_mutable_edit_response(
                 validation_ok=False,
                 validation_error=validation.reason_code,
                 reason_code=validation.reason_code,
-                error='mutable prompt-like interdite',
+                error='contenu mutable irrecevable',
             )
             audit.log_compact_edit(
                 admin_logs_module,

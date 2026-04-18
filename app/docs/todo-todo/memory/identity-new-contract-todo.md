@@ -28,7 +28,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 - [x] `app/prompts/identity_periodic_agent.txt` remplace le prompt runtime actif et demande un JSON strict par sujet avec operations locales et bloc `meta`.
 - [x] Le contrat technique actif n'accepte plus `rewrite/no_change`; il attend `no_change|add|tighten|merge|raise_conflict`, plus `meta.execution_status`, `meta.buffer_pairs_count` et `meta.window_complete`.
 - [x] `app/memory/memory_identity_periodic_apply.py::validate_periodic_agent_contract()` ferme la structure du JSON, interdit les mixes `no_change + autres ops` et exige les ancres explicites de `tighten` et `merge`.
-- [x] `app/identity/mutable_identity_validation.py` reste seulement un garde prompt-like/system/tool/runtime meta; la fermeture metier contre preferences, conforts conversationnels et reprises utilitaires reste a enrichir.
+- [x] `app/identity/mutable_identity_validation.py` ferme maintenant aussi l'entree metier du `mutable`: refus prompt-like, preferences conversationnelles, conforts d'echange, cadrages utilitaires, positionnements relationnels trop faibles et formulations non assez identitaires.
 - [x] `app/memory/arbiter.py::run_identity_periodic_agent()` appelle maintenant un LLM unique `identity_periodic_agent` avec `temperature=0.0`, `max_tokens=1400` et une sortie attendue a operations locales.
 
 ### A3. Persistence de la mutable et projection active
@@ -51,7 +51,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### A5. Specs, docs et tests qui encodent encore l'ancien regime
 
-- [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne maintenant le budget admin sur le regime periodique actif, mais autorise encore des preferences de conversation sur des themes techniques et n'expose pas le staging.
+- [x] `app/docs/states/specs/identity-mutable-edit-contract.md` aligne maintenant le budget admin et la garde d'admission sur le regime periodique actif; il reste borne a la mutable canonique et n'expose pas le staging.
 - [x] `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` presentent maintenant `IDENTITY_MUTABLE_TARGET_CHARS = 3000` et `IDENTITY_MUTABLE_MAX_CHARS = 3300` comme doctrine verrouillee du regime periodique actif; la requalification complete des surfaces admin reste a faire.
 - [x] `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` racontent maintenant le staging, le verdict agent utile et la separation legacy diagnostique / canon actif.
 - [x] `app/tests/unit/memory/test_identity_mutable_rewriter_phase1b.py` est maintenant borne a une compatibilite legacy retiree: il ne valide plus `rewrite/no_change` comme verite runtime active et n'attend plus d'ecriture canonique.
@@ -121,7 +121,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 - [x] Requalifier `app/prompts/identity_mutable_rewriter.txt` en repere legacy retire, pour qu'il ne puisse plus se faire passer pour un prompt runtime actif.
 - [x] Requalifier `app/memory/memory_identity_mutable_rewriter.py::validate_rewriter_contract()` en shim legacy retire fail-closed, hors regime runtime actif.
-- [ ] Remplacer `app/identity/mutable_identity_validation.py` comme simple garde prompt-like par une garde d'admission plus riche qui refuse aussi preferences, conforts conversationnels et formulations utilitaires.
+- [x] Remplacer `app/identity/mutable_identity_validation.py` comme simple garde prompt-like par une garde d'admission plus riche qui refuse aussi preferences, conforts conversationnels et formulations utilitaires.
 - [x] Retirer les evenements `identity_mutable_rewrite` et `identity_mutable_rewrite_apply` de l'observabilite active, au profit d'un contrat qui raconte le regime reel.
 - [x] Remplacer les assumptions `updated_by = identity_mutable_rewriter` et `update_reason = rewrite` dans les surfaces admin/tests par une semantique qui distingue agent periodique, application deterministe, promotion et correction operateur.
 
@@ -176,7 +176,7 @@ Decision runtime du 2026-04-17: les lots B1-B6 sont maintenant actifs; ce TODO s
 
 ### E1. Documents a modifier quand la migration runtime commencera
 
-- [ ] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
+- [x] Modifier `app/docs/states/specs/identity-mutable-edit-contract.md` pour retirer les formulations qui admettent encore preferences de conversation, positionnement relationnel ou interets utilitaires comme contenu mutable recevable.
 - [ ] Requalifier `app/docs/states/specs/identity-governance-contract.md` et `app/identity/identity_governance.py` au-dela du simple budget `3000/3300` pour rendre visibles scoring, promotion, staging et suspension sans les traiter comme de simples caps.
 - [x] Modifier `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` pour introduire `identity_staging`, le dernier verdict agent et la suspension automatique.
 - [x] Modifier `app/docs/states/specs/log-module-contract.md` pour decrire les champs du nouveau regime identitaire.

@@ -22,7 +22,7 @@ from identity import mutable_identity_validation
 class MutableIdentityValidationTests(unittest.TestCase):
     def test_accepts_narrative_identity_text(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
-            'Frida garde une voix sobre, precise et calme, avec une continuite relationnelle stable.'
+            'Frida garde une voix sobre, precise et calme, avec une tenue stable.'
         )
 
         self.assertTrue(result.ok)
@@ -65,16 +65,56 @@ class MutableIdentityValidationTests(unittest.TestCase):
             'Tof aime discuter du runtime, des pipelines et des architectures complexes.'
         )
 
-        self.assertTrue(result.ok)
-        self.assertEqual(result.reason_code, 'ok')
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_conversational_preference')
 
-    def test_accepts_user_interest_in_technical_markdown_topics(self) -> None:
+    def test_accepts_durable_technical_orientation_when_it_is_descriptive(self) -> None:
         result = mutable_identity_validation.validate_mutable_identity_content(
-            'Tof aime comparer Markdown, JSON et XML quand il discute d outillage documentaire.'
+            'Tof garde une attention stable aux architectures lisibles et aux structures techniques coherentes.'
         )
 
         self.assertTrue(result.ok)
         self.assertEqual(result.reason_code, 'ok')
+
+    def test_accepts_strong_relational_posture_when_it_stays_identity_focused(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Frida garde une presence sobre et non intrusive.'
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.reason_code, 'ok')
+
+    def test_rejects_conversational_comfort_statement(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Tof se sent rassure quand on reformule calmement les reponses.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_conversational_preference')
+
+    def test_rejects_utilitarian_framing(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Frida garde des reperes utiles pour mieux repondre au prochain tour.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_utilitarian_framing')
+
+    def test_rejects_weak_relational_positioning(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Frida cherche une proximite rassurante dans l echange.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_weak_relational_positioning')
+
+    def test_rejects_sentence_that_is_not_a_declarative_identity_statement(self) -> None:
+        result = mutable_identity_validation.validate_mutable_identity_content(
+            'Le dialogue revient souvent sur le runtime et les pipelines.'
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, 'mutable_content_not_identity_statement')
 
 
 if __name__ == '__main__':

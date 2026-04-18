@@ -114,9 +114,9 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertNotIn('content', observed['logs'][0][1])
         self.assertNotIn('reason', observed['logs'][0][1])
 
-    def test_identity_mutable_edit_route_accepts_narrative_technical_interest(self) -> None:
+    def test_identity_mutable_edit_route_accepts_durable_technical_orientation(self) -> None:
         observed = {'upsert': [], 'clear': [], 'logs': []}
-        current = {'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'}}
+        current = {'user': {'subject': 'user', 'content': 'Utilisateur garde une orientation stable.'}}
 
         original_get_mutable_identity = self.server.memory_store.get_mutable_identity
         original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity
@@ -142,8 +142,8 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
                 json={
                     'subject': 'user',
                     'action': 'set',
-                    'content': 'Tof aime discuter du runtime, des pipelines et des architectures complexes.',
-                    'reason': 'interet durable',
+                    'content': 'Tof garde une attention stable aux architectures lisibles et aux structures techniques coherentes.',
+                    'reason': 'orientation identitaire durable',
                 },
             )
         finally:
@@ -157,10 +157,10 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertTrue(data['ok'])
         self.assertEqual(data['reason_code'], 'set_applied')
         self.assertEqual(len(observed['upsert']), 1)
-        self.assertIn('runtime', observed['upsert'][0][1])
+        self.assertIn('architectures lisibles', observed['upsert'][0][1])
 
     def test_identity_mutable_edit_route_supports_clear(self) -> None:
-        current = {'user': {'subject': 'user', 'content': 'Utilisateur prefere la clarte.'}}
+        current = {'user': {'subject': 'user', 'content': 'Utilisateur garde une orientation stable.'}}
         observed = {'logs': []}
         original_get_mutable_identity = self.server.memory_store.get_mutable_identity
         original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity

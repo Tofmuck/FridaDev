@@ -178,7 +178,7 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
             )
             user_item = memory_store.upsert_mutable_identity(
                 'user',
-                'L utilisateur prefere des reponses courtes.',
+                'L utilisateur garde une orientation stable et concise.',
                 updated_by='identity-extractor',
                 update_reason='initial_seed',
             )

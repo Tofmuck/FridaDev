@@ -66,7 +66,7 @@ def _build_near_target_mutable(*, slack: int = 70) -> str:
     content = ''
     index = 1
     while len(content) < (int(config.IDENTITY_MUTABLE_TARGET_CHARS) - max(1, int(slack))):
-        lines.append(f'Trait de fond stable numero {index}.')
+        lines.append(f'Tof garde un axe stable {index}.')
         content = '\n'.join(lines)
         index += 1
     return content
@@ -302,6 +302,42 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(user_outcome['action'], 'raise_conflict')
         self.assertEqual(user_outcome['reason_code'], 'raise_conflict_open')
         self.assertEqual(user_outcome['threshold_verdict'], 'accepted')
+
+    def test_rejects_utilitarian_proposition_fail_closed(self) -> None:
+        proposition = 'Tof garde un repere utile pour mieux repondre au prochain tour.'
+        store = _MutableStore(
+            {
+                'user': {
+                    'subject': 'user',
+                    'content': 'Tof garde une orientation stable.',
+                    'updated_by': 'identity_periodic_agent',
+                    'update_reason': 'periodic_agent',
+                }
+            }
+        )
+
+        summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+            _contract_for_user_operations(
+                {
+                    'kind': 'add',
+                    'proposition': proposition,
+                    'reason': 'signal trop utilitaire',
+                },
+            ),
+            buffer_pairs=_supportive_buffer(
+                proposition=proposition,
+                support_indexes=set(range(15)),
+            ),
+            memory_store_module=store,
+            load_llm_identity_fn=lambda: 'Frida garde une tenue sobre.',
+            load_user_identity_fn=lambda: 'Tof garde une orientation stable.',
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'all_or_nothing_rejected')
+        self.assertEqual(summary['rejection_reasons'], {'user': 'mutable_content_utilitarian_framing'})
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], 'Tof garde une orientation stable.')
 
     def test_promotes_strongest_candidate_to_static_when_mutable_is_full(self) -> None:
         strong = 'Tof maintient une orientation stable et ritualisee.'
