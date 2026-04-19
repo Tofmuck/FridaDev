@@ -530,7 +530,7 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(suspend_result.validated_output["final_judgment_posture"], "suspend")
         self.assertEqual(suspend_result.validated_output["final_output_regime"], "simple")
 
-    def test_build_validated_output_keeps_answer_for_low_ambiguity_direct_identity_revelation(self) -> None:
+    def test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation(self) -> None:
         requests_module = _FakeRequests(
             [
                 _FakeResponse(
@@ -559,15 +559,18 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module=requests_module,
         )
 
-        self.assertEqual(result.validated_output["validation_decision"], "confirm")
-        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
-        self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertEqual(result.validated_output["validation_decision"], "clarify")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "clarify")
+        self.assertEqual(result.validated_output["final_output_regime"], "meta")
+        self.assertFalse(result.validated_output["arbiter_followed_upstream"])
         self.assertEqual(
-            result.validated_output["arbiter_reason"],
-            "reponse directe sur tour local peu ambigu",
+            result.validated_output["advisory_recommendations_overridden"],
+            ["primary_judgment_posture", "primary_output_regime_proposed"],
         )
+        self.assertEqual(result.validated_output["applied_hard_guards"], [])
+        self.assertEqual(result.validated_output["arbiter_reason"], "cadrage supplementaire")
 
-    def test_build_validated_output_keeps_answer_for_low_ambiguity_interrogation(self) -> None:
+    def test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_interrogation(self) -> None:
         requests_module = _FakeRequests(
             [
                 _FakeResponse(
@@ -596,9 +599,12 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module=requests_module,
         )
 
-        self.assertEqual(result.validated_output["validation_decision"], "confirm")
-        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
-        self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertEqual(result.validated_output["validation_decision"], "clarify")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "clarify")
+        self.assertEqual(result.validated_output["final_output_regime"], "meta")
+        self.assertFalse(result.validated_output["arbiter_followed_upstream"])
+        self.assertEqual(result.validated_output["applied_hard_guards"], [])
+        self.assertEqual(result.validated_output["arbiter_reason"], "cadrage supplementaire")
 
     def test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists(self) -> None:
         requests_module = _FakeRequests(

@@ -441,7 +441,9 @@ class ServerAdminSettingsPhase5Tests(unittest.TestCase):
         self.assertEqual(data['payload']['primary_model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 80)
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/validation_agent.txt')
-        self.assertIn('validation_decision', data['readonly_info']['validated_output_contract']['value'])
+        self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])
+        self.assertIn('final_output_regime', data['readonly_info']['validated_output_contract']['value'])
+        self.assertIn('arbiter_reason', data['readonly_info']['validated_output_contract']['value'])
 
     def test_get_admin_settings_hermeneutic_agent_models_report_seed_default_origin_without_db(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

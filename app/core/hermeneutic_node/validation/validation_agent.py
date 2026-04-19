@@ -30,7 +30,6 @@ RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple")
-_NON_AMBIGUOUS_DIRECT_GESTURES = ("exposition", "positionnement", "adresse_relationnelle", "interrogation")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "schema_version",
@@ -540,30 +539,8 @@ def _build_messages(
     ]
 
 
-def _canonical_low_ambiguity_direct_turn(canonical_inputs: Mapping[str, Any]) -> bool:
-    user_turn_input = _mapping(canonical_inputs.get("user_turn_input"))
-    user_turn_signals = _mapping(canonical_inputs.get("user_turn_signals"))
-
-    gesture = _text(user_turn_input.get("geste_dialogique_dominant"))
-    if gesture not in _NON_AMBIGUOUS_DIRECT_GESTURES:
-        return False
-    if bool(user_turn_signals.get("ambiguity_present")):
-        return False
-    if bool(user_turn_signals.get("underdetermination_present")):
-        return False
-
-    active_signal_families = [
-        _text(value)
-        for value in (user_turn_signals.get("active_signal_families") or [])
-        if _text(value)
-    ]
-    return not active_signal_families
-
-
 def _normalized_arbiter_verdict(
     *,
-    primary_verdict: Mapping[str, Any],
-    canonical_inputs: Mapping[str, Any],
     final_judgment_posture: str,
     final_output_regime: str,
     arbiter_reason: str,
@@ -571,30 +548,6 @@ def _normalized_arbiter_verdict(
     normalized_posture = _text(final_judgment_posture)
     normalized_output_regime = _text(final_output_regime)
     normalized_reason = _compact_text(_text(arbiter_reason), max_chars=160)
-    if normalized_posture != "clarify":
-        return {
-            "final_judgment_posture": normalized_posture,
-            "final_output_regime": normalized_output_regime,
-            "arbiter_reason": normalized_reason,
-        }
-    if _text(primary_verdict.get("judgment_posture")) != "answer":
-        return {
-            "final_judgment_posture": normalized_posture,
-            "final_output_regime": normalized_output_regime,
-            "arbiter_reason": normalized_reason,
-        }
-    if _validated_source_conflicts(primary_verdict.get("source_conflicts")):
-        return {
-            "final_judgment_posture": normalized_posture,
-            "final_output_regime": normalized_output_regime,
-            "arbiter_reason": normalized_reason,
-        }
-    if _canonical_low_ambiguity_direct_turn(canonical_inputs):
-        return {
-            "final_judgment_posture": "answer",
-            "final_output_regime": "simple",
-            "arbiter_reason": "reponse directe sur tour local peu ambigu",
-        }
     return {
         "final_judgment_posture": normalized_posture,
         "final_output_regime": normalized_output_regime,
@@ -708,8 +661,6 @@ def build_validated_output(
                 requests_module=requests_module,
             )
             normalized_verdict = _normalized_arbiter_verdict(
-                primary_verdict=primary_verdict_payload,
-                canonical_inputs=canonical_inputs_payload,
                 final_judgment_posture=verdict_payload["final_judgment_posture"],
                 final_output_regime=verdict_payload["final_output_regime"],
                 arbiter_reason=verdict_payload["arbiter_reason"],
