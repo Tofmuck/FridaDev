@@ -244,7 +244,7 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertIn('referent', payload['active_signal_families'])
         self.assertTrue(payload['ambiguity_present'])
 
-    def test_build_user_turn_signals_keeps_referent_after_long_non_resolutive_context(self) -> None:
+    def test_build_user_turn_signals_uses_last_substantive_assistant_message_as_resolutive_context(self) -> None:
         payload = user_turn_input.build_user_turn_signals(
             user_message='Corrige ça',
             recent_window_input_payload={
@@ -269,8 +269,40 @@ class UserTurnInputTests(unittest.TestCase):
             },
         )
 
-        self.assertIn('referent', payload['active_signal_families'])
-        self.assertTrue(payload['ambiguity_present'])
+        self.assertEqual(payload['active_signal_families'], [])
+        self.assertFalse(payload['ambiguity_present'])
+
+    def test_build_user_turn_signals_does_not_treat_long_interrogative_turn_with_ca_as_referent(self) -> None:
+        payload = user_turn_input.build_user_turn_signals(
+            user_message="Je me rends compte de ça... t'as vu l'heure ?",
+            recent_window_input_payload={
+                'turns': [
+                    {
+                        'turn_status': 'complete',
+                        'messages': [
+                            {
+                                'role': 'assistant',
+                                'content': 'On est plus trop le matin, il est deja midi.',
+                                'timestamp': '2026-04-01T09:00:00Z',
+                            },
+                        ],
+                    },
+                    {
+                        'turn_status': 'in_progress',
+                        'messages': [
+                            {
+                                'role': 'user',
+                                'content': "Je me rends compte de ça... t'as vu l'heure ?",
+                                'timestamp': '2026-04-01T10:00:00Z',
+                            },
+                        ],
+                    },
+                ],
+            },
+        )
+
+        self.assertEqual(payload['active_signal_families'], [])
+        self.assertFalse(payload['ambiguity_present'])
 
     def test_build_user_turn_signals_uses_resolutive_recent_window_to_avoid_gross_referent_false_positive(self) -> None:
         with_context = user_turn_input.build_user_turn_signals(

@@ -391,7 +391,16 @@ class ValidationAgentTests(unittest.TestCase):
             primary_verdict=_primary_verdict(judgment_posture="answer"),
             justifications={},
             validation_dialogue_context=_dialogue_context(),
-            canonical_inputs=_canonical_inputs(),
+            canonical_inputs={
+                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "orientation"},
+                "user_turn_signals": {
+                    "present": True,
+                    "ambiguity_present": False,
+                    "underdetermination_present": True,
+                    "active_signal_families": ["visee"],
+                    "active_signal_families_count": 1,
+                },
+            },
             requests_module=clarify_requests,
         )
         self.assertEqual(clarify_result.validated_output["final_judgment_posture"], "clarify")
@@ -443,6 +452,37 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
         self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
 
+    def test_build_validated_output_keeps_answer_for_low_ambiguity_interrogation(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(judgment_posture="answer"),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "T'as vu l'heure ?"}],
+            },
+            canonical_inputs={
+                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "interrogation"},
+                "user_turn_signals": {
+                    "present": True,
+                    "ambiguity_present": False,
+                    "underdetermination_present": False,
+                    "active_signal_families": [],
+                    "active_signal_families_count": 0,
+                },
+            },
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.validated_output["validation_decision"], "confirm")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
+        self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
+
     def test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists(self) -> None:
         requests_module = _FakeRequests(
             [
@@ -459,6 +499,36 @@ class ValidationAgentTests(unittest.TestCase):
             },
             canonical_inputs={
                 "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "orientation"},
+                "user_turn_signals": {
+                    "present": True,
+                    "ambiguity_present": True,
+                    "underdetermination_present": False,
+                    "active_signal_families": ["referent"],
+                    "active_signal_families_count": 1,
+                },
+            },
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.validated_output["validation_decision"], "clarify")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "clarify")
+
+    def test_build_validated_output_keeps_clarify_for_ambiguous_interrogation(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(judgment_posture="answer"),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "Et ca, t'en penses quoi ?"}],
+            },
+            canonical_inputs={
+                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "interrogation"},
                 "user_turn_signals": {
                     "present": True,
                     "ambiguity_present": True,

@@ -29,7 +29,7 @@ RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
-_NON_AMBIGUOUS_DIRECT_GESTURES = ("exposition", "positionnement", "adresse_relationnelle")
+_NON_AMBIGUOUS_DIRECT_GESTURES = ("exposition", "positionnement", "adresse_relationnelle", "interrogation")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "schema_version",

@@ -337,6 +337,50 @@ class PrimaryNodeTests(unittest.TestCase):
         self.assertNotEqual(payload["primary_verdict"]["proof_regime"], "verification_externe_requise")
         self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
 
+    def test_build_primary_node_keeps_low_ambiguity_everyday_interrogation_in_answer_posture(self) -> None:
+        recent_window_payload = {
+            "schema_version": "v1",
+            "max_recent_turns": 5,
+            "turn_count": 1,
+            "has_in_progress_turn": True,
+            "turns": [
+                {
+                    "turn_status": "in_progress",
+                    "messages": [
+                        {
+                            "role": "assistant",
+                            "content": "On est plus trop le matin, il est deja midi.",
+                            "timestamp": "2026-04-02T11:55:00Z",
+                        },
+                        {
+                            "role": "user",
+                            "content": "Je me rends compte de ca... tas vu lheure ?",
+                            "timestamp": "2026-04-02T12:00:00Z",
+                        },
+                    ],
+                }
+            ],
+        }
+        bundle = user_turn_input.build_user_turn_bundle(
+            user_message="Je me rends compte de ca... tas vu lheure ?",
+            recent_window_input_payload=recent_window_payload,
+            time_input_payload={"now_utc_iso": "2026-04-02T10:00:00Z"},
+        )
+
+        payload = primary_node.build_primary_node(
+            conversation_id="conv-everyday",
+            updated_at="2026-04-02T12:00:00Z",
+            time_input=_time(),
+            user_turn_input=bundle["user_turn"],
+            user_turn_signals=bundle["user_turn_signals"],
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+        )
+
+        self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
+        self.assertEqual(payload["primary_verdict"]["discursive_regime"], "simple")
+        self.assertEqual(payload["primary_verdict"]["source_conflicts"], [])
+
     def test_build_primary_node_applies_inertia_before_verdict_and_state(self) -> None:
         payload = primary_node.build_primary_node(
             conversation_id="conv-1",

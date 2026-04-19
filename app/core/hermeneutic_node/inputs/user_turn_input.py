@@ -122,6 +122,8 @@ _WEB_REQUEST_MARKERS = (
     "dans quel article",
     "dans quels articles",
 )
+_MAX_REFERENT_LIGHT_TURN_TOKENS = 6
+_MIN_SUBSTANTIVE_ASSISTANT_CONTEXT_TOKENS = 4
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -221,10 +223,17 @@ def _has_resolutive_prior_context(
         "precedente",
     )
     for message in reversed(messages):
-        normalized_content = _normalize_text(_mapping(message).get("content"))
+        message_payload = _mapping(message)
+        normalized_content = _normalize_text(message_payload.get("content"))
         if not normalized_content:
             continue
         if _contains_any(normalized_content, contextual_terms):
+            return True
+        token_count = len([token for token in normalized_content.split() if token])
+        if (
+            str(message_payload.get("role") or "") == "assistant"
+            and token_count >= _MIN_SUBSTANTIVE_ASSISTANT_CONTEXT_TOKENS
+        ):
             return True
         return False
     return False
@@ -528,6 +537,10 @@ def _has_referent_signal(
     user_message: str,
 ) -> bool:
     if not _contains_any(text, ("ca", "cela", "ce point", "la dessus", "la-dessus", "ceci", "lui")):
+        return False
+    normalized_text = _normalize_text(text)
+    token_count = len([token for token in normalized_text.split() if token])
+    if token_count > _MAX_REFERENT_LIGHT_TURN_TOKENS:
         return False
     return not _has_resolutive_prior_context(
         recent_window_input_payload=recent_window_input_payload,
