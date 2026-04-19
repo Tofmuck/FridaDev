@@ -321,6 +321,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Jalon historique EN (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Contrat de pouvoir de l'arbitre de reponse pour le lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
