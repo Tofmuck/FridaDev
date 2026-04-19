@@ -168,6 +168,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`: mini-lot admin archive sur l'affichage `mode depuis` / `observation du mode`.
 - `app/docs/todo-done/notes/hermeneutical-add-todo.md`: archive de la grande roadmap hermeneutique, utile pour relire le chantier de stabilisation deja livre.
 - `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`: reliquat memoire/hermeneutique encore actif, borne aux preuves post-rollout / post-stabilisation.
+- `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`: TODO actif d'architecture pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous; a lire separement du reliquat post-stabilisation pour ne pas dissoudre le probleme de pouvoir dans des micro-corrections locales.
 - `app/docs/states/policies/identity-new-contract-plan.md`: plan doctrinal cible du nouveau systeme d'identite; source de verite pour `static`, `mutable`, staging, ponderation et saturation.
 - `app/docs/todo-done/refactors/identity-new-contract-todo.md`: archive operatoire code-first du chantier termine; trace lotable des surfaces runtime/admin/logs/tests/docs migrees, nettoyees ou requalifiees.
 - conserver `identity-new-contract-plan.md` et `identity-new-contract-todo.md` comme deux references distinctes: le plan reste la doctrine cible active, l'archive conserve le chantier operatoire termine; ne pas les refusionner.

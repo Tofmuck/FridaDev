@@ -72,6 +72,7 @@ Notes:
 - note archivee de cloture mini-lot dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - TODO ouvert de post-stabilisation memoire/hermeneutique: `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- TODO actif pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous: `todo-todo/memory/llm-dominant-response-arbiter-todo.md`
 - plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
 - archive operatoire de cloture du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
 - regle de lecture identity: ne pas re-fusionner ces deux documents; le `plan` reste doctrinal et actif, l'archive conserve la trace du chantier termine

@@ -138,6 +138,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - Active hermeneutic post-stabilization TODO: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- Active TODO for the shift to an LLM-dominant response arbiter under hard guardrails: `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`
 - Active doctrinal plan for the new identity contract: `app/docs/states/policies/identity-new-contract-plan.md`
 - Archived operational closure for the new identity contract: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
 - Identity reading rule: keep those two references distinct; the `plan` stays doctrinal and active, the archive preserves the closed operational workstream, and they should not be merged back together.
@@ -322,6 +323,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- TODO actif pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous: `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`
 - Plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `app/docs/states/policies/identity-new-contract-plan.md`
 - Archive operatoire de cloture du nouveau contrat identitaire: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
 - Regle de lecture identity: garder ces deux references distinctes; le `plan` fixe la doctrine cible active, l'archive preserve la trace du chantier operatoire termine, et ils ne doivent pas etre refusionnes.
