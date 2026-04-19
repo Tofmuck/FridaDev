@@ -569,7 +569,7 @@ L'existant utile au chantier est deja reel et reutilisable:
 
 - `chat_turn_logger` fournit deja un seam canonique par `stage`, `status`, `payload_json`, `model`, `reason_code` et persiste ces evenements dans `observability.chat_log_events`;
 - `hermeneutic_node_logger` expose deja des evenements compacts pour `hermeneutic_node_insertion`, `primary_node` et `validation_agent`;
-- le payload `validation_agent` expose deja la base utile du lot 2: `dialogue_messages_count`, `primary_judgment_posture`, `primary_output_regime_proposed`, `validation_decision`, `final_judgment_posture`, `final_output_regime`, `arbiter_followed_upstream`, `advisory_recommendations_followed`, `advisory_recommendations_overridden`, `applied_hard_guards`, `arbiter_reason`, `projected_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
+- le payload `validation_agent` expose deja la base utile du lot 2, puis du lot 4: `dialogue_messages_count`, `upstream_recommendation_posture`, `upstream_output_regime_proposed`, `upstream_active_signal_families`, `upstream_constraint_present`, `validation_decision`, `final_judgment_posture`, `final_output_regime`, `arbiter_followed_upstream`, `advisory_recommendations_followed`, `advisory_recommendations_overridden`, `applied_hard_guards`, `arbiter_reason`, `projected_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
 - `test_chat_turn_logger_phase2.py` verrouille deja la discipline de logs compacts par stage;
 - `test_server_phase14.py` intercepte deja `insert_chat_log_event` sur des seams d'integration, donc le chantier possede deja une couture de preuve live sans surface admin dediee;
 - les notes archivees recentes, notamment sur le web, montrent deja la doctrine utile: observabilite suffisante, compacte, sans dump brut ni replay code obligatoire.
@@ -654,8 +654,10 @@ Le contrat normatif du lot 1 est maintenant fixe dans:
 
 Champs minimaux cibles a rendre visibles, en reutilisant l'existant autant que possible:
 
-- `primary_judgment_posture`
-- `primary_output_regime_proposed`
+- `upstream_recommendation_posture`
+- `upstream_output_regime_proposed`
+- `upstream_active_signal_families`
+- `upstream_constraint_present`
 - `final_judgment_posture`
 - `final_output_regime`
 - `arbiter_followed_upstream`
@@ -855,20 +857,20 @@ Risques:
 - laisser croire que tout devient mou;
 - dupliquer des regles qui devraient vivre dans l'arbitre.
 
-- [ ] Requalifier l'amont comme autorite non souveraine dans le code et les tests.
-- [ ] Faire de `judgment_posture` une recommendation explicite plutot qu'une fermeture de couloir.
-- [ ] Faire de `output_regime` propose un indicateur conseiller plutot qu'un verdict quasi-final.
-- [ ] Rendre visible quelles recommendations sont proposees a l'arbitre.
-- [ ] Preserver les vrais cas ambigus sans redonner a l'amont un pouvoir souverain.
-- [ ] Rendre visible en logs compacts la recommendation amont principale et les familles de signaux actives pertinentes.
-- [ ] Ajouter des tests qui permettent de comparer recommendation amont et verdict final sans reconstituer toute la pile.
+- [x] Requalifier l'amont comme autorite non souveraine dans le code et les tests.
+- [x] Faire de `judgment_posture` une recommendation explicite plutot qu'une fermeture de couloir.
+- [x] Faire de `output_regime` propose un indicateur conseiller plutot qu'un verdict quasi-final.
+- [x] Rendre visible quelles recommendations sont proposees a l'arbitre.
+- [x] Preserver les vrais cas ambigus sans redonner a l'amont un pouvoir souverain.
+- [x] Rendre visible en logs compacts la recommendation amont principale et les familles de signaux actives pertinentes.
+- [x] Ajouter des tests qui permettent de comparer recommendation amont et verdict final sans reconstituer toute la pile.
 
 Critere de completion:
 
-- [ ] La couche amont produit encore ses alertes.
-- [ ] Les alertes ne ferment plus seules le couloir final.
-- [ ] Les cas quotidiens simples et les deictiques reellement ambigus restent bien separes.
-- [ ] Le statut non souverain de l'amont est devenu observable, pas seulement doctrinal.
+- [x] La couche amont produit encore ses alertes.
+- [x] Les alertes ne ferment plus seules le couloir final.
+- [x] Les cas quotidiens simples et les deictiques reellement ambigus restent bien separes.
+- [x] Le statut non souverain de l'amont est devenu observable, pas seulement doctrinal.
 
 Ne pas toucher dans ce lot:
 

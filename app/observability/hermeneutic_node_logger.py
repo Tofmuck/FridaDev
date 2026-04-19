@@ -201,10 +201,29 @@ def build_primary_node_payload(
     primary_payload: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
+    upstream_advisory = _mapping(primary_verdict.get("upstream_advisory"))
     audit = _mapping(primary_verdict.get("audit"))
     degraded_fields = [value for value in (_text(item) for item in _sequence(audit.get("degraded_fields"))) if value]
     return {
-        "judgment_posture": _text(primary_verdict.get("judgment_posture")),
+        "upstream_recommendation_posture": _text(
+            upstream_advisory.get("recommended_judgment_posture") or primary_verdict.get("judgment_posture")
+        ),
+        "upstream_output_regime_proposed": _text(
+            upstream_advisory.get("proposed_output_regime") or primary_verdict.get("discursive_regime")
+        ),
+        "upstream_active_signal_families": [
+            value
+            for value in (
+                _text(item)
+                for item in _sequence(
+                    upstream_advisory.get("active_signal_families")
+                )
+            )
+            if value
+        ],
+        "upstream_constraint_present": bool(
+            upstream_advisory.get("constraint_present", bool(_sequence(primary_verdict.get("source_conflicts"))))
+        ),
         "epistemic_regime": _text(primary_verdict.get("epistemic_regime")),
         "proof_regime": _text(primary_verdict.get("proof_regime")),
         "source_conflicts_count": len(_sequence(primary_verdict.get("source_conflicts"))),
@@ -233,6 +252,7 @@ def build_validation_agent_payload(
     validated_result: Any,
 ) -> dict[str, Any]:
     primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
+    upstream_advisory = _mapping(primary_verdict.get("upstream_advisory"))
     validated_output = _mapping(getattr(validated_result, "validated_output", None))
     validation_context_payload = _mapping(validation_dialogue_context)
     directives = [
@@ -260,8 +280,25 @@ def build_validation_agent_payload(
         "dialogue_truncated": bool(validation_context_payload.get("truncated", False)),
         "current_user_retained": bool(validation_context_payload.get("current_user_retained", False)),
         "last_assistant_retained": bool(validation_context_payload.get("last_assistant_retained", False)),
-        "primary_judgment_posture": _text(primary_verdict.get("judgment_posture")),
-        "primary_output_regime_proposed": _text(primary_verdict.get("discursive_regime")),
+        "upstream_recommendation_posture": _text(
+            upstream_advisory.get("recommended_judgment_posture") or primary_verdict.get("judgment_posture")
+        ),
+        "upstream_output_regime_proposed": _text(
+            upstream_advisory.get("proposed_output_regime") or primary_verdict.get("discursive_regime")
+        ),
+        "upstream_active_signal_families": [
+            value
+            for value in (
+                _text(item)
+                for item in _sequence(
+                    upstream_advisory.get("active_signal_families")
+                )
+            )
+            if value
+        ],
+        "upstream_constraint_present": bool(
+            upstream_advisory.get("constraint_present", bool(_sequence(primary_verdict.get("source_conflicts"))))
+        ),
         "validation_decision": _text(validated_output.get("validation_decision")),
         "final_judgment_posture": _text(validated_output.get("final_judgment_posture")),
         "final_output_regime": _text(validated_output.get("final_output_regime")),

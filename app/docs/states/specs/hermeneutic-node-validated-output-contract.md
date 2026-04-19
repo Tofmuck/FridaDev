@@ -8,6 +8,7 @@ Note runtime 2026-04-19:
 - la sortie souveraine n'est plus une combinaison normative pilotee par `validation_decision`;
 - `validated_output` expose maintenant directement le verdict final arbitral;
 - `validation_decision` peut subsister comme trace legacy derivee, mais elle n'a plus d'autorite normative propre.
+- le lot 4 runtime nomme maintenant les recommandations suivies ou cassees depuis la couche `upstream_advisory`, et non depuis des champs amont encore interpretes comme quasi-souverains.
 
 ## 1. Purpose
 
@@ -147,7 +148,7 @@ La forme canonique minimale retenue est:
     "pipeline_directives_final": ["posture_answer", "regime_simple"],
     "arbiter_followed_upstream": False,
     "advisory_recommendations_followed": [],
-    "advisory_recommendations_overridden": ["primary_judgment_posture", "primary_output_regime_proposed"],
+    "advisory_recommendations_overridden": ["upstream_recommendation_posture", "upstream_output_regime_proposed"],
     "applied_hard_guards": [],
     "arbiter_reason": "lecture locale suffisante",
 }

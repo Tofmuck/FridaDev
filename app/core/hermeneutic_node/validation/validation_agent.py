@@ -43,10 +43,19 @@ _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "time_reference_mode",
     "source_priority",
     "source_conflicts",
+    "upstream_advisory",
     "pipeline_directives_provisional",
     "audit",
 }
 _ALLOWED_PRIMARY_AUDIT_KEYS = {"fail_open", "state_used", "degraded_fields"}
+_ALLOWED_UPSTREAM_ADVISORY_KEYS = {
+    "schema_version",
+    "recommended_judgment_posture",
+    "proposed_output_regime",
+    "active_signal_families",
+    "active_signal_families_count",
+    "constraint_present",
+}
 _ALLOWED_MODEL_PAYLOAD_KEYS = {
     "schema_version",
     "final_judgment_posture",
@@ -207,7 +216,10 @@ def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
 
 def _validated_primary_verdict(value: Any) -> dict[str, Any]:
     payload = _mapping(value)
-    if set(payload.keys()) != _ALLOWED_PRIMARY_VERDICT_KEYS:
+    payload_keys = set(payload.keys())
+    if payload_keys != _ALLOWED_PRIMARY_VERDICT_KEYS and payload_keys != (
+        _ALLOWED_PRIMARY_VERDICT_KEYS - {"upstream_advisory"}
+    ):
         raise ValueError("invalid_primary_verdict")
     if _text(payload.get("schema_version")) != SCHEMA_VERSION:
         raise ValueError("invalid_primary_verdict")
@@ -235,6 +247,13 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
     if not isinstance(audit_payload.get("state_used"), bool):
         raise ValueError("invalid_primary_verdict")
 
+    upstream_advisory_payload = _validated_upstream_advisory(
+        payload.get("upstream_advisory"),
+        fallback_judgment_posture=judgment_posture,
+        fallback_output_regime=_text(payload.get("discursive_regime")),
+        fallback_constraint_present=bool(payload.get("source_conflicts")),
+    )
+
     return {
         "schema_version": SCHEMA_VERSION,
         "epistemic_regime": _text(payload.get("epistemic_regime")),
@@ -246,6 +265,7 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
         "time_reference_mode": _text(payload.get("time_reference_mode")),
         "source_priority": _validated_source_priority(payload.get("source_priority")),
         "source_conflicts": _validated_source_conflicts(payload.get("source_conflicts")),
+        "upstream_advisory": upstream_advisory_payload,
         "pipeline_directives_provisional": _validated_string_list(
             payload.get("pipeline_directives_provisional"),
             error_code="invalid_primary_verdict",
@@ -260,6 +280,71 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
             if audit_payload.get("degraded_fields") != []
             else [],
         },
+    }
+
+
+def _validated_upstream_advisory(
+    value: Any,
+    *,
+    fallback_judgment_posture: str,
+    fallback_output_regime: str,
+    fallback_constraint_present: bool,
+) -> dict[str, Any]:
+    payload = _mapping(value)
+    if not payload:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "recommended_judgment_posture": fallback_judgment_posture,
+            "proposed_output_regime": fallback_output_regime,
+            "active_signal_families": [],
+            "active_signal_families_count": 0,
+            "constraint_present": bool(fallback_constraint_present),
+        }
+
+    if set(payload.keys()) != _ALLOWED_UPSTREAM_ADVISORY_KEYS:
+        raise ValueError("invalid_primary_verdict")
+    if _text(payload.get("schema_version")) != SCHEMA_VERSION:
+        raise ValueError("invalid_primary_verdict")
+
+    recommended_judgment_posture = _text(payload.get("recommended_judgment_posture"))
+    if recommended_judgment_posture not in ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+        raise ValueError("invalid_primary_verdict")
+
+    proposed_output_regime = _text(payload.get("proposed_output_regime"))
+    if not proposed_output_regime:
+        raise ValueError("invalid_primary_verdict")
+
+    active_signal_families = (
+        _validated_string_list(
+            payload.get("active_signal_families"),
+            error_code="invalid_primary_verdict",
+        )
+        if payload.get("active_signal_families") != []
+        else []
+    )
+    if not isinstance(payload.get("constraint_present"), bool):
+        raise ValueError("invalid_primary_verdict")
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "recommended_judgment_posture": recommended_judgment_posture,
+        "proposed_output_regime": proposed_output_regime,
+        "active_signal_families": active_signal_families,
+        "active_signal_families_count": len(active_signal_families),
+        "constraint_present": bool(payload.get("constraint_present")),
+    }
+
+
+def _upstream_advisory(primary_verdict: Mapping[str, Any]) -> Mapping[str, Any]:
+    payload = _mapping(primary_verdict.get("upstream_advisory"))
+    if payload:
+        return payload
+    return {
+        "recommended_judgment_posture": _text(primary_verdict.get("judgment_posture")),
+        "proposed_output_regime": _text(primary_verdict.get("discursive_regime")),
+        "active_signal_families": [],
+        "active_signal_families_count": 0,
+        "constraint_present": bool(primary_verdict.get("source_conflicts")),
     }
 
 
@@ -357,8 +442,8 @@ def _validated_model_verdict(value: Any) -> dict[str, str]:
 
 def _legacy_validation_decision(
     *,
-    primary_judgment_posture: str,
-    primary_output_regime_proposed: str,
+    upstream_recommendation_posture: str,
+    upstream_output_regime_proposed: str,
     final_judgment_posture: str,
     final_output_regime: str,
 ) -> str:
@@ -366,9 +451,9 @@ def _legacy_validation_decision(
         return "suspend"
     if final_judgment_posture == "clarify":
         return "clarify"
-    if final_judgment_posture != primary_judgment_posture:
+    if final_judgment_posture != upstream_recommendation_posture:
         return "challenge"
-    if final_output_regime != primary_output_regime_proposed:
+    if final_output_regime != upstream_output_regime_proposed:
         return "challenge"
     return "confirm"
 
@@ -381,15 +466,16 @@ def _advisory_trace(
 ) -> tuple[bool, list[str], list[str]]:
     followed: list[str] = []
     overridden: list[str] = []
-    primary_judgment_posture = _text(primary_verdict.get("judgment_posture"))
-    primary_output_regime_proposed = _text(primary_verdict.get("discursive_regime"))
+    upstream_advisory = _upstream_advisory(primary_verdict)
+    upstream_recommendation_posture = _text(upstream_advisory.get("recommended_judgment_posture"))
+    upstream_output_regime_proposed = _text(upstream_advisory.get("proposed_output_regime"))
 
-    if primary_judgment_posture:
-        target = followed if primary_judgment_posture == final_judgment_posture else overridden
-        target.append("primary_judgment_posture")
-    if primary_output_regime_proposed:
-        target = followed if primary_output_regime_proposed == final_output_regime else overridden
-        target.append("primary_output_regime_proposed")
+    if upstream_recommendation_posture:
+        target = followed if upstream_recommendation_posture == final_judgment_posture else overridden
+        target.append("upstream_recommendation_posture")
+    if upstream_output_regime_proposed:
+        target = followed if upstream_output_regime_proposed == final_output_regime else overridden
+        target.append("upstream_output_regime_proposed")
 
     return (not overridden and bool(followed), followed, overridden)
 
@@ -415,8 +501,9 @@ def _build_validated_output_payload(
     fail_open: bool,
     applied_hard_guards: Sequence[str],
 ) -> dict[str, Any]:
-    primary_judgment_posture = _text(primary_verdict.get("judgment_posture"))
-    primary_output_regime_proposed = _text(primary_verdict.get("discursive_regime"))
+    upstream_advisory = _upstream_advisory(primary_verdict)
+    upstream_recommendation_posture = _text(upstream_advisory.get("recommended_judgment_posture"))
+    upstream_output_regime_proposed = _text(upstream_advisory.get("proposed_output_regime"))
     arbiter_followed_upstream, followed, overridden = _advisory_trace(
         primary_verdict=primary_verdict,
         final_judgment_posture=final_judgment_posture,
@@ -425,8 +512,8 @@ def _build_validated_output_payload(
     return {
         "schema_version": SCHEMA_VERSION,
         "validation_decision": _legacy_validation_decision(
-            primary_judgment_posture=primary_judgment_posture,
-            primary_output_regime_proposed=primary_output_regime_proposed,
+            upstream_recommendation_posture=upstream_recommendation_posture,
+            upstream_output_regime_proposed=upstream_output_regime_proposed,
             final_judgment_posture=final_judgment_posture,
             final_output_regime=final_output_regime,
         ),

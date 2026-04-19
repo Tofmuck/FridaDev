@@ -56,6 +56,12 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return {}
 
 
+def _sequence(value: Any) -> Sequence[Any]:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return value
+    return ()
+
+
 def _text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -104,6 +110,30 @@ def _pipeline_directives(
     return _stable_unique(directives)
 
 
+def _build_upstream_advisory(
+    *,
+    judgment_posture: str,
+    output_regime: Mapping[str, str],
+    user_turn_signals: Mapping[str, Any] | None,
+    source_conflicts: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    signal_families = _stable_unique(
+        [
+            _text(item)
+            for item in _sequence(_mapping(user_turn_signals).get("active_signal_families"))
+            if _text(item)
+        ]
+    )
+    return {
+        "schema_version": PRIMARY_VERDICT_SCHEMA_VERSION,
+        "recommended_judgment_posture": str(judgment_posture),
+        "proposed_output_regime": str(output_regime["discursive_regime"]),
+        "active_signal_families": signal_families,
+        "active_signal_families_count": len(signal_families),
+        "constraint_present": bool(source_conflicts),
+    }
+
+
 def _build_primary_verdict(
     *,
     epistemic_payload: Mapping[str, str],
@@ -111,6 +141,7 @@ def _build_primary_verdict(
     output_regime: Mapping[str, str],
     source_priority: Sequence[Sequence[str]],
     source_conflicts: Sequence[Mapping[str, Any]],
+    user_turn_signals: Mapping[str, Any] | None,
     fail_open: bool,
     state_used: bool,
     degraded_fields: Sequence[str],
@@ -126,6 +157,12 @@ def _build_primary_verdict(
         "time_reference_mode": str(output_regime["time_reference_mode"]),
         "source_priority": [list(rank) for rank in source_priority],
         "source_conflicts": [dict(conflict) for conflict in source_conflicts],
+        "upstream_advisory": _build_upstream_advisory(
+            judgment_posture=judgment_posture,
+            output_regime=output_regime,
+            user_turn_signals=user_turn_signals,
+            source_conflicts=source_conflicts,
+        ),
         "pipeline_directives_provisional": _pipeline_directives(
             judgment_posture=judgment_posture,
             source_conflicts=source_conflicts,
@@ -172,6 +209,7 @@ def _fallback_result(
         output_regime=_FALLBACK_OUTPUT_REGIME,
         source_priority=_DEFAULT_SOURCE_PRIORITY,
         source_conflicts=_FALLBACK_SOURCE_CONFLICTS,
+        user_turn_signals=None,
         fail_open=True,
         state_used=False,
         degraded_fields=_FALLBACK_DEGRADED_FIELDS,
@@ -271,6 +309,7 @@ def build_primary_node(
             output_regime=stabilized_output_regime,
             source_priority=source_priority_payload["source_priority"],
             source_conflicts=source_conflicts_payload["source_conflicts"],
+            user_turn_signals=user_turn_signals,
             fail_open=False,
             state_used=bool(inertia_payload["state_used"]),
             degraded_fields=[],

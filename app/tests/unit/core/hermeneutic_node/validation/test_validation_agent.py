@@ -27,14 +27,18 @@ def _primary_verdict(
     judgment_posture: str = "answer",
     discursive_regime: str | None = None,
     source_conflicts: list[dict[str, object]] | None = None,
+    active_signal_families: list[str] | None = None,
 ) -> dict[str, object]:
+    discursive_regime_value = discursive_regime or ("simple" if judgment_posture == "answer" else "meta")
+    active_signal_families = list(active_signal_families or [])
+    source_conflicts = list(source_conflicts or [])
     return {
         "schema_version": "v1",
         "epistemic_regime": "incertain",
         "proof_regime": "source_explicite_requise",
         "uncertainty_posture": "prudente",
         "judgment_posture": judgment_posture,
-        "discursive_regime": discursive_regime or ("simple" if judgment_posture == "answer" else "meta"),
+        "discursive_regime": discursive_regime_value,
         "resituation_level": "none",
         "time_reference_mode": "atemporal",
         "source_priority": [
@@ -42,7 +46,15 @@ def _primary_verdict(
             ["temps"],
             ["memoire", "contexte_recent", "identity"],
         ],
-        "source_conflicts": list(source_conflicts or []),
+        "source_conflicts": source_conflicts,
+        "upstream_advisory": {
+            "schema_version": "v1",
+            "recommended_judgment_posture": judgment_posture,
+            "proposed_output_regime": discursive_regime_value,
+            "active_signal_families": active_signal_families,
+            "active_signal_families_count": len(active_signal_families),
+            "constraint_present": bool(source_conflicts),
+        },
         "pipeline_directives_provisional": [f"posture_{judgment_posture}"],
         "audit": {
             "fail_open": False,
@@ -299,8 +311,8 @@ class ValidationAgentTests(unittest.TestCase):
                 final_output_regime="simple",
                 arbiter_followed_upstream=True,
                 advisory_recommendations_followed=[
-                    "primary_judgment_posture",
-                    "primary_output_regime_proposed",
+                    "upstream_recommendation_posture",
+                    "upstream_output_regime_proposed",
                 ],
                 advisory_recommendations_overridden=[],
                 arbiter_reason="lecture locale suffisante",
@@ -463,8 +475,8 @@ class ValidationAgentTests(unittest.TestCase):
                 arbiter_followed_upstream=False,
                 advisory_recommendations_followed=[],
                 advisory_recommendations_overridden=[
-                    "primary_judgment_posture",
-                    "primary_output_regime_proposed",
+                    "upstream_recommendation_posture",
+                    "upstream_output_regime_proposed",
                 ],
                 arbiter_reason="lecture dialogique locale suffisante",
             ),
@@ -502,8 +514,8 @@ class ValidationAgentTests(unittest.TestCase):
                 arbiter_followed_upstream=False,
                 advisory_recommendations_followed=[],
                 advisory_recommendations_overridden=[
-                    "primary_judgment_posture",
-                    "primary_output_regime_proposed",
+                    "upstream_recommendation_posture",
+                    "upstream_output_regime_proposed",
                 ],
                 arbiter_reason="referent insuffisamment determine",
             ),
@@ -566,7 +578,7 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertFalse(result.validated_output["arbiter_followed_upstream"])
         self.assertEqual(
             result.validated_output["advisory_recommendations_overridden"],
-            ["primary_judgment_posture", "primary_output_regime_proposed"],
+            ["upstream_recommendation_posture", "upstream_output_regime_proposed"],
         )
         self.assertEqual(result.validated_output["applied_hard_guards"], [])
         self.assertEqual(result.validated_output["arbiter_reason"], "cadrage supplementaire")
@@ -764,8 +776,8 @@ class ValidationAgentTests(unittest.TestCase):
                 final_judgment_posture="suspend",
                 final_output_regime="simple",
                 arbiter_followed_upstream=False,
-                advisory_recommendations_followed=["primary_output_regime_proposed"],
-                advisory_recommendations_overridden=["primary_judgment_posture"],
+                advisory_recommendations_followed=["upstream_output_regime_proposed"],
+                advisory_recommendations_overridden=["upstream_recommendation_posture"],
                 arbiter_reason="validation fail-open (invalid_json)",
                 fail_open=True,
             ),

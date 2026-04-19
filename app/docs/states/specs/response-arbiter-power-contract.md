@@ -8,6 +8,7 @@ Note runtime:
 - le lot 2 runtime applique maintenant cette chaine de pouvoir;
 - `validation_agent` emet directement le verdict final arbitral;
 - `validation_decision` peut subsister comme trace legacy de compatibilite, mais sans souverainete.
+- le lot 4 runtime explicite maintenant l'amont comme `upstream_advisory` structuree, lue comme recommendation non souveraine.
 
 ## 1. Purpose
 
@@ -118,6 +119,13 @@ Mais cette autorite est non souveraine:
 - elle n'a pas le dernier mot;
 - elle ne ferme pas seule le couloir final hors garde-fous durs;
 - elle est lue comme recommendation structuree, pas comme verdict final.
+
+Forme runtime minimale livree au lot 4:
+
+- `primary_verdict` transporte un bloc `upstream_advisory`;
+- ce bloc porte au minimum la posture recommandee, le regime propose, les familles de signaux actives et un indicateur simple de contrainte amont;
+- la validation et les logs compacts lisent ce bloc comme source de verite de la recommendation amont;
+- les champs doctrinaux top-level du `primary_verdict` peuvent subsister transitoirement pour compatibilite, mais ils ne requalifient pas l'amont en couche souveraine.
 
 ### 5.3 Arbitre LLM dominant
 
@@ -240,8 +248,10 @@ Le minimum obligatoire pour ouvrir les lots 2+ est un contrat compact, testable,
 
 Les traces minimales doivent rendre visibles au moins:
 
-- `primary_judgment_posture`
-- `primary_output_regime_proposed`
+- `upstream_recommendation_posture`
+- `upstream_output_regime_proposed`
+- `upstream_active_signal_families`
+- `upstream_constraint_present`
 - `dialogue_messages_count`
 - `dialogue_truncated`
 - `current_user_retained`

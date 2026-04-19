@@ -9,6 +9,7 @@ Note runtime 2026-04-19:
 - `validation_agent` produit maintenant directement `final_judgment_posture`, `final_output_regime` et `arbiter_reason`;
 - `validation_decision` peut subsister comme trace legacy de compatibilite, mais elle n'est plus la source souveraine du verdict final.
 - `validation_dialogue_context` est maintenant livre en runtime comme fenetre dialogique locale canonisee de 5 messages maximum, priorisant le user courant puis le dernier assistant.
+- le lot 4 runtime lit maintenant un bloc `upstream_advisory` dans `primary_verdict` comme recommendation amont de reference, secondaire et non souveraine.
 
 ## 1. Purpose
 
@@ -244,8 +245,10 @@ Les signaux minimaux a journaliser sont maintenant au moins:
 - `dialogue_truncated`
 - `current_user_retained`
 - `last_assistant_retained`
-- `primary_judgment_posture`
-- `primary_output_regime_proposed`
+- `upstream_recommendation_posture`
+- `upstream_output_regime_proposed`
+- `upstream_active_signal_families`
+- `upstream_constraint_present`
 - `final_judgment_posture`
 - `final_output_regime`
 - `arbiter_followed_upstream`

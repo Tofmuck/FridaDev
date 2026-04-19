@@ -255,6 +255,14 @@ class PrimaryNodeTests(unittest.TestCase):
                         ["stimmung"],
                     ],
                     "source_conflicts": [],
+                    "upstream_advisory": {
+                        "schema_version": "v1",
+                        "recommended_judgment_posture": "answer",
+                        "proposed_output_regime": "simple",
+                        "active_signal_families": [],
+                        "active_signal_families_count": 0,
+                        "constraint_present": False,
+                    },
                     "pipeline_directives_provisional": ["posture_answer"],
                     "audit": {
                         "fail_open": False,
@@ -306,6 +314,17 @@ class PrimaryNodeTests(unittest.TestCase):
                     "issue": "clarify",
                 }
             ],
+        )
+        self.assertEqual(
+            payload["primary_verdict"]["upstream_advisory"],
+            {
+                "schema_version": "v1",
+                "recommended_judgment_posture": "clarify",
+                "proposed_output_regime": "meta",
+                "active_signal_families": ["ancrage_de_source"],
+                "active_signal_families_count": 1,
+                "constraint_present": True,
+            },
         )
         self.assertEqual(
             payload["primary_verdict"]["pipeline_directives_provisional"],
@@ -380,6 +399,17 @@ class PrimaryNodeTests(unittest.TestCase):
         self.assertEqual(payload["primary_verdict"]["judgment_posture"], "answer")
         self.assertEqual(payload["primary_verdict"]["discursive_regime"], "simple")
         self.assertEqual(payload["primary_verdict"]["source_conflicts"], [])
+        self.assertEqual(
+            payload["primary_verdict"]["upstream_advisory"],
+            {
+                "schema_version": "v1",
+                "recommended_judgment_posture": "answer",
+                "proposed_output_regime": "simple",
+                "active_signal_families": [],
+                "active_signal_families_count": 0,
+                "constraint_present": False,
+            },
+        )
 
     def test_build_primary_node_keeps_ambiguous_deictic_interrogation_in_clarify_posture(self) -> None:
         bundle = user_turn_input.build_user_turn_bundle(
@@ -402,6 +432,17 @@ class PrimaryNodeTests(unittest.TestCase):
         self.assertTrue(bundle["user_turn_signals"]["ambiguity_present"])
         self.assertEqual(payload["primary_verdict"]["judgment_posture"], "clarify")
         self.assertEqual(payload["primary_verdict"]["discursive_regime"], "meta")
+        self.assertEqual(
+            payload["primary_verdict"]["upstream_advisory"],
+            {
+                "schema_version": "v1",
+                "recommended_judgment_posture": "clarify",
+                "proposed_output_regime": "meta",
+                "active_signal_families": ["referent"],
+                "active_signal_families_count": 1,
+                "constraint_present": False,
+            },
+        )
 
     def test_build_primary_node_applies_inertia_before_verdict_and_state(self) -> None:
         payload = primary_node.build_primary_node(
@@ -545,6 +586,14 @@ class PrimaryNodeTests(unittest.TestCase):
                     ["stimmung"],
                 ],
                 "source_conflicts": [],
+                "upstream_advisory": {
+                    "schema_version": "v1",
+                    "recommended_judgment_posture": "suspend",
+                    "proposed_output_regime": "meta",
+                    "active_signal_families": [],
+                    "active_signal_families_count": 0,
+                    "constraint_present": False,
+                },
                 "pipeline_directives_provisional": [
                     "posture_suspend",
                     "fallback_primary_verdict",
@@ -592,6 +641,7 @@ class PrimaryNodeTests(unittest.TestCase):
             "time_reference_mode",
             "source_priority",
             "source_conflicts",
+            "upstream_advisory",
             "pipeline_directives_provisional",
             "audit",
         })

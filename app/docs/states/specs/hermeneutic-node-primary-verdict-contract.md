@@ -3,6 +3,12 @@
 Statut: draft normatif ouvert
 Portee: troisieme brique normative du Lot 8 pour `primary_verdict`
 
+Note runtime 2026-04-19:
+
+- le lot 4 runtime explicite maintenant une couche amont conseillere dans `primary_verdict` via `upstream_advisory`;
+- ce bloc advisory porte la recommendation amont principale, le regime propose, les familles de signaux actives et un indicateur simple de contrainte;
+- les champs doctrinaux top-level restent presents a ce stade pour compatibilite de transition, sans redonner une souverainete institutionnelle a l'amont.
+
 ## 1. Purpose
 
 Cette spec ouvre puis ferme la troisieme brique normative du Lot 8.
@@ -124,6 +130,14 @@ La forme canonique minimale retenue est:
     "time_reference_mode": "...",
     "source_priority": [...],
     "source_conflicts": [...],
+    "upstream_advisory": {
+        "schema_version": "v1",
+        "recommended_judgment_posture": "...",
+        "proposed_output_regime": "...",
+        "active_signal_families": [...],
+        "active_signal_families_count": 0,
+        "constraint_present": False,
+    },
     "pipeline_directives_provisional": ["..."],
     "audit": {
         "fail_open": False,
@@ -144,6 +158,10 @@ Regles minimales:
 - `source_conflicts`
   - est inclus dans le payload primaire minimal en V1
   - raison: c'est deja une sortie doctrinale compacte du noeud primaire, utile a la validation et a la relecture du verdict
+- `upstream_advisory`
+  - explicite le statut institutionnel non souverain de l'amont
+  - porte la recommendation structuree lue par l'arbitre et par l'observabilite compacte
+  - n'annule pas en lot 4 la presence des champs doctrinaux top-level, conserves transitoirement pour compatibilite
 - `justifications`
   - ne font pas partie du `primary_verdict` minimal en V1
   - raison: leur forme exacte releve du futur contrat de validation et les fusionner maintenant regonflerait un payload qui vient d'etre fixe comme compact
