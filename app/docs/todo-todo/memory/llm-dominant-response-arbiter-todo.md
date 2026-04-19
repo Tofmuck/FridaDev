@@ -5,6 +5,10 @@ Classement: `app/docs/todo-todo/memory/`
 Portee: architecture de l'arbitrage de reponse du pipeline hermeneutique
 Nature: TODO d'architecture actif, lotable, auditable et anti-confusion
 
+Source normative du lot 1:
+
+- `app/docs/states/specs/response-arbiter-power-contract.md`
+
 ## Pourquoi ce document existe
 
 Ce document reste le TODO actif unique pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous.
@@ -25,6 +29,10 @@ Ce document sert donc de source de verite active pour:
 - decrire l'architecture cible;
 - borner ce qui reste non cassable;
 - decouper l'implementation en lots a cases a cocher.
+
+La doctrine normative du lot 1 ne vit plus seulement ici.
+Elle est maintenant fixee dans `app/docs/states/specs/response-arbiter-power-contract.md`.
+Ce TODO reste la roadmap active du chantier.
 
 ## Intention operateur
 
@@ -60,6 +68,7 @@ Ancrages code/doc/tests ayant motive ce TODO:
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
 - `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
+- `app/docs/states/specs/response-arbiter-power-contract.md`
 - `app/docs/todo-done/notes/low-ambiguity-over-clarification-closure.md`
 - `app/docs/todo-done/notes/web-reading-truth-todo.md`
 
@@ -636,6 +645,10 @@ Le contrat minimal doit etre concret et testable.
 
 Par defaut, il doit vivre d'abord dans les logs applicatifs compacts du seam arbitral et dans les tests qui les relisent.
 
+Le contrat normatif du lot 1 est maintenant fixe dans:
+
+- `app/docs/states/specs/response-arbiter-power-contract.md`
+
 Champs minimaux cibles a rendre visibles, en reutilisant l'existant autant que possible:
 
 - `primary_judgment_posture`
@@ -702,23 +715,23 @@ Risques:
 - confusion entre response arbiter et memory arbiter;
 - oubli de la distinction entre autorite non souveraine et souverainete.
 
-- [ ] Ecrire la spec normative de la chaine de pouvoir cible.
-- [ ] Ecrire noir sur blanc que `validation_agent` a le dernier mot sur `final_judgment_posture`.
-- [ ] Ecrire noir sur blanc que l'amont garde une autorite non souveraine.
-- [ ] Ecrire noir sur blanc que `meta` devient un regime exceptionnel.
-- [ ] Fixer la liste doctrinale initiale des garde-fous durs plausibles.
-- [ ] Fixer le contrat minimal de sortie cible de l'arbitre.
-- [ ] Fixer le contrat minimal d'observabilite du chantier en reutilisant les seams de logs existants.
-- [ ] Fixer noir sur blanc que logs compacts + tests constituent la preuve minimale obligatoire.
-- [ ] Fixer noir sur blanc que le premier lot de code ne commence pas par retuner les heuristiques.
-- [ ] Verifier que les docs index renvoient vers la bonne source de verite.
+- [x] Ecrire la spec normative de la chaine de pouvoir cible.
+- [x] Ecrire noir sur blanc que `validation_agent` a le dernier mot sur `final_judgment_posture`.
+- [x] Ecrire noir sur blanc que l'amont garde une autorite non souveraine.
+- [x] Ecrire noir sur blanc que `meta` devient un regime exceptionnel.
+- [x] Fixer la liste doctrinale initiale des garde-fous durs plausibles.
+- [x] Fixer le contrat minimal de sortie cible de l'arbitre.
+- [x] Fixer le contrat minimal d'observabilite du chantier en reutilisant les seams de logs existants.
+- [x] Fixer noir sur blanc que logs compacts + tests constituent la preuve minimale obligatoire.
+- [x] Fixer noir sur blanc que le premier lot de code ne commence pas par retuner les heuristiques.
+- [x] Verifier que les docs index renvoient vers la bonne source de verite.
 
 Critere de completion:
 
-- [ ] Une spec courte et normative existe.
-- [ ] Le dernier mot de l'arbitre n'est plus implicite.
-- [ ] La frontiere garde-fou / conseil / souverainete est lisible sans relire la conversation.
-- [ ] Le minimum d'observabilite requis pour les lots 1 et 2 est nomme noir sur blanc.
+- [x] Une spec courte et normative existe.
+- [x] Le dernier mot de l'arbitre n'est plus implicite.
+- [x] La frontiere garde-fou / conseil / souverainete est lisible sans relire la conversation.
+- [x] Le minimum d'observabilite requis pour les lots 1 et 2 est nomme noir sur blanc.
 
 Ne pas toucher dans ce lot:
 

@@ -135,6 +135,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Historical FR state milestone (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Response arbiter power contract for lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
 - Active hermeneutic post-stabilization TODO: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
