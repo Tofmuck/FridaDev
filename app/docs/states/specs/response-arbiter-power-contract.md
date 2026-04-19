@@ -150,7 +150,7 @@ Regle normative:
 
 ## 7. Matiere Principale Et Contextes Secondaires
 
-La matiere principale de l'arbitre est une fenetre dialogique locale de 5 tours canonises.
+La matiere principale de l'arbitre est une fenetre dialogique locale canonisee de 5 messages `user` / `assistant` maximum.
 
 Priorites normatives:
 
@@ -158,6 +158,15 @@ Priorites normatives:
 - priorite absolue au dernier message assistant;
 - priorite forte aux tours immediatement precedents;
 - perte du plus ancien avant perte du plus local en cas de troncature.
+
+Contrat runtime minimal du lot 3:
+
+- seuls des messages `user` / `assistant` canoniques entrent dans `validation_dialogue_context`;
+- le tour utilisateur courant doit etre retenu chaque fois qu'il existe;
+- le dernier message assistant doit etre retenu chaque fois qu'il existe;
+- les messages immediatement precedents completent la fenetre jusqu'a 5;
+- si plus de 5 messages sont disponibles, la troncature elimine d'abord le plus ancien hors priorites absolues;
+- si aucun dernier assistant n'existe, aucun faux assistant n'est invente.
 
 Le reste du contexte est secondaire et indiciaire, notamment:
 
@@ -233,6 +242,10 @@ Les traces minimales doivent rendre visibles au moins:
 
 - `primary_judgment_posture`
 - `primary_output_regime_proposed`
+- `dialogue_messages_count`
+- `dialogue_truncated`
+- `current_user_retained`
+- `last_assistant_retained`
 - `final_judgment_posture`
 - `final_output_regime`
 - `arbiter_followed_upstream`
@@ -246,6 +259,10 @@ Les traces minimales doivent rendre visibles au moins:
 
 Ce contrat minimal doit permettre de voir sans replay implicite:
 
+- combien de messages dialogiques ont ete retenus;
+- si une troncature de la fenetre locale a eu lieu;
+- si le tour utilisateur courant a bien ete retenu;
+- si le dernier message assistant a bien ete retenu;
 - si l'arbitre a suivi l'amont;
 - si l'arbitre a casse l'amont;
 - quel garde-fou dur a borne la decision, si present;

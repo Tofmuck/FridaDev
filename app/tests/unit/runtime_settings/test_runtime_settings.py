@@ -544,7 +544,10 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('validation_dialogue_context', readonly_info['prompt_text']['value'])
         self.assertIn('main_model.title_validation_agent', readonly_info['shared_transport']['value'])
         self.assertIn('main_model.referer_validation_agent', readonly_info['shared_transport']['value'])
-        self.assertEqual(readonly_info['validation_context_messages_cap']['value'], 8)
+        self.assertEqual(
+            readonly_info['validation_context_messages_cap']['value'],
+            runtime_settings.canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES,
+        )
         self.assertEqual(readonly_info['validation_context_message_chars']['value'], 420)
         self.assertIn('final_judgment_posture', readonly_info['validated_output_contract']['value'])
         self.assertIn('final_output_regime', readonly_info['validated_output_contract']['value'])

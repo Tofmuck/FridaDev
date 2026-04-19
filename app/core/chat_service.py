@@ -135,30 +135,6 @@ def _resolve_recent_context_input(
     )
 
 
-def _canonical_dialogue_messages(value: Mapping[str, Any] | None) -> list[dict[str, Any]]:
-    payload = _mapping(value)
-    raw_messages = payload.get('messages')
-    if not isinstance(raw_messages, list):
-        return []
-
-    messages: list[dict[str, Any]] = []
-    for item in raw_messages:
-        message_payload = _mapping(item)
-        role = str(message_payload.get('role') or '').strip()
-        content = str(message_payload.get('content') or '').strip()
-        if role not in {'user', 'assistant'} or not content:
-            continue
-        timestamp = str(message_payload.get('timestamp') or '').strip() or None
-        messages.append(
-            {
-                'role': role,
-                'content': content,
-                'timestamp': timestamp,
-            }
-        )
-    return messages
-
-
 def _resolve_validation_dialogue_context(
     *,
     conversation: Mapping[str, Any],
@@ -166,34 +142,31 @@ def _resolve_validation_dialogue_context(
     user_msg: str,
     now_iso: str,
 ) -> dict[str, Any]:
-    base_messages = _canonical_dialogue_messages(recent_context_payload)
+    base_messages = _sequence(_mapping(recent_context_payload).get('messages'))
     if base_messages:
-        return {
-            'schema_version': str(_mapping(recent_context_payload).get('schema_version') or recent_context_input.SCHEMA_VERSION),
-            'messages': base_messages,
-        }
+        return recent_context_input.build_validation_dialogue_context(
+            messages=base_messages,
+            summary_input_payload=None,
+        )
 
-    rebuilt_payload = recent_context_input.build_recent_context_input(
+    rebuilt_payload = recent_context_input.build_validation_dialogue_context(
         messages=conversation.get('messages', []),
         summary_input_payload=None,
     )
-    rebuilt_messages = _canonical_dialogue_messages(rebuilt_payload)
+    rebuilt_messages = _sequence(_mapping(rebuilt_payload).get('messages'))
     if rebuilt_messages:
-        return {
-            'schema_version': recent_context_input.SCHEMA_VERSION,
-            'messages': rebuilt_messages,
-        }
+        return rebuilt_payload
 
-    return {
-        'schema_version': recent_context_input.SCHEMA_VERSION,
-        'messages': [
+    return recent_context_input.build_validation_dialogue_context(
+        messages=[
             {
                 'role': 'user',
                 'content': str(user_msg or ''),
                 'timestamp': str(now_iso or '').strip() or None,
             }
         ],
-    }
+        summary_input_payload=None,
+    )
 
 
 def _resolve_recent_window_input(

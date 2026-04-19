@@ -10,6 +10,7 @@ import requests
 from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
+from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 
 logger = logging.getLogger('frida.validation_agent')
 
@@ -19,7 +20,7 @@ FALLBACK_MODEL = "openai/gpt-5.4-nano"
 PROMPT_PATH = "prompts/validation_agent.txt"
 REQUEST_TIMEOUT_S = 10
 MAX_RESPONSE_TOKENS = 80
-MAX_VALIDATION_CONTEXT_MESSAGES = 8
+MAX_VALIDATION_CONTEXT_MESSAGES = canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES
 MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = 420
 MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
 MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
@@ -145,10 +146,22 @@ def _compacted_validation_dialogue_context(value: Any) -> str:
     return _bounded_json_preview(
         {
             "schema_version": _text(payload.get("schema_version")) or SCHEMA_VERSION,
-            "message_count": len(raw_messages),
+            "message_count": int(payload.get("source_message_count") or len(raw_messages)),
             "retained_message_count": len(retained_messages),
+            "current_user_retained": bool(
+                payload.get(
+                    "current_user_retained",
+                    bool(retained_messages and _text(retained_messages[-1].get("role")) == "user"),
+                )
+            ),
+            "last_assistant_retained": bool(
+                payload.get(
+                    "last_assistant_retained",
+                    any(_text(item.get("role")) == "assistant" for item in retained_messages),
+                )
+            ),
             "messages": retained_messages,
-            "truncated": bool(len(raw_messages) > len(retained_messages) or content_truncated),
+            "truncated": bool(payload.get("truncated", False) or content_truncated),
         },
         max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS,
     )
@@ -272,26 +285,17 @@ def _validated_validation_dialogue_context(value: Any) -> dict[str, Any]:
     if not isinstance(raw_messages, list) or not raw_messages:
         raise ValueError("invalid_validation_dialogue_context")
 
-    retained_messages: list[dict[str, Any]] = []
-    for item in raw_messages:
-        message_payload = _mapping(item)
-        role = _text(message_payload.get("role"))
-        content = _text(message_payload.get("content"))
-        if role not in {"user", "assistant"} or not content:
-            continue
-        retained_messages.append(
-            {
-                "role": role,
-                "content": content,
-                "timestamp": _text(message_payload.get("timestamp")) or None,
-            }
-        )
-
+    normalized_payload = canonical_recent_context_input.build_validation_dialogue_context(
+        messages=raw_messages,
+        summary_input_payload=None,
+        max_messages=MAX_VALIDATION_CONTEXT_MESSAGES,
+    )
+    retained_messages = normalized_payload.get("messages") or []
     if not retained_messages:
         raise ValueError("invalid_validation_dialogue_context")
 
     validated_payload = dict(payload)
-    validated_payload["messages"] = retained_messages
+    validated_payload.update(normalized_payload)
     if "schema_version" in validated_payload:
         validated_payload["schema_version"] = _text(validated_payload.get("schema_version")) or SCHEMA_VERSION
     return validated_payload
@@ -517,13 +521,13 @@ def _build_messages(
         {
             "role": "user",
             "content": (
-                "validation_dialogue_context (matiere hermeneutique principale de la relecture):\n"
+                "validation_dialogue_context (matiere hermeneutique principale, fenetre dialogique locale canonisee):\n"
                 f"{compacted_validation_dialogue_context}\n\n"
-                "primary_verdict (support structure amont, non terminal):\n"
+                "primary_verdict (recommendation structuree amont, secondaire et non terminale):\n"
                 f"{compacted_primary_verdict}\n\n"
-                "justifications (artefact frere, hors primary_verdict):\n"
+                "justifications (support secondaire frere, hors primary_verdict):\n"
                 f"{compacted_justifications}\n\n"
-                "canonical_inputs (supports de relecture contextuelle):\n"
+                "canonical_inputs (supports secondaires de relecture contextuelle):\n"
                 f"{compacted_canonical_inputs}\n\n"
                 "Tache:\n"
                 "- decide final_judgment_posture\n"

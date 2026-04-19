@@ -8,6 +8,7 @@ Note runtime 2026-04-19:
 - `response-arbiter-power-contract.md` est la source normative recente sur la chaine de pouvoir;
 - `validation_agent` produit maintenant directement `final_judgment_posture`, `final_output_regime` et `arbiter_reason`;
 - `validation_decision` peut subsister comme trace legacy de compatibilite, mais elle n'est plus la source souveraine du verdict final.
+- `validation_dialogue_context` est maintenant livre en runtime comme fenetre dialogique locale canonisee de 5 messages maximum, priorisant le user courant puis le dernier assistant.
 
 ## 1. Purpose
 
@@ -163,6 +164,15 @@ Raison:
 - `recent_window_input` compresse cette matiere en une petite fenetre utile au noeud primaire
 - la validation a besoin d'une fenetre plus large et hermeneutiquement lisible
 
+Contrat runtime livre au lot 3:
+
+- `validation_dialogue_context` retient au maximum 5 messages `user` / `assistant`;
+- le tour utilisateur courant est prioritaire;
+- le dernier message assistant disponible est prioritaire;
+- les messages immediatement precedents completent ensuite la fenetre;
+- la troncature elimine d'abord le plus ancien hors priorites absolues;
+- le payload compact expose aussi `source_message_count`, `truncated`, `current_user_retained`, `last_assistant_retained`.
+
 Regle forte:
 
 - le `validation_dialogue_context` peut conduire a `confirm`, `challenge`, `clarify` ou `suspend` un `primary_verdict` pourtant structurellement propre
@@ -230,6 +240,10 @@ Modele cible de reference en V1:
 
 Les signaux minimaux a journaliser sont maintenant au moins:
 
+- `dialogue_messages_count`
+- `dialogue_truncated`
+- `current_user_retained`
+- `last_assistant_retained`
 - `primary_judgment_posture`
 - `primary_output_regime_proposed`
 - `final_judgment_posture`

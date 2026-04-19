@@ -1452,12 +1452,132 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                         'timestamp': '2026-03-26T10:00:00Z',
                     }
                 ],
+                'source_message_count': 1,
+                'truncated': False,
+                'current_user_retained': True,
+                'last_assistant_retained': False,
             },
         )
         self.assertEqual(observed['validation_dialogue_context']['schema_version'], 'v1')
         self.assertTrue(observed['validation_dialogue_context']['messages'])
         self.assertEqual(observed['validation_dialogue_context']['messages'][-1]['role'], 'user')
         self.assertEqual(observed['validation_dialogue_context']['messages'][-1]['content'], 'Bonjour')
+        self.assertFalse(observed['validation_dialogue_context']['truncated'])
+        self.assertTrue(observed['validation_dialogue_context']['current_user_retained'])
+        self.assertFalse(observed['validation_dialogue_context']['last_assistant_retained'])
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_keeps_validation_dialogue_context_local_when_more_than_five_messages_exist(self) -> None:
+        observed = {'validation_dialogue_context': None}
+        conversation = {
+            'id': 'conv-validation-context-local-window-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [
+                {'role': 'system', 'content': 'BACKEND SYSTEM PROMPT', 'timestamp': '2026-03-26T00:00:00Z'},
+                {'role': 'assistant', 'content': 'Assistant 0', 'timestamp': '2026-03-26T08:00:00Z'},
+                {'role': 'user', 'content': 'User 1', 'timestamp': '2026-03-26T08:01:00Z'},
+                {'role': 'assistant', 'content': 'Assistant 1', 'timestamp': '2026-03-26T08:02:00Z'},
+                {'role': 'user', 'content': 'User 2', 'timestamp': '2026-03-26T08:03:00Z'},
+                {'role': 'assistant', 'content': 'Assistant 2', 'timestamp': '2026-03-26T08:04:00Z'},
+                {'role': 'user', 'content': 'User 3', 'timestamp': '2026-03-26T08:05:00Z'},
+                {'role': 'assistant', 'content': 'Assistant 3', 'timestamp': '2026-03-26T08:06:00Z'},
+            ],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok validation context local window'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_now_iso = self.server.chat_service._now_iso
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        self.server.chat_service._now_iso = lambda: '2026-03-26T08:07:00Z'
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'incertain',
+                'proof_regime': 'source_explicite_requise',
+                'uncertainty_posture': 'prudente',
+                'judgment_posture': 'answer',
+                'discursive_regime': 'simple',
+                'resituation_level': 'none',
+                'time_reference_mode': 'atemporal',
+                'source_priority': [['tour_utilisateur']],
+                'source_conflicts': [],
+                'pipeline_directives_provisional': ['posture_answer'],
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+
+        def fake_build_validated_output(**kwargs):
+            observed['validation_dialogue_context'] = kwargs.get('validation_dialogue_context')
+            return self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'confirm',
+                    'final_judgment_posture': 'answer',
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': True,
+                    'advisory_recommendations_followed': [
+                        'primary_judgment_posture',
+                        'primary_output_regime_proposed',
+                    ],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'lecture locale suffisante',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+
+        self.server.chat_service.validation_agent.build_validated_output = fake_build_validated_output
+        try:
+            response = self.client.post('/api/chat', json={'message': 'User current'})
+        finally:
+            self.server.chat_service._now_iso = original_now_iso
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        self.assertEqual(
+            observed['validation_dialogue_context'],
+            {
+                'schema_version': 'v1',
+                'messages': [
+                    {'role': 'user', 'content': 'User 2', 'timestamp': '2026-03-26T08:03:00Z'},
+                    {'role': 'assistant', 'content': 'Assistant 2', 'timestamp': '2026-03-26T08:04:00Z'},
+                    {'role': 'user', 'content': 'User 3', 'timestamp': '2026-03-26T08:05:00Z'},
+                    {'role': 'assistant', 'content': 'Assistant 3', 'timestamp': '2026-03-26T08:06:00Z'},
+                    {'role': 'user', 'content': 'User current', 'timestamp': '2026-03-26T08:07:00Z'},
+                ],
+                'source_message_count': 8,
+                'truncated': True,
+                'current_user_retained': True,
+                'last_assistant_retained': True,
+            },
+        )
+        self.assertEqual(len(observed['validation_dialogue_context']['messages']), 5)
+        self.assertTrue(observed['validation_dialogue_context']['truncated'])
+        self.assertTrue(observed['validation_dialogue_context']['current_user_retained'])
+        self.assertTrue(observed['validation_dialogue_context']['last_assistant_retained'])
+        self.assertEqual(observed['validation_dialogue_context']['messages'][-1]['content'], 'User current')
+        self.assertEqual(observed['validation_dialogue_context']['messages'][-2]['content'], 'Assistant 3')
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_recent_window_to_hermeneutic_insertion_point(self) -> None:
@@ -3059,6 +3179,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             validation_event['payload_json'],
             {
                 'dialogue_messages_count': 1,
+                'dialogue_truncated': False,
+                'current_user_retained': True,
+                'last_assistant_retained': False,
                 'primary_judgment_posture': 'clarify',
                 'primary_output_regime_proposed': 'meta',
                 'validation_decision': 'clarify',
@@ -3168,6 +3291,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             validation_event['payload_json'],
             {
                 'dialogue_messages_count': 1,
+                'dialogue_truncated': False,
+                'current_user_retained': True,
+                'last_assistant_retained': False,
                 'primary_judgment_posture': 'answer',
                 'primary_output_regime_proposed': 'simple',
                 'validation_decision': 'suspend',

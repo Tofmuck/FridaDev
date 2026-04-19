@@ -234,6 +234,7 @@ def build_validation_agent_payload(
 ) -> dict[str, Any]:
     primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
     validated_output = _mapping(getattr(validated_result, "validated_output", None))
+    validation_context_payload = _mapping(validation_dialogue_context)
     directives = [
         value
         for value in (_text(item) for item in _sequence(validated_output.get("pipeline_directives_final")))
@@ -255,7 +256,10 @@ def build_validation_agent_payload(
         if value
     ]
     payload = {
-        "dialogue_messages_count": len(_sequence(_mapping(validation_dialogue_context).get("messages"))),
+        "dialogue_messages_count": len(_sequence(validation_context_payload.get("messages"))),
+        "dialogue_truncated": bool(validation_context_payload.get("truncated", False)),
+        "current_user_retained": bool(validation_context_payload.get("current_user_retained", False)),
+        "last_assistant_retained": bool(validation_context_payload.get("last_assistant_retained", False)),
         "primary_judgment_posture": _text(primary_verdict.get("judgment_posture")),
         "primary_output_regime_proposed": _text(primary_verdict.get("discursive_regime")),
         "validation_decision": _text(validated_output.get("validation_decision")),

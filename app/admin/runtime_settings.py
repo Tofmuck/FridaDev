@@ -21,6 +21,7 @@ from admin.runtime_settings_spec import (
     list_sections,
 )
 from core import prompt_loader
+from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 
 # Phase 3 internal split plan (incremental, compatibility-first):
@@ -695,7 +696,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'validation_context_messages_cap': {
                 'label': 'VALIDATION_CONTEXT_MESSAGES_CAP',
-                'value': 8,
+                'value': canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES,
                 'is_editable': False,
                 'source': 'runtime_component',
             },

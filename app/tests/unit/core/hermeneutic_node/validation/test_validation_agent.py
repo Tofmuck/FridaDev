@@ -18,6 +18,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.validation import validation_agent
 
 
@@ -668,6 +669,43 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.validated_output["validation_decision"], "clarify")
         self.assertEqual(result.validated_output["final_judgment_posture"], "clarify")
 
+    def test_validated_validation_dialogue_context_keeps_local_five_message_window(self) -> None:
+        payload = validation_agent._validated_validation_dialogue_context(
+            {
+                "schema_version": "v1",
+                "messages": [
+                    {"role": "assistant", "content": "Assistant 0", "timestamp": "2026-04-02T09:00:00Z"},
+                    {"role": "user", "content": "User 1", "timestamp": "2026-04-02T09:01:00Z"},
+                    {"role": "assistant", "content": "Assistant 1", "timestamp": "2026-04-02T09:02:00Z"},
+                    {"role": "user", "content": "User 2", "timestamp": "2026-04-02T09:03:00Z"},
+                    {"role": "assistant", "content": "Assistant 2", "timestamp": "2026-04-02T09:04:00Z"},
+                    {"role": "user", "content": "User 3", "timestamp": "2026-04-02T09:05:00Z"},
+                    {"role": "assistant", "content": "Assistant 3", "timestamp": "2026-04-02T09:06:00Z"},
+                    {"role": "user", "content": "User current", "timestamp": "2026-04-02T09:07:00Z"},
+                ],
+            }
+        )
+
+        self.assertEqual(payload["schema_version"], "v1")
+        self.assertEqual(payload["source_message_count"], 8)
+        self.assertTrue(payload["truncated"])
+        self.assertTrue(payload["current_user_retained"])
+        self.assertTrue(payload["last_assistant_retained"])
+        self.assertEqual(
+            payload["messages"],
+            [
+                {"role": "user", "content": "User 2", "timestamp": "2026-04-02T09:03:00Z"},
+                {"role": "assistant", "content": "Assistant 2", "timestamp": "2026-04-02T09:04:00Z"},
+                {"role": "user", "content": "User 3", "timestamp": "2026-04-02T09:05:00Z"},
+                {"role": "assistant", "content": "Assistant 3", "timestamp": "2026-04-02T09:06:00Z"},
+                {"role": "user", "content": "User current", "timestamp": "2026-04-02T09:07:00Z"},
+            ],
+        )
+        self.assertEqual(
+            len(payload["messages"]),
+            canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES,
+        )
+
     def test_build_validated_output_uses_fallback_model_after_primary_invalid_json(self) -> None:
         requests_module = _FakeRequests(
             [
@@ -756,11 +794,13 @@ class ValidationAgentTests(unittest.TestCase):
 
         user_message = requests_module.calls[0]["json"]["messages"][1]["content"]
         self.assertIn(
-            "validation_dialogue_context (matiere hermeneutique principale de la relecture):",
+            "validation_dialogue_context (matiere hermeneutique principale, fenetre dialogique locale canonisee):",
             user_message,
         )
         self.assertIn("Je veux une reponse mais le contexte recent reste fragile.", user_message)
-        self.assertIn("primary_verdict (support structure amont, non terminal):", user_message)
+        self.assertIn("primary_verdict (recommendation structuree amont, secondaire et non terminale):", user_message)
+        self.assertIn("justifications (support secondaire frere, hors primary_verdict):", user_message)
+        self.assertIn("canonical_inputs (supports secondaires de relecture contextuelle):", user_message)
         self.assertLess(
             user_message.index("validation_dialogue_context"),
             user_message.index("primary_verdict"),
@@ -794,12 +834,12 @@ class ValidationAgentTests(unittest.TestCase):
 
         user_message = messages[1]["content"]
         self.assertLess(len(user_message), 7800)
-        self.assertIn("validation_dialogue_context (matiere hermeneutique principale de la relecture):", user_message)
+        self.assertIn("validation_dialogue_context (matiere hermeneutique principale, fenetre dialogique locale canonisee):", user_message)
         self.assertIn('"message_count":1', user_message)
         self.assertIn('"truncated":true', user_message)
-        self.assertIn("primary_verdict (support structure amont, non terminal):", user_message)
-        self.assertIn("justifications (artefact frere, hors primary_verdict):", user_message)
-        self.assertIn("canonical_inputs (supports de relecture contextuelle):", user_message)
+        self.assertIn("primary_verdict (recommendation structuree amont, secondaire et non terminale):", user_message)
+        self.assertIn("justifications (support secondaire frere, hors primary_verdict):", user_message)
+        self.assertIn("canonical_inputs (supports secondaires de relecture contextuelle):", user_message)
         self.assertLess(user_message.index("validation_dialogue_context"), user_message.index("primary_verdict"))
 
 

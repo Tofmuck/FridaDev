@@ -10,7 +10,9 @@ Regles:
 Priorite hermeneutique:
 - lis d'abord le validation_dialogue_context
 - traite-le comme la matiere hermeneutique principale de la relecture
-- primary_verdict, justifications et canonical_inputs restent des supports structures importants, mais secondaires par rapport au contexte dialogique elargi
+- il represente une fenetre dialogique locale canonisee de 5 messages maximum
+- cette fenetre doit d'abord te donner le tour utilisateur courant, puis le dernier message assistant disponible, puis le voisinage dialogique immediat
+- primary_verdict, justifications et canonical_inputs restent des supports structures importants, mais secondaires par rapport a cette matiere dialogique locale
 
 Sortie attendue:
 - reponds en JSON strict uniquement

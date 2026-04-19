@@ -796,7 +796,7 @@ Ne pas toucher dans ce lot:
 But:
 
 - definir et livrer une fenetre de dialogue recent vraiment utile a l'arbitre;
-- ancrer noir sur blanc la priorite locale des 5 tours canonises.
+- ancrer noir sur blanc la priorite locale des 5 messages dialogiques canonises.
 
 Fichiers probables:
 
@@ -811,22 +811,22 @@ Risques:
 - perte du dernier message assistant ou du tour focal;
 - troncature qui preserve le lointain au detriment du local.
 
-- [ ] Fixer la fenetre normative de 5 tours canonises.
-- [ ] Garantir la priorite absolue du tour utilisateur courant.
-- [ ] Garantir la priorite absolue du dernier message assistant.
-- [ ] Garantir que les tours immediatement precedents priment sur les indices lointains.
-- [ ] Encadrer la troncature pour perdre d'abord le plus ancien.
-- [ ] Etiqueter explicitement les matieres secondaires comme secondaires.
-- [ ] Rendre visible dans les logs compacts le nombre de messages retenus et le fait qu'une troncature a eu lieu.
-- [ ] Rendre visible si le tour utilisateur courant et le dernier assistant ont bien ete retenus.
-- [ ] Ajouter des tests sur cette observabilite compacte de contexte, sans journaliser la matiere brute complete.
+- [x] Fixer la fenetre normative de 5 messages dialogiques canonises.
+- [x] Garantir la priorite absolue du tour utilisateur courant.
+- [x] Garantir la priorite absolue du dernier message assistant.
+- [x] Garantir que les tours immediatement precedents priment sur les indices lointains.
+- [x] Encadrer la troncature pour perdre d'abord le plus ancien.
+- [x] Etiqueter explicitement les matieres secondaires comme secondaires.
+- [x] Rendre visible dans les logs compacts le nombre de messages retenus et le fait qu'une troncature a eu lieu.
+- [x] Rendre visible si le tour utilisateur courant et le dernier assistant ont bien ete retenus.
+- [x] Ajouter des tests sur cette observabilite compacte de contexte, sans journaliser la matiere brute complete.
 
 Critere de completion:
 
-- [ ] Le contrat de contexte recent est specifiable et testable.
-- [ ] Les cas de dialogue local simple restent lisibles pour l'arbitre.
-- [ ] Les supports secondaires n'ecrasent pas la matiere principale.
-- [ ] La retention/troncature du contexte recent est observable sans dump massif.
+- [x] Le contrat de contexte recent est specifiable et testable.
+- [x] Les cas de dialogue local simple restent lisibles pour l'arbitre.
+- [x] Les supports secondaires n'ecrasent pas la matiere principale.
+- [x] La retention/troncature du contexte recent est observable sans dump massif.
 
 Ne pas toucher dans ce lot:
 
