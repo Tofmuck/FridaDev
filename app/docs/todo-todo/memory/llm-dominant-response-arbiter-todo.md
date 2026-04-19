@@ -50,13 +50,18 @@ Ancrages code/doc/tests ayant motive ce TODO:
 - `app/core/hermeneutic_node/doctrine/source_priority.py`
 - `app/core/hermeneutic_node/runtime/primary_node.py`
 - `app/core/hermeneutic_node/validation/validation_agent.py`
+- `app/observability/chat_turn_logger.py`
+- `app/observability/hermeneutic_node_logger.py`
 - `app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py`
 - `app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py`
 - `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py`
+- `app/tests/unit/logs/test_chat_turn_logger_phase2.py`
+- `app/tests/test_server_phase14.py`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
 - `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
 - `app/docs/todo-done/notes/low-ambiguity-over-clarification-closure.md`
+- `app/docs/todo-done/notes/web-reading-truth-todo.md`
 
 Comparaison conceptuelle utile seulement:
 
@@ -536,15 +541,137 @@ Attendu:
 
 ## 10. Observabilite cible
 
-L'architecture cible doit etre observable noir sur blanc.
+L'observabilite de ce chantier ne doit pas repartir de zero.
 
-Elle doit permettre de comprendre:
+Elle doit rester:
 
-- quelle recommendation amont a ete suivie;
-- quelle recommendation amont a ete cassee;
-- quel garde-fou dur a borne la decision;
-- quelle raison lisible a motive l'override ou le non-override;
-- quel verdict final a ete projete dans `[JUGEMENT HERMENEUTIQUE]`.
+- petite;
+- structurelle;
+- reutilisable;
+- suffisante pour coder sans aveuglement;
+- integree lot par lot plutot que repoussee a la fin.
+
+### 10.1 Inventaire minimal de l'existant
+
+L'existant utile au chantier est deja reel et reutilisable:
+
+- `chat_turn_logger` fournit deja un seam canonique par `stage`, `status`, `payload_json`, `model`, `reason_code` et persiste ces evenements dans `observability.chat_log_events`;
+- `hermeneutic_node_logger` expose deja des evenements compacts pour `hermeneutic_node_insertion`, `primary_node` et `validation_agent`;
+- le payload `validation_agent` expose deja une base utile: `dialogue_messages_count`, `primary_judgment_posture`, `validation_decision`, `final_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
+- `test_chat_turn_logger_phase2.py` verrouille deja la discipline de logs compacts par stage;
+- `test_server_phase14.py` intercepte deja `insert_chat_log_event` sur des seams d'integration, donc le chantier possede deja une couture de preuve live sans surface admin dediee;
+- les notes archivees recentes, notamment sur le web, montrent deja la doctrine utile: observabilite suffisante, compacte, sans dump brut ni replay code obligatoire.
+
+Ce qui manque specifiquement pour le nouveau regime d'arbitrage n'est donc pas une nouvelle pile d'observabilite.
+Ce qui manque est:
+
+- un contrat minimal de champs specifiques a l'arbitre dominant;
+- une visibilite explicite du suivi vs override de l'amont;
+- une visibilite explicite des garde-fous durs appliques;
+- une visibilite explicite du verdict final effectivement projete;
+- des preuves de lot qui verifient ces traces au fur et a mesure.
+
+### 10.2 Ce qu'on garde, ce qu'on adapte, ce qu'on ne refait pas
+
+Ce chantier garde:
+
+- `chat_turn_logger` comme socle canonique des logs de tour;
+- `hermeneutic_node_logger` comme couture compacte du pipeline hermeneutique;
+- les tests de logs et d'integration existants comme points d'appui de preuve;
+- le principe "observabilite compacte, sans dump de matiere brute" deja valide sur d'autres mini-chantiers.
+
+Ce chantier adapte:
+
+- le contenu des payloads lies au `primary_node`, au `validation_agent` reinstitue et a la projection finale;
+- la lisibilite des raisons, overrides et garde-fous;
+- les tests pour faire du verdict arbitral final une preuve observable, pas seulement une consequence implicite.
+
+Ce chantier ne refait pas:
+
+- une nouvelle infrastructure de logs;
+- une nouvelle surface admin dediee des le lot 1 ou le lot 2;
+- une refonte globale de l'observabilite produit;
+- un chantier separe et massif d'analytics.
+
+### 10.3 Niveaux d'observabilite cibles
+
+#### A. Observabilite minimale indispensable
+
+Cette observabilite est obligatoire pour ouvrir les lots de code sans aveuglement.
+
+Elle doit rendre visible:
+
+- la recommendation amont principale pertinente;
+- le verdict final arbitral;
+- le fait que l'arbitre suive ou casse l'amont;
+- le ou les garde-fous durs appliques;
+- la raison lisible de la decision;
+- le verdict final effectivement projete dans `[JUGEMENT HERMENEUTIQUE]`.
+
+Surfaces retenues par defaut:
+
+- logs applicatifs compacts d'abord;
+- tests ensuite;
+- aucun besoin de surface admin dediee pour tenir ce minimum.
+
+#### B. Observabilite souhaitable mais non bloquante
+
+Peut venir dans le chantier sans bloquer les premiers lots:
+
+- taxonomie plus fine de `reason_code` et `arbiter_reason`;
+- exports/debug compacts reutilisant la filiere `chat_log_events`;
+- vues regroupees simples si elles reutilisent l'existant sans ouvrir une roadmap admin autonome.
+
+#### C. Ce qui peut attendre
+
+Peut etre remis a plus tard:
+
+- surface admin dediee pour lire les arbitrages;
+- agregats metriques ou dashboards produits;
+- outillage d'analyse historique large echelle.
+
+### 10.4 Contrat minimal d'observabilite du chantier
+
+Le contrat minimal doit etre concret et testable.
+
+Par defaut, il doit vivre d'abord dans les logs applicatifs compacts du seam arbitral et dans les tests qui les relisent.
+
+Champs minimaux cibles a rendre visibles, en reutilisant l'existant autant que possible:
+
+- `primary_judgment_posture`
+- `primary_output_regime_proposed`
+- `final_judgment_posture`
+- `final_output_regime`
+- `arbiter_followed_upstream`
+- `advisory_recommendations_followed`
+- `advisory_recommendations_overridden`
+- `applied_hard_guards`
+- `arbiter_reason`
+- `projected_judgment_posture`
+
+Lecture attendue de ce contrat:
+
+- si l'arbitre suit l'amont, cela doit etre visible sans diff implicite a reconstituer;
+- si l'arbitre casse l'amont, l'override doit etre lisible comme tel;
+- si un garde-fou dur borne la decision, il doit etre nomme;
+- si la projection finale diverge de ce qui etait propose en amont, cette divergence doit etre observable;
+- la raison doit rester courte, lisible et non bureaucratique.
+
+### 10.5 Exigence minimale des lots 1 et 2
+
+Des le lot 1, obligatoire:
+
+- fixer noir sur blanc les champs minimaux du contrat d'observabilite;
+- fixer quels stages existants sont reutilises plutot qu'inventer une nouvelle arborescence de logs;
+- fixer que les preuves de lot passent d'abord par logs compacts + tests.
+
+Des le lot 2, obligatoire:
+
+- rendre observable noir sur blanc si l'arbitre suit ou override l'amont;
+- rendre observable le verdict final produit et le verdict final projete;
+- rendre observable le garde-fou dur applique si present;
+- rendre observable une raison lisible de decision;
+- ajouter des tests qui relisent explicitement ces champs sur le seam de logs existant.
 
 L'observabilite ne doit pas etre une annexe optionnelle.
 Elle fait partie du contrat institutionnel du chantier.
@@ -581,6 +708,8 @@ Risques:
 - [ ] Ecrire noir sur blanc que `meta` devient un regime exceptionnel.
 - [ ] Fixer la liste doctrinale initiale des garde-fous durs plausibles.
 - [ ] Fixer le contrat minimal de sortie cible de l'arbitre.
+- [ ] Fixer le contrat minimal d'observabilite du chantier en reutilisant les seams de logs existants.
+- [ ] Fixer noir sur blanc que logs compacts + tests constituent la preuve minimale obligatoire.
 - [ ] Fixer noir sur blanc que le premier lot de code ne commence pas par retuner les heuristiques.
 - [ ] Verifier que les docs index renvoient vers la bonne source de verite.
 
@@ -589,6 +718,7 @@ Critere de completion:
 - [ ] Une spec courte et normative existe.
 - [ ] Le dernier mot de l'arbitre n'est plus implicite.
 - [ ] La frontiere garde-fou / conseil / souverainete est lisible sans relire la conversation.
+- [ ] Le minimum d'observabilite requis pour les lots 1 et 2 est nomme noir sur blanc.
 
 Ne pas toucher dans ce lot:
 
@@ -625,12 +755,19 @@ Risques:
 - [ ] Faire produire directement `final_output_regime` par l'arbitre.
 - [ ] Conserver le `validation_agent` comme institution cible sans ouvrir un chantier de renommage.
 - [ ] Verifier que `[JUGEMENT HERMENEUTIQUE]` projette le verdict final de l'arbitre.
+- [ ] Etendre le payload du seam arbitral existant plutot que creer une nouvelle filiere de logs.
+- [ ] Rendre visible si l'arbitre suit ou override l'amont.
+- [ ] Rendre visible le verdict final effectivement projete.
+- [ ] Rendre visible une raison lisible de decision et les garde-fous appliques si presents.
+- [ ] Ajouter des tests qui relisent explicitement ces champs sur le seam de logs existant.
 
 Critere de completion:
 
 - [ ] Le verdict final vient bien de l'arbitre.
 - [ ] Un override de l'amont est techniquement possible et tracable.
 - [ ] La sortie finale n'est plus un simple remap d'une posture primaire.
+- [ ] Les logs permettent de voir sans replay code si l'arbitre a suivi ou casse l'amont.
+- [ ] Les tests couvrent le seam de projection finale observable.
 
 Ne pas toucher dans ce lot:
 
@@ -664,12 +801,16 @@ Risques:
 - [ ] Garantir que les tours immediatement precedents priment sur les indices lointains.
 - [ ] Encadrer la troncature pour perdre d'abord le plus ancien.
 - [ ] Etiqueter explicitement les matieres secondaires comme secondaires.
+- [ ] Rendre visible dans les logs compacts le nombre de messages retenus et le fait qu'une troncature a eu lieu.
+- [ ] Rendre visible si le tour utilisateur courant et le dernier assistant ont bien ete retenus.
+- [ ] Ajouter des tests sur cette observabilite compacte de contexte, sans journaliser la matiere brute complete.
 
 Critere de completion:
 
 - [ ] Le contrat de contexte recent est specifiable et testable.
 - [ ] Les cas de dialogue local simple restent lisibles pour l'arbitre.
 - [ ] Les supports secondaires n'ecrasent pas la matiere principale.
+- [ ] La retention/troncature du contexte recent est observable sans dump massif.
 
 Ne pas toucher dans ce lot:
 
@@ -703,12 +844,15 @@ Risques:
 - [ ] Faire de `output_regime` propose un indicateur conseiller plutot qu'un verdict quasi-final.
 - [ ] Rendre visible quelles recommendations sont proposees a l'arbitre.
 - [ ] Preserver les vrais cas ambigus sans redonner a l'amont un pouvoir souverain.
+- [ ] Rendre visible en logs compacts la recommendation amont principale et les familles de signaux actives pertinentes.
+- [ ] Ajouter des tests qui permettent de comparer recommendation amont et verdict final sans reconstituer toute la pile.
 
 Critere de completion:
 
 - [ ] La couche amont produit encore ses alertes.
 - [ ] Les alertes ne ferment plus seules le couloir final.
 - [ ] Les cas quotidiens simples et les deictiques reellement ambigus restent bien separes.
+- [ ] Le statut non souverain de l'amont est devenu observable, pas seulement doctrinal.
 
 Ne pas toucher dans ce lot:
 
@@ -742,12 +886,16 @@ Risques:
 - [ ] Preserver le choix arbitral entre `clarify` et `suspend` sous garde-fou dur.
 - [ ] Verifier que le garde-fou ne force pas une sortie `meta` bureaucratique.
 - [ ] Tester qu'un cas hors garde-fou redevient arbitrable par le LLM.
+- [ ] Rendre visible quel garde-fou a borne la decision, sans journaliser de dump contextuel brut.
+- [ ] Rendre visible si le garde-fou a interdit `answer` mais laisse l'arbitre choisir `clarify` ou `suspend`.
+- [ ] Ajouter des tests qui prouvent qu'un garde-fou ne force pas a lui seul un regime `meta`.
 
 Critere de completion:
 
 - [ ] La liste des garde-fous est courte, rare et lisible.
 - [ ] Les cas limites restent vernaculaires.
 - [ ] Les heuristiques ordinaires ne se cachent plus derriere le label garde-fou.
+- [ ] Les garde-fous appliques sont observables par nom et par effet.
 
 Ne pas toucher dans ce lot:
 
@@ -784,12 +932,15 @@ Risques:
 - [ ] Journaliser les recommendations amont cassees.
 - [ ] Journaliser une raison lisible pour chaque override significatif.
 - [ ] Verifier que le verdict projete dans `[JUGEMENT HERMENEUTIQUE]` correspond bien au verdict final de l'arbitre.
+- [ ] Reutiliser `chat_turn_logger` et `hermeneutic_node_logger` plutot qu'ouvrir une nouvelle filiere d'observabilite.
+- [ ] Verifier que les preuves de logs restent compactes et sans dump brut de contexte.
 
 Critere de completion:
 
 - [ ] Le chantier est pilote par des cas d'acceptation explicites.
 - [ ] Un override est comprehensible sans reconstituer la pile entiere.
 - [ ] Les regressions de surclarification et de meta prematuree deviennent visibles.
+- [ ] L'observabilite minimale du chantier est tenue sans surface admin dediee.
 
 Ne pas toucher dans ce lot:
 
