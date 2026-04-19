@@ -381,6 +381,28 @@ class PrimaryNodeTests(unittest.TestCase):
         self.assertEqual(payload["primary_verdict"]["discursive_regime"], "simple")
         self.assertEqual(payload["primary_verdict"]["source_conflicts"], [])
 
+    def test_build_primary_node_keeps_ambiguous_deictic_interrogation_in_clarify_posture(self) -> None:
+        bundle = user_turn_input.build_user_turn_bundle(
+            user_message="Je pense a ca depuis hier, tu peux clarifier ?",
+            recent_window_input_payload={"turns": []},
+            time_input_payload={"now_utc_iso": "2026-04-02T10:00:00Z"},
+        )
+
+        payload = primary_node.build_primary_node(
+            conversation_id="conv-ambiguous-referent",
+            updated_at="2026-04-02T12:00:00Z",
+            time_input=_time(),
+            user_turn_input=bundle["user_turn"],
+            user_turn_signals=bundle["user_turn_signals"],
+            stimmung_input=_stimmung(),
+            web_input=_web(),
+        )
+
+        self.assertEqual(bundle["user_turn_signals"]["active_signal_families"], ["referent"])
+        self.assertTrue(bundle["user_turn_signals"]["ambiguity_present"])
+        self.assertEqual(payload["primary_verdict"]["judgment_posture"], "clarify")
+        self.assertEqual(payload["primary_verdict"]["discursive_regime"], "meta")
+
     def test_build_primary_node_applies_inertia_before_verdict_and_state(self) -> None:
         payload = primary_node.build_primary_node(
             conversation_id="conv-1",

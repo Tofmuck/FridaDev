@@ -2,6 +2,10 @@
 
 Document de cloture du mini-lot A+D livre le 2026-04-19 pour reduire les faux positifs de clarification sur des tours ordinaires peu ambigus, tout en conservant les vrais cas de cadrage.
 
+Mise a jour le 2026-04-19:
+- la premiere version de `A` avait surcorrige `referent`;
+- le micro-lot de suivi a requalifie cette partie amont sans retoucher `D`.
+
 ## Contexte
 
 Diagnostic retenu avant correctif:
@@ -20,13 +24,17 @@ Symptome cible:
 Fichier:
 - `app/core/hermeneutic_node/inputs/user_turn_input.py`
 
-Ajustements:
-- le signal `referent` n'est plus declenche pour un tour deictique trop long/dense (seuil de tour deictique leger);
-- le contexte recent est traite comme resolutif si le dernier message assistant est substantiel, meme sans lexique technique explicite (`patch`, `diff`, etc.).
+Ajustements livres en deux temps:
+- premier lot: baisse des faux positifs `referent` sur des tours quotidiens peu ambigus;
+- micro-lot de requalification: suppression du cutoff brut par longueur et retrait du critere "dernier message assistant substantiel" comme contexte resolutif general.
+
+Critere retenu apres requalification:
+- le contexte recent n'est resolutif que s'il nomme explicitement un artefact ou support concret (`patch`, `diff`, `texte`, `bloc`, `fichier`, etc.), ou s'il partage un vrai recouvrement lexical substantiel avec le tour courant;
+- un deictique en amont du tour peut etre desamorce seulement si la clause finale du tour porte a elle seule un ancrage explicite non deictique.
 
 Effet cible:
 - eviter qu'un simple `ca` dans une question ordinaire suffise a faire tomber le tour en ambiguite;
-- garder les clarifications quand le tour deictique reste court et sans contexte resolutif.
+- garder les clarifications quand le tour reste deictique sans contexte resolutif reel.
 
 ### D. Aval - normalisation anti-surclarification
 
@@ -59,7 +67,8 @@ Tests:
 
 Preuves unitaires ajoutees/ajustees:
 - `user_turn_input`:
-  - un dernier message assistant substantiel peut desamorcer un faux positif `referent`;
+  - un message assistant non lie ne suffit plus a desamorcer `referent`;
+  - `Corrige ca`, `Je pense a ca depuis hier, tu peux clarifier ?` et `Reprends ce point` restent ambigus;
   - `Je me rends compte de ca... t'as vu l'heure ?` ne force pas `referent`.
 - `validation_agent`:
   - une interrogation peu ambigue peut etre renormalisee de `clarify` vers `confirm`;
@@ -82,4 +91,4 @@ Ce mini-lot ne rouvre pas:
 
 Raison:
 - la doctrine cible ne change pas (meta-clarification seulement quand necessaire);
-- le lot ajuste des seuils et garde-fous d'implementation pour mieux respecter cette doctrine deja posee.
+- le lot ajuste des garde-fous d'implementation pour mieux respecter cette doctrine deja posee, et la mise a jour du 2026-04-19 corrige explicitement une sur-correction amont apparue dans la premiere version.

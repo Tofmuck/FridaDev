@@ -122,8 +122,140 @@ _WEB_REQUEST_MARKERS = (
     "dans quel article",
     "dans quels articles",
 )
-_MAX_REFERENT_LIGHT_TURN_TOKENS = 6
-_MIN_SUBSTANTIVE_ASSISTANT_CONTEXT_TOKENS = 4
+_REFERENT_MARKERS = ("ca", "cela", "ce point", "la dessus", "la-dessus", "ceci", "lui")
+_REFERENT_RESOLUTIVE_OBJECT_TERMS = (
+    "patch",
+    "diff",
+    "texte",
+    "reponse",
+    "version",
+    "bloc",
+    "paragraphe",
+    "phrase",
+    "section",
+    "ligne",
+    "code",
+    "fichier",
+    "contenu",
+)
+_REFERENT_NON_TARGET_TOKENS = {
+    "a",
+    "ai",
+    "alors",
+    "as",
+    "au",
+    "aux",
+    "avec",
+    "ca",
+    "ce",
+    "cela",
+    "ces",
+    "cet",
+    "cette",
+    "ceci",
+    "comme",
+    "dans",
+    "de",
+    "depuis",
+    "des",
+    "du",
+    "elle",
+    "en",
+    "es",
+    "est",
+    "et",
+    "etre",
+    "hier",
+    "il",
+    "je",
+    "l",
+    "la",
+    "le",
+    "les",
+    "leur",
+    "leurs",
+    "lui",
+    "ma",
+    "mais",
+    "me",
+    "mes",
+    "moi",
+    "mon",
+    "nous",
+    "notre",
+    "nos",
+    "on",
+    "ont",
+    "ou",
+    "par",
+    "pas",
+    "plus",
+    "pour",
+    "qu",
+    "que",
+    "qui",
+    "quoi",
+    "sa",
+    "se",
+    "ses",
+    "son",
+    "sont",
+    "sur",
+    "t",
+    "te",
+    "tes",
+    "toi",
+    "tu",
+    "un",
+    "une",
+    "vers",
+    "vos",
+    "votre",
+    "vous",
+    "y",
+}
+_REFERENT_GENERIC_ACTION_TOKENS = {
+    "aide",
+    "aider",
+    "aides",
+    "clarifier",
+    "clarifie",
+    "clarifies",
+    "corrige",
+    "corriger",
+    "corriges",
+    "corrigez",
+    "dire",
+    "dis",
+    "explique",
+    "expliquer",
+    "faire",
+    "fais",
+    "fait",
+    "montre",
+    "montrer",
+    "parle",
+    "parler",
+    "peux",
+    "pense",
+    "penses",
+    "penser",
+    "precise",
+    "preciser",
+    "raconte",
+    "raconter",
+    "reprend",
+    "reprendre",
+    "reprends",
+    "repond",
+    "repondre",
+    "reponds",
+    "sais",
+    "savoir",
+    "veux",
+    "voir",
+    "vu",
+}
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -186,6 +318,37 @@ def _recent_window_messages(recent_window_input_payload: Mapping[str, Any] | Non
     return messages
 
 
+def _tokenize_text(raw: Any) -> list[str]:
+    return [token for token in _normalize_text(raw).split() if token]
+
+
+def _semantic_tokens(raw: Any) -> set[str]:
+    tokens: set[str] = set()
+    for token in _tokenize_text(raw):
+        if len(token) <= 2:
+            continue
+        if token in _REFERENT_NON_TARGET_TOKENS:
+            continue
+        if token in _REFERENT_GENERIC_ACTION_TOKENS:
+            continue
+        tokens.add(token)
+    return tokens
+
+
+def _dialogue_clauses(raw: Any) -> list[str]:
+    return [segment.strip() for segment in re.split(r"(?:\.{2,}|[,:;!?])", str(raw or "")) if segment.strip()]
+
+
+def _has_explicit_terminal_anchor(user_message: str) -> bool:
+    clauses = _dialogue_clauses(user_message)
+    if len(clauses) < 2:
+        return False
+    last_clause = clauses[-1]
+    if _contains_any(last_clause, _REFERENT_MARKERS):
+        return False
+    return bool(_semantic_tokens(last_clause))
+
+
 def _has_resolutive_prior_context(
     *,
     recent_window_input_payload: Mapping[str, Any] | None,
@@ -203,37 +366,15 @@ def _has_resolutive_prior_context(
     if not messages:
         return False
 
-    contextual_terms = (
-        "patch",
-        "diff",
-        "texte",
-        "message",
-        "reponse",
-        "version",
-        "plan",
-        "bloc",
-        "paragraphe",
-        "phrase",
-        "section",
-        "ligne",
-        "code",
-        "fichier",
-        "contenu",
-        "precedent",
-        "precedente",
-    )
+    user_semantic_tokens = _semantic_tokens(user_message)
     for message in reversed(messages):
         message_payload = _mapping(message)
         normalized_content = _normalize_text(message_payload.get("content"))
         if not normalized_content:
             continue
-        if _contains_any(normalized_content, contextual_terms):
+        if _contains_any(normalized_content, _REFERENT_RESOLUTIVE_OBJECT_TERMS):
             return True
-        token_count = len([token for token in normalized_content.split() if token])
-        if (
-            str(message_payload.get("role") or "") == "assistant"
-            and token_count >= _MIN_SUBSTANTIVE_ASSISTANT_CONTEXT_TOKENS
-        ):
+        if user_semantic_tokens and user_semantic_tokens.intersection(_semantic_tokens(normalized_content)):
             return True
         return False
     return False
@@ -536,11 +677,9 @@ def _has_referent_signal(
     recent_window_input_payload: Mapping[str, Any] | None,
     user_message: str,
 ) -> bool:
-    if not _contains_any(text, ("ca", "cela", "ce point", "la dessus", "la-dessus", "ceci", "lui")):
+    if not _contains_any(text, _REFERENT_MARKERS):
         return False
-    normalized_text = _normalize_text(text)
-    token_count = len([token for token in normalized_text.split() if token])
-    if token_count > _MAX_REFERENT_LIGHT_TURN_TOKENS:
+    if _has_explicit_terminal_anchor(user_message):
         return False
     return not _has_resolutive_prior_context(
         recent_window_input_payload=recent_window_input_payload,
