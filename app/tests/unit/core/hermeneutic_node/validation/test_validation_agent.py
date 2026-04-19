@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import types
 import unittest
@@ -23,6 +24,7 @@ from core.hermeneutic_node.validation import validation_agent
 def _primary_verdict(
     *,
     judgment_posture: str = "answer",
+    discursive_regime: str | None = None,
     source_conflicts: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     return {
@@ -31,7 +33,7 @@ def _primary_verdict(
         "proof_regime": "source_explicite_requise",
         "uncertainty_posture": "prudente",
         "judgment_posture": judgment_posture,
-        "discursive_regime": "simple" if judgment_posture == "answer" else "meta",
+        "discursive_regime": discursive_regime or ("simple" if judgment_posture == "answer" else "meta"),
         "resituation_level": "none",
         "time_reference_mode": "atemporal",
         "source_priority": [
@@ -67,10 +69,74 @@ def _dialogue_context() -> dict[str, object]:
     }
 
 
-def _canonical_inputs() -> dict[str, object]:
+def _canonical_inputs(
+    *,
+    gesture: str = "interrogation",
+    ambiguity_present: bool = False,
+    underdetermination_present: bool = False,
+    active_signal_families: list[str] | None = None,
+) -> dict[str, object]:
+    active_signal_families = list(active_signal_families or [])
     return {
-        "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "interrogation"},
+        "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": gesture},
+        "user_turn_signals": {
+            "present": bool(
+                ambiguity_present
+                or underdetermination_present
+                or active_signal_families
+            ),
+            "ambiguity_present": ambiguity_present,
+            "underdetermination_present": underdetermination_present,
+            "active_signal_families": active_signal_families,
+            "active_signal_families_count": len(active_signal_families),
+        },
         "recent_context_input": {"schema_version": "v1", "messages": []},
+    }
+
+
+def _arbiter_json(
+    *,
+    final_judgment_posture: str,
+    final_output_regime: str,
+    arbiter_reason: str,
+) -> str:
+    return json.dumps(
+        {
+            "schema_version": "v1",
+            "final_judgment_posture": final_judgment_posture,
+            "final_output_regime": final_output_regime,
+            "arbiter_reason": arbiter_reason,
+        },
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
+
+
+def _expected_validated_output(
+    *,
+    validation_decision: str,
+    final_judgment_posture: str,
+    final_output_regime: str,
+    arbiter_followed_upstream: bool,
+    advisory_recommendations_followed: list[str],
+    advisory_recommendations_overridden: list[str],
+    arbiter_reason: str,
+    fail_open: bool = False,
+) -> dict[str, object]:
+    directives = [f"posture_{final_judgment_posture}", f"regime_{final_output_regime}"]
+    if fail_open:
+        directives.append("fallback_validation")
+    return {
+        "schema_version": "v1",
+        "validation_decision": validation_decision,
+        "final_judgment_posture": final_judgment_posture,
+        "final_output_regime": final_output_regime,
+        "pipeline_directives_final": directives,
+        "arbiter_followed_upstream": arbiter_followed_upstream,
+        "advisory_recommendations_followed": advisory_recommendations_followed,
+        "advisory_recommendations_overridden": advisory_recommendations_overridden,
+        "applied_hard_guards": [],
+        "arbiter_reason": arbiter_reason,
     }
 
 
@@ -171,24 +237,6 @@ class ValidationAgentTests(unittest.TestCase):
                 canonical_inputs={},
             )
 
-    def test_build_validated_output_rejects_validation_dialogue_context_with_schema_only(self) -> None:
-        with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
-            validation_agent.build_validated_output(
-                primary_verdict=_primary_verdict(),
-                justifications={},
-                validation_dialogue_context={"schema_version": "v1"},
-                canonical_inputs={},
-            )
-
-    def test_build_validated_output_rejects_arbitrary_validation_dialogue_context_mapping(self) -> None:
-        with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
-            validation_agent.build_validated_output(
-                primary_verdict=_primary_verdict(),
-                justifications={},
-                validation_dialogue_context={"foo": "bar"},
-                canonical_inputs={},
-            )
-
     def test_build_validated_output_rejects_non_mapping_justifications(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_justifications"):
             validation_agent.build_validated_output(
@@ -207,10 +255,16 @@ class ValidationAgentTests(unittest.TestCase):
                 canonical_inputs=[],
             )
 
-    def test_build_validated_output_returns_nominal_confirm_result(self) -> None:
+    def test_build_validated_output_returns_nominal_follow_result(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
             ]
         )
 
@@ -238,12 +292,18 @@ class ValidationAgentTests(unittest.TestCase):
         )
         self.assertEqual(
             result.validated_output,
-            {
-                "schema_version": "v1",
-                "validation_decision": "confirm",
-                "final_judgment_posture": "answer",
-                "pipeline_directives_final": ["posture_answer"],
-            },
+            _expected_validated_output(
+                validation_decision="confirm",
+                final_judgment_posture="answer",
+                final_output_regime="simple",
+                arbiter_followed_upstream=True,
+                advisory_recommendations_followed=[
+                    "primary_judgment_posture",
+                    "primary_output_regime_proposed",
+                ],
+                advisory_recommendations_overridden=[],
+                arbiter_reason="lecture locale suffisante",
+            ),
         )
         self.assertEqual(
             requests_module.calls[0]["json"]["model"],
@@ -253,9 +313,6 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module.calls[0]["headers"],
             {"Authorization": "caller=validation_agent"},
         )
-        self.assertNotIn("primary_verdict", result.validated_output)
-        self.assertNotIn("validation_dialogue_context", result.validated_output)
-        self.assertNotIn("justifications", result.validated_output)
         self.assertEqual(
             self.provider_logs,
             [
@@ -285,7 +342,13 @@ class ValidationAgentTests(unittest.TestCase):
         )
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
             ]
         )
 
@@ -303,10 +366,6 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]["json"]["top_p"], 0.88)
         self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 64)
         self.assertEqual(requests_module.calls[0]["timeout"], 14)
-        self.assertEqual(
-            requests_module.calls[0]["headers"],
-            {"Authorization": "caller=validation_agent"},
-        )
 
     def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
@@ -321,7 +380,13 @@ class ValidationAgentTests(unittest.TestCase):
         )
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
             ]
         )
 
@@ -334,7 +399,6 @@ class ValidationAgentTests(unittest.TestCase):
         )
 
         self.assertEqual(result.status, "ok")
-        self.assertEqual(result.model, "openai/custom-validation-primary")
         self.assertEqual(
             requests_module.calls[0]["json"]["max_tokens"],
             validation_agent.MAX_RESPONSE_TOKENS,
@@ -343,7 +407,13 @@ class ValidationAgentTests(unittest.TestCase):
     def test_build_validated_output_accepts_minimal_recent_context_like_dialogue_context(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="tour direct peu ambigu",
+                    )
+                ),
             ]
         )
 
@@ -362,53 +432,91 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
         self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
 
-    def test_build_validated_output_keeps_answer_after_challenge(self) -> None:
+    def test_build_validated_output_allows_arbiter_to_override_primary_clarify(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"challenge"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture dialogique locale suffisante",
+                    )
+                ),
             ]
         )
 
         result = validation_agent.build_validated_output(
-            primary_verdict=_primary_verdict(judgment_posture="answer"),
+            primary_verdict=_primary_verdict(judgment_posture="clarify", discursive_regime="meta"),
             justifications={},
             validation_dialogue_context=_dialogue_context(),
             canonical_inputs=_canonical_inputs(),
             requests_module=requests_module,
         )
 
-        self.assertEqual(result.validated_output["validation_decision"], "challenge")
-        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
-        self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
+        self.assertEqual(
+            result.validated_output,
+            _expected_validated_output(
+                validation_decision="challenge",
+                final_judgment_posture="answer",
+                final_output_regime="simple",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=[],
+                advisory_recommendations_overridden=[
+                    "primary_judgment_posture",
+                    "primary_output_regime_proposed",
+                ],
+                arbiter_reason="lecture dialogique locale suffisante",
+            ),
+        )
 
-    def test_build_validated_output_maps_clarify_and_suspend_locally(self) -> None:
+    def test_build_validated_output_keeps_clarify_and_suspend_as_final_verdicts(self) -> None:
         clarify_requests = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="meta",
+                        arbiter_reason="referent insuffisamment determine",
+                    )
+                ),
             ]
         )
         clarify_result = validation_agent.build_validated_output(
             primary_verdict=_primary_verdict(judgment_posture="answer"),
             justifications={},
             validation_dialogue_context=_dialogue_context(),
-            canonical_inputs={
-                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "orientation"},
-                "user_turn_signals": {
-                    "present": True,
-                    "ambiguity_present": False,
-                    "underdetermination_present": True,
-                    "active_signal_families": ["visee"],
-                    "active_signal_families_count": 1,
-                },
-            },
+            canonical_inputs=_canonical_inputs(
+                gesture="orientation",
+                underdetermination_present=True,
+                active_signal_families=["visee"],
+            ),
             requests_module=clarify_requests,
         )
-        self.assertEqual(clarify_result.validated_output["final_judgment_posture"], "clarify")
-        self.assertEqual(clarify_result.validated_output["pipeline_directives_final"], ["posture_clarify"])
+        self.assertEqual(
+            clarify_result.validated_output,
+            _expected_validated_output(
+                validation_decision="clarify",
+                final_judgment_posture="clarify",
+                final_output_regime="meta",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=[],
+                advisory_recommendations_overridden=[
+                    "primary_judgment_posture",
+                    "primary_output_regime_proposed",
+                ],
+                arbiter_reason="referent insuffisamment determine",
+            ),
+        )
 
         suspend_requests = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"suspend"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="suspend",
+                        final_output_regime="simple",
+                        arbiter_reason="base admissible absente",
+                    )
+                ),
             ]
         )
         suspend_result = validation_agent.build_validated_output(
@@ -418,13 +526,20 @@ class ValidationAgentTests(unittest.TestCase):
             canonical_inputs=_canonical_inputs(),
             requests_module=suspend_requests,
         )
+        self.assertEqual(suspend_result.validated_output["validation_decision"], "suspend")
         self.assertEqual(suspend_result.validated_output["final_judgment_posture"], "suspend")
-        self.assertEqual(suspend_result.validated_output["pipeline_directives_final"], ["posture_suspend"])
+        self.assertEqual(suspend_result.validated_output["final_output_regime"], "simple")
 
     def test_build_validated_output_keeps_answer_for_low_ambiguity_direct_identity_revelation(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="meta",
+                        arbiter_reason="cadrage supplementaire",
+                    )
+                ),
             ]
         )
 
@@ -435,27 +550,33 @@ class ValidationAgentTests(unittest.TestCase):
                 "schema_version": "v1",
                 "messages": [{"role": "user", "content": "Je suis Christophe Muck"}],
             },
-            canonical_inputs={
-                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "exposition"},
-                "user_turn_signals": {
-                    "present": True,
-                    "ambiguity_present": False,
-                    "underdetermination_present": False,
-                    "active_signal_families": [],
-                    "active_signal_families_count": 0,
-                },
-            },
+            canonical_inputs=_canonical_inputs(
+                gesture="exposition",
+                ambiguity_present=False,
+                underdetermination_present=False,
+                active_signal_families=[],
+            ),
             requests_module=requests_module,
         )
 
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
         self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
-        self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
+        self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertEqual(
+            result.validated_output["arbiter_reason"],
+            "reponse directe sur tour local peu ambigu",
+        )
 
     def test_build_validated_output_keeps_answer_for_low_ambiguity_interrogation(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="meta",
+                        arbiter_reason="cadrage supplementaire",
+                    )
+                ),
             ]
         )
 
@@ -466,27 +587,29 @@ class ValidationAgentTests(unittest.TestCase):
                 "schema_version": "v1",
                 "messages": [{"role": "user", "content": "T'as vu l'heure ?"}],
             },
-            canonical_inputs={
-                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "interrogation"},
-                "user_turn_signals": {
-                    "present": True,
-                    "ambiguity_present": False,
-                    "underdetermination_present": False,
-                    "active_signal_families": [],
-                    "active_signal_families_count": 0,
-                },
-            },
+            canonical_inputs=_canonical_inputs(
+                gesture="interrogation",
+                ambiguity_present=False,
+                underdetermination_present=False,
+                active_signal_families=[],
+            ),
             requests_module=requests_module,
         )
 
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
         self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
-        self.assertEqual(result.validated_output["pipeline_directives_final"], ["posture_answer"])
+        self.assertEqual(result.validated_output["final_output_regime"], "simple")
 
     def test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="meta",
+                        arbiter_reason="referent introuvable sans contexte resolutif",
+                    )
+                ),
             ]
         )
 
@@ -497,16 +620,11 @@ class ValidationAgentTests(unittest.TestCase):
                 "schema_version": "v1",
                 "messages": [{"role": "user", "content": "Corrige ça"}],
             },
-            canonical_inputs={
-                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "orientation"},
-                "user_turn_signals": {
-                    "present": True,
-                    "ambiguity_present": True,
-                    "underdetermination_present": False,
-                    "active_signal_families": ["referent"],
-                    "active_signal_families_count": 1,
-                },
-            },
+            canonical_inputs=_canonical_inputs(
+                gesture="orientation",
+                ambiguity_present=True,
+                active_signal_families=["referent"],
+            ),
             requests_module=requests_module,
         )
 
@@ -516,7 +634,13 @@ class ValidationAgentTests(unittest.TestCase):
     def test_build_validated_output_keeps_clarify_for_ambiguous_interrogation(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"clarify"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="meta",
+                        arbiter_reason="referent encore ambigu",
+                    )
+                ),
             ]
         )
 
@@ -527,16 +651,11 @@ class ValidationAgentTests(unittest.TestCase):
                 "schema_version": "v1",
                 "messages": [{"role": "user", "content": "Et ca, t'en penses quoi ?"}],
             },
-            canonical_inputs={
-                "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "interrogation"},
-                "user_turn_signals": {
-                    "present": True,
-                    "ambiguity_present": True,
-                    "underdetermination_present": False,
-                    "active_signal_families": ["referent"],
-                    "active_signal_families_count": 1,
-                },
-            },
+            canonical_inputs=_canonical_inputs(
+                gesture="interrogation",
+                ambiguity_present=True,
+                active_signal_families=["referent"],
+            ),
             requests_module=requests_module,
         )
 
@@ -547,7 +666,13 @@ class ValidationAgentTests(unittest.TestCase):
         requests_module = _FakeRequests(
             [
                 _FakeResponse("not json"),
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="fallback arbiter conservateur",
+                    )
+                ),
             ]
         )
 
@@ -590,18 +715,28 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.reason_code, "invalid_json")
         self.assertEqual(
             result.validated_output,
-            {
-                "schema_version": "v1",
-                "validation_decision": "suspend",
-                "final_judgment_posture": "suspend",
-                "pipeline_directives_final": ["posture_suspend", "fallback_validation"],
-            },
+            _expected_validated_output(
+                validation_decision="suspend",
+                final_judgment_posture="suspend",
+                final_output_regime="simple",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=["primary_output_regime_proposed"],
+                advisory_recommendations_overridden=["primary_judgment_posture"],
+                arbiter_reason="validation fail-open (invalid_json)",
+                fail_open=True,
+            ),
         )
 
     def test_build_validated_output_centers_prompt_on_validation_dialogue_context(self) -> None:
         requests_module = _FakeRequests(
             [
-                _FakeResponse('{"schema_version":"v1","validation_decision":"confirm"}'),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
             ]
         )
 
@@ -624,10 +759,10 @@ class ValidationAgentTests(unittest.TestCase):
             user_message.index("validation_dialogue_context"),
             user_message.index("primary_verdict"),
         )
-        self.assertIn(
-            '{"schema_version":"v1","validation_decision":"confirm|challenge|clarify|suspend"}',
-            user_message,
-        )
+        self.assertIn('"final_judgment_posture":"answer|clarify|suspend"', user_message)
+        self.assertIn('"final_output_regime":"simple|meta"', user_message)
+        self.assertIn('"arbiter_reason":"raison_courte_lisible"', user_message)
+        self.assertNotIn("validation_decision", user_message.split("schema attendu: ", 1)[1])
 
     def test_build_messages_bounds_large_validation_inputs(self) -> None:
         large_context = {

@@ -15,10 +15,10 @@ Priorite hermeneutique:
 Sortie attendue:
 - reponds en JSON strict uniquement
 - ne renvoie que:
-  {"schema_version":"v1","validation_decision":"confirm|challenge|clarify|suspend"}
+  {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}
 
 Interdits:
-- ne renvoie pas final_judgment_posture
+- ne renvoie pas validation_decision
 - ne renvoie pas pipeline_directives_final
 - ne dump pas les inputs
 - n'ajoute aucune prose hors JSON

@@ -114,14 +114,17 @@ Regles fortes:
 Le bloc prose aval contient au minimum:
 
 - la posture finale validee
+- le regime final valide
 - une consigne hermeneutique compacte compatible avec cette posture
+- une consigne de regime compacte compatible avec ce regime
 - les directives finales actives utiles au prompt principal
 
 Decision retenue:
 
-- `validation_decision` peut rester interne en V1
+- `validation_decision` peut rester interne comme trace legacy en lot 2
 - elle n'a pas besoin d'etre exposee verbatim au prompt principal
-- son effet normatif est deja resolu dans `final_judgment_posture` et `pipeline_directives_final`
+- son effet normatif n'est plus souverain
+- l'autorite effective du bloc projete vient de `final_judgment_posture`, `final_output_regime` et `pipeline_directives_final`
 
 N'entrent jamais dans ce bloc:
 
@@ -148,7 +151,9 @@ Forme minimale retenue:
 ```text
 [JUGEMENT HERMENEUTIQUE]
 Posture finale validee: <answer|clarify|suspend>.
+Regime final valide: <simple|meta>.
 Consigne hermeneutique: <consigne normative compacte deja resolue>.
+Consigne de regime: <consigne compacte deja resolue>.
 Directives finales actives: <code_1[, code_2, ...]>.
 ```
 

@@ -81,33 +81,36 @@ Il sert seulement de point de comparaison institutionnel: un LLM y arbitre deja 
 
 ## 1. Probleme architectural actuel
 
-### 1.1 Chaine actuelle de pouvoir
+### 1.1 Chaine initiale de pouvoir avant lot 2
 
-Aujourd'hui, la chaine de pouvoir est essentiellement la suivante:
+Avant le lot 2 runtime, la chaine de pouvoir etait essentiellement la suivante:
 
-1. `chat_service` construit `recent_window_input`, `user_turn_input` et `user_turn_signals`.
-2. `primary_node` produit deja un `primary_verdict` structurant.
-3. `build_judgment_posture()` convertit toute ambiguite ou sous-determination active en `clarify`.
-4. `build_output_regime()` convertit aujourd'hui trop facilement `judgment_posture != answer` en `discursive_regime = meta`.
-5. `build_source_conflicts()` peut encore pousser une issue `clarify`.
-6. `validation_agent` relit ensuite le dossier, mais ne renvoie encore qu'une `validation_decision`.
-7. `_FINAL_POSTURE_BY_PRIMARY_AND_DECISION` remappe cette decision sur une posture deja preconstruite par le primaire.
-8. `chat_prompt_context.build_hermeneutic_judgment_block()` projette ensuite le verdict final injecte dans `[JUGEMENT HERMENEUTIQUE]`.
+1. `chat_service` construisait `recent_window_input`, `user_turn_input` et `user_turn_signals`.
+2. `primary_node` produisait deja un `primary_verdict` structurant.
+3. `build_judgment_posture()` convertissait toute ambiguite ou sous-determination active en `clarify`.
+4. `build_output_regime()` convertissait trop facilement `judgment_posture != answer` en `discursive_regime = meta`.
+5. `build_source_conflicts()` pouvait encore pousser une issue `clarify`.
+6. `validation_agent` relisait ensuite le dossier, mais ne renvoyait encore qu'une `validation_decision`.
+7. `_FINAL_POSTURE_BY_PRIMARY_AND_DECISION` remappait cette decision sur une posture deja preconstruite par le primaire.
+8. `chat_prompt_context.build_hermeneutic_judgment_block()` projetait ensuite ce verdict deja remappe dans `[JUGEMENT HERMENEUTIQUE]`.
 
-Autrement dit:
+Depuis le lot 2:
 
-- l'amont ne conseille pas seulement;
-- il precontraint deja fortement le couloir de sortie;
-- l'aval n'a pas encore de pleine souverainete sur la posture finale.
+- l'aval est effectivement souverain sur le verdict final;
+- le bloc projete suit bien ce verdict final arbitral;
+- la pression residuelle vient surtout de l'amont encore trop structurant, qui reste a requalifier dans les lots 3 et 4.
 
-### 1.2 Pourquoi cela produit de la surclarification et de la meta prematuree
+### 1.2 Pourquoi cela produisait de la surclarification et de la meta prematuree
 
-Dans l'etat courant:
+Avant le lot 2:
 
-- les signaux amont ont encore une force quasi-decisionnelle;
-- `judgment_posture` et `source_conflicts` peuvent pousser trop vite vers `clarify`;
-- `output_regime` reste encore trop couple a cette logique;
-- le `validation_agent` n'a pas encore un vrai contrat de verdict final.
+- les signaux amont avaient une force quasi-decisionnelle;
+- `judgment_posture` et `source_conflicts` pouvaient pousser trop vite vers `clarify`;
+- `output_regime` restait trop couple a cette logique;
+- le `validation_agent` n'avait pas encore un vrai contrat de verdict final.
+
+Apres le lot 2, le point institutionnel central est traite.
+Le probleme restant pour la suite du chantier est de requalifier l'amont comme couche conseillere sans rouvrir une souverainete mecanique masquee.
 
 Le resultat institutionnel est:
 
@@ -566,7 +569,7 @@ L'existant utile au chantier est deja reel et reutilisable:
 
 - `chat_turn_logger` fournit deja un seam canonique par `stage`, `status`, `payload_json`, `model`, `reason_code` et persiste ces evenements dans `observability.chat_log_events`;
 - `hermeneutic_node_logger` expose deja des evenements compacts pour `hermeneutic_node_insertion`, `primary_node` et `validation_agent`;
-- le payload `validation_agent` expose deja une base utile: `dialogue_messages_count`, `primary_judgment_posture`, `validation_decision`, `final_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
+- le payload `validation_agent` expose deja la base utile du lot 2: `dialogue_messages_count`, `primary_judgment_posture`, `primary_output_regime_proposed`, `validation_decision`, `final_judgment_posture`, `final_output_regime`, `arbiter_followed_upstream`, `advisory_recommendations_followed`, `advisory_recommendations_overridden`, `applied_hard_guards`, `arbiter_reason`, `projected_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
 - `test_chat_turn_logger_phase2.py` verrouille deja la discipline de logs compacts par stage;
 - `test_server_phase14.py` intercepte deja `insert_chat_log_event` sur des seams d'integration, donc le chantier possede deja une couture de preuve live sans surface admin dediee;
 - les notes archivees recentes, notamment sur le web, montrent deja la doctrine utile: observabilite suffisante, compacte, sans dump brut ni replay code obligatoire.
@@ -762,25 +765,25 @@ Risques:
 - double source de verite entre primaire et aval;
 - projection finale encore re-subordonnee au primaire.
 
-- [ ] Remplacer le contrat `validation_decision` par un vrai verdict arbitral final.
-- [ ] Supprimer le remapping qui re-subordonne la posture finale a une posture primaire deja figee.
-- [ ] Faire produire directement `final_judgment_posture` par l'arbitre.
-- [ ] Faire produire directement `final_output_regime` par l'arbitre.
-- [ ] Conserver le `validation_agent` comme institution cible sans ouvrir un chantier de renommage.
-- [ ] Verifier que `[JUGEMENT HERMENEUTIQUE]` projette le verdict final de l'arbitre.
-- [ ] Etendre le payload du seam arbitral existant plutot que creer une nouvelle filiere de logs.
-- [ ] Rendre visible si l'arbitre suit ou override l'amont.
-- [ ] Rendre visible le verdict final effectivement projete.
-- [ ] Rendre visible une raison lisible de decision et les garde-fous appliques si presents.
-- [ ] Ajouter des tests qui relisent explicitement ces champs sur le seam de logs existant.
+- [x] Remplacer le contrat `validation_decision` par un vrai verdict arbitral final.
+- [x] Supprimer le remapping qui re-subordonne la posture finale a une posture primaire deja figee.
+- [x] Faire produire directement `final_judgment_posture` par l'arbitre.
+- [x] Faire produire directement `final_output_regime` par l'arbitre.
+- [x] Conserver le `validation_agent` comme institution cible sans ouvrir un chantier de renommage.
+- [x] Verifier que `[JUGEMENT HERMENEUTIQUE]` projette le verdict final de l'arbitre.
+- [x] Etendre le payload du seam arbitral existant plutot que creer une nouvelle filiere de logs.
+- [x] Rendre visible si l'arbitre suit ou override l'amont.
+- [x] Rendre visible le verdict final effectivement projete.
+- [x] Rendre visible une raison lisible de decision et les garde-fous appliques si presents.
+- [x] Ajouter des tests qui relisent explicitement ces champs sur le seam de logs existant.
 
 Critere de completion:
 
-- [ ] Le verdict final vient bien de l'arbitre.
-- [ ] Un override de l'amont est techniquement possible et tracable.
-- [ ] La sortie finale n'est plus un simple remap d'une posture primaire.
-- [ ] Les logs permettent de voir sans replay code si l'arbitre a suivi ou casse l'amont.
-- [ ] Les tests couvrent le seam de projection finale observable.
+- [x] Le verdict final vient bien de l'arbitre.
+- [x] Un override de l'amont est techniquement possible et tracable.
+- [x] La sortie finale n'est plus un simple remap d'une posture primaire.
+- [x] Les logs permettent de voir sans replay code si l'arbitre a suivi ou casse l'amont.
+- [x] Les tests couvrent le seam de projection finale observable.
 
 Ne pas toucher dans ce lot:
 

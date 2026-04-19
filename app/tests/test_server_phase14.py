@@ -692,8 +692,9 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
             'primary_verdict': {
                 'schema_version': 'v1',
-                'judgment_posture': 'answer',
-                'pipeline_directives_provisional': ['posture_answer'],
+                'judgment_posture': 'clarify',
+                'discursive_regime': 'meta',
+                'pipeline_directives_provisional': ['posture_clarify', 'regime_meta'],
                 'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
             },
             'node_state': {'schema_version': 'v1'},
@@ -704,7 +705,16 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'schema_version': 'v1',
                     'validation_decision': 'challenge',
                     'final_judgment_posture': 'answer',
-                    'pipeline_directives_final': ['posture_answer', 'source_conflict_clarify'],
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': [],
+                    'advisory_recommendations_overridden': [
+                        'primary_judgment_posture',
+                        'primary_output_regime_proposed',
+                    ],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
                 },
                 status='ok',
                 model='openai/gpt-5.4-mini',
@@ -731,8 +741,10 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         system_prompt = observed_state['payload_messages'][0]['content']
         self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
         self.assertIn('Posture finale validee: answer.', system_prompt)
+        self.assertIn('Regime final valide: simple.', system_prompt)
         self.assertIn('Consigne hermeneutique: Tu peux produire une reponse substantive normale.', system_prompt)
-        self.assertIn('Directives finales actives: posture_answer, source_conflict_clarify.', system_prompt)
+        self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
+        self.assertIn('Directives finales actives: posture_answer, regime_simple.', system_prompt)
         self.assertNotIn('primary_verdict', system_prompt)
         self.assertNotIn('validation_dialogue_context', system_prompt)
         self.assertNotIn('justifications', system_prompt)
@@ -777,7 +789,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'schema_version': 'v1',
                     'validation_decision': 'suspend',
                     'final_judgment_posture': 'suspend',
-                    'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': ['primary_output_regime_proposed'],
+                    'advisory_recommendations_overridden': ['primary_judgment_posture'],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'validation fail-open (timeout)',
                 },
                 status='error',
                 model='openai/gpt-5.4-nano',
@@ -804,11 +822,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         system_prompt = observed_state['payload_messages'][0]['content']
         self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
         self.assertIn('Posture finale validee: suspend.', system_prompt)
+        self.assertIn('Regime final valide: simple.', system_prompt)
         self.assertIn(
             'Consigne hermeneutique: Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
             system_prompt,
         )
-        self.assertIn('Directives finales actives: posture_suspend, fallback_validation.', system_prompt)
+        self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
+        self.assertIn('Directives finales actives: posture_suspend, regime_simple, fallback_validation.', system_prompt)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_active_summary_to_hermeneutic_insertion_point(self) -> None:
@@ -1392,7 +1412,16 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'schema_version': 'v1',
                     'validation_decision': 'confirm',
                     'final_judgment_posture': 'answer',
-                    'pipeline_directives_final': ['posture_answer'],
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': True,
+                    'advisory_recommendations_followed': [
+                        'primary_judgment_posture',
+                        'primary_output_regime_proposed',
+                    ],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'lecture locale suffisante',
                 },
                 status='ok',
                 model='openai/gpt-5.4-mini',
@@ -2946,6 +2975,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'epistemic_regime': 'ouvert',
                 'proof_regime': 'source_explicite_requise',
                 'judgment_posture': 'clarify',
+                'discursive_regime': 'meta',
                 'source_conflicts': [{'kind': 'memory_conflict'}, {'kind': 'web_conflict'}],
                 'audit': {'fail_open': False, 'state_used': True, 'degraded_fields': []},
             },
@@ -2957,7 +2987,16 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'schema_version': 'v1',
                     'validation_decision': 'clarify',
                     'final_judgment_posture': 'clarify',
-                    'pipeline_directives_final': ['posture_clarify'],
+                    'final_output_regime': 'meta',
+                    'pipeline_directives_final': ['posture_clarify', 'regime_meta'],
+                    'arbiter_followed_upstream': True,
+                    'advisory_recommendations_followed': [
+                        'primary_judgment_posture',
+                        'primary_output_regime_proposed',
+                    ],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'ambiguite maintenue apres relecture',
                 },
                 status='ok',
                 model='openai/gpt-5.4-mini',
@@ -3021,9 +3060,20 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'dialogue_messages_count': 1,
                 'primary_judgment_posture': 'clarify',
+                'primary_output_regime_proposed': 'meta',
                 'validation_decision': 'clarify',
                 'final_judgment_posture': 'clarify',
-                'pipeline_directives_final': ['posture_clarify'],
+                'final_output_regime': 'meta',
+                'arbiter_followed_upstream': True,
+                'advisory_recommendations_followed': [
+                    'primary_judgment_posture',
+                    'primary_output_regime_proposed',
+                ],
+                'advisory_recommendations_overridden': [],
+                'applied_hard_guards': [],
+                'arbiter_reason': 'ambiguite maintenue apres relecture',
+                'projected_judgment_posture': 'clarify',
+                'pipeline_directives_final': ['posture_clarify', 'regime_meta'],
                 'decision_source': 'primary',
                 'model': 'openai/gpt-5.4-mini',
             },
@@ -3070,6 +3120,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'epistemic_regime': 'ouvert',
                 'proof_regime': 'source_explicite_requise',
                 'judgment_posture': 'answer',
+                'discursive_regime': 'simple',
                 'source_conflicts': [],
                 'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
             },
@@ -3081,7 +3132,13 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                     'schema_version': 'v1',
                     'validation_decision': 'suspend',
                     'final_judgment_posture': 'suspend',
-                    'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': ['primary_output_regime_proposed'],
+                    'advisory_recommendations_overridden': ['primary_judgment_posture'],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'validation fail-open (timeout)',
                 },
                 status='error',
                 model='openai/gpt-5.4-nano',
@@ -3112,9 +3169,17 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             {
                 'dialogue_messages_count': 1,
                 'primary_judgment_posture': 'answer',
+                'primary_output_regime_proposed': 'simple',
                 'validation_decision': 'suspend',
                 'final_judgment_posture': 'suspend',
-                'pipeline_directives_final': ['posture_suspend', 'fallback_validation'],
+                'final_output_regime': 'simple',
+                'arbiter_followed_upstream': False,
+                'advisory_recommendations_followed': ['primary_output_regime_proposed'],
+                'advisory_recommendations_overridden': ['primary_judgment_posture'],
+                'applied_hard_guards': [],
+                'arbiter_reason': 'validation fail-open (timeout)',
+                'projected_judgment_posture': 'suspend',
+                'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
                 'decision_source': 'fail_open',
                 'reason_code': 'timeout',
                 'model': 'openai/gpt-5.4-nano',

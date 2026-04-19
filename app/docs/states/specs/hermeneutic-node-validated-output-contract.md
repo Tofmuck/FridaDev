@@ -1,23 +1,32 @@
 # Hermeneutic Node Validated Output Contract
 
-Statut: draft normatif ouvert
-Portee: deuxieme pause normative du Lot 9 pour `validated_output`
+Statut: spec historique partiellement supersedee
+Portee: deuxieme pause normative du Lot 9 pour `validated_output`, relue apres le lot 2 runtime
+
+Note runtime 2026-04-19:
+
+- la sortie souveraine n'est plus une combinaison normative pilotee par `validation_decision`;
+- `validated_output` expose maintenant directement le verdict final arbitral;
+- `validation_decision` peut subsister comme trace legacy derivee, mais elle n'a plus d'autorite normative propre.
 
 ## 1. Purpose
 
 Cette spec ouvre la deuxieme pause normative du Lot 9.
 
-Elle tranche:
+Elle tranchait initialement:
 
 - la nature exacte de la sortie validee minimale
-- la table de combinaison normative minimale entre verdict primaire et decision de validation
-- le statut exact de `challenge`
+- une table de combinaison normative minimale entre verdict primaire et decision de validation
+- le statut initial de `challenge`
 - la forme canonique minimale de la sortie finale post-validation
 - le statut minimal de `pipeline_directives_final`
 - la frontiere avec `primary_verdict`, `validation_dialogue_context` et l'aval
 
-Elle ne code rien.
-Elle ne ferme ni `validation_agent.py`, ni le wiring aval, ni l'observabilite complete du dispositif final.
+Le runtime lot 2 a depuis precise:
+
+- que `validated_output` transporte un verdict arbitral final direct;
+- que l'aval ne rederive plus la posture finale depuis un couple primaire + `validation_decision`;
+- que le seam compact d'observabilite lit deja ce verdict final et sa projection.
 
 ## 2. Repo Grounding
 
@@ -68,9 +77,9 @@ Regle forte:
 
 Elle sert a:
 
-- exposer la decision de validation
-- exposer une posture finale directement consommable par l'aval
+- exposer le verdict final arbitral directement consommable par l'aval
 - exposer `pipeline_directives_final`
+- exposer une trace compacte de suivi vs override
 - eviter que l'aval ait a re-deduire lui-meme la posture finale
 
 Elle ne sert pas a:
@@ -84,17 +93,20 @@ Elle ne sert pas a:
 
 La sortie validee minimale retient explicitement:
 
-- `validation_decision`
 - `final_judgment_posture`
+- `final_output_regime`
 - `pipeline_directives_final`
+- `arbiter_reason`
 
-Decision normative:
+Champs de transition acceptes en lot 2:
 
-- `final_judgment_posture` est requis
-
-Raison:
-
-- l'aval ne doit pas re-deduire lui-meme la posture finale a partir de `validation_decision` et du verdict primaire
+- `validation_decision`
+  - trace legacy derivee du verdict final et des recommandations amont;
+  - non souveraine;
+- `arbiter_followed_upstream`
+- `advisory_recommendations_followed`
+- `advisory_recommendations_overridden`
+- `applied_hard_guards`
 
 Taxonomie retenue pour `final_judgment_posture`:
 
@@ -102,57 +114,26 @@ Taxonomie retenue pour `final_judgment_posture`:
 - `clarify`
 - `suspend`
 
-Decision normative sur `challenge`:
+Taxonomie retenue pour `final_output_regime`:
 
-- `challenge` reste visible comme `validation_decision`
-- `challenge` n'est pas une posture aval-consommable terminale
-- `challenge` doit etre resolu par la table de combinaison vers `final_judgment_posture`
-- `challenge` sur un primaire `answer` ne doit pas etre rabattu mecaniquement sur `clarify`
-- en V1, il peut deboucher sur `final_judgment_posture = answer` quand la validation juge qu'une correction du verdict primaire reste compatible avec une reponse finale normale
+- `simple`
+- `meta`
 
-## 6. Minimal Normative Combination Table
+Regles fortes:
 
-Table minimale retenue:
+- l'aval ne rederive plus `final_judgment_posture` depuis `validation_decision`;
+- la table de combinaison primaire/validation n'est plus normative dans le runtime lot 2;
+- `validation_decision` peut encore aider la compatibilite ou la lecture historique, mais elle est derivee apres coup.
 
-```python
-{
-    "answer": {
-        "confirm": "answer",
-        "challenge": "answer",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
-    "clarify": {
-        "confirm": "clarify",
-        "challenge": "clarify",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
-    "suspend": {
-        "confirm": "suspend",
-        "challenge": "suspend",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
-}
-```
+## 6. Legacy Combination Table Status
 
-Lecture normative compacte:
+La table de combinaison documentee dans les versions precedentes de cette spec devient historique.
 
-1. `confirm` preserve la `judgment_posture` primaire
-2. `clarify` force `final_judgment_posture = clarify`
-3. `suspend` force `final_judgment_posture = suspend`
-4. `challenge` n'est pas terminal pour l'aval
-5. `challenge` se resout vers:
-   - `answer` si la posture primaire etait `answer`
-   - `clarify` si la posture primaire etait `clarify`
-   - `suspend` si la posture primaire etait deja `suspend`
-6. cette resolution garde `challenge` visible comme decision de validation sans exclure artificiellement une posture finale `answer`
+Depuis le lot 2 runtime:
 
-Regle forte:
-
-- cette table s'applique apres une decision de validation deja pesee par `validation_dialogue_context`
-- elle ne reduit pas la validation a une simple mecanique detachee du contexte dialogique elargi
+- le verdict final arbitral est choisi directement par `validation_agent`;
+- tout champ `validation_decision` eventuel est derive downstream a titre de compatibilite;
+- aucune combinaison primaire + `validation_decision` ne doit redevenir souveraine pour l'aval.
 
 ## 7. Minimal Canonical Shape Of `validated_output`
 
@@ -161,28 +142,32 @@ La forme canonique minimale retenue est:
 ```python
 {
     "schema_version": "v1",
-    "validation_decision": "challenge",
     "final_judgment_posture": "answer",
-    "pipeline_directives_final": ["..."],
+    "final_output_regime": "simple",
+    "pipeline_directives_final": ["posture_answer", "regime_simple"],
+    "arbiter_followed_upstream": False,
+    "advisory_recommendations_followed": [],
+    "advisory_recommendations_overridden": ["primary_judgment_posture", "primary_output_regime_proposed"],
+    "applied_hard_guards": [],
+    "arbiter_reason": "lecture locale suffisante",
 }
 ```
 
 Invariants minimaux:
 
 - un seul format canonique
-- `validation_decision` appartient a:
-  - `confirm`
-  - `challenge`
-  - `clarify`
-  - `suspend`
 - `final_judgment_posture` appartient a:
   - `answer`
   - `clarify`
   - `suspend`
+- `final_output_regime` appartient a:
+  - `simple`
+  - `meta`
 - `pipeline_directives_final` reste une liste compacte de codes stables
 - aucun dump de `primary_verdict`
 - aucun dump de `validation_dialogue_context`
 - aucun bloc de `justifications`
+- `validation_decision`, si present, est un champ legacy derive et non souverain
 
 ## 8. Minimal Status Of `pipeline_directives_final`
 

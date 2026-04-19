@@ -239,11 +239,34 @@ def build_validation_agent_payload(
         for value in (_text(item) for item in _sequence(validated_output.get("pipeline_directives_final")))
         if value
     ]
+    followed = [
+        value
+        for value in (_text(item) for item in _sequence(validated_output.get("advisory_recommendations_followed")))
+        if value
+    ]
+    overridden = [
+        value
+        for value in (_text(item) for item in _sequence(validated_output.get("advisory_recommendations_overridden")))
+        if value
+    ]
+    applied_hard_guards = [
+        value
+        for value in (_text(item) for item in _sequence(validated_output.get("applied_hard_guards")))
+        if value
+    ]
     payload = {
         "dialogue_messages_count": len(_sequence(_mapping(validation_dialogue_context).get("messages"))),
         "primary_judgment_posture": _text(primary_verdict.get("judgment_posture")),
+        "primary_output_regime_proposed": _text(primary_verdict.get("discursive_regime")),
         "validation_decision": _text(validated_output.get("validation_decision")),
         "final_judgment_posture": _text(validated_output.get("final_judgment_posture")),
+        "final_output_regime": _text(validated_output.get("final_output_regime")),
+        "arbiter_followed_upstream": bool(validated_output.get("arbiter_followed_upstream", False)),
+        "advisory_recommendations_followed": followed,
+        "advisory_recommendations_overridden": overridden,
+        "applied_hard_guards": applied_hard_guards,
+        "arbiter_reason": _text(validated_output.get("arbiter_reason")),
+        "projected_judgment_posture": _text(validated_output.get("final_judgment_posture")),
         "pipeline_directives_final": directives,
         "decision_source": _text(getattr(validated_result, "decision_source", "")),
     }

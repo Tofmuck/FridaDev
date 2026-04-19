@@ -17,6 +17,10 @@ _FINAL_JUDGMENT_INSTRUCTIONS = {
     'clarify': 'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite',
     'suspend': 'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente',
 }
+_FINAL_OUTPUT_REGIME_INSTRUCTIONS = {
+    'meta': "Tu peux expliciter le cadre, la limite ou la clarification de facon reflexive si c'est vraiment necessaire",
+    'simple': 'Reste dans une reprise locale, sobre, dialogique et non meta',
+}
 _EXPLICIT_IDENTITY_REVELATION_PREFIXES = (
     'je suis ',
     'moi c est ',
@@ -82,17 +86,24 @@ def build_hermeneutic_judgment_block(
 ) -> str:
     payload = validated_output if isinstance(validated_output, Mapping) else {}
     final_judgment_posture = _text(payload.get('final_judgment_posture'))
+    final_output_regime = _text(payload.get('final_output_regime'))
     instruction = _FINAL_JUDGMENT_INSTRUCTIONS.get(final_judgment_posture)
+    output_regime_instruction = _FINAL_OUTPUT_REGIME_INSTRUCTIONS.get(final_output_regime)
     directives = _stable_string_list(payload.get('pipeline_directives_final'))
     if not instruction or not directives:
         return ''
 
-    return (
-        '[JUGEMENT HERMENEUTIQUE]\n'
-        f'Posture finale validee: {final_judgment_posture}.\n'
-        f'Consigne hermeneutique: {instruction}.\n'
-        f"Directives finales actives: {', '.join(directives)}."
-    )
+    lines = [
+        '[JUGEMENT HERMENEUTIQUE]',
+        f'Posture finale validee: {final_judgment_posture}.',
+    ]
+    if final_output_regime:
+        lines.append(f'Regime final valide: {final_output_regime}.')
+    lines.append(f'Consigne hermeneutique: {instruction}.')
+    if output_regime_instruction:
+        lines.append(f'Consigne de regime: {output_regime_instruction}.')
+    lines.append(f"Directives finales actives: {', '.join(directives)}.")
+    return '\n'.join(lines)
 
 
 def inject_hermeneutic_judgment_block(

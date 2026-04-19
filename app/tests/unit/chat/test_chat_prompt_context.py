@@ -111,25 +111,43 @@ class ChatPromptContextTests(unittest.TestCase):
 
     def test_build_hermeneutic_judgment_block_covers_answer_clarify_and_suspend(self) -> None:
         expected = {
-            'answer': 'Tu peux produire une reponse substantive normale.',
-            'clarify': 'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite.',
-            'suspend': 'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
+            'answer': (
+                'simple',
+                'Tu peux produire une reponse substantive normale.',
+                'Reste dans une reprise locale, sobre, dialogique et non meta.',
+            ),
+            'clarify': (
+                'meta',
+                'Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite.',
+                "Tu peux expliciter le cadre, la limite ou la clarification de facon reflexive si c'est vraiment necessaire.",
+            ),
+            'suspend': (
+                'simple',
+                'Tu ne dois pas produire de reponse substantive normale. Tu dois expliciter la suspension ou la limite presente.',
+                'Reste dans une reprise locale, sobre, dialogique et non meta.',
+            ),
         }
 
-        for posture, instruction in expected.items():
+        for posture, (output_regime, instruction, regime_instruction) in expected.items():
             with self.subTest(posture=posture):
                 block = chat_prompt_context.build_hermeneutic_judgment_block(
                     validated_output={
                         'schema_version': 'v1',
                         'validation_decision': 'confirm',
                         'final_judgment_posture': posture,
-                        'pipeline_directives_final': [f'posture_{posture}'],
+                        'final_output_regime': output_regime,
+                        'pipeline_directives_final': [f'posture_{posture}', f'regime_{output_regime}'],
                     }
                 )
                 self.assertIn('[JUGEMENT HERMENEUTIQUE]', block)
                 self.assertIn(f'Posture finale validee: {posture}.', block)
+                self.assertIn(f'Regime final valide: {output_regime}.', block)
                 self.assertIn(f'Consigne hermeneutique: {instruction}', block)
-                self.assertIn(f'Directives finales actives: posture_{posture}.', block)
+                self.assertIn(f'Consigne de regime: {regime_instruction}', block)
+                self.assertIn(
+                    f'Directives finales actives: posture_{posture}, regime_{output_regime}.',
+                    block,
+                )
 
     def test_inject_hermeneutic_judgment_block_appends_after_augmented_system(self) -> None:
         base_system = 'BASE SYSTEM'

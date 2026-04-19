@@ -1,26 +1,35 @@
 # Hermeneutic Node Validation Agent Contract
 
-Statut: draft normatif ouvert
-Portee: premiere pause normative du Lot 9 pour `validation_agent`
+Statut: spec historique partiellement supersedee
+Portee: premiere pause normative du Lot 9 pour `validation_agent`, relue a la lumiere du lot 2 runtime
+
+Note runtime 2026-04-19:
+
+- `response-arbiter-power-contract.md` est la source normative recente sur la chaine de pouvoir;
+- `validation_agent` produit maintenant directement `final_judgment_posture`, `final_output_regime` et `arbiter_reason`;
+- `validation_decision` peut subsister comme trace legacy de compatibilite, mais elle n'est plus la source souveraine du verdict final.
 
 ## 1. Purpose
 
 Cette spec ouvre la premiere pause normative du Lot 9.
 
-Elle tranche:
+Elle tranchait initialement:
 
 - la nature exacte du `validation_agent`
 - sa frontiere avec le noeud primaire, le verdict final et l'aval
 - son statut d'agent borne, en une passe, sans autonomie agentique forte en V1
 - son entree minimale
 - la centralite du contexte dialogique recent elargi dans la relecture
-- ses sorties minimales `confirm|challenge|clarify|suspend`
+- ses sorties minimales de revision
 - sa frontiere minimale avec `pipeline_directives_final`
 - son cadre operationnel minimal
 - ses besoins minimaux d'observabilite
 
-Elle ne code rien.
-Elle ne ferme ni `validation_agent.py`, ni le contrat complet du verdict final post-validation, ni le wiring aval.
+Le runtime lot 2 a depuis precise:
+
+- que la sortie souveraine est un verdict arbitral final direct;
+- que `validation_decision` n'est plus qu'une trace legacy derivee;
+- que le wiring aval consomme ce verdict final et non une table de combinaison externe.
 
 ## 2. Repo Grounding
 
@@ -69,7 +78,7 @@ Frontiere minimale:
 - `runtime/primary_node`
   - produit le `primary_verdict`
 - `validation/validation_agent`
-  - relit ce verdict, le juge et prepare la revision finale
+  - relit ce verdict, le juge et tranche directement le verdict final arbitral
 - `aval`
   - ne consomme pas directement le `primary_verdict`
 
@@ -158,30 +167,29 @@ Regle forte:
 
 - le `validation_dialogue_context` peut conduire a `confirm`, `challenge`, `clarify` ou `suspend` un `primary_verdict` pourtant structurellement propre
 
-## 7. Minimal Review Decisions
+## 7. Minimal Arbiter Verdict
 
-Les sorties minimales de revision retenues sont:
+Le contrat runtime minimal de l'arbitre est maintenant:
 
-- `confirm`
-- `challenge`
-- `clarify`
-- `suspend`
+- `final_judgment_posture`
+- `final_output_regime`
+- `arbiter_reason`
 
-Definitions minimales:
+Taxonomies minimales:
 
-- `confirm`
-  - le verdict primaire peut servir de base a la sortie revisee
-- `challenge`
-  - le verdict primaire est juge materiellement insuffisant ou mal oriente et doit etre corrige
-- `clarify`
-  - la sortie revisee doit passer par une clarification explicite
-- `suspend`
-  - la sortie revisee ne peut pas valider une reponse normale dans l'etat courant
+- `final_judgment_posture`
+  - `answer`
+  - `clarify`
+  - `suspend`
+- `final_output_regime`
+  - `simple`
+  - `meta`
 
-Discipline minimale:
+Regles fortes:
 
-- ces decisions appartiennent a la validation finale
-- elles ne redoublent pas la doctrine du noeud primaire
+- le verdict final vient directement de l'arbitre;
+- `meta` n'est pas une consequence mecanique de `clarify`;
+- `validation_decision` peut subsister comme trace legacy derivee, mais elle ne gouverne plus l'aval.
 
 ## 8. Boundary With `pipeline_directives_final`
 
@@ -189,13 +197,13 @@ Le `validation_agent`:
 
 - recoit un `primary_verdict` qui contient `pipeline_directives_provisional`
 - ne transmet pas ces directives telles quelles a l'aval
-- contribue ensuite a la production de `pipeline_directives_final`
+- produit un verdict arbitral final qui sert ensuite de base a `pipeline_directives_final`
 
-Cette pause normative ne ferme pas encore:
+Depuis le lot 2 runtime:
 
-- le contrat exact de `pipeline_directives_final`
-- la table complete de combinaison normative
-- le format complet de la sortie finale revisee
+- la table de combinaison entre primaire et validation n'est plus souveraine;
+- `pipeline_directives_final` derive du verdict final arbitral;
+- le bloc `[JUGEMENT HERMENEUTIQUE]` est projete depuis cette sortie finale.
 
 ## 9. Minimal Operational Frame
 
@@ -220,13 +228,20 @@ Modele cible de reference en V1:
 
 ## 10. Minimal Observability
 
-Les signaux minimaux a journaliser plus tard sont:
+Les signaux minimaux a journaliser sont maintenant au moins:
 
-- la decision de validation
-- `fail_open`
-- un statut synthetique de budget/timeout
-- un statut synthetique de circuit breaker
-- un signal synthetique de cout/latence
+- `primary_judgment_posture`
+- `primary_output_regime_proposed`
+- `final_judgment_posture`
+- `final_output_regime`
+- `arbiter_followed_upstream`
+- `advisory_recommendations_followed`
+- `advisory_recommendations_overridden`
+- `applied_hard_guards`
+- `arbiter_reason`
+- `projected_judgment_posture`
+- `decision_source`
+- `reason_code` si present
 
 Ne doivent jamais etre journalises brutement:
 

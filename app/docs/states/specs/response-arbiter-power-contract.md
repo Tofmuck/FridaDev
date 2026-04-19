@@ -4,6 +4,11 @@ Statut: spec vivante
 Portee: lot 1 normatif pour la chaine de pouvoir cible de l'arbitrage de reponse
 Nature: source de verite normative du lot 1 pour le pouvoir institutionnel et le minimum d'observabilite
 
+Note runtime:
+- le lot 2 runtime applique maintenant cette chaine de pouvoir;
+- `validation_agent` emet directement le verdict final arbitral;
+- `validation_decision` peut subsister comme trace legacy de compatibilite, mais sans souverainete.
+
 ## 1. Purpose
 
 Cette spec ferme le lot 1 documentaire du chantier `LLM-dominant response arbiter`.
@@ -41,6 +46,12 @@ Cette spec est ancree notamment dans:
 
 Le TODO actif reste la roadmap du chantier.
 Cette spec devient la source de verite normative du lot 1.
+
+Depuis le lot 2 runtime:
+
+- `validation_agent` produit directement `final_judgment_posture`, `final_output_regime` et `arbiter_reason`;
+- `[JUGEMENT HERMENEUTIQUE]` est projete depuis ce verdict final arbitral;
+- le seam compact `validation_agent` rend visible le suivi vs override, le verdict final et le verdict projete.
 
 ## 3. Chaine De Pouvoir Actuelle
 
@@ -194,6 +205,12 @@ Le futur arbitre final doit produire directement au minimum:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `arbiter_reason`
+
+Champ de transition accepte en lot 2:
+
+- `validation_decision`
+  - peut subsister comme trace legacy derivee du verdict final et des recommandations amont;
+  - ne porte plus l'autorite normative du couloir final.
 
 Ce contrat de sortie reste volontairement minimal au lot 1.
 Il fixe la matiere obligatoire.

@@ -29,6 +29,7 @@ RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
+ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple")
 _NON_AMBIGUOUS_DIRECT_GESTURES = ("exposition", "positionnement", "adresse_relationnelle", "interrogation")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
@@ -46,27 +47,14 @@ _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "audit",
 }
 _ALLOWED_PRIMARY_AUDIT_KEYS = {"fail_open", "state_used", "degraded_fields"}
-_ALLOWED_MODEL_PAYLOAD_KEYS = {"schema_version", "validation_decision"}
-_FINAL_POSTURE_BY_PRIMARY_AND_DECISION = {
-    "answer": {
-        "confirm": "answer",
-        "challenge": "answer",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
-    "clarify": {
-        "confirm": "clarify",
-        "challenge": "clarify",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
-    "suspend": {
-        "confirm": "suspend",
-        "challenge": "suspend",
-        "clarify": "clarify",
-        "suspend": "suspend",
-    },
+_ALLOWED_MODEL_PAYLOAD_KEYS = {
+    "schema_version",
+    "final_judgment_posture",
+    "final_output_regime",
+    "arbiter_reason",
 }
+
+
 @dataclass(frozen=True)
 class ValidationAgentResult:
     validated_output: dict[str, Any]
@@ -83,6 +71,8 @@ class _ValidationJsonError(ValueError):
 
 class _ValidationPayloadError(ValueError):
     pass
+
+
 def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
@@ -91,6 +81,8 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
 def _stable_unique(values: Sequence[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -105,6 +97,8 @@ def _stable_unique(values: Sequence[str]) -> list[str]:
 
 def _compact_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
 def _compact_text(value: Any, *, max_chars: int) -> str:
     text = " ".join(str(value or "").split())
     if len(text) <= max_chars:
@@ -123,6 +117,8 @@ def _bounded_json_preview(value: Any, *, max_chars: int) -> str:
         preview_chars -= 16
         bounded = _compact_json({"truncated": True, "preview": _compact_text(raw, max_chars=preview_chars)})
     return bounded
+
+
 def _compacted_validation_dialogue_context(value: Any) -> str:
     payload = _mapping(value)
     raw_messages = payload.get("messages")
@@ -157,6 +153,8 @@ def _compacted_validation_dialogue_context(value: Any) -> str:
         },
         max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS,
     )
+
+
 def _validated_string_list(value: Any, *, error_code: str) -> list[str]:
     if not isinstance(value, list):
         raise ValueError(error_code)
@@ -181,6 +179,8 @@ def _validated_source_priority(value: Any) -> list[list[str]]:
         normalized_rank = _validated_string_list(rank, error_code="invalid_primary_verdict")
         validated.append(normalized_rank)
     return validated
+
+
 def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise ValueError("invalid_primary_verdict")
@@ -191,6 +191,8 @@ def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
             raise ValueError("invalid_primary_verdict")
         conflicts.append(dict(item))
     return conflicts
+
+
 def _validated_primary_verdict(value: Any) -> dict[str, Any]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_PRIMARY_VERDICT_KEYS:
@@ -247,6 +249,8 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
             else [],
         },
     }
+
+
 def _validated_support_mapping(value: Any, *, error_code: str, allow_empty: bool) -> dict[str, Any]:
     payload = _mapping(value)
     if not isinstance(value, Mapping):
@@ -292,6 +296,8 @@ def _validated_validation_dialogue_context(value: Any) -> dict[str, Any]:
     if "schema_version" in validated_payload:
         validated_payload["schema_version"] = _text(validated_payload.get("schema_version")) or SCHEMA_VERSION
     return validated_payload
+
+
 def _extract_json_blob(raw: Any) -> str:
     text = str(raw or "").strip()
     if text.startswith("```"):
@@ -307,6 +313,8 @@ def _extract_json_blob(raw: Any) -> str:
     if start != -1 and end != -1 and end >= start:
         return text[start : end + 1]
     return text
+
+
 def _safe_json_loads(raw: Any) -> dict[str, Any]:
     try:
         payload = json.loads(_extract_json_blob(raw))
@@ -315,36 +323,158 @@ def _safe_json_loads(raw: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise _ValidationJsonError("invalid_json")
     return payload
-def _validated_model_decision(value: Any) -> dict[str, str]:
+
+
+def _validated_model_verdict(value: Any) -> dict[str, str]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_MODEL_PAYLOAD_KEYS:
         raise _ValidationPayloadError("validation_error")
     if _text(payload.get("schema_version")) != SCHEMA_VERSION:
         raise _ValidationPayloadError("validation_error")
 
-    validation_decision = _text(payload.get("validation_decision"))
-    if validation_decision not in ALLOWED_VALIDATION_DECISIONS:
+    final_judgment_posture = _text(payload.get("final_judgment_posture"))
+    if final_judgment_posture not in ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+        raise _ValidationPayloadError("validation_error")
+
+    final_output_regime = _text(payload.get("final_output_regime"))
+    if final_output_regime not in ALLOWED_FINAL_OUTPUT_REGIMES:
+        raise _ValidationPayloadError("validation_error")
+
+    arbiter_reason = _compact_text(_text(payload.get("arbiter_reason")), max_chars=160)
+    if not arbiter_reason:
         raise _ValidationPayloadError("validation_error")
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "validation_decision": validation_decision,
+        "final_judgment_posture": final_judgment_posture,
+        "final_output_regime": final_output_regime,
+        "arbiter_reason": arbiter_reason,
     }
-def _build_fail_open_validated_output() -> dict[str, Any]:
+
+
+def _legacy_validation_decision(
+    *,
+    primary_judgment_posture: str,
+    primary_output_regime_proposed: str,
+    final_judgment_posture: str,
+    final_output_regime: str,
+) -> str:
+    if final_judgment_posture == "suspend":
+        return "suspend"
+    if final_judgment_posture == "clarify":
+        return "clarify"
+    if final_judgment_posture != primary_judgment_posture:
+        return "challenge"
+    if final_output_regime != primary_output_regime_proposed:
+        return "challenge"
+    return "confirm"
+
+
+def _advisory_trace(
+    *,
+    primary_verdict: Mapping[str, Any],
+    final_judgment_posture: str,
+    final_output_regime: str,
+) -> tuple[bool, list[str], list[str]]:
+    followed: list[str] = []
+    overridden: list[str] = []
+    primary_judgment_posture = _text(primary_verdict.get("judgment_posture"))
+    primary_output_regime_proposed = _text(primary_verdict.get("discursive_regime"))
+
+    if primary_judgment_posture:
+        target = followed if primary_judgment_posture == final_judgment_posture else overridden
+        target.append("primary_judgment_posture")
+    if primary_output_regime_proposed:
+        target = followed if primary_output_regime_proposed == final_output_regime else overridden
+        target.append("primary_output_regime_proposed")
+
+    return (not overridden and bool(followed), followed, overridden)
+
+
+def _pipeline_directives_final(
+    *,
+    final_judgment_posture: str,
+    final_output_regime: str,
+    fail_open: bool,
+) -> list[str]:
+    directives = [f"posture_{final_judgment_posture}", f"regime_{final_output_regime}"]
+    if fail_open:
+        directives.append("fallback_validation")
+    return _stable_unique(directives)
+
+
+def _build_validated_output_payload(
+    *,
+    primary_verdict: Mapping[str, Any],
+    final_judgment_posture: str,
+    final_output_regime: str,
+    arbiter_reason: str,
+    fail_open: bool,
+    applied_hard_guards: Sequence[str],
+) -> dict[str, Any]:
+    primary_judgment_posture = _text(primary_verdict.get("judgment_posture"))
+    primary_output_regime_proposed = _text(primary_verdict.get("discursive_regime"))
+    arbiter_followed_upstream, followed, overridden = _advisory_trace(
+        primary_verdict=primary_verdict,
+        final_judgment_posture=final_judgment_posture,
+        final_output_regime=final_output_regime,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
-        "validation_decision": "suspend",
-        "final_judgment_posture": "suspend",
-        "pipeline_directives_final": ["posture_suspend", "fallback_validation"],
+        "validation_decision": _legacy_validation_decision(
+            primary_judgment_posture=primary_judgment_posture,
+            primary_output_regime_proposed=primary_output_regime_proposed,
+            final_judgment_posture=final_judgment_posture,
+            final_output_regime=final_output_regime,
+        ),
+        "final_judgment_posture": final_judgment_posture,
+        "final_output_regime": final_output_regime,
+        "pipeline_directives_final": _pipeline_directives_final(
+            final_judgment_posture=final_judgment_posture,
+            final_output_regime=final_output_regime,
+            fail_open=fail_open,
+        ),
+        "arbiter_followed_upstream": arbiter_followed_upstream,
+        "advisory_recommendations_followed": _stable_unique(followed),
+        "advisory_recommendations_overridden": _stable_unique(overridden),
+        "applied_hard_guards": _stable_unique(applied_hard_guards),
+        "arbiter_reason": _compact_text(arbiter_reason, max_chars=160),
     }
-def _build_fail_open_result(*, reason_code: str, model: str) -> ValidationAgentResult:
+
+
+def _build_fail_open_validated_output(
+    *,
+    primary_verdict: Mapping[str, Any],
+    reason_code: str,
+) -> dict[str, Any]:
+    return _build_validated_output_payload(
+        primary_verdict=primary_verdict,
+        final_judgment_posture="suspend",
+        final_output_regime="simple",
+        arbiter_reason=f"validation fail-open ({_text(reason_code) or 'upstream_error'})",
+        fail_open=True,
+        applied_hard_guards=[],
+    )
+
+
+def _build_fail_open_result(
+    *,
+    primary_verdict: Mapping[str, Any],
+    reason_code: str,
+    model: str,
+) -> ValidationAgentResult:
     return ValidationAgentResult(
-        validated_output=_build_fail_open_validated_output(),
+        validated_output=_build_fail_open_validated_output(
+            primary_verdict=primary_verdict,
+            reason_code=reason_code,
+        ),
         status="error",
         model=str(model or FALLBACK_MODEL),
         decision_source="fail_open",
         reason_code=str(reason_code or "upstream_error"),
     )
+
+
 def _load_system_prompt() -> str:
     return prompt_loader.read_prompt_text(PROMPT_PATH)
 
@@ -369,6 +499,8 @@ def _runtime_model_settings() -> dict[str, Any]:
         "top_p": float(view.payload["top_p"]["value"]),
         "max_tokens": _bounded_response_max_tokens(view.payload["max_tokens"]["value"]),
     }
+
+
 def _build_messages(
     *,
     system_prompt: str,
@@ -395,11 +527,14 @@ def _build_messages(
                 "canonical_inputs (supports de relecture contextuelle):\n"
                 f"{compacted_canonical_inputs}\n\n"
                 "Tache:\n"
-                "- decide seulement validation_decision\n"
-                "- n'invente pas final_judgment_posture\n"
-                "- n'invente pas pipeline_directives_final\n"
+                "- decide final_judgment_posture\n"
+                "- decide final_output_regime\n"
+                "- privilegie la lecture la plus naturelle du tour, la continuite dialogique locale et la reponse simple\n"
+                "- si answer reste possible, privilegie final_output_regime = simple\n"
+                "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"
+                "- validation_decision legacy sera derivee downstream: ne l'invente pas\n"
                 "- reponds en JSON strict uniquement\n"
-                '- schema attendu: {"schema_version":"v1","validation_decision":"confirm|challenge|clarify|suspend"}'
+                '- schema attendu: {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}'
             ),
         },
     ]
@@ -425,22 +560,46 @@ def _canonical_low_ambiguity_direct_turn(canonical_inputs: Mapping[str, Any]) ->
     return not active_signal_families
 
 
-def _normalize_validation_decision(
+def _normalized_arbiter_verdict(
     *,
     primary_verdict: Mapping[str, Any],
     canonical_inputs: Mapping[str, Any],
-    validation_decision: str,
-) -> str:
-    normalized_decision = _text(validation_decision)
-    if normalized_decision != "clarify":
-        return normalized_decision
+    final_judgment_posture: str,
+    final_output_regime: str,
+    arbiter_reason: str,
+) -> dict[str, str]:
+    normalized_posture = _text(final_judgment_posture)
+    normalized_output_regime = _text(final_output_regime)
+    normalized_reason = _compact_text(_text(arbiter_reason), max_chars=160)
+    if normalized_posture != "clarify":
+        return {
+            "final_judgment_posture": normalized_posture,
+            "final_output_regime": normalized_output_regime,
+            "arbiter_reason": normalized_reason,
+        }
     if _text(primary_verdict.get("judgment_posture")) != "answer":
-        return normalized_decision
+        return {
+            "final_judgment_posture": normalized_posture,
+            "final_output_regime": normalized_output_regime,
+            "arbiter_reason": normalized_reason,
+        }
     if _validated_source_conflicts(primary_verdict.get("source_conflicts")):
-        return normalized_decision
+        return {
+            "final_judgment_posture": normalized_posture,
+            "final_output_regime": normalized_output_regime,
+            "arbiter_reason": normalized_reason,
+        }
     if _canonical_low_ambiguity_direct_turn(canonical_inputs):
-        return "confirm"
-    return normalized_decision
+        return {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "reponse directe sur tour local peu ambigu",
+        }
+    return {
+        "final_judgment_posture": normalized_posture,
+        "final_output_regime": normalized_output_regime,
+        "arbiter_reason": normalized_reason,
+    }
 
 
 def _request_reason_code(exc: Exception, requests_module: Any) -> str:
@@ -452,6 +611,8 @@ def _request_reason_code(exc: Exception, requests_module: Any) -> str:
     if request_cls is not None and isinstance(exc, request_cls):
         return "http_error"
     return "upstream_error"
+
+
 def _call_model(
     *,
     model: str,
@@ -492,26 +653,11 @@ def _call_model(
     )
     llm_client.log_provider_metadata(logger, 'validation_agent_provider_response', provider_metadata)
     return (
-        _validated_model_decision(_safe_json_loads(llm_client.extract_openrouter_text(response_payload))),
+        _validated_model_verdict(_safe_json_loads(llm_client.extract_openrouter_text(response_payload))),
         provider_metadata,
     )
-def _resolved_final_judgment_posture(*, primary_judgment_posture: str, validation_decision: str) -> str:
-    return _FINAL_POSTURE_BY_PRIMARY_AND_DECISION[primary_judgment_posture][validation_decision]
-def _pipeline_directives_final(*, final_judgment_posture: str, fail_open: bool) -> list[str]:
-    directives = [f"posture_{final_judgment_posture}"]
-    if fail_open:
-        directives.append("fallback_validation")
-    return _stable_unique(directives)
-def _build_validated_output_payload(*, validation_decision: str, final_judgment_posture: str, fail_open: bool) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "validation_decision": validation_decision,
-        "final_judgment_posture": final_judgment_posture,
-        "pipeline_directives_final": _pipeline_directives_final(
-            final_judgment_posture=final_judgment_posture,
-            fail_open=fail_open,
-        ),
-    }
+
+
 def build_validated_output(
     *,
     primary_verdict: Any,
@@ -537,6 +683,7 @@ def build_validated_output(
     system_prompt = _load_system_prompt()
     if not system_prompt:
         return _build_fail_open_result(
+            primary_verdict=primary_verdict_payload,
             reason_code="prompt_missing",
             model=runtime_model_settings["primary_model"],
         )
@@ -547,7 +694,7 @@ def build_validated_output(
         (runtime_model_settings["fallback_model"], "fallback"),
     ):
         try:
-            decision_payload, provider_metadata = _call_model(
+            verdict_payload, provider_metadata = _call_model(
                 model=model,
                 system_prompt=system_prompt,
                 primary_verdict=primary_verdict_payload,
@@ -560,20 +707,21 @@ def build_validated_output(
                 max_tokens=runtime_model_settings["max_tokens"],
                 requests_module=requests_module,
             )
-            validation_decision = _normalize_validation_decision(
+            normalized_verdict = _normalized_arbiter_verdict(
                 primary_verdict=primary_verdict_payload,
                 canonical_inputs=canonical_inputs_payload,
-                validation_decision=decision_payload["validation_decision"],
-            )
-            final_judgment_posture = _resolved_final_judgment_posture(
-                primary_judgment_posture=primary_verdict_payload["judgment_posture"],
-                validation_decision=validation_decision,
+                final_judgment_posture=verdict_payload["final_judgment_posture"],
+                final_output_regime=verdict_payload["final_output_regime"],
+                arbiter_reason=verdict_payload["arbiter_reason"],
             )
             return ValidationAgentResult(
                 validated_output=_build_validated_output_payload(
-                    validation_decision=validation_decision,
-                    final_judgment_posture=final_judgment_posture,
+                    primary_verdict=primary_verdict_payload,
+                    final_judgment_posture=normalized_verdict["final_judgment_posture"],
+                    final_output_regime=normalized_verdict["final_output_regime"],
+                    arbiter_reason=normalized_verdict["arbiter_reason"],
                     fail_open=False,
+                    applied_hard_guards=[],
                 ),
                 status="ok",
                 model=model,
@@ -589,6 +737,7 @@ def build_validated_output(
             last_reason_code = _request_reason_code(exc, requests_module)
 
     return _build_fail_open_result(
+        primary_verdict=primary_verdict_payload,
         reason_code=last_reason_code,
         model=runtime_model_settings["fallback_model"],
     )

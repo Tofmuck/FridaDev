@@ -546,7 +546,9 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertIn('main_model.referer_validation_agent', readonly_info['shared_transport']['value'])
         self.assertEqual(readonly_info['validation_context_messages_cap']['value'], 8)
         self.assertEqual(readonly_info['validation_context_message_chars']['value'], 420)
-        self.assertIn('validation_decision', readonly_info['validated_output_contract']['value'])
+        self.assertIn('final_judgment_posture', readonly_info['validated_output_contract']['value'])
+        self.assertIn('final_output_regime', readonly_info['validated_output_contract']['value'])
+        self.assertIn('arbiter_reason', readonly_info['validated_output_contract']['value'])
 
     def test_get_section_readonly_info_services_exposes_web_reformulation_prompt(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('services')
