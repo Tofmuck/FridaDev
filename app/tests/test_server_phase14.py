@@ -738,7 +738,11 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
-        system_prompt = observed_state['payload_messages'][0]['content']
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
         self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
         self.assertIn('Posture finale validee: answer.', system_prompt)
         self.assertIn('Regime final valide: simple.', system_prompt)
@@ -819,7 +823,11 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
-        system_prompt = observed_state['payload_messages'][0]['content']
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
         self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
         self.assertIn('Posture finale validee: suspend.', system_prompt)
         self.assertIn('Regime final valide: simple.', system_prompt)
@@ -829,6 +837,150 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
         self.assertIn('Directives finales actives: posture_suspend, regime_simple, fallback_validation.', system_prompt)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_emits_override_logs_and_projects_answer_block_without_raw_dump(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-override-observability-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok override observability'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'incertain',
+                'proof_regime': 'source_explicite_requise',
+                'judgment_posture': 'clarify',
+                'discursive_regime': 'meta',
+                'source_conflicts': [],
+                'upstream_advisory': {
+                    'schema_version': 'v1',
+                    'recommended_judgment_posture': 'clarify',
+                    'proposed_output_regime': 'meta',
+                    'active_signal_families': ['referent'],
+                    'active_signal_families_count': 1,
+                    'constraint_present': False,
+                },
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'challenge',
+                    'final_judgment_posture': 'answer',
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': [],
+                    'advisory_recommendations_overridden': [
+                        'upstream_recommendation_posture',
+                        'upstream_output_regime_proposed',
+                    ],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+
+        validation_event = next(item for item in observed_events if item['stage'] == 'validation_agent')
+        self.assertEqual(validation_event['status'], 'ok')
+        self.assertEqual(
+            validation_event['payload_json'],
+            {
+                'dialogue_messages_count': 1,
+                'dialogue_truncated': False,
+                'current_user_retained': True,
+                'last_assistant_retained': False,
+                'upstream_recommendation_posture': 'clarify',
+                'upstream_output_regime_proposed': 'meta',
+                'upstream_active_signal_families': ['referent'],
+                'upstream_constraint_present': False,
+                'validation_decision': 'challenge',
+                'final_judgment_posture': 'answer',
+                'final_output_regime': 'simple',
+                'arbiter_followed_upstream': False,
+                'advisory_recommendations_followed': [],
+                'advisory_recommendations_overridden': [
+                    'upstream_recommendation_posture',
+                    'upstream_output_regime_proposed',
+                ],
+                'applied_hard_guards': [],
+                'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
+                'projected_judgment_posture': 'answer',
+                'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                'decision_source': 'primary',
+                'model': 'openai/gpt-5.4-mini',
+            },
+        )
+        self.assertNotIn('validation_dialogue_context', validation_event['payload_json'])
+        self.assertNotIn('canonical_inputs', validation_event['payload_json'])
+        self.assertNotIn('justifications', validation_event['payload_json'])
+
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertIn('Posture finale validee: answer.', system_prompt)
+        self.assertIn('Regime final valide: simple.', system_prompt)
+        self.assertIn('Consigne hermeneutique: Tu peux produire une reponse substantive normale.', system_prompt)
+        self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
+        self.assertIn('Directives finales actives: posture_answer, regime_simple.', system_prompt)
+        self.assertNotIn('primary_verdict', system_prompt)
+        self.assertNotIn('validation_dialogue_context', system_prompt)
+        self.assertNotIn('justifications', system_prompt)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_exposes_canonical_active_summary_to_hermeneutic_insertion_point(self) -> None:
@@ -1053,7 +1205,11 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()['ok'])
         self.assertEqual(observed['identity_input'], identity_input)
-        system_prompt = observed_state['payload_messages'][0]['content']
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
         self.assertIn('BACKEND SYSTEM PROMPT', system_prompt)
         self.assertIn(identity_block, system_prompt)
         self.assertIn('Frida garde une voix sobre.', system_prompt)
@@ -3103,6 +3259,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         original_primary_node = self.server.chat_service.primary_node.build_primary_node
         original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
         original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
 
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
@@ -3148,6 +3305,12 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 reason_code=None,
             )
         )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
 
         def fake_insert(event, **_kwargs):
             observed_events.append(event)
@@ -3159,6 +3322,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         finally:
             self.server.chat_service.primary_node.build_primary_node = original_primary_node
             self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
             self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
@@ -3230,6 +3394,23 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'model': 'openai/gpt-5.4-mini',
             },
         )
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertIn('Posture finale validee: clarify.', system_prompt)
+        self.assertIn('Regime final valide: meta.', system_prompt)
+        self.assertIn(
+            'Consigne hermeneutique: Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite.',
+            system_prompt,
+        )
+        self.assertIn(
+            "Consigne de regime: Tu peux expliciter le cadre, la limite ou la clarification de facon reflexive si c'est vraiment necessaire.",
+            system_prompt,
+        )
+        self.assertIn('Directives finales actives: posture_clarify, regime_meta.', system_prompt)
 
         for payload in (primary_event['payload_json'], validation_event['payload_json']):
             self.assertNotIn('primary_verdict', payload)
@@ -3264,6 +3445,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         )
         original_primary_node = self.server.chat_service.primary_node.build_primary_node
         original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
         original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
 
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
@@ -3307,6 +3489,12 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 reason_code=None,
             )
         )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
 
         def fake_insert(event, **_kwargs):
             observed_events.append(event)
@@ -3318,6 +3506,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         finally:
             self.server.chat_service.primary_node.build_primary_node = original_primary_node
             self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
             self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
@@ -3351,6 +3540,20 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
                 'model': 'openai/gpt-5.4-mini',
             },
         )
+        system_prompt = next(
+            message['content']
+            for message in observed_state['payload_messages']
+            if message.get('role') == 'system'
+        )
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', system_prompt)
+        self.assertIn('Posture finale validee: clarify.', system_prompt)
+        self.assertIn('Regime final valide: simple.', system_prompt)
+        self.assertIn(
+            'Consigne hermeneutique: Tu ne dois pas repondre directement au fond. Tu dois demander une clarification breve et explicite.',
+            system_prompt,
+        )
+        self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
+        self.assertIn('Directives finales actives: posture_clarify, regime_simple.', system_prompt)
         self.assertNotIn('validation_dialogue_context', validation_event['payload_json'])
         self.assertNotIn('canonical_inputs', validation_event['payload_json'])
         self.assertNotIn('justifications', validation_event['payload_json'])

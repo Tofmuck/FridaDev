@@ -11,6 +11,7 @@ Note runtime 2026-04-19:
 - `validation_dialogue_context` est maintenant livre en runtime comme fenetre dialogique locale canonisee de 5 messages maximum, priorisant le user courant puis le dernier assistant.
 - le lot 4 runtime lit maintenant un bloc `upstream_advisory` dans `primary_verdict` comme recommendation amont de reference, secondaire et non souveraine.
 - le lot 5 runtime evalue des garde-fous durs rares dans un module voisin, interdit `answer` quand ils s'appliquent, mais laisse a l'arbitre le choix entre `clarify` et `suspend`.
+- le lot 6 verrouille un corpus stable de cas `answer / clarify / suspend`, plus les preuves de suivi vs override et de projection finale, sans nouvelle surface d'observabilite.
 
 ## 1. Purpose
 
@@ -275,6 +276,12 @@ Ne doivent jamais etre journalises brutement:
 Regle forte:
 
 - l'observabilite de validation ne doit pas creer un dispositif parallele de stockage brut du dialogue recent
+
+Preuves de fermeture lot 6:
+
+- `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py` porte le corpus stable `answer / clarify / suspend`, les cas de suivi vs override et les garde-fous durs;
+- `app/tests/test_server_phase14.py` verifie en bout-en-bout les logs compacts, les overrides lisibles, les garde-fous visibles et la coherence entre verdict final et `[JUGEMENT HERMENEUTIQUE]`;
+- aucune nouvelle filiere de logs n'est ouverte: `chat_turn_logger` et `hermeneutic_node_logger` restent les seams canoniques.
 
 ## 11. Non-goals
 

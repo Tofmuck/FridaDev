@@ -8,6 +8,7 @@ Note runtime 2026-04-19:
 - le lot 4 runtime explicite maintenant une couche amont conseillere dans `primary_verdict` via `upstream_advisory`;
 - ce bloc advisory porte la recommendation amont principale, le regime propose, les familles de signaux actives et un indicateur simple de contrainte;
 - les champs doctrinaux top-level restent presents a ce stade pour compatibilite de transition, sans redonner une souverainete institutionnelle a l'amont.
+- le lot 6 verrouille par preuves que `upstream_advisory` peut etre suivie ou cassee par l'arbitre final, sans redevenir une couche souveraine.
 
 ## 1. Purpose
 

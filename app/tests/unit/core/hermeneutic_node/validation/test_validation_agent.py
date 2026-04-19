@@ -446,6 +446,209 @@ class ValidationAgentTests(unittest.TestCase):
             validation_agent.MAX_RESPONSE_TOKENS,
         )
 
+    def test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases(self) -> None:
+        cases = [
+            {
+                "name": "everyday_answer_follow",
+                "primary_verdict": _primary_verdict(),
+                "canonical_inputs": _canonical_inputs(),
+                "response": _arbiter_json(
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_reason="lecture locale suffisante",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="confirm",
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_followed_upstream=True,
+                    advisory_recommendations_followed=[
+                        "upstream_recommendation_posture",
+                        "upstream_output_regime_proposed",
+                    ],
+                    advisory_recommendations_overridden=[],
+                    arbiter_reason="lecture locale suffisante",
+                ),
+            },
+            {
+                "name": "override_upstream_clarify_to_answer_simple",
+                "primary_verdict": _primary_verdict(judgment_posture="clarify", discursive_regime="meta"),
+                "canonical_inputs": _canonical_inputs(),
+                "response": _arbiter_json(
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_reason="lecture dialogique locale suffisante",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="challenge",
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_followed_upstream=False,
+                    advisory_recommendations_followed=[],
+                    advisory_recommendations_overridden=[
+                        "upstream_recommendation_posture",
+                        "upstream_output_regime_proposed",
+                    ],
+                    arbiter_reason="lecture dialogique locale suffisante",
+                ),
+            },
+            {
+                "name": "follow_real_clarify",
+                "primary_verdict": _primary_verdict(
+                    judgment_posture="clarify",
+                    discursive_regime="meta",
+                    active_signal_families=["referent"],
+                ),
+                "canonical_inputs": _canonical_inputs(
+                    gesture="orientation",
+                    ambiguity_present=True,
+                    active_signal_families=["referent"],
+                ),
+                "response": _arbiter_json(
+                    final_judgment_posture="clarify",
+                    final_output_regime="meta",
+                    arbiter_reason="referent insuffisamment determine",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="clarify",
+                    final_judgment_posture="clarify",
+                    final_output_regime="meta",
+                    arbiter_followed_upstream=True,
+                    advisory_recommendations_followed=[
+                        "upstream_recommendation_posture",
+                        "upstream_output_regime_proposed",
+                    ],
+                    advisory_recommendations_overridden=[],
+                    arbiter_reason="referent insuffisamment determine",
+                ),
+            },
+            {
+                "name": "hard_guard_clarify_without_meta",
+                "primary_verdict": _primary_verdict(),
+                "canonical_inputs": _canonical_inputs(
+                    web_input=_web_input(
+                        status="ok",
+                        results_count=1,
+                        explicit_url_detected=True,
+                        explicit_url="https://example.com/article",
+                        read_state="page_not_read_snippet_fallback",
+                        sources=[
+                            {
+                                "used_in_prompt": True,
+                                "used_content_kind": "search_snippet",
+                                "content_used": "resume court",
+                            }
+                        ],
+                    )
+                ),
+                "response": _arbiter_json(
+                    final_judgment_posture="clarify",
+                    final_output_regime="simple",
+                    arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="clarify",
+                    final_judgment_posture="clarify",
+                    final_output_regime="simple",
+                    arbiter_followed_upstream=False,
+                    advisory_recommendations_followed=["upstream_output_regime_proposed"],
+                    advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                    arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
+                    applied_hard_guards=[hard_guards.HARD_GUARD_EXPLICIT_URL_NOT_READ],
+                    hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                ),
+            },
+            {
+                "name": "hard_guard_suspend_blocks_answer",
+                "primary_verdict": _primary_verdict(
+                    epistemic_regime="a_verifier",
+                    proof_regime="verification_externe_requise",
+                    uncertainty_posture="explicite",
+                ),
+                "canonical_inputs": _canonical_inputs(
+                    web_input=_web_input(status="skipped", results_count=0, sources=[]),
+                ),
+                "response": _arbiter_json(
+                    final_judgment_posture="suspend",
+                    final_output_regime="simple",
+                    arbiter_reason="verification actuelle indisponible",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="suspend",
+                    final_judgment_posture="suspend",
+                    final_output_regime="simple",
+                    arbiter_followed_upstream=False,
+                    advisory_recommendations_followed=["upstream_output_regime_proposed"],
+                    advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                    arbiter_reason="verification actuelle indisponible",
+                    applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
+                    hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                ),
+            },
+            {
+                "name": "source_conflict_case_remains_arbitrable",
+                "primary_verdict": _primary_verdict(
+                    judgment_posture="clarify",
+                    discursive_regime="meta",
+                    source_conflicts=[
+                        {
+                            "conflict_type": "conflit_d_ancrage_de_source",
+                            "sources": ["memoire", "web"],
+                            "issue": "review_required",
+                        }
+                    ],
+                    active_signal_families=["ancrage_de_source"],
+                ),
+                "canonical_inputs": _canonical_inputs(
+                    active_signal_families=["ancrage_de_source"],
+                    web_input=_web_input(
+                        status="ok",
+                        results_count=1,
+                        sources=[
+                            {
+                                "used_in_prompt": True,
+                                "used_content_kind": "crawl_markdown",
+                                "content_used": "matiere externe lue",
+                            }
+                        ],
+                    ),
+                ),
+                "response": _arbiter_json(
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_reason="la lecture locale suffit malgre l ancrage concurrent",
+                ),
+                "expected": _expected_validated_output(
+                    validation_decision="challenge",
+                    final_judgment_posture="answer",
+                    final_output_regime="simple",
+                    arbiter_followed_upstream=False,
+                    advisory_recommendations_followed=[],
+                    advisory_recommendations_overridden=[
+                        "upstream_recommendation_posture",
+                        "upstream_output_regime_proposed",
+                    ],
+                    arbiter_reason="la lecture locale suffit malgre l ancrage concurrent",
+                ),
+            },
+        ]
+
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                requests_module = _FakeRequests([_FakeResponse(case["response"])])
+                result = validation_agent.build_validated_output(
+                    primary_verdict=case["primary_verdict"],
+                    justifications={},
+                    validation_dialogue_context=_dialogue_context(),
+                    canonical_inputs=case["canonical_inputs"],
+                    requests_module=requests_module,
+                )
+
+                self.assertEqual(result.status, "ok")
+                self.assertEqual(result.decision_source, "primary")
+                self.assertEqual(result.model, validation_agent.PRIMARY_MODEL)
+                self.assertEqual(result.validated_output, case["expected"])
+
     def test_build_validated_output_accepts_minimal_recent_context_like_dialogue_context(self) -> None:
         requests_module = _FakeRequests(
             [

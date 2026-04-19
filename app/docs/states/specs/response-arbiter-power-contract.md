@@ -9,6 +9,8 @@ Note runtime:
 - `validation_agent` emet directement le verdict final arbitral;
 - `validation_decision` peut subsister comme trace legacy de compatibilite, mais sans souverainete.
 - le lot 4 runtime explicite maintenant l'amont comme `upstream_advisory` structuree, lue comme recommendation non souveraine.
+- le lot 5 runtime fixe une courte liste de garde-fous durs qui peuvent interdire `answer` sans imposer `meta`.
+- le lot 6 verrouille un corpus stable `answer / clarify / suspend`, des preuves de suivi vs override et la coherence de projection vers `[JUGEMENT HERMENEUTIQUE]`, sans nouvelle filiere de logs.
 
 ## 1. Purpose
 
@@ -316,6 +318,17 @@ Ce contrat n'impose pas encore:
 - une nouvelle infrastructure de logs;
 - une taxonomie exhaustive de tous les `reason_code`;
 - un schema runtime detaille final au-dela du minimum requis.
+
+### 11.4 Niveau obligatoire du lot 6
+
+Le lot 6 ferme operatoirement le chantier avec:
+
+- un corpus stable couvrant `answer/simple`, `clarify` et `suspend`;
+- des preuves explicites qu'un arbitre peut suivre ou casser l'amont;
+- des preuves explicites qu'un garde-fou dur interdit `answer` sans imposer `meta` ni voler le choix `clarify` vs `suspend`;
+- des preuves explicites que `[JUGEMENT HERMENEUTIQUE]` projette bien le verdict final arbitral;
+- des preuves d'observabilite compacte ancrees dans `test_validation_agent.py` pour les proprietes nettes et `test_server_phase14.py` pour les parcours bout-en-bout et les logs;
+- aucune nouvelle surface admin ni nouvelle filiere de logs.
 
 ## 12. Ce Que Le Lot 1 Fige Et Ce Qu'il Laisse Ouvert
 

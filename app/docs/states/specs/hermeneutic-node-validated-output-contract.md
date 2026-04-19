@@ -9,6 +9,7 @@ Note runtime 2026-04-19:
 - `validated_output` expose maintenant directement le verdict final arbitral;
 - `validation_decision` peut subsister comme trace legacy derivee, mais elle n'a plus d'autorite normative propre.
 - le lot 4 runtime nomme maintenant les recommandations suivies ou cassees depuis la couche `upstream_advisory`, et non depuis des champs amont encore interpretes comme quasi-souverains.
+- le lot 6 verrouille par preuves un corpus stable `answer/simple`, `clarify` et `suspend/simple`, plus la coherence de projection vers `[JUGEMENT HERMENEUTIQUE]`.
 
 ## 1. Purpose
 
@@ -151,7 +152,6 @@ La forme canonique minimale retenue est:
     "advisory_recommendations_followed": [],
     "advisory_recommendations_overridden": ["upstream_recommendation_posture", "upstream_output_regime_proposed"],
     "applied_hard_guards": [],
-    "hard_guard_effect": "answer_forbidden",
     "arbiter_reason": "lecture locale suffisante",
 }
 ```
@@ -168,6 +168,7 @@ Invariants minimaux:
   - `meta`
 - `pipeline_directives_final` reste une liste compacte de codes stables
 - `hard_guard_effect`, si present, reste une etiquette compacte d'effet et ne remplace jamais `final_judgment_posture`
+- `hard_guard_effect`, si present, implique `applied_hard_guards != []` et un verdict final different de `answer`
 - aucun dump de `primary_verdict`
 - aucun dump de `validation_dialogue_context`
 - aucun bloc de `justifications`

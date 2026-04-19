@@ -942,23 +942,29 @@ Risques:
 - absence de corpus de tours quotidiens;
 - observabilite trop pauvre pour comprendre un override ou un non-override.
 
-- [ ] Fixer un corpus stable `answer / clarify / suspend`.
-- [ ] Ajouter des cas ou l'arbitre casse la mecanique.
-- [ ] Ajouter des cas ou l'arbitre ne doit surtout pas la casser.
-- [ ] Journaliser les garde-fous appliques.
-- [ ] Journaliser les recommendations amont suivies.
-- [ ] Journaliser les recommendations amont cassees.
-- [ ] Journaliser une raison lisible pour chaque override significatif.
-- [ ] Verifier que le verdict projete dans `[JUGEMENT HERMENEUTIQUE]` correspond bien au verdict final de l'arbitre.
-- [ ] Reutiliser `chat_turn_logger` et `hermeneutic_node_logger` plutot qu'ouvrir une nouvelle filiere d'observabilite.
-- [ ] Verifier que les preuves de logs restent compactes et sans dump brut de contexte.
+- [x] Fixer un corpus stable `answer / clarify / suspend`.
+- [x] Ajouter des cas ou l'arbitre casse la mecanique.
+- [x] Ajouter des cas ou l'arbitre ne doit surtout pas la casser.
+- [x] Journaliser les garde-fous appliques.
+- [x] Journaliser les recommendations amont suivies.
+- [x] Journaliser les recommendations amont cassees.
+- [x] Journaliser une raison lisible pour chaque override significatif.
+- [x] Verifier que le verdict projete dans `[JUGEMENT HERMENEUTIQUE]` correspond bien au verdict final de l'arbitre.
+- [x] Reutiliser `chat_turn_logger` et `hermeneutic_node_logger` plutot qu'ouvrir une nouvelle filiere d'observabilite.
+- [x] Verifier que les preuves de logs restent compactes et sans dump brut de contexte.
 
 Critere de completion:
 
-- [ ] Le chantier est pilote par des cas d'acceptation explicites.
-- [ ] Un override est comprehensible sans reconstituer la pile entiere.
-- [ ] Les regressions de surclarification et de meta prematuree deviennent visibles.
-- [ ] L'observabilite minimale du chantier est tenue sans surface admin dediee.
+- [x] Le chantier est pilote par des cas d'acceptation explicites.
+- [x] Un override est comprehensible sans reconstituer la pile entiere.
+- [x] Les regressions de surclarification et de meta prematuree deviennent visibles.
+- [x] L'observabilite minimale du chantier est tenue sans surface admin dediee.
+
+Cloture runtime lot 6:
+
+- le corpus pilote principal vit dans `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py`;
+- les preuves bout-en-bout de logs compacts, de suivi vs override et de projection finale vivent dans `app/tests/test_server_phase14.py`;
+- aucune note finale dediee n'est ajoutee: le TODO coche + les specs vivantes suffisent pour fermer le chantier.
 
 Ne pas toucher dans ce lot:
 
