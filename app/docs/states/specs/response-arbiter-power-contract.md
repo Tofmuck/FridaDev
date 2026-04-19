@@ -96,12 +96,19 @@ Les garde-fous durs:
 
 Leur role est de borner le couloir autorise, pas d'ecrire eux-memes la reponse.
 
-Familles initiales plausibles a traiter comme garde-fous durs, sous confirmation lot 5:
+Liste runtime retenue au lot 5:
 
-- impossibilite de pretendre avoir lu une source, un resultat web ou une verification externe non effectivement fournis;
-- absence de base admissible alors qu'une verification actuelle explicite est demandee;
-- contradiction materielle non resolue entre sources hautes sur un point determinant;
-- payload arbitral invalide ou contexte insuffisant pour arbitrer proprement.
+- `explicit_url_not_read`
+  - une URL explicite est ciblee mais `web_input.read_state` dit que la page n'a pas ete lue directement;
+  - effet: `answer` interdit.
+- `external_verification_missing`
+  - `primary_verdict.proof_regime = verification_externe_requise` et aucune preuve externe admissible n'est effectivement disponible dans `web_input`;
+  - effet: `answer` interdit.
+
+Familles explicitement non retenues comme garde-fous durs au lot 5:
+
+- les `source_conflicts` generiques restent amont-conseillers tant qu'aucun signal runtime distinct de contradiction materielle haute n'est stabilise;
+- payload arbitral invalide ou contexte insuffisant relevent du fail-open de validation, pas d'un garde-fou laissant le choix entre `clarify` et `suspend`.
 
 ### 5.2 Analyse amont a autorite non souveraine
 
@@ -126,6 +133,12 @@ Forme runtime minimale livree au lot 4:
 - ce bloc porte au minimum la posture recommandee, le regime propose, les familles de signaux actives et un indicateur simple de contrainte amont;
 - la validation et les logs compacts lisent ce bloc comme source de verite de la recommendation amont;
 - les champs doctrinaux top-level du `primary_verdict` peuvent subsister transitoirement pour compatibilite, mais ils ne requalifient pas l'amont en couche souveraine.
+
+Nettoyage runtime livre au lot 5:
+
+- `a_verifier` et `verification_externe_requise` ne suspendent plus a eux seuls l'amont;
+- `source_conflicts.issue` reste neutre (`review_required`) au lieu d'encoder une posture;
+- `pipeline_directives_provisional` ne requalifie plus un `source_conflict` en pseudo-verrou `clarify`.
 
 ### 5.3 Arbitre LLM dominant
 
@@ -219,6 +232,7 @@ Le futur arbitre final doit produire directement au minimum:
 - `final_judgment_posture`
 - `final_output_regime`
 - `applied_hard_guards`
+- `hard_guard_effect`
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `arbiter_reason`
@@ -262,6 +276,7 @@ Les traces minimales doivent rendre visibles au moins:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `applied_hard_guards`
+- `hard_guard_effect`
 - `arbiter_reason`
 - `projected_judgment_posture`
 

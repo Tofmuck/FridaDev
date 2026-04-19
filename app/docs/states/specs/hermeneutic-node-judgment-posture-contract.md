@@ -181,7 +181,7 @@ Regles minimales:
 Regles minimales de correspondance:
 
 - `contradictoire` -> `suspend`
-- `a_verifier` -> `suspend`
+- `a_verifier` n'impose plus a lui seul `suspend`
 - `suspendu` -> `suspend`
 - `certain` -> tend normalement vers `answer`
 - `probable` -> tend normalement vers `answer`
@@ -193,7 +193,8 @@ Modulations minimales:
 - `incertain` ne doit pas aller automatiquement vers `suspend`
 - une `uncertainty_posture = bloquante` pousse vers `suspend`
 - une `uncertainty_posture = explicite` ne suffit pas a elle seule a produire `suspend`
-- `proof_regime = verification_externe_requise` pousse vers `suspend`
+- `proof_regime = verification_externe_requise` n'impose plus a lui seul `suspend`
+- le lot 5 ferme `answer` downstream via garde-fou dur si la verification externe manque reellement
 - `proof_regime = arbitrage_requis` pousse vers `suspend`
 
 ## 9. Minimal Effects

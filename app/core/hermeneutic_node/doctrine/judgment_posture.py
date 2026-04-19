@@ -13,11 +13,9 @@ JUDGMENT_POSTURES = (
 
 _SUSPENDING_EPISTEMIC_REGIMES = {
     "contradictoire",
-    "a_verifier",
     "suspendu",
 }
 _SUSPENDING_PROOF_REGIMES = {
-    "verification_externe_requise",
     "arbitrage_requis",
 }
 _SUSPENDING_UNCERTAINTY_POSTURES = {"bloquante"}

@@ -311,7 +311,7 @@ class PrimaryNodeTests(unittest.TestCase):
                 {
                     "conflict_type": "conflit_d_ancrage_de_source",
                     "sources": ["memoire", "identity"],
-                    "issue": "clarify",
+                    "issue": "review_required",
                 }
             ],
         )
@@ -328,7 +328,7 @@ class PrimaryNodeTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["primary_verdict"]["pipeline_directives_provisional"],
-            ["posture_clarify", "source_conflict_clarify"],
+            ["posture_clarify"],
         )
         self.assertEqual(
             payload["primary_verdict"]["judgment_posture"],

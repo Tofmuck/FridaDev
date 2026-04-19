@@ -259,7 +259,7 @@ class SourceConflictsTests(unittest.TestCase):
                     {
                         "conflict_type": "conflit_d_ancrage_de_source",
                         "sources": ["memoire", "web"],
-                        "issue": "clarify",
+                        "issue": "review_required",
                     }
                 ]
             },
@@ -300,7 +300,7 @@ class SourceConflictsTests(unittest.TestCase):
                     {
                         "conflict_type": "conflit_d_ancrage_de_source",
                         "sources": ["memoire", "identity"],
-                        "issue": "clarify",
+                        "issue": "review_required",
                     }
                 ]
             },
@@ -364,7 +364,7 @@ class SourceConflictsTests(unittest.TestCase):
 
         self.assertEqual(payload, {"source_conflicts": []})
 
-    def test_build_source_conflicts_emits_only_clarify_issue(self) -> None:
+    def test_build_source_conflicts_emits_only_review_required_issue(self) -> None:
         payload = source_conflicts.build_source_conflicts(
             source_priority=_source_priority(
                 [
@@ -386,7 +386,7 @@ class SourceConflictsTests(unittest.TestCase):
             web_input=_web(status="ok", results_count=3),
         )
 
-        self.assertEqual([conflict["issue"] for conflict in payload["source_conflicts"]], ["clarify"])
+        self.assertEqual([conflict["issue"] for conflict in payload["source_conflicts"]], ["review_required"])
 
 
 if __name__ == "__main__":

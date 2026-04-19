@@ -158,6 +158,7 @@ Regles minimales:
 - `source_conflicts`
   - est inclus dans le payload primaire minimal en V1
   - raison: c'est deja une sortie doctrinale compacte du noeud primaire, utile a la validation et a la relecture du verdict
+  - en lot 5, chaque conflit garde une `issue = review_required` neutre et ne recode plus une posture `clarify`
 - `upstream_advisory`
   - explicite le statut institutionnel non souverain de l'amont
   - porte la recommendation structuree lue par l'arbitre et par l'observabilite compacte
@@ -199,6 +200,7 @@ Discipline minimale:
 - pas de detail UX final
 - pas de fusion avec la validation
 - pas de directives finales pretendument deja stabilisees
+- pas de pseudo-verrou posture-code du type `source_conflict_clarify`
 - pas de doublons dans la liste
 
 ## 7. Minimal Primary Fail-open Contract

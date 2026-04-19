@@ -10,6 +10,7 @@ Note runtime 2026-04-19:
 - `validation_decision` peut subsister comme trace legacy de compatibilite, mais elle n'est plus la source souveraine du verdict final.
 - `validation_dialogue_context` est maintenant livre en runtime comme fenetre dialogique locale canonisee de 5 messages maximum, priorisant le user courant puis le dernier assistant.
 - le lot 4 runtime lit maintenant un bloc `upstream_advisory` dans `primary_verdict` comme recommendation amont de reference, secondaire et non souveraine.
+- le lot 5 runtime evalue des garde-fous durs rares dans un module voisin, interdit `answer` quand ils s'appliquent, mais laisse a l'arbitre le choix entre `clarify` et `suspend`.
 
 ## 1. Purpose
 
@@ -184,6 +185,8 @@ Le contrat runtime minimal de l'arbitre est maintenant:
 
 - `final_judgment_posture`
 - `final_output_regime`
+- `applied_hard_guards`
+- `hard_guard_effect` si un garde-fou borne le couloir
 - `arbiter_reason`
 
 Taxonomies minimales:
@@ -200,6 +203,7 @@ Regles fortes:
 
 - le verdict final vient directement de l'arbitre;
 - `meta` n'est pas une consequence mecanique de `clarify`;
+- un garde-fou lot 5 peut fermer `answer` sans imposer a lui seul `meta`;
 - `validation_decision` peut subsister comme trace legacy derivee, mais elle ne gouverne plus l'aval.
 
 ## 8. Boundary With `pipeline_directives_final`
@@ -255,6 +259,7 @@ Les signaux minimaux a journaliser sont maintenant au moins:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `applied_hard_guards`
+- `hard_guard_effect`
 - `arbiter_reason`
 - `projected_judgment_posture`
 - `decision_source`

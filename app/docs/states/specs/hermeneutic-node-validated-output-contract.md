@@ -108,6 +108,7 @@ Champs de transition acceptes en lot 2:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `applied_hard_guards`
+- `hard_guard_effect`
 
 Taxonomie retenue pour `final_judgment_posture`:
 
@@ -150,6 +151,7 @@ La forme canonique minimale retenue est:
     "advisory_recommendations_followed": [],
     "advisory_recommendations_overridden": ["upstream_recommendation_posture", "upstream_output_regime_proposed"],
     "applied_hard_guards": [],
+    "hard_guard_effect": "answer_forbidden",
     "arbiter_reason": "lecture locale suffisante",
 }
 ```
@@ -165,6 +167,7 @@ Invariants minimaux:
   - `simple`
   - `meta`
 - `pipeline_directives_final` reste une liste compacte de codes stables
+- `hard_guard_effect`, si present, reste une etiquette compacte d'effet et ne remplace jamais `final_judgment_posture`
 - aucun dump de `primary_verdict`
 - aucun dump de `validation_dialogue_context`
 - aucun bloc de `justifications`

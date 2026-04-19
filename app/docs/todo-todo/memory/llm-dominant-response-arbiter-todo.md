@@ -569,7 +569,7 @@ L'existant utile au chantier est deja reel et reutilisable:
 
 - `chat_turn_logger` fournit deja un seam canonique par `stage`, `status`, `payload_json`, `model`, `reason_code` et persiste ces evenements dans `observability.chat_log_events`;
 - `hermeneutic_node_logger` expose deja des evenements compacts pour `hermeneutic_node_insertion`, `primary_node` et `validation_agent`;
-- le payload `validation_agent` expose deja la base utile du lot 2, puis du lot 4: `dialogue_messages_count`, `upstream_recommendation_posture`, `upstream_output_regime_proposed`, `upstream_active_signal_families`, `upstream_constraint_present`, `validation_decision`, `final_judgment_posture`, `final_output_regime`, `arbiter_followed_upstream`, `advisory_recommendations_followed`, `advisory_recommendations_overridden`, `applied_hard_guards`, `arbiter_reason`, `projected_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
+- le payload `validation_agent` expose deja la base utile du lot 2, puis du lot 5: `dialogue_messages_count`, `upstream_recommendation_posture`, `upstream_output_regime_proposed`, `upstream_active_signal_families`, `upstream_constraint_present`, `validation_decision`, `final_judgment_posture`, `final_output_regime`, `arbiter_followed_upstream`, `advisory_recommendations_followed`, `advisory_recommendations_overridden`, `applied_hard_guards`, `hard_guard_effect`, `arbiter_reason`, `projected_judgment_posture`, `pipeline_directives_final`, `decision_source`, `reason_code`;
 - `test_chat_turn_logger_phase2.py` verrouille deja la discipline de logs compacts par stage;
 - `test_server_phase14.py` intercepte deja `insert_chat_log_event` sur des seams d'integration, donc le chantier possede deja une couture de preuve live sans surface admin dediee;
 - les notes archivees recentes, notamment sur le web, montrent deja la doctrine utile: observabilite suffisante, compacte, sans dump brut ni replay code obligatoire.
@@ -899,21 +899,21 @@ Risques:
 - ouvrir trop largement le couloir arbitral;
 - melanger contraintes systeme et preferences hermeneutiques.
 
-- [ ] Fixer la liste borne des garde-fous durs retenus.
-- [ ] Distinguer explicitement ce qui interdit `answer` de ce qui recommande seulement `clarify`.
-- [ ] Preserver le choix arbitral entre `clarify` et `suspend` sous garde-fou dur.
-- [ ] Verifier que le garde-fou ne force pas une sortie `meta` bureaucratique.
-- [ ] Tester qu'un cas hors garde-fou redevient arbitrable par le LLM.
-- [ ] Rendre visible quel garde-fou a borne la decision, sans journaliser de dump contextuel brut.
-- [ ] Rendre visible si le garde-fou a interdit `answer` mais laisse l'arbitre choisir `clarify` ou `suspend`.
-- [ ] Ajouter des tests qui prouvent qu'un garde-fou ne force pas a lui seul un regime `meta`.
+- [x] Fixer la liste borne des garde-fous durs retenus.
+- [x] Distinguer explicitement ce qui interdit `answer` de ce qui recommande seulement `clarify`.
+- [x] Preserver le choix arbitral entre `clarify` et `suspend` sous garde-fou dur.
+- [x] Verifier que le garde-fou ne force pas une sortie `meta` bureaucratique.
+- [x] Tester qu'un cas hors garde-fou redevient arbitrable par le LLM.
+- [x] Rendre visible quel garde-fou a borne la decision, sans journaliser de dump contextuel brut.
+- [x] Rendre visible si le garde-fou a interdit `answer` mais laisse l'arbitre choisir `clarify` ou `suspend`.
+- [x] Ajouter des tests qui prouvent qu'un garde-fou ne force pas a lui seul un regime `meta`.
 
 Critere de completion:
 
-- [ ] La liste des garde-fous est courte, rare et lisible.
-- [ ] Les cas limites restent vernaculaires.
-- [ ] Les heuristiques ordinaires ne se cachent plus derriere le label garde-fou.
-- [ ] Les garde-fous appliques sont observables par nom et par effet.
+- [x] La liste des garde-fous est courte, rare et lisible.
+- [x] Les cas limites restent vernaculaires.
+- [x] Les heuristiques ordinaires ne se cachent plus derriere le label garde-fou.
+- [x] Les garde-fous appliques sont observables par nom et par effet.
 
 Ne pas toucher dans ce lot:
 

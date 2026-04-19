@@ -137,7 +137,7 @@ Discipline minimale:
 
 Dans cette premiere version normative, l'issue minimale d'un conflit inter-source residuel est:
 
-- `clarify`
+- `review_required`
 
 `prioriser` est explicitement ecarte comme issue du Lot 7, car la priorisation normale appartient deja au Lot 6.
 
@@ -145,9 +145,10 @@ Dans cette premiere version normative, l'issue minimale d'un conflit inter-sourc
 
 Important:
 
-- un conflit inter-source residuel peut nourrir `judgment_posture = clarify`
-- il ne doit pas, a lui seul, pousser automatiquement vers `judgment_posture = suspend`
-- si un cas plus dur conduit un jour a `suspend`, cela devra venir d'un blocage doctrinal additionnel, pas du seul fait qu'un conflit residuel existe
+- un conflit inter-source residuel peut nourrir une relecture ou une recommandation de clarification;
+- il ne doit pas, a lui seul, encoder directement `judgment_posture = clarify`;
+- il ne doit pas, a lui seul, pousser automatiquement vers `judgment_posture = suspend`;
+- si un cas plus dur conduit un jour a `suspend`, cela devra venir d'un blocage doctrinal additionnel, pas du seul fait qu'un conflit residuel existe.
 
 ## 8. Link With Lot 6
 
@@ -175,7 +176,7 @@ Difference minimale:
 
 - `source_conflicts`
   - detecte un conflit residuel entre sources encore recevables
-  - vise prioritairement une clarification
+  - signale d'abord une relecture requise, sans posture codee dans le payload
 - `contradictoire`
   - designe un etat epistemique plus dur, plus rare et plus bloquant
   - peut impliquer `arbitrage_requis` et `bloquante`
@@ -189,13 +190,13 @@ Regle minimale:
 
 Le lien doctrinal minimal avec Lot 5 est le suivant:
 
-- un conflit inter-source residuel appelle une clarification explicite
-- cette clarification reste un regime de parole
-- elle n'est ni une non-reponse, ni un abort de tour, ni une formule vide
+- un conflit inter-source residuel appelle d'abord une relecture explicite;
+- il peut nourrir ensuite une recommandation amont de clarification;
+- il ne devient pas, a lui seul, un garde-fou dur lot 5.
 
 `source_conflicts` doit donc pouvoir nourrir:
 
-- `judgment_posture = clarify`
+- une recommendation amont de clarification
 
 Sans confusion avec:
 
@@ -211,7 +212,7 @@ La forme minimale attendue est:
         {
             "conflict_type": "conflit_factuel",
             "sources": ["memoire", "web"],
-            "issue": "clarify",
+            "issue": "review_required",
         }
     ]
 }

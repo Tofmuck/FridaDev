@@ -2553,7 +2553,7 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['status'], 'skipped')
         self.assertEqual(observed['web_input']['reason_code'], 'no_data')
         self.assertEqual(observed['primary_payload']['primary_verdict']['proof_regime'], 'verification_externe_requise')
-        self.assertEqual(observed['primary_payload']['primary_verdict']['judgment_posture'], 'suspend')
+        self.assertEqual(observed['primary_payload']['primary_verdict']['judgment_posture'], 'answer')
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_runtime_derived_web_reading_guard_into_system_prompt(self) -> None:
@@ -3238,6 +3238,122 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
             self.assertNotIn('justifications', payload)
             self.assertNotIn('canonical_inputs', payload)
             self.assertNotIn('prompt', payload)
+        self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_emits_hard_guard_name_effect_and_final_posture_in_validation_logs(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-hard-guard-log-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok hard guard stages'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
+            'primary_verdict': {
+                'schema_version': 'v1',
+                'epistemic_regime': 'a_verifier',
+                'proof_regime': 'verification_externe_requise',
+                'judgment_posture': 'answer',
+                'discursive_regime': 'simple',
+                'source_conflicts': [],
+                'upstream_advisory': {
+                    'schema_version': 'v1',
+                    'recommended_judgment_posture': 'answer',
+                    'proposed_output_regime': 'simple',
+                    'active_signal_families': [],
+                    'active_signal_families_count': 0,
+                    'constraint_present': False,
+                },
+                'audit': {'fail_open': False, 'state_used': False, 'degraded_fields': []},
+            },
+            'node_state': {'schema_version': 'v1'},
+        }
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'clarify',
+                    'final_judgment_posture': 'clarify',
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_clarify', 'regime_simple'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': ['upstream_output_regime_proposed'],
+                    'advisory_recommendations_overridden': ['upstream_recommendation_posture'],
+                    'applied_hard_guards': ['external_verification_missing'],
+                    'hard_guard_effect': 'answer_forbidden',
+                    'arbiter_reason': 'je peux cadrer sans verifier maintenant',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+        )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()['ok'])
+        validation_event = next(item for item in observed_events if item['stage'] == 'validation_agent')
+        self.assertEqual(validation_event['status'], 'ok')
+        self.assertEqual(
+            validation_event['payload_json'],
+            {
+                'dialogue_messages_count': 1,
+                'dialogue_truncated': False,
+                'current_user_retained': True,
+                'last_assistant_retained': False,
+                'upstream_recommendation_posture': 'answer',
+                'upstream_output_regime_proposed': 'simple',
+                'upstream_active_signal_families': [],
+                'upstream_constraint_present': False,
+                'validation_decision': 'clarify',
+                'final_judgment_posture': 'clarify',
+                'final_output_regime': 'simple',
+                'arbiter_followed_upstream': False,
+                'advisory_recommendations_followed': ['upstream_output_regime_proposed'],
+                'advisory_recommendations_overridden': ['upstream_recommendation_posture'],
+                'applied_hard_guards': ['external_verification_missing'],
+                'hard_guard_effect': 'answer_forbidden',
+                'arbiter_reason': 'je peux cadrer sans verifier maintenant',
+                'projected_judgment_posture': 'clarify',
+                'pipeline_directives_final': ['posture_clarify', 'regime_simple'],
+                'decision_source': 'primary',
+                'model': 'openai/gpt-5.4-mini',
+            },
+        )
+        self.assertNotIn('validation_dialogue_context', validation_event['payload_json'])
+        self.assertNotIn('canonical_inputs', validation_event['payload_json'])
+        self.assertNotIn('justifications', validation_event['payload_json'])
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_emits_validation_agent_error_stage_without_raw_payload_dump(self) -> None:

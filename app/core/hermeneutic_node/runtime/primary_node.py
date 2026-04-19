@@ -103,8 +103,6 @@ def _pipeline_directives(
     fail_open: bool,
 ) -> list[str]:
     directives = [f"posture_{_text(judgment_posture)}"]
-    if source_conflicts:
-        directives.append("source_conflict_clarify")
     if fail_open:
         directives.append("fallback_primary_verdict")
     return _stable_unique(directives)

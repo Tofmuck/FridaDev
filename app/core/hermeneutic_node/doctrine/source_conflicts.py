@@ -11,7 +11,7 @@ CONFLICT_TYPES = (
     "conflit_d_ancrage_de_source",
     "conflit_de_validite_temporelle",
 )
-CONFLICT_ISSUE = "clarify"
+CONFLICT_ISSUE = "review_required"
 _CONTENT_SOURCE_FAMILIES = (
     "memoire",
     "contexte_recent",

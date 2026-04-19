@@ -19,13 +19,16 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
-from core.hermeneutic_node.validation import validation_agent
+from core.hermeneutic_node.validation import hard_guards, validation_agent
 
 
 def _primary_verdict(
     *,
     judgment_posture: str = "answer",
     discursive_regime: str | None = None,
+    epistemic_regime: str = "incertain",
+    proof_regime: str = "source_explicite_requise",
+    uncertainty_posture: str = "prudente",
     source_conflicts: list[dict[str, object]] | None = None,
     active_signal_families: list[str] | None = None,
 ) -> dict[str, object]:
@@ -34,9 +37,9 @@ def _primary_verdict(
     source_conflicts = list(source_conflicts or [])
     return {
         "schema_version": "v1",
-        "epistemic_regime": "incertain",
-        "proof_regime": "source_explicite_requise",
-        "uncertainty_posture": "prudente",
+        "epistemic_regime": epistemic_regime,
+        "proof_regime": proof_regime,
+        "uncertainty_posture": uncertainty_posture,
         "judgment_posture": judgment_posture,
         "discursive_regime": discursive_regime_value,
         "resituation_level": "none",
@@ -88,6 +91,7 @@ def _canonical_inputs(
     ambiguity_present: bool = False,
     underdetermination_present: bool = False,
     active_signal_families: list[str] | None = None,
+    web_input: dict[str, object] | None = None,
 ) -> dict[str, object]:
     active_signal_families = list(active_signal_families or [])
     return {
@@ -104,6 +108,26 @@ def _canonical_inputs(
             "active_signal_families_count": len(active_signal_families),
         },
         "recent_context_input": {"schema_version": "v1", "messages": []},
+        "web_input": dict(web_input or {}),
+    }
+
+
+def _web_input(
+    *,
+    status: str = "ok",
+    results_count: int = 0,
+    explicit_url_detected: bool = False,
+    explicit_url: str | None = None,
+    read_state: str | None = None,
+    sources: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    return {
+        "status": status,
+        "results_count": results_count,
+        "explicit_url_detected": explicit_url_detected,
+        "explicit_url": explicit_url,
+        "read_state": read_state,
+        "sources": list(sources or []),
     }
 
 
@@ -135,11 +159,13 @@ def _expected_validated_output(
     advisory_recommendations_overridden: list[str],
     arbiter_reason: str,
     fail_open: bool = False,
+    applied_hard_guards: list[str] | None = None,
+    hard_guard_effect: str | None = None,
 ) -> dict[str, object]:
     directives = [f"posture_{final_judgment_posture}", f"regime_{final_output_regime}"]
     if fail_open:
         directives.append("fallback_validation")
-    return {
+    payload = {
         "schema_version": "v1",
         "validation_decision": validation_decision,
         "final_judgment_posture": final_judgment_posture,
@@ -148,9 +174,12 @@ def _expected_validated_output(
         "arbiter_followed_upstream": arbiter_followed_upstream,
         "advisory_recommendations_followed": advisory_recommendations_followed,
         "advisory_recommendations_overridden": advisory_recommendations_overridden,
-        "applied_hard_guards": [],
+        "applied_hard_guards": list(applied_hard_guards or []),
         "arbiter_reason": arbiter_reason,
     }
+    if hard_guard_effect:
+        payload["hard_guard_effect"] = hard_guard_effect
+    return payload
 
 
 class _FakeRequests:
@@ -543,6 +572,207 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(suspend_result.validated_output["final_judgment_posture"], "suspend")
         self.assertEqual(suspend_result.validated_output["final_output_regime"], "simple")
 
+    def test_build_validated_output_hard_guard_blocks_answer_for_explicit_url_not_read_without_forcing_meta(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="simple",
+                        arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                web_input=_web_input(
+                    status="ok",
+                    results_count=1,
+                    explicit_url_detected=True,
+                    explicit_url="https://example.com/article",
+                    read_state="page_not_read_snippet_fallback",
+                    sources=[
+                        {
+                            "used_in_prompt": True,
+                            "used_content_kind": "search_snippet",
+                            "content_used": "resume court",
+                        }
+                    ],
+                )
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(
+            result.validated_output,
+            _expected_validated_output(
+                validation_decision="clarify",
+                final_judgment_posture="clarify",
+                final_output_regime="simple",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=["upstream_output_regime_proposed"],
+                advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                arbiter_reason="je peux cadrer sans pretendre avoir lu la page",
+                applied_hard_guards=[hard_guards.HARD_GUARD_EXPLICIT_URL_NOT_READ],
+                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+            ),
+        )
+
+    def test_build_validated_output_hard_guard_blocks_answer_for_missing_external_verification_with_suspend_choice(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="suspend",
+                        final_output_regime="simple",
+                        arbiter_reason="verification actuelle indisponible",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(
+                epistemic_regime="a_verifier",
+                proof_regime="verification_externe_requise",
+                uncertainty_posture="explicite",
+            ),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                web_input=_web_input(status="skipped", results_count=0, sources=[]),
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(
+            result.validated_output,
+            _expected_validated_output(
+                validation_decision="suspend",
+                final_judgment_posture="suspend",
+                final_output_regime="simple",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=["upstream_output_regime_proposed"],
+                advisory_recommendations_overridden=["upstream_recommendation_posture"],
+                arbiter_reason="verification actuelle indisponible",
+                applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
+                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+            ),
+        )
+
+    def test_build_validated_output_retries_when_primary_answer_violates_hard_guard(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="je reponds quand meme",
+                    )
+                ),
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="clarify",
+                        final_output_regime="simple",
+                        arbiter_reason="je peux cadrer sans pretendre verifier",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(
+                epistemic_regime="a_verifier",
+                proof_regime="verification_externe_requise",
+                uncertainty_posture="explicite",
+            ),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                web_input=_web_input(status="skipped", results_count=0, sources=[]),
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.decision_source, "fallback")
+        self.assertEqual(result.model, validation_agent.FALLBACK_MODEL)
+        self.assertEqual(
+            result.validated_output["applied_hard_guards"],
+            [hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
+        )
+        self.assertIn(
+            "hard_guards (contraintes deterministes non cassables):",
+            requests_module.calls[0]["json"]["messages"][1]["content"],
+        )
+        self.assertIn(
+            '"allowed_postures":["clarify","suspend"]',
+            requests_module.calls[0]["json"]["messages"][1]["content"],
+        )
+        self.assertIn(
+            hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING,
+            requests_module.calls[0]["json"]["messages"][1]["content"],
+        )
+
+    def test_build_validated_output_keeps_source_conflict_case_arbitrable_without_hard_guard(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="la lecture locale suffit malgre l ancrage concurrent",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(
+                judgment_posture="clarify",
+                discursive_regime="meta",
+                source_conflicts=[
+                    {
+                        "conflict_type": "conflit_d_ancrage_de_source",
+                        "sources": ["memoire", "web"],
+                        "issue": "review_required",
+                    }
+                ],
+                active_signal_families=["ancrage_de_source"],
+            ),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                active_signal_families=["ancrage_de_source"],
+                web_input=_web_input(
+                    status="ok",
+                    results_count=1,
+                    sources=[
+                        {
+                            "used_in_prompt": True,
+                            "used_content_kind": "crawl_markdown",
+                            "content_used": "matiere externe lue",
+                        }
+                    ],
+                ),
+            ),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.validated_output["final_judgment_posture"], "answer")
+        self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertEqual(result.validated_output["applied_hard_guards"], [])
+        self.assertNotIn("hard_guard_effect", result.validated_output)
+        self.assertEqual(
+            result.validated_output["advisory_recommendations_overridden"],
+            ["upstream_recommendation_posture", "upstream_output_regime_proposed"],
+        )
+
     def test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation(self) -> None:
         requests_module = _FakeRequests(
             [
@@ -842,6 +1072,7 @@ class ValidationAgentTests(unittest.TestCase):
             justifications=large_justifications,
             validation_dialogue_context=large_context,
             canonical_inputs=large_canonical_inputs,
+            hard_guard_payload={},
         )
 
         user_message = messages[1]["content"]

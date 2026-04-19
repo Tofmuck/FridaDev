@@ -11,6 +11,7 @@ from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from . import hard_guards
 
 logger = logging.getLogger('frida.validation_agent')
 
@@ -413,7 +414,11 @@ def _safe_json_loads(raw: Any) -> dict[str, Any]:
     return payload
 
 
-def _validated_model_verdict(value: Any) -> dict[str, str]:
+def _validated_model_verdict(
+    value: Any,
+    *,
+    allowed_postures: Sequence[str] = ALLOWED_PRIMARY_JUDGMENT_POSTURES,
+) -> dict[str, str]:
     payload = _mapping(value)
     if set(payload.keys()) != _ALLOWED_MODEL_PAYLOAD_KEYS:
         raise _ValidationPayloadError("validation_error")
@@ -421,7 +426,7 @@ def _validated_model_verdict(value: Any) -> dict[str, str]:
         raise _ValidationPayloadError("validation_error")
 
     final_judgment_posture = _text(payload.get("final_judgment_posture"))
-    if final_judgment_posture not in ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+    if final_judgment_posture not in allowed_postures:
         raise _ValidationPayloadError("validation_error")
 
     final_output_regime = _text(payload.get("final_output_regime"))
@@ -500,6 +505,7 @@ def _build_validated_output_payload(
     arbiter_reason: str,
     fail_open: bool,
     applied_hard_guards: Sequence[str],
+    hard_guard_effect: str | None = None,
 ) -> dict[str, Any]:
     upstream_advisory = _upstream_advisory(primary_verdict)
     upstream_recommendation_posture = _text(upstream_advisory.get("recommended_judgment_posture"))
@@ -509,7 +515,7 @@ def _build_validated_output_payload(
         final_judgment_posture=final_judgment_posture,
         final_output_regime=final_output_regime,
     )
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "validation_decision": _legacy_validation_decision(
             upstream_recommendation_posture=upstream_recommendation_posture,
@@ -530,12 +536,17 @@ def _build_validated_output_payload(
         "applied_hard_guards": _stable_unique(applied_hard_guards),
         "arbiter_reason": _compact_text(arbiter_reason, max_chars=160),
     }
+    if _text(hard_guard_effect):
+        payload["hard_guard_effect"] = _text(hard_guard_effect)
+    return payload
 
 
 def _build_fail_open_validated_output(
     *,
     primary_verdict: Mapping[str, Any],
     reason_code: str,
+    applied_hard_guards: Sequence[str],
+    hard_guard_effect: str | None,
 ) -> dict[str, Any]:
     return _build_validated_output_payload(
         primary_verdict=primary_verdict,
@@ -543,7 +554,8 @@ def _build_fail_open_validated_output(
         final_output_regime="simple",
         arbiter_reason=f"validation fail-open ({_text(reason_code) or 'upstream_error'})",
         fail_open=True,
-        applied_hard_guards=[],
+        applied_hard_guards=applied_hard_guards,
+        hard_guard_effect=hard_guard_effect,
     )
 
 
@@ -552,11 +564,15 @@ def _build_fail_open_result(
     primary_verdict: Mapping[str, Any],
     reason_code: str,
     model: str,
+    applied_hard_guards: Sequence[str],
+    hard_guard_effect: str | None,
 ) -> ValidationAgentResult:
     return ValidationAgentResult(
         validated_output=_build_fail_open_validated_output(
             primary_verdict=primary_verdict,
             reason_code=reason_code,
+            applied_hard_guards=applied_hard_guards,
+            hard_guard_effect=hard_guard_effect,
         ),
         status="error",
         model=str(model or FALLBACK_MODEL),
@@ -598,11 +614,22 @@ def _build_messages(
     justifications: Mapping[str, Any],
     validation_dialogue_context: Mapping[str, Any],
     canonical_inputs: Mapping[str, Any],
+    hard_guard_payload: Mapping[str, Any] | None,
 ) -> list[dict[str, str]]:
     compacted_validation_dialogue_context = _compacted_validation_dialogue_context(validation_dialogue_context)
     compacted_primary_verdict = _bounded_json_preview(primary_verdict, max_chars=MAX_PRIMARY_VERDICT_JSON_CHARS)
     compacted_justifications = _bounded_json_preview(justifications, max_chars=MAX_JUSTIFICATIONS_JSON_CHARS)
     compacted_canonical_inputs = _bounded_json_preview(canonical_inputs, max_chars=MAX_CANONICAL_INPUTS_JSON_CHARS)
+    compacted_hard_guard_payload = _bounded_json_preview(
+        _mapping(hard_guard_payload),
+        max_chars=320,
+    )
+    hard_guard_block = ""
+    if _mapping(hard_guard_payload):
+        hard_guard_block = (
+            "hard_guards (contraintes deterministes non cassables):\n"
+            f"{compacted_hard_guard_payload}\n\n"
+        )
     return [
         {"role": "system", "content": str(system_prompt or "")},
         {
@@ -616,12 +643,15 @@ def _build_messages(
                 f"{compacted_justifications}\n\n"
                 "canonical_inputs (supports secondaires de relecture contextuelle):\n"
                 f"{compacted_canonical_inputs}\n\n"
+                f"{hard_guard_block}"
                 "Tache:\n"
                 "- decide final_judgment_posture\n"
                 "- decide final_output_regime\n"
                 "- privilegie la lecture la plus naturelle du tour, la continuite dialogique locale et la reponse simple\n"
                 "- si answer reste possible, privilegie final_output_regime = simple\n"
                 "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"
+                "- si un hard guard interdit answer, choisis entre clarify et suspend\n"
+                "- un hard guard ne force pas a lui seul meta\n"
                 "- validation_decision legacy sera derivee downstream: ne l'invente pas\n"
                 "- reponds en JSON strict uniquement\n"
                 '- schema attendu: {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}'
@@ -669,6 +699,8 @@ def _call_model(
     temperature: float,
     top_p: float,
     max_tokens: int,
+    hard_guard_payload: Mapping[str, Any],
+    allowed_postures: Sequence[str],
     requests_module: Any,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     response = requests_module.post(
@@ -681,6 +713,7 @@ def _call_model(
                 justifications=justifications,
                 validation_dialogue_context=validation_dialogue_context,
                 canonical_inputs=canonical_inputs,
+                hard_guard_payload=hard_guard_payload,
             ),
             "temperature": temperature,
             "top_p": top_p,
@@ -697,7 +730,10 @@ def _call_model(
     )
     llm_client.log_provider_metadata(logger, 'validation_agent_provider_response', provider_metadata)
     return (
-        _validated_model_verdict(_safe_json_loads(llm_client.extract_openrouter_text(response_payload))),
+        _validated_model_verdict(
+            _safe_json_loads(llm_client.extract_openrouter_text(response_payload)),
+            allowed_postures=allowed_postures,
+        ),
         provider_metadata,
     )
 
@@ -723,6 +759,10 @@ def build_validated_output(
         error_code="invalid_canonical_inputs",
         allow_empty=True,
     )
+    hard_guard_decision = hard_guards.evaluate_hard_guards(
+        primary_verdict=primary_verdict_payload,
+        canonical_inputs=canonical_inputs_payload,
+    )
 
     system_prompt = _load_system_prompt()
     if not system_prompt:
@@ -730,6 +770,8 @@ def build_validated_output(
             primary_verdict=primary_verdict_payload,
             reason_code="prompt_missing",
             model=runtime_model_settings["primary_model"],
+            applied_hard_guards=hard_guard_decision.applied_hard_guards,
+            hard_guard_effect=hard_guard_decision.effect,
         )
 
     last_reason_code = "upstream_error"
@@ -749,6 +791,8 @@ def build_validated_output(
                 temperature=runtime_model_settings["temperature"],
                 top_p=runtime_model_settings["top_p"],
                 max_tokens=runtime_model_settings["max_tokens"],
+                hard_guard_payload=hard_guard_decision.prompt_payload(),
+                allowed_postures=hard_guard_decision.allowed_postures,
                 requests_module=requests_module,
             )
             normalized_verdict = _normalized_arbiter_verdict(
@@ -763,7 +807,8 @@ def build_validated_output(
                     final_output_regime=normalized_verdict["final_output_regime"],
                     arbiter_reason=normalized_verdict["arbiter_reason"],
                     fail_open=False,
-                    applied_hard_guards=[],
+                    applied_hard_guards=hard_guard_decision.applied_hard_guards,
+                    hard_guard_effect=hard_guard_decision.effect,
                 ),
                 status="ok",
                 model=model,
@@ -782,4 +827,6 @@ def build_validated_output(
         primary_verdict=primary_verdict_payload,
         reason_code=last_reason_code,
         model=runtime_model_settings["fallback_model"],
+        applied_hard_guards=hard_guard_decision.applied_hard_guards,
+        hard_guard_effect=hard_guard_decision.effect,
     )

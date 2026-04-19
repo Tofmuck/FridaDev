@@ -311,6 +311,9 @@ def build_validation_agent_payload(
         "pipeline_directives_final": directives,
         "decision_source": _text(getattr(validated_result, "decision_source", "")),
     }
+    hard_guard_effect = _text(validated_output.get("hard_guard_effect"))
+    if hard_guard_effect:
+        payload["hard_guard_effect"] = hard_guard_effect
     reason_code = _text(getattr(validated_result, "reason_code", ""))
     if reason_code:
         payload["reason_code"] = reason_code

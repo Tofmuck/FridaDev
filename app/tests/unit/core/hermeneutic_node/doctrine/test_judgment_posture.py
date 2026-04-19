@@ -95,7 +95,7 @@ class JudgmentPostureTests(unittest.TestCase):
 
         self.assertEqual(payload, {"judgment_posture": "clarify"})
 
-    def test_build_judgment_posture_returns_suspend_for_a_verifier(self) -> None:
+    def test_build_judgment_posture_keeps_a_verifier_in_clarify_when_cadrage_signal_exists(self) -> None:
         payload = judgment_posture.build_judgment_posture(
             user_turn_signals=_signals(ambiguity=True, families=["referent"]),
             epistemic_regime="a_verifier",
@@ -103,7 +103,7 @@ class JudgmentPostureTests(unittest.TestCase):
             uncertainty_posture="explicite",
         )
 
-        self.assertEqual(payload, {"judgment_posture": "suspend"})
+        self.assertEqual(payload, {"judgment_posture": "clarify"})
 
     def test_build_judgment_posture_returns_suspend_for_contradictoire(self) -> None:
         payload = judgment_posture.build_judgment_posture(
@@ -125,7 +125,7 @@ class JudgmentPostureTests(unittest.TestCase):
 
         self.assertEqual(payload, {"judgment_posture": "suspend"})
 
-    def test_build_judgment_posture_returns_suspend_when_verification_externe_is_required(self) -> None:
+    def test_build_judgment_posture_does_not_suspend_when_verification_externe_is_required_by_itself(self) -> None:
         payload = judgment_posture.build_judgment_posture(
             user_turn_signals=_signals(ambiguity=True, families=["referent"]),
             epistemic_regime="probable",
@@ -133,7 +133,7 @@ class JudgmentPostureTests(unittest.TestCase):
             uncertainty_posture="explicite",
         )
 
-        self.assertEqual(payload, {"judgment_posture": "suspend"})
+        self.assertEqual(payload, {"judgment_posture": "clarify"})
 
     def test_build_judgment_posture_returns_suspend_when_uncertainty_is_bloquante(self) -> None:
         payload = judgment_posture.build_judgment_posture(
