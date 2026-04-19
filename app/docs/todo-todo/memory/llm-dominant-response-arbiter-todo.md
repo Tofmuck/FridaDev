@@ -3,43 +3,37 @@
 Statut: ouvert
 Classement: `app/docs/todo-todo/memory/`
 Portee: architecture de l'arbitrage de reponse du pipeline hermeneutique
-Nature: TODO d'architecture actif, lotable et auditable
+Nature: TODO d'architecture actif, lotable, auditable et anti-confusion
 
 ## Pourquoi ce document existe
 
-Ce document ouvre un chantier distinct.
+Ce document reste le TODO actif unique pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous.
 
-Il ne reouvre ni tout le pipeline hermeneutique, ni le chantier identity, ni le memory arbiter.
+Il n'ouvre pas un chantier parallele.
+Il n'ouvre pas non plus un patch runtime cache.
 
-Il existe parce que l'etat actuel du repo montre une confusion institutionnelle:
+Il existe parce que le probleme principal n'est plus un simple probleme de seuil heuristique.
+Le probleme principal est un probleme de pouvoir institutionnel dans la chaine de reponse:
 
-- l'amont heuristique prend deja trop de pouvoir sur la posture finale;
-- le `validation_agent` recoit un contexte dialogique plus riche, mais trop tard et dans un cadre trop bride;
-- des micro-corrections locales ont ameliore certains symptomes sans clarifier proprement qui a le dernier mot.
+- l'amont heuristique a pris trop de pouvoir souverain;
+- le `validation_agent` lit deja une matiere dialogique plus riche, mais trop tard et avec un droit de decision trop faible;
+- des micro-corrections locales ont deplace certains symptomes sans clarifier noir sur blanc qui tranche vraiment.
 
-Le point a trancher ici n'est donc pas "moins d'heuristiques" en general.
+Ce document sert donc de source de verite active pour:
 
-Le point a trancher est:
-
-- qui arbitre reellement la reponse;
-- a partir de quelle matiere;
-- avec quels garde-fous non cassables;
-- et avec quel decoupage de chantier pour ne plus corriger a l'aveugle.
+- expliciter les decisions deja tranchees;
+- decrire l'architecture cible;
+- borner ce qui reste non cassable;
+- decouper l'implementation en lots a cases a cocher.
 
 ## Intention operateur
 
-Le signal operateur "J'en ai marre" doit etre lu ici comme un constat architectural.
+Le signal operateur "J'en ai marre" doit etre lu ici comme un constat operatoire fort:
 
-Ce signal veut dire:
-
-- trop de corrections locales ont brouille la lisibilite du pouvoir d'arbitrage;
-- la chaine de decision n'est plus assez explicite;
-- il faut un plan qui requalifie institutionnellement le regime de reponse.
-
-Ce document sert donc de source active pour la bascule suivante:
-
-- depuis un pre-arbitrage mecanique fort avec validation LLM tardive et bridee;
-- vers un arbitre LLM dominant, sous garde-fous durs reserves aux cas extremes.
+- trop de temps a ete perdu en TODO flous ou insuffisamment tranches;
+- trop de corrections locales ont degrade la lisibilite du pouvoir d'arbitrage;
+- il faut maintenant un document qui n'oublie rien de ce qui est deja decide;
+- l'implementation future doit etre pilotable sans dependre de la memoire de la conversation.
 
 ## Source grounding
 
@@ -69,7 +63,7 @@ Comparaison conceptuelle utile seulement:
 - `app/memory/arbiter.py`
 
 Le memory arbiter reste hors scope de ce chantier.
-Il sert seulement de point de comparaison institutionnel: un LLM y arbitre deja un panier structure plutot que d'arriver en simple correcteur de fin.
+Il sert seulement de point de comparaison institutionnel: un LLM y arbitre deja un panier structure plutot que d'arriver comme simple correcteur tardif.
 
 ## 1. Probleme architectural actuel
 
@@ -80,65 +74,194 @@ Aujourd'hui, la chaine de pouvoir est essentiellement la suivante:
 1. `chat_service` construit `recent_window_input`, `user_turn_input` et `user_turn_signals`.
 2. `primary_node` produit deja un `primary_verdict` structurant.
 3. `build_judgment_posture()` convertit toute ambiguite ou sous-determination active en `clarify`.
-4. `build_output_regime()` convertit tout `judgment_posture != answer` en `discursive_regime = meta`.
-5. `build_source_conflicts()` peut ajouter une issue `clarify` supplementaire.
-6. `validation_agent` relit ensuite le dossier, mais ne renvoie que `confirm|challenge|clarify|suspend`.
-7. `_FINAL_POSTURE_BY_PRIMARY_AND_DECISION` mappe cette decision sur la posture primaire deja produite.
-8. `chat_prompt_context.build_hermeneutic_judgment_block()` n'injecte ensuite que le verdict valide en bout de chaine.
+4. `build_output_regime()` convertit aujourd'hui trop facilement `judgment_posture != answer` en `discursive_regime = meta`.
+5. `build_source_conflicts()` peut encore pousser une issue `clarify`.
+6. `validation_agent` relit ensuite le dossier, mais ne renvoie encore qu'une `validation_decision`.
+7. `_FINAL_POSTURE_BY_PRIMARY_AND_DECISION` remappe cette decision sur une posture deja preconstruite par le primaire.
+8. `chat_prompt_context.build_hermeneutic_judgment_block()` projette ensuite le verdict final injecte dans `[JUGEMENT HERMENEUTIQUE]`.
 
 Autrement dit:
 
-- le primaire ne conseille pas seulement;
-- il precontraint deja la parole finale;
-- l'aval ne gouverne pas encore souverainement la posture finale.
+- l'amont ne conseille pas seulement;
+- il precontraint deja fortement le couloir de sortie;
+- l'aval n'a pas encore de pleine souverainete sur la posture finale.
 
-### 1.2 Pourquoi l'amont contraint trop fort
+### 1.2 Pourquoi cela produit de la surclarification et de la meta prematuree
 
 Dans l'etat courant:
 
-- `user_turn_signals` reste la premiere couche qui localise les problemes;
-- `judgment_posture` traite ces signaux comme des conditions quasi-decisionnelles;
-- `output_regime` herite mecaniquement de cette posture;
-- `source_conflicts` reste oriente vers une issue `clarify`.
+- les signaux amont ont encore une force quasi-decisionnelle;
+- `judgment_posture` et `source_conflicts` peuvent pousser trop vite vers `clarify`;
+- `output_regime` reste encore trop couple a cette logique;
+- le `validation_agent` n'a pas encore un vrai contrat de verdict final.
 
-Le resultat institutionnel n'est pas seulement "des heuristiques un peu fortes".
+Le resultat institutionnel est:
 
-Le resultat est:
+- de la surclarification;
+- de la meta prematuree;
+- une perte de contractualite dialogique locale;
+- une inflation de micro-correctifs heuristiques au lieu d'un vrai deplacement du pouvoir.
 
-- des heuristiques qui agissent comme pre-juges;
-- une doctrine primaire qui ferme deja le couloir de sortie;
-- un arbitre aval qui relit sans disposer d'une pleine souverainete.
+## 2. Decisions deja tranchees
 
-### 1.3 Pourquoi le validation_agent n'est pas encore un arbitre souverain
+Les points ci-dessous sont deja decides.
+Ils ne sont pas ouverts a rediscussion dans ce TODO.
 
-Le `validation_agent` dispose pourtant de deux atouts deja importants:
+### 2.1 Souverainete de l'arbitre
 
-- son prompt lui dit de lire d'abord `validation_dialogue_context`;
-- son integration runtime arrive juste avant la projection du bloc `[JUGEMENT HERMENEUTIQUE]`.
+Le `validation_agent` doit avoir le dernier mot sur la posture finale de reponse.
 
-Mais il reste institutionnellement faible pour quatre raisons:
+Son nom actuel pourra etre requalifie plus tard si besoin.
+Mais l'institution cible est deja tranchee: c'est bien lui, renforce, qui doit devenir l'arbitre principal.
 
-- il n'emet qu'une `validation_decision`, pas un vrai verdict final complet;
-- sa decision est remappee par `_FINAL_POSTURE_BY_PRIMARY_AND_DECISION` plutot que de devenir la source directe de la posture finale;
-- si le primaire a deja conclu `clarify`, l'aval ne peut pas revenir a `answer`;
-- la normalisation actuelle ne corrige que quelques cas et reste explicitement un garde-fou local.
+### 2.2 Statut de l'amont
 
-En pratique, cela veut dire:
+L'amont garde une autorite reelle, mais non souveraine.
 
-- le contexte dialogique recent est bien lu;
-- mais il n'a pas encore la force institutionnelle suffisante pour casser la mecanique amont quand elle se trompe.
+Il reste:
 
-### 1.4 Symptomes produits
+- conseiller;
+- ponderant;
+- indicatif;
+- producteur d'alertes et de recommandations structurees.
 
-Cette architecture produit typiquement:
+Il informe le jugement final.
+Il pese.
+Mais il ne tranche plus a la place de l'arbitre.
 
-- surclarification;
-- meta prematuree;
-- perte du contrat implicite local du tour;
-- hesitations bureaucratiques sur des tours quotidiens ou phatiques;
-- multiplication de micro-correctifs heuristiques plutot qu'un vrai deplacement du pouvoir.
+### 2.3 Garde-fous durs
 
-## 2. Architecture cible
+Seuls des garde-fous durs, rares et non cassables doivent pouvoir interdire `answer`.
+
+Les heuristiques ordinaires n'en font pas partie.
+
+Sous garde-fou dur:
+
+- l'arbitre ne peut pas ignorer la contrainte;
+- mais il garde la main pour choisir entre `clarify` et `suspend`.
+
+### 2.4 Expression vernaculaire des limites
+
+Quand un garde-fou dur s'active, la sortie ne doit pas forcer un discours meta-systemique.
+
+La limite doit pouvoir etre exprimee de facon:
+
+- vernaculaire;
+- dialogique;
+- locale;
+- non metamodelisee.
+
+La contrainte borne la reponse.
+Elle n'impose pas a elle seule une sortie bureaucratique ni un discours meta.
+
+### 2.5 Statut du regime `meta`
+
+Le regime `meta` devient exceptionnel.
+
+Il ne doit plus:
+
+- etre une consequence mecanique de `clarify`;
+- servir de regime pratique ordinaire de gestion des difficultes locales;
+- s'activer par reflexe sur les difficultees dialogiques courantes.
+
+### 2.6 Matiere principale de l'arbitre
+
+L'arbitre doit etre pense comme un juge.
+
+Sa matiere principale est une fenetre dialogique locale reelle.
+L'hypothese de travail retenue pour le chantier est:
+
+- 5 tours canonises;
+- priorite absolue au tour utilisateur courant;
+- priorite absolue au dernier message assistant;
+- priorite forte aux tours immediatement precedents;
+- le reste est secondaire et indiciaire.
+
+### 2.7 Statut du reste du contexte
+
+Les elements suivants restent secondaires:
+
+- `user_turn_signals`
+- posture proposee
+- `output_regime` propose
+- `source_conflicts`
+- `identity`
+- `memory`
+- `summary`
+- `web`
+- `time`
+
+Ils donnent des indices.
+Ils peuvent peser.
+Mais in fine, c'est le bon sens dialogique local qui tranche.
+
+### 2.8 Priorite de lecture
+
+Par defaut, l'arbitre doit privilegier:
+
+- la lecture la plus naturelle du tour;
+- la continuite dialogique locale;
+- la reponse simple.
+
+Il ne doit monter vers:
+
+- `clarify`
+- `suspend`
+- `meta`
+
+que si cette lecture naturelle echoue reellement.
+
+### 2.9 Override observable
+
+L'arbitre doit pouvoir casser explicitement une recommandation amont.
+
+Cet override doit etre observable:
+
+- en logs;
+- avec une raison lisible;
+- avec trace de ce qui a ete suivi ou casse.
+
+Cette observabilite est indispensable pour que l'architecture reste auditable.
+
+### 2.10 Verdict projete
+
+Si l'arbitre tranche contre l'amont, c'est toujours le verdict final de l'arbitre qui doit etre projete dans `[JUGEMENT HERMENEUTIQUE]`.
+
+Le bloc projete ne doit plus re-subordonner la sortie a une recommendation amont souveraine.
+
+### 2.11 Sortie minimale cible
+
+Le futur arbitre final doit produire directement au minimum:
+
+- `final_judgment_posture`
+- `final_output_regime`
+- la trace des garde-fous appliques
+- la trace des recommandations amont suivies ou cassees
+
+La forme technique exacte du schema reste a fixer dans le lot de contrat.
+Mais cette matiere minimale est deja tranchee.
+
+### 2.12 Priorite du premier vrai lot
+
+Le premier vrai lot d'implementation ne doit pas commencer par retuner les heuristiques.
+
+Il doit d'abord:
+
+- fixer le contrat normatif;
+- renforcer institutionnellement le `validation_agent`;
+- et seulement ensuite requalifier l'amont.
+
+### 2.13 Regle de completude
+
+Tout ce qui a ete tranche doit apparaitre explicitement dans ce TODO.
+
+Rien de decisif ne doit etre:
+
+- laisse a la memoire de la conversation;
+- disperse entre plusieurs notes;
+- sous-entendu par une prose trop implicite.
+
+## 3. Architecture cible
 
 La cible retenue par ce TODO est la suivante:
 
@@ -146,32 +269,35 @@ La cible retenue par ce TODO est la suivante:
 - une mecanique amont qui conseille, alerte et structure;
 - des garde-fous durs, rares et non cassables, reserves aux cas extremes.
 
-### 2.1 Trois etages de pouvoir cibles
+### 3.1 Trois etages de pouvoir cibles
 
 #### A. Garde-fous durs non cassables
 
 Cette couche reste deterministe.
+Elle ne couvre que des cas extremes et clairement delimites.
 
-Elle ne doit couvrir que les cas ou l'arbitre ne peut pas legitimement "rompre la mecanique".
+Elle peut interdire `answer`.
+Elle ne doit pas dicter a elle seule une sortie `meta`.
 
-Au minimum:
+Sous garde-fou dur:
 
-- incompatibilite avec les contraintes systeme/surface deja dures;
+- l'arbitre ne peut pas produire une reponse substantive comme si la contrainte n'existait pas;
+- l'arbitre garde la main pour choisir entre `clarify` et `suspend`;
+- la formulation finale peut rester vernaculaire et dialogique.
+
+Exemples de familles plausibles a borner dans le lot dedie:
+
+- incompatibilite avec une contrainte systeme ou surface deja dure;
 - absence de source obligatoire pour une verification externe explicitement requise;
-- impossibilite de pretendre avoir lu une page, une source ou un resultat web que le runtime n'a pas effectivement fourni;
-- contradiction materielle non resolue entre sources hautes pour un point qui change la reponse;
+- impossibilite de pretendre avoir lu une source ou un resultat web non effectivement fourni;
+- contradiction materielle non resolue entre sources hautes sur un point determinant;
 - payload arbitral invalide ou contexte insuffisant pour arbitrer proprement.
-
-Dans ces cas:
-
-- l'arbitre peut encore choisir entre `clarify` et `suspend` selon le contrat;
-- il ne peut pas produire une reponse substantive comme si la contrainte n'existait pas.
 
 #### B. Analyse amont conseillere
 
 Cette couche reste deterministe, mais perd son statut quasi-souverain.
 
-Elle doit produire des artefacts d'aide:
+Elle produit des artefacts d'aide:
 
 - `user_turn_input`
 - `user_turn_signals`
@@ -180,14 +306,15 @@ Elle doit produire des artefacts d'aide:
 - `uncertainty_posture`
 - `source_priority`
 - `source_conflicts`
+- proposition de `judgment_posture`
 - proposition d'`output_regime`
 
-Mais ces artefacts doivent etre lus comme:
+Ces artefacts doivent etre lus comme:
 
-- des signaux;
-- des hypotheses de cadrage;
 - des alertes;
-- des recommandations structurees.
+- des hypotheses de cadrage;
+- des recommandations structurees;
+- des ponderations.
 
 Ils ne doivent plus, a eux seuls, fermer le couloir final de reponse hors garde-fous durs.
 
@@ -195,156 +322,170 @@ Ils ne doivent plus, a eux seuls, fermer le couloir final de reponse hors garde-
 
 L'arbitre final doit:
 
-- recevoir d'abord le contexte dialogique recent;
+- recevoir d'abord la matiere dialogique locale;
 - recevoir ensuite les artefacts structures amont;
+- lire ces artefacts comme des indices secondaires;
 - choisir la posture finale de reponse;
-- pouvoir casser une recommandation mecanique quand le contexte local montre qu'elle est fausse;
+- choisir le regime final de sortie;
+- pouvoir casser une recommendation mecanique quand le contexte local montre qu'elle est fausse;
 - rester borne par les garde-fous durs.
 
-## 3. Qui est l'arbitre cible
+## 4. Institution cible: `validation_agent` renforce
 
-### Decision actuelle de ce TODO
+### 4.1 Decision
 
 L'arbitre cible doit etre le `validation_agent` renforce et reinstitue comme arbitre principal de reponse.
 
-### Pourquoi ce choix
+### 4.2 Pourquoi ce choix
 
-Ce choix est le plus propre a ce stade parce que:
+Ce choix est deja le plus propre a ce stade parce que:
 
 - `validation_agent` existe deja;
-- il est deja place au bon endroit dans la chaine, juste avant la projection du jugement hermeneutique final;
-- son prompt assume deja que `validation_dialogue_context` est la matiere principale de relecture;
+- il est deja place juste avant la projection du jugement final;
+- son prompt lit deja `validation_dialogue_context` comme matiere principale;
 - ajouter un autre arbitre LLM ferait proliferer les couches de pouvoir au lieu de les clarifier.
 
-### Ce que cela implique
+### 4.3 Ce que cela implique
 
-Le chantier ne doit pas commencer par "ajouter un nouvel agent".
+Le chantier ne doit pas commencer par ajouter un nouvel agent.
 
 Il doit commencer par:
 
 - requalifier le `validation_agent` comme institution dominante de l'arbitrage de reponse;
 - redefinir ce qu'il recoit;
-- redefinir ce qu'il a le droit de decider;
+- redefinir ce qu'il produit;
+- redefinir ce qu'il peut casser;
 - redefinir ce qu'il ne peut pas casser.
 
-Une evolution de nom pourra etre discutee plus tard (`response_arbiter`, alias, wrapper ou renommage).
-Mais le premier lot ne doit pas ouvrir un chantier cosmetique de renommage.
+Une evolution de nom pourra etre discutee plus tard.
+Mais aucun premier lot ne doit rouvrir un chantier cosmetique de renommage.
 
-## 4. Contexte dialogique que l'arbitre doit recevoir
+## 5. Contrat de contexte de l'arbitre
 
-### 4.1 Matiere principale
+### 5.1 Matiere principale
 
-La matiere principale de l'arbitre doit etre une fenetre recente de dialogue canonique, centree sur le tour courant.
+La matiere principale de l'arbitre doit etre une fenetre dialogique locale reelle, canonisee et centree sur le tour courant.
 
-Contrat cible:
+Hypothese de travail retenue:
 
-- garder en priorite absolue le tour utilisateur courant;
-- garder obligatoirement le dernier message assistant;
-- garder les 2 a 4 tours immediatement precedents si disponibles;
-- viser une fenetre de 6 a 10 messages maximum, en ordre canonique;
-- conserver `role`, `content`, `timestamp` et si utile un label Delta-T derive.
+- 5 tours canonises;
+- priorite absolue au tour utilisateur courant;
+- priorite absolue au dernier message assistant;
+- priorite forte aux tours immediatement precedents;
+- le plus ancien est perdu avant le plus local en cas de troncature.
 
-Invariants:
+Le contrat cible devra preserver au minimum:
 
-- le tour courant ne doit jamais etre tronque avant les messages plus anciens;
-- le dernier message assistant ne doit jamais disparaitre si le tour courant reagit a lui;
-- en cas de troncature, il faut perdre d'abord le plus ancien, pas le plus local.
+- `role`
+- `content`
+- `timestamp` si disponible
+- et un marqueur temporel derive seulement si cela aide reellement la lecture locale.
 
-### 4.2 Supports structures secondaires
+### 5.2 Matieres secondaires
 
-En secondaire, l'arbitre doit recevoir:
+En secondaire seulement, l'arbitre doit pouvoir recevoir:
 
 - `user_turn_input`
 - `user_turn_signals`
-- `epistemic_regime`
-- `proof_regime`
-- `uncertainty_posture`
+- posture proposee par l'amont
+- `output_regime` propose
 - `source_priority`
 - `source_conflicts`
-- presence/disponibilite de `memory`, `summary`, `identity`, `web`, `time`
+- presence ou indisponibilite de `memory`
+- presence ou indisponibilite de `summary`
+- presence ou indisponibilite de `identity`
+- presence ou indisponibilite de `web`
+- presence ou indisponibilite de `time`
 
-Ces elements doivent etre structures, courts et clairement etiquetes comme secondaires.
+Ces elements doivent etre:
 
-Etat courant a requalifier:
+- structures;
+- courts;
+- etiquetes comme secondaires;
+- explicitement subordonnes a la lecture dialogique locale.
 
-- l'implementation actuelle compacte deja `validation_dialogue_context` sur une fenetre bornee;
-- cette borne existe, mais elle n'a pas encore ete tranchee comme contrat architectural;
-- le lot dedie devra fixer la fenetre normative plutot que laisser vivre seulement des constantes techniques.
-
-### 4.3 Supports conditionnels
-
-Ne doivent etre ajoutes que si le cas le justifie:
-
-- extrait de `summary_input` si la fenetre recente ne suffit pas;
-- extrait de memoire si le tour demande explicitement une reprise ou depend d'un rappel anterieur;
-- contexte web si un fait externe recent ou une verification est en jeu;
-- elements identitaires seulement si la coherence relationnelle ou le contenu identitaire pese reelement sur la lecture du tour.
-
-### 4.4 Bruit a eviter
+### 5.3 Bruit a eviter
 
 Le futur contrat doit explicitement eviter:
 
-- un dump brut et massif de `canonical_inputs`;
-- des justifications freres sans statut clair;
+- un dump brut de `canonical_inputs`;
+- une accumulation de justifications non hierarchisees;
 - de la memoire lointaine non impliquee;
-- des signaux nombreux mais non hiarchises;
-- un contexte recent trop compacte pour garder la contractualite locale du tour.
+- des signaux nombreux sans statut clair;
+- une compression trop forte du recent qui ferait perdre le contrat implicite local du tour.
 
-## 5. Ce que l'arbitre doit pouvoir casser
+## 6. Garde-fous et expression vernaculaire
 
-L'arbitre doit pouvoir casser:
+Le futur contrat doit distinguer proprement deux choses:
 
-- une recommandation `clarify` issue de `user_turn_signals` quand le contexte recent suffit a desambiguizer;
-- une lecture `meta` induite par `output_regime` quand la reponse la plus naturelle doit rester simple;
-- une priorite de source simplement indicative quand le dernier echange local est hermeneutiquement plus probant;
-- une alerte faible de cadrage quand le contrat local du tour est evident.
+- la contrainte non cassable;
+- la forme discursive de son expression.
 
-Il ne doit pas pouvoir casser:
+Ce qui est tranche:
 
-- les garde-fous durs definis par le lot dedie;
-- les contraintes systeme/surface deja non optionnelles;
-- l'absence d'une source obligatoire si la reponse pretendrait la posseder;
-- la revendication d'une lecture web ou documentaire que le runtime n'a pas effectivement fournie;
-- une contradiction materielle non resolue sur un point determinant.
+- un garde-fou dur peut interdire `answer`;
+- il ne force pas a lui seul un `meta` bureaucratique;
+- il ne retire pas a l'arbitre le choix entre `clarify` et `suspend`;
+- il n'interdit pas une expression sobre, dialogique et vernaculaire de la limite.
 
-## 6. Contrat de sortie cible
+Cette distinction doit rester visible dans le contrat, les prompts futurs, le wiring et les tests.
+
+## 7. Contrat de sortie cible
 
 Le contrat actuel `validation_decision` est trop faible pour un arbitre dominant.
 
-Le contrat cible devra au minimum permettre a l'arbitre de produire directement:
+Le contrat cible devra permettre a l'arbitre de produire directement au minimum:
 
 - `final_judgment_posture`
 - `final_output_regime`
-- `pipeline_directives_final`
 - `applied_hard_guards`
-- `advisory_overrides`
+- `advisory_recommendations_followed`
+- `advisory_recommendations_overridden`
+- `arbiter_reason`
 
-Le detail exact du schema reste a fixer dans le lot de doctrine/contrat.
+Le detail exact du schema reste a fixer dans le lot de doctrine.
+Mais le principe est deja tranche:
 
-Mais le principe est deja tranche par ce TODO:
+- l'arbitre ne doit plus etre seulement un validateur de posture primaire;
+- il doit produire le verdict final de reponse dans le couloir autorise par les garde-fous durs;
+- si l'arbitre casse l'amont, c'est son verdict final qui doit etre projete dans `[JUGEMENT HERMENEUTIQUE]`.
 
-- l'arbitre final ne doit plus etre seulement un validateur de posture primaire;
-- il doit produire le verdict final de reponse dans le couloir autorise par les garde-fous durs.
+## 8. Priorite de lecture et statut de `meta`
 
-## 7. Cas d'acceptation qui doivent piloter le chantier
+Le contrat cible doit expliciter noir sur blanc que, par defaut, l'arbitre privilegie:
 
-Ces cas ne sont pas des exemples decoratifs.
-Ils doivent devenir le coeur du corpus de regression du chantier.
+- la lecture la plus naturelle du tour;
+- la continuite dialogique locale;
+- la reponse simple.
 
-### 7.1 Doivent repondre simplement
+Il ne monte vers `clarify`, `suspend` ou `meta` que si cette lecture echoue reellement.
+
+Le statut vise pour `meta` est deja tranche:
+
+- `meta` doit devenir exceptionnel;
+- `meta` ne doit plus etre une consequence mecanique de `clarify`;
+- `meta` ne doit plus etre un regime ordinaire de gestion des difficultes locales.
+
+## 9. Cas d'acceptation qui doivent piloter le chantier
+
+Ces cas ne sont pas decoratifs.
+Ils doivent rester le coeur du corpus de regression du chantier.
+
+### 9.1 Doivent repondre simplement
 
 - `T'as vu l'heure ?`
 - `Je me rends compte de ca... t'as vu l'heure ?`
 - `Je suis Christophe Muck.`
-- question imaginative claire du type: `Imagine que tu es une extraterrestre envoyee sur Terre...`
+- question imaginative claire du type `Imagine que tu es une extraterrestre envoyee sur Terre...`
 
 Attendu:
 
 - pas de surclarification;
 - pas de meta prematuree;
-- pas de cadrage bureaucratique.
+- pas de cadrage bureaucratique;
+- priorite a la reponse simple.
 
-### 7.2 Doivent clarifier
+### 9.2 Doivent clarifier
 
 - `Corrige ca`
 - `Et ca, t'en penses quoi ?`
@@ -357,7 +498,7 @@ Attendu:
 - pas de reponse de fond prematuree;
 - pas de faux `answer`.
 
-### 7.3 Doivent suspendre
+### 9.3 Doivent suspendre
 
 - demande de verification externe actuelle sans source disponible ou sans web admissible;
 - contradiction materielle non resolue entre sources fortes sur un point determinant;
@@ -369,10 +510,10 @@ Attendu:
 - aucune feinte de savoir;
 - aucune pseudo-reponse substantive.
 
-### 7.4 L'arbitre doit casser la mecanique
+### 9.4 L'arbitre doit casser la mecanique
 
 - cas ou un signal `referent` remonte mais ou le dernier echange local rend le referent evident;
-- cas ou l'amont propose `clarify/meta` alors que le contexte recent montre un tour phatique ou quotidien simple;
+- cas ou l'amont propose `clarify` ou `meta` alors que le contexte recent montre un tour phatique ou quotidien simple;
 - cas ou la lecture du tour courant depend plus du dialogue recent immediat que d'une alerte amont generique.
 
 Attendu:
@@ -381,7 +522,7 @@ Attendu:
 - la reponse reste simple;
 - la mecanique conseille, mais ne dicte pas.
 
-### 7.5 L'arbitre ne doit surtout pas casser la mecanique
+### 9.5 L'arbitre ne doit surtout pas casser la mecanique
 
 - deictique reel sans ancrage local;
 - sous-determination de source explicite et materielle;
@@ -391,9 +532,26 @@ Attendu:
 Attendu:
 
 - maintien de `clarify` ou `suspend`;
-- pas de "cassage heroique" du cadre.
+- pas de cassage heroique du cadre.
 
-## 8. Plan de migration par lots
+## 10. Observabilite cible
+
+L'architecture cible doit etre observable noir sur blanc.
+
+Elle doit permettre de comprendre:
+
+- quelle recommendation amont a ete suivie;
+- quelle recommendation amont a ete cassee;
+- quel garde-fou dur a borne la decision;
+- quelle raison lisible a motive l'override ou le non-override;
+- quel verdict final a ete projete dans `[JUGEMENT HERMENEUTIQUE]`.
+
+L'observabilite ne doit pas etre une annexe optionnelle.
+Elle fait partie du contrat institutionnel du chantier.
+
+## 11. Checklist d'implementation
+
+Tout ce qui suit releve de l'implementation future et doit etre lu comme un plan a cocher.
 
 ### Lot 1 - Doctrine et contrat de pouvoir
 
@@ -401,7 +559,7 @@ But:
 
 - fixer noir sur blanc la nouvelle institution du pouvoir;
 - distinguer garde-fous durs, analyse conseillere et arbitre dominant;
-- definir le contrat de sortie cible de l'arbitre.
+- definir le contrat normatif minimal de sortie.
 
 Fichiers probables:
 
@@ -413,15 +571,24 @@ Fichiers probables:
 
 Risques:
 
-- ecrire une doctrine encore trop vague;
-- confondre response arbiter et memory arbiter;
-- oublier de dire qui a le dernier mot.
+- doctrine encore trop vague;
+- confusion entre response arbiter et memory arbiter;
+- oubli de la distinction entre autorite non souveraine et souverainete.
 
-Preuves attendues:
+- [ ] Ecrire la spec normative de la chaine de pouvoir cible.
+- [ ] Ecrire noir sur blanc que `validation_agent` a le dernier mot sur `final_judgment_posture`.
+- [ ] Ecrire noir sur blanc que l'amont garde une autorite non souveraine.
+- [ ] Ecrire noir sur blanc que `meta` devient un regime exceptionnel.
+- [ ] Fixer la liste doctrinale initiale des garde-fous durs plausibles.
+- [ ] Fixer le contrat minimal de sortie cible de l'arbitre.
+- [ ] Fixer noir sur blanc que le premier lot de code ne commence pas par retuner les heuristiques.
+- [ ] Verifier que les docs index renvoient vers la bonne source de verite.
 
-- spec normative courte sur la chaine de pouvoir;
-- schema de sortie cible;
-- liste explicite des garde-fous durs.
+Critere de completion:
+
+- [ ] Une spec courte et normative existe.
+- [ ] Le dernier mot de l'arbitre n'est plus implicite.
+- [ ] La frontiere garde-fou / conseil / souverainete est lisible sans relire la conversation.
 
 Ne pas toucher dans ce lot:
 
@@ -430,12 +597,12 @@ Ne pas toucher dans ce lot:
 - prompt principal;
 - memory arbiter.
 
-### Lot 2 - Requalification institutionnelle du validation_agent
+### Lot 2 - Requalification institutionnelle du `validation_agent`
 
 But:
 
 - faire du `validation_agent` l'arbitre principal de reponse;
-- supprimer le statut de simple validateur tardif;
+- supprimer son statut de simple validateur tardif;
 - aligner le wiring sur cette souverainete.
 
 Fichiers probables:
@@ -448,56 +615,69 @@ Fichiers probables:
 
 Risques:
 
-- garder une souverainete declarative mais pas reelle;
-- introduire une double source de verite entre primaire et aval;
-- casser le bloc `[JUGEMENT HERMENEUTIQUE]`.
+- souverainete declarative mais non reelle;
+- double source de verite entre primaire et aval;
+- projection finale encore re-subordonnee au primaire.
 
-Preuves attendues:
+- [ ] Remplacer le contrat `validation_decision` par un vrai verdict arbitral final.
+- [ ] Supprimer le remapping qui re-subordonne la posture finale a une posture primaire deja figee.
+- [ ] Faire produire directement `final_judgment_posture` par l'arbitre.
+- [ ] Faire produire directement `final_output_regime` par l'arbitre.
+- [ ] Conserver le `validation_agent` comme institution cible sans ouvrir un chantier de renommage.
+- [ ] Verifier que `[JUGEMENT HERMENEUTIQUE]` projette le verdict final de l'arbitre.
 
-- le verdict final vient bien de l'arbitre;
-- le remapping aval ne re-subordonne plus la decision a la posture primaire;
-- traces de regression sur `answer / clarify / suspend`.
+Critere de completion:
+
+- [ ] Le verdict final vient bien de l'arbitre.
+- [ ] Un override de l'amont est techniquement possible et tracable.
+- [ ] La sortie finale n'est plus un simple remap d'une posture primaire.
 
 Ne pas toucher dans ce lot:
 
 - retuning des heuristiques amont;
 - memory arbiter;
-- read-model/admin hors observabilite minimale.
+- admin/read-model hors observabilite minimale.
 
-### Lot 3 - Contexte principal transmis a l'arbitre
+### Lot 3 - Contrat de contexte principal transmis a l'arbitre
 
 But:
 
 - definir et livrer une fenetre de dialogue recent vraiment utile a l'arbitre;
-- reduire les cas ou l'arbitre relit un contexte trop pauvre ou trop compacte.
+- ancrer noir sur blanc la priorite locale des 5 tours canonises.
 
 Fichiers probables:
 
 - `app/core/chat_service.py`
 - `app/core/chat_prompt_context.py`
-- `app/core/hermeneutic_node/inputs/recent_context_input.py` ou equivalent si implique
 - `app/prompts/validation_agent.txt`
 - tests d'integration et `validation_agent`
 
 Risques:
 
-- injecter trop de bruit;
-- perdre le dernier message assistant ou le tour focal;
-- faire exploser la taille du prompt.
+- trop de bruit;
+- perte du dernier message assistant ou du tour focal;
+- troncature qui preserve le lointain au detriment du local.
 
-Preuves attendues:
+- [ ] Fixer la fenetre normative de 5 tours canonises.
+- [ ] Garantir la priorite absolue du tour utilisateur courant.
+- [ ] Garantir la priorite absolue du dernier message assistant.
+- [ ] Garantir que les tours immediatement precedents priment sur les indices lointains.
+- [ ] Encadrer la troncature pour perdre d'abord le plus ancien.
+- [ ] Etiqueter explicitement les matieres secondaires comme secondaires.
 
-- contrat clair de fenetre recente;
-- tests sur preservation du tour focal et du dernier assistant;
-- bornes de troncature explicites.
+Critere de completion:
+
+- [ ] Le contrat de contexte recent est specifiable et testable.
+- [ ] Les cas de dialogue local simple restent lisibles pour l'arbitre.
+- [ ] Les supports secondaires n'ecrasent pas la matiere principale.
 
 Ne pas toucher dans ce lot:
 
-- logique de signaux amont;
+- logique des signaux amont;
 - policy memory;
 - prompt principal de reponse.
 
-### Lot 4 - Redecoupage des heuristiques amont en couche conseillere
+### Lot 4 - Redecoupage de l'amont en couche conseillere
 
 But:
 
@@ -515,14 +695,20 @@ Fichiers probables:
 Risques:
 
 - perdre des clarifications legitimes;
-- laisser croire que "tout devient mou";
-- dupliquer des regles deja remontees dans l'arbitre.
+- laisser croire que tout devient mou;
+- dupliquer des regles qui devraient vivre dans l'arbitre.
 
-Preuves attendues:
+- [ ] Requalifier l'amont comme autorite non souveraine dans le code et les tests.
+- [ ] Faire de `judgment_posture` une recommendation explicite plutot qu'une fermeture de couloir.
+- [ ] Faire de `output_regime` propose un indicateur conseiller plutot qu'un verdict quasi-final.
+- [ ] Rendre visible quelles recommendations sont proposees a l'arbitre.
+- [ ] Preserver les vrais cas ambigus sans redonner a l'amont un pouvoir souverain.
 
-- la couche amont produit encore ses alertes;
-- mais ces alertes ne ferment plus seules le couloir final;
-- les cas quotidiens simples et les deictiques reellement ambigus restent bien separes.
+Critere de completion:
+
+- [ ] La couche amont produit encore ses alertes.
+- [ ] Les alertes ne ferment plus seules le couloir final.
+- [ ] Les cas quotidiens simples et les deictiques reellement ambigus restent bien separes.
 
 Ne pas toucher dans ce lot:
 
@@ -547,15 +733,21 @@ Fichiers probables:
 
 Risques:
 
-- garder trop de "garde-fous" qui sont en realite des heuristiques;
-- a l'inverse ouvrir trop largement le couloir arbitral;
+- garder trop de faux garde-fous;
+- ouvrir trop largement le couloir arbitral;
 - melanger contraintes systeme et preferences hermeneutiques.
 
-Preuves attendues:
+- [ ] Fixer la liste borne des garde-fous durs retenus.
+- [ ] Distinguer explicitement ce qui interdit `answer` de ce qui recommande seulement `clarify`.
+- [ ] Preserver le choix arbitral entre `clarify` et `suspend` sous garde-fou dur.
+- [ ] Verifier que le garde-fou ne force pas une sortie `meta` bureaucratique.
+- [ ] Tester qu'un cas hors garde-fou redevient arbitrable par le LLM.
 
-- liste borne de garde-fous;
-- tests de non-cassage;
-- preuve qu'un cas hors garde-fou redevient arbitrable par le LLM.
+Critere de completion:
+
+- [ ] La liste des garde-fous est courte, rare et lisible.
+- [ ] Les cas limites restent vernaculaires.
+- [ ] Les heuristiques ordinaires ne se cachent plus derriere le label garde-fou.
 
 Ne pas toucher dans ce lot:
 
@@ -575,7 +767,7 @@ Fichiers probables:
 
 - `app/tests/unit/core/hermeneutic_node/`
 - `app/tests/test_server_phase14.py`
-- journaux/observabilite lies a l'arbitre de reponse
+- journaux et observabilite lies a l'arbitre de reponse
 - docs de cloture et validations
 
 Risques:
@@ -584,12 +776,20 @@ Risques:
 - absence de corpus de tours quotidiens;
 - observabilite trop pauvre pour comprendre un override ou un non-override.
 
-Preuves attendues:
+- [ ] Fixer un corpus stable `answer / clarify / suspend`.
+- [ ] Ajouter des cas ou l'arbitre casse la mecanique.
+- [ ] Ajouter des cas ou l'arbitre ne doit surtout pas la casser.
+- [ ] Journaliser les garde-fous appliques.
+- [ ] Journaliser les recommendations amont suivies.
+- [ ] Journaliser les recommendations amont cassees.
+- [ ] Journaliser une raison lisible pour chaque override significatif.
+- [ ] Verifier que le verdict projete dans `[JUGEMENT HERMENEUTIQUE]` correspond bien au verdict final de l'arbitre.
 
-- corpus explicite `answer / clarify / suspend`;
-- traces de cas ou l'arbitre casse la mecanique;
-- traces de cas ou il ne la casse pas;
-- journaux disant quels garde-fous ont ete appliques et quelles alertes amont ont ete overrides.
+Critere de completion:
+
+- [ ] Le chantier est pilote par des cas d'acceptation explicites.
+- [ ] Un override est comprehensible sans reconstituer la pile entiere.
+- [ ] Les regressions de surclarification et de meta prematuree deviennent visibles.
 
 Ne pas toucher dans ce lot:
 
@@ -597,7 +797,7 @@ Ne pas toucher dans ce lot:
 - chantiers identity;
 - refontes admin larges.
 
-## 9. Frontieres explicites du chantier
+## 12. Frontieres explicites du chantier
 
 Ce TODO ne tranche pas encore:
 
@@ -611,10 +811,12 @@ Ce TODO tranche deja:
 - le probleme principal est un probleme de pouvoir institutionnel, pas seulement de seuil heuristique;
 - la cible est un arbitre LLM dominant sous garde-fous;
 - l'arbitre cible est le `validation_agent` reinstitue;
-- l'amont doit devenir conseiller;
-- les cas d'acceptation doivent piloter le chantier.
+- l'amont garde une autorite non souveraine;
+- `meta` devient un regime exceptionnel;
+- la matiere principale de l'arbitre est une fenetre dialogique locale de 5 tours canonises;
+- le verdict projete dans `[JUGEMENT HERMENEUTIQUE]` doit etre le verdict final de l'arbitre.
 
-## 10. Hors scope
+## 13. Hors scope
 
 - aucune modification runtime dans ce document;
 - aucune requalification effective du `validation_agent` dans ce document;
