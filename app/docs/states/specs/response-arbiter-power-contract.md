@@ -34,7 +34,7 @@ Elle n'ouvre pas une refonte generale de l'observabilite.
 
 Cette spec est ancree notamment dans:
 
-- `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`
+- `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - `app/docs/states/specs/hermeneutic-node-output-regime-contract.md`
 - `app/docs/states/specs/hermeneutic-node-user-demand-contract.md`
@@ -47,8 +47,8 @@ Cette spec est ancree notamment dans:
 - `app/tests/unit/logs/test_chat_turn_logger_phase2.py`
 - `app/tests/test_server_phase14.py`
 
-Le TODO actif reste la roadmap du chantier.
-Cette spec devient la source de verite normative du lot 1.
+L'archive operatoire du chantier vit dans `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`.
+Cette spec reste la source de verite normative durable du lot 1.
 
 Depuis le lot 2 runtime:
 

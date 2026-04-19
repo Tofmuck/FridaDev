@@ -11,7 +11,7 @@ Note de cadrage identity `2026-04-18`:
 - pour la doctrine identity courante et la trace operatoire closee du chantier, utiliser separement `app/docs/states/policies/identity-new-contract-plan.md` puis `app/docs/todo-done/refactors/identity-new-contract-todo.md`.
 
 Note de cadrage response arbiter `2026-04-19`:
-- la requalification institutionnelle de l'arbitrage de reponse est suivie separement dans `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`;
+- la requalification institutionnelle de l'arbitrage de reponse est archivee separement dans `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`;
 - le present document ne porte pas cette bascule de pouvoir;
 - il reste borne aux preuves et validations residuelles post-stabilisation.
 

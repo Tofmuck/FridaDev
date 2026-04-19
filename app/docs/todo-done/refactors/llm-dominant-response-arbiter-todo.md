@@ -1,9 +1,9 @@
-# LLM-Dominant Response Arbiter - TODO
+# LLM-Dominant Response Arbiter - Roadmap archivee
 
-Statut: ouvert
-Classement: `app/docs/todo-todo/memory/`
+Statut: archive
+Classement: `app/docs/todo-done/refactors/`
 Portee: architecture de l'arbitrage de reponse du pipeline hermeneutique
-Nature: TODO d'architecture actif, lotable, auditable et anti-confusion
+Nature: roadmap d'architecture archivee, lotable, auditable et anti-confusion
 
 Source normative du lot 1:
 
@@ -11,7 +11,7 @@ Source normative du lot 1:
 
 ## Pourquoi ce document existe
 
-Ce document reste le TODO actif unique pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous.
+Ce document preserve l'archive operatoire unique de la bascule vers un arbitre de reponse LLM dominant sous garde-fous.
 
 Il n'ouvre pas un chantier parallele.
 Il n'ouvre pas non plus un patch runtime cache.
@@ -23,7 +23,7 @@ Le probleme principal est un probleme de pouvoir institutionnel dans la chaine d
 - le `validation_agent` lit deja une matiere dialogique plus riche, mais trop tard et avec un droit de decision trop faible;
 - des micro-corrections locales ont deplace certains symptomes sans clarifier noir sur blanc qui tranche vraiment.
 
-Ce document sert donc de source de verite active pour:
+Ce document sert donc de trace operatoire archivee pour:
 
 - expliciter les decisions deja tranchees;
 - decrire l'architecture cible;
@@ -32,7 +32,7 @@ Ce document sert donc de source de verite active pour:
 
 La doctrine normative du lot 1 ne vit plus seulement ici.
 Elle est maintenant fixee dans `app/docs/states/specs/response-arbiter-power-contract.md`.
-Ce TODO reste la roadmap active du chantier.
+Cette archive preserve la roadmap operatoire du chantier clos.
 
 ## Intention operateur
 
@@ -709,7 +709,7 @@ But:
 Fichiers probables:
 
 - `app/docs/states/specs/`
-- `app/docs/todo-todo/memory/llm-dominant-response-arbiter-todo.md`
+- `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - `app/docs/README.md`
 - `README.md`
 - `AGENTS.md`

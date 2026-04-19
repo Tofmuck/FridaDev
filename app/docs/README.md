@@ -73,7 +73,7 @@ Notes:
 - note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
 - TODO ouvert de post-stabilisation memoire/hermeneutique: `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
 - spec vivante lot 1 du pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
-- TODO actif pour la bascule vers un arbitre de reponse LLM dominant sous garde-fous: `todo-todo/memory/llm-dominant-response-arbiter-todo.md`
+- archive operatoire du chantier de bascule vers un arbitre de reponse LLM dominant sous garde-fous: `todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
 - archive operatoire de cloture du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
 - regle de lecture identity: ne pas re-fusionner ces deux documents; le `plan` reste doctrinal et actif, l'archive conserve la trace du chantier termine
