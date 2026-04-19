@@ -142,8 +142,8 @@ def _resolve_validation_dialogue_context(
     user_msg: str,
     now_iso: str,
 ) -> dict[str, Any]:
-    base_messages = _sequence(_mapping(recent_context_payload).get('messages'))
-    if base_messages:
+    base_messages = _mapping(recent_context_payload).get('messages')
+    if isinstance(base_messages, list) and base_messages:
         return recent_context_input.build_validation_dialogue_context(
             messages=base_messages,
             summary_input_payload=None,
@@ -153,8 +153,8 @@ def _resolve_validation_dialogue_context(
         messages=conversation.get('messages', []),
         summary_input_payload=None,
     )
-    rebuilt_messages = _sequence(_mapping(rebuilt_payload).get('messages'))
-    if rebuilt_messages:
+    rebuilt_messages = _mapping(rebuilt_payload).get('messages')
+    if isinstance(rebuilt_messages, list) and rebuilt_messages:
         return rebuilt_payload
 
     return recent_context_input.build_validation_dialogue_context(
