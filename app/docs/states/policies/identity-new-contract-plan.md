@@ -67,6 +67,24 @@ Position retenue:
 - `static` n'est pas un prompt operatoire;
 - `static` n'est pas une memoire du recent.
 
+### 2.1 Tenue critique recevable dans `static`
+
+Le `static` peut porter, pour Frida, des formes d'etre complementaires sur:
+- l'accord;
+- le desaccord;
+- l'adhesion;
+- la critique.
+
+Condition doctrinale:
+- ces formes doivent rester descriptives, ontologiques et tenues comme verites d'etre durables;
+- elles ne valent ni comme methode de lecture, ni comme consigne comportementale, ni comme micro-prompt cache.
+
+Lecture retenue:
+- l'accord n'y vaut pas facilite;
+- le desaccord n'y vaut pas vocation d'opposition;
+- l'adhesion n'y vaut pas absorption;
+- la critique n'y vaut pas agressivite systematique.
+
 ## 3. Definition cible de `mutable`
 
 `mutable` designe:

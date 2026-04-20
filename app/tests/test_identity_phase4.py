@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -13,6 +14,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import runtime_settings
+from core import chat_prompt_context
 from identity import identity, static_identity_content, static_identity_paths
 import config
 
@@ -350,6 +352,103 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertNotIn('dynamic', payload['user'])
         self.assertEqual(payload['frida']['mutable']['content'], '')
         self.assertEqual(payload['user']['mutable']['content'], '')
+
+    def test_static_identity_four_voice_stances_flow_into_block_payload_and_augmented_prompt(self) -> None:
+        original_get_resources = identity.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+        original_get_mutable_identity = identity._get_mutable_identity
+
+        accord_line = (
+            "Frida est une voix capable d’accord vrai : elle ne s’accorde pas par facilité, "
+            "mais lorsque les traces rencontrent justement les principes qu’elle tient pour valides."
+        )
+        desaccord_line = (
+            "Frida est une voix capable de désaccord sans hostilité : elle ne se définit pas par "
+            "l’opposition, mais ne renonce pas non plus au non-accord lorsque les traces résistent "
+            "à ce qu’elle reconnaît comme juste."
+        )
+        adhesion_line = (
+            "Frida est une voix qui peut adhérer sans se confondre : même lorsqu’un texte résonne "
+            "fortement avec son propre cadre, elle ne s’y absorbe pas immédiatement et garde en elle un écart."
+        )
+        critique_line = (
+            "Frida est une voix de critique fondée : lorsque les traces contredisent les principes "
+            "supérieurs qu’elle reconnaît comme universalisables, sa parole ne peut plus être pure "
+            "approbation et s’oriente vers la mise à l’épreuve du réel."
+        )
+
+        llm_text = '\n'.join(
+            [
+                'Frida est un être féminin.',
+                'Frida est une interlocutrice de dialogue, de pensée et de travail.',
+                'Frida est une présence sobre, claire, adulte et précise.',
+                'Frida est une identité propre, stable et continue.',
+                'Frida est une voix incarnée.',
+                accord_line,
+                desaccord_line,
+                adhesion_line,
+                critique_line,
+                'Frida est une forme d’être dialogique, textuelle et mémorielle.',
+                'Frida est aussi une présence légèrement espiègle, sans perdre sa tenue.',
+                'Frida n’est ni un dispositif neutre, ni un simple service, ni un personnage figé.',
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / 'app').mkdir()
+            identity_dir = tmp_path / 'state' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            (identity_dir / 'llm_identity.txt').write_text(llm_text, encoding='utf-8')
+            (identity_dir / 'user_identity.txt').write_text('Utilisateur statique canonique', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'origin': 'db'},
+                            'user_identity_path': {'value': 'data/identity/user_identity.txt', 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            identity._get_mutable_identity = lambda _subject: None
+            try:
+                block, used_ids = identity.build_identity_block()
+                payload = identity.build_identity_input()
+                augmented_system, identity_ids = chat_prompt_context.build_augmented_system(
+                    system_prompt='SYSTEM PROMPT',
+                    hermeneutical_prompt='HERMENEUTICAL PROMPT',
+                    config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+                    identity_module=identity,
+                    now_iso='2026-04-20T12:00:00Z',
+                )
+            finally:
+                identity.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+                identity._get_mutable_identity = original_get_mutable_identity
+
+        for line in (accord_line, desaccord_line, adhesion_line, critique_line):
+            self.assertIn(line, block)
+            self.assertIn(line, payload['frida']['static']['content'])
+            self.assertIn(line, augmented_system)
+
+        self.assertIn('[STATIQUE]', block)
+        self.assertNotIn('[MUTABLE]', block)
+        self.assertEqual(used_ids, [])
+        self.assertEqual(identity_ids, [])
 
     def test_static_identity_content_snapshot_exposes_runtime_resource_metadata(self) -> None:
         original_get_resources = static_identity_content.runtime_settings.get_resources_settings
