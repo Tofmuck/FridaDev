@@ -1,17 +1,18 @@
 # Tests Taxonomy (Phase 7 Target)
 
-## Reference interpreter
+## OVH interpreter discipline
 
-For Python tests on this host/repo, use the project interpreter from the repo root:
-- `./.venv/bin/python`
-- absolute equivalent: `/home/tof/docker-stacks/fridadev/.venv/bin/python`
+On OVH, do not assume that a historical repo venv still exists.
 
-Do not use `/usr/bin/python3` to judge test state or missing dependencies.
-If another script or doc points to a different venv/interpreter, signal that mismatch explicitly instead of guessing.
+Reference rules:
+- for runtime-coupled proofs, prefer container execution from `/opt/platform/fridadev-app`
+- example: `docker exec platform-fridadev python tests/test_server_phase4.py`
+- for repo unit tests outside the container, first discover a real project interpreter in the current environment; if none exists, report that absence instead of guessing
+- do not use `/usr/bin/python3` as proof that the repo dependencies are installed and healthy
 
-Repo-root examples:
-- `./.venv/bin/python -m unittest app.tests.unit.chat.test_chat_session_flow`
-- `./.venv/bin/python -m unittest app.tests.test_server_phase13 app.tests.test_server_phase14`
+Example when a real project interpreter has been discovered explicitly:
+- `<project-python> -m unittest app.tests.unit.chat.test_chat_session_flow`
+- `<project-python> -m unittest app.tests.test_server_phase13 app.tests.test_server_phase14`
 
 This directory is migrated progressively.
 First migrated lot:

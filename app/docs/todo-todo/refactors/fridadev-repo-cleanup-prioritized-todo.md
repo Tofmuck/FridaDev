@@ -17,9 +17,9 @@ Il conserve l'ordre retenu par l'audit de nettoyage valide:
 
 Pourquoi en tete: faible risque, rendement immediat, et reduction du cout de lecture avant les plus gros lots.
 
-- [ ] Clarifier `app/tests/README.md` pour l'aligner avec l'environnement OVH courant et retirer les chemins d'interpreteur stale.
-- [ ] Ajouter un mini-index doc `current-state / doctrine active / archives` depuis `app/docs/README.md` pour reduire le cout de navigation.
-- [ ] Remplacer les micro-tests de lecture de source `app/tests/test_server_phase4.py` et `app/tests/test_server_phase8.py` par de petits tests de comportement.
+- [x] Clarifier `app/tests/README.md` pour l'aligner avec l'environnement OVH courant et retirer les chemins d'interpreteur stale.
+- [x] Ajouter un mini-index doc `current-state / doctrine active / archives` depuis `app/docs/README.md` pour reduire le cout de navigation.
+- [x] Remplacer les micro-tests de lecture de source `app/tests/test_server_phase4.py` et `app/tests/test_server_phase8.py` par de petits tests de comportement.
 
 ## Phase 1 - Surface de tests legacy
 

@@ -35,6 +35,23 @@ Sous-structure en place:
 - `todo-todo/migration/`: reserve pour futurs chantiers ouverts
 - `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes (cas ponctuels)
 
+## Mini-index
+
+Current-state:
+- audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
+- cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
+- etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
+
+Doctrine active:
+- pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
+- voix / identite / gap du chat: `states/specs/chat-enunciation-and-gap-contract.md`
+- plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
+
+Archives utiles:
+- migration OVH et chemins runtime: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
+- grande roadmap hermeneutique archivee: `todo-done/notes/hermeneutical-add-todo.md`
+- cloture operatoire du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
+
 Notes:
 - la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
 - audit repo canonique current-state: `todo-done/audits/fridadev_repo_audit.md`
