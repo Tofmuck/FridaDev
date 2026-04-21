@@ -58,6 +58,7 @@ Trace de progression:
 - [x] Sous-lot 25 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du contrat PATCH/write dans `app/tests/test_server_admin_settings_patch_contract.py`, sans ouvrir encore le bloc validate ni les derniers contrats admin legacy.
 - [x] Sous-lot 26 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du contrat POST `.../validate` dans `app/tests/test_server_admin_settings_validate_contract.py`, sans ouvrir encore les derniers contrats admin legacy voisins.
 - [x] Sous-lot 27 livre le `2026-04-21`: fermeture propre du reliquat legacy de `app/tests/test_server_admin_settings_phase5.py` par requalification thematique dans `app/tests/test_server_admin_non_settings_contracts.py`, sans ouvrir encore `app/tests/test_server_phase14.py`.
+- [x] Sous-lot 28 livre le `2026-04-21`: debut de l'ouverture de `app/tests/test_server_phase14.py` par extraction du contrat transport/stream de `/api/chat` dans `app/tests/test_server_chat_route_transport_contract.py`, en gardant hors lot les gros blocs hermeneutiques, web et observabilite.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
