@@ -36,6 +36,7 @@ Trace de progression:
 - [x] Sous-lot 3 livre le `2026-04-21`: clarification de la frontiere entre `server_test_bootstrap.py` et `server_chat_pipeline.py`, puis migration de `app/tests/test_server_phase13.py` comme troisieme consommateur reel du seam chat.
 - [x] Sous-lot 4 livre le `2026-04-21`: extension de `server_test_bootstrap.py` au seam voisin des logs admin via `app/tests/test_server_logs_phase3.py` et `app/tests/test_server_logs_phase4.py`, sans ouvrir encore `app/tests/test_server_admin_settings_phase5.py`.
 - [x] Sous-lot 5 livre le `2026-04-21`: premiere entree bornee dans `app/tests/test_server_admin_settings_phase5.py` via `server_test_bootstrap.py`, sans embarquer encore `app/tests/unit/runtime_settings/test_runtime_settings.py` ni ouvrir le seam settings/admin en grand.
+- [x] Sous-lot 6 livre le `2026-04-21`: premiere decoupe thematique de `app/tests/unit/runtime_settings/test_runtime_settings.py` via l'extraction du bloc `readonly_info` dans `app/tests/unit/runtime_settings/test_runtime_settings_readonly_info.py`, sans toucher encore `runtime_settings.py` ni nettoyer tout le seam runtime settings.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
