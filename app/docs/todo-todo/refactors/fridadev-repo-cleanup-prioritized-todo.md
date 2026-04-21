@@ -51,6 +51,7 @@ Trace de progression:
 - [x] Sous-lot 18 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/logs/test_chat_turn_logger_phase2.py` par l'extraction du noyau de contrat du logger dans `app/tests/unit/logs/test_chat_turn_logger_core_contract.py`, sans nettoyer encore tout le logging applicatif ni ouvrir le finding actif `record_arbiter_decisions`.
 - [x] Sous-lot 19 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/logs/test_chat_turn_logger_phase2.py` par l'extraction de l'observabilite hermeneutique dans `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py`, sans nettoyer encore tout le logging applicatif ni ouvrir le finding actif `record_arbiter_decisions`.
 - [x] Sous-lot 20 livre le `2026-04-21`: ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par une premiere decoupe thematique autour de l'observabilite de `prepare_memory_context` dans `app/tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py`, sans nettoyer encore tout le pipeline memoire/chat.
+- [x] Sous-lot 21 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par l'extraction du reliquat `prepare_memory_context` dans `app/tests/unit/chat/test_chat_memory_flow_prepare_context_contracts.py`, sans nettoyer encore tout le pipeline memoire/chat.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
