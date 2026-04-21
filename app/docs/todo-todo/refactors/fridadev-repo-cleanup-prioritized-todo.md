@@ -38,6 +38,7 @@ Trace de progression:
 - [x] Sous-lot 5 livre le `2026-04-21`: premiere entree bornee dans `app/tests/test_server_admin_settings_phase5.py` via `server_test_bootstrap.py`, sans embarquer encore `app/tests/unit/runtime_settings/test_runtime_settings.py` ni ouvrir le seam settings/admin en grand.
 - [x] Sous-lot 6 livre le `2026-04-21`: premiere decoupe thematique de `app/tests/unit/runtime_settings/test_runtime_settings.py` via l'extraction du bloc `readonly_info` dans `app/tests/unit/runtime_settings/test_runtime_settings_readonly_info.py`, sans toucher encore `runtime_settings.py` ni nettoyer tout le seam runtime settings.
 - [x] Sous-lot 7 livre le `2026-04-21`: poursuite de la scission de `app/tests/unit/runtime_settings/test_runtime_settings.py` via l'extraction du bloc `seed bundles / seed plans` dans `app/tests/unit/runtime_settings/test_runtime_settings_seed_bundles_and_plans.py`, sans toucher encore `app/admin/runtime_settings.py` ni nettoyer tout le seam runtime settings.
+- [x] Sous-lot 8 livre le `2026-04-21`: poursuite de la scission de `app/tests/unit/runtime_settings/test_runtime_settings.py` via l'extraction du bloc `validate_runtime_section` dans `app/tests/unit/runtime_settings/test_runtime_settings_validation.py`, avec le test de facade associe, sans toucher encore `app/admin/runtime_settings.py` ni nettoyer tout le seam runtime settings.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
