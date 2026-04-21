@@ -10,12 +10,13 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from tests.support import server_chat_pipeline
+from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
 class ServerPhase12Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.server = server_chat_pipeline.load_server_module_for_tests()
+        cls.server = load_server_module_for_tests()
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import sys
 import unittest
 from pathlib import Path
@@ -10,26 +9,14 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from core import conv_store
-from memory import memory_store
+from tests.support import server_chat_pipeline
+from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
 class ServerPhase13Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        original_init_db = memory_store.init_db
-        original_init_catalog_db = conv_store.init_catalog_db
-        original_init_messages_db = conv_store.init_messages_db
-        sys.modules.pop('server', None)
-        memory_store.init_db = lambda: None
-        conv_store.init_catalog_db = lambda: None
-        conv_store.init_messages_db = lambda: None
-        try:
-            cls.server = importlib.import_module('server')
-        finally:
-            memory_store.init_db = original_init_db
-            conv_store.init_catalog_db = original_init_catalog_db
-            conv_store.init_messages_db = original_init_messages_db
+        cls.server = load_server_module_for_tests()
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
@@ -233,30 +220,8 @@ class ServerPhase13Tests(unittest.TestCase):
 
     def test_api_chat_ignores_request_system_and_uses_backend_main_system_prompt(self) -> None:
         observed = {}
-        original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt
-        original_get_main_hermeneutical_prompt = self.server.prompt_loader.get_main_hermeneutical_prompt
-        original_get_main = self.server.runtime_settings.get_main_model_settings
-        original_get_secret = self.server.runtime_settings.get_runtime_secret_value
-        original_new_conversation = self.server.conv_store.new_conversation
-        original_save_conversation = self.server.conv_store.save_conversation
-        original_append_message = self.server.conv_store.append_message
-        original_conversation_path = self.server.conv_store.conversation_path
-        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
-        original_decay_identities = self.server.memory_store.decay_identities
-        original_maybe_summarize = self.server.summarizer.maybe_summarize
-        original_build_identity_block = self.server.identity.build_identity_block
-        original_build_identity_input = self.server.identity.build_identity_input
-        original_retrieve = self.server.memory_store.retrieve
-        original_get_recent_context_hints = self.server.memory_store.get_recent_context_hints
-        original_log_event = self.server.admin_logs.log_event
-        original_or_headers = self.server.llm.or_headers
-        original_build_payload = self.server.llm.build_payload
-        original_requests_post = self.server.requests.post
-        original_count_tokens = self.server.token_utils.count_tokens
-        original_save_new_traces = self.server.memory_store.save_new_traces
-        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
-        original_reactivate = self.server.memory_store.reactivate_identities
         original_build_augmented_system = self.server.chat_service.chat_prompt_context.build_augmented_system
+        extra_originals = []
 
         class FakeResponse:
             def raise_for_status(self):
@@ -265,19 +230,14 @@ class ServerPhase13Tests(unittest.TestCase):
             def json(self):
                 return {"choices": [{"message": {"content": "reponse test"}}]}
 
-        def fake_get_main_model_settings():
-            return self.server.runtime_settings.RuntimeSectionView(
-                section='main_model',
-                payload={
-                    'model': {'value': 'openrouter/runtime-main-model', 'origin': 'db'},
-                    'temperature': {'value': 0.4, 'origin': 'db'},
-                    'top_p': {'value': 1.0, 'origin': 'db'},
-                    'response_max_tokens': {'value': 2048, 'origin': 'db_seed'},
-                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
-                },
-                source='db',
-                source_reason='db_row',
-        )
+        def patch_attr(obj, name, value):
+            extra_originals.append((obj, name, getattr(obj, name)))
+            setattr(obj, name, value)
+
+        def restore_extra():
+            while extra_originals:
+                obj, name, value = extra_originals.pop()
+                setattr(obj, name, value)
 
         def fake_new_conversation(system_prompt: str):
             observed['system_prompt'] = system_prompt
@@ -308,35 +268,23 @@ class ServerPhase13Tests(unittest.TestCase):
             observed['turn_now_delta'] = _kwargs.get('now')
             return [{"role": "user", "content": "Bonjour"}]
 
-        self.server.prompt_loader.get_main_system_prompt = lambda: 'BACKEND SYSTEM PROMPT'
-        self.server.prompt_loader.get_main_hermeneutical_prompt = lambda: 'BACKEND HERMENEUTICAL PROMPT'
-        self.server.runtime_settings.get_main_model_settings = fake_get_main_model_settings
-        self.server.runtime_settings.get_runtime_secret_value = lambda *args, **kwargs: self.server.runtime_settings.RuntimeSecretValue(
-            section='main_model',
-            field='api_key',
-            value='sk-phase13',
-            source='db_encrypted',
-            source_reason='db_row',
+        _baseline_observed, restore_baseline = server_chat_pipeline.patch_server_chat_pipeline(
+            self.server,
+            conversation={
+                "id": "conv-phase13",
+                "created_at": "2026-03-26T00:00:00Z",
+                "messages": [],
+            },
+            requests_post=lambda *args, **kwargs: FakeResponse(),
+            build_prompt_messages=fake_build_prompt_messages,
+            conversation_path='conv/conv-phase13.json',
+            runtime_api_key='sk-phase13',
         )
-        self.server.conv_store.new_conversation = fake_new_conversation
-        self.server.conv_store.save_conversation = lambda *_args, **_kwargs: None
-        self.server.conv_store.append_message = (
-            lambda conv, role, content, meta=None, timestamp=None: conv["messages"].append(
-                {
-                    "role": role,
-                    "content": content,
-                    "timestamp": timestamp,
-                    **({"meta": meta} if meta is not None else {}),
-                }
-            )
-        )
-        self.server.chat_service.chat_prompt_context.build_augmented_system = fake_build_augmented_system
-        self.server.conv_store.conversation_path = lambda _id: 'conv/conv-phase13.json'
-        self.server.conv_store.build_prompt_messages = fake_build_prompt_messages
-        self.server.memory_store.decay_identities = lambda: None
-        self.server.summarizer.maybe_summarize = lambda *args, **kwargs: False
-        self.server.identity.build_identity_block = lambda: ("[IDENTITÉ DU MODÈLE]\\nbloc identite", [])
-        self.server.identity.build_identity_input = lambda: {
+
+        patch_attr(self.server.conv_store, 'new_conversation', fake_new_conversation)
+        patch_attr(self.server.chat_service.chat_prompt_context, 'build_augmented_system', fake_build_augmented_system)
+        patch_attr(self.server.identity, 'build_identity_block', lambda: ("[IDENTITÉ DU MODÈLE]\\nbloc identite", []))
+        patch_attr(self.server.identity, 'build_identity_input', lambda: {
             'schema_version': 'v2',
             'frida': {
                 'static': {'content': 'bloc identite', 'source': 'test'},
@@ -358,52 +306,15 @@ class ServerPhase13Tests(unittest.TestCase):
                     'updated_ts': None,
                 },
             },
-        }
-        self.server.memory_store.retrieve = lambda *_args, **_kwargs: []
-        self.server.memory_store.get_recent_context_hints = lambda **_kwargs: []
-        self.server.admin_logs.log_event = lambda *args, **kwargs: None
-        self.server.llm.or_headers = lambda **_kwargs: {}
-        self.server.llm.build_payload = lambda *_args, **_kwargs: {
-            'model': 'openrouter/runtime-main-model',
-            'messages': [],
-            'max_tokens': 2048,
-            'stream': False,
-        }
-        self.server.requests.post = lambda *args, **kwargs: FakeResponse()
-        self.server.token_utils.count_tokens = lambda *_args, **_kwargs: 1
-        self.server.memory_store.save_new_traces = lambda *_args, **_kwargs: None
-        self.server.chat_service._record_identity_entries_for_mode = lambda *_args, **_kwargs: None
-        self.server.memory_store.reactivate_identities = lambda *_args, **_kwargs: None
+        })
         try:
             response = self.client.post(
                 '/api/chat',
                 json={'message': 'Bonjour', 'system': 'REQUEST SYSTEM PROMPT'},
             )
         finally:
-            self.server.prompt_loader.get_main_system_prompt = original_get_main_system_prompt
-            self.server.prompt_loader.get_main_hermeneutical_prompt = original_get_main_hermeneutical_prompt
-            self.server.runtime_settings.get_main_model_settings = original_get_main
-            self.server.runtime_settings.get_runtime_secret_value = original_get_secret
-            self.server.conv_store.new_conversation = original_new_conversation
-            self.server.conv_store.save_conversation = original_save_conversation
-            self.server.conv_store.append_message = original_append_message
-            self.server.chat_service.chat_prompt_context.build_augmented_system = original_build_augmented_system
-            self.server.conv_store.conversation_path = original_conversation_path
-            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
-            self.server.memory_store.decay_identities = original_decay_identities
-            self.server.summarizer.maybe_summarize = original_maybe_summarize
-            self.server.identity.build_identity_block = original_build_identity_block
-            self.server.identity.build_identity_input = original_build_identity_input
-            self.server.memory_store.retrieve = original_retrieve
-            self.server.memory_store.get_recent_context_hints = original_get_recent_context_hints
-            self.server.admin_logs.log_event = original_log_event
-            self.server.llm.or_headers = original_or_headers
-            self.server.llm.build_payload = original_build_payload
-            self.server.requests.post = original_requests_post
-            self.server.token_utils.count_tokens = original_count_tokens
-            self.server.memory_store.save_new_traces = original_save_new_traces
-            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
-            self.server.memory_store.reactivate_identities = original_reactivate
+            restore_extra()
+            restore_baseline()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(observed['system_prompt'], 'BACKEND SYSTEM PROMPT')

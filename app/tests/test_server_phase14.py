@@ -13,12 +13,13 @@ if str(APP_DIR) not in sys.path:
 from admin import runtime_settings
 from core import chat_stream_control
 from tests.support import server_chat_pipeline
+from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
 class ServerPhase14ChatServiceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.server = server_chat_pipeline.load_server_module_for_tests()
+        cls.server = load_server_module_for_tests()
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
