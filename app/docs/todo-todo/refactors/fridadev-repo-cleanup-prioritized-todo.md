@@ -26,7 +26,7 @@ Pourquoi en tete: faible risque, rendement immediat, et reduction du cout de lec
 Pourquoi maintenant: c'est la dette la plus couteuse en lisibilite et celle qui rencherit tous les autres lots.
 
 Ce qu'on fait:
-- [ ] Decouper la surface de tests la plus lourde autour de `app/tests/test_server_phase14.py`, `app/tests/test_server_admin_settings_phase5.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py` et `app/tests/unit/logs/test_chat_turn_logger_phase2.py`.
+- [ ] Decouper la surface de tests la plus lourde autour de `app/tests/test_server_phase14.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py` et `app/tests/unit/logs/test_chat_turn_logger_phase2.py`.
 - [ ] Extraire des fixtures/helpers partages pour les imports `server`, les monkeypatches runtime et les harness HTTP repetes.
 - [ ] Migrer progressivement les `phase*` les plus structurants vers `unit/` et `integration/`, sans casser l'executabilite historique pendant la transition.
 
@@ -57,6 +57,7 @@ Trace de progression:
 - [x] Sous-lot 24 livre le `2026-04-21`: debut de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du read-path admin settings et du contrat d'acces GET dans `app/tests/test_server_admin_settings_read_contract.py`, sans ouvrir encore le gros bloc PATCH/validate.
 - [x] Sous-lot 25 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du contrat PATCH/write dans `app/tests/test_server_admin_settings_patch_contract.py`, sans ouvrir encore le bloc validate ni les derniers contrats admin legacy.
 - [x] Sous-lot 26 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du contrat POST `.../validate` dans `app/tests/test_server_admin_settings_validate_contract.py`, sans ouvrir encore les derniers contrats admin legacy voisins.
+- [x] Sous-lot 27 livre le `2026-04-21`: fermeture propre du reliquat legacy de `app/tests/test_server_admin_settings_phase5.py` par requalification thematique dans `app/tests/test_server_admin_non_settings_contracts.py`, sans ouvrir encore `app/tests/test_server_phase14.py`.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
@@ -67,7 +68,7 @@ Pourquoi maintenant: `app/server.py` reste le principal point de couplage struct
 
 Ce qu'on fait:
 - [ ] Desepaissir `app/server.py` par groupes de routes/services, en le ramenant vers un vrai role d'entree HTTP et d'orchestration.
-- [ ] Nettoyer le seam `app/admin/runtime_settings.py` + `app/web/admin.js` + tests associes (`app/tests/test_server_admin_settings_phase5.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py`).
+- [ ] Nettoyer le seam `app/admin/runtime_settings.py` + `app/web/admin.js` + tests associes (`app/tests/test_server_admin_settings_read_contract.py`, `app/tests/test_server_admin_settings_patch_contract.py`, `app/tests/test_server_admin_settings_validate_contract.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py`).
 
 Ce qu'on ne fait pas encore:
 - ne pas transformer cette phase en refonte generale de tout l'admin ni en reouverture des roadmaps admin archivees.

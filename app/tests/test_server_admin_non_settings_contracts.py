@@ -14,7 +14,7 @@ from admin import admin_logs, runtime_settings
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
-class ServerAdminSettingsPhase5Tests(unittest.TestCase):
+class ServerAdminNonSettingsContractsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.server = load_server_module_for_tests()
