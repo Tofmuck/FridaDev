@@ -34,6 +34,7 @@ Trace de progression:
 - [x] Sous-lot 1 livre le `2026-04-21`: extraction de `app/tests/support/server_chat_pipeline.py` pour le bootstrap `server` et le patch baseline `/api/chat`, puis migration de `app/tests/test_server_phase14.py` comme premier consommateur.
 - [x] Sous-lot 2 livre le `2026-04-21`: migration de `app/tests/test_server_phase12.py` comme deuxieme consommateur reel, avec une baseline rendue reutilisable via les coutures minimales `build_prompt_messages` / `build_payload` et des valeurs de test moins phase14-centriques.
 - [x] Sous-lot 3 livre le `2026-04-21`: clarification de la frontiere entre `server_test_bootstrap.py` et `server_chat_pipeline.py`, puis migration de `app/tests/test_server_phase13.py` comme troisieme consommateur reel du seam chat.
+- [x] Sous-lot 4 livre le `2026-04-21`: extension de `server_test_bootstrap.py` au seam voisin des logs admin via `app/tests/test_server_logs_phase3.py` et `app/tests/test_server_logs_phase4.py`, sans ouvrir encore `app/tests/test_server_admin_settings_phase5.py`.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.

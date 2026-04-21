@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import sys
 import unittest
 from pathlib import Path
@@ -10,26 +9,13 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from core import conv_store
-from memory import memory_store
+from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
 class ServerLogsPhase4Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        original_init_db = memory_store.init_db
-        original_init_catalog_db = conv_store.init_catalog_db
-        original_init_messages_db = conv_store.init_messages_db
-        sys.modules.pop('server', None)
-        memory_store.init_db = lambda: None
-        conv_store.init_catalog_db = lambda: None
-        conv_store.init_messages_db = lambda: None
-        try:
-            cls.server = importlib.import_module('server')
-        finally:
-            memory_store.init_db = original_init_db
-            conv_store.init_catalog_db = original_init_catalog_db
-            conv_store.init_messages_db = original_init_messages_db
+        cls.server = load_server_module_for_tests()
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
