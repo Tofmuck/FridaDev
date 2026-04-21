@@ -149,6 +149,7 @@ Destinations:
 - `app/docs/todo-todo/memory/`: travaux actifs memoire/hermeneutique;
 - `app/docs/todo-todo/product/`: travaux actifs produit/installation;
 - `app/docs/todo-todo/admin/`: travaux actifs admin;
+- `app/docs/todo-todo/refactors/`: roadmaps ouvertes de nettoyage/refactor structurel borne;
 - `app/docs/todo-todo/migration/`: travaux actifs migration.
 
 Regles pratiques:
@@ -174,6 +175,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-done/refactors/identity-new-contract-todo.md`: archive operatoire code-first du chantier termine; trace lotable des surfaces runtime/admin/logs/tests/docs migrees, nettoyees ou requalifiees.
 - conserver `identity-new-contract-plan.md` et `identity-new-contract-todo.md` comme deux references distinctes: le plan reste la doctrine cible active, l'archive conserve le chantier operatoire termine; ne pas les refusionner.
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
+- `app/docs/todo-todo/refactors/fridadev-repo-cleanup-prioritized-todo.md`: feuille de route active du nettoyage/clarification du repo issue de l'audit courant; a utiliser pour ouvrir les prochains petits lots sans relancer un audit large.
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.

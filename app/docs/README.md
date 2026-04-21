@@ -58,6 +58,7 @@ Notes:
 - validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
 - guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
 - roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
+- TODO ouvert de nettoyage priorise du repo: `todo-todo/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - note archivee de cloture prompt-first voix / identite / gap du chat: `todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
 - roadmap archivee fiabilisation du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
