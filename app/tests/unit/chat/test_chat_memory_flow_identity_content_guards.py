@@ -25,7 +25,7 @@ from memory import memory_identity_dynamics
 def _event_payloads(events, name: str):
     return [payload for event, payload in events if event == name]
 
-class ChatMemoryFlowTests(unittest.TestCase):
+class ChatMemoryFlowIdentityContentGuardsTests(unittest.TestCase):
     def test_record_identity_entries_for_mode_filters_unsupported_web_reading_claim_in_enforced_mode(self) -> None:
         events = []
         observed = {'persisted': None}

@@ -53,6 +53,7 @@ Trace de progression:
 - [x] Sous-lot 20 livre le `2026-04-21`: ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par une premiere decoupe thematique autour de l'observabilite de `prepare_memory_context` dans `app/tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py`, sans nettoyer encore tout le pipeline memoire/chat.
 - [x] Sous-lot 21 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par l'extraction du reliquat `prepare_memory_context` dans `app/tests/unit/chat/test_chat_memory_flow_prepare_context_contracts.py`, sans nettoyer encore tout le pipeline memoire/chat.
 - [x] Sous-lot 22 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par l'extraction du pipeline d'application de mode identitaire dans `app/tests/unit/chat/test_chat_memory_flow_identity_mode_pipeline.py`, sans nettoyer encore tout le pipeline memoire/chat.
+- [x] Sous-lot 23 livre le `2026-04-21`: fermeture du reliquat `record_identity_entries_for_mode` cote tests legacy via l'extraction du catalogue des gardes fines de contenu dans `app/tests/unit/chat/test_chat_memory_flow_identity_content_guards.py`, sans traiter encore le finding actif `record_arbiter_decisions`.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
