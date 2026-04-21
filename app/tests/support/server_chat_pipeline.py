@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import sys
+from collections.abc import Callable
 from typing import Any
 
 from admin import runtime_settings
@@ -27,7 +28,16 @@ def load_server_module_for_tests():
         conv_store.init_messages_db = original_init_messages_db
 
 
-def patch_server_chat_pipeline(server_module, *, conversation: dict[str, Any], requests_post):
+def patch_server_chat_pipeline(
+    server_module,
+    *,
+    conversation: dict[str, Any],
+    requests_post,
+    build_prompt_messages: Callable[..., list[dict[str, Any]]] | None = None,
+    build_payload: Callable[..., dict[str, Any]] | None = None,
+    conversation_path: str = 'conv/conv-test-chat.json',
+    runtime_api_key: str = 'sk-test-chat',
+):
     """Patch the shared baseline /api/chat seam and return observations plus restore."""
 
     originals = []
@@ -65,7 +75,7 @@ def patch_server_chat_pipeline(server_module, *, conversation: dict[str, Any], r
         lambda *args, **kwargs: runtime_settings.RuntimeSecretValue(
             section='main_model',
             field='api_key',
-            value='sk-phase14',
+            value=runtime_api_key,
             source='db_encrypted',
             source_reason='db_row',
         ),
@@ -85,12 +95,14 @@ def patch_server_chat_pipeline(server_module, *, conversation: dict[str, Any], r
             {'role': role, 'content': content, 'timestamp': timestamp, 'meta': meta}
         ),
     )
-    patch_attr(server_module.conv_store, 'conversation_path', lambda _id: 'conv/conv-phase14.json')
-    patch_attr(
-        server_module.conv_store,
-        'build_prompt_messages',
-        lambda *_args, **_kwargs: [{'role': 'user', 'content': 'Bonjour'}],
-    )
+    patch_attr(server_module.conv_store, 'conversation_path', lambda _id: conversation_path)
+
+    if build_prompt_messages is None:
+        prompt_message_builder = lambda *_args, **_kwargs: [{'role': 'user', 'content': 'Bonjour'}]
+    else:
+        prompt_message_builder = build_prompt_messages
+
+    patch_attr(server_module.conv_store, 'build_prompt_messages', prompt_message_builder)
     patch_attr(server_module.memory_store, 'decay_identities', lambda: None)
     patch_attr(server_module.summarizer, 'maybe_summarize', lambda *args, **kwargs: False)
     patch_attr(server_module.identity, 'build_identity_block', lambda: ('', []))
@@ -135,7 +147,14 @@ def patch_server_chat_pipeline(server_module, *, conversation: dict[str, Any], r
             'stream': stream,
         }
 
-    patch_attr(server_module.llm, 'build_payload', fake_build_payload)
+    if build_payload is None:
+        payload_builder = fake_build_payload
+    else:
+        def payload_builder(_messages, _temperature, _top_p, max_tokens, stream=False):
+            observed['payload_messages'] = [dict(message) for message in _messages]
+            return build_payload(_messages, _temperature, _top_p, max_tokens, stream=stream)
+
+    patch_attr(server_module.llm, 'build_payload', payload_builder)
     patch_attr(server_module.requests, 'post', requests_post)
     patch_attr(server_module.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
     patch_attr(
