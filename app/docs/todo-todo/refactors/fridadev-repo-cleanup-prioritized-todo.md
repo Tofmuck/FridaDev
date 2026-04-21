@@ -46,6 +46,7 @@ Trace de progression:
 - [x] Sous-lot 13 livre le `2026-04-21`: poursuite de la scission de `app/tests/unit/runtime_settings/test_runtime_settings.py` via l'extraction du bloc `backfill_runtime_secrets_from_env` dans `app/tests/unit/runtime_settings/test_runtime_settings_backfill_runtime_secrets_from_env.py`, sans toucher encore `app/admin/runtime_settings.py` ni nettoyer tout le seam runtime settings.
 - [x] Sous-lot 14 livre le `2026-04-21`: ouverture de `app/tests/unit/logs/test_chat_turn_logger_phase2.py` par l'extraction du bloc `web_search` dans `app/tests/unit/logs/test_chat_turn_logger_web_search.py`, sans nettoyer encore tout le seam logging.
 - [x] Sous-lot 15 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/logs/test_chat_turn_logger_phase2.py` par l'extraction du seam `identities_read` dans `app/tests/unit/logs/test_chat_turn_logger_identities_read.py`, sans nettoyer encore tout le logging identitaire.
+- [x] Sous-lot 16 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/logs/test_chat_turn_logger_phase2.py` par l'extraction du seam `identity_write` / `persist_identity_entries` dans `app/tests/unit/logs/test_chat_turn_logger_identity_write.py`, sans nettoyer encore tout le logging identitaire ni ouvrir le finding actif `record_arbiter_decisions`.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
