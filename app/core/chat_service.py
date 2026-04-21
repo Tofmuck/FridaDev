@@ -481,9 +481,11 @@ def chat_response(
         timestamp=user_timestamp,
     )
 
+    chat_turn_logger.set_state('summary_generation_observed', False)
     if summarizer_module.maybe_summarize(conversation, runtime_main_model):
         conv_store_module.save_conversation(conversation)
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
+        chat_turn_logger.set_state('summary_generation_observed', True)
 
     now_iso_value = user_timestamp
     time_payload = _resolve_time_input(

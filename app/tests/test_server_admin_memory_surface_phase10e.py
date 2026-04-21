@@ -128,7 +128,13 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
                 datetime(2026, 4, 12, 8, 56, tzinfo=timezone.utc),
                 'summaries',
                 'ok',
-                {'active_summary_present': True, 'summary_count_used': 1, 'summary_usage': 'prompt_injection'},
+                {
+                    'active_summary_present': True,
+                    'summary_count_used': 1,
+                    'summary_usage': 'prompt_injection',
+                    'in_prompt': True,
+                    'summary_generation_observed': True,
+                },
             ),
             (
                 'conv-memory',
@@ -193,6 +199,8 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         )
         self.assertEqual(stages['embedding']['payload']['source_kind'], 'query')
         self.assertEqual(stages['summaries']['payload']['summary_count_used'], 1)
+        self.assertTrue(stages['summaries']['payload']['in_prompt'])
+        self.assertTrue(stages['summaries']['payload']['summary_generation_observed'])
         self.assertEqual(stages['branch_skipped']['payload']['reason_code'], 'no_data')
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:

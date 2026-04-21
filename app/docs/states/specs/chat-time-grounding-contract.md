@@ -43,7 +43,7 @@ Ce que cela ne garantit pas encore:
   - statut: `derive` + `narratif`.
 - `conv_store._get_active_summary` + `_make_summary_message`
   - role: injection du resume actif antérieur.
-  - forme injectee: `[Résumé de la période ...]` + contenu resume.
+  - forme injectee: `[Résumé de la période ...]` + contenu resume, ou `[Résumé]` quand aucun bornage temporel n'est disponible.
   - statut: `partiellement contractuel` (entete stable, contenu narratif).
 - `conv_store._make_memory_context_message`
   - role: contextualiser les souvenirs retenus avec leurs resumes parents.

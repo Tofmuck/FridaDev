@@ -21,6 +21,7 @@ from tools import web_search as ws
 from core import chat_stream_control
 from core import conv_store
 from core import chat_service
+from core import conversations_prompt_window
 from core import conversations_service
 from core import whisper_transcription_service
 from admin import (
@@ -276,11 +277,9 @@ class _ConvStoreChatLogProxy:
         )
 
         summary_count_used = sum(
-            1
-            for message in prompt_messages
-            if str(message.get('role') or '') == 'system'
-            and str(message.get('content') or '').startswith('[Résumé actif')
+            1 for message in prompt_messages if conversations_prompt_window.is_active_summary_prompt_message(message)
         )
+        summary_generation_observed = bool(chat_turn_logger.get_state('summary_generation_observed', False))
         if summary_count_used > 0:
             chat_turn_logger.emit(
                 'summaries',
@@ -290,7 +289,7 @@ class _ConvStoreChatLogProxy:
                     'summary_count_used': summary_count_used,
                     'summary_usage': 'prompt_injection',
                     'in_prompt': True,
-                    'summary_generation_observed': False,
+                    'summary_generation_observed': summary_generation_observed,
                 },
             )
         else:
@@ -303,7 +302,7 @@ class _ConvStoreChatLogProxy:
                     'summary_count_used': 0,
                     'summary_usage': 'prompt_injection',
                     'in_prompt': False,
-                    'summary_generation_observed': False,
+                    'summary_generation_observed': summary_generation_observed,
                 },
             )
             chat_turn_logger.emit_branch_skipped(

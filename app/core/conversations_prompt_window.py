@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from psycopg.rows import dict_row
 
@@ -12,6 +12,7 @@ CONTEXT_HINTS_BLOCK_HEADER = "[Indices contextuels recents]"
 CONTEXT_HINTS_COUNT_MARKER = "(confidence: "
 MEMORY_CONTEXT_BLOCK_HEADER_PREFIX = "[Contexte du souvenir"
 MEMORY_TRACES_BLOCK_HEADER = "[Mémoire — souvenirs pertinents]"
+ACTIVE_SUMMARY_BLOCK_HEADER_PREFIXES = ("[Résumé de la période ", "[Résumé]")
 
 
 def is_prompt_eligible_message(message: dict[str, Any]) -> bool:
@@ -48,6 +49,13 @@ def make_summary_message(summary: dict[str, Any]) -> dict[str, str]:
         period = ""
     header = f"[Résumé de la période {period}]" if period else "[Résumé]"
     return {"role": "system", "content": f"{header}\n{summary['content']}"}
+
+
+def is_active_summary_prompt_message(message: Mapping[str, Any]) -> bool:
+    if str(message.get("role") or "") != "system":
+        return False
+    content = str(message.get("content") or "")
+    return any(content.startswith(prefix) for prefix in ACTIVE_SUMMARY_BLOCK_HEADER_PREFIXES)
 
 
 def get_active_summary(

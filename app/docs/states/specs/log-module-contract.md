@@ -120,7 +120,9 @@ Minimum event-specific details:
   - `top_k_requested`, `top_k_returned`
 
 - `summaries`
-  - `active_summary_present`, `summary_count_used`
+  - `active_summary_present`, `summary_count_used`, `summary_usage`, `in_prompt`, `summary_generation_observed`
+  - `active_summary_present` / `in_prompt` describe the final prompt effectivement construit, not only summary availability in storage
+  - `summary_generation_observed` reports whether the current turn observed a `summary_generated` event before prompt preparation; `false` means "not observed on this turn", not "impossible"
 
 - `identities_read`
   - `frida_count`, `user_count`, `selected_count`, `content_present`
