@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import sys
 import tempfile
 import unittest
@@ -13,26 +12,13 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from core import chat_stream_control
-from core import conv_store
-from memory import memory_store
+from tests.support import server_chat_pipeline
 
 
 class ServerPhase14ChatServiceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        original_init_db = memory_store.init_db
-        original_init_catalog_db = conv_store.init_catalog_db
-        original_init_messages_db = conv_store.init_messages_db
-        sys.modules.pop('server', None)
-        memory_store.init_db = lambda: None
-        conv_store.init_catalog_db = lambda: None
-        conv_store.init_messages_db = lambda: None
-        try:
-            cls.server = importlib.import_module('server')
-        finally:
-            memory_store.init_db = original_init_db
-            conv_store.init_catalog_db = original_init_catalog_db
-            conv_store.init_messages_db = original_init_messages_db
+        cls.server = server_chat_pipeline.load_server_module_for_tests()
 
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
@@ -41,146 +27,11 @@ class ServerPhase14ChatServiceTests(unittest.TestCase):
         return chat_stream_control.split_text_and_terminal(response.get_data())
 
     def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
-        originals = []
-        observed = {'save_calls': [], 'save_new_traces_calls': []}
-
-        def patch_attr(obj, name, value):
-            originals.append((obj, name, getattr(obj, name)))
-            setattr(obj, name, value)
-
-        patch_attr(self.server.prompt_loader, 'get_main_system_prompt', lambda: 'BACKEND SYSTEM PROMPT')
-        patch_attr(
-            self.server.prompt_loader,
-            'get_main_hermeneutical_prompt',
-            lambda: 'BACKEND HERMENEUTICAL PROMPT',
+        return server_chat_pipeline.patch_server_chat_pipeline(
+            self.server,
+            conversation=conversation,
+            requests_post=requests_post,
         )
-        patch_attr(
-            self.server.runtime_settings,
-            'get_main_model_settings',
-            lambda: runtime_settings.RuntimeSectionView(
-                section='main_model',
-                payload={
-                    'model': {'value': 'openrouter/runtime-main-model', 'origin': 'db'},
-                    'temperature': {'value': 0.4, 'origin': 'db'},
-                    'top_p': {'value': 1.0, 'origin': 'db'},
-                    'response_max_tokens': {'value': 2048, 'origin': 'db_seed'},
-                    'api_key': {'is_secret': True, 'is_set': True, 'origin': 'db'},
-                },
-                source='db',
-                source_reason='db_row',
-            ),
-        )
-        patch_attr(
-            self.server.runtime_settings,
-            'get_runtime_secret_value',
-            lambda *args, **kwargs: runtime_settings.RuntimeSecretValue(
-                section='main_model',
-                field='api_key',
-                value='sk-phase14',
-                source='db_encrypted',
-                source_reason='db_row',
-            ),
-        )
-        patch_attr(self.server.conv_store, 'normalize_conversation_id', lambda _raw: None)
-        patch_attr(self.server.conv_store, 'load_conversation', lambda *_args, **_kwargs: None)
-        patch_attr(self.server.conv_store, 'new_conversation', lambda _system: conversation)
-
-        def fake_save_conversation(*_args, **kwargs):
-            observed['save_calls'].append({'kwargs': dict(kwargs)})
-
-        patch_attr(self.server.conv_store, 'save_conversation', fake_save_conversation)
-        patch_attr(
-            self.server.conv_store,
-            'append_message',
-            lambda conv, role, content, timestamp=None, meta=None, **_kwargs: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp, 'meta': meta}
-            ),
-        )
-        patch_attr(self.server.conv_store, 'conversation_path', lambda _id: 'conv/conv-phase14.json')
-        patch_attr(
-            self.server.conv_store,
-            'build_prompt_messages',
-            lambda *_args, **_kwargs: [{'role': 'user', 'content': 'Bonjour'}],
-        )
-        patch_attr(self.server.memory_store, 'decay_identities', lambda: None)
-        patch_attr(self.server.summarizer, 'maybe_summarize', lambda *args, **kwargs: False)
-        patch_attr(self.server.identity, 'build_identity_block', lambda: ('', []))
-        patch_attr(
-            self.server.identity,
-            'build_identity_input',
-            lambda: {
-                'schema_version': 'v2',
-                'frida': {
-                    'static': {'content': '', 'source': None},
-                    'mutable': {
-                        'content': '',
-                        'source_trace_id': None,
-                        'updated_by': None,
-                        'update_reason': None,
-                        'updated_ts': None,
-                    },
-                },
-                'user': {
-                    'static': {'content': '', 'source': None},
-                    'mutable': {
-                        'content': '',
-                        'source_trace_id': None,
-                        'updated_by': None,
-                        'update_reason': None,
-                        'updated_ts': None,
-                    },
-                },
-            },
-        )
-        patch_attr(self.server.memory_store, 'retrieve', lambda *_args, **_kwargs: [])
-        patch_attr(self.server.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
-        patch_attr(self.server.admin_logs, 'log_event', lambda *args, **kwargs: None)
-        patch_attr(self.server.llm, 'or_headers', lambda **_kwargs: {})
-        def fake_build_payload(_messages, _temperature, _top_p, max_tokens, stream=False):
-            observed['payload_messages'] = [dict(message) for message in _messages]
-            return {
-                'model': 'openrouter/runtime-main-model',
-                'messages': list(_messages),
-                'max_tokens': max_tokens,
-                'stream': stream,
-            }
-
-        patch_attr(self.server.llm, 'build_payload', fake_build_payload)
-        patch_attr(self.server.requests, 'post', requests_post)
-        patch_attr(self.server.token_utils, 'count_tokens', lambda *_args, **_kwargs: 1)
-        patch_attr(
-            self.server.memory_store,
-            'save_new_traces',
-            lambda conv, *_args, **_kwargs: observed['save_new_traces_calls'].append(
-                [dict(message) for message in conv.get('messages', [])]
-            ),
-        )
-        patch_attr(self.server.chat_service, '_record_identity_entries_for_mode', lambda *_args, **_kwargs: None)
-        patch_attr(self.server.memory_store, 'reactivate_identities', lambda *_args, **_kwargs: None)
-        patch_attr(
-            self.server.chat_service.stimmung_agent,
-            'build_affective_turn_signal',
-            lambda **_kwargs: self.server.chat_service.stimmung_agent.StimmungAgentResult(
-                signal={
-                    'schema_version': 'v1',
-                    'present': True,
-                    'tones': [{'tone': 'neutralite', 'strength': 3}],
-                    'dominant_tone': 'neutralite',
-                    'confidence': 0.55,
-                },
-                status='ok',
-                model='openai/gpt-5.4-mini',
-                decision_source='primary',
-                reason_code=None,
-            ),
-        )
-
-        def restore():
-            while originals:
-                obj, name, value = originals.pop()
-                setattr(obj, name, value)
-
-        return observed, restore
 
     def test_api_chat_stream_keeps_content_type_and_conversation_headers(self) -> None:
         observed = {'stream_kw': None, 'stream_completed': False, 'now_iso_flags': []}

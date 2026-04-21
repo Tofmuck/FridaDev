@@ -30,6 +30,9 @@ Ce qu'on fait:
 - [ ] Extraire des fixtures/helpers partages pour les imports `server`, les monkeypatches runtime et les harness HTTP repetes.
 - [ ] Migrer progressivement les `phase*` les plus structurants vers `unit/` et `integration/`, sans casser l'executabilite historique pendant la transition.
 
+Trace de progression:
+- [x] Sous-lot 1 livre le `2026-04-21`: extraction de `app/tests/support/server_chat_pipeline.py` pour le bootstrap `server` et le patch baseline `/api/chat`, puis migration de `app/tests/test_server_phase14.py` comme premier consommateur.
+
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
 
