@@ -26,7 +26,7 @@ Pourquoi en tete: faible risque, rendement immediat, et reduction du cout de lec
 Pourquoi maintenant: c'est la dette la plus couteuse en lisibilite et celle qui rencherit tous les autres lots.
 
 Ce qu'on fait:
-- [ ] Decouper la surface de tests la plus lourde autour de `app/tests/test_server_phase14.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py` et `app/tests/unit/logs/test_chat_turn_logger_phase2.py`.
+- [ ] Decouper la surface de tests la plus lourde autour des contrats chat legacy issus de l'ancien `app/tests/test_server_phase14.py`, de `app/tests/unit/runtime_settings/test_runtime_settings.py` et de `app/tests/unit/logs/test_chat_turn_logger_phase2.py`.
 - [ ] Extraire des fixtures/helpers partages pour les imports `server`, les monkeypatches runtime et les harness HTTP repetes.
 - [ ] Migrer progressivement les `phase*` les plus structurants vers `unit/` et `integration/`, sans casser l'executabilite historique pendant la transition.
 
@@ -62,6 +62,7 @@ Trace de progression:
 - [x] Sous-lot 29 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_phase14.py` par extraction du seam d'insertion hermeneutique et des inputs canoniques non-web dans `app/tests/test_server_chat_hermeneutic_insertion_contract.py`, sans ouvrir encore le bloc web ni l'observabilite/synthetic logs.
 - [x] Sous-lot 30 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_phase14.py` par extraction du bloc web runtime dans `app/tests/test_server_chat_web_runtime_contract.py`, sans ouvrir encore l'observabilite / synthetic logs ni le reliquat `invalid raw conversation id`.
 - [x] Sous-lot 31 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/test_server_phase14.py` par extraction du bloc d'observabilite compacte dans `app/tests/test_server_chat_compact_observability_contract.py`, sans ouvrir encore les synthetic logs ni le reliquat `invalid raw conversation id`.
+- [x] Sous-lot 32 livre le `2026-04-21`: fermeture propre du reliquat de `app/tests/test_server_phase14.py` par extraction des synthetic logs / validation logs dans `app/tests/test_server_chat_synthetic_logs_contract.py` et requalification du contrat `invalid raw conversation id` dans `app/tests/test_server_chat_conversation_id_contract.py`, ce qui supprime le legacy file au lieu de laisser un shell ambigu.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
@@ -84,7 +85,7 @@ Pourquoi maintenant: une fois la surface de tests et la facade HTTP allegees, le
 Ce qu'on fait:
 - [ ] Continuer a sortir les responsabilites de `app/core/chat_service.py` en seams plus explicites.
 - [ ] Scinder `app/web/app.js` par blocs de responsabilite (`stream`, `store`, `network`, `render`, `dictation`).
-- [ ] Recaler les gros tests de chat autour de seams comportementaux stables, notamment `app/tests/test_server_phase14.py` et `app/tests/integration/chat/test_chat_input_mode_route.py`.
+- [ ] Recaler les gros tests de chat autour de seams comportementaux stables, notamment les contrats `/api/chat` issus de l'ancien `app/tests/test_server_phase14.py` et `app/tests/integration/chat/test_chat_input_mode_route.py`.
 
 Ce qu'on ne fait pas encore:
 - ne pas rouvrir ici les chantiers doctrinaux hermeneutiques ou identity deja archives.

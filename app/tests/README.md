@@ -12,7 +12,7 @@ Reference rules:
 
 Example when a real project interpreter has been discovered explicitly:
 - `<project-python> -m unittest app.tests.unit.chat.test_chat_session_flow`
-- `<project-python> -m unittest app.tests.test_server_phase13 app.tests.test_server_phase14`
+- `<project-python> -m unittest app.tests.test_server_phase13 app.tests.test_server_chat_synthetic_logs_contract app.tests.test_server_chat_conversation_id_contract`
 
 This directory is migrated progressively.
 First migrated lot:
