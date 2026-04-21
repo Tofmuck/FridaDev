@@ -54,6 +54,7 @@ Trace de progression:
 - [x] Sous-lot 21 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par l'extraction du reliquat `prepare_memory_context` dans `app/tests/unit/chat/test_chat_memory_flow_prepare_context_contracts.py`, sans nettoyer encore tout le pipeline memoire/chat.
 - [x] Sous-lot 22 livre le `2026-04-21`: poursuite de l'ouverture de `app/tests/unit/chat/test_chat_memory_flow.py` par l'extraction du pipeline d'application de mode identitaire dans `app/tests/unit/chat/test_chat_memory_flow_identity_mode_pipeline.py`, sans nettoyer encore tout le pipeline memoire/chat.
 - [x] Sous-lot 23 livre le `2026-04-21`: fermeture du reliquat `record_identity_entries_for_mode` cote tests legacy via l'extraction du catalogue des gardes fines de contenu dans `app/tests/unit/chat/test_chat_memory_flow_identity_content_guards.py`, sans traiter encore le finding actif `record_arbiter_decisions`.
+- [x] Sous-lot 24 livre le `2026-04-21`: debut de l'ouverture de `app/tests/test_server_admin_settings_phase5.py` par l'extraction du read-path admin settings et du contrat d'acces GET dans `app/tests/test_server_admin_settings_read_contract.py`, sans ouvrir encore le gros bloc PATCH/validate.
 
 Ce qu'on ne fait pas encore:
 - ne pas ouvrir en meme temps un split large de `app/server.py` ou du frontend chat.
