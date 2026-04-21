@@ -26,7 +26,7 @@ Pourquoi en tete: faible risque, rendement immediat, et reduction du cout de lec
 Pourquoi maintenant: c'est la dette la plus couteuse en lisibilite et celle qui rencherit tous les autres lots.
 
 Ce qu'on fait:
-- [ ] Decouper la surface de tests la plus lourde autour de `app/tests/test_server_phase14.py`, `app/tests/test_server_admin_settings_phase5.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py`, `app/tests/unit/logs/test_chat_turn_logger_phase2.py` et `app/tests/unit/chat/test_chat_memory_flow.py`.
+- [ ] Decouper la surface de tests la plus lourde autour de `app/tests/test_server_phase14.py`, `app/tests/test_server_admin_settings_phase5.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py` et `app/tests/unit/logs/test_chat_turn_logger_phase2.py`.
 - [ ] Extraire des fixtures/helpers partages pour les imports `server`, les monkeypatches runtime et les harness HTTP repetes.
 - [ ] Migrer progressivement les `phase*` les plus structurants vers `unit/` et `integration/`, sans casser l'executabilite historique pendant la transition.
 

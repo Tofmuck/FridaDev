@@ -21,7 +21,10 @@ First migrated lot:
 Second migrated lot:
 - `unit/chat/test_chat_session_flow.py`
 - `unit/chat/test_chat_prompt_context.py`
-- `unit/chat/test_chat_memory_flow.py`
+- `unit/chat/test_chat_memory_flow_prepare_context_observability.py`
+- `unit/chat/test_chat_memory_flow_prepare_context_contracts.py`
+- `unit/chat/test_chat_memory_flow_identity_mode_pipeline.py`
+- `unit/chat/test_chat_memory_flow_identity_content_guards.py`
 - `unit/chat/test_chat_llm_flow.py`
 Third migrated lot:
 - `unit/runtime_settings/test_runtime_settings.py`
