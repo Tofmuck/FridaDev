@@ -83,6 +83,7 @@ Ce qu'on fait:
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 2 par extraction du seam HTTP `/api/admin/settings*` hors de `app/server.py` vers `app/admin/admin_settings_routes.py`, en conservant `app/admin/admin_settings_service.py` comme assemblage de reponses et `app/admin/runtime_settings.py` comme facade stable. Ce sous-lot ne pretend pas nettoyer completement `runtime_settings.py` ni `app/web/admin.js`.
+- [x] Sous-lot 2 livre le `2026-05-03`: poursuite de la phase 2 par extraction du seam de projection admin/API des runtime settings vers `app/admin/runtime_settings_api_view.py`, avec `app/admin/runtime_settings.py` conserve comme facade publique. Ce sous-lot borne la redaction API, les `secret_sources` et les `readonly_info`; il ne nettoie pas encore la resolution runtime/secret complete ni `app/web/admin.js`.
 
 Ce qu'on ne fait pas encore:
 - ne pas transformer cette phase en refonte generale de tout l'admin ni en reouverture des roadmaps admin archivees.
