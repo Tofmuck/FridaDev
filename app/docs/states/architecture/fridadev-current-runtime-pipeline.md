@@ -62,19 +62,21 @@ Portee: schema one-glance du pipeline runtime courant de `FridaDev`
   |- assistant_output_contract decides buffering policy
   |- visible content chunks
   |- terminal control chunk = RS + JSON + LF
-  |- event = done | error(error_code, updated_at)
+  |- event = done | error(error_code, updated_at only when persistence is proven)
   v
 [Canonical persistence]
-  |- done  -> full assistant message + save_conversation(updated_at)
-  |- done  -> save_new_traces() only after canonical save
-  |- error -> assistant_turn interrupted marker (empty content)
+  |- save_conversation() returns catalog/messages proof
+  |- done  -> full assistant message + verified save_conversation(updated_at)
+  |- done  -> traces, identity writes and reactivation only after verified canonical save
+  |- error -> assistant_turn interrupted marker only when the marker save is verified
+  |- persist failure -> terminal error conversation_persist_failed without updated_at
   |- interrupted turns excluded from prompt window and traces
   v
 [Frontend render + rehydration]
   |- live bubble state machine
   |- upstream/server/network interruption taxonomy
-  |- use terminal.updated_at when present
-  |- force hydrate conversation messages if needed
+  |- use terminal.updated_at only when present as persistence proof
+  |- force hydrate conversation messages if updated_at is missing
   v
 [Observability + operator surfaces]
   |- chat_turn_logger + /log
@@ -94,12 +96,12 @@ FR: le provider amont parle SSE-like; le protocole public Frida reste `text/plai
 EN: the upstream provider uses an SSE-like stream; the public Frida contract remains `text/plain` with an inline terminal frame.
 
 3. La persistance ne suit pas la meme regle selon le terminal.
-FR: `done` cree un vrai message assistant complet; `error` cree un marqueur assistant interrompu, sans texte partiel canonique.
-EN: `done` stores a full canonical assistant message; `error` stores an interrupted assistant marker with no canonical partial text.
+FR: `done` cree un vrai message assistant complet seulement si la sauvegarde catalog/messages est prouvee; `error` cree un marqueur assistant interrompu seulement si ce marqueur est lui-meme sauvegarde. En cas d'echec de sauvegarde finale, le terminal public devient `conversation_persist_failed` sans `updated_at`.
+EN: `done` stores a full canonical assistant message only when catalog/messages persistence is proven; `error` stores an interrupted assistant marker only when that marker is itself saved. If final persistence fails, the public terminal becomes `conversation_persist_failed` without `updated_at`.
 
 4. `save_new_traces()` n'est pas une consequence generale de tout tour assistant.
-FR: seules les fins `done` canonisees peuvent alimenter les traces memoire derivees.
-EN: only canonical `done` turns are allowed to feed derived memory traces.
+FR: seules les fins `done` canonisees et verifiees peuvent alimenter les traces memoire derivees; les ecritures identitaires derivees suivent la meme barriere.
+EN: only verified canonical `done` turns are allowed to feed derived memory traces; derived identity writes use the same barrier.
 
 5. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/log`, `/hermeneutic-admin`, `/identity` et `/memory-admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.

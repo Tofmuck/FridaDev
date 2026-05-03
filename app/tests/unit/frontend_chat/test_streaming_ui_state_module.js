@@ -128,6 +128,21 @@ test('getObservableStreamErrorMeta distinguishes upstream, server, network and f
   );
 
   assert.deepEqual(
+    getObservableStreamErrorMeta({
+      name: 'FridaStreamTerminalError',
+      code: 'conversation_persist_failed',
+      terminal: { event: 'error', error_code: 'conversation_persist_failed' },
+    }),
+    {
+      kind: STREAM_ERROR_KIND_SERVER,
+      errorCode: 'conversation_persist_failed',
+      statusLabel: 'Interrompu côté serveur',
+      bubbleMessage: 'Réponse interrompue côté serveur.',
+      terminal: { event: 'error', error_code: 'conversation_persist_failed' },
+    },
+  );
+
+  assert.deepEqual(
     getObservableStreamErrorMeta(new TypeError('Failed to fetch')),
     {
       kind: STREAM_ERROR_KIND_NETWORK,

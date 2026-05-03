@@ -21,6 +21,7 @@ const STREAM_SERVER_ERROR_CODES = new Set([
   "stream_terminal_error",
   "stream_finalize_error",
   "stream_protocol_error",
+  "conversation_persist_failed",
   "missing_stream_terminal",
   "multiple_stream_terminal",
   "content_after_stream_terminal",

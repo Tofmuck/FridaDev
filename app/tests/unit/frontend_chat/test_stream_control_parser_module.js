@@ -60,6 +60,21 @@ test('createStreamControlParser keeps error terminal out of visible prose and pr
   assert.equal(err.terminal.updated_at, '2026-04-15T16:56:00Z');
 });
 
+test('createStreamControlParser accepts persistence failure terminals without updated_at', () => {
+  const parser = createStreamControlParser();
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"error","error_code":"conversation_persist_failed"}\n`);
+
+  const terminal = parser.finish();
+  assert.deepEqual(terminal, {
+    event: 'error',
+    error_code: 'conversation_persist_failed',
+  });
+
+  const err = createStreamTerminalError(terminal);
+  assert.equal(err.observableKind, 'server_error');
+  assert.equal(err.terminal.updated_at, undefined);
+});
+
 test('createStreamControlParser surfaces missing terminal as a server-side stream interruption', () => {
   let visibleText = '';
   const parser = createStreamControlParser({

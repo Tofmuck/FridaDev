@@ -200,6 +200,30 @@ def _assistant_message_count(conversation: dict[str, Any]) -> int:
     return sum(1 for message in messages if str(message.get('role') or '') == 'assistant')
 
 
+def _conversation_save_payload(conversation: dict[str, Any], result: Any) -> tuple[bool, dict[str, Any], str | None]:
+    if result is None:
+        message_count = len(conversation.get('messages', [])) if isinstance(conversation.get('messages'), list) else 0
+        return True, {
+            'conversation_saved': True,
+            'catalog_saved': True,
+            'messages_saved': True,
+            'message_count': message_count,
+            'messages_written': _assistant_message_count(conversation),
+        }, None
+
+    ok = bool(getattr(result, 'ok', False))
+    reason = getattr(result, 'reason', None)
+    payload = {
+        'conversation_saved': ok,
+        'catalog_saved': bool(getattr(result, 'catalog_saved', False)),
+        'messages_saved': bool(getattr(result, 'messages_saved', False)),
+        'message_count': int(getattr(result, 'message_count', 0) or 0),
+        'messages_written': _assistant_message_count(conversation) if ok else 0,
+        'reason': str(reason or '').strip() or None,
+    }
+    return ok, payload, payload['reason']
+
+
 class _ConvStoreChatLogProxy:
     def __init__(self, base_module: Any, token_utils_module: Any) -> None:
         self._base = base_module
@@ -296,13 +320,12 @@ class _ConvStoreChatLogProxy:
 
     def save_conversation(self, conversation: dict[str, Any], *args: Any, **kwargs: Any):
         result = self._base.save_conversation(conversation, *args, **kwargs)
+        ok, payload, reason = _conversation_save_payload(conversation, result)
         chat_turn_logger.emit(
             'persist_response',
-            status='ok',
-            payload={
-                'conversation_saved': True,
-                'messages_written': _assistant_message_count(conversation),
-            },
+            status='ok' if ok else 'error',
+            reason_code=None if ok else (reason or 'conversation_persist_failed'),
+            payload=payload,
         )
         return result
 

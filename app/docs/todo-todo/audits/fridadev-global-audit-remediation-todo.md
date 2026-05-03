@@ -27,7 +27,7 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 
 ## Ordre de correction recommande
 
-- [ ] Lot 1: securiser la persistance conversationnelle canonique avant toute ecriture derivee.
+- [x] Lot 1: securiser la persistance conversationnelle canonique avant toute ecriture derivee.
 - [ ] Lot 2: rendre la validation settings bloquante cote serveur.
 - [ ] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
 - [ ] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
@@ -59,11 +59,11 @@ Fichiers probablement touches:
 - specs `app/docs/states/architecture/fridadev-current-runtime-pipeline.md` et `app/docs/states/specs/streaming-protocol.md` si le contrat terminal evolue
 
 Cases de correction:
-- [ ] `L1-C1` Definir un resultat explicite de persistance conversationnelle: catalog, messages, timestamp, erreur eventuelle, sans fail-soft silencieux.
-- [ ] `L1-C2` Faire cesser `persist_response ok` quand l'ecriture messages n'est pas prouvee, avec log distinct pour catalog/messages.
-- [ ] `L1-C3` Aligner le chemin non-stream sur le stream: sauvegarde canonique verifiee avant `save_new_traces()`, identity staging et reactivation.
-- [ ] `L1-C4` En stream, ne pas emettre `updated_at` comme preuve terminale si la persistance finale echoue; forcer une rehydratation frontend quand la preuve manque.
-- [ ] `L1-C5` Documenter le nouveau contrat de persistance/terminal si le payload public change.
+- [x] `L1-C1` Definir un resultat explicite de persistance conversationnelle: catalog, messages, timestamp, erreur eventuelle, sans fail-soft silencieux.
+- [x] `L1-C2` Faire cesser `persist_response ok` quand l'ecriture messages n'est pas prouvee, avec log distinct pour catalog/messages.
+- [x] `L1-C3` Aligner le chemin non-stream sur le stream: sauvegarde canonique verifiee avant `save_new_traces()`, identity staging et reactivation.
+- [x] `L1-C4` En stream, ne pas emettre `updated_at` comme preuve terminale si la persistance finale echoue; forcer une rehydratation frontend quand la preuve manque.
+- [x] `L1-C5` Documenter le nouveau contrat de persistance/terminal si le payload public change.
 
 Tests a ajouter ou modifier:
 - test unitaire `conversations_store.save_conversation()` avec echec catalog et echec messages;
@@ -83,10 +83,10 @@ Risques:
 - il faut eviter d'ecrire des traces ou identites partielles pendant le traitement d'erreur.
 
 Critere de cloture:
-- [ ] Aucune sauvegarde conversationnelle echouee ne peut produire `persist_response ok`.
-- [ ] Aucune trace memoire ni ecriture identitaire derivee n'est ecrite avant sauvegarde canonique verifiee.
-- [ ] Aucun terminal stream ne laisse croire a une persistance prouvee si les messages ne sont pas sauvegardes.
-- [ ] Les specs runtime/streaming refletent le comportement corrige.
+- [x] Aucune sauvegarde conversationnelle echouee ne peut produire `persist_response ok`.
+- [x] Aucune trace memoire ni ecriture identitaire derivee n'est ecrite avant sauvegarde canonique verifiee.
+- [x] Aucun terminal stream ne laisse croire a une persistance prouvee si les messages ne sont pas sauvegardes.
+- [x] Les specs runtime/streaming refletent le comportement corrige.
 
 ## Lot 2 - Validation bloquante des settings runtime
 
@@ -320,7 +320,7 @@ Critere de cloture:
 
 | Lot | Statut | Commit de correction | Notes |
 | --- | --- | --- | --- |
-| Lot 1 - Persistance conversationnelle canonique | ouvert |  |  |
+| Lot 1 - Persistance conversationnelle canonique | clos | commit courant `Fix canonical conversation persistence` | Hash final reporte dans le retour Codex; fermeture prouvee par tests persistence/chat/stream/frontend. |
 | Lot 2 - Validation bloquante des settings runtime | ouvert |  |  |
 | Lot 3 - Observabilite memoire et erreurs aval | ouvert |  |  |
 | Lot 4 - Preuves frontend reelles | ouvert |  |  |

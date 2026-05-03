@@ -326,7 +326,7 @@
       if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
         renderThreads();
       }
-      if (requestThreadId && errorTerminal && errorTerminal.event === "error") {
+      if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {
         appendMessageToThread(
           requestThreadId,
           "assistant",
@@ -335,6 +335,17 @@
           buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error"),
         );
         renderThreads();
+      } else if (requestThreadId && errorTerminal && errorTerminal.event === "error") {
+        try {
+          await hydrateThreadMessages(requestThreadId, { force: true });
+          await refreshThreadsFromServer({ keepSelection: true });
+          renderThreads();
+          if (getCurrentId() === requestThreadId) {
+            await loadThread(requestThreadId);
+          }
+        } catch (hydrateErr) {
+          console.error(hydrateErr);
+        }
       }
       applyAssistantStreamingFailure(assistantNode, errorMeta);
       assistantNode.bubble.textContent = extractErrorMessage(err);

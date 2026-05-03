@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
@@ -13,6 +14,26 @@ from psycopg.types.json import Json
 TITLE_MAX_CHARS = 120
 PREVIEW_MAX_CHARS = 180
 DEFAULT_TITLE = "Nouvelle conversation"
+
+
+@dataclass(frozen=True)
+class ConversationSaveResult:
+    ok: bool
+    catalog_saved: bool
+    messages_saved: bool
+    updated_at: str
+    message_count: int
+    reason: str | None = None
+
+
+def conversation_save_failure_reason(*, catalog_saved: bool, messages_saved: bool) -> str | None:
+    if catalog_saved and messages_saved:
+        return None
+    if not catalog_saved and not messages_saved:
+        return "catalog_and_messages_write_failed"
+    if not catalog_saved:
+        return "catalog_write_failed"
+    return "messages_write_failed"
 
 
 def collapse_ws(value: str) -> str:
@@ -570,25 +591,58 @@ def save_conversation(
     admin_log_event_func: Callable[..., Any],
     upsert_conversation_catalog_func: Callable[[dict[str, Any], bool], Optional[dict[str, Any]]],
     upsert_conversation_messages_func: Callable[[dict[str, Any]], bool],
-) -> None:
+) -> ConversationSaveResult:
     conversation["updated_at"] = updated_at or now_iso_func()
     conversation["messages"] = normalize_messages_for_storage_func(conversation.get("messages", []))
+    conversation_id = str(conversation.get("id") or "")
+    message_count = len(conversation.get("messages", []))
 
     logger.info(
         "conv_write_db id=%s messages=%s",
-        conversation["id"],
-        len(conversation.get("messages", [])),
+        conversation_id,
+        message_count,
+    )
+
+    catalog_saved = False
+    messages_saved = False
+    try:
+        catalog_saved = upsert_conversation_catalog_func(conversation, preserve_deleted) is not None
+    except Exception as exc:
+        logger.warning("conv_catalog_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
+
+    try:
+        messages_saved = bool(upsert_conversation_messages_func(conversation))
+    except Exception as exc:
+        logger.warning("conv_messages_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
+
+    if not catalog_saved:
+        logger.warning("conv_catalog_write_failed id=%s", conversation_id)
+    if not messages_saved:
+        logger.warning("conv_messages_write_failed id=%s", conversation_id)
+
+    reason = conversation_save_failure_reason(
+        catalog_saved=catalog_saved,
+        messages_saved=messages_saved,
+    )
+    result = ConversationSaveResult(
+        ok=reason is None,
+        catalog_saved=catalog_saved,
+        messages_saved=messages_saved,
+        updated_at=str(conversation["updated_at"]),
+        message_count=message_count,
+        reason=reason,
     )
     admin_log_event_func(
         "conv_write",
-        conversation_id=conversation["id"],
-        message_count=len(conversation.get("messages", [])),
+        conversation_id=conversation_id,
+        message_count=message_count,
         storage="db_only",
+        status="ok" if result.ok else "error",
+        catalog_saved=catalog_saved,
+        messages_saved=messages_saved,
+        reason=reason,
     )
-
-    upsert_conversation_catalog_func(conversation, preserve_deleted)
-    if not upsert_conversation_messages_func(conversation):
-        logger.warning("conv_messages_write_failed id=%s", conversation.get("id"))
+    return result
 
 
 def append_message(

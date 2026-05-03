@@ -37,6 +37,33 @@ def _build_stream_headers(
     }
 
 
+CONVERSATION_PERSIST_ERROR_CODE = chat_stream_control.STREAM_ERROR_CONVERSATION_PERSIST_FAILED
+
+
+def _save_result_ok(result: Any) -> bool:
+    if result is None:
+        return True
+    return bool(getattr(result, 'ok', False))
+
+
+def _save_result_reason(result: Any) -> str:
+    reason = str(getattr(result, 'reason', '') or '').strip()
+    return reason or CONVERSATION_PERSIST_ERROR_CODE
+
+
+def _save_result_updated_at(result: Any, fallback: str | None) -> str | None:
+    updated_at = str(getattr(result, 'updated_at', '') or '').strip()
+    return updated_at or fallback
+
+
+def _persistence_failure_payload(result: Any) -> dict[str, Any]:
+    return {
+        'ok': False,
+        'error': 'sauvegarde conversationnelle impossible',
+        'reason': _save_result_reason(result),
+    }
+
+
 def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     dialog_messages = [
         dict(message or {})
@@ -145,6 +172,9 @@ def run_llm_exchange(
             )
             updated_at = now_iso_func()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
+            save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
+            if not _save_result_ok(save_result):
+                return _json_result(_persistence_failure_payload(save_result), 503)
             estimated_assistant_tokens = token_utils_module.estimate_tokens([{'content': text}], runtime_main_model)
             admin_logs_module.log_event(
                 'AssistantText',
@@ -165,7 +195,6 @@ def run_llm_exchange(
             )
             if identity_ids and mode_enforces_identity(current_mode):
                 memory_store_module.reactivate_identities(identity_ids)
-            conv_store_module.save_conversation(conversation, updated_at=updated_at)
             return _json_result(
                 {
                     'ok': True,
@@ -261,6 +290,43 @@ def run_llm_exchange(
                 except Exception as exc:
                     logger.error('llm_stream_trace_persist_error id=%s err=%s', conversation['id'], exc)
 
+            def _record_identity_entries_safely() -> None:
+                try:
+                    completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
+                    record_identity_entries_for_mode(
+                        conversation['id'],
+                        completed_turn_pair,
+                        mode=current_mode,
+                        web_input=web_input,
+                        arbiter_module=arbiter_module,
+                        memory_store_module=memory_store_module,
+                        admin_logs_module=admin_logs_module,
+                    )
+                except Exception as exc:
+                    logger.error('llm_stream_identity_persist_error id=%s err=%s', conversation['id'], exc)
+                    admin_logs_module.log_event(
+                        'llm_stream_identity_persist_error',
+                        level='ERROR',
+                        conversation_id=conversation['id'],
+                        model=call_model,
+                        error_class=exc.__class__.__name__,
+                    )
+
+            def _reactivate_identities_safely() -> None:
+                if not identity_ids or not mode_enforces_identity(current_mode):
+                    return
+                try:
+                    memory_store_module.reactivate_identities(identity_ids)
+                except Exception as exc:
+                    logger.error('llm_stream_identity_reactivate_error id=%s err=%s', conversation['id'], exc)
+                    admin_logs_module.log_event(
+                        'llm_stream_identity_reactivate_error',
+                        level='ERROR',
+                        conversation_id=conversation['id'],
+                        model=call_model,
+                        error_class=exc.__class__.__name__,
+                    )
+
             try:
                 with requests_module.post(
                     url,
@@ -312,6 +378,8 @@ def run_llm_exchange(
                 )
             assistant_text = llm_module.sanitize_provider_text(''.join(assistant_chunks)).strip()
             final_updated_at: str | None = None
+            persisted_updated_at: str | None = None
+            persistence_ok = False
             try:
                 if provider_response_open:
                     provider_fields = llm_module.build_provider_observability_fields(
@@ -337,28 +405,6 @@ def run_llm_exchange(
                             assistant_text,
                             timestamp=final_updated_at,
                         )
-                        estimated_assistant_tokens = token_utils_module.estimate_tokens(
-                            [{'content': assistant_text}],
-                            runtime_main_model,
-                        )
-                        admin_logs_module.log_event(
-                            'AssistantText',
-                            conversation_id=conversation['id'],
-                            estimated_assistant_tokens=estimated_assistant_tokens,
-                            message_timestamp=final_updated_at,
-                        )
-                    completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
-                    record_identity_entries_for_mode(
-                        conversation['id'],
-                        completed_turn_pair,
-                        mode=current_mode,
-                        web_input=web_input,
-                        arbiter_module=arbiter_module,
-                        memory_store_module=memory_store_module,
-                        admin_logs_module=admin_logs_module,
-                    )
-                    if identity_ids and mode_enforces_identity(current_mode):
-                        memory_store_module.reactivate_identities(identity_ids)
                 elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
                     _append_persisted_assistant_message(
                         '',
@@ -367,11 +413,35 @@ def run_llm_exchange(
                             terminal_error_code or 'stream_protocol_error',
                         ),
                     )
-                conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
+                save_result = conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
+                if _save_result_ok(save_result):
+                    persisted_updated_at = _save_result_updated_at(save_result, final_updated_at)
+                    persistence_ok = True
+                else:
+                    _rollback_appended_assistant()
+                    terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
+                    terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
+                    final_updated_at = None
+                    buffered_output = ''
+                    logger.error(
+                        'llm_stream_finalize_persist_error id=%s reason=%s',
+                        conversation['id'],
+                        _save_result_reason(save_result),
+                    )
+                    admin_logs_module.log_event(
+                        'llm_stream_finalize_persist_error',
+                        level='ERROR',
+                        conversation_id=conversation['id'],
+                        model=call_model,
+                        error_code=terminal_error_code,
+                        reason=_save_result_reason(save_result),
+                    )
             except Exception as exc:
                 _rollback_appended_assistant()
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                 terminal_error_code = terminal_error_code or 'stream_finalize_error'
+                persistence_ok = False
+                persisted_updated_at = None
                 logger.error('llm_stream_finalize_error id=%s err=%s', conversation['id'], exc)
                 admin_logs_module.log_event(
                     'llm_stream_finalize_error',
@@ -395,10 +465,33 @@ def run_llm_exchange(
                 )
                 try:
                     if final_updated_at is None:
-                        conv_store_module.save_conversation(conversation)
+                        save_result = conv_store_module.save_conversation(conversation)
                     else:
-                        conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
+                        save_result = conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
+                    if _save_result_ok(save_result):
+                        persisted_updated_at = _save_result_updated_at(save_result, final_updated_at)
+                        persistence_ok = True
+                    else:
+                        _rollback_appended_assistant()
+                        terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
+                        final_updated_at = None
+                        logger.error(
+                            'llm_stream_finalize_persist_error id=%s reason=%s',
+                            conversation['id'],
+                            _save_result_reason(save_result),
+                        )
+                        admin_logs_module.log_event(
+                            'llm_stream_finalize_persist_error',
+                            level='ERROR',
+                            conversation_id=conversation['id'],
+                            model=call_model,
+                            error_code=terminal_error_code,
+                            reason=_save_result_reason(save_result),
+                        )
                 except Exception as persist_exc:
+                    _rollback_appended_assistant()
+                    terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
+                    final_updated_at = None
                     logger.error('llm_stream_finalize_persist_error id=%s err=%s', conversation['id'], persist_exc)
                     admin_logs_module.log_event(
                         'llm_stream_finalize_persist_error',
@@ -408,14 +501,27 @@ def run_llm_exchange(
                         error=str(persist_exc),
                         error_code=terminal_error_code,
                     )
-            if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
+            if persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
+                if assistant_appended and assistant_text:
+                    estimated_assistant_tokens = token_utils_module.estimate_tokens(
+                        [{'content': assistant_text}],
+                        runtime_main_model,
+                    )
+                    admin_logs_module.log_event(
+                        'AssistantText',
+                        conversation_id=conversation['id'],
+                        estimated_assistant_tokens=estimated_assistant_tokens,
+                        message_timestamp=persisted_updated_at or final_updated_at,
+                    )
+                _record_identity_entries_safely()
+                _reactivate_identities_safely()
                 _save_new_traces_safely()
-            if buffered_output and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
+            if buffered_output and persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
                 yield buffered_output
             yield chat_stream_control.build_terminal_chunk(
                 terminal_event,
                 error_code=terminal_error_code,
-                updated_at=final_updated_at,
+                updated_at=persisted_updated_at if persistence_ok else None,
             )
 
         logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))

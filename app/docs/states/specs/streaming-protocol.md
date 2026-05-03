@@ -94,12 +94,13 @@ Le terminal de controle DOIT etre un JSON objet avec:
 
 Champs optionnels:
 - `error_code`: optionnel; utile seulement quand `event="error"`;
-- `updated_at`: optionnel; timestamp ISO du tour persiste quand il est connu.
+- `updated_at`: optionnel; timestamp ISO du tour persiste, uniquement quand la sauvegarde canonique catalog/messages est prouvee.
 
 Contraintes:
 - `done` et `error` sont mutuellement exclusifs;
 - un `error_code` absent sur un terminal `error` reste defensivement acceptable cote parseur, mais le backend Frida courant vise un `error_code` explicite pour les terminaux d'erreur qu'il emet;
-- `updated_at` appartient au terminal; il ne doit pas etre suppose disponible ailleurs dans le corps du stream.
+- `updated_at` appartient au terminal; il ne doit pas etre suppose disponible ailleurs dans le corps du stream;
+- un terminal `conversation_persist_failed` ne DOIT PAS porter `updated_at`.
 
 ## 5. Invariants
 
@@ -125,6 +126,10 @@ Codes emis ou propages canoniquement dans le flux/backend:
 - `stream_protocol_error`
   - sens: violation du contrat de terminal unique / terminal final / terminal present;
   - famille frontend: `server_error`.
+- `conversation_persist_failed`
+  - sens: la finalisation a produit un contenu ou un marqueur local, mais `save_conversation()` n'a pas prouve l'ecriture canonique catalog/messages;
+  - famille frontend: `server_error`;
+  - contrainte: le terminal ne porte pas `updated_at`.
 
 Classifications defensives utiles, sans en faire de nouveaux statuts produit:
 - `missing_stream_terminal`
@@ -196,7 +201,8 @@ Le frontend navigateur DOIT:
 - traiter `done` et `error` comme terminaux exclusifs;
 - traiter l'absence de terminal, les terminaux multiples ou le contenu apres terminal comme erreurs protocolaires locales;
 - utiliser `terminal.updated_at` quand il est present pour horodater le message assistant et le thread;
-- forcer une rehydratation serveur si `updated_at` manque.
+- forcer une rehydratation serveur si `updated_at` manque;
+- ne pas ajouter au cache local un marqueur assistant canonique a partir d'un terminal `error` sans `updated_at`.
 
 Interpretation frontend minimale actuelle:
 - `request_started` -> etat `preparing`;
@@ -226,7 +232,8 @@ Metadata terminales actuelles utiles:
 Semantique de `updated_at`:
 - sur `done`, il represente le timestamp canonique du tour assistant persiste;
 - sur `error` emis par `chat_llm_flow.py`, il represente le timestamp du marqueur assistant interrompu persiste;
-- sur les erreurs protocolaires synthétisees par le wrapper serveur, il peut legitiment manquer.
+- sur `conversation_persist_failed`, il est absent car la persistance canonique n'est pas prouvee;
+- sur les erreurs protocolaires synthétisees par le wrapper serveur, il peut legitimement manquer.
 
 Relation headers / terminal:
 - `X-Conversation-Id` et `X-Conversation-Created-At` sont disponibles avant le corps;
@@ -243,7 +250,8 @@ Si le stream se termine en `done`:
 - un vrai message assistant canonique est persiste avec le texte final normalise;
 - ce message porte le timestamp `updated_at` du terminal;
 - la conversation est sauvegardee avec ce meme `updated_at`;
-- `save_new_traces()` peut ensuite persister ce contenu comme trace assistant.
+- le terminal `done` ne porte `updated_at` que si `save_conversation()` retourne une preuve positive catalog/messages;
+- `save_new_traces()`, les ecritures identitaires derivees et les reactivations identitaires ne peuvent ensuite s'executer qu'apres cette preuve.
 
 ### 10.2 `error`
 
@@ -253,16 +261,25 @@ Si le stream se termine en `error`:
   - `content=""`;
   - `meta.assistant_turn.status="interrupted"`;
   - `meta.assistant_turn.error_code=<code canonique>`;
-  - `timestamp=updated_at` si connu.
+  - `timestamp=updated_at` si la sauvegarde du marqueur est prouvee.
 
-### 10.3 Echec de finalisation
+### 10.3 Echec de persistance canonique
+
+Si `save_conversation()` ne prouve pas l'ecriture catalog/messages finale:
+- le terminal public devient `error` avec `error_code="conversation_persist_failed"`;
+- le terminal ne porte pas `updated_at`;
+- aucun `save_new_traces()`, staging identitaire ou reactivation identitaire derivee ne doit s'executer pour ce tour;
+- le frontend doit traiter l'absence d'`updated_at` comme une absence de preuve canonique et forcer une rehydratation plutot que creer un cache local optimiste.
+
+### 10.4 Echec de finalisation
 
 Si la finalisation locale casse apres un append assistant temporaire:
 - le texte assistant appendu est rollbacke;
 - le code canonique devient `stream_finalize_error`;
-- le message persiste est le marqueur `assistant_turn` interrompu, jamais le fragment texte rollbacke.
+- le message persiste est le marqueur `assistant_turn` interrompu, jamais le fragment texte rollbacke;
+- si la sauvegarde de ce marqueur echoue aussi, la sortie retombe sur `conversation_persist_failed` sans `updated_at`.
 
-### 10.4 Prompt et memoire
+### 10.5 Prompt et memoire
 
 Les marqueurs `assistant_turn.status="interrupted"`:
 - sont exclus de `build_prompt_messages()`;
@@ -276,8 +293,8 @@ Les marqueurs `assistant_turn.status="interrupted"`:
 
 Sequence attendue:
 1. contenu visible zero ou plusieurs fois;
-2. terminal `done`;
-3. persistance du message assistant complet;
+2. persistance prouvee du message assistant complet;
+3. terminal `done` avec `updated_at`;
 4. `updated_at` exploitable cote frontend.
 
 ### 11.2 Erreur upstream mid-stream
@@ -296,7 +313,16 @@ Sequence attendue:
 4. persistance d'un marqueur assistant interrompu;
 5. aucune trace memoire du fragment rollbacke.
 
-### 11.4 Fin sans terminal
+### 11.4 Echec de persistance finale
+
+Sequence attendue:
+1. contenu visible eventuel deja affiche au navigateur selon le mode de buffering;
+2. `save_conversation()` retourne une preuve negative;
+3. terminal `error` avec `error_code="conversation_persist_failed"`;
+4. absence d'`updated_at` dans le terminal;
+5. aucune trace memoire, ecriture identitaire derivee ou reactivation identitaire pour ce tour.
+
+### 11.5 Fin sans terminal
 
 Sequence attendue:
 1. le wrapper detecte l'absence de terminal;

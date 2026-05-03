@@ -153,10 +153,14 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('const errorMeta = getObservableStreamErrorMeta(err);', catch_block)
         self.assertIn('applyAssistantStreamingFailure(assistantNode, errorMeta);', catch_block)
         self.assertIn('assistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
-        self.assertIn('if (requestThreadId && errorTerminal && errorTerminal.event === "error") {', catch_block)
+        self.assertIn(
+            'if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {',
+            catch_block,
+        )
         self.assertIn('appendMessageToThread(', catch_block)
         self.assertIn('buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error")', catch_block)
-        self.assertNotIn('await hydrateThreadMessages(requestThreadId, { force: true });', catch_block)
+        self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', catch_block)
+        self.assertIn('await refreshThreadsFromServer({ keepSelection: true });', catch_block)
 
     def test_streaming_front_wires_observable_ux_states_without_changing_the_stream_contract(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

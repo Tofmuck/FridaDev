@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -21,11 +22,12 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
 
-    def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
+    def _patch_chat_pipeline(self, *, conversation: dict, requests_post, **kwargs):
         return server_chat_pipeline.patch_server_chat_pipeline(
             self.server,
             conversation=conversation,
             requests_post=requests_post,
+            **kwargs,
         )
 
     def test_api_chat_emits_primary_node_and_validation_agent_synthetic_log_events(self) -> None:
@@ -213,6 +215,77 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
             self.assertNotIn('canonical_inputs', payload)
             self.assertNotIn('prompt', payload)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
+
+    def test_api_chat_persist_response_reports_error_when_messages_are_not_saved(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-persist-response-error-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok non persistable'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+            save_conversation_result=lambda _conversation, **kwargs: SimpleNamespace(
+                ok=not kwargs.get('updated_at'),
+                catalog_saved=True,
+                messages_saved=not kwargs.get('updated_at'),
+                updated_at=kwargs.get('updated_at'),
+                message_count=len(_conversation.get('messages', [])),
+                reason='messages_write_failed' if kwargs.get('updated_at') else None,
+            ),
+        )
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'sauvegarde conversationnelle impossible',
+                'reason': 'messages_write_failed',
+            },
+        )
+        persist_event = next(
+            item
+            for item in reversed(observed_events)
+            if item['stage'] == 'persist_response' and item['status'] == 'error'
+        )
+        self.assertEqual(persist_event['status'], 'error')
+        self.assertEqual(
+            persist_event['payload_json'],
+            {
+                'conversation_saved': False,
+                'catalog_saved': True,
+                'messages_saved': False,
+                'message_count': 3,
+                'messages_written': 0,
+                'reason': 'messages_write_failed',
+            },
+        )
+        self.assertEqual(len(observed_state['save_new_traces_calls']), 0)
 
     def test_api_chat_emits_hard_guard_name_effect_and_final_posture_in_validation_logs(self) -> None:
         observed_events: list[dict] = []

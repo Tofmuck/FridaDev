@@ -239,6 +239,120 @@ class ChatLlmFlowTests(unittest.TestCase):
             ],
         )
 
+    def test_run_llm_exchange_sync_persistence_failure_blocks_derived_writes(self) -> None:
+        events = []
+        observed = {
+            'sequence': [],
+            'trace_calls': 0,
+            'identity_calls': 0,
+            'reactivate_calls': 0,
+        }
+        conversation = {
+            'id': 'conv-sync-persist-fail',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'reponse non persistable'}}]}
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
+            RuntimeSettingsSecretRequiredError=RuntimeError,
+            RuntimeSettingsSecretResolutionError=ValueError,
+        )
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['sequence'].append(('save_conversation', dict(kwargs)))
+            return SimpleNamespace(
+                ok=False,
+                catalog_saved=True,
+                messages_saved=False,
+                updated_at=kwargs.get('updated_at'),
+                message_count=len(_conversation.get('messages', [])),
+                reason='messages_write_failed',
+            )
+
+        memory_store_module = SimpleNamespace(
+            save_new_traces=lambda _conversation: observed.update({'trace_calls': observed['trace_calls'] + 1}),
+            reactivate_identities=lambda _identity_ids: observed.update({'reactivate_calls': observed['reactivate_calls'] + 1}),
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
+            ),
+            save_conversation=fake_save_conversation,
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {
+                'provider_model': requested_model,
+            },
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {
+                'provider_caller': caller,
+                'provider_title': f'FridaDev/{caller}',
+                **dict(provider_metadata),
+            },
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}),
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            sanitize_provider_text=lambda text: text,
+        )
+
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=False,
+            current_mode='enforced_all',
+            identity_ids=['id-a'],
+            web_input=None,
+            runtime_settings_module=runtime_settings_module,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            llm_module=llm_module,
+            requests_module=SimpleNamespace(
+                post=lambda *_args, **_kwargs: FakeResponse(),
+                exceptions=SimpleNamespace(RequestException=_RequestException),
+            ),
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
+            admin_logs_module=SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs))),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-03-26T00:10:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: observed.update(
+                {'identity_calls': observed['identity_calls'] + 1}
+            ),
+            mode_enforces_identity=lambda _mode: True,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+        )
+
+        self.assertEqual(result['kind'], 'json')
+        self.assertEqual(result['status'], 503)
+        self.assertEqual(
+            result['payload'],
+            {
+                'ok': False,
+                'error': 'sauvegarde conversationnelle impossible',
+                'reason': 'messages_write_failed',
+            },
+        )
+        self.assertEqual([name for name, _kwargs in observed['sequence']], ['save_conversation'])
+        self.assertEqual(observed['trace_calls'], 0)
+        self.assertEqual(observed['identity_calls'], 0)
+        self.assertEqual(observed['reactivate_calls'], 0)
+
     def test_run_llm_exchange_stream_success_keeps_stream_contract(self) -> None:
         events = []
         observed = {
@@ -753,6 +867,128 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['sequence'], ['save_conversation', 'save_new_traces'])
         self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], streamed)
 
+    def test_run_llm_exchange_stream_persistence_failure_emits_terminal_without_updated_at(self) -> None:
+        events = []
+        observed = {
+            'save_calls': [],
+            'save_new_traces_calls': [],
+            'identity_calls': 0,
+            'reactivate_calls': 0,
+        }
+        conversation = {
+            'id': 'conv-stream-persist-fail',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'user', 'content': 'hello'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['save_calls'].append(dict(kwargs))
+            return SimpleNamespace(
+                ok=False,
+                catalog_saved=True,
+                messages_saved=False,
+                updated_at=kwargs.get('updated_at'),
+                message_count=len(_conversation.get('messages', [])),
+                reason='messages_write_failed',
+            )
+
+        runtime_settings_module = SimpleNamespace(
+            get_runtime_secret_value=lambda *_args, **_kwargs: SimpleNamespace(value='sk-test'),
+            RuntimeSettingsSecretRequiredError=RuntimeError,
+            RuntimeSettingsSecretResolutionError=ValueError,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=lambda _conversation: observed['save_new_traces_calls'].append(
+                [dict(message) for message in _conversation.get('messages', [])]
+            ),
+            reactivate_identities=lambda _identity_ids: observed.update({'reactivate_calls': observed['reactivate_calls'] + 1}),
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
+            ),
+            save_conversation=fake_save_conversation,
+        )
+        llm_module = SimpleNamespace(
+            or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
+            resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
+            build_payload=lambda *_args, **_kwargs: {'model': 'openrouter/runtime-main-model'},
+            extract_openrouter_provider_metadata=lambda payload, *, requested_model=None: {},
+            build_provider_observability_fields=lambda *, caller, provider_metadata: {},
+            merge_openrouter_provider_metadata=lambda current, payload, *, requested_model=None: dict(current or {}),
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            sanitize_provider_text=lambda text: text,
+        )
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=[{'role': 'user', 'content': 'bonjour'}],
+            runtime_main_model='openrouter/runtime-main-model',
+            temperature=0.4,
+            top_p=1.0,
+            max_tokens=256,
+            stream_req=True,
+            current_mode='enforced_all',
+            identity_ids=['id-a'],
+            web_input=None,
+            assistant_output_policy=assistant_output_contract.AssistantOutputPolicy(),
+            runtime_settings_module=runtime_settings_module,
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            llm_module=llm_module,
+            requests_module=SimpleNamespace(
+                post=lambda *_args, **_kwargs: FakeStreamResponse(),
+                exceptions=SimpleNamespace(RequestException=_RequestException),
+            ),
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
+            admin_logs_module=SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs))),
+            config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            now_iso_func=lambda: '2026-03-26T00:11:00Z',
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: observed.update(
+                {'identity_calls': observed['identity_calls'] + 1}
+            ),
+            mode_enforces_identity=lambda _mode: True,
+            conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
+        )
+
+        streamed, terminal = _collect_stream_output(result['stream'])
+        self.assertEqual(streamed, '')
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'conversation_persist_failed',
+            },
+        )
+        self.assertNotIn('updated_at', terminal)
+        self.assertEqual(conversation['messages'], [{'role': 'user', 'content': 'hello'}])
+        self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
+        self.assertEqual(observed['save_new_traces_calls'], [])
+        self.assertEqual(observed['identity_calls'], 0)
+        self.assertEqual(observed['reactivate_calls'], 0)
+        persist_error_events = _event_payloads(events, 'llm_stream_finalize_persist_error')
+        self.assertEqual(persist_error_events[-1]['error_code'], 'conversation_persist_failed')
+        self.assertEqual(persist_error_events[-1]['reason'], 'messages_write_failed')
+
     def test_run_llm_exchange_stream_emits_error_terminal_on_request_exception(self) -> None:
         events = []
         observed = {'save_calls': [], 'provider_log_calls': []}
@@ -896,7 +1132,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
     def test_run_llm_exchange_stream_emits_error_terminal_on_local_finalize_exception(self) -> None:
         events = []
-        observed = {'save_calls': [], 'provider_log_calls': [], 'save_new_traces_calls': []}
+        observed = {'save_calls': [], 'save_attempts': 0, 'provider_log_calls': [], 'save_new_traces_calls': []}
         conversation = {
             'id': 'conv-stream-finalize-error',
             'created_at': '2026-03-26T00:00:00Z',
@@ -935,11 +1171,18 @@ class ChatLlmFlowTests(unittest.TestCase):
             save_new_traces=fake_save_new_traces,
             reactivate_identities=lambda _identity_ids: None,
         )
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['save_attempts'] += 1
+            if observed['save_attempts'] == 1:
+                raise RuntimeError('finalize boom')
+            observed['save_calls'].append(dict(kwargs))
+
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
                 {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
-            save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
+            save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: {'Authorization': 'Bearer token'},
@@ -992,7 +1235,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
             arbiter_module=SimpleNamespace(),
             now_iso_func=lambda: '2026-03-26T00:11:00Z',
-            record_identity_entries_for_mode=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('finalize boom')),
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: None,
             mode_enforces_identity=lambda _mode: False,
             conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
         )
@@ -1024,6 +1267,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 },
             ],
         )
+        self.assertEqual(observed['save_attempts'], 2)
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertEqual(observed['save_new_traces_calls'], [])
         self.assertEqual(

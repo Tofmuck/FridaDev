@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -25,11 +26,12 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
     def _split_stream_body(self, response) -> tuple[str, dict[str, str] | None]:
         return chat_stream_control.split_text_and_terminal(response.get_data())
 
-    def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
+    def _patch_chat_pipeline(self, *, conversation: dict, requests_post, **kwargs):
         return server_chat_pipeline.patch_server_chat_pipeline(
             self.server,
             conversation=conversation,
             requests_post=requests_post,
+            **kwargs,
         )
 
     def test_api_chat_stream_keeps_content_type_and_conversation_headers(self) -> None:
@@ -365,16 +367,20 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
             conversation=conversation,
             requests_post=fake_requests_post,
         )
-        original_record_identity = self.server.chat_service._record_identity_entries_for_mode
+        observed = {'save_calls': [], 'save_attempts': 0}
 
-        def raising_record_identity(*_args, **_kwargs):
-            raise RuntimeError('finalize boom')
+        def raising_first_save(*_args, **kwargs):
+            if not kwargs.get('updated_at'):
+                return None
+            observed['save_attempts'] += 1
+            if observed['save_attempts'] == 1:
+                raise RuntimeError('finalize boom')
+            observed['save_calls'].append({'kwargs': dict(kwargs)})
 
-        self.server.chat_service._record_identity_entries_for_mode = raising_record_identity
+        self.server.conv_store.save_conversation = raising_first_save
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
         finally:
-            self.server.chat_service._record_identity_entries_for_mode = original_record_identity
             restore()
 
         text, terminal = self._split_stream_body(response)
@@ -386,7 +392,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
             {
                 'event': 'error',
                 'error_code': 'stream_finalize_error',
-                'updated_at': observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+                'updated_at': observed['save_calls'][-1]['kwargs'].get('updated_at'),
             },
         )
         assistant_message = conversation['messages'][-1]
@@ -394,7 +400,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(assistant_message.get('content'), '')
         self.assertEqual(
             assistant_message.get('timestamp'),
-            observed_state['save_calls'][-1]['kwargs'].get('updated_at'),
+            observed['save_calls'][-1]['kwargs'].get('updated_at'),
         )
         self.assertEqual(
             assistant_message.get('meta'),
@@ -405,6 +411,66 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
                 }
             },
         )
+        self.assertEqual(observed['save_attempts'], 2)
+        self.assertTrue(observed['save_calls'][-1]['kwargs'].get('updated_at'))
+        self.assertEqual(observed_state['save_new_traces_calls'], [])
+
+    def test_api_chat_stream_persistence_failure_emits_error_terminal_without_updated_at(self) -> None:
+        conversation = {
+            'id': 'conv-stream-persist-error-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeStreamResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"Bon"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"jour"}}]}'
+                yield 'data: [DONE]'
+
+        def fake_requests_post(*_args, **kwargs):
+            return FakeStreamResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+            save_conversation_result=lambda _conversation, **kwargs: SimpleNamespace(
+                ok=False,
+                catalog_saved=True,
+                messages_saved=False,
+                updated_at=kwargs.get('updated_at'),
+                message_count=len(_conversation.get('messages', [])),
+                reason='messages_write_failed',
+            ),
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
+        finally:
+            restore()
+
+        text, terminal = self._split_stream_body(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(text, '')
+        self.assertEqual(
+            terminal,
+            {
+                'event': 'error',
+                'error_code': 'conversation_persist_failed',
+            },
+        )
+        self.assertNotIn('updated_at', terminal)
+        self.assertEqual(conversation['messages'][-1]['role'], 'user')
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
         self.assertEqual(observed_state['save_new_traces_calls'], [])
 

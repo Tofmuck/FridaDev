@@ -13,6 +13,7 @@ def patch_server_chat_pipeline(
     requests_post,
     build_prompt_messages: Callable[..., list[dict[str, Any]]] | None = None,
     build_payload: Callable[..., dict[str, Any]] | None = None,
+    save_conversation_result: Any | Callable[..., Any] = None,
     conversation_path: str = 'conv/conv-test-chat.json',
     runtime_api_key: str = 'sk-test-chat',
 ):
@@ -64,6 +65,9 @@ def patch_server_chat_pipeline(
 
     def fake_save_conversation(*_args, **kwargs):
         observed['save_calls'].append({'kwargs': dict(kwargs)})
+        if callable(save_conversation_result):
+            return save_conversation_result(*_args, **kwargs)
+        return save_conversation_result
 
     patch_attr(server_module.conv_store, 'save_conversation', fake_save_conversation)
     patch_attr(

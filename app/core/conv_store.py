@@ -33,6 +33,7 @@ DEFAULT_TITLE = "Nouvelle conversation"
 
 __all__ = (
     "CONV_DIR",
+    "ConversationSaveResult",
     "ensure_conv_dir",
     "normalize_conversation_id",
     "new_conversation",
@@ -57,6 +58,8 @@ __all__ = (
 )
 
 # --- Infra and helpers (includes test-coupled compatibility points) ---
+
+ConversationSaveResult = conversations_store.ConversationSaveResult
 
 
 def _db_conn():
@@ -162,8 +165,8 @@ def save_conversation(
     updated_at: Optional[str] = None,
     *,
     preserve_deleted: bool = False,
-) -> None:
-    conversations_store.save_conversation(
+) -> ConversationSaveResult:
+    return conversations_store.save_conversation(
         conversation,
         updated_at,
         preserve_deleted=preserve_deleted,
