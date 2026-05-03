@@ -324,7 +324,7 @@ Critere de cloture:
 | Lot | Statut | Commit de correction | Notes |
 | --- | --- | --- | --- |
 | Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
-| Lot 2 - Validation bloquante des settings runtime | clos | a renseigner apres commit | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
+| Lot 2 - Validation bloquante des settings runtime | clos | `eda1e752758f3c9694c822fa5a4fd47b715d2b51` | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
 | Lot 3 - Observabilite memoire et erreurs aval | ouvert |  |  |
 | Lot 4 - Preuves frontend reelles | ouvert |  |  |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |
