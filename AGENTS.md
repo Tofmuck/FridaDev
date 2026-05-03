@@ -134,6 +134,7 @@ Regles:
 Destinations:
 
 - `app/docs/states/architecture/`: notes d'architecture et conventions;
+- `app/docs/states/audits/`: audits globaux ou transverses dates servant de sources de verite;
 - `app/docs/states/specs/`: specs normatives et schemas;
 - `app/docs/states/operations/`: guides operatoires et runbooks;
 - `app/docs/states/baselines/`: baselines techniques datees;
@@ -149,6 +150,7 @@ Destinations:
 - `app/docs/todo-todo/memory/`: travaux actifs memoire/hermeneutique;
 - `app/docs/todo-todo/product/`: travaux actifs produit/installation;
 - `app/docs/todo-todo/admin/`: travaux actifs admin;
+- `app/docs/todo-todo/audits/`: plans actifs de remediation issus d'audits;
 - `app/docs/todo-todo/refactors/`: roadmaps ouvertes de nettoyage/refactor structurel borne;
 - `app/docs/todo-todo/migration/`: travaux actifs migration.
 
@@ -179,6 +181,8 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
+- `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`: audit global exhaustif date du 2026-05-03, source de verite des findings `AUDIT-20260503-*`.
+- `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`: TODO actif de remediation structurelle des findings de l'audit global du 2026-05-03.
 - `app/docs/todo-done/refactors/admin-todo.md`: roadmap admin archivee; ne pas la rouvrir silencieusement.
 - `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: cloture de convergence hermeneutique; ne pas la traiter comme active.
 - `app/docs/states/project/Frida-State-french-03-04-26.md` et `app/docs/states/project/Frida-State-english-03-04-26.md`: etats projet dates du 2026-04-03. Ils restent utiles historiquement, mais ne decrivent pas a eux seuls l'environnement OVH courant.

@@ -188,13 +188,13 @@ Cases de correction:
 - [ ] `L4-C2` Couvrir chat stream nominal: terminal `done`, rendu bulle, cache thread, timestamp et refresh.
 - [ ] `L4-C3` Couvrir chat stream erreur: terminal `error`, absence ou presence controlee de `updated_at`, interruption visible, rehydratation attendue.
 - [ ] `L4-C4` Couvrir admin settings validate/save: validation refusee, PATCH refuse, affichage des checks et statuts.
-- [ ] `L4-C5` Couvrir logs/filter/export si le repo le permet raisonnablement sans authentification externe lourde.
+- [ ] `L4-C5` Couvrir logs/filter/export par preuve navigateur; si le repo ou l'environnement OVH ne le permet pas raisonnablement, ajouter dans le lot une justification ecrite et une preuve alternative maintenable.
 - [ ] `L4-C6` Requalifier les tests source-only comme gardes structurelles, sans les presenter seuls comme integration UX.
 
 Tests a ajouter ou modifier:
 - smoke browser chat avec `fetch` mocke ou serveur test;
 - smoke browser admin settings validate/save;
-- smoke browser logs filter/export;
+- smoke browser logs filter/export, ou preuve alternative maintenable documentee si le harness navigateur ne peut pas couvrir ce parcours;
 - conserver les tests Node purs du parser/state machine/sidebar.
 
 Preuves runtime attendues:
@@ -209,6 +209,7 @@ Risques:
 
 Critere de cloture:
 - [ ] Au moins les parcours chat stream nominal, chat stream erreur, admin validate/save sont prouves en environnement navigateur.
+- [ ] Logs/filter/export est couvert par une preuve navigateur, ou par une justification ecrite avec preuve alternative maintenable.
 - [ ] Les tests source-only sont conserves comme filets structurels, mais la documentation de test ne les surestime plus.
 - [ ] Le harness est assez petit pour etre maintenu.
 
