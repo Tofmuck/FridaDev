@@ -130,15 +130,23 @@ Ce qu'on ne fait pas:
 Pourquoi maintenant: cette surface est dense, mais elle devient plus sure a nettoyer une fois les seams tests/server/settings stabilises.
 
 Ce qu'on fait:
-- [ ] Separer dans `app/admin/admin_memory_service.py` les lectures durables, les agregats d'observabilite, les mappers de stages et l'assemblage dashboard.
-- [ ] Eclater les gros tests associes (`app/tests/test_server_logs_phase3.py`, `app/tests/test_server_admin_memory_surface_phase10e.py`) par familles de contrat.
+- [x] Separer dans `app/admin/admin_memory_service.py` les lectures durables, les agregats d'observabilite, les mappers de stages et l'assemblage dashboard au niveau utile, sans poursuivre par des splits mecaniques.
+- [x] Requalifier les gros tests associes au niveau utile: `app/tests/test_server_admin_memory_surface_phase10e.py` reste acceptable, et le contrat HTTP `/api/admin/logs/chat*` est separe du bloc observabilite chat.
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 4 par extraction du seam observabilite historique / dashboard history readers vers `app/admin/admin_memory_history_dashboard.py`, avec `app/admin/admin_memory_service.py` conserve comme point d'assemblage du dashboard. Ce seam passe le gate parce qu'il regroupe les lectures d'agregats historiques, les projections de payloads de stages, `recent_turns`, `mode_observation` et `latency_ms`, sans embarquer `_read_durable_state(...)`, les summaries runtime, `/log`, `app/tests/test_server_logs_phase3.py` comme chantier autonome ni le finding actif `record_arbiter_decisions`.
 - [x] Sous-lot 2 livre le `2026-05-03`: poursuite de la phase 4 par extraction du seam durable state / persisted preview readers vers `app/admin/admin_memory_durable_dashboard.py`, avec `app/admin/admin_memory_service.py` conserve comme assembleur du dashboard. Ce seam passe le gate parce qu'il regroupe la lecture durable SQL des tables `traces`, `summaries` et `arbiter_decisions`, la projection `duplicate_examples`, `top_rejection_reasons` et `arbiter.preview`, sans rouvrir l'observabilite historique deja sortie, les summaries runtime, l'assemblage top-level, `/log`, `app/tests/test_server_logs_phase3.py` ni le finding actif `record_arbiter_decisions`.
+- [x] Sous-lot 3 livre le `2026-05-03`: dernier lot code autorise de la phase 4, par extraction du contrat HTTP `/api/admin/logs/chat*` vers `app/tests/test_server_admin_chat_logs_contract.py`. Ce seam passe le gate parce qu'il regroupe les routes admin chat logs, metadata, pagination, filtres invalides et disponibilite sans token admin, en laissant `app/tests/test_server_logs_phase3.py` comme contrat coherent d'observabilite chat / prompt / proxy / stream. Aucun split supplementaire de phase 4 n'est attendu.
 
-Ce qu'on ne fait pas encore:
+Point de sortie pratique:
+- phase 4 cloturable maintenant;
+- objectif utile atteint sur `app/admin/admin_memory_service.py`, le dashboard memory et le reliquat tests logs;
+- pas de sous-lots code supplementaires pour gagner quelques lignes ou fragmenter `app/tests/test_server_logs_phase3.py`;
+- `app/tests/test_server_logs_phase3.py` reste gros mais coherent sur l'observabilite chat / prompt / proxy / stream, donc sa taille seule ne justifie pas de garder la phase ouverte.
+
+Ce qu'on ne fait pas ici:
 - ne pas transformer ce lot en refonte generale du module logs ni du pipeline memoire.
+- ne pas traiter ici le finding actif `record_arbiter_decisions`.
 
 ## Phase 5 - Navigation documentaire
 
