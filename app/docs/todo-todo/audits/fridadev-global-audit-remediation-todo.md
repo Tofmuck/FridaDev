@@ -29,7 +29,7 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 
 - [x] Lot 1: securiser la persistance conversationnelle canonique avant toute ecriture derivee.
 - [x] Lot 2: rendre la validation settings bloquante cote serveur.
-- [ ] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
+- [x] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
 - [ ] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
 - [ ] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
 - [ ] Lot 6: fermer les findings stale et remettre les docs source-of-truth a jour.
@@ -147,10 +147,10 @@ Fichiers probablement touches:
 - tests memoire, chat memory flow, Memory Admin et logs
 
 Cases de correction:
-- [ ] `L3-C1` Remplacer le retour `[]` indistinct par un resultat structure `ok|empty|error`, ou par une enveloppe equivalente.
-- [ ] `L3-C2` Propager `retrieve_error` jusqu'a `memory_arbitration`, `prompt_prepared` et aux logs synthetiques.
-- [ ] `L3-C3` Garder le fail-open produit uniquement si l'erreur est explicitement observable par `/log` et `/memory-admin`.
-- [ ] `L3-C4` Ajouter une lecture admin qui distingue absence normale, embeddings indisponibles et erreur DB/retrieval.
+- [x] `L3-C1` Remplacer le retour `[]` indistinct par un resultat structure `ok|empty|error`, ou par une enveloppe equivalente.
+- [x] `L3-C2` Propager `retrieve_error` jusqu'a `memory_arbitration`, `prompt_prepared` et aux logs synthetiques.
+- [x] `L3-C3` Garder le fail-open produit uniquement si l'erreur est explicitement observable par `/log` et `/memory-admin`.
+- [x] `L3-C4` Ajouter une lecture admin qui distingue absence normale, embeddings indisponibles et erreur DB/retrieval.
 
 Tests a ajouter ou modifier:
 - test `prepare_memory_context()` avec retrieval en erreur;
@@ -169,9 +169,9 @@ Risques:
 - il faut ne pas inclure de secrets ou DSN dans les details d'erreur.
 
 Critere de cloture:
-- [ ] Une erreur retrieval est visible comme erreur technique dans les logs/surfaces admin.
-- [ ] Une absence normale de memoire reste distincte.
-- [ ] La reponse utilisateur peut continuer si le choix produit est fail-open, mais le diagnostic operateur ne ment plus.
+- [x] Une erreur retrieval est visible comme erreur technique dans les logs/surfaces admin.
+- [x] Une absence normale de memoire reste distincte.
+- [x] La reponse utilisateur peut continuer si le choix produit est fail-open, mais le diagnostic operateur ne ment plus.
 
 ## Lot 4 - Preuves frontend reelles
 
@@ -325,7 +325,7 @@ Critere de cloture:
 | --- | --- | --- | --- |
 | Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
 | Lot 2 - Validation bloquante des settings runtime | clos | `eda1e752758f3c9694c822fa5a4fd47b715d2b51` | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
-| Lot 3 - Observabilite memoire et erreurs aval | ouvert |  |  |
+| Lot 3 - Observabilite memoire et erreurs aval | clos | `8e939c527d8805ffa3d300d56568483c7a05b926` | `retrieve_error` propage jusqu'a `memory_arbitration`, `prompt_prepared`, `/log` et Memory Admin; fail-open liste conserve pour les consommateurs historiques. |
 | Lot 4 - Preuves frontend reelles | ouvert |  |  |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |
 | Lot 6 - Findings stale et documentation source-of-truth | ouvert |  |  |
