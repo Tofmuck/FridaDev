@@ -81,6 +81,9 @@ Ce qu'on fait:
 - [ ] Desepaissir `app/server.py` par groupes de routes/services, en le ramenant vers un vrai role d'entree HTTP et d'orchestration.
 - [ ] Nettoyer le seam `app/admin/runtime_settings.py` + `app/web/admin.js` + tests associes (`app/tests/test_server_admin_settings_read_contract.py`, `app/tests/test_server_admin_settings_patch_contract.py`, `app/tests/test_server_admin_settings_validate_contract.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py`).
 
+Trace de progression:
+- [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 2 par extraction du seam HTTP `/api/admin/settings*` hors de `app/server.py` vers `app/admin/admin_settings_routes.py`, en conservant `app/admin/admin_settings_service.py` comme assemblage de reponses et `app/admin/runtime_settings.py` comme facade stable. Ce sous-lot ne pretend pas nettoyer completement `runtime_settings.py` ni `app/web/admin.js`.
+
 Ce qu'on ne fait pas encore:
 - ne pas transformer cette phase en refonte generale de tout l'admin ni en reouverture des roadmaps admin archivees.
 

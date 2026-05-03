@@ -33,7 +33,7 @@ from admin import (
     admin_identity_read_model_service,
     admin_logs,
     admin_hermeneutics_service,
-    admin_settings_service,
+    admin_settings_routes,
 )
 from admin import admin_actions
 from admin import runtime_settings
@@ -195,20 +195,6 @@ def enforce_admin_guard():
         return _admin_auth_error('missing_proxy_identity', 401, client_ip, identity=identity)
 
     return None
-
-
-_ADMIN_SETTINGS_PREFIX = '/api/admin/settings'
-_ADMIN_SETTINGS_ROUTE_SECTIONS = {
-    'main-model': 'main_model',
-    'arbiter-model': 'arbiter_model',
-    'summary-model': 'summary_model',
-    'stimmung-agent-model': 'stimmung_agent_model',
-    'validation-agent-model': 'validation_agent_model',
-    'embedding': 'embedding',
-    'database': 'database',
-    'services': 'services',
-    'resources': 'resources',
-}
 
 
 def _assistant_message_count(conversation: dict[str, Any]) -> int:
@@ -711,197 +697,7 @@ def api_chat():
 # ── /api/admin/* ──────────────────────────────────────────────────────────────
 
 
-def _admin_settings_section_response(section: str) -> dict[str, Any]:
-    return admin_settings_service.section_response(
-        section,
-        runtime_settings_module=runtime_settings,
-    )
-
-
-def _admin_settings_single_section_json(section: str):
-    return jsonify(
-        admin_settings_service.single_section_response(
-            section,
-            runtime_settings_module=runtime_settings,
-        )
-    )
-
-
-def _admin_settings_status_json():
-    return jsonify(
-        admin_settings_service.settings_status_response(
-            runtime_settings_module=runtime_settings,
-        )
-    )
-
-
-def _admin_settings_section_patch_response(section: str):
-    data = request.get_json(force=True, silent=True) or {}
-    payload, status = admin_settings_service.patch_section_response(
-        section,
-        data,
-        runtime_settings_module=runtime_settings,
-    )
-    return jsonify(payload), status
-
-
-def _admin_settings_section_validate_response(section: str):
-    data = request.get_json(force=True, silent=True)
-    payload, status = admin_settings_service.validate_section_response(
-        section,
-        data,
-        runtime_settings_module=runtime_settings,
-    )
-    return jsonify(payload), status
-
-
-@app.get(_ADMIN_SETTINGS_PREFIX)
-def api_admin_settings():
-    return jsonify(
-        admin_settings_service.aggregated_settings_response(
-            runtime_settings_module=runtime_settings,
-        )
-    )
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/status')
-def api_admin_settings_status():
-    return _admin_settings_status_json()
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
-def api_admin_settings_main_model_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model')
-def api_admin_settings_arbiter_model_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/summary-model')
-def api_admin_settings_summary_model_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model')
-def api_admin_settings_stimmung_agent_model_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model')
-def api_admin_settings_validation_agent_model_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/embedding')
-def api_admin_settings_embedding_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/database')
-def api_admin_settings_database_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/services')
-def api_admin_settings_services_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
-
-
-@app.get(f'{_ADMIN_SETTINGS_PREFIX}/resources')
-def api_admin_settings_resources_get():
-    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['resources'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/resources')
-def api_admin_settings_resources_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['resources'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/services')
-def api_admin_settings_services_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/database')
-def api_admin_settings_database_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/embedding')
-def api_admin_settings_embedding_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/summary-model')
-def api_admin_settings_summary_model_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model')
-def api_admin_settings_stimmung_agent_model_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model')
-def api_admin_settings_validation_agent_model_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model')
-def api_admin_settings_arbiter_model_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
-
-
-@app.patch(f'{_ADMIN_SETTINGS_PREFIX}/main-model')
-def api_admin_settings_main_model_patch():
-    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/main-model/validate')
-def api_admin_settings_main_model_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model/validate')
-def api_admin_settings_arbiter_model_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/summary-model/validate')
-def api_admin_settings_summary_model_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model/validate')
-def api_admin_settings_stimmung_agent_model_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/validation-agent-model/validate')
-def api_admin_settings_validation_agent_model_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['validation-agent-model'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/embedding/validate')
-def api_admin_settings_embedding_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['embedding'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/database/validate')
-def api_admin_settings_database_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['database'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/services/validate')
-def api_admin_settings_services_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['services'])
-
-
-@app.post(f'{_ADMIN_SETTINGS_PREFIX}/resources/validate')
-def api_admin_settings_resources_validate():
-    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['resources'])
+admin_settings_routes.register_admin_settings_routes(app)
 
 
 @app.get("/api/admin/logs")
