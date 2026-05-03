@@ -25,12 +25,8 @@ from core import conversations_prompt_window
 from core import conversations_service
 from core import whisper_transcription_service
 from admin import (
-    admin_identity_governance_service,
-    admin_identity_runtime_representations_service,
-    admin_identity_static_edit_service,
-    admin_identity_mutable_edit_service,
+    admin_identity_routes,
     admin_memory_service,
-    admin_identity_read_model_service,
     admin_logs,
     admin_hermeneutics_service,
     admin_settings_routes,
@@ -698,6 +694,15 @@ def api_chat():
 
 
 admin_settings_routes.register_admin_settings_routes(app)
+admin_identity_routes.register_admin_identity_routes(
+    app,
+    memory_store_module=memory_store,
+    identity_module=identity,
+    static_identity_content_module=static_identity_content,
+    log_store_module=log_store,
+    admin_logs_module=admin_logs,
+    runtime_settings_module=runtime_settings,
+)
 
 
 @app.get("/api/admin/logs")
@@ -833,73 +838,6 @@ def api_admin_chat_logs_export_markdown():
 def api_admin_restart():
     admin_actions.restart_runtime_async("FridaDev")
     return jsonify({"ok": True, "target": "FridaDev", "mode": "container_self_exit"})
-
-
-@app.get('/api/admin/identity/read-model')
-def api_admin_identity_read_model():
-    payload, status = admin_identity_read_model_service.identity_read_model_response(
-        request.args,
-        memory_store_module=memory_store,
-        identity_module=identity,
-        static_identity_content_module=static_identity_content,
-        log_store_module=log_store,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/admin/identity/runtime-representations')
-def api_admin_identity_runtime_representations():
-    payload, status = admin_identity_runtime_representations_service.identity_runtime_representations_response(
-        identity_module=identity,
-        memory_store_module=memory_store,
-        log_store_module=log_store,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/admin/identity/mutable')
-def api_admin_identity_mutable_edit():
-    data = request.get_json(force=True, silent=True) or {}
-    payload, status = admin_identity_mutable_edit_service.identity_mutable_edit_response(
-        data,
-        memory_store_module=memory_store,
-        admin_logs_module=admin_logs,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/admin/identity/static')
-def api_admin_identity_static_edit():
-    data = request.get_json(force=True, silent=True) or {}
-    payload, status = admin_identity_static_edit_service.identity_static_edit_response(
-        data,
-        static_identity_content_module=static_identity_content,
-        admin_logs_module=admin_logs,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/admin/identity/governance')
-def api_admin_identity_governance():
-    payload, status = admin_identity_governance_service.identity_governance_response(
-        request.args,
-        runtime_settings_module=runtime_settings,
-        identity_module=identity,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/admin/identity/governance')
-def api_admin_identity_governance_update():
-    data = request.get_json(force=True, silent=True) or {}
-    payload, status = admin_identity_governance_service.identity_governance_update_response(
-        data,
-        runtime_settings_module=runtime_settings,
-        admin_logs_module=admin_logs,
-        identity_module=identity,
-    )
-    return jsonify(payload), status
-
 
 
 @app.get('/api/admin/hermeneutics/identity-candidates')
