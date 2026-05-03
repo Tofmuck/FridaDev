@@ -15,6 +15,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Current-state
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
+- Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
+- Remediation active de l'audit global: `todo-todo/audits/fridadev-global-audit-remediation-todo.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
 
@@ -39,6 +41,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Cleanup / refactor repo
 
 Lire d'abord:
+- `todo-todo/audits/fridadev-global-audit-remediation-todo.md` pour les corrections actives issues de l'audit global du 2026-05-03.
+- `states/audits/fridadev-global-audit-2026-05-03.md` pour la source de verite des findings.
 - `todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - `todo-done/audits/fridadev_repo_audit.md`
 - `states/architecture/fridadev-current-runtime-pipeline.md`
@@ -122,6 +126,7 @@ Surfaces a distinguer:
 
 - `states/specs/`: specs normatives
 - `states/architecture/`: conventions, cartographies et cadrages architecturaux
+- `states/audits/`: audits globaux ou transverses dates servant de source de verite
 - `states/operations/`: guides operatoires et runbooks
 - `states/baselines/`: baselines et photos techniques datees
 - `states/project/`: etats projet de reference
@@ -138,6 +143,7 @@ Surfaces a distinguer:
 - `todo-todo/memory/`: roadmaps memoire/hermeneutique ouvertes
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
 - `todo-todo/admin/`: roadmaps admin ouvertes
+- `todo-todo/audits/`: plans actifs de remediation issus d'audits
 - `todo-todo/migration/`: reserve pour futurs chantiers ouverts
 - `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes
 
