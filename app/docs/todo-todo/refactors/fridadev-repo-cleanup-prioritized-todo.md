@@ -111,6 +111,7 @@ Ce qu'on fait:
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 3 par extraction du seam runtime inputs / signaux amont du tour de chat vers `app/core/chat_turn_runtime_inputs.py`. Ce seam passe le gate lisibilite/maintenabilite parce qu'il regroupe un sous-domaine stable deja borne par les inputs canoniques, le web runtime payload et le stage `stimmung_agent`, tout en laissant `chat_response(...)`, `_run_hermeneutic_node_insertion_point(...)`, le transport `/api/chat` et `app/web/app.js` hors lot.
+- [x] Sous-lot 2 livre le `2026-05-03`: ouverture de `app/web/app.js` par extraction du seam stream frontend vers `app/web/chat_streaming.js`, charge explicitement avant `app/web/app.js`. Ce seam passe le gate parce qu'il regroupe la taxonomie d'erreurs observable, la state machine UI de streaming, les control frames et les marqueurs d'assistant interrompu deja couverts par tests Node, sans ouvrir le store, le render global, la dictation, le reseau hors stream ni le backend chat.
 
 Ce qu'on ne fait pas encore:
 - ne pas rouvrir ici les chantiers doctrinaux hermeneutiques ou identity deja archives.

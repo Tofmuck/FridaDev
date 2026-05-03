@@ -27,7 +27,7 @@ const {
   getStreamingUiStateMeta,
   getObservableStreamErrorMeta,
   hasVisibleAssistantContent,
-} = require('../../../web/app.js');
+} = require('../../../web/chat_streaming.js');
 
 test('reduceStreamingUiState covers the normal preparing-to-done lifecycle', () => {
   let state = null;

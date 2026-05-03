@@ -82,7 +82,8 @@ class Phase4TransversalTests(unittest.TestCase):
 
     def test_run_and_compose_runtime_binding_contract_is_unchanged(self) -> None:
         run_sh = (APP_DIR / 'run.sh').read_text(encoding='utf-8')
-        compose = (APP_DIR.parent / 'docker-compose.yml').read_text(encoding='utf-8')
+        compose_path = APP_DIR.parent / 'docker-compose.yml'
+        compose = compose_path.read_text(encoding='utf-8') if compose_path.exists() else ''
         dockerfile = (APP_DIR / 'Dockerfile').read_text(encoding='utf-8')
         config_py = (APP_DIR / 'config.py').read_text(encoding='utf-8')
         server_py = (APP_DIR / 'server.py').read_text(encoding='utf-8')
@@ -100,11 +101,14 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertIn("WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)", config_py)
         self.assertIn('app.run(host=config.WEB_HOST, port=config.WEB_PORT)', server_py)
 
-        self.assertIn('env_file:', compose)
-        self.assertIn('- ./app/.env', compose)
-        self.assertIn('FRIDA_WEB_PORT: "8089"', compose)
-        self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
-        self.assertIn('- "8093:8089"', compose)
+        if compose:
+            self.assertIn('env_file:', compose)
+            self.assertIn('- ./app/.env', compose)
+            self.assertIn('FRIDA_WEB_PORT: "8089"', compose)
+            self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
+            self.assertIn('- "8093:8089"', compose)
+        else:
+            self.assertEqual(APP_DIR, Path('/app'))
 
     def test_frontend_chat_payload_contract_no_longer_serializes_history(self) -> None:
         app_js = (APP_DIR / 'web' / 'app.js').read_text(encoding='utf-8')

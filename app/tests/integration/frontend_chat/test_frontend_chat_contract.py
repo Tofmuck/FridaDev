@@ -95,6 +95,7 @@ class AppPhase8Tests(unittest.TestCase):
 
     def test_streaming_front_keeps_pre_body_updated_at_header_out_of_stream_contract_and_uses_terminal_metadata(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")
 
         self.assertIn('if (contentType.includes("application/json")) {', app_source)
         self.assertIn('updated_at: updatedAt || (thread ? thread.updated_at : null),', app_source)
@@ -103,7 +104,7 @@ class AppPhase8Tests(unittest.TestCase):
             'setThreadMeta(threadId, {\n        conversation_id: convId || (thread ? thread.conversation_id : null),\n        created_at: createdAt || (thread ? thread.created_at : null),\n      });',
             app_source,
         )
-        self.assertIn('const updatedAt = String(payload.updated_at || "").trim();', app_source)
+        self.assertIn('const updatedAt = String(payload.updated_at || "").trim();', streaming_source)
         self.assertIn('const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);', app_source)
         self.assertIn('applyConversationTerminalMeta(requestThreadId, replyTerminal);', app_source)
 
@@ -159,19 +160,26 @@ class AppPhase8Tests(unittest.TestCase):
 
     def test_streaming_front_wires_observable_ux_states_without_changing_the_stream_contract(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")
         submit_block = app_source.split('ask.addEventListener("submit", async (e) => {', 1)[1]
         send_block = app_source.split('async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){', 1)[1]
 
-        self.assertIn('const STREAMING_UI_STATE_PREPARING = "preparing";', app_source)
-        self.assertIn('const STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT = "waiting_visible_content";', app_source)
-        self.assertIn('const STREAMING_UI_STATE_STREAMING = "streaming";', app_source)
-        self.assertIn('const STREAMING_UI_STATE_DONE = "done";', app_source)
-        self.assertIn('const STREAMING_UI_STATE_INTERRUPTED = "interrupted";', app_source)
-        self.assertIn('const STREAM_ERROR_KIND_UPSTREAM = "upstream_error";', app_source)
-        self.assertIn('const STREAM_ERROR_KIND_SERVER = "server_error";', app_source)
-        self.assertIn('const STREAM_ERROR_KIND_NETWORK = "network_error";', app_source)
-        self.assertIn('const ASSISTANT_TURN_META_KEY = "assistant_turn";', app_source)
-        self.assertIn('const ASSISTANT_TURN_STATUS_INTERRUPTED = "interrupted";', app_source)
+        self.assertIn('<script src="chat_streaming.js"></script>', index_source)
+        self.assertLess(
+            index_source.index('<script src="chat_streaming.js"></script>'),
+            index_source.index('<script src="app.js"></script>'),
+        )
+        self.assertIn('const STREAMING_UI_STATE_PREPARING = "preparing";', streaming_source)
+        self.assertIn('const STREAMING_UI_STATE_WAITING_VISIBLE_CONTENT = "waiting_visible_content";', streaming_source)
+        self.assertIn('const STREAMING_UI_STATE_STREAMING = "streaming";', streaming_source)
+        self.assertIn('const STREAMING_UI_STATE_DONE = "done";', streaming_source)
+        self.assertIn('const STREAMING_UI_STATE_INTERRUPTED = "interrupted";', streaming_source)
+        self.assertIn('const STREAM_ERROR_KIND_UPSTREAM = "upstream_error";', streaming_source)
+        self.assertIn('const STREAM_ERROR_KIND_SERVER = "server_error";', streaming_source)
+        self.assertIn('const STREAM_ERROR_KIND_NETWORK = "network_error";', streaming_source)
+        self.assertIn('const ASSISTANT_TURN_META_KEY = "assistant_turn";', streaming_source)
+        self.assertIn('const ASSISTANT_TURN_STATUS_INTERRUPTED = "interrupted";', streaming_source)
         self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_REQUEST_STARTED);', submit_block)
         self.assertIn('applyAssistantStreamingUiEvent(assistantNode, STREAMING_UI_EVENT_VISIBLE_CONTENT);', submit_block)
         self.assertIn('onStreamEvent(event) {', submit_block)
@@ -185,22 +193,23 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('return { text, terminal };', send_block)
 
     def test_streaming_front_exposes_a_small_observable_error_taxonomy(self) -> None:
-        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")
 
-        self.assertIn('statusLabel: "Interrompu par le modèle"', app_source)
-        self.assertIn('bubbleMessage: "Réponse interrompue par le modèle."', app_source)
-        self.assertIn('statusLabel: "Interrompu côté serveur"', app_source)
-        self.assertIn('bubbleMessage: "Réponse interrompue côté serveur."', app_source)
-        self.assertIn('statusLabel: "Connexion interrompue"', app_source)
-        self.assertIn('bubbleMessage: "Connexion interrompue pendant la réponse."', app_source)
-        self.assertIn('STREAM_SERVER_ERROR_CODES = new Set([', app_source)
-        self.assertIn('errorCode === STREAM_ERROR_KIND_UPSTREAM', app_source)
+        self.assertIn('statusLabel: "Interrompu par le modèle"', streaming_source)
+        self.assertIn('bubbleMessage: "Réponse interrompue par le modèle."', streaming_source)
+        self.assertIn('statusLabel: "Interrompu côté serveur"', streaming_source)
+        self.assertIn('bubbleMessage: "Réponse interrompue côté serveur."', streaming_source)
+        self.assertIn('statusLabel: "Connexion interrompue"', streaming_source)
+        self.assertIn('bubbleMessage: "Connexion interrompue pendant la réponse."', streaming_source)
+        self.assertIn('STREAM_SERVER_ERROR_CODES = new Set([', streaming_source)
+        self.assertIn('errorCode === STREAM_ERROR_KIND_UPSTREAM', streaming_source)
 
     def test_streaming_front_rehydrates_persisted_interrupted_assistant_markers_via_message_meta(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")
 
-        self.assertIn('function buildInterruptedAssistantTurnMeta(errorCode) {', app_source)
-        self.assertIn('function getPersistedAssistantTurnErrorMeta(message) {', app_source)
+        self.assertIn('function buildInterruptedAssistantTurnMeta(errorCode) {', streaming_source)
+        self.assertIn('function getPersistedAssistantTurnErrorMeta(message) {', streaming_source)
         self.assertIn('if (m.meta && typeof m.meta === "object") {', app_source)
         self.assertIn('sanitizedMessage.meta = m.meta;', app_source)
         self.assertIn('const persistedErrorMeta = getPersistedAssistantTurnErrorMeta(messageRecord);', app_source)

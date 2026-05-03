@@ -8,7 +8,7 @@ const {
   createStreamControlParser,
   createStreamTerminalError,
   getObservableStreamErrorMeta,
-} = require('../../../web/app.js');
+} = require('../../../web/chat_streaming.js');
 
 test('createStreamControlParser keeps visible prose clean and returns done terminal across chunk boundaries', () => {
   let visibleText = '';
