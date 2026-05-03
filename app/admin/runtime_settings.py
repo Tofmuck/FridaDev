@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
@@ -12,6 +11,7 @@ from admin import (
     runtime_settings_repo,
     runtime_settings_runtime_resolution,
     runtime_settings_validation,
+    runtime_settings_write_path,
 )
 from admin.runtime_settings_spec import (
     FieldSpec,
@@ -34,6 +34,7 @@ from core.hermeneutic_node.inputs import recent_window_input as canonical_recent
 # 3) runtime section validation -> admin.runtime_settings_validation (this tranche)
 # 4) admin API view assembly -> admin.runtime_settings_api_view (this tranche)
 # 5) runtime section/secret resolution -> admin.runtime_settings_runtime_resolution (this tranche)
+# 6) admin patch/write path -> admin.runtime_settings_write_path (this tranche)
 # runtime_settings.py remains the stable public facade during transition.
 
 
@@ -507,84 +508,13 @@ def get_runtime_secret_value(
     )
 
 
-def _coerce_field_value(section: str, field: str, value: Any) -> Any:
-    spec = get_field_spec(section, field)
-    field_ref = f'{section}.{field}'
-
-    if spec.value_type == 'text':
-        if not isinstance(value, str):
-            raise RuntimeSettingsValidationError(f'invalid text value for {field_ref}')
-        return value
-
-    if spec.value_type == 'int':
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise RuntimeSettingsValidationError(f'invalid int value for {field_ref}')
-        return int(value)
-
-    if spec.value_type == 'float':
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise RuntimeSettingsValidationError(f'invalid float value for {field_ref}')
-        return float(value)
-
-    raise RuntimeSettingsValidationError(f'unsupported value type for {field_ref}: {spec.value_type}')
-
-
 def normalize_admin_patch_payload(section: str, payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
-    get_section_spec(section)
-    if not isinstance(payload, Mapping) or not payload:
-        raise RuntimeSettingsValidationError(f'patch payload must be a non-empty mapping for {section}')
-
-    normalized: dict[str, dict[str, Any]] = {}
-    for field_name, raw_value in payload.items():
-        try:
-            spec = get_field_spec(section, str(field_name))
-        except KeyError as exc:
-            raise RuntimeSettingsValidationError(str(exc)) from exc
-        field_ref = f'{section}.{field_name}'
-
-        if not isinstance(raw_value, Mapping):
-            raise RuntimeSettingsValidationError(f'field patch must be a mapping for {field_ref}')
-
-        if spec.is_secret:
-            has_replace_value = 'replace_value' in raw_value
-            has_plain_value = 'value' in raw_value
-            has_encrypted_value = 'value_encrypted' in raw_value
-
-            if has_plain_value or has_encrypted_value:
-                raise RuntimeSettingsValidationError(
-                    f'ambiguous secret patch payload for {field_ref}: use replace_value only'
-                )
-            if not has_replace_value:
-                raise RuntimeSettingsValidationError(f'missing replace_value for {field_ref}')
-
-            replace_value = raw_value.get('replace_value')
-            if not isinstance(replace_value, str):
-                raise RuntimeSettingsValidationError(f'invalid text value for {field_ref}')
-            try:
-                encrypted_value = runtime_secrets.encrypt_runtime_secret_value(replace_value)
-            except runtime_secrets.RuntimeSettingsCryptoKeyMissingError as exc:
-                raise RuntimeSettingsValidationError(str(exc)) from exc
-            except runtime_secrets.RuntimeSettingsCryptoEngineError as exc:
-                raise RuntimeSettingsValidationError(f'failed to encrypt secret for {field_ref}') from exc
-
-            normalized[str(field_name)] = {
-                'is_secret': True,
-                'is_set': True,
-                'origin': 'admin_ui',
-                'value_encrypted': encrypted_value,
-            }
-            continue
-
-        if 'value' not in raw_value:
-            raise RuntimeSettingsValidationError(f'missing value for {field_ref}')
-
-        normalized[str(field_name)] = {
-            'value': _coerce_field_value(section, str(field_name), raw_value.get('value')),
-            'is_secret': False,
-            'origin': 'admin_ui',
-        }
-
-    return normalized
+    return runtime_settings_write_path.normalize_admin_patch_payload(
+        section,
+        payload,
+        validation_error_cls=RuntimeSettingsValidationError,
+        encrypt_runtime_secret_value=runtime_secrets.encrypt_runtime_secret_value,
+    )
 
 
 def update_runtime_section(
@@ -594,72 +524,19 @@ def update_runtime_section(
     updated_by: str = 'admin_api',
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
-    actor = str(updated_by or '').strip() or 'admin_api'
-    normalized_patch = normalize_admin_patch_payload(section, patch_payload)
-    current_view = get_runtime_section(section, fetcher=fetcher)
-    next_payload = normalize_stored_payload(section, current_view.payload, default_origin=current_view.source_reason)
-    next_payload.update(normalized_patch)
-
-    try:
-        import psycopg
-        from psycopg import errors as psycopg_errors
-    except Exception as exc:  # pragma: no cover - dependency issue, not business logic
-        raise RuntimeSettingsDbUnavailableError(f'psycopg unavailable: {exc}') from exc
-
-    try:
-        with psycopg.connect(config.FRIDA_MEMORY_DB_DSN) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT payload
-                    FROM runtime_settings
-                    WHERE section = %s
-                    ''',
-                    (section,),
-                )
-                row = cur.fetchone()
-                if row:
-                    before_payload = normalize_stored_payload(section, row[0], default_origin='db')
-                else:
-                    before_payload = {}
-
-                cur.execute(
-                    '''
-                    INSERT INTO runtime_settings (section, schema_version, updated_by, payload)
-                    VALUES (%s, 'v1', %s, %s::jsonb)
-                    ON CONFLICT (section) DO UPDATE
-                    SET schema_version = EXCLUDED.schema_version,
-                        updated_at = now(),
-                        updated_by = EXCLUDED.updated_by,
-                        payload = EXCLUDED.payload
-                    ''',
-                    (section, actor, json.dumps(next_payload)),
-                )
-                cur.execute(
-                    '''
-                    INSERT INTO runtime_settings_history (
-                        section,
-                        schema_version,
-                        changed_by,
-                        payload_before,
-                        payload_after
-                    )
-                    VALUES (%s, 'v1', %s, %s::jsonb, %s::jsonb)
-                    ''',
-                    (section, actor, json.dumps(before_payload), json.dumps(next_payload)),
-                )
-            conn.commit()
-    except psycopg_errors.UndefinedTable as exc:
-        raise RuntimeSettingsDbUnavailableError(f'runtime settings tables missing: {exc}') from exc
-    except Exception as exc:
-        raise RuntimeSettingsDbUnavailableError(str(exc)) from exc
-
-    invalidate_runtime_settings_cache()
-    return RuntimeSectionView(
-        section=section,
-        payload=redact_payload_for_api(section, next_payload),
-        source='db',
-        source_reason='db_row',
+    return runtime_settings_write_path.update_runtime_section(
+        section,
+        patch_payload,
+        updated_by=updated_by,
+        fetcher=fetcher,
+        dsn=config.FRIDA_MEMORY_DB_DSN,
+        get_runtime_section=get_runtime_section,
+        normalize_admin_patch_payload=normalize_admin_patch_payload,
+        normalize_stored_payload=normalize_stored_payload,
+        redact_payload_for_api=redact_payload_for_api,
+        invalidate_runtime_settings_cache=invalidate_runtime_settings_cache,
+        runtime_section_view_cls=RuntimeSectionView,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
     )
 
 
