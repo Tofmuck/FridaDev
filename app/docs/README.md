@@ -1,26 +1,132 @@
-# Docs
+# Docs - hub mainteneur
 
-Organisation finale retenue:
+Cette racine reste volontairement minimale: `app/docs/README.md` est la porte d'entree mainteneur pour choisir quoi lire, pas un deuxieme etat projet.
 
-- `states/`: references stables (specs, baselines, policies, etats projet) + archive `legacy/`
-- `todo-done/`: preuves de chantiers termines (audits, validations, refactors, notes, migrations, archives produit)
-- `todo-todo/`: chantiers ouverts organises par domaine
+Regle de classement:
 
-Regle simple:
+- `states/`: references stables, specs, baselines, politiques, operations et etats projet.
+- `todo-done/`: preuves de chantiers termines, audits, validations, migrations, refactors et notes archivees.
+- `todo-todo/`: chantiers ouverts, organises par domaine.
 
-- ce qui decrit un etat de reference va dans `states/`
-- ce qui prouve un travail boucle va dans `todo-done/`
-- ce qui pilote un travail a faire va dans `todo-todo/`
+Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne la vue produit/runtime generale; ce fichier oriente dans la documentation structuree.
 
-Sous-structure en place:
+## Portes d'entree mainteneur
+
+### Current-state
+
+- Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
+- Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
+- Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
+
+### Doctrine active
+
+- Pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
+- Voix / identite / reprise apres ecart temporel: `states/specs/chat-enunciation-and-gap-contract.md`
+- Plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
+- Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
+- Protocole streaming public: `states/specs/streaming-protocol.md`
+
+### Archives utiles
+
+- Migration OVH et chemins runtime: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
+- Cloture operatoire du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
+- Grande roadmap hermeneutique archivee: `todo-done/notes/hermeneutical-add-todo.md`
+- Bascule vers un arbitre de reponse LLM dominant: `todo-done/refactors/llm-dominant-response-arbiter-todo.md`
+- Fiabilisation archivee du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
+
+## Docs a lire d'abord selon le chantier
+
+### Cleanup / refactor repo
+
+Lire d'abord:
+- `todo-todo/refactors/fridadev-repo-cleanup-prioritized-todo.md`
+- `todo-done/audits/fridadev_repo_audit.md`
+- `states/architecture/fridadev-current-runtime-pipeline.md`
+
+But: ouvrir des lots petits, bornes et reversibles sans relancer un audit large.
+
+### Runtime courant / chat
+
+Lire d'abord:
+- `states/architecture/fridadev-current-runtime-pipeline.md`
+- `states/specs/streaming-protocol.md`
+- `states/specs/chat-enunciation-and-gap-contract.md`
+- `states/specs/response-arbiter-power-contract.md`
+
+Archives utiles:
+- `todo-done/product/frida-response-streaming-todo.md`
+- `todo-done/notes/chat-enunciation-gap-validation-todo.md`
+
+### Identity / doctrine
+
+Lire d'abord:
+- `states/policies/identity-new-contract-plan.md`
+- `todo-done/refactors/identity-new-contract-todo.md`
+
+Regle de lecture: garder ces deux references distinctes. Le plan reste doctrinal et actif; l'archive conserve la trace du chantier termine.
+
+Specs liees:
+- `states/specs/identity-read-model-contract.md`
+- `states/specs/identity-surface-contract.md`
+- `states/specs/identity-static-edit-contract.md`
+- `states/specs/identity-mutable-edit-contract.md`
+- `states/specs/identity-governance-contract.md`
+
+### Memory / hermeneutics
+
+Lire d'abord:
+- `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- `states/architecture/memory-rag-current-pipeline-cartography.md`
+- `states/specs/memory-admin-surface-contract.md`
+- `states/specs/memory-rag-pre-arbiter-basket-contract.md`
+- `states/specs/memory-rag-summaries-lane-contract.md`
+
+Baselines et evaluations:
+- `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
+- `states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
+- `states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
+- `states/baselines/memory-rag-8C-evaluation-2026-04-10.md`
+- `states/specs/memory-rag-evaluation-sheet.md`
+
+Archives utiles:
+- `todo-done/refactors/memory-rag-relevance-todo.md`
+- `todo-done/refactors/hermeneutic-convergence-node-todo.md`
+- `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md`
+- `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
+
+### Install / operations
+
+Lire d'abord:
+- `states/operations/frida-installation-operations.md`
+- `todo-todo/product/Frida-installation-config.md`
+- `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
+
+Rappel: les secrets, `.env`, DSN complets et tokens runtime ne doivent pas etre affiches dans les docs, commits ou reponses.
+
+### Admin / surfaces
+
+Lire d'abord:
+- `states/specs/memory-admin-surface-contract.md`
+- `todo-done/refactors/admin-todo.md`
+- `todo-done/refactors/log-module-todo.md`
+- `todo-done/refactors/log-followups-todo.md`
+
+Surfaces a distinguer:
+- `/admin`: runtime settings et configuration operateur
+- `/log`: timeline brute, filtres, export et suppressions scopees
+- `/memory-admin`: observabilite memoire / RAG
+- `/hermeneutic-admin`: detail pipeline hermeneutique et identity
+- `/identity`: pilotage canonique des couches identitaires
+
+## Carte des dossiers
 
 - `states/specs/`: specs normatives
+- `states/architecture/`: conventions, cartographies et cadrages architecturaux
+- `states/operations/`: guides operatoires et runbooks
 - `states/baselines/`: baselines et photos techniques datees
-- `states/project/`: etats de reference projet (FR/EN)
-- `states/policies/`: politiques de retention/gouvernance
-- `states/legacy/`: archives legacy explicites (`PROJET.md`, `sanity-frida-mini.md`)
-- `states/architecture/`: conventions et cadrage architectural
-- `states/operations/`: guides operatoires
+- `states/project/`: etats projet de reference
+- `states/policies/`: politiques et gouvernance
+- `states/legacy/`: archives legacy explicites
 
 - `todo-done/audits/`: audits finalises
 - `todo-done/validations/`: rapports de validation
@@ -33,77 +139,29 @@ Sous-structure en place:
 - `todo-todo/product/`: roadmaps produit/installation ouvertes
 - `todo-todo/admin/`: roadmaps admin ouvertes
 - `todo-todo/migration/`: reserve pour futurs chantiers ouverts
-- `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes (cas ponctuels)
+- `todo-todo/refactors/`: roadmaps de refactor structurel ouvertes
 
-## Mini-index
+## Autres references utiles
 
-Current-state:
-- audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
-- cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
-- etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
+- Baseline schema de base: `states/baselines/database-schema-baseline.md`
+- Decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
+- Design du candidate generation memoire/RAG: `states/architecture/memory-rag-candidate-generation-design.md`
+- Validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
+- Note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
+- Note archivee Whisper V1: `todo-done/notes/integration-whisper-v1-closure.md`
+- Roadmap archivee surface `/identity` canonique: `todo-done/refactors/identity-surface-canonical-layout-todo.md`
+- Roadmap archivee separation doctrinale `identity` / `prompt`: `todo-done/refactors/identity-vs-prompt-separation-todo.md`
+- Trace archivee follow-up audit complet 2026-04-04: `todo-done/audits/fridadev-audit-followup-2026-04-04.md`
+- Note archivee lecture web URL explicite / Crawl4AI: `todo-done/notes/web-reading-truth-todo.md`
+- Note archivee dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
+- Note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
+- Roadmap ouverte memoire de moment contextuel: `todo-todo/memory/memory-contextual-moments-todo.md`
+- Roadmap archivee `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`
+- Grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
 
-Doctrine active:
-- pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
-- voix / identite / gap du chat: `states/specs/chat-enunciation-and-gap-contract.md`
-- plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
+## Notes de maintenance
 
-Archives utiles:
-- migration OVH et chemins runtime: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
-- grande roadmap hermeneutique archivee: `todo-done/notes/hermeneutical-add-todo.md`
-- cloture operatoire du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
-
-Notes:
-- la racine `app/docs` est volontairement minimale et ne garde que ce `README.md`
-- audit repo canonique current-state: `todo-done/audits/fridadev_repo_audit.md`
-- cartographie one-glance du pipeline runtime FridaDev: `states/architecture/fridadev-current-runtime-pipeline.md`
-- etat projet FR 03/04/2026: `states/project/Frida-State-french-03-04-26.md`
-- etat projet EN 03/04/2026: `states/project/Frida-State-english-03-04-26.md`
-- decision projet reranker memoire/RAG 2026-04-11: `states/project/memory-rag-reranker-decision-2026-04-11.md`
-- contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
-- doctrine produit voix / identite / gap du chat: `states/specs/chat-enunciation-and-gap-contract.md`
-- spec source-of-truth du protocole streaming des reponses: `states/specs/streaming-protocol.md`
-- baseline schema de base: `states/baselines/database-schema-baseline.md`
-- baseline Phase 0 pertinence memoire/RAG 2026-04-10: `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
-- baseline d'evaluation Lot 6A memoire/RAG 2026-04-10: `states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
-- baseline d'evaluation Lot 7B memoire/RAG 2026-04-10: `states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
-- baseline d'evaluation Lot 8C memoire/RAG 2026-04-10: `states/baselines/memory-rag-8C-evaluation-2026-04-10.md`
-- cartographie courante du pipeline memoire/RAG: `states/architecture/memory-rag-current-pipeline-cartography.md`
-- design du candidate generation memoire/RAG: `states/architecture/memory-rag-candidate-generation-design.md`
-- contrat cible du panier pre-arbitre memoire/RAG: `states/specs/memory-rag-pre-arbiter-basket-contract.md`
-- contrat minimal de la voie `summaries` memoire/RAG: `states/specs/memory-rag-summaries-lane-contract.md`
-- feuille d'evaluation normative memoire/RAG: `states/specs/memory-rag-evaluation-sheet.md`
-- validation de cloture Phase 10E Memory Admin: `todo-done/validations/memory-admin-phase10e-validation-2026-04-12.md`
-- guide operatoire installation/exploitation initiale: `states/operations/frida-installation-operations.md`
-- roadmap ouverte migration/config: `todo-todo/product/Frida-installation-config.md`
-- TODO ouvert de nettoyage priorise du repo: `todo-todo/refactors/fridadev-repo-cleanup-prioritized-todo.md`
-- note archivee de cloture prompt-first voix / identite / gap du chat: `todo-done/notes/chat-enunciation-gap-validation-todo.md`
-- note de travail ouverte externalisation reglee des facultes: `todo-todo/product/fridadev-externalisation-reglee-des-facultes-todo.md`
-- roadmap archivee fiabilisation du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
-- note archivee de cloture V1 integration Whisper pour la saisie vocale: `todo-done/notes/integration-whisper-v1-closure.md`
-- trace archivee migration `tofnas` -> `frida-system.fr`: `todo-done/migrations/fridadev-to-frida-system-migration-todo.md`
-- roadmap archivee surface de controle / gouvernance identity: `todo-done/refactors/identity-control-surface-todo.md`
-- mini-lot admin archive `mode depuis / observation du mode`: `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
-- roadmap archivee surface `/identity` canonique: `todo-done/refactors/identity-surface-canonical-layout-todo.md`
-- roadmap archivee separation doctrinale `identity` / `prompt`: `todo-done/refactors/identity-vs-prompt-separation-todo.md`
-- trace archivee follow-up audit complet 2026-04-04: `todo-done/audits/fridadev-audit-followup-2026-04-04.md`
-- note archivee de cloture lecture web URL explicite / Crawl4AI: `todo-done/notes/web-reading-truth-todo.md`
-- note archivee de cloture mini-lot dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
-- note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
-- TODO ouvert de post-stabilisation memoire/hermeneutique: `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
-- spec vivante lot 1 du pouvoir de l'arbitre de reponse: `states/specs/response-arbiter-power-contract.md`
-- archive operatoire du chantier de bascule vers un arbitre de reponse LLM dominant sous garde-fous: `todo-done/refactors/llm-dominant-response-arbiter-todo.md`
-- plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
-- archive operatoire de cloture du nouveau contrat identitaire: `todo-done/refactors/identity-new-contract-todo.md`
-- regle de lecture identity: ne pas re-fusionner ces deux documents; le `plan` reste doctrinal et actif, l'archive conserve la trace du chantier termine
-- archive de la grande roadmap hermeneutique: `todo-done/notes/hermeneutical-add-todo.md`
-- roadmap ouverte memoire de moment contextuel: `todo-todo/memory/memory-contextual-moments-todo.md`
-- roadmap archivee pertinence memoire/RAG: `todo-done/refactors/memory-rag-relevance-todo.md`
-- trace archivee suspension excessive / auto-web backend: `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md`
-- roadmap Lot 9 archivee noeud de convergence hermeneutique: `todo-done/refactors/hermeneutic-convergence-node-todo.md`
-- roadmap archivee refactor structurel `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`
-- TODO produit grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
-- TODO principal logs applicatifs archive: `todo-done/refactors/log-module-todo.md`
-- TODO follow-up logs archive: `todo-done/refactors/log-followups-todo.md`
-- serie historique des etats projet precedents: `states/project/Frida-State-*-23-03-26.md` et `states/project/Frida-State-*-28-03-26.md`
-- les anciennes roadmaps `Migration_FridaDev-todo.md` et `memory-todo.md` sont archivees dans `todo-done/migrations/`
-- nettoyage faible valeur deja applique: `todo-done/patch_done.md` et `todo-todo/smart-todo.md` supprimes
+- La racine `app/docs` ne doit garder que ce `README.md`.
+- Les anciennes roadmaps Migration_FridaDev-todo.md et memory-todo.md sont archivees dans `todo-done/migrations/`.
+- Les nettoyages faibles valeur patch_done.md et smart-todo.md ont ete supprimes.
+- Toute doc qui change un comportement runtime, une attente operateur, une limite ou une regle source-of-truth doit etre mise a jour dans le meme cycle que le patch concerne.

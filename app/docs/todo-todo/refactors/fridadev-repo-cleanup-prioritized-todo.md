@@ -153,11 +153,20 @@ Ce qu'on ne fait pas ici:
 Pourquoi maintenant: la doc est deja structuree, donc le gain principal vient d'une meilleure navigation apres les coutures code/tests les plus couteuses.
 
 Ce qu'on fait:
-- [ ] Rendre plus visibles les portes d'entree `current-state`, `doctrine active` et `archives utiles`.
-- [ ] Ajouter depuis `app/docs/README.md` des liens courts vers les ancres documentaires les plus utiles pour les mainteneurs.
-- [ ] Clarifier les "docs a lire d'abord" pour un chantier transversal de nettoyage.
+- [x] Rendre plus visibles les portes d'entree `current-state`, `doctrine active` et `archives utiles`.
+- [x] Ajouter depuis `app/docs/README.md` des liens courts vers les ancres documentaires les plus utiles pour les mainteneurs.
+- [x] Clarifier les "docs a lire d'abord" pour un chantier transversal de nettoyage.
 
-Ce qu'on ne fait pas encore:
+Trace de progression:
+- [x] Lot docs-only livre le `2026-05-03`: fermeture de la phase 5 par transformation de `app/docs/README.md` en hub mainteneur canonique. Ce lot rend visibles les portes `Current-state`, `Doctrine active` et `Archives utiles`, ajoute des chemins de lecture par chantier (`cleanup`, runtime, identity, memory, install, admin) et remplace la longue liste plate par des groupes stables, sans reorganiser `app/docs/`, sans toucher au runtime et sans creer d'index concurrent.
+
+Point de sortie pratique:
+- phase 5 cloturable maintenant;
+- objectif utile atteint sur la navigation documentaire;
+- pas de sous-lots docs supplementaires pour multiplier les liens ou relancer un chantier editorial;
+- la suite de ce cleanup ne doit pas prolonger la phase 5 par inertie.
+
+Ce qu'on ne fait pas ici:
 - ne pas relancer un rangement massif ni une fusion de roadmaps archivees.
 
 ## Peut attendre
