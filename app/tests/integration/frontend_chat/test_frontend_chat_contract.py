@@ -151,8 +151,10 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', success_block)
         self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', success_block)
         self.assertIn('const errorMeta = getObservableStreamErrorMeta(err);', catch_block)
-        self.assertIn('applyAssistantStreamingFailure(assistantNode, errorMeta);', catch_block)
-        self.assertIn('assistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
+        self.assertIn('let rehydratedAfterUnpersistedTerminalError = false;', catch_block)
+        self.assertIn('const visibleAssistantNode = rehydratedAfterUnpersistedTerminalError && !assistantNode.wrapper.isConnected', catch_block)
+        self.assertIn('applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);', catch_block)
+        self.assertIn('visibleAssistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
         self.assertIn(
             'if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {',
             catch_block,
@@ -189,7 +191,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('onStreamEvent(event) {', submit_block)
         self.assertIn('applyAssistantStreamingUiEvent(assistantNode, event);', submit_block)
         self.assertIn('const errorMeta = getObservableStreamErrorMeta(err);', submit_block)
-        self.assertIn('applyAssistantStreamingFailure(assistantNode, errorMeta);', submit_block)
+        self.assertIn('applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);', submit_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_RESPONSE_OPENED);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_DONE);', send_block)
         self.assertIn('emitStreamEvent(STREAMING_UI_EVENT_TERMINAL_ERROR);', send_block)

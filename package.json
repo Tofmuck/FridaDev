@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "test:frontend-browser": "node --test app/tests/integration/frontend_browser/*.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}

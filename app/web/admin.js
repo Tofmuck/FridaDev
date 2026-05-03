@@ -864,7 +864,6 @@
   databaseSection.setDatabaseControlsDisabled(true);
   servicesSection.setServicesControlsDisabled(true);
   resourcesSection.setResourcesControlsDisabled(true);
-  updateTokenState();
   renderSectionCards({
     sections: Object.fromEntries(sections.map((section) => [section.key, { source: "env", source_reason: "loading" }])),
     bootstrap: { database_dsn_mode: "external_bootstrap" },

@@ -14,6 +14,28 @@ Example when a real project interpreter has been discovered explicitly:
 - `<project-python> -m unittest app.tests.unit.chat.test_chat_session_flow`
 - `<project-python> -m unittest app.tests.test_server_phase13 app.tests.test_server_chat_synthetic_logs_contract app.tests.test_server_chat_conversation_id_contract`
 
+## Frontend browser smoke tests
+
+The browser smoke harness lives in `integration/frontend_browser/`.
+
+Setup on OVH:
+- `npm install`
+- `npx playwright install chromium`
+- if Chromium cannot start because native libraries are missing: `npx playwright install-deps chromium`
+
+Run:
+- `npm run test:frontend-browser`
+- equivalent direct command: `node --test app/tests/integration/frontend_browser/*.js`
+
+What this proves:
+- real Chromium loads `index.html`, `admin.html` and `log.html` from `app/web/`;
+- chat stream nominal handles a `done` terminal, renders the assistant bubble, keeps the timestamp from the terminal and refreshes conversations;
+- chat stream error without `updated_at` stays visibly interrupted, forces rehydration and does not turn partial content into an optimistic canonical assistant message;
+- admin settings validate/save displays invalid checks and blocks the PATCH path when validation fails;
+- logs filter/export sends the expected query parameters and downloads the scoped Markdown export.
+
+The older Python frontend tests under `integration/frontend_chat/` and `integration/frontend_admin/` remain useful source and contract guards. They should not be treated as sufficient UX integration proof because they mostly inspect asset text and route contracts without a browser DOM/event loop.
+
 This directory is migrated progressively.
 First migrated lot:
 - `integration/frontend_chat/test_frontend_chat_contract.py`

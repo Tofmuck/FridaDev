@@ -30,7 +30,7 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 - [x] Lot 1: securiser la persistance conversationnelle canonique avant toute ecriture derivee.
 - [x] Lot 2: rendre la validation settings bloquante cote serveur.
 - [x] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
-- [ ] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
+- [x] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
 - [ ] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
 - [ ] Lot 6: fermer les findings stale et remettre les docs source-of-truth a jour.
 
@@ -187,21 +187,23 @@ Fichiers probablement touches:
 - `app/web/app.js`, `app/web/chat_streaming.js`, `app/web/chat_threads_sidebar.js` seulement si les tests exposent une vraie regression
 
 Cases de correction:
-- [ ] `L4-C1` Choisir un harness navigateur minimal compatible OVH et documenter comment l'executer.
-- [ ] `L4-C2` Couvrir chat stream nominal: terminal `done`, rendu bulle, cache thread, timestamp et refresh.
-- [ ] `L4-C3` Couvrir chat stream erreur: terminal `error`, absence ou presence controlee de `updated_at`, interruption visible, rehydratation attendue.
-- [ ] `L4-C4` Couvrir admin settings validate/save: validation refusee, PATCH refuse, affichage des checks et statuts.
-- [ ] `L4-C5` Couvrir logs/filter/export par preuve navigateur; si le repo ou l'environnement OVH ne le permet pas raisonnablement, ajouter dans le lot une justification ecrite et une preuve alternative maintenable.
-- [ ] `L4-C6` Requalifier les tests source-only comme gardes structurelles, sans les presenter seuls comme integration UX.
+- [x] `L4-C1` Choisir un harness navigateur minimal compatible OVH et documenter comment l'executer.
+- [x] `L4-C2` Couvrir chat stream nominal: terminal `done`, rendu bulle, cache thread, timestamp et refresh.
+- [x] `L4-C3` Couvrir chat stream erreur: terminal `error`, absence ou presence controlee de `updated_at`, interruption visible, rehydratation attendue.
+- [x] `L4-C4` Couvrir admin settings validate/save: validation refusee, PATCH refuse, affichage des checks et statuts.
+- [x] `L4-C5` Couvrir logs/filter/export par preuve navigateur; si le repo ou l'environnement OVH ne le permet pas raisonnablement, ajouter dans le lot une justification ecrite et une preuve alternative maintenable.
+- [x] `L4-C6` Requalifier les tests source-only comme gardes structurelles, sans les presenter seuls comme integration UX.
 
 Tests a ajouter ou modifier:
-- smoke browser chat avec `fetch` mocke ou serveur test;
+- `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`: smoke Chromium avec serveur statique local `app/web/` et mocks `fetch` des contrats publics;
+- smoke browser chat nominal et erreur;
 - smoke browser admin settings validate/save;
-- smoke browser logs filter/export, ou preuve alternative maintenable documentee si le harness navigateur ne peut pas couvrir ce parcours;
+- smoke browser logs filter/export;
 - conserver les tests Node purs du parser/state machine/sidebar.
 
 Preuves runtime attendues:
-- execution locale OVH du harness navigateur ou justification claire si le navigateur n'est pas disponible;
+- execution locale OVH du harness navigateur: `node --test app/tests/integration/frontend_browser/*.js`;
+- setup documente dans `app/tests/README.md`: `npm install`, `npx playwright install chromium`, puis `npx playwright install-deps chromium` si les bibliotheques natives manquent;
 - tests Node existants toujours OK;
 - pas de dependance a Authelia pour le harness si la preuve peut rester sur fichiers statiques + mocks.
 
@@ -211,10 +213,10 @@ Risques:
 - ne pas transformer ce lot en refonte UI.
 
 Critere de cloture:
-- [ ] Au moins les parcours chat stream nominal, chat stream erreur, admin validate/save sont prouves en environnement navigateur.
-- [ ] Logs/filter/export est couvert par une preuve navigateur, ou par une justification ecrite avec preuve alternative maintenable.
-- [ ] Les tests source-only sont conserves comme filets structurels, mais la documentation de test ne les surestime plus.
-- [ ] Le harness est assez petit pour etre maintenu.
+- [x] Au moins les parcours chat stream nominal, chat stream erreur, admin validate/save sont prouves en environnement navigateur.
+- [x] Logs/filter/export est couvert par une preuve navigateur, ou par une justification ecrite avec preuve alternative maintenable.
+- [x] Les tests source-only sont conserves comme filets structurels, mais la documentation de test ne les surestime plus.
+- [x] Le harness est assez petit pour etre maintenu.
 
 ## Lot 5 - Contrat admin OVH et knobs obsoletes
 
@@ -326,6 +328,6 @@ Critere de cloture:
 | Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
 | Lot 2 - Validation bloquante des settings runtime | clos | `eda1e752758f3c9694c822fa5a4fd47b715d2b51` | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
 | Lot 3 - Observabilite memoire et erreurs aval | clos | `8e939c527d8805ffa3d300d56568483c7a05b926` | `retrieve_error` propage jusqu'a `memory_arbitration`, `prompt_prepared`, `/log` et Memory Admin; fail-open liste conserve pour les consommateurs historiques. |
-| Lot 4 - Preuves frontend reelles | ouvert |  |  |
+| Lot 4 - Preuves frontend reelles | clos | a renseigner apres commit de correction | Harness Chromium minimal pour chat nominal/error, admin validate/save et logs/filter/export; source-only requalifie dans `app/tests/README.md`. |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |
 | Lot 6 - Findings stale et documentation source-of-truth | ouvert |  |  |

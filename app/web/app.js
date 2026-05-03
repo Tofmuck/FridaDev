@@ -323,6 +323,7 @@
     } catch (err) {
       const errorMeta = getObservableStreamErrorMeta(err);
       const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;
+      let rehydratedAfterUnpersistedTerminalError = false;
       if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
         renderThreads();
       }
@@ -342,13 +343,17 @@
           renderThreads();
           if (getCurrentId() === requestThreadId) {
             await loadThread(requestThreadId);
+            rehydratedAfterUnpersistedTerminalError = true;
           }
         } catch (hydrateErr) {
           console.error(hydrateErr);
         }
       }
-      applyAssistantStreamingFailure(assistantNode, errorMeta);
-      assistantNode.bubble.textContent = extractErrorMessage(err);
+      const visibleAssistantNode = rehydratedAfterUnpersistedTerminalError && !assistantNode.wrapper.isConnected
+        ? createMessageNode("assistant", "")
+        : assistantNode;
+      applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);
+      visibleAssistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
     } finally {
       chatRequestInFlight = false;
