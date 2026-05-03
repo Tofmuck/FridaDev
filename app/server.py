@@ -356,6 +356,16 @@ class _LlmChatLogProxy:
         memory_prompt_injection = chat_turn_logger.get_state('memory_prompt_injection')
         if not isinstance(memory_prompt_injection, dict):
             memory_prompt_injection = prompt_injection_summary.empty_memory_prompt_injection_summary()
+        memory_retrieval = chat_turn_logger.get_state('memory_retrieval')
+        if not isinstance(memory_retrieval, dict):
+            memory_retrieval = {
+                'status': 'unknown',
+                'reason_code': None,
+                'error_code': None,
+                'error_class': None,
+                'top_k_requested': None,
+                'top_k_returned': 0,
+            }
         chat_turn_logger.emit(
             'prompt_prepared',
             status='ok',
@@ -366,6 +376,7 @@ class _LlmChatLogProxy:
                 'estimated_prompt_tokens': estimated_prompt_tokens,
                 'memory_items_used': int(chat_turn_logger.get_state('memory_items_used', 0) or 0),
                 'memory_prompt_injection': dict(memory_prompt_injection),
+                'memory_retrieval': dict(memory_retrieval),
             },
         )
         return payload

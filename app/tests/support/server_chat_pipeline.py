@@ -116,6 +116,19 @@ def patch_server_chat_pipeline(
         },
     )
     patch_attr(server_module.memory_store, 'retrieve', lambda *_args, **_kwargs: [])
+    patch_attr(
+        server_module.memory_store,
+        'retrieve_for_arbiter_with_status',
+        lambda *_args, **_kwargs: {
+            'traces': [],
+            'ok': True,
+            'status': 'ok',
+            'reason_code': 'no_data',
+            'error_code': None,
+            'error_class': None,
+            'top_k_requested': None,
+        },
+    )
     patch_attr(server_module.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
     patch_attr(server_module.admin_logs, 'log_event', lambda *args, **kwargs: None)
     patch_attr(server_module.llm, 'or_headers', lambda **_kwargs: {})

@@ -38,6 +38,10 @@ def _summarize_memory_retrieved(payload: Mapping[str, Any] | None) -> dict[str, 
     data = _mapping(payload)
     return {
         'present': bool(data),
+        'status': str(data.get('status') or ('ok' if data else 'missing')),
+        'reason_code': str(data.get('reason_code') or ''),
+        'error_code': str(data.get('error_code') or ''),
+        'error_class': str(data.get('error_class') or ''),
         'retrieved_count': int(data.get('retrieved_count') or 0),
     }
 
@@ -47,6 +51,7 @@ def _summarize_memory_arbitration(payload: Mapping[str, Any] | None) -> dict[str
     return {
         'present': bool(data),
         'status': str(data.get('status') or 'missing'),
+        'reason_code': str(data.get('reason_code') or ''),
         'decisions_count': int(data.get('decisions_count') or 0),
         'kept_count': int(data.get('kept_count') or 0),
         'rejected_count': int(data.get('rejected_count') or 0),

@@ -118,6 +118,8 @@ Minimum event-specific details:
 
 - `memory_retrieve`
   - `top_k_requested`, `top_k_returned`
+  - if `status=error`: stable `error_code`, sanitized `error_class`, and `reason_code=retrieve_error`
+  - a normal empty retrieval stays `status=ok` with `top_k_returned=0`; downstream no-memory branches may use `reason_code=no_data`
 
 - `summaries`
   - `active_summary_present`, `summary_count_used`, `summary_usage`, `in_prompt`, `summary_generation_observed`
@@ -165,6 +167,10 @@ Minimum event-specific details:
     - compact redacted summary of what memory-related blocks really reached the final prompt
     - allowed fields: booleans, counts, block presence/absence only
     - forbidden: raw memory content, raw context hints, raw prompt excerpts
+  - `memory_retrieval`:
+    - compact redacted status of retrieval availability for this turn
+    - allowed fields: `status`, `reason_code`, `error_code`, `error_class`, `top_k_requested`, `top_k_returned`
+    - forbidden: DSN, token, query text, raw traceback, raw memory content
 
 - `llm_call`
   - `model`, `mode`, `timeout_s`, `response_chars`

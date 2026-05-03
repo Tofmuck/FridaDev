@@ -44,12 +44,12 @@ Constats runtime directement verifies:
 - `memory_store.retrieve()[0]` garde aujourd'hui les cles publiques `content`, `conversation_id`, `role`, `score`, `summary_id`, `timestamp`;
 - `memory_store.retrieve_for_arbiter()` ajoute `retrieval_score` et `semantic_score` pour la frontiere pre-arbitre, et peut maintenant completer les traces par une petite lane `summaries` interne;
 - l'enrichissement ajoute seulement `parent_summary`;
-- `memory_retrieved` expose `schema_version`, `retrieval_query`, `top_k_requested`, `retrieved_count`, `traces`;
+- `memory_retrieved` expose `schema_version`, `status`, `reason_code`, `error_code`, `error_class`, `retrieval_query`, `top_k_requested`, `retrieved_count`, `traces`;
 - `memory_retrieved.traces[*]` expose `candidate_id`, `source_kind`, `source_lane`, `conversation_id`, `role`, `content`, `timestamp_iso`, `start_ts`, `end_ts`, `retrieval_score`, `summary_id`, `parent_summary`;
 - `memory_arbitration` expose maintenant `schema_version`, `status`, `reason_code`, `raw_candidates_count`, `basket_candidates_count`, `basket_limit`, `basket_candidates`, `decisions_count`, `kept_count`, `rejected_count`, `injected_candidate_ids`, `decisions`;
 - `memory_arbitration.decisions[*]` expose maintenant `candidate_id`, `retrieved_candidate_id`, `legacy_candidate_id`, `legacy_candidate_index`, `source_candidate_ids`, `source_kind`, `source_lane`, `keep`, `semantic_relevance`, `contextual_gain`, `redundant_with_recent`, `reason`, `decision_source`, `model`;
 - `arbiter_decisions` persiste maintenant le `candidate_id` stable du representant quand il existe, avec `candidate_content`, `candidate_role`, `candidate_ts`, `candidate_score`, plus verdict et scores;
-- `prompt_prepared` persiste maintenant un resume de l'injection memoire effective dans le prompt, y compris `injected_candidate_ids`;
+- `prompt_prepared` persiste maintenant un resume de l'injection memoire effective dans le prompt, y compris `injected_candidate_ids`, et un statut redacted `memory_retrieval`;
 - `summaries=0` sur le runtime actif, donc la nouvelle lane `summaries` reste neutre live au `2026-04-10`;
 - `parent_summary` reste actuellement nul en pratique sur OVH et le bloc `[Contexte du souvenir ...]` n'apparait pas live hors fixtures/replay.
 
@@ -125,7 +125,14 @@ Ce que la surface publique ne contient pas encore:
 
 Observabilite associee:
 - stage persiste `memory_retrieve` dans `observability.chat_log_events`;
-- payload actuel: seulement `top_k_requested` et `top_k_returned`.
+- payload normal: `top_k_requested`, `top_k_returned`, compteurs de lanes;
+- payload erreur: `reason_code=retrieve_error`, `error_code` stable, `error_class` sanitisee.
+
+Contrat d'erreur:
+- `memory_store.retrieve()` et `retrieve_for_arbiter()` restent compatibles en retour liste et peuvent fail-open en `[]`;
+- le chemin chat consomme la variante avec statut (`retrieve_with_status()` / `retrieve_for_arbiter_with_status()`);
+- une absence normale reste `status=ok`, `top_k_returned=0`, aval `reason_code=no_data`;
+- une erreur embedding/DB/retrieval devient aval `reason_code=retrieve_error` dans `arbiter`, `branch_skipped`, `memory_arbitration` et `prompt_prepared.memory_retrieval`.
 
 ### 4.3 Enrichissement `parent_summary`
 
@@ -159,6 +166,10 @@ Nature:
 
 Ce que garde `memory_retrieved`:
 - `schema_version`
+- `status`
+- `reason_code`
+- `error_code`
+- `error_class`
 - `retrieval_query`
 - `top_k_requested`
 - `retrieved_count`

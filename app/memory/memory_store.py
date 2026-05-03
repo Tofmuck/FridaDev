@@ -39,6 +39,9 @@ __all__ = [
     'embed',
     'save_new_traces',
     'retrieve',
+    'retrieve_with_status',
+    'retrieve_for_arbiter',
+    'retrieve_for_arbiter_with_status',
     'save_summary',
     'update_traces_summary_id',
     'get_summary_for_trace',
@@ -242,8 +245,35 @@ def retrieve(query: str, top_k: Optional[int] = None) -> list[dict[str, Any]]:
     )
 
 
+def retrieve_with_status(query: str, top_k: Optional[int] = None) -> memory_traces_summaries.MemoryRetrievalResult:
+    return memory_traces_summaries.retrieve_result(
+        query,
+        top_k=top_k,
+        runtime_embedding_value_fn=_runtime_embedding_value,
+        conn_factory=_conn,
+        embed_fn=embed,
+        logger=logger,
+    )
+
+
 def retrieve_for_arbiter(query: str, top_k: Optional[int] = None) -> list[dict[str, Any]]:
     return memory_traces_summaries.retrieve(
+        query,
+        top_k=top_k,
+        include_internal_scores=True,
+        include_summary_candidates=True,
+        runtime_embedding_value_fn=_runtime_embedding_value,
+        conn_factory=_conn,
+        embed_fn=embed,
+        logger=logger,
+    )
+
+
+def retrieve_for_arbiter_with_status(
+    query: str,
+    top_k: Optional[int] = None,
+) -> memory_traces_summaries.MemoryRetrievalResult:
+    return memory_traces_summaries.retrieve_result(
         query,
         top_k=top_k,
         include_internal_scores=True,

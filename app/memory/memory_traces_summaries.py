@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -62,6 +63,24 @@ _SUMMARY_LANE_LIMIT_MAX = 3
 _PRE_ARBITER_TOTAL_LIMIT = 8
 _ASSISTANT_TURN_META_KEY = 'assistant_turn'
 _ASSISTANT_TURN_STATUS_INTERRUPTED = 'interrupted'
+
+
+@dataclass(frozen=True)
+class MemoryRetrievalResult:
+    traces: list[dict[str, Any]]
+    ok: bool
+    top_k_requested: int
+    error_code: str | None = None
+    error_class: str | None = None
+    reason_code: str | None = None
+
+    @property
+    def status(self) -> str:
+        return 'ok' if self.ok else 'error'
+
+    @property
+    def top_k_returned(self) -> int:
+        return len(self.traces)
 
 
 def _normalize_lexical_text(text: str) -> str:
@@ -725,7 +744,43 @@ def save_new_traces(
             logger.error('save_trace_error conv=%s err=%s', conv_id, exc)
 
 
-def retrieve(
+def _emit_retrieval_error_result(
+    *,
+    started_at: float,
+    top_k: int,
+    exc: Exception,
+    logger: Any,
+    log_name: str,
+) -> MemoryRetrievalResult:
+    error_class = exc.__class__.__name__
+    chat_turn_logger.emit(
+        'memory_retrieve',
+        status='error',
+        duration_ms=(time.perf_counter() - started_at) * 1000.0,
+        error_code='upstream_error',
+        payload={
+            'top_k_requested': int(top_k),
+            'top_k_returned': 0,
+            'reason_code': 'retrieve_error',
+            'error_code': 'upstream_error',
+            'error_class': error_class,
+        },
+    )
+    if log_name == 'retrieve_embed_failed':
+        logger.warning('retrieve_embed_failed class=%s', error_class)
+    else:
+        logger.error('retrieve_error class=%s', error_class)
+    return MemoryRetrievalResult(
+        traces=[],
+        ok=False,
+        top_k_requested=int(top_k),
+        error_code='upstream_error',
+        error_class=error_class,
+        reason_code='retrieve_error',
+    )
+
+
+def retrieve_result(
     query: str,
     top_k: int | None = None,
     *,
@@ -735,12 +790,12 @@ def retrieve(
     conn_factory: Callable[[], Any],
     embed_fn: Callable[..., list[float]],
     logger: Any,
-) -> list[dict[str, Any]]:
+) -> MemoryRetrievalResult:
     """
-    Return a bounded hybrid recall over traces.
+    Return a status-bearing bounded hybrid recall over traces.
     The public shape remains stable: top_k stays the final cap and rows stay
     compatible with downstream timestamp/summary enrichment.
-    Return [] on error to avoid blocking response pipeline.
+    On retrieval errors, the result is explicit while preserving fail-open callers.
     """
     started_at = time.perf_counter()
     if top_k is None:
@@ -754,19 +809,13 @@ def retrieve(
             purpose='query',
         )
     except Exception as exc:
-        chat_turn_logger.emit(
-            'memory_retrieve',
-            status='error',
-            duration_ms=(time.perf_counter() - started_at) * 1000.0,
-            error_code='upstream_error',
-            payload={
-                'top_k_requested': int(top_k),
-                'top_k_returned': 0,
-                'error_class': exc.__class__.__name__,
-            },
+        return _emit_retrieval_error_result(
+            started_at=started_at,
+            top_k=int(top_k),
+            exc=exc,
+            logger=logger,
+            log_name='retrieve_embed_failed',
         )
-        logger.warning('retrieve_embed_failed err=%s', exc)
-        return []
 
     try:
         dense_candidates = _retrieve_dense_candidates(
@@ -808,21 +857,49 @@ def retrieve(
                 'summary_candidates_count': len(summary_candidates),
             },
         )
-        return out
-    except Exception as exc:
-        chat_turn_logger.emit(
-            'memory_retrieve',
-            status='error',
-            duration_ms=(time.perf_counter() - started_at) * 1000.0,
-            error_code='upstream_error',
-            payload={
-                'top_k_requested': int(top_k),
-                'top_k_returned': 0,
-                'error_class': exc.__class__.__name__,
-            },
+        return MemoryRetrievalResult(
+            traces=out,
+            ok=True,
+            top_k_requested=int(top_k),
+            reason_code='no_data' if not out else None,
         )
-        logger.error('retrieve_error err=%s', exc)
-        return []
+    except Exception as exc:
+        return _emit_retrieval_error_result(
+            started_at=started_at,
+            top_k=int(top_k),
+            exc=exc,
+            logger=logger,
+            log_name='retrieve_error',
+        )
+
+
+def retrieve(
+    query: str,
+    top_k: int | None = None,
+    *,
+    include_internal_scores: bool = False,
+    include_summary_candidates: bool = False,
+    runtime_embedding_value_fn: Callable[[str], Any],
+    conn_factory: Callable[[], Any],
+    embed_fn: Callable[..., list[float]],
+    logger: Any,
+) -> list[dict[str, Any]]:
+    """
+    Return a bounded hybrid recall over traces.
+    The public shape remains stable: top_k stays the final cap and rows stay
+    compatible with downstream timestamp/summary enrichment.
+    Return [] on error to avoid blocking response pipeline.
+    """
+    return retrieve_result(
+        query,
+        top_k=top_k,
+        include_internal_scores=include_internal_scores,
+        include_summary_candidates=include_summary_candidates,
+        runtime_embedding_value_fn=runtime_embedding_value_fn,
+        conn_factory=conn_factory,
+        embed_fn=embed_fn,
+        logger=logger,
+    ).traces
 
 
 def save_summary(

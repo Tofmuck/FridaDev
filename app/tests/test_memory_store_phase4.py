@@ -143,6 +143,96 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         self.assertEqual(observed['dense_limit'], 27)
         self.assertEqual(observed['lexical_limit'], 27)
 
+    def test_retrieve_with_status_distinguishes_normal_empty_from_error(self) -> None:
+        observed_events: list[dict[str, object]] = []
+        original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_embed = memory_store.embed
+        original_conn = memory_store._conn
+        original_dense = memory_store.memory_traces_summaries._retrieve_dense_candidates
+        original_lexical = memory_store.memory_traces_summaries._retrieve_lexical_candidates
+        original_merge = memory_store.memory_traces_summaries._merge_hybrid_candidates
+        original_emit = memory_store.memory_traces_summaries.chat_turn_logger.emit
+
+        memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
+        memory_store.embed = lambda query, mode='query', purpose=None: [0.1, 0.2, 0.3]
+        memory_store._conn = lambda: object()
+        memory_store.memory_traces_summaries._retrieve_dense_candidates = (
+            lambda _q_vec, *, limit, conn_factory: []
+        )
+        memory_store.memory_traces_summaries._retrieve_lexical_candidates = (
+            lambda _query, *, limit, conn_factory: []
+        )
+        memory_store.memory_traces_summaries._merge_hybrid_candidates = (
+            lambda *, dense_candidates, lexical_candidates, top_k, include_internal_scores=False: []
+        )
+        memory_store.memory_traces_summaries.chat_turn_logger.emit = (
+            lambda stage, **kwargs: observed_events.append({'stage': stage, **kwargs}) or True
+        )
+        try:
+            result = memory_store.retrieve_with_status('question')
+            public_rows = memory_store.retrieve('question')
+        finally:
+            memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store.embed = original_embed
+            memory_store._conn = original_conn
+            memory_store.memory_traces_summaries._retrieve_dense_candidates = original_dense
+            memory_store.memory_traces_summaries._retrieve_lexical_candidates = original_lexical
+            memory_store.memory_traces_summaries._merge_hybrid_candidates = original_merge
+            memory_store.memory_traces_summaries.chat_turn_logger.emit = original_emit
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.status, 'ok')
+        self.assertEqual(result.reason_code, 'no_data')
+        self.assertEqual(result.traces, [])
+        self.assertEqual(public_rows, [])
+        ok_retrieve_events = [
+            event for event in observed_events
+            if event['stage'] == 'memory_retrieve' and event['status'] == 'ok'
+        ]
+        self.assertGreaterEqual(len(ok_retrieve_events), 1)
+        self.assertEqual(ok_retrieve_events[0]['payload']['top_k_returned'], 0)
+
+    def test_retrieve_with_status_sanitizes_embedding_error_and_keeps_public_list_compatibility(self) -> None:
+        observed_events: list[dict[str, object]] = []
+        original_get_settings = memory_store.runtime_settings.get_embedding_settings
+        original_embed = memory_store.embed
+        original_emit = memory_store.memory_traces_summaries.chat_turn_logger.emit
+
+        memory_store.runtime_settings.get_embedding_settings = self._db_embedding_view
+
+        def failing_embed(_query, mode='query', purpose=None):
+            raise RuntimeError('internal host and token should not be serialized')
+
+        memory_store.embed = failing_embed
+        memory_store.memory_traces_summaries.chat_turn_logger.emit = (
+            lambda stage, **kwargs: observed_events.append({'stage': stage, **kwargs}) or True
+        )
+        try:
+            result = memory_store.retrieve_with_status('question')
+            public_rows = memory_store.retrieve('question')
+        finally:
+            memory_store.runtime_settings.get_embedding_settings = original_get_settings
+            memory_store.embed = original_embed
+            memory_store.memory_traces_summaries.chat_turn_logger.emit = original_emit
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.status, 'error')
+        self.assertEqual(result.reason_code, 'retrieve_error')
+        self.assertEqual(result.error_code, 'upstream_error')
+        self.assertEqual(result.error_class, 'RuntimeError')
+        self.assertEqual(result.traces, [])
+        self.assertEqual(public_rows, [])
+        error_event = next(
+            event for event in observed_events
+            if event['stage'] == 'memory_retrieve' and event['status'] == 'error'
+        )
+        payload = error_event['payload']
+        self.assertEqual(payload['reason_code'], 'retrieve_error')
+        self.assertEqual(payload['error_code'], 'upstream_error')
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+        self.assertNotIn('internal host', str(payload))
+        self.assertNotIn('token should not', str(payload))
+
     def test_retrieve_for_arbiter_requests_internal_scores_while_public_retrieve_stays_stable(self) -> None:
         observed_calls = []
         original_retrieve = memory_store.memory_traces_summaries.retrieve

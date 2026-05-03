@@ -242,11 +242,99 @@ def _resolve_retrieval_top_k_requested(*, memory_store_module: Any, config_modul
     return _safe_int(getattr(config_module, 'MEMORY_TOP_K', None))
 
 
-def _retrieve_raw_traces(*, memory_store_module: Any, user_msg: str) -> list[dict[str, Any]]:
+@dataclass
+class RetrievalOutcome:
+    traces: list[dict[str, Any]]
+    status: str
+    reason_code: str | None = None
+    error_code: str | None = None
+    error_class: str | None = None
+    top_k_requested: int | None = None
+    top_k_returned: int = 0
+
+
+def _retrieval_outcome_from_result(result: Any, *, top_k_requested: int | None) -> RetrievalOutcome:
+    if isinstance(result, Mapping):
+        raw_traces = result.get('traces')
+        status_value = result.get('status')
+        ok_value = result.get('ok')
+        reason_code = result.get('reason_code')
+        error_code = result.get('error_code')
+        error_class = result.get('error_class')
+        result_top_k = result.get('top_k_requested')
+    else:
+        raw_traces = getattr(result, 'traces', result)
+        status_value = getattr(result, 'status', None)
+        ok_value = getattr(result, 'ok', None)
+        reason_code = getattr(result, 'reason_code', None)
+        error_code = getattr(result, 'error_code', None)
+        error_class = getattr(result, 'error_class', None)
+        result_top_k = getattr(result, 'top_k_requested', None)
+
+    traces = [dict(trace) for trace in list(raw_traces or [])]
+    status = str(status_value or '').strip().lower()
+    if not status:
+        status = 'error' if ok_value is False else 'ok'
+    if status not in {'ok', 'error'}:
+        status = 'error' if ok_value is False else 'ok'
+    if status == 'error' and not str(reason_code or '').strip():
+        reason_code = 'retrieve_error'
+    elif status == 'ok' and not traces and not str(reason_code or '').strip():
+        reason_code = 'no_data'
+
+    resolved_top_k = _safe_int(result_top_k)
+    if resolved_top_k is None:
+        resolved_top_k = top_k_requested
+    return RetrievalOutcome(
+        traces=traces,
+        status=status,
+        reason_code=str(reason_code or '').strip() or None,
+        error_code=str(error_code or '').strip() or None,
+        error_class=str(error_class or '').strip() or None,
+        top_k_requested=resolved_top_k,
+        top_k_returned=len(traces),
+    )
+
+
+def _retrieve_raw_traces(
+    *,
+    memory_store_module: Any,
+    user_msg: str,
+    top_k_requested: int | None,
+) -> RetrievalOutcome:
+    retrieve_for_arbiter_with_status = getattr(memory_store_module, 'retrieve_for_arbiter_with_status', None)
+    if callable(retrieve_for_arbiter_with_status):
+        return _retrieval_outcome_from_result(
+            retrieve_for_arbiter_with_status(user_msg),
+            top_k_requested=top_k_requested,
+        )
     retrieve_for_arbiter = getattr(memory_store_module, 'retrieve_for_arbiter', None)
     if callable(retrieve_for_arbiter):
-        return list(retrieve_for_arbiter(user_msg))
-    return list(memory_store_module.retrieve(user_msg))
+        return _retrieval_outcome_from_result(
+            retrieve_for_arbiter(user_msg),
+            top_k_requested=top_k_requested,
+        )
+    retrieve_with_status = getattr(memory_store_module, 'retrieve_with_status', None)
+    if callable(retrieve_with_status):
+        return _retrieval_outcome_from_result(
+            retrieve_with_status(user_msg),
+            top_k_requested=top_k_requested,
+        )
+    return _retrieval_outcome_from_result(
+        memory_store_module.retrieve(user_msg),
+        top_k_requested=top_k_requested,
+    )
+
+
+def _retrieval_observability_payload(outcome: RetrievalOutcome) -> dict[str, Any]:
+    return {
+        'status': outcome.status,
+        'reason_code': outcome.reason_code,
+        'error_code': outcome.error_code,
+        'error_class': outcome.error_class,
+        'top_k_requested': outcome.top_k_requested,
+        'top_k_returned': outcome.top_k_returned,
+    }
 
 
 def _enrich_retrieved_candidates(
@@ -295,7 +383,13 @@ def prepare_memory_context(
         config_module=config_module,
     )
     retrieve_t0 = time.perf_counter()
-    raw_traces = _retrieve_raw_traces(memory_store_module=memory_store_module, user_msg=user_msg)
+    retrieval_outcome = _retrieve_raw_traces(
+        memory_store_module=memory_store_module,
+        user_msg=user_msg,
+        top_k_requested=top_k_requested,
+    )
+    raw_traces = retrieval_outcome.traces
+    chat_turn_logger.set_state('memory_retrieval', _retrieval_observability_payload(retrieval_outcome))
     _log_stage_latency(
         conversation_id,
         'retrieve',
@@ -318,8 +412,12 @@ def prepare_memory_context(
         )
         memory_retrieved = memory_retrieved_input.build_memory_retrieved_input(
             retrieval_query=user_msg,
-            top_k_requested=top_k_requested,
+            top_k_requested=retrieval_outcome.top_k_requested,
             traces=retrieved_candidates,
+            status=retrieval_outcome.status,
+            reason_code=retrieval_outcome.reason_code,
+            error_code=retrieval_outcome.error_code,
+            error_class=retrieval_outcome.error_class,
         )
         pre_arbiter_basket = memory_pre_arbiter_basket.build_pre_arbiter_basket(
             memory_retrieved=memory_retrieved,
@@ -425,32 +523,49 @@ def prepare_memory_context(
             filtered=len(filtered_traces),
         )
     else:
+        retrieval_reason_code = (
+            'retrieve_error'
+            if retrieval_outcome.status == 'error'
+            else (retrieval_outcome.reason_code or 'no_data')
+        )
+        retrieval_reason_short = (
+            'memory_retrieve_failed'
+            if retrieval_reason_code == 'retrieve_error'
+            else 'arbiter_no_traces'
+        )
         chat_turn_logger.emit(
             'arbiter',
             status='skipped',
-            reason_code='no_data',
+            reason_code=retrieval_reason_code,
             payload={
                 'raw_candidates': 0,
                 'kept_candidates': 0,
                 'mode': current_mode,
+                'retrieval_status': retrieval_outcome.status,
+                'retrieval_error_code': retrieval_outcome.error_code,
+                'retrieval_error_class': retrieval_outcome.error_class,
             },
         )
         chat_turn_logger.emit_branch_skipped(
-            reason_code='no_data',
-            reason_short='arbiter_no_traces',
+            reason_code=retrieval_reason_code,
+            reason_short=retrieval_reason_short,
         )
         memory_traces = []
         memory_retrieved = memory_retrieved_input.build_memory_retrieved_input(
             retrieval_query=user_msg,
-            top_k_requested=top_k_requested,
+            top_k_requested=retrieval_outcome.top_k_requested,
             traces=[],
+            status=retrieval_outcome.status,
+            reason_code=retrieval_reason_code,
+            error_code=retrieval_outcome.error_code,
+            error_class=retrieval_outcome.error_class,
         )
         memory_arbitration = memory_arbitration_input.build_memory_arbitration_input(
             memory_retrieved=memory_retrieved,
             raw_candidates_count=0,
             decisions=[],
             status='skipped',
-            reason_code='no_data',
+            reason_code=retrieval_reason_code,
         )
 
     context_hints = memory_store_module.get_recent_context_hints(

@@ -67,14 +67,24 @@ def _read_retrieval_summary(
                     AVG(NULLIF(payload_json->>'top_k_returned', '')::double precision) AS avg_top_k_returned,
                     AVG(NULLIF(payload_json->>'dense_candidates_count', '')::double precision) AS avg_dense_candidates,
                     AVG(NULLIF(payload_json->>'lexical_candidates_count', '')::double precision) AS avg_lexical_candidates,
-                    AVG(NULLIF(payload_json->>'summary_candidates_count', '')::double precision) AS avg_summary_candidates
+                    AVG(NULLIF(payload_json->>'summary_candidates_count', '')::double precision) AS avg_summary_candidates,
+                    COUNT(*) FILTER (WHERE status = 'ok')::int AS ok_events,
+                    COUNT(*) FILTER (WHERE status = 'error')::int AS error_events,
+                    COUNT(*) FILTER (
+                        WHERE status = 'ok'
+                          AND COALESCE(NULLIF(payload_json->>'top_k_returned', '')::int, 0) = 0
+                    )::int AS normal_empty_events,
+                    COUNT(*) FILTER (
+                        WHERE status = 'error'
+                           OR COALESCE(NULLIF(payload_json->>'reason_code', ''), '') = 'retrieve_error'
+                    )::int AS retrieve_error_events
                 FROM observability.chat_log_events
                 WHERE stage = 'memory_retrieve'
                   AND ts >= (now() - make_interval(days => %s))
                 ''',
                 (window_days,),
             )
-            row = cur.fetchone() or (0, 0, None, None, None, None, None, None)
+            row = cur.fetchone() or (0, 0, None, None, None, None, None, None, 0, 0, 0, 0)
 
     return {
         'config_source_kind': 'calculated_aggregate',
@@ -89,6 +99,12 @@ def _read_retrieval_summary(
             'avg_dense_candidates': round(_to_float(row[5]), 3),
             'avg_lexical_candidates': round(_to_float(row[6]), 3),
             'avg_summary_candidates': round(_to_float(row[7]), 3),
+            'status_counts': {
+                'ok': _to_int(row[8]),
+                'error': _to_int(row[9]),
+            },
+            'normal_empty_events': _to_int(row[10]),
+            'retrieve_error_events': _to_int(row[11]),
         },
     }
 
@@ -284,6 +300,9 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'dense_candidates_count': _to_int(data.get('dense_candidates_count')),
             'lexical_candidates_count': _to_int(data.get('lexical_candidates_count')),
             'summary_candidates_count': _to_int(data.get('summary_candidates_count')),
+            'reason_code': str(data.get('reason_code') or ''),
+            'error_code': str(data.get('error_code') or ''),
+            'error_class': str(data.get('error_class') or ''),
         }
     if stage == 'summaries':
         return {
@@ -301,14 +320,22 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'decision_source': str(data.get('decision_source') or ''),
             'fallback_used': bool(data.get('fallback_used')),
             'model': str(data.get('model') or ''),
+            'reason_code': str(data.get('reason_code') or ''),
+            'retrieval_status': str(data.get('retrieval_status') or ''),
+            'retrieval_error_code': str(data.get('retrieval_error_code') or ''),
+            'retrieval_error_class': str(data.get('retrieval_error_class') or ''),
         }
     if stage == 'prompt_prepared':
         injection = _safe_mapping(data.get('memory_prompt_injection'))
+        retrieval = _safe_mapping(data.get('memory_retrieval'))
         return {
             'injected': bool(injection.get('injected')),
             'memory_traces_injected_count': _to_int(injection.get('memory_traces_injected_count')),
             'memory_context_summary_count': _to_int(injection.get('memory_context_summary_count')),
             'context_hints_injected_count': _to_int(injection.get('context_hints_injected_count')),
+            'memory_retrieval_status': str(retrieval.get('status') or ''),
+            'memory_retrieval_reason_code': str(retrieval.get('reason_code') or ''),
+            'memory_retrieval_error_code': str(retrieval.get('error_code') or ''),
             'injected_candidate_ids': [
                 str(item).strip()
                 for item in _safe_sequence(injection.get('injected_candidate_ids'))
@@ -326,6 +353,10 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'kept_count': _to_int(arbitration.get('kept_count')),
             'rejected_count': _to_int(arbitration.get('rejected_count')),
             'status': str(arbitration.get('status') or ''),
+            'reason_code': str(arbitration.get('reason_code') or ''),
+            'retrieval_status': str(retrieved.get('status') or ''),
+            'retrieval_reason_code': str(retrieved.get('reason_code') or ''),
+            'retrieval_error_code': str(retrieved.get('error_code') or ''),
             'injected_candidate_ids': [
                 str(item).strip()
                 for item in _safe_sequence(arbitration.get('injected_candidate_ids'))

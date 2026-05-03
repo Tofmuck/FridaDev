@@ -74,10 +74,13 @@ Pour l inspection read-only par tour, la surface couvre les stages memory / RAG 
 
 - `embedding`
 - `memory_retrieve`
+  - doit distinguer `status=ok, top_k_returned=0` comme absence normale et `status=error` / `reason_code=retrieve_error` comme erreur technique
+  - les erreurs exposees restent redacted: code stable, classe d'erreur sanitisee, aucun DSN/token/traceback
 - `summaries`
 - `arbiter`
 - `hermeneutic_node_insertion`
 - `prompt_prepared`
+  - expose le resume redacted `memory_retrieval` quand il existe, afin que le tour aval ne ressemble pas a un simple `no_data`
 - `branch_skipped`
 
 ## Provenances a distinguer explicitement

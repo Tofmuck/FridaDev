@@ -94,12 +94,21 @@ def build_memory_retrieved_input(
     retrieval_query: str,
     top_k_requested: int | None,
     traces: Sequence[Mapping[str, Any]],
+    status: str = "ok",
+    reason_code: str | None = None,
+    error_code: str | None = None,
+    error_class: str | None = None,
 ) -> dict[str, Any]:
     canonical_traces = [_canonical_trace(trace) for trace in traces]
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
+        "status": str(status or "ok"),
+        "reason_code": _optional_str(reason_code),
+        "error_code": _optional_str(error_code),
+        "error_class": _optional_str(error_class),
         "retrieval_query": str(retrieval_query),
         "top_k_requested": int(top_k_requested) if top_k_requested is not None else None,
         "retrieved_count": len(canonical_traces),
         "traces": canonical_traces,
     }
+    return payload

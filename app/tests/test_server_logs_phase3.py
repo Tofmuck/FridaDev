@@ -90,6 +90,84 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'context_hints_injected_count': 0,
             },
         )
+        self.assertEqual(
+            prompt_payload.get('memory_retrieval'),
+            {
+                'status': 'unknown',
+                'reason_code': None,
+                'error_code': None,
+                'error_class': None,
+                'top_k_requested': None,
+                'top_k_returned': 0,
+            },
+        )
+        self.assertNotIn('messages', prompt_payload)
+        self.assertNotIn('prompt', prompt_payload)
+        self.assertNotIn('content', prompt_payload)
+
+    def test_prompt_prepared_exposes_memory_retrieval_status_without_raw_error(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-prompt-memory-retrieval-error',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            self.server.chat_turn_logger.set_state(
+                'memory_retrieval',
+                {
+                    'status': 'error',
+                    'reason_code': 'retrieve_error',
+                    'error_code': 'upstream_error',
+                    'error_class': 'RuntimeError',
+                    'top_k_requested': 5,
+                    'top_k_returned': 0,
+                },
+            )
+            proxy = self.server._LlmChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                        'model': 'openrouter/runtime-main-model',
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'max_tokens': max_tokens,
+                        'stream': stream,
+                    }
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 123),
+            )
+            proxy.build_payload(
+                [{'role': 'user', 'content': 'bonjour'}],
+                0.7,
+                0.9,
+                400,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        prompt_event = next(event for event in observed if event.get('stage') == 'prompt_prepared')
+        prompt_payload = prompt_event['payload_json']
+        self.assertEqual(
+            prompt_payload.get('memory_retrieval'),
+            {
+                'status': 'error',
+                'reason_code': 'retrieve_error',
+                'error_code': 'upstream_error',
+                'error_class': 'RuntimeError',
+                'top_k_requested': 5,
+                'top_k_returned': 0,
+            },
+        )
         self.assertNotIn('messages', prompt_payload)
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)

@@ -73,8 +73,11 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
         self.assertTrue(payload['inputs']['time']['present'])
         self.assertEqual(payload['inputs']['time']['timezone'], str(self.server.config.FRIDA_TIMEZONE))
         self.assertTrue(payload['inputs']['time']['day_part_class'])
+        self.assertEqual(payload['inputs']['memory_retrieved']['status'], 'ok')
+        self.assertEqual(payload['inputs']['memory_retrieved']['reason_code'], 'no_data')
         self.assertEqual(payload['inputs']['memory_retrieved']['retrieved_count'], 0)
         self.assertEqual(payload['inputs']['memory_arbitration']['status'], 'skipped')
+        self.assertEqual(payload['inputs']['memory_arbitration']['reason_code'], 'no_data')
         self.assertEqual(payload['inputs']['memory_arbitration']['decisions_count'], 0)
         self.assertEqual(payload['inputs']['summary']['status'], 'missing')
         self.assertFalse(payload['inputs']['identity']['frida']['mutable_present'])
@@ -171,6 +174,9 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
                 'context_hints_injected_count': 0,
             },
         )
+        self.assertEqual(payload['memory_retrieval']['status'], 'ok')
+        self.assertEqual(payload['memory_retrieval']['reason_code'], 'no_data')
+        self.assertEqual(payload['memory_retrieval']['top_k_returned'], 0)
         self.assertNotIn('messages', payload)
         self.assertNotIn('prompt', payload)
         self.assertNotIn('content', payload)

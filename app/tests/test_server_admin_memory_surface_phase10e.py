@@ -198,10 +198,166 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             },
         )
         self.assertEqual(stages['embedding']['payload']['source_kind'], 'query')
+        self.assertEqual(stages['memory_retrieve']['payload']['reason_code'], '')
+        self.assertEqual(stages['memory_retrieve']['payload']['error_code'], '')
         self.assertEqual(stages['summaries']['payload']['summary_count_used'], 1)
         self.assertTrue(stages['summaries']['payload']['in_prompt'])
         self.assertTrue(stages['summaries']['payload']['summary_generation_observed'])
         self.assertEqual(stages['branch_skipped']['payload']['reason_code'], 'no_data')
+
+    def test_read_recent_turns_distinguishes_retrieve_error_from_no_data(self) -> None:
+        rows = [
+            (
+                'conv-memory-error',
+                'turn-memory-error',
+                datetime(2026, 5, 3, 9, 3, tzinfo=timezone.utc),
+                'branch_skipped',
+                'skipped',
+                {'reason_code': 'retrieve_error', 'reason_short': 'memory_retrieve_failed'},
+            ),
+            (
+                'conv-memory-error',
+                'turn-memory-error',
+                datetime(2026, 5, 3, 9, 2, tzinfo=timezone.utc),
+                'prompt_prepared',
+                'ok',
+                {
+                    'memory_prompt_injection': {'memory_traces_injected_count': 0},
+                    'memory_retrieval': {
+                        'status': 'error',
+                        'reason_code': 'retrieve_error',
+                        'error_code': 'upstream_error',
+                    },
+                },
+            ),
+            (
+                'conv-memory-error',
+                'turn-memory-error',
+                datetime(2026, 5, 3, 9, 1, tzinfo=timezone.utc),
+                'hermeneutic_node_insertion',
+                'ok',
+                {
+                    'inputs': {
+                        'memory_retrieved': {
+                            'status': 'error',
+                            'reason_code': 'retrieve_error',
+                            'error_code': 'upstream_error',
+                            'retrieved_count': 0,
+                        },
+                        'memory_arbitration': {
+                            'status': 'skipped',
+                            'reason_code': 'retrieve_error',
+                            'kept_count': 0,
+                        },
+                    }
+                },
+            ),
+            (
+                'conv-memory-error',
+                'turn-memory-error',
+                datetime(2026, 5, 3, 9, 0, tzinfo=timezone.utc),
+                'memory_retrieve',
+                'error',
+                {
+                    'top_k_requested': 5,
+                    'top_k_returned': 0,
+                    'reason_code': 'retrieve_error',
+                    'error_code': 'upstream_error',
+                    'error_class': 'RuntimeError',
+                },
+            ),
+        ]
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params):
+                return None
+
+            def fetchall(self):
+                return list(rows)
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_recent_turns(
+            conn_factory=lambda: FakeConn(),
+            turn_limit=4,
+        )
+
+        stages = payload["items"][0]["stages"]
+        self.assertEqual(stages['memory_retrieve']['status'], 'error')
+        self.assertEqual(stages['memory_retrieve']['payload']['reason_code'], 'retrieve_error')
+        self.assertEqual(stages['memory_retrieve']['payload']['error_code'], 'upstream_error')
+        self.assertEqual(stages['memory_retrieve']['payload']['error_class'], 'RuntimeError')
+        self.assertEqual(stages['prompt_prepared']['payload']['memory_retrieval_status'], 'error')
+        self.assertEqual(stages['prompt_prepared']['payload']['memory_retrieval_reason_code'], 'retrieve_error')
+        self.assertEqual(stages['prompt_prepared']['payload']['memory_retrieval_error_code'], 'upstream_error')
+        self.assertEqual(stages['hermeneutic_node_insertion']['payload']['reason_code'], 'retrieve_error')
+        self.assertEqual(stages['hermeneutic_node_insertion']['payload']['retrieval_status'], 'error')
+        self.assertEqual(stages['hermeneutic_node_insertion']['payload']['retrieval_reason_code'], 'retrieve_error')
+        self.assertEqual(stages['hermeneutic_node_insertion']['payload']['retrieval_error_code'], 'upstream_error')
+        self.assertEqual(stages['branch_skipped']['payload']['reason_code'], 'retrieve_error')
+
+    def test_retrieval_summary_counts_normal_empty_and_retrieve_error(self) -> None:
+        summary_row = (
+            4,
+            3,
+            datetime(2026, 5, 3, 9, 0, tzinfo=timezone.utc),
+            5.0,
+            1.0,
+            2.0,
+            1.0,
+            0.0,
+            3,
+            1,
+            2,
+            1,
+        )
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params):
+                return None
+
+            def fetchone(self):
+                return summary_row
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_retrieval_summary(
+            conn_factory=lambda: FakeConn(),
+            window_days=7,
+        )
+
+        activity = payload["recent_activity"]
+        self.assertEqual(activity["status_counts"], {"ok": 3, "error": 1})
+        self.assertEqual(activity["normal_empty_events"], 2)
+        self.assertEqual(activity["retrieve_error_events"], 1)
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])
