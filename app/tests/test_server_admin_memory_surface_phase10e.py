@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from admin import admin_memory_service
+from admin import admin_memory_history_dashboard, admin_memory_service
 from core import conv_store
 from memory import memory_store
 
@@ -208,7 +208,7 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         expected = {'retrieve': {'count': 1, 'p50_ms': 12.0, 'p95_ms': 12.0}}
 
         with mock.patch.object(
-            admin_memory_service.admin_stage_latency_summary,
+            admin_memory_history_dashboard.admin_stage_latency_summary,
             'compute_stage_latencies',
             return_value=expected,
         ) as compute_stage_latencies:
