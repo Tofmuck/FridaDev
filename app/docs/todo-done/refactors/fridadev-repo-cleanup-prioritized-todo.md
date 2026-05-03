@@ -1,8 +1,8 @@
 # FridaDev Repo Cleanup - TODO priorise
 
-Statut: ouvert  
-Classement: `app/docs/todo-todo/refactors/`  
-Portee: transformer l'audit de nettoyage valide en feuille de route actionnable, sans relancer un nouvel audit large et sans ouvrir encore les refactors eux-memes.
+Statut: clos / archive
+Classement: `app/docs/todo-done/refactors/`
+Portee: conserver la trace lotable du cleanup priorise issu de l'audit, ferme apres les phases 1 a 5.
 
 ## Cadre
 
@@ -168,12 +168,6 @@ Point de sortie pratique:
 
 Ce qu'on ne fait pas ici:
 - ne pas relancer un rangement massif ni une fusion de roadmaps archivees.
-
-## Peut attendre
-
-- [ ] Revenir sur `app/minimal_validation.py` seulement apres les phases 1 a 4, pour eviter de disperser le nettoyage.
-- [ ] Reevaluer `app/memory/memory_store.py` plus tard si sa facade redevient un frein majeur apres les lots prioritaires.
-- [ ] Laisser les docs doctrinales hermeneutiques/identity hors du present chantier tant qu'un lot runtime ne l'exige pas.
 
 ## Hors scope de ce document
 

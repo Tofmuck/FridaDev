@@ -39,11 +39,11 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Cleanup / refactor repo
 
 Lire d'abord:
-- `todo-todo/refactors/fridadev-repo-cleanup-prioritized-todo.md`
+- `todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - `todo-done/audits/fridadev_repo_audit.md`
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 
-But: ouvrir des lots petits, bornes et reversibles sans relancer un audit large.
+But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir une roadmap terminee.
 
 ### Runtime courant / chat
 
