@@ -65,7 +65,7 @@ Portee: schema one-glance du pipeline runtime courant de `FridaDev`
   |- event = done | error(error_code, updated_at only when persistence is proven)
   v
 [Canonical persistence]
-  |- save_conversation() returns catalog/messages proof
+  |- save_conversation() returns atomic catalog/messages proof
   |- done  -> full assistant message + verified save_conversation(updated_at)
   |- done  -> traces, identity writes and reactivation only after verified canonical save
   |- error -> assistant_turn interrupted marker only when the marker save is verified
@@ -96,8 +96,8 @@ FR: le provider amont parle SSE-like; le protocole public Frida reste `text/plai
 EN: the upstream provider uses an SSE-like stream; the public Frida contract remains `text/plain` with an inline terminal frame.
 
 3. La persistance ne suit pas la meme regle selon le terminal.
-FR: `done` cree un vrai message assistant complet seulement si la sauvegarde catalog/messages est prouvee; `error` cree un marqueur assistant interrompu seulement si ce marqueur est lui-meme sauvegarde. En cas d'echec de sauvegarde finale, le terminal public devient `conversation_persist_failed` sans `updated_at`.
-EN: `done` stores a full canonical assistant message only when catalog/messages persistence is proven; `error` stores an interrupted assistant marker only when that marker is itself saved. If final persistence fails, the public terminal becomes `conversation_persist_failed` without `updated_at`.
+FR: `done` cree un vrai message assistant complet seulement si la sauvegarde atomique catalog/messages est prouvee; `error` cree un marqueur assistant interrompu seulement si ce marqueur est lui-meme sauvegarde. En cas d'echec de sauvegarde finale, le terminal public devient `conversation_persist_failed` sans `updated_at`.
+EN: `done` stores a full canonical assistant message only when atomic catalog/messages persistence is proven; `error` stores an interrupted assistant marker only when that marker is itself saved. If final persistence fails, the public terminal becomes `conversation_persist_failed` without `updated_at`.
 
 4. `save_new_traces()` n'est pas une consequence generale de tout tour assistant.
 FR: seules les fins `done` canonisees et verifiees peuvent alimenter les traces memoire derivees; les ecritures identitaires derivees suivent la meme barriere.

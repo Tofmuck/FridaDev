@@ -124,6 +124,30 @@ def normalize_conversation_id(value: Optional[str]) -> Optional[str]:
         return None
 
 
+def conversation_message_insert_rows(
+    conversation_id: str,
+    messages: list[dict[str, Any]],
+    *,
+    parse_iso_to_dt_func: Callable[[str], datetime],
+) -> list[tuple[Any, ...]]:
+    rows: list[tuple[Any, ...]] = []
+    for idx, msg in enumerate(messages):
+        meta = Json(msg["meta"]) if "meta" in msg else None
+        rows.append(
+            (
+                conversation_id,
+                idx,
+                msg["role"],
+                msg["content"],
+                parse_iso_to_dt_func(msg["timestamp"]),
+                msg.get("summarized_by"),
+                bool(msg.get("embedded")),
+                meta,
+            )
+        )
+    return rows
+
+
 def find_system_message(messages: Iterable[dict[str, Any]]) -> Optional[dict[str, Any]]:
     for msg in messages:
         if msg.get("role") == "system":
@@ -326,21 +350,11 @@ def upsert_conversation_messages(
                     (conv_id,),
                 )
                 if messages:
-                    rows = []
-                    for idx, msg in enumerate(messages):
-                        meta = Json(msg["meta"]) if "meta" in msg else None
-                        rows.append(
-                            (
-                                conv_id,
-                                idx,
-                                msg["role"],
-                                msg["content"],
-                                parse_iso_to_dt_func(msg["timestamp"]),
-                                msg.get("summarized_by"),
-                                bool(msg.get("embedded")),
-                                meta,
-                            )
-                        )
+                    rows = conversation_message_insert_rows(
+                        conv_id,
+                        messages,
+                        parse_iso_to_dt_func=parse_iso_to_dt_func,
+                    )
                     cur.executemany(
                         """
                         INSERT INTO conversation_messages (
@@ -512,6 +526,104 @@ def upsert_conversation_catalog(
         return None
 
 
+def save_conversation_catalog_and_messages_atomic(
+    conversation: dict[str, Any],
+    *,
+    preserve_deleted: bool,
+    conversation_metadata_func: Callable[[dict[str, Any]], dict[str, Any]],
+    normalize_conversation_id_func: Callable[[Optional[str]], Optional[str]],
+    normalize_messages_for_storage_func: Callable[[Any], list[dict[str, Any]]],
+    db_conn_func: Callable[[], Any],
+    parse_iso_to_dt_func: Callable[[str], datetime],
+    logger: Any,
+) -> tuple[bool, bool, str | None]:
+    messages = normalize_messages_for_storage_func(conversation.get("messages", []))
+    conversation["messages"] = messages
+    meta = conversation_metadata_func(conversation)
+    conv_id = normalize_conversation_id_func(meta.get("id"))
+    if not conv_id:
+        logger.warning("conv_save_atomic_failed id=%s stage=catalog reason=invalid_conversation_id", meta.get("id"))
+        return False, False, "catalog_write_failed"
+
+    stage = "catalog"
+    try:
+        with db_conn_func() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    INSERT INTO conversations (
+                        id,
+                        title,
+                        created_at,
+                        updated_at,
+                        message_count,
+                        last_message_preview,
+                        deleted_at
+                    )
+                    VALUES (%s::uuid, %s, %s, %s, %s, %s, NULL)
+                    ON CONFLICT (id) DO UPDATE
+                    SET
+                        title = EXCLUDED.title,
+                        created_at = LEAST(conversations.created_at, EXCLUDED.created_at),
+                        updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
+                        message_count = EXCLUDED.message_count,
+                        last_message_preview = EXCLUDED.last_message_preview,
+                        deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
+                    RETURNING id
+                    """,
+                    (
+                        conv_id,
+                        meta["title"],
+                        parse_iso_to_dt_func(meta["created_at"]),
+                        parse_iso_to_dt_func(meta["updated_at"]),
+                        meta["message_count"],
+                        meta["last_message_preview"],
+                        bool(preserve_deleted),
+                    ),
+                )
+                if cur.fetchone() is None:
+                    raise RuntimeError("catalog_write_returned_no_row")
+
+            stage = "messages"
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM conversation_messages WHERE conversation_id = %s::uuid",
+                    (conv_id,),
+                )
+                if messages:
+                    cur.executemany(
+                        """
+                        INSERT INTO conversation_messages (
+                            conversation_id,
+                            seq,
+                            role,
+                            content,
+                            timestamp,
+                            summarized_by,
+                            embedded,
+                            meta
+                        )
+                        VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        conversation_message_insert_rows(
+                            conv_id,
+                            messages,
+                            parse_iso_to_dt_func=parse_iso_to_dt_func,
+                        ),
+                    )
+            conn.commit()
+        return True, True, None
+    except Exception as exc:
+        reason = "messages_write_failed" if stage == "messages" else "catalog_write_failed"
+        logger.warning(
+            "conv_save_atomic_failed id=%s stage=%s err_class=%s",
+            conv_id,
+            stage,
+            exc.__class__.__name__,
+        )
+        return False, False, reason
+
+
 def get_conversation_summary(
     conversation_id: str,
     *,
@@ -591,6 +703,7 @@ def save_conversation(
     admin_log_event_func: Callable[..., Any],
     upsert_conversation_catalog_func: Callable[[dict[str, Any], bool], Optional[dict[str, Any]]],
     upsert_conversation_messages_func: Callable[[dict[str, Any]], bool],
+    atomic_save_func: Callable[[dict[str, Any], bool], tuple[bool, bool, str | None]] | None = None,
 ) -> ConversationSaveResult:
     conversation["updated_at"] = updated_at or now_iso_func()
     conversation["messages"] = normalize_messages_for_storage_func(conversation.get("messages", []))
@@ -605,22 +718,30 @@ def save_conversation(
 
     catalog_saved = False
     messages_saved = False
-    try:
-        catalog_saved = upsert_conversation_catalog_func(conversation, preserve_deleted) is not None
-    except Exception as exc:
-        logger.warning("conv_catalog_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
+    reason: str | None = None
+    if atomic_save_func is not None:
+        try:
+            catalog_saved, messages_saved, reason = atomic_save_func(conversation, preserve_deleted)
+        except Exception as exc:
+            logger.warning("conv_save_atomic_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
+            reason = "catalog_and_messages_write_failed"
+    else:
+        try:
+            catalog_saved = upsert_conversation_catalog_func(conversation, preserve_deleted) is not None
+        except Exception as exc:
+            logger.warning("conv_catalog_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
 
-    try:
-        messages_saved = bool(upsert_conversation_messages_func(conversation))
-    except Exception as exc:
-        logger.warning("conv_messages_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
+        try:
+            messages_saved = bool(upsert_conversation_messages_func(conversation))
+        except Exception as exc:
+            logger.warning("conv_messages_write_failed id=%s err_class=%s", conversation_id, exc.__class__.__name__)
 
     if not catalog_saved:
         logger.warning("conv_catalog_write_failed id=%s", conversation_id)
     if not messages_saved:
         logger.warning("conv_messages_write_failed id=%s", conversation_id)
 
-    reason = conversation_save_failure_reason(
+    reason = reason or conversation_save_failure_reason(
         catalog_saved=catalog_saved,
         messages_saved=messages_saved,
     )

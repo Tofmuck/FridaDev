@@ -94,7 +94,7 @@ Le terminal de controle DOIT etre un JSON objet avec:
 
 Champs optionnels:
 - `error_code`: optionnel; utile seulement quand `event="error"`;
-- `updated_at`: optionnel; timestamp ISO du tour persiste, uniquement quand la sauvegarde canonique catalog/messages est prouvee.
+- `updated_at`: optionnel; timestamp ISO du tour persiste, uniquement quand la sauvegarde canonique atomique catalog/messages est prouvee.
 
 Contraintes:
 - `done` et `error` sont mutuellement exclusifs;
@@ -127,7 +127,7 @@ Codes emis ou propages canoniquement dans le flux/backend:
   - sens: violation du contrat de terminal unique / terminal final / terminal present;
   - famille frontend: `server_error`.
 - `conversation_persist_failed`
-  - sens: la finalisation a produit un contenu ou un marqueur local, mais `save_conversation()` n'a pas prouve l'ecriture canonique catalog/messages;
+  - sens: la finalisation a produit un contenu ou un marqueur local, mais `save_conversation()` n'a pas prouve l'ecriture canonique atomique catalog/messages;
   - famille frontend: `server_error`;
   - contrainte: le terminal ne porte pas `updated_at`.
 
@@ -250,7 +250,7 @@ Si le stream se termine en `done`:
 - un vrai message assistant canonique est persiste avec le texte final normalise;
 - ce message porte le timestamp `updated_at` du terminal;
 - la conversation est sauvegardee avec ce meme `updated_at`;
-- le terminal `done` ne porte `updated_at` que si `save_conversation()` retourne une preuve positive catalog/messages;
+- le terminal `done` ne porte `updated_at` que si `save_conversation()` retourne une preuve positive atomique catalog/messages;
 - `save_new_traces()`, les ecritures identitaires derivees et les reactivations identitaires ne peuvent ensuite s'executer qu'apres cette preuve.
 
 ### 10.2 `error`
@@ -265,7 +265,7 @@ Si le stream se termine en `error`:
 
 ### 10.3 Echec de persistance canonique
 
-Si `save_conversation()` ne prouve pas l'ecriture catalog/messages finale:
+Si `save_conversation()` ne prouve pas l'ecriture atomique catalog/messages finale:
 - le terminal public devient `error` avec `error_code="conversation_persist_failed"`;
 - le terminal ne porte pas `updated_at`;
 - aucun `save_new_traces()`, staging identitaire ou reactivation identitaire derivee ne doit s'executer pour ce tour;

@@ -179,6 +179,7 @@ def save_conversation(
             preserve_deleted=preserve,
         ),
         upsert_conversation_messages_func=_upsert_conversation_messages,
+        atomic_save_func=_save_conversation_atomic,
     )
 
 
@@ -257,6 +258,22 @@ def init_messages_db() -> None:
 def _upsert_conversation_messages(conversation: dict[str, Any]) -> bool:
     return conversations_store.upsert_conversation_messages(
         conversation,
+        normalize_conversation_id_func=normalize_conversation_id,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        db_conn_func=_db_conn,
+        parse_iso_to_dt_func=_parse_iso_to_dt,
+        logger=logger,
+    )
+
+
+def _save_conversation_atomic(
+    conversation: dict[str, Any],
+    preserve_deleted: bool,
+) -> tuple[bool, bool, str | None]:
+    return conversations_store.save_conversation_catalog_and_messages_atomic(
+        conversation,
+        preserve_deleted=preserve_deleted,
+        conversation_metadata_func=_conversation_metadata,
         normalize_conversation_id_func=normalize_conversation_id,
         normalize_messages_for_storage_func=_normalize_messages_for_storage,
         db_conn_func=_db_conn,

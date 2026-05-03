@@ -64,9 +64,11 @@ Cases de correction:
 - [x] `L1-C3` Aligner le chemin non-stream sur le stream: sauvegarde canonique verifiee avant `save_new_traces()`, identity staging et reactivation.
 - [x] `L1-C4` En stream, ne pas emettre `updated_at` comme preuve terminale si la persistance finale echoue; forcer une rehydratation frontend quand la preuve manque.
 - [x] `L1-C5` Documenter le nouveau contrat de persistance/terminal si le payload public change.
+- [x] `L1-C6` Rendre la preuve catalog/messages atomique: un echec messages ne laisse pas de catalogue mis a jour pour le tour non sauvegarde.
 
 Tests a ajouter ou modifier:
 - test unitaire `conversations_store.save_conversation()` avec echec catalog et echec messages;
+- test unitaire prouvant le rollback atomique du catalogue quand l'ecriture messages echoue;
 - test `/api/chat` non-stream simulant une sauvegarde messages en echec et verifiant absence de traces/identite derivees;
 - test stream simulant l'echec de sauvegarde finale et verifiant terminal sans `updated_at` ou avec statut non persiste explicite;
 - test `chat_turn_logger` prouvant `persist_response` en erreur;
@@ -84,6 +86,7 @@ Risques:
 
 Critere de cloture:
 - [x] Aucune sauvegarde conversationnelle echouee ne peut produire `persist_response ok`.
+- [x] Aucune sauvegarde messages echouee ne peut laisser un catalogue committe pour le meme tour.
 - [x] Aucune trace memoire ni ecriture identitaire derivee n'est ecrite avant sauvegarde canonique verifiee.
 - [x] Aucun terminal stream ne laisse croire a une persistance prouvee si les messages ne sont pas sauvegardes.
 - [x] Les specs runtime/streaming refletent le comportement corrige.
@@ -302,7 +305,7 @@ Critere de cloture:
 
 | Finding | Lot/cases de traitement | Statut attendu |
 | --- | --- | --- |
-| `AUDIT-20260503-001` | `L1-C1`, `L1-C2` | persistance conversationnelle verifiable et logs non mensongers |
+| `AUDIT-20260503-001` | `L1-C1`, `L1-C2`, `L1-C6` | persistance conversationnelle verifiable, atomique et logs non mensongers |
 | `AUDIT-20260503-002` | `L1-C1`, `L1-C3` | traces/identite derivees apres sauvegarde canonique |
 | `AUDIT-20260503-003` | `L2-C1`, `L2-C2`, `L2-C3`, `L2-C4` | PATCH settings invalide refuse avant ecriture |
 | `AUDIT-20260503-004` | `L1-C1`, `L1-C4`, `L4-C3` | terminal stream non trompeur et rehydratation prouvee |
@@ -320,7 +323,7 @@ Critere de cloture:
 
 | Lot | Statut | Commit de correction | Notes |
 | --- | --- | --- | --- |
-| Lot 1 - Persistance conversationnelle canonique | clos | commit courant `Fix canonical conversation persistence` | Hash final reporte dans le retour Codex; fermeture prouvee par tests persistence/chat/stream/frontend. |
+| Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
 | Lot 2 - Validation bloquante des settings runtime | ouvert |  |  |
 | Lot 3 - Observabilite memoire et erreurs aval | ouvert |  |  |
 | Lot 4 - Preuves frontend reelles | ouvert |  |  |
