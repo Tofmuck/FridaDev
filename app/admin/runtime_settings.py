@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 import config
-from admin import runtime_secrets, runtime_settings_api_view, runtime_settings_repo, runtime_settings_validation
+from admin import (
+    runtime_secrets,
+    runtime_settings_api_view,
+    runtime_settings_repo,
+    runtime_settings_runtime_resolution,
+    runtime_settings_validation,
+)
 from admin.runtime_settings_spec import (
     FieldSpec,
     SECRET_V1_FIELDS,
@@ -27,7 +33,7 @@ from core.hermeneutic_node.inputs import recent_window_input as canonical_recent
 # 2) DB + seed + backfill -> admin.runtime_settings_repo (this tranche)
 # 3) runtime section validation -> admin.runtime_settings_validation (this tranche)
 # 4) admin API view assembly -> admin.runtime_settings_api_view (this tranche)
-# 5) runtime section/secret resolution -> future runtime service module
+# 5) runtime section/secret resolution -> admin.runtime_settings_runtime_resolution (this tranche)
 # runtime_settings.py remains the stable public facade during transition.
 
 
@@ -77,7 +83,6 @@ class RuntimeSettingsValidationError(ValueError):
     pass
 
 
-_SNAPSHOT_CACHE: RuntimeSettingsSnapshot | None = None
 RUNTIME_SETTINGS_SQL_PATH = Path(__file__).resolve().parent / 'sql' / 'runtime_settings_v1.sql'
 
 
@@ -357,8 +362,7 @@ def bootstrap_runtime_settings_from_env(*, updated_by: str = 'runtime_settings_b
 
 
 def invalidate_runtime_settings_cache() -> None:
-    global _SNAPSHOT_CACHE
-    _SNAPSHOT_CACHE = None
+    runtime_settings_runtime_resolution.invalidate_runtime_settings_cache()
 
 
 def _default_db_fetch_all_sections() -> dict[str, dict[str, dict[str, Any]]]:
@@ -369,33 +373,23 @@ def _default_db_fetch_all_sections() -> dict[str, dict[str, dict[str, Any]]]:
     )
 
 
-def _load_snapshot(
-    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
-) -> RuntimeSettingsSnapshot:
-    global _SNAPSHOT_CACHE
-
-    use_cache = fetcher is None
-    if use_cache and _SNAPSHOT_CACHE is not None:
-        return _SNAPSHOT_CACHE
-
-    active_fetcher = fetcher or _default_db_fetch_all_sections
-    try:
-        rows = active_fetcher()
-    except RuntimeSettingsDbUnavailableError:
-        snapshot = RuntimeSettingsSnapshot(rows={}, db_state='db_unavailable')
-    else:
-        snapshot = RuntimeSettingsSnapshot(
-            rows=rows,
-            db_state='db_rows' if rows else 'empty_table',
-        )
-
-    if use_cache:
-        _SNAPSHOT_CACHE = snapshot
-    return snapshot
+def _runtime_read_path_kwargs() -> dict[str, Any]:
+    return {
+        'default_fetcher': _default_db_fetch_all_sections,
+        'build_env_seed_bundle': build_env_seed_bundle,
+        'runtime_settings_snapshot_cls': RuntimeSettingsSnapshot,
+        'runtime_section_view_cls': RuntimeSectionView,
+        'db_unavailable_error_cls': RuntimeSettingsDbUnavailableError,
+    }
 
 
-def _env_payload_for_runtime(section: str) -> dict[str, dict[str, Any]]:
-    return build_env_seed_bundle(section).payload
+def _runtime_secret_resolution_kwargs() -> dict[str, Any]:
+    return {
+        'seed_value': _seed_value,
+        'runtime_secret_value_cls': RuntimeSecretValue,
+        'secret_required_error_cls': RuntimeSettingsSecretRequiredError,
+        'secret_resolution_error_cls': RuntimeSettingsSecretResolutionError,
+    }
 
 
 def get_runtime_section(
@@ -403,24 +397,10 @@ def get_runtime_section(
     *,
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
-    get_section_spec(section)
-    snapshot = _load_snapshot(fetcher=fetcher)
-
-    payload = snapshot.rows.get(section)
-    if payload is not None:
-        return RuntimeSectionView(
-            section=section,
-            payload=payload,
-            source='db',
-            source_reason='db_row',
-        )
-
-    source_reason = 'missing_section' if snapshot.db_state == 'db_rows' else snapshot.db_state
-    return RuntimeSectionView(
-        section=section,
-        payload=_env_payload_for_runtime(section),
-        source='env',
-        source_reason=source_reason,
+    return runtime_settings_runtime_resolution.get_runtime_section(
+        section,
+        fetcher=fetcher,
+        **_runtime_read_path_kwargs(),
     )
 
 
@@ -429,12 +409,11 @@ def get_runtime_section_for_api(
     *,
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
-    view = get_runtime_section(section, fetcher=fetcher)
-    return RuntimeSectionView(
-        section=view.section,
-        payload=redact_payload_for_api(section, view.payload),
-        source=view.source,
-        source_reason=view.source_reason,
+    return runtime_settings_runtime_resolution.get_runtime_section_for_api(
+        section,
+        fetcher=fetcher,
+        redact_payload_for_api=redact_payload_for_api,
+        **_runtime_read_path_kwargs(),
     )
 
 
@@ -489,98 +468,27 @@ def get_runtime_status(
     *,
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> dict[str, Any]:
-    snapshot = _load_snapshot(fetcher=fetcher)
-    sections: dict[str, dict[str, str]] = {}
-    for section in SECTION_NAMES:
-        if section in snapshot.rows:
-            sections[section] = {
-                'source': 'db',
-                'source_reason': 'db_row',
-            }
-        else:
-            source_reason = 'missing_section' if snapshot.db_state == 'db_rows' else snapshot.db_state
-            sections[section] = {
-                'source': 'env',
-                'source_reason': source_reason,
-            }
-
-    return {
-        'db_state': snapshot.db_state,
-        'bootstrap': {
-            'database_dsn_source': 'env',
-            'database_dsn_env_var': 'FRIDA_MEMORY_DB_DSN',
-            'database_dsn_mode': 'external_bootstrap',
-        },
-        'sections': sections,
-    }
+    return runtime_settings_runtime_resolution.get_runtime_status(
+        fetcher=fetcher,
+        default_fetcher=_default_db_fetch_all_sections,
+        runtime_settings_snapshot_cls=RuntimeSettingsSnapshot,
+        db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
+    )
 
 
 def require_secret_configured(view: RuntimeSectionView, field: str) -> None:
-    spec = get_field_spec(view.section, field)
-    if not spec.is_secret:
-        raise ValueError(f'field is not secret: {view.section}.{field}')
-
-    payload = view.payload.get(field) or {}
-    if bool(payload.get('is_set')):
-        return
-
-    raise RuntimeSettingsSecretRequiredError(
-        f'missing secret config: {view.section}.{field} (source={view.source}, reason={view.source_reason})'
+    return runtime_settings_runtime_resolution.require_secret_configured(
+        view,
+        field,
+        secret_required_error_cls=RuntimeSettingsSecretRequiredError,
     )
 
 
 def _resolve_runtime_secret_from_view(view: RuntimeSectionView, field: str) -> RuntimeSecretValue:
-    spec = get_field_spec(view.section, field)
-    if not spec.is_secret:
-        raise ValueError(f'field is not secret: {view.section}.{field}')
-
-    payload = view.payload.get(field) or {}
-    field_ref = f'{view.section}.{field}'
-    encrypted_value = str(payload.get('value_encrypted') or '').strip()
-    is_set = bool(payload.get('is_set'))
-
-    if encrypted_value:
-        try:
-            decrypted_value = runtime_secrets.decrypt_runtime_secret_value(encrypted_value)
-        except runtime_secrets.RuntimeSettingsCryptoKeyMissingError as exc:
-            raise RuntimeSettingsSecretResolutionError(
-                f'missing runtime settings crypto key while decrypting {field_ref}'
-            ) from exc
-        except runtime_secrets.RuntimeSettingsCryptoEngineError as exc:
-            raise RuntimeSettingsSecretResolutionError(
-                f'failed to decrypt runtime secret {field_ref}: {exc}'
-            ) from exc
-
-        if not str(decrypted_value or '').strip():
-            raise RuntimeSettingsSecretResolutionError(
-                f'empty decrypted runtime secret: {field_ref}'
-            )
-
-        return RuntimeSecretValue(
-            section=view.section,
-            field=field,
-            value=str(decrypted_value),
-            source='db_encrypted',
-            source_reason=view.source_reason,
-        )
-
-    env_value = str(_seed_value(view.section, field) or '').strip()
-    if payload.get('origin') == 'env_seed' and env_value:
-        return RuntimeSecretValue(
-            section=view.section,
-            field=field,
-            value=env_value,
-            source='env_fallback',
-            source_reason=view.source_reason,
-        )
-
-    if view.source in {'db', 'candidate'} and is_set:
-        raise RuntimeSettingsSecretResolutionError(
-            f'secret marked as set but no decryptable value is available: {field_ref}'
-        )
-
-    raise RuntimeSettingsSecretRequiredError(
-        f'missing secret config: {field_ref} (source={view.source}, reason={view.source_reason})'
+    return runtime_settings_runtime_resolution.resolve_runtime_secret_from_view(
+        view,
+        field,
+        **_runtime_secret_resolution_kwargs(),
     )
 
 
@@ -590,8 +498,13 @@ def get_runtime_secret_value(
     *,
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSecretValue:
-    view = get_runtime_section(section, fetcher=fetcher)
-    return _resolve_runtime_secret_from_view(view, field)
+    return runtime_settings_runtime_resolution.get_runtime_secret_value(
+        section,
+        field,
+        fetcher=fetcher,
+        **_runtime_read_path_kwargs(),
+        **_runtime_secret_resolution_kwargs(),
+    )
 
 
 def _coerce_field_value(section: str, field: str, value: Any) -> Any:
@@ -750,41 +663,21 @@ def update_runtime_section(
     )
 
 
-def _effective_runtime_payload(
-    section: str,
-    payload: Mapping[str, Any],
-) -> dict[str, dict[str, Any]]:
-    effective = normalize_stored_payload(
-        section,
-        build_env_seed_bundle(section).payload,
-        default_origin='env_seed',
-    )
-    effective.update(normalize_stored_payload(section, payload, default_origin='db'))
-    return effective
-
-
 def _candidate_runtime_section(
     section: str,
     *,
     patch_payload: Mapping[str, Any] | None = None,
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
-    current_view = get_runtime_section(section, fetcher=fetcher)
-    candidate_payload = _effective_runtime_payload(section, current_view.payload)
-    if patch_payload:
-        candidate_payload.update(normalize_admin_patch_payload(section, patch_payload))
-        return RuntimeSectionView(
-            section=section,
-            payload=candidate_payload,
-            source='candidate',
-            source_reason='validate_payload',
-        )
-
-    return RuntimeSectionView(
-        section=section,
-        payload=candidate_payload,
-        source=current_view.source,
-        source_reason=current_view.source_reason,
+    return runtime_settings_runtime_resolution.candidate_runtime_section(
+        section,
+        patch_payload=patch_payload,
+        fetcher=fetcher,
+        get_runtime_section=get_runtime_section,
+        build_env_seed_bundle=build_env_seed_bundle,
+        normalize_stored_payload=normalize_stored_payload,
+        normalize_admin_patch_payload=normalize_admin_patch_payload,
+        runtime_section_view_cls=RuntimeSectionView,
     )
 
 
