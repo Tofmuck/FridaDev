@@ -109,6 +109,9 @@ Ce qu'on fait:
 - [ ] Scinder `app/web/app.js` par blocs de responsabilite (`stream`, `store`, `network`, `render`, `dictation`).
 - [ ] Recaler les gros tests de chat autour de seams comportementaux stables, notamment les contrats `/api/chat` issus de l'ancien `app/tests/test_server_phase14.py` et `app/tests/integration/chat/test_chat_input_mode_route.py`.
 
+Trace de progression:
+- [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 3 par extraction du seam runtime inputs / signaux amont du tour de chat vers `app/core/chat_turn_runtime_inputs.py`. Ce seam passe le gate lisibilite/maintenabilite parce qu'il regroupe un sous-domaine stable deja borne par les inputs canoniques, le web runtime payload et le stage `stimmung_agent`, tout en laissant `chat_response(...)`, `_run_hermeneutic_node_insertion_point(...)`, le transport `/api/chat` et `app/web/app.js` hors lot.
+
 Ce qu'on ne fait pas encore:
 - ne pas rouvrir ici les chantiers doctrinaux hermeneutiques ou identity deja archives.
 
