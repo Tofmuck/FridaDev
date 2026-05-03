@@ -328,6 +328,6 @@ Critere de cloture:
 | Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
 | Lot 2 - Validation bloquante des settings runtime | clos | `eda1e752758f3c9694c822fa5a4fd47b715d2b51` | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
 | Lot 3 - Observabilite memoire et erreurs aval | clos | `8e939c527d8805ffa3d300d56568483c7a05b926` | `retrieve_error` propage jusqu'a `memory_arbitration`, `prompt_prepared`, `/log` et Memory Admin; fail-open liste conserve pour les consommateurs historiques. |
-| Lot 4 - Preuves frontend reelles | clos | a renseigner apres commit de correction | Harness Chromium minimal pour chat nominal/error, admin validate/save et logs/filter/export; source-only requalifie dans `app/tests/README.md`. |
+| Lot 4 - Preuves frontend reelles | clos | `cfb65cf954db6d91ef97d1cab43e4c281b4bd657` | Harness Chromium minimal pour chat nominal/error, admin validate/save et logs/filter/export; source-only requalifie dans `app/tests/README.md`. |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |
 | Lot 6 - Findings stale et documentation source-of-truth | ouvert |  |  |
