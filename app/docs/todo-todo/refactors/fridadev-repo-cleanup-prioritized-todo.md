@@ -135,6 +135,7 @@ Ce qu'on fait:
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 4 par extraction du seam observabilite historique / dashboard history readers vers `app/admin/admin_memory_history_dashboard.py`, avec `app/admin/admin_memory_service.py` conserve comme point d'assemblage du dashboard. Ce seam passe le gate parce qu'il regroupe les lectures d'agregats historiques, les projections de payloads de stages, `recent_turns`, `mode_observation` et `latency_ms`, sans embarquer `_read_durable_state(...)`, les summaries runtime, `/log`, `app/tests/test_server_logs_phase3.py` comme chantier autonome ni le finding actif `record_arbiter_decisions`.
+- [x] Sous-lot 2 livre le `2026-05-03`: poursuite de la phase 4 par extraction du seam durable state / persisted preview readers vers `app/admin/admin_memory_durable_dashboard.py`, avec `app/admin/admin_memory_service.py` conserve comme assembleur du dashboard. Ce seam passe le gate parce qu'il regroupe la lecture durable SQL des tables `traces`, `summaries` et `arbiter_decisions`, la projection `duplicate_examples`, `top_rejection_reasons` et `arbiter.preview`, sans rouvrir l'observabilite historique deja sortie, les summaries runtime, l'assemblage top-level, `/log`, `app/tests/test_server_logs_phase3.py` ni le finding actif `record_arbiter_decisions`.
 
 Ce qu'on ne fait pas encore:
 - ne pas transformer ce lot en refonte generale du module logs ni du pipeline memoire.
