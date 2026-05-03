@@ -78,8 +78,8 @@ Ce qu'on ne fait pas encore:
 Pourquoi maintenant: `app/server.py` reste le principal point de couplage structurel, et le seam settings/admin est la prochaine surface operateur la plus dense.
 
 Ce qu'on fait:
-- [ ] Desepaissir `app/server.py` par groupes de routes/services, en le ramenant vers un vrai role d'entree HTTP et d'orchestration.
-- [ ] Nettoyer le seam `app/admin/runtime_settings.py` + `app/web/admin.js` + tests associes (`app/tests/test_server_admin_settings_read_contract.py`, `app/tests/test_server_admin_settings_patch_contract.py`, `app/tests/test_server_admin_settings_validate_contract.py`, `app/tests/unit/runtime_settings/test_runtime_settings.py`).
+- [x] Desepaissir `app/server.py` par groupes de routes/services admin coherents, en le ramenant vers un role plus net de composition HTTP et de wiring explicite, sans viser une decomposition exhaustive de toute la surface serveur.
+- [x] Assainir le seam settings/admin: extraire les routes HTTP settings, ouvrir `app/admin/runtime_settings.py` par seams backend utiles, stabiliser les contrats read/patch/validate et sortir de `app/web/admin.js` le catalogue UI structurant, sans pretendre a une refonte totale du frontend admin.
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 2 par extraction du seam HTTP `/api/admin/settings*` hors de `app/server.py` vers `app/admin/admin_settings_routes.py`, en conservant `app/admin/admin_settings_service.py` comme assemblage de reponses et `app/admin/runtime_settings.py` comme facade stable. Ce sous-lot ne pretend pas nettoyer completement `runtime_settings.py` ni `app/web/admin.js`.
@@ -90,8 +90,15 @@ Trace de progression:
 - [x] Sous-lot 6 livre le `2026-05-03`: poursuite de la phase 2 par extraction du seam HTTP admin identity `/api/admin/identity*` hors de `app/server.py` vers `app/admin/admin_identity_routes.py`, avec `app/server.py` conserve comme point de composition explicite. Ce sous-lot garde les services `admin_identity_*_service.py` comme logique metier, laisse la page `/identity` avec les routes statiques et ne pretend pas traiter hermeneutics, logs, restart, memory ni `record_arbiter_decisions`.
 - [x] Sous-lot 7 livre le `2026-05-03`: poursuite de la phase 2 par extraction du seam HTTP admin hermeneutics `/api/admin/hermeneutics*` hors de `app/server.py` vers `app/admin/admin_hermeneutics_routes.py`, en gardant `app/admin/admin_hermeneutics_service.py` comme logique metier. Ce sous-lot laisse `/hermeneutic-admin` avec les routes statiques et ne pretend pas traiter identity, logs, restart, memory ni le finding actif `record_arbiter_decisions`.
 
-Ce qu'on ne fait pas encore:
-- ne pas transformer cette phase en refonte generale de tout l'admin ni en reouverture des roadmaps admin archivees.
+Point de sortie pratique:
+- objectif utile de la phase 2 atteint;
+- `app/server.py`, `app/admin/runtime_settings.py` et `app/web/admin.js` restent imparfaits, mais leurs responsabilites critiques sont mieux bornees et ne justifient plus de garder la phase ouverte;
+- pas de mini-lots supplementaires juste pour gagner quelques lignes ou extraire mecaniquement chaque reliquat;
+- la suite logique est d'ouvrir la phase 3 plutot que de prolonger artificiellement la phase 2.
+
+Ce qu'on ne fait pas:
+- ne pas transformer cette cloture en refonte generale de tout l'admin ni en reouverture des roadmaps admin archivees;
+- ne pas traiter ici le finding actif `record_arbiter_decisions`.
 
 ## Phase 3 - Chat runtime et frontend chat
 
