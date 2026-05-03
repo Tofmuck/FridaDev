@@ -44,6 +44,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_section_database.js"', html)
         self.assertIn('script src="admin_section_services.js"', html)
         self.assertIn('script src="admin_section_resources.js"', html)
+        self.assertIn('script src="admin_settings_catalog.js"', html)
         self.assertIn('script src="admin.js"', html)
         self.assertIn('id="adminRefresh"', html)
         self.assertIn('id="adminStatusBanner"', html)
@@ -155,6 +156,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
             "admin_section_database.js",
             "admin_section_services.js",
             "admin_section_resources.js",
+            "admin_settings_catalog.js",
             "admin.js",
         ]
         self.assertEqual(found_scripts, expected_scripts)
@@ -172,10 +174,11 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         database_source = (APP_DIR / "web" / "admin_section_database.js").read_text(encoding="utf-8")
         services_source = (APP_DIR / "web" / "admin_section_services.js").read_text(encoding="utf-8")
         resources_source = (APP_DIR / "web" / "admin_section_resources.js").read_text(encoding="utf-8")
+        catalog_source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
         source_all = (
             f"{admin_api_source}\n{admin_source}\n{main_model_source}\n{arbiter_source}\n{summary_source}\n"
             f"{stimmung_agent_source}\n{validation_agent_source}\n{embedding_source}\n"
-            f"{database_source}\n{services_source}\n{resources_source}"
+            f"{database_source}\n{services_source}\n{resources_source}\n{catalog_source}"
         )
 
         found_endpoints = set(re.findall(r"/api/admin/settings(?:/[a-z-]+(?:/validate)?)?", source_all))
@@ -207,12 +210,12 @@ class AdminPhase7FoundationTests(unittest.TestCase):
 
         self.assertNotIn("frida.adminToken", admin_api_source)
         self.assertNotIn("X-Admin-Token", admin_api_source)
-        self.assertIn('title_identity_extractor', admin_source)
-        self.assertIn('referer_identity_extractor', admin_source)
-        self.assertIn('referer_validation_agent', admin_source)
-        self.assertIn("Titre extracteur d'identite", admin_source)
-        self.assertIn("Referer extracteur d'identite", admin_source)
-        self.assertIn("Referer validation", admin_source)
+        self.assertIn('title_identity_extractor', catalog_source)
+        self.assertIn('referer_identity_extractor', catalog_source)
+        self.assertIn('referer_validation_agent', catalog_source)
+        self.assertIn("Titre extracteur d'identite", catalog_source)
+        self.assertIn("Referer extracteur d'identite", catalog_source)
+        self.assertIn("Referer validation", catalog_source)
 
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
         missing_dom_hook_ids = sorted(hook_id for hook_id in dom_hook_ids if f'id="{hook_id}"' not in html)
@@ -451,6 +454,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("window.FridaAdminApi", source)
         self.assertIn("window.FridaAdminUiCommon", source)
         self.assertIn("window.FridaAdminState", source)
+        self.assertIn("window.FridaAdminSettingsCatalog", source)
         self.assertIn("window.FridaAdminMainModelSection", source)
         self.assertIn("window.FridaAdminArbiterModelSection", source)
         self.assertIn("window.FridaAdminSummaryModelSection", source)
@@ -521,17 +525,17 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("window.FridaAdminResourcesSection = Object.freeze({", resources_source)
 
     def test_admin_js_exposes_editable_main_model_response_max_tokens(self) -> None:
-        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        catalog_source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
         main_model_source = (APP_DIR / "web" / "admin_section_main_model.js").read_text(encoding="utf-8")
-        source_all = f"{source}\n{main_model_source}"
+        source_all = f"{catalog_source}\n{main_model_source}"
 
-        self.assertIn('key: "response_max_tokens"', source)
-        self.assertIn('label: "Max tokens reponse"', source)
-        self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', source)
+        self.assertIn('key: "response_max_tokens"', catalog_source)
+        self.assertIn('label: "Max tokens reponse"', catalog_source)
+        self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', catalog_source)
         self.assertIn('integerFields: ["response_max_tokens"]', source_all)
 
     def test_admin_js_exposes_editable_main_model_component_referers(self) -> None:
-        source = (APP_DIR / "web" / "admin.js").read_text(encoding="utf-8")
+        source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
 
         self.assertIn('key: "referer_llm"', source)
         self.assertIn('key: "referer_arbiter"', source)
@@ -759,6 +763,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('script src="admin_section_database.js"', source)
         self.assertIn('script src="admin_section_services.js"', source)
         self.assertIn('script src="admin_section_resources.js"', source)
+        self.assertIn('script src="admin_settings_catalog.js"', source)
         self.assertIn('id="adminStatusBanner"', source)
         self.assertIn('id="adminMainModelForm"', source)
         self.assertIn('id="adminMainModelSave"', source)

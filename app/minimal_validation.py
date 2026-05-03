@@ -451,6 +451,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_section_database_js": web_dir / "admin_section_database.js",
         "admin_section_services_js": web_dir / "admin_section_services.js",
         "admin_section_resources_js": web_dir / "admin_section_resources.js",
+        "admin_settings_catalog_js": web_dir / "admin_settings_catalog.js",
         "admin_js": web_dir / "admin.js",
         "hermeneutic_admin_api_js": web_dir / "hermeneutic_admin" / "api.js",
         "hermeneutic_admin_render_js": web_dir / "hermeneutic_admin" / "render.js",
@@ -510,6 +511,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_section_database_js = required_files["admin_section_database_js"].read_text(encoding="utf-8")
     admin_section_services_js = required_files["admin_section_services_js"].read_text(encoding="utf-8")
     admin_section_resources_js = required_files["admin_section_resources_js"].read_text(encoding="utf-8")
+    admin_settings_catalog_js = required_files["admin_settings_catalog_js"].read_text(encoding="utf-8")
     admin_js = required_files["admin_js"].read_text(encoding="utf-8")
     hermeneutic_admin_api_js = required_files["hermeneutic_admin_api_js"].read_text(encoding="utf-8")
     hermeneutic_admin_render_js = required_files["hermeneutic_admin_render_js"].read_text(encoding="utf-8")
@@ -550,6 +552,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         f"{admin_section_database_js}\n"
         f"{admin_section_services_js}\n"
         f"{admin_section_resources_js}\n"
+        f"{admin_settings_catalog_js}\n"
         f"{admin_js}"
     )
     hermeneutic_admin_front_js = (
@@ -592,6 +595,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "admin_section_database.js",
         "admin_section_services.js",
         "admin_section_resources.js",
+        "admin_settings_catalog.js",
         "admin.js",
     ]
     admin_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', admin_html)
@@ -914,6 +918,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'script src="admin_section_database.js"',
         'script src="admin_section_services.js"',
         'script src="admin_section_resources.js"',
+        'script src="admin_settings_catalog.js"',
         'script src="admin.js"',
         'id="adminRefresh"',
         'id="adminStatusBanner"',

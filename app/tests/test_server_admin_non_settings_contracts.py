@@ -136,7 +136,7 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
         self.assertFalse(any('/settings' in route for route in hermeneutics_routes))
 
     def test_admin_resources_ui_keeps_paths_as_resource_references(self) -> None:
-        source = (APP_DIR / 'web' / 'admin.js').read_text(encoding='utf-8')
+        source = (APP_DIR / 'web' / 'admin_settings_catalog.js').read_text(encoding='utf-8')
         self.assertIn('LLM static resource path', source)
         self.assertIn('User static resource path', source)
         self.assertIn("Reference de ressource du statique actif cote modele.", source)

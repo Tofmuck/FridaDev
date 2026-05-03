@@ -165,6 +165,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("admin_section_database_js", details["files"])
         self.assertIn("admin_section_services_js", details["files"])
         self.assertIn("admin_section_resources_js", details["files"])
+        self.assertIn("admin_settings_catalog_js", details["files"])
         self.assertIn("admin_js", details["files"])
         self.assertIn("hermeneutic_admin_api_js", details["files"])
         self.assertIn("hermeneutic_admin_render_js", details["files"])
