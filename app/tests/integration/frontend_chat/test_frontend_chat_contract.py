@@ -207,11 +207,12 @@ class AppPhase8Tests(unittest.TestCase):
     def test_streaming_front_rehydrates_persisted_interrupted_assistant_markers_via_message_meta(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")
+        threads_source = (APP_DIR / "web" / "chat_threads_sidebar.js").read_text(encoding="utf-8")
 
         self.assertIn('function buildInterruptedAssistantTurnMeta(errorCode) {', streaming_source)
         self.assertIn('function getPersistedAssistantTurnErrorMeta(message) {', streaming_source)
-        self.assertIn('if (m.meta && typeof m.meta === "object") {', app_source)
-        self.assertIn('sanitizedMessage.meta = m.meta;', app_source)
+        self.assertIn('if (m.meta && typeof m.meta === "object") {', threads_source)
+        self.assertIn('sanitizedMessage.meta = m.meta;', threads_source)
         self.assertIn('const persistedErrorMeta = getPersistedAssistantTurnErrorMeta(messageRecord);', app_source)
         self.assertIn('applyAssistantStreamingFailure(assistantNode, persistedErrorMeta);', app_source)
 
@@ -235,6 +236,36 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', app_source)
         self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', app_source)
         self.assertIn('if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {', app_source)
+
+    def test_threads_sidebar_lifecycle_is_loaded_as_a_single_frontend_seam(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        threads_source = (APP_DIR / "web" / "chat_threads_sidebar.js").read_text(encoding="utf-8")
+
+        self.assertIn('<script src="chat_threads_sidebar.js"></script>', index_source)
+        self.assertLess(
+            index_source.index('<script src="chat_streaming.js"></script>'),
+            index_source.index('<script src="chat_threads_sidebar.js"></script>'),
+        )
+        self.assertLess(
+            index_source.index('<script src="chat_threads_sidebar.js"></script>'),
+            index_source.index('<script src="app.js"></script>'),
+        )
+        self.assertIn('const chatThreadsSidebar = window.FridaChatThreadsSidebar;', app_source)
+        self.assertIn('const threadsLifecycle = chatThreadsSidebar.createChatThreadsSidebar({', app_source)
+        self.assertIn('const THREADS_PAGE_SIZE = 200;', threads_source)
+        self.assertIn('const messageCache = new Map();', threads_source)
+        self.assertIn('async function listConversationsFromServer', threads_source)
+        self.assertIn('async function createConversationOnServer', threads_source)
+        self.assertIn('async function renameConversationOnServer', threads_source)
+        self.assertIn('async function deleteConversationOnServer', threads_source)
+        self.assertIn('async function fetchConversationMessagesFromServer', threads_source)
+        self.assertIn('const renderThreads = () => {', threads_source)
+        self.assertIn('async function startInlineRename', threads_source)
+        self.assertIn('const hydrateThreadMessages = async', threads_source)
+        self.assertIn('const loadThread = async', threads_source)
+        self.assertIn('const appendMessageToThread = (threadId, role, content, timestamp = null, meta = null) => {', threads_source)
+        self.assertIn('async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){', app_source)
 
 
 if __name__ == "__main__":

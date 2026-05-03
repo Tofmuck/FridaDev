@@ -106,12 +106,13 @@ Pourquoi maintenant: une fois la surface de tests et la facade HTTP allegees, le
 
 Ce qu'on fait:
 - [ ] Continuer a sortir les responsabilites de `app/core/chat_service.py` en seams plus explicites.
-- [ ] Scinder `app/web/app.js` par blocs de responsabilite (`stream`, `store`, `network`, `render`, `dictation`).
+- [ ] Ouvrir `app/web/app.js` par seams frontend stables et lisibles, en preferant des sous-domaines coherents aux splits mecaniques `store` / `network` / `render`.
 - [ ] Recaler les gros tests de chat autour de seams comportementaux stables, notamment les contrats `/api/chat` issus de l'ancien `app/tests/test_server_phase14.py` et `app/tests/integration/chat/test_chat_input_mode_route.py`.
 
 Trace de progression:
 - [x] Sous-lot 1 livre le `2026-05-03`: ouverture de la phase 3 par extraction du seam runtime inputs / signaux amont du tour de chat vers `app/core/chat_turn_runtime_inputs.py`. Ce seam passe le gate lisibilite/maintenabilite parce qu'il regroupe un sous-domaine stable deja borne par les inputs canoniques, le web runtime payload et le stage `stimmung_agent`, tout en laissant `chat_response(...)`, `_run_hermeneutic_node_insertion_point(...)`, le transport `/api/chat` et `app/web/app.js` hors lot.
 - [x] Sous-lot 2 livre le `2026-05-03`: ouverture de `app/web/app.js` par extraction du seam stream frontend vers `app/web/chat_streaming.js`, charge explicitement avant `app/web/app.js`. Ce seam passe le gate parce qu'il regroupe la taxonomie d'erreurs observable, la state machine UI de streaming, les control frames et les marqueurs d'assistant interrompu deja couverts par tests Node, sans ouvrir le store, le render global, la dictation, le reseau hors stream ni le backend chat.
+- [x] Sous-lot 3 livre le `2026-05-03`: poursuite de l'ouverture de `app/web/app.js` par extraction du seam threads/sidebar lifecycle vers `app/web/chat_threads_sidebar.js`, charge entre le stream frontend et `app/web/app.js`. Ce seam passe le gate parce qu'il garde ensemble l'etat local des conversations, les appels `/api/conversations*`, la sidebar, le rename/delete inline, l'hydratation et le cache messages, ce qui reste plus lisible qu'un split mecanique `store` / `network` / `render`. Ce sous-lot laisse `sendToServer(...)`, le submit principal, la dictee, le rendu global des bulles, `app/core/chat_service.py` et `app/server.py` hors lot.
 
 Ce qu'on ne fait pas encore:
 - ne pas rouvrir ici les chantiers doctrinaux hermeneutiques ou identity deja archives.
