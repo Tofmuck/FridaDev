@@ -28,7 +28,7 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 ## Ordre de correction recommande
 
 - [x] Lot 1: securiser la persistance conversationnelle canonique avant toute ecriture derivee.
-- [ ] Lot 2: rendre la validation settings bloquante cote serveur.
+- [x] Lot 2: rendre la validation settings bloquante cote serveur.
 - [ ] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
 - [ ] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
 - [ ] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
@@ -107,10 +107,10 @@ Fichiers probablement touches:
 - tests settings read/patch/validate
 
 Cases de correction:
-- [ ] `L2-C1` Inserer une validation serveur bloquante dans le chemin PATCH avant `update_runtime_section()`.
-- [ ] `L2-C2` Garantir qu'un PATCH invalide ne modifie ni `runtime_settings`, ni `runtime_settings_history`, ni cache.
-- [ ] `L2-C3` Normaliser la reponse d'erreur pour que le frontend conserve ses messages de validation sans diverger du backend.
-- [ ] `L2-C4` Ajouter des tests PATCH directs pour valeurs hors bornes sur `main_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `services` et `identity_governance` selon le risque.
+- [x] `L2-C1` Inserer une validation serveur bloquante dans le chemin PATCH avant `update_runtime_section()`.
+- [x] `L2-C2` Garantir qu'un PATCH invalide ne modifie ni `runtime_settings`, ni `runtime_settings_history`, ni cache.
+- [x] `L2-C3` Normaliser la reponse d'erreur pour que le frontend conserve ses messages de validation sans diverger du backend.
+- [x] `L2-C4` Ajouter des tests PATCH directs pour valeurs hors bornes sur `main_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services` et `resources`, plus une preuve write-path pour `identity_governance` qui n'est pas expose par `/api/admin/settings/<section>`.
 
 Tests a ajouter ou modifier:
 - `tests/test_server_admin_settings_patch_contract.py`: refus `top_p=2`, `temperature=3`, `model=""`, timeout non positif, `validation_agent_model.max_tokens` au-dessus du cap;
@@ -127,9 +127,9 @@ Risques:
 - une validation trop large peut bloquer des sections non exposees par `/admin` mais actives cote identity/hermeneutics.
 
 Critere de cloture:
-- [ ] Un client API direct ne peut plus enregistrer un etat runtime invalide.
-- [ ] `/validate` et `PATCH` partagent les memes invariants semantiques ou documentent explicitement leur difference.
-- [ ] Le frontend admin reste compatible avec les erreurs backend.
+- [x] Un client API direct ne peut plus enregistrer un etat runtime invalide.
+- [x] `/validate` et `PATCH` partagent les memes invariants semantiques ou documentent explicitement leur difference.
+- [x] Le frontend admin reste compatible avec les erreurs backend.
 
 ## Lot 3 - Observabilite memoire et erreurs aval
 
@@ -324,7 +324,7 @@ Critere de cloture:
 | Lot | Statut | Commit de correction | Notes |
 | --- | --- | --- | --- |
 | Lot 1 - Persistance conversationnelle canonique | clos | `6df238cd8c7298fda04644d7132bf7ede7d4267f` | Correctif review atomicite ajoute dans le lot `Tighten conversation persistence atomicity`; fermeture prouvee par tests persistence/chat/stream/frontend. |
-| Lot 2 - Validation bloquante des settings runtime | ouvert |  |  |
+| Lot 2 - Validation bloquante des settings runtime | clos | a renseigner apres commit | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
 | Lot 3 - Observabilite memoire et erreurs aval | ouvert |  |  |
 | Lot 4 - Preuves frontend reelles | ouvert |  |  |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |

@@ -32,6 +32,30 @@ def settings_status_response(*, runtime_settings_module: Any) -> Dict[str, Any]:
     return {'ok': True, **status}
 
 
+def _validation_failure_response(section: str, validation: Mapping[str, Any]) -> Dict[str, Any]:
+    failed_checks = [
+        check
+        for check in validation.get('checks', [])
+        if isinstance(check, Mapping) and not bool(check.get('ok'))
+    ]
+    details = '; '.join(
+        f"{str(check.get('name') or 'check')}: {str(check.get('detail') or '').strip()}"
+        for check in failed_checks[:4]
+    )
+    error = f'runtime settings validation failed for {section}'
+    if details:
+        error = f'{error}: {details}'
+    return {
+        'ok': False,
+        'error': error,
+        'section': section,
+        'valid': False,
+        'checks': list(validation.get('checks', [])),
+        'source': validation.get('source'),
+        'source_reason': validation.get('source_reason'),
+    }
+
+
 def patch_section_response(
     section: str,
     data: Any,
@@ -48,6 +72,9 @@ def patch_section_response(
     updated_by = str(data.get('updated_by') or 'admin_api').strip() or 'admin_api'
 
     try:
+        validation = runtime_settings_module.validate_runtime_section(section, patch_payload=patch_payload)
+        if not validation.get('valid'):
+            return _validation_failure_response(section, validation), 400
         view = runtime_settings_module.update_runtime_section(
             section,
             patch_payload,

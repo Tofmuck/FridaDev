@@ -534,8 +534,10 @@ def update_runtime_section(
         normalize_admin_patch_payload=normalize_admin_patch_payload,
         normalize_stored_payload=normalize_stored_payload,
         redact_payload_for_api=redact_payload_for_api,
+        validate_runtime_section=validate_runtime_section,
         invalidate_runtime_settings_cache=invalidate_runtime_settings_cache,
         runtime_section_view_cls=RuntimeSectionView,
+        validation_error_cls=RuntimeSettingsValidationError,
         db_unavailable_error_cls=RuntimeSettingsDbUnavailableError,
     )
 

@@ -10,6 +10,22 @@ from admin.runtime_settings_spec import get_field_spec, get_section_spec
 RuntimeRows = dict[str, dict[str, dict[str, Any]]]
 
 
+def runtime_validation_failure_message(section: str, validation: Mapping[str, Any]) -> str:
+    failed_checks = [
+        check
+        for check in validation.get('checks', [])
+        if isinstance(check, Mapping) and not bool(check.get('ok'))
+    ]
+    details = '; '.join(
+        f"{str(check.get('name') or 'check')}: {str(check.get('detail') or '').strip()}"
+        for check in failed_checks[:4]
+    )
+    message = f'runtime settings validation failed for {section}'
+    if details:
+        message = f'{message}: {details}'
+    return message
+
+
 def coerce_field_value(
     section: str,
     field: str,
@@ -118,11 +134,17 @@ def update_runtime_section(
     normalize_admin_patch_payload: Callable[[str, Mapping[str, Any]], dict[str, dict[str, Any]]],
     normalize_stored_payload: Callable[..., dict[str, dict[str, Any]]],
     redact_payload_for_api: Callable[[str, Mapping[str, Any]], dict[str, dict[str, Any]]],
+    validate_runtime_section: Callable[..., dict[str, Any]],
     invalidate_runtime_settings_cache: Callable[[], None],
     runtime_section_view_cls: type,
+    validation_error_cls: type[Exception],
     db_unavailable_error_cls: type[Exception],
 ) -> Any:
     actor = str(updated_by or '').strip() or 'admin_api'
+    validation = validate_runtime_section(section, patch_payload=patch_payload, fetcher=fetcher)
+    if not validation.get('valid'):
+        raise validation_error_cls(runtime_validation_failure_message(section, validation))
+
     normalized_patch = normalize_admin_patch_payload(section, patch_payload)
     current_view = get_runtime_section(section, fetcher=fetcher)
     next_payload = normalize_stored_payload(section, current_view.payload, default_origin=current_view.source_reason)

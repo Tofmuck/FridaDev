@@ -11,6 +11,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+import config
 from admin import admin_logs, runtime_settings
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
@@ -31,13 +32,76 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.server.admin_logs.LOG_PATH = temp_log_path
         self.server.admin_logs._BOOTSTRAP_DONE = True
         self.client = self.server.app.test_client()
+        self._original_validate = self.server.runtime_settings.validate_runtime_section
+        self.validation_calls = []
+
+        def default_validate_runtime_section(section, patch_payload=None, *, fetcher=None):
+            self.validation_calls.append((section, patch_payload))
+            return {
+                'section': section,
+                'valid': True,
+                'source': 'candidate',
+                'source_reason': 'validate_payload',
+                'checks': [],
+            }
+
+        self.server.runtime_settings.validate_runtime_section = default_validate_runtime_section
 
     def tearDown(self) -> None:
+        self.server.runtime_settings.validate_runtime_section = self._original_validate
         admin_logs.LOG_PATH = self._original_log_path
         admin_logs._BOOTSTRAP_DONE = self._original_bootstrap_done
         self.server.admin_logs.LOG_PATH = self._original_log_path
         self.server.admin_logs._BOOTSTRAP_DONE = self._original_bootstrap_done
         self._tmpdir.cleanup()
+
+    def _enable_actual_runtime_validation_from_env(self):
+        original_or_base = config.OR_BASE
+        original_or_key = config.OR_KEY
+        original_or_referer = config.OR_REFERER
+        config.OR_BASE = 'https://openrouter.test/api/v1'
+        config.OR_KEY = 'sk-test-runtime-settings-validation'
+        config.OR_REFERER = 'https://fridadev.test'
+
+        def actual_validate_from_env(section, patch_payload=None, *, fetcher=None):
+            return self._original_validate(section, patch_payload=patch_payload, fetcher=lambda: {})
+
+        self.server.runtime_settings.validate_runtime_section = actual_validate_from_env
+
+        def restore():
+            config.OR_BASE = original_or_base
+            config.OR_KEY = original_or_key
+            config.OR_REFERER = original_or_referer
+            self.server.runtime_settings.validate_runtime_section = self._original_validate
+
+        return restore
+
+    def _assert_patch_rejected_before_update(self, path: str, payload: dict, failed_check_name: str) -> dict:
+        restore_validate = self._enable_actual_runtime_validation_from_env()
+        original_update = self.server.runtime_settings.update_runtime_section
+        observed = {'update_calls': 0}
+
+        def fail_if_update_called(*_args, **_kwargs):
+            observed['update_calls'] += 1
+            raise AssertionError('update_runtime_section must not be called after invalid validation')
+
+        self.server.runtime_settings.update_runtime_section = fail_if_update_called
+        try:
+            response = self.client.patch(path, json={'payload': payload})
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+            restore_validate()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(observed['update_calls'], 0)
+        data = response.get_json()
+        self.assertFalse(data['ok'])
+        self.assertFalse(data['valid'])
+        checks = {check['name']: check for check in data['checks']}
+        self.assertIn(failed_check_name, checks)
+        self.assertFalse(checks[failed_check_name]['ok'])
+        self.assertIn('runtime settings validation failed', data['error'])
+        return data
 
     def test_patch_admin_settings_main_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
@@ -97,6 +161,14 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         )
         self.assertIn('[FIN DES RÉSULTATS WEB]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'env_fallback')
+        self.assertEqual(self.validation_calls[-1][0], 'main_model')
+        self.assertEqual(
+            self.validation_calls[-1][1],
+            {
+                'model': {'value': 'openrouter/patched-main-model'},
+                'temperature': {'value': 0.4},
+            },
+        )
 
     def test_patch_admin_settings_main_model_rejects_invalid_payload(self) -> None:
         response = self.client.patch(
@@ -169,6 +241,167 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertFalse(data['ok'])
         self.assertEqual(data['error'], 'readonly_info is read-only and cannot be patched')
+
+    def test_patch_admin_settings_main_model_rejects_temperature_out_of_range_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/main-model',
+            {'temperature': {'value': 3.0}},
+            'temperature',
+        )
+        self.assertIn('temperature=3.0', data['error'])
+
+    def test_patch_admin_settings_main_model_rejects_top_p_out_of_range_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/main-model',
+            {'top_p': {'value': 2.0}},
+            'top_p',
+        )
+        self.assertIn('top_p=2.0', data['error'])
+
+    def test_patch_admin_settings_main_model_rejects_empty_model_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/main-model',
+            {'model': {'value': ''}},
+            'model',
+        )
+        self.assertIn('model=missing', data['error'])
+
+    def test_patch_admin_settings_arbiter_model_rejects_nonpositive_timeout_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/arbiter-model',
+            {'timeout_s': {'value': 0}},
+            'timeout_s',
+        )
+        self.assertIn('timeout_s=0', data['error'])
+
+    def test_patch_admin_settings_validation_agent_model_rejects_max_tokens_above_cap_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/validation-agent-model',
+            {'max_tokens': {'value': 96}},
+            'max_tokens',
+        )
+        self.assertIn('max_allowed=80', data['error'])
+
+    def test_patch_admin_settings_stimmung_agent_model_rejects_top_p_out_of_range_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/stimmung-agent-model',
+            {'top_p': {'value': 2.0}},
+            'top_p',
+        )
+        self.assertIn('top_p=2.0', data['error'])
+
+    def test_patch_admin_settings_embedding_rejects_nonpositive_dimensions_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/embedding',
+            {'dimensions': {'value': 0}},
+            'dimensions',
+        )
+        self.assertIn('dimensions=0', data['error'])
+
+    def test_patch_admin_settings_database_rejects_invalid_backend_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/database',
+            {'backend': {'value': 'sqlite'}},
+            'backend',
+        )
+        self.assertIn('backend=sqlite', data['error'])
+
+    def test_patch_admin_settings_services_rejects_invalid_url_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/services',
+            {'searxng_url': {'value': 'not-a-url'}},
+            'searxng_url',
+        )
+        self.assertIn('searxng_url=not-a-url', data['error'])
+
+    def test_patch_admin_settings_resources_rejects_missing_identity_path_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/resources',
+            {'llm_identity_path': {'value': '/definitely/missing/fridadev-lot2.md'}},
+            'llm_identity_path',
+        )
+        self.assertIn('llm_identity_path=', data['error'])
+
+    def test_patch_admin_settings_validate_and_patch_share_invalid_candidate_checks(self) -> None:
+        restore_validate = self._enable_actual_runtime_validation_from_env()
+        original_update = self.server.runtime_settings.update_runtime_section
+        observed = {'update_calls': 0}
+
+        def fail_if_update_called(*_args, **_kwargs):
+            observed['update_calls'] += 1
+            raise AssertionError('update_runtime_section must not be called for invalid PATCH')
+
+        self.server.runtime_settings.update_runtime_section = fail_if_update_called
+        payload = {'top_p': {'value': 2.0}}
+        try:
+            validate_response = self.client.post(
+                '/api/admin/settings/summary-model/validate',
+                json={'payload': payload},
+            )
+            patch_response = self.client.patch(
+                '/api/admin/settings/summary-model',
+                json={'payload': payload},
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+            restore_validate()
+
+        self.assertEqual(validate_response.status_code, 200)
+        validate_data = validate_response.get_json()
+        self.assertFalse(validate_data['valid'])
+        self.assertEqual(patch_response.status_code, 400)
+        patch_data = patch_response.get_json()
+        self.assertFalse(patch_data['valid'])
+        self.assertEqual(observed['update_calls'], 0)
+        validate_checks = {check['name']: check for check in validate_data['checks']}
+        patch_checks = {check['name']: check for check in patch_data['checks']}
+        self.assertFalse(validate_checks['top_p']['ok'])
+        self.assertFalse(patch_checks['top_p']['ok'])
+        self.assertEqual(validate_checks['top_p']['detail'], patch_checks['top_p']['detail'])
+
+    def test_patch_admin_settings_validate_and_patch_share_valid_candidate_checks(self) -> None:
+        restore_validate = self._enable_actual_runtime_validation_from_env()
+        original_update = self.server.runtime_settings.update_runtime_section
+        observed = {'section': None, 'payload': None}
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openrouter/summary-valid', 'is_secret': False, 'origin': 'admin_ui'},
+                    'temperature': {'value': 0.2, 'is_secret': False, 'origin': 'admin_ui'},
+                    'top_p': {'value': 0.9, 'is_secret': False, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        payload = {
+            'model': {'value': 'openrouter/summary-valid'},
+            'temperature': {'value': 0.2},
+            'top_p': {'value': 0.9},
+        }
+        try:
+            validate_response = self.client.post(
+                '/api/admin/settings/summary-model/validate',
+                json={'payload': payload},
+            )
+            patch_response = self.client.patch(
+                '/api/admin/settings/summary-model',
+                json={'payload': payload},
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+            restore_validate()
+
+        self.assertEqual(validate_response.status_code, 200)
+        self.assertTrue(validate_response.get_json()['valid'])
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(observed['section'], 'summary_model')
+        self.assertEqual(observed['payload'], payload)
 
     def test_patch_admin_settings_main_model_rejects_readonly_prompt_field(self) -> None:
         response = self.client.patch(
