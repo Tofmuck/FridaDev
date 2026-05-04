@@ -3,7 +3,8 @@
 Statut: archive le `2026-04-16`  
 Classement: `app/docs/todo-done/notes/`  
 Portee: archive documentaire de la grande roadmap d'implementation hermeneutique  
-Reliquat actif extrait: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+Reliquat extrait puis cloture: `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`
+Validation de cloture: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
 
 Note de cloture:
 - l'essentiel du chantier d'implementation est maintenant livre dans le repo courant;
@@ -286,7 +287,7 @@ CONTEXT_HINTS_MIN_CONFIDENCE=0.60
 - [x] `docs/states/hermeneutic-judgment-spec.md`: spec normative.
 
 ## Reliquats extraits vers le suivi post-stabilisation
-- [x] Extraire les derniers points encore ouverts vers `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`.
+- [x] Extraire puis cloturer les derniers points post-stabilisation dans `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md` le `2026-05-04`.
 - [x] Requalifier cette archive comme chantier majoritairement accompli, sans gates runtime encore ouverts.
 
 Le suivi actif distinct porte maintenant seulement:

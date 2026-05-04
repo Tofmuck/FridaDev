@@ -79,7 +79,6 @@ Specs liees:
 ### Memory / hermeneutics
 
 Lire d'abord:
-- `todo-todo/memory/hermeneutical-post-stabilization-todo.md`
 - `states/architecture/memory-rag-current-pipeline-cartography.md`
 - `states/specs/memory-admin-surface-contract.md`
 - `states/specs/memory-rag-pre-arbiter-basket-contract.md`
@@ -93,6 +92,8 @@ Baselines et evaluations:
 - `states/specs/memory-rag-evaluation-sheet.md`
 
 Archives utiles:
+- `todo-done/validations/hermeneutical-post-stabilization-todo.md`
+- `todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
 - `todo-done/refactors/memory-rag-relevance-todo.md`
 - `todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md`

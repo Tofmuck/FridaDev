@@ -171,9 +171,10 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-done/migrations/fridadev-to-frida-system-migration-todo.md`: trace archivee du clonage/migration OVH, chemins runtime, backups, mode operatoire vacances et decisions admin OVH.
 - `app/docs/todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`: mini-lot admin archive sur l'affichage `mode depuis` / `observation du mode`.
 - `app/docs/todo-done/notes/hermeneutical-add-todo.md`: archive de la grande roadmap hermeneutique, utile pour relire le chantier de stabilisation deja livre.
-- `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`: reliquat memoire/hermeneutique encore actif, borne aux preuves post-rollout / post-stabilisation.
+- `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`: archive du reliquat memoire/hermeneutique HPS, cloture par preuves automatisees.
+- `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`: note de validation de cloture HPS, avec commandes, resultats et limites.
 - `app/docs/states/specs/response-arbiter-power-contract.md`: spec vivante du lot 1 pour la chaine de pouvoir cible de l'arbitre de reponse, le statut non souverain de l'amont et le minimum d'observabilite requis pour ouvrir les lots de code.
-- `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`: archive operatoire du chantier clos de bascule vers un arbitre de reponse LLM dominant sous garde-fous; a lire separement du reliquat post-stabilisation pour relire l'execution sans requalifier le chantier comme actif.
+- `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`: archive operatoire du chantier clos de bascule vers un arbitre de reponse LLM dominant sous garde-fous; a lire separement de l'archive HPS pour relire l'execution sans requalifier le chantier comme actif.
 - `app/docs/states/policies/identity-new-contract-plan.md`: plan doctrinal cible du nouveau systeme d'identite; source de verite pour `static`, `mutable`, staging, ponderation et saturation.
 - `app/docs/todo-done/refactors/identity-new-contract-todo.md`: archive operatoire code-first du chantier termine; trace lotable des surfaces runtime/admin/logs/tests/docs migrees, nettoyees ou requalifiees.
 - conserver `identity-new-contract-plan.md` et `identity-new-contract-todo.md` comme deux references distinctes: le plan reste la doctrine cible active, l'archive conserve le chantier operatoire termine; ne pas les refusionner.

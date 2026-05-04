@@ -1,10 +1,11 @@
-# Hermeneutical Post-Stabilization - TODO automatisable
+# Hermeneutical Post-Stabilization - archive de validation
 
-Statut: ouvert
-Classement: `app/docs/todo-todo/memory/`
+Statut: cloture
+Classement: `app/docs/todo-done/validations/`
 Portee: preuves automatisees post-stabilisation du pipeline memoire / hermeneutique deja livre
 Origine: extraction du chantier archive `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 Recadrage: `2026-05-04`, apres audit global et remediation lots 1 a 6
+Validation de cloture: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
 
 ## Source de verite runtime
 
@@ -65,7 +66,7 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 
 1. Lot 1 - Contrats post-stabilisation automatises: fermer les invariants qui peuvent etre prouves sans corpus long ni donnees privees.
 2. Lot 2 - Corpus controle memoire / identity: remplacer les anciennes validations "post-prod" par fixtures de conversation et probes read-only.
-3. Lot 3 - Rapport de cloture: si tous les tests/probes passent, archiver ce TODO dans `todo-done/notes/` ou `todo-done/validations/`.
+3. Lot 3 - Rapport de cloture: execute le `2026-05-04`; ce TODO est archive dans `todo-done/validations/`.
 
 ## Lot 1 - Contrats post-stabilisation automatises
 
@@ -115,9 +116,14 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 
 ## Lot 3 - Cloture documentaire
 
-- [ ] HPS-L3-C1 Executer tous les tests/probes listes par ce TODO dans un seul bloc de verification.
-- [ ] HPS-L3-C2 Ajouter une note de validation sous `app/docs/todo-done/validations/` avec commandes, resultats et limites.
-- [ ] HPS-L3-C3 Archiver ce TODO si HPS-L1 et HPS-L2 sont complets, sans ouvrir de nouveau chantier runtime.
+- [x] HPS-L3-C1 Executer tous les tests/probes listes par ce TODO dans un seul bloc de verification.
+  - Preuve: bloc de verification execute le `2026-05-04`, voir `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`.
+  - Resultat: OK sur toutes les suites HPS-L1/HPS-L2 et contrats adjacents listes ci-dessous.
+- [x] HPS-L3-C2 Ajouter une note de validation sous `app/docs/todo-done/validations/` avec commandes, resultats et limites.
+  - Preuve: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`.
+- [x] HPS-L3-C3 Archiver ce TODO si HPS-L1 et HPS-L2 sont complets, sans ouvrir de nouveau chantier runtime.
+  - Preuve: deplacement par `git mv` vers `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`.
+  - Resultat: aucun nouveau chantier runtime ouvert; HPS-L1 et HPS-L2 restent couverts par tests/probes automatises.
 
 ## Matrice de remplacement des anciennes cases
 
@@ -133,30 +139,29 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 
 ## Commandes de verification
 
-Commandes minimales pour Lot 1:
+Bloc HPS execute pour la validation de cloture le `2026-05-04`:
 
 ```bash
-docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
+docker exec platform-fridadev python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
+docker exec platform-fridadev python tests/unit/memory/test_memory_store_blocks_phase8bis.py
+docker exec platform-fridadev python tests/test_memory_store_phase4.py
 docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py
 docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_prepare_context_contracts.py
 docker exec platform-fridadev python tests/test_server_chat_compact_observability_contract.py
 docker exec platform-fridadev python tests/test_server_chat_synthetic_logs_contract.py
 docker exec platform-fridadev python tests/test_server_admin_memory_surface_phase10e.py
 docker exec platform-fridadev python tests/test_server_admin_hermeneutics_phase4.py
+docker exec platform-fridadev python tests/test_server_logs_phase3.py
+docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_identity_mode_pipeline.py
+docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_identity_content_guards.py
 ```
 
-Note: le premier test est nouveau dans ce lot docs+tests. Tant que l'image live n'a pas ete rebuild, il doit etre execute avec le repo monte dans l'image locale; apres rebuild applicatif, la commande `docker exec platform-fridadev python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py` redevient equivalente.
-
-Commandes a garder dans les lots suivants:
+Preuve live minimale executee dans le meme cycle:
 
 ```bash
-docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
-docker exec platform-fridadev python tests/test_memory_store_phase4.py
-docker exec platform-fridadev python tests/unit/memory/test_memory_store_blocks_phase8bis.py
-docker exec platform-fridadev python tests/test_server_logs_phase3.py
+docker ps --filter name=platform-fridadev --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'
 ```
-
-Note Lot 2: le test HPS est volontairement executable en mode repo monte tant que l'image live n'a pas ete rebuild apres ajout de tests. Comme `app/core/chat_memory_flow.py` a ete touche au Lot 2, les suites conteneur adjacentes doivent etre relancees apres rebuild applicatif.
 
 ## Hors scope
 

@@ -143,7 +143,8 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Response arbiter power contract for lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- Active hermeneutic post-stabilization TODO: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- Archived hermeneutic post-stabilization validation TODO: `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`
+- Hermeneutic post-stabilization validation note: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
 - Archived prioritized repo cleanup roadmap: `app/docs/todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - Archived operational roadmap for the shift to an LLM-dominant response arbiter under hard guardrails: `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - Active doctrinal plan for the new identity contract: `app/docs/states/policies/identity-new-contract-plan.md`
@@ -335,7 +336,8 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Contrat de pouvoir de l'arbitre de reponse pour le lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- TODO hermeneutique actif de post-stabilisation: `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md`
+- Archive de validation hermeneutique post-stabilisation: `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`
+- Note de validation hermeneutique post-stabilisation: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
 - Roadmap archivee de nettoyage priorise du repo: `app/docs/todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - Archive operatoire du chantier de bascule vers un arbitre de reponse LLM dominant sous garde-fous: `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - Plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `app/docs/states/policies/identity-new-contract-plan.md`

@@ -188,7 +188,7 @@ Decision de cloture du 2026-04-18: le chantier operatoire `identity-new-contract
 - [x] Relire `app/docs/todo-done/refactors/identity-vs-prompt-separation-todo.md` comme base historique de separation `identity/prompt`, sans en reutiliser tel quel le contrat `rewrite narrative`.
 - [x] Relire `app/docs/todo-done/refactors/identity-control-surface-todo.md` comme historique de la surface actuelle `static + mutable narrative`, pas comme cible du nouveau staging.
 - [x] Relire `app/docs/todo-done/notes/hermeneutical-add-todo.md` uniquement pour les dependances historiques avec l'hermeneutique.
-- [x] Relire `app/docs/todo-todo/memory/hermeneutical-post-stabilization-todo.md` pour identifier les coutures actives avec le noeud hermeneutique et les preuves post-rollout a conserver.
+- [x] Relire le suivi HPS maintenant archive dans `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md` pour identifier les coutures actives avec le noeud hermeneutique et les preuves post-rollout a conserver.
 
 ### E3. References depot a garder separees
 
