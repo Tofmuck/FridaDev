@@ -183,18 +183,22 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
 - `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`: audit global exhaustif date du 2026-05-03, source de verite des findings `AUDIT-20260503-*`.
-- `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`: TODO actif de remediation structurelle des findings de l'audit global du 2026-05-03.
+- `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`: plan de remediation structurelle et statut de cloture des findings de l'audit global du 2026-05-03.
 - `app/docs/todo-done/refactors/admin-todo.md`: roadmap admin archivee; ne pas la rouvrir silencieusement.
 - `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: cloture de convergence hermeneutique; ne pas la traiter comme active.
 - `app/docs/states/project/Frida-State-french-03-04-26.md` et `app/docs/states/project/Frida-State-english-03-04-26.md`: etats projet dates du 2026-04-03. Ils restent utiles historiquement, mais ne decrivent pas a eux seuls l'environnement OVH courant.
 
-## Finding actif a re-verifier
+## Finding arbiter requalifie
 
-Un finding de review reste a traiter separement du present travail documentaire:
+Le finding `record_arbiter_decisions()` / provenance du modele arbitre a ete re-verifie et requalifie comme stale/corrige le `2026-05-04`.
 
-- `app/memory/memory_store.py`: `record_arbiter_decisions()` peut persister un modele d'arbitre different de celui qui a produit la decision si le runtime setting change entre l'appel LLM et l'insert DB. Le correctif attendu est de propager le modele concret utilise par `memory/arbiter.py` jusqu'a la persistence, avec un test simulant le changement de setting entre decision et enregistrement.
+Etat courant:
 
-Ne pas melanger ce correctif avec les mises a jour d'environnement/plateforme.
+- `app/memory/arbiter.py` attache le modele arbitre effectif aux decisions;
+- `app/memory/memory_arbiter_audit.py` accepte `effective_model` et l'utilise comme fallback de persistence;
+- `app/tests/test_memory_store_phase4.py` couvre le changement de runtime setting entre appel arbitre et insert DB.
+
+Ne pas le rouvrir comme finding actif sans regression de ces preuves.
 
 ## Tests et preuves
 

@@ -1,6 +1,6 @@
-# Remediation audit global FridaDev - TODO actif
+# Remediation audit global FridaDev - plan de cloture
 
-Statut: TODO actif de correction structurelle
+Statut: cloture pratique de la remediation structurelle
 Source: audit global du 2026-05-03
 Portee: depot applicatif `FridaDev`, OVH, sans modification plateforme
 
@@ -14,16 +14,16 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 
 ## Source de verite
 
-- [ ] Garder comme source de verite de depart `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`.
-- [ ] Relire les details du finding concerne avant chaque lot, puis verifier l'etat courant du code avant de patcher.
-- [ ] Ne pas rouvrir les roadmaps archivees dans `app/docs/todo-done/` sauf si le lot documentaire le demande explicitement pour requalifier un finding stale.
+- [x] Garder comme source de verite de depart `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`.
+- [x] Relire les details du finding concerne avant chaque lot, puis verifier l'etat courant du code avant de patcher.
+- [x] Ne pas rouvrir les roadmaps archivees dans `app/docs/todo-done/` sauf si le lot documentaire le demande explicitement pour requalifier un finding stale.
 
 ## Principe de cloture
 
-- [ ] Aucun finding `AUDIT-20260503-001` a `AUDIT-20260503-009` ne doit rester sans case de traitement dans la matrice finale.
-- [ ] Un lot n'est clos que si ses tests/proofs couvrent le comportement reel, pas seulement une lecture de source.
-- [ ] Les docs vivantes doivent etre alignees dans le meme cycle quand une correction change un contrat runtime, une attente operateur ou une source-of-truth.
-- [ ] Les corrections doivent preserve le contrat OVH: pas de token humain admin, pas de lecture de secret, pas de modification plateforme hors depot.
+- [x] Aucun finding `AUDIT-20260503-001` a `AUDIT-20260503-009` ne doit rester sans case de traitement dans la matrice finale.
+- [x] Un lot n'est clos que si ses tests/proofs couvrent le comportement reel, pas seulement une lecture de source.
+- [x] Les docs vivantes doivent etre alignees dans le meme cycle quand une correction change un contrat runtime, une attente operateur ou une source-of-truth.
+- [x] Les corrections doivent preserve le contrat OVH: pas de token humain admin, pas de lecture de secret, pas de modification plateforme hors depot.
 
 ## Ordre de correction recommande
 
@@ -32,14 +32,14 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 - [x] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
 - [x] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
 - [x] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
-- [ ] Lot 6: fermer les findings stale et remettre les docs source-of-truth a jour.
+- [x] Lot 6: fermer les findings stale et remettre les docs source-of-truth a jour.
 
 ## Condition de non-prolongation
 
-- [ ] Ne pas creer de sous-lot supplementaire si la structure visee est deja remise d'aplomb, testee et documentee.
-- [ ] Ne pas transformer ce TODO en refactor general de `server.py`, `runtime_settings.py`, `app.js` ou `memory_store.py`.
-- [ ] Ne pas ajouter une abstraction si un retour de statut explicite, une validation bloquante ou un test de contrat suffit.
-- [ ] Apres chaque lot clos, cocher seulement les cases reellement prouvees et ajouter la preuve de commit dans la section du lot.
+- [x] Ne pas creer de sous-lot supplementaire si la structure visee est deja remise d'aplomb, testee et documentee.
+- [x] Ne pas transformer ce TODO en refactor general de `server.py`, `runtime_settings.py`, `app.js` ou `memory_store.py`.
+- [x] Ne pas ajouter une abstraction si un retour de statut explicite, une validation bloquante ou un test de contrat suffit.
+- [x] Apres chaque lot clos, cocher seulement les cases reellement prouvees et ajouter la preuve de commit dans la section du lot.
 
 ## Lot 1 - Persistance conversationnelle canonique
 
@@ -277,11 +277,11 @@ Fichiers probablement touches:
 - tests memory arbiter et settings docs/source si ajoutes
 
 Cases de correction:
-- [ ] `L6-C1` Re-verifier le finding `record_arbiter_decisions()` sur l'etat courant avant toute requalification documentaire.
-- [ ] `L6-C2` Mettre a jour les docs de pilotage pour dire que le finding substantif est corrige/stale, avec references aux tests qui le prouvent.
-- [ ] `L6-C3` Mettre a jour `admin-runtime-settings-schema.md` pour inclure `stimmung_agent_model`, `validation_agent_model`, `identity_governance` et les sections actives.
-- [ ] `L6-C4` Indexer proprement `states/audits/` et `todo-todo/audits/` dans les docs mainteneur.
-- [ ] `L6-C5` Ajouter une garde doc/source legere si elle evite que la spec settings diverge a nouveau du `SECTION_NAMES`.
+- [x] `L6-C1` Re-verifier le finding `record_arbiter_decisions()` sur l'etat courant avant toute requalification documentaire.
+- [x] `L6-C2` Mettre a jour les docs de pilotage pour dire que le finding substantif est corrige/stale, avec references aux tests qui le prouvent.
+- [x] `L6-C3` Mettre a jour `admin-runtime-settings-schema.md` pour inclure `stimmung_agent_model`, `validation_agent_model`, `identity_governance` et les sections actives.
+- [x] `L6-C4` Indexer proprement `states/audits/` et `todo-todo/audits/` dans les docs mainteneur.
+- [x] `L6-C5` Ajouter une garde doc/source legere si elle evite que la spec settings diverge a nouveau du `SECTION_NAMES`.
 
 Tests a ajouter ou modifier:
 - relancer `tests/test_memory_store_phase4.py`;
@@ -299,9 +299,9 @@ Risques:
 - la spec settings doit distinguer sections visibles dans `/admin` et sections pilotees via `/identity` ou `/hermeneutic-admin`.
 
 Critere de cloture:
-- [ ] Aucun document de pilotage actif ne presente le finding arbiter stale comme correction runtime encore ouverte.
-- [ ] La spec settings decrit le schema runtime reel.
-- [ ] Les nouveaux dossiers d'audit et de remediation sont trouvables depuis `app/docs/README.md`.
+- [x] Aucun document de pilotage actif ne presente le finding arbiter stale comme correction runtime encore ouverte.
+- [x] La spec settings decrit le schema runtime reel.
+- [x] Les nouveaux dossiers d'audit et de remediation sont trouvables depuis `app/docs/README.md`.
 
 ## Matrice de couverture finale
 
@@ -317,9 +317,9 @@ Critere de cloture:
 | `AUDIT-20260503-008` | `L6-C1`, `L6-C2` | finding arbiter requalifie stale/corrige si toujours prouve |
 | `AUDIT-20260503-009` | `L6-C3`, `L6-C5` | spec settings alignee sur schema runtime reel |
 
-- [ ] Relecture finale: aucun finding `AUDIT-20260503-001` a `AUDIT-20260503-009` n'est orphelin.
-- [ ] Relecture finale: chaque lot a un critere de cloture testable.
-- [ ] Relecture finale: les lots n'introduisent pas de correction hors scope.
+- [x] Relecture finale: aucun finding `AUDIT-20260503-001` a `AUDIT-20260503-009` n'est orphelin.
+- [x] Relecture finale: chaque lot a un critere de cloture testable.
+- [x] Relecture finale: les lots n'introduisent pas de correction hors scope.
 
 ## Suivi de cloture
 
@@ -330,4 +330,4 @@ Critere de cloture:
 | Lot 3 - Observabilite memoire et erreurs aval | clos | `8e939c527d8805ffa3d300d56568483c7a05b926` | `retrieve_error` propage jusqu'a `memory_arbitration`, `prompt_prepared`, `/log` et Memory Admin; fail-open liste conserve pour les consommateurs historiques. |
 | Lot 4 - Preuves frontend reelles | clos | `cfb65cf954db6d91ef97d1cab43e4c281b4bd657` | Harness Chromium minimal pour chat nominal/error, admin validate/save et logs/filter/export; source-only requalifie dans `app/tests/README.md`. |
 | Lot 5 - Contrat admin OVH et knobs obsoletes | clos | `49fbd2d8798dcfa3c57a055739e809eb1e448da1` | Contrat admin actif confirme loopback/proxy `Remote-User`; knobs legacy rendus obsoletes non env-backed; config exemple/docs/test source alignes. |
-| Lot 6 - Findings stale et documentation source-of-truth | ouvert |  |  |
+| Lot 6 - Findings stale et documentation source-of-truth | clos | a renseigner apres commit de correction | Finding arbiter requalifie stale/corrige; spec runtime settings alignee sur `SECTION_NAMES`; garde doc/source ajoutee; contradiction Lot 5 corrigee. |

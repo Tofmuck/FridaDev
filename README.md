@@ -133,7 +133,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 ### Documentation anchors
 - Canonical current-state repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Global audit dated 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- Active global audit remediation TODO: `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`
+- Global audit remediation plan and closure status: `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`
 - Current runtime pipeline one-glance: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Historical EN state milestone (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Historical FR state milestone (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
@@ -324,7 +324,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 ### Ancres documentaires
 - Audit canonique current-state du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
 - Audit global date du 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- TODO actif de remediation de l'audit global: `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`
+- Plan de remediation et statut de cloture de l'audit global: `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`
 - Cartographie one-glance du pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Jalon historique FR (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Jalon historique EN (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`

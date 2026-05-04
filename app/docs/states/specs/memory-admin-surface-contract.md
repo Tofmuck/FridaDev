@@ -123,4 +123,4 @@ Il peut reemployer :
 - aucune refonte de `/identity`
 - aucune refonte de `/hermeneutic-admin`
 - aucun patch plateforme OVH
-- aucun changement du finding separe `record_arbiter_decisions()`
+- aucun correctif runtime `record_arbiter_decisions()` ne vit dans Memory Admin; le finding separe a ete requalifie stale/corrige hors de cette surface

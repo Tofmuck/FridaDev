@@ -43,7 +43,7 @@ Base retenue pour mesurer le delta jusqu'a aujourd'hui / Chosen base for the del
 - Le delta majeur depuis l'audit de base n'est pas une refonte d'architecture pure. C'est une densification reelle du produit: streaming robuste, surfaces operateur nouvelles, specs sources-of-truth, cartographies memoire/RAG, archives de migration OVH, et contrats frontend/backend plus testables.
 - La securite admin a change de nature: on n'est plus dans le contrat token/LAN de l'audit du 03/04. Le code courant impose un acces `/api/admin/*` via proxy de confiance + identite `Remote-User`, avec exception loopback pour les preuves techniques in-container.
 - La dette principale reste structurelle: `app/server.py`, `app/minimal_validation.py`, `app/admin/runtime_settings.py`, `app/web/app.js`, `app/web/admin.js` et `app/memory/memory_store.py` concentrent encore beaucoup de responsabilites.
-- Finding actif a garder visible mais hors scope ici: `app/memory/memory_store.py` peut encore persister un modele d'arbitre different de celui qui a effectivement produit la decision si le runtime setting change entre appel et insert.
+- Finding `record_arbiter_decisions()` requalifie le `2026-05-04`: le modele arbitre effectif est capture/passe jusqu'a la persistence, et le cas de changement de runtime setting entre appel et insert est couvert par test. Ne plus le traiter comme finding actif sans regression.
 
 ### EN
 
@@ -159,15 +159,15 @@ Chaine runtime utile / Practical runtime chain:
 - Ne pas decrire `FridaDev` comme une architecture a couches strictes deja propre: le repo a clarifie ses seams, mais pas elimine ses facades lourdes.
 - Ne pas confondre le state du 03/04/2026 avec l'etat courant: les documents `Frida-State-*03-04-26.md` restent des jalons historiques, pas le resume complet du repo du 16/04.
 - Ne pas rouvrir les chantiers clos (Lot 9, streaming 0->7, roadmaps archivees) sans motif explicite: l'audit s'appuie dessus, il ne les requalifie pas en TODO actives.
-- Finding actif hors scope a garder visible:
-  - `record_arbiter_decisions()` peut encore enregistrer un modele d'arbitre stale si le runtime setting change entre generation de la decision et insert DB.
+- Finding arbiter requalifie:
+  - `record_arbiter_decisions()` ne doit plus etre presente comme finding actif: le modele effectif est capture/passe jusqu'a la persistence et le cas de changement de runtime setting entre generation et insert DB est couvert par test.
 
 ## 9. Suites recommandees / Recommended next steps
 
 ### FR
 
 1. Utiliser cet audit et la cartographie pipeline comme points d'entree current-state, et laisser les etats `03/04/2026` jouer leur role de jalons historiques.
-2. Traiter separement le finding actif sur la provenance du modele arbitre.
+2. Conserver les tests de provenance du modele arbitre comme garde; ne rouvrir ce finding que sur regression prouvee.
 3. Continuer a desepaissir les facades les plus lourdes (`server.py`, `runtime_settings.py`, `app.js`, `admin.js`) par tranches bornees, sans rouvrir les chantiers streaming ou doctrinaux clos.
 4. Garder les index docs synchronises avec les references stables (`audit`, `pipeline`, `spec streaming`, `Memory Admin`, migration OVH).
 

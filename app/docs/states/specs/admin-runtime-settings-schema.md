@@ -2,15 +2,17 @@
 
 ## Objet
 
-Ce document fige le schema cible des settings runtime pour l'admin V1.
+Ce document fige le schema runtime settings V1 effectivement expose par le code courant.
 
-Il complete `app/docs/states/specs/admin-implementation-spec.md` et ferme la partie modele de donnees de la Phase 1 de `app/docs/todo-done/refactors/admin-todo.md`, sans encore creer de migration SQL ni de module backend.
+Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne sur `app/admin/runtime_settings_spec.py`, qui porte la liste executable des sections et champs.
 
 ## Principes
 
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
-- Les sections V1 sont fixes : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`.
+- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
+- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
+- `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
 - Les secrets ne ressortent jamais en clair cote lecture admin ; ils exposent seulement `is_secret=true` et `is_set=true|false`.
@@ -35,7 +37,7 @@ Colonnes cibles :
 
 Contraintes cibles :
 
-- `section` appartient strictement a : `main_model`, `arbiter_model`, `summary_model`, `embedding`, `database`, `services`, `resources`
+- `section` appartient strictement a : `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
 - une seule ligne par section
 
 ## Table `runtime_settings_history`
@@ -149,6 +151,40 @@ Notes:
 | `temperature` | `float` | non | hardcode `app/memory/summarizer.py` = `0.3` |
 | `top_p` | `float` | non | hardcode `app/memory/summarizer.py` = `1.0` |
 
+### `stimmung_agent_model`
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `primary_model` | `text` | non | defaut runtime `openai/gpt-5.4-mini` |
+| `fallback_model` | `text` | non | defaut runtime `openai/gpt-5.4-nano` |
+| `timeout_s` | `int` | non | defaut runtime `10` |
+| `temperature` | `float` | non | defaut runtime `0.1` |
+| `top_p` | `float` | non | defaut runtime `1.0` |
+| `max_tokens` | `int` | non | defaut runtime `220` |
+
+Convention explicite:
+
+- cette section pilote le noeud `stimmung_agent` du pipeline hermeneutique;
+- elle expose les modeles primaire/fallback et les parametres de generation necessaires au jugement affectif;
+- elle ne remplace pas `primary_node`, qui reste une etape runtime du pipeline et non une section de modele editable.
+
+### `validation_agent_model`
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `primary_model` | `text` | non | defaut runtime `openai/gpt-5.4-mini` |
+| `fallback_model` | `text` | non | defaut runtime `openai/gpt-5.4-nano` |
+| `timeout_s` | `int` | non | defaut runtime `10` |
+| `temperature` | `float` | non | defaut runtime `0.0` |
+| `top_p` | `float` | non | defaut runtime `1.0` |
+| `max_tokens` | `int` | non | defaut runtime `80` |
+
+Convention explicite:
+
+- cette section pilote le `validation_agent` du pipeline hermeneutique;
+- `max_tokens` reste borne par le contrat de validation serveur;
+- elle ne donne pas au `validation_agent` un pouvoir de persistence direct sur l'identite.
+
 ### `embedding`
 
 | Champ | Type | Secret | Source actuelle |
@@ -251,8 +287,7 @@ Exemple :
 
 ## Hors de ce document
 
-- la migration SQL
-- le module `app/admin/runtime_settings.py`
-- le branchement des lecteurs backend
-- l'ouverture des routes `/api/admin/settings`
+- le detail d'implementation SQL, porte par `app/admin/sql/runtime_settings_v1.sql`
+- la facade runtime et ses caches, portes par `app/admin/runtime_settings.py`
+- les routes HTTP, portees par `app/admin/admin_settings_routes.py` et les routes identity dediees
 - la bascule effective de `FRIDA_MEMORY_DB_DSN`
