@@ -132,7 +132,7 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 Commandes minimales pour Lot 1:
 
 ```bash
-docker exec platform-fridadev python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
+docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
 docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py
 docker exec platform-fridadev python tests/unit/chat/test_chat_memory_flow_prepare_context_contracts.py
 docker exec platform-fridadev python tests/test_server_chat_compact_observability_contract.py
@@ -140,6 +140,8 @@ docker exec platform-fridadev python tests/test_server_chat_synthetic_logs_contr
 docker exec platform-fridadev python tests/test_server_admin_memory_surface_phase10e.py
 docker exec platform-fridadev python tests/test_server_admin_hermeneutics_phase4.py
 ```
+
+Note: le premier test est nouveau dans ce lot docs+tests. Tant que l'image live n'a pas ete rebuild, il doit etre execute avec le repo monte dans l'image locale; apres rebuild applicatif, la commande `docker exec platform-fridadev python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py` redevient equivalente.
 
 Commandes a garder dans les lots suivants:
 
