@@ -19,6 +19,7 @@ _HERMENEUTIC_MODE_OFF = 'off'
 _HERMENEUTIC_MODE_SHADOW = 'shadow'
 _HERMENEUTIC_MODE_ENFORCED_IDENTITIES = 'enforced_identities'
 _HERMENEUTIC_MODE_ENFORCED_ALL = 'enforced_all'
+_IDENTITY_BUFFER_EPHEMERAL_MODES = {'irony', 'role_play'}
 
 
 def resolve_hermeneutic_mode(config_module: Any) -> str:
@@ -110,16 +111,37 @@ def _guard_filtered_summary(
     return identity_observability.summarize_guard_filtered_entries(filtered_entries)
 
 
+def _ephemeral_identity_buffer_roles(identity_entries: Sequence[Mapping[str, Any]]) -> set[str]:
+    roles: set[str] = set()
+    for entry in identity_entries:
+        payload = dict(entry or {})
+        utterance_mode = str(payload.get('utterance_mode') or '').strip().lower()
+        if utterance_mode not in _IDENTITY_BUFFER_EPHEMERAL_MODES:
+            continue
+        subject = str(payload.get('subject') or '').strip().lower()
+        if subject == 'user':
+            roles.add('user')
+        elif subject == 'llm':
+            roles.add('assistant')
+    return roles
+
+
 def _sanitize_turn_pair_for_identity_buffer(
     turn_pair: Sequence[Mapping[str, Any]],
     *,
     web_input: Mapping[str, Any] | None,
+    identity_entries: Sequence[Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     sanitized: list[dict[str, Any]] = []
+    ephemeral_roles = _ephemeral_identity_buffer_roles(identity_entries or [])
     for turn in list(turn_pair)[:2]:
         canonical_turn = dict(turn or {})
         role = str(canonical_turn.get('role') or '').strip().lower()
         content = str(canonical_turn.get('content') or '').strip()
+        if role in ephemeral_roles and content:
+            canonical_turn['content'] = ''
+            sanitized.append(canonical_turn)
+            continue
         if role == 'assistant' and content:
             reason = hermeneutics_policy.unsupported_web_reading_claim_reason(
                 {'subject': 'llm', 'content': content},
@@ -633,6 +655,7 @@ def record_identity_entries_for_mode(
     buffered_turn_pair = _sanitize_turn_pair_for_identity_buffer(
         turn_pair,
         web_input=web_input,
+        identity_entries=filtered_entries,
     )
 
     if mode_enforces_identity(mode):

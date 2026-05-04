@@ -75,7 +75,7 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 - [x] HPS-L1-C2 Prouver que `irony|role_play` restent rejetes par la politique identitaire diagnostique meme avec `durable`, `habitual` et forte confiance.
   - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_identity_preview_rejects_irony_and_role_play_even_with_durable_high_confidence`
   - Couvre: ancienne case `irony|role_play` cote extracteur / legacy diagnostic.
-  - Limite: la validation par corpus du chemin agent periodique actif reste en HPS-L2-C2.
+  - Suite: la validation par corpus du chemin agent periodique actif est cloturee en HPS-L2-C2.
 - [x] HPS-L1-C3 Prouver que l'absence normale de memoire et l'erreur technique de retrieval ne se confondent plus.
   - Preuves: `app/tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py`, `app/tests/test_server_admin_memory_surface_phase10e.py`, `app/tests/test_server_logs_phase3.py`
   - Couvre: distinction `no_data` / `retrieve_error` / diagnostic admin.
@@ -84,30 +84,34 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
   - Couvre: ancienne case explicabilite admin/logs.
 - [x] HPS-L1-C5 Prouver que le scope courant de la synthese `stage_latency` est explicite et ne se fait pas passer pour un cout global complet.
   - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_stage_latency_probe_scope_is_explicit_and_ignores_untracked_stages`
-  - Couvre: ancienne case cout/latence en la requalifiant: les latences `retrieve`, `arbiter`, `identity_extractor` sont agregees; le cout global complet reste HPS-L2-C4.
+  - Couvre: ancienne case cout/latence en la requalifiant; HPS-L2-C4 liste maintenant les compteurs disponibles et les manques sans pretendre exposer un cout global complet.
 
 ## Lot 2 - Corpus controle memoire / identity
 
-- [ ] HPS-L2-C1 Remplacer "bruit identitaire circonstanciel baisse par rapport a la baseline" par un corpus fixture versionne.
-  - Attendu: fixture sous `app/tests/support/` avec cas circonstanciels, cas durables, humeur locale et preferences de reponse.
-  - Validation: commande de test qui compare statuts attendus `accepted|deferred|rejected`, sans lire de donnees live privees.
-  - Critere: le test echoue si une formulation circonstancielle devient canon durable.
-- [ ] HPS-L2-C2 Verifier le chemin identity actif `staging -> identity_periodic_agent -> apply` sur cas `irony|role_play`.
-  - Attendu: fixture de 15 paires controlees ou fake agent deterministe, avec operations attendues `no_change` ou rejet applicateur.
-  - Validation: test unitaire ou contrat prouvant qu'aucune proposition issue du role-play / ironie n'est appliquee au canon `mutable` sans override humain.
-  - Critere: pas d'ecriture canonique, statut observable, buffer non presente comme canon.
-- [ ] HPS-L2-C3 Mesurer le rappel memoire utile sur un corpus minimal stable.
-  - Attendu: corpus controle avec trois requetes: `no_data`, `retrieve_error` simule, et memoire utile gardee par l'arbitre.
-  - Validation: test/probe qui verifie `memory_retrieved`, panier pre-arbitre, `memory_arbitration`, `prompt_prepared.memory_prompt_injection`.
-  - Critere: les IDs candidats restent lies du retrieval au prompt, et les erreurs ne deviennent pas `no_data`.
-- [ ] HPS-L2-C4 Consolider le cout `tokens + latence` du pipeline memoire/hermeneutique complet.
-  - Attendu: probe synthetique ou test de contrat qui lit les evenements `context_build`, `prompt_prepared`, `llm_call`, `turn_end`, `stage_latency`.
-  - Validation: rapport de compteurs et durees disponibles, plus liste explicite des stages non chronometres.
-  - Critere: le systeme ne pretend pas exposer un cout global si seuls des sous-stages sont mesures.
-- [ ] HPS-L2-C5 Verifier qu'aucun fallback global de type "garder tout" ou "injecter sans preuve" ne reapparait.
-  - Attendu: source guard ou test de contrat sur l'arbitre, le fallback retrieval et la validation agent.
-  - Validation: test qui force parse/retrieval failure et attend une branche borneee `skipped`, `retrieve_error`, ou fallback top-1 sous seuil explicite.
-  - Critere: aucune branche ne reinjecte tout le panier sous erreur.
+- [x] HPS-L2-C1 Remplacer "bruit identitaire circonstanciel baisse par rapport a la baseline" par un corpus fixture versionne.
+  - Fixture: `app/tests/support/hermeneutical_post_stabilization_l2_corpus.json`
+  - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_l2_fixture_blocks_circumstantial_noise_from_mutable_canon`
+  - Resultat: OK via `docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py`.
+  - Limite: le corpus reste synthetique; il verrouille l'admission canonique active, pas une statistique de bruit live.
+- [x] HPS-L2-C2 Verifier le chemin identity actif `staging -> identity_periodic_agent -> apply` sur cas `irony|role_play`.
+  - Fixture: fenetre controlee de 15 paires `role_play|irony` dans `app/tests/support/hermeneutical_post_stabilization_l2_corpus.json`.
+  - Correction runtime bornee: `app/core/chat_memory_flow.py` vide le contenu des roles marques `irony|role_play` par l'extracteur avant staging actif, afin que le scoring deterministe ne puisse pas transformer cette fenetre en support canonique.
+  - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_l2_active_identity_staging_does_not_canonize_role_play_or_irony_window`
+  - Resultat: OK; aucune ecriture `mutable`, `canonical_write_applied=false`, buffer vide apres `completed_no_change`.
+  - Limite: la detection `irony|role_play` depend encore de l'extracteur; le garde evite la canonisation quand ce signal existe.
+- [x] HPS-L2-C3 Mesurer le rappel memoire utile sur un corpus minimal stable.
+  - Fixture: cas `no_data`, `retrieve_error` simule et trace utile avec `parent_summary` dans `app/tests/support/hermeneutical_post_stabilization_l2_corpus.json`.
+  - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_l2_memory_corpus_links_retrieval_basket_arbitration_and_prompt_injection`
+  - Resultat: OK; `retrieve_error` reste distinct de `no_data`, les IDs candidats restent lies de `memory_retrieved` a `memory_arbitration` puis `memory_prompt_injection`.
+  - Limite: corpus minimal synthetique; la qualite de rappel live reste un sujet de corpus futur, pas une attente passive de prod.
+- [x] HPS-L2-C4 Consolider le cout `tokens + latence` du pipeline memoire/hermeneutique complet.
+  - Preuve: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_l2_cost_latency_probe_names_available_counters_and_missing_global_cost`
+  - Resultat: OK; compteurs disponibles listes: `context_build.estimated_context_tokens`, `prompt_prepared.estimated_prompt_tokens`, `prompt_prepared.memory_items_used`, `llm_call.duration_ms`, `turn_end.duration_ms`, latences agregees `retrieve|arbiter|identity_extractor`.
+  - Limite explicite: `identity_periodic_agent` et `hermeneutic_node_insertion` peuvent emettre des latences brutes mais ne sont pas agreges par `admin_stage_latency_summary`; aucun cout global complet n'est pretendu.
+- [x] HPS-L2-C5 Verifier qu'aucun fallback global de type "garder tout" ou "injecter sans preuve" ne reapparait.
+  - Preuves: `app/tests/unit/memory/test_hermeneutical_post_stabilization_contract.py::test_l2_arbiter_parse_failure_never_reinjects_the_full_basket` et `app/tests/unit/chat/test_chat_memory_flow_prepare_context_observability.py::test_prepare_memory_context_propagates_retrieve_error_without_calling_arbiter`.
+  - Resultat: OK; parse/runtime failure arbitre garde au plus le top-1 au-dessus du seuil explicite, garde zero sous seuil, et retrieval failure passe par `retrieve_error` sans arbitre.
+  - Limite: le fallback top-1 reste un comportement fail-open assume; il est borne par `ARBITER_MIN_SEMANTIC_RELEVANCE`, pas supprime.
 
 ## Lot 3 - Cloture documentaire
 
@@ -119,11 +123,11 @@ Ne pas multiplier les sous-lots si une meme preuve couvre plusieurs anciennes ca
 
 | Ancienne formulation | Statut actuel | Nouvelle validation |
 | --- | --- | --- |
-| Valider sur corpus post-stabilisation que le bruit identitaire circonstanciel baisse reellement par rapport a la baseline. | Reformulee, non cloturee. | HPS-L2-C1, corpus fixture versionne. |
-| Verifier sur corpus post-stabilisation qu'aucune entree `irony|role_play` n'arrive en identite durable sans override humain explicite. | Partiellement prouve cote policy legacy diagnostic; actif canon a prouver. | HPS-L1-C2 puis HPS-L2-C2. |
-| Mesurer sur conversations longues / corpus de stabilisation que le rappel memoire utile reste stable. | Reformulee, non cloturee. | HPS-L2-C3, corpus controle no_data / retrieve_error / utile. |
-| Consolider le surcout global `tokens + latence`. | Scope courant explicite, global non cloture. | HPS-L1-C5 puis HPS-L2-C4. |
-| Verifier sur une fenetre durable qu'aucun fallback global ne reapparait. | Reformulee, pas de fenetre durable. | HPS-L2-C5, source guard / test de branches d'erreur. |
+| Valider sur corpus post-stabilisation que le bruit identitaire circonstanciel baisse reellement par rapport a la baseline. | Remplacee par fixture synthetique versionnee, cloturee. | HPS-L2-C1. |
+| Verifier sur corpus post-stabilisation qu'aucune entree `irony|role_play` n'arrive en identite durable sans override humain explicite. | Cloturee cote legacy diagnostic et chemin canon actif quand le signal `utterance_mode` existe. | HPS-L1-C2 puis HPS-L2-C2. |
+| Mesurer sur conversations longues / corpus de stabilisation que le rappel memoire utile reste stable. | Remplacee par corpus minimal rejouable `no_data` / `retrieve_error` / utile, cloturee pour ce TODO. | HPS-L2-C3. |
+| Consolider le surcout global `tokens + latence`. | Requalifiee: les compteurs disponibles et les manques sont explicites; pas de pretention de cout global. | HPS-L1-C5 puis HPS-L2-C4. |
+| Verifier sur une fenetre durable qu'aucun fallback global ne reapparait. | Remplacee par test de branches d'erreur et fallback arbitre borne, cloturee. | HPS-L2-C5. |
 | Echantillonner l'explicabilite via les logs admin. | Largement couvert par contrats existants. | HPS-L1-C3 et HPS-L1-C4. |
 | Trancher le statut reel du bloc `[Contexte du souvenir]`. | Contrat precise: derive de `parent_summary`; live precedent neutre si `summaries=0`. | HPS-L1-C1; HPS-L2-C3 si un corpus summary utile est ajoute. |
 
@@ -146,10 +150,13 @@ Note: le premier test est nouveau dans ce lot docs+tests. Tant que l'image live 
 Commandes a garder dans les lots suivants:
 
 ```bash
+docker run --rm -v /opt/platform/fridadev/app:/app -w /app platform-fridadev-app:local python tests/unit/memory/test_hermeneutical_post_stabilization_contract.py
 docker exec platform-fridadev python tests/test_memory_store_phase4.py
 docker exec platform-fridadev python tests/unit/memory/test_memory_store_blocks_phase8bis.py
 docker exec platform-fridadev python tests/test_server_logs_phase3.py
 ```
+
+Note Lot 2: le test HPS est volontairement executable en mode repo monte tant que l'image live n'a pas ete rebuild apres ajout de tests. Comme `app/core/chat_memory_flow.py` a ete touche au Lot 2, les suites conteneur adjacentes doivent etre relancees apres rebuild applicatif.
 
 ## Hors scope
 
