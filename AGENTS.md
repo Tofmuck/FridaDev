@@ -105,6 +105,7 @@ Regles importantes:
 
 - ne pas reintroduire `FRIDA_ADMIN_TOKEN` comme garde d'acces humaine;
 - ne pas reactiver `FRIDA_ADMIN_LAN_ONLY=1` sur OVH sans decision explicite de l'operateur;
+- ne pas traiter `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY` ou `FRIDA_ADMIN_ALLOWED_CIDRS` comme des knobs operateur actifs: s'ils existent encore dans le code, ils doivent rester des compatibilites obsoletes non branchees sur l'environnement runtime;
 - ne jamais afficher la valeur d'un token ou d'un secret runtime dans les logs, les commits ou les reponses.
 
 ## Discipline d'architecture

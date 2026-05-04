@@ -80,12 +80,9 @@ WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)
 TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 
 # Admin API security
-FRIDA_ADMIN_TOKEN = os.environ.get('FRIDA_ADMIN_TOKEN', '').strip()
-FRIDA_ADMIN_LAN_ONLY = _env_bool('FRIDA_ADMIN_LAN_ONLY', False)
-FRIDA_ADMIN_ALLOWED_CIDRS = os.environ.get(
-    'FRIDA_ADMIN_ALLOWED_CIDRS',
-    '127.0.0.1/32,::1/128',
-)
+# No application-level human admin token or LAN allowlist is configured here.
+# Public admin access is expected to be protected by Authelia/Caddy; /api/admin/*
+# accepts only loopback proof calls or trusted proxy calls with Remote-User.
 
 # LLM context window
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)

@@ -71,6 +71,7 @@ Sont exclus de V1 :
 - Aucune entree UI `/admin-old` n'est retenue pour cette migration ; l'UI logs/restart actuelle n'est pas preservee comme legacy.
 - `GET /api/admin/logs` et `POST /api/admin/restart` restent disponibles cote backend jusqu'au futur chantier logs.
 - Depuis la decision operateur du `2026-04-08`, le frontend admin ne demande plus de token admin applicatif et n'envoie plus `X-Admin-Token`; la protection publique repose sur Authelia au niveau du hostname, et le backend n'accepte `/api/admin/*` qu'en loopback local ou via le proxy Caddy transportant `Remote-User`.
+- Les anciens knobs `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY` et `FRIDA_ADMIN_ALLOWED_CIDRS` ne font plus partie du contrat V1 actif. Toute presence residuelle doit etre traitee comme compatibilite obsolete non env-backed, jamais comme garde humain.
 - Cette tranche documente cette contrainte mais ne l'implemente pas.
 
 ## Sujets explicitement hors tranche

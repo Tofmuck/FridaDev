@@ -31,7 +31,7 @@ Chaque lot doit rester petit, testable et reversible. Une correction peut fermer
 - [x] Lot 2: rendre la validation settings bloquante cote serveur.
 - [x] Lot 3: rendre les erreurs memoire aval observables sans casser le fail-open produit.
 - [x] Lot 4: ajouter des preuves frontend reelles sur les transitions critiques.
-- [ ] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
+- [x] Lot 5: clarifier le contrat admin OVH et les knobs obsoletes.
 - [ ] Lot 6: fermer les findings stale et remettre les docs source-of-truth a jour.
 
 ## Condition de non-prolongation
@@ -236,10 +236,10 @@ Fichiers probablement touches:
 - tests admin guard/config
 
 Cases de correction:
-- [ ] `L5-C1` Inventorier les consommateurs reels de `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY`, `FRIDA_ADMIN_ALLOWED_CIDRS`.
-- [ ] `L5-C2` Supprimer les knobs si aucun consommateur actif ne reste, ou les marquer explicitement obsoletes si une compatibilite transitoire est requise.
-- [ ] `L5-C3` Ajouter un test qui interdit la reintroduction de `X-Admin-Token` ou d'un garde humain par token dans `server.py`.
-- [ ] `L5-C4` Aligner config exemple, docs operateur et instructions agents sans afficher de secret.
+- [x] `L5-C1` Inventorier les consommateurs reels de `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY`, `FRIDA_ADMIN_ALLOWED_CIDRS`.
+- [x] `L5-C2` Supprimer les knobs si aucun consommateur actif ne reste, ou les marquer explicitement obsoletes si une compatibilite transitoire est requise.
+- [x] `L5-C3` Ajouter un test qui interdit la reintroduction de `X-Admin-Token` ou d'un garde humain par token dans `server.py`.
+- [x] `L5-C4` Aligner config exemple, docs operateur et instructions agents sans afficher de secret.
 
 Tests a ajouter ou modifier:
 - test source guard: absence de `FRIDA_ADMIN_TOKEN` et `X-Admin-Token` dans le chemin `/api/admin/*`;
@@ -256,9 +256,9 @@ Risques:
 - supprimer trop vite une variable encore consommee par un script local casserait l'onboarding.
 
 Critere de cloture:
-- [ ] Le garde admin actif ne peut pas redevenir token humain par accident local.
-- [ ] Les knobs obsoletes sont supprimes ou clairement declares obsoletes.
-- [ ] Les docs operateur distinguent contrat actif et historique.
+- [x] Le garde admin actif ne peut pas redevenir token humain par accident local.
+- [x] Les knobs obsoletes sont supprimes ou clairement declares obsoletes.
+- [x] Les docs operateur distinguent contrat actif et historique.
 
 ## Lot 6 - Findings stale et documentation source-of-truth
 
@@ -329,5 +329,5 @@ Critere de cloture:
 | Lot 2 - Validation bloquante des settings runtime | clos | `eda1e752758f3c9694c822fa5a4fd47b715d2b51` | Validation PATCH bloquante et garde write-path prouves par tests settings/admin. |
 | Lot 3 - Observabilite memoire et erreurs aval | clos | `8e939c527d8805ffa3d300d56568483c7a05b926` | `retrieve_error` propage jusqu'a `memory_arbitration`, `prompt_prepared`, `/log` et Memory Admin; fail-open liste conserve pour les consommateurs historiques. |
 | Lot 4 - Preuves frontend reelles | clos | `cfb65cf954db6d91ef97d1cab43e4c281b4bd657` | Harness Chromium minimal pour chat nominal/error, admin validate/save et logs/filter/export; source-only requalifie dans `app/tests/README.md`. |
-| Lot 5 - Contrat admin OVH et knobs obsoletes | ouvert |  |  |
+| Lot 5 - Contrat admin OVH et knobs obsoletes | clos | a renseigner apres commit de correction | Contrat admin actif confirme loopback/proxy `Remote-User`; knobs legacy rendus obsoletes non env-backed; config exemple/docs/test source alignes. |
 | Lot 6 - Findings stale et documentation source-of-truth | ouvert |  |  |

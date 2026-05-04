@@ -143,5 +143,23 @@ class ServerAdminNonSettingsContractsTests(unittest.TestCase):
         self.assertIn("Reference de ressource du statique actif cote utilisateur.", source)
         self.assertIn("Le contenu s'edite depuis Hermeneutic admin.", source)
 
+    def test_admin_guard_does_not_reintroduce_legacy_token_knobs(self) -> None:
+        server_source = (APP_DIR / 'server.py').read_text(encoding='utf-8')
+        guard_source = server_source.split('_TRUSTED_ADMIN_PROXY_HOSTS', 1)[1]
+        guard_source = guard_source.split('def _assistant_message_count', 1)[0]
+
+        for marker in (
+            'FRIDA_ADMIN_TOKEN',
+            'FRIDA_ADMIN_LAN_ONLY',
+            'FRIDA_ADMIN_ALLOWED_CIDRS',
+            'X-Admin-Token',
+        ):
+            self.assertNotIn(marker, guard_source)
+
+        self.assertIn("_TRUSTED_ADMIN_IDENTITY_HEADERS = ('Remote-User',)", guard_source)
+        self.assertIn('if _is_loopback_ip(client_ip):', guard_source)
+        self.assertIn('trusted_proxy_ips = _trusted_admin_proxy_ips()', guard_source)
+        self.assertIn("'missing_proxy_identity'", guard_source)
+
 if __name__ == '__main__':
     unittest.main()

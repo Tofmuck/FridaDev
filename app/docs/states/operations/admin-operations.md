@@ -22,7 +22,8 @@ Il complete :
 - La protection publique attendue est Authelia au niveau du hostname.
 - Les routes `/api/admin/*` ne doivent plus etre accessibles lateralement depuis les conteneurs pairs du reseau Docker.
 - Le runtime n'accepte ces routes qu'en loopback local ou via le chemin Caddy/Authelia, avec header proxy `Remote-User`.
-- Sur OVH, `FRIDA_ADMIN_LAN_ONLY` ne doit pas etre reactive sans decision explicite.
+- Les anciens knobs `FRIDA_ADMIN_TOKEN`, `FRIDA_ADMIN_LAN_ONLY` et `FRIDA_ADMIN_ALLOWED_CIDRS` ne sont plus des knobs operateur actifs sur OVH. S'ils restent visibles dans le code, c'est uniquement comme compatibilite obsolete non branchee sur l'environnement runtime.
+- `X-Admin-Token` ne fait plus partie du contrat admin actif et ne doit pas revenir comme garde humain.
 
 ## Perimetre V1 reellement exploitable
 

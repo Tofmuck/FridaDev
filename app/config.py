@@ -133,13 +133,18 @@ WHISPER_API_URL = os.environ.get('WHISPER_API_URL', 'http://platform-whisper-api
 WHISPER_API_TIMEOUT_S = _env_int('WHISPER_API_TIMEOUT_S', 120)
 WHISPER_API_KEY = os.environ.get('WHISPER_API_KEY', '').strip()
 
-# Admin API security
-FRIDA_ADMIN_TOKEN = os.environ.get('FRIDA_ADMIN_TOKEN', '').strip()
-FRIDA_ADMIN_LAN_ONLY = _env_bool('FRIDA_ADMIN_LAN_ONLY', False)
-FRIDA_ADMIN_ALLOWED_CIDRS = os.environ.get(
-    'FRIDA_ADMIN_ALLOWED_CIDRS',
-    '127.0.0.1/32,::1/128',
-)
+# Obsolete admin guard compatibility names.
+#
+# Active OVH admin access is enforced in server.py:
+# - loopback local container calls are accepted for technical proofs;
+# - non-loopback calls must come from the trusted Caddy/Authelia proxy with
+#   a Remote-User identity header.
+#
+# These constants intentionally no longer read environment variables.  They
+# remain only so older test fixtures that snapshot/mutate them keep importing.
+FRIDA_ADMIN_TOKEN = ''
+FRIDA_ADMIN_LAN_ONLY = False
+FRIDA_ADMIN_ALLOWED_CIDRS = ''
 
 # LLM context window
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)

@@ -37,6 +37,11 @@ Resultat obtenu:
 
 ## Etat constate sur `tofnas`
 
+Note de lecture `2026-05-04`:
+- les mentions historiques de `FRIDA_ADMIN_TOKEN`, `X-Admin-Token` et `FRIDA_ADMIN_LAN_ONLY` dans cette archive de migration ne decrivent plus le contrat admin OVH actif;
+- le contrat actif est: loopback local du conteneur pour preuves techniques, ou Caddy/Authelia avec identite proxy `Remote-User`, sans token humain applicatif;
+- les constantes residuelles dans `app/config.py` sont des compatibilites obsoletes non branchees sur l'environnement runtime.
+
 - Repo FridaDev local present et propre:
   - chemin: `/home/tof/docker-stacks/fridadev`
   - HEAD observe pour ce lot: `a52d115e7ad346a8bddbb883a7e2c7ec3310eafb`
