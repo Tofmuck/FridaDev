@@ -16,7 +16,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
-- Remediation de l'audit global et statut de cloture: `todo-todo/audits/fridadev-global-audit-remediation-todo.md`
+- Archive de cloture de la remediation de l'audit global: `todo-done/audits/fridadev-global-audit-remediation-todo.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
 
@@ -41,7 +41,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Cleanup / refactor repo
 
 Lire d'abord:
-- `todo-todo/audits/fridadev-global-audit-remediation-todo.md` pour le plan de remediation et le statut de cloture issus de l'audit global du 2026-05-03.
+- `todo-done/audits/fridadev-global-audit-remediation-todo.md` pour l'archive de remediation cloturee issue de l'audit global du 2026-05-03.
 - `states/audits/fridadev-global-audit-2026-05-03.md` pour la source de verite des findings.
 - `todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
 - `todo-done/audits/fridadev_repo_audit.md`

@@ -280,7 +280,7 @@ Cases de correction:
 - [x] `L6-C1` Re-verifier le finding `record_arbiter_decisions()` sur l'etat courant avant toute requalification documentaire.
 - [x] `L6-C2` Mettre a jour les docs de pilotage pour dire que le finding substantif est corrige/stale, avec references aux tests qui le prouvent.
 - [x] `L6-C3` Mettre a jour `admin-runtime-settings-schema.md` pour inclure `stimmung_agent_model`, `validation_agent_model`, `identity_governance` et les sections actives.
-- [x] `L6-C4` Indexer proprement `states/audits/` et `todo-todo/audits/` dans les docs mainteneur.
+- [x] `L6-C4` Indexer proprement `states/audits/`, la categorie active `todo-todo/audits/` et l'archive de remediation cloturee sous `todo-done/audits/` dans les docs mainteneur.
 - [x] `L6-C5` Ajouter une garde doc/source legere si elle evite que la spec settings diverge a nouveau du `SECTION_NAMES`.
 
 Tests a ajouter ou modifier:

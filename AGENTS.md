@@ -183,7 +183,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
 - `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`: audit global exhaustif date du 2026-05-03, source de verite des findings `AUDIT-20260503-*`.
-- `app/docs/todo-todo/audits/fridadev-global-audit-remediation-todo.md`: plan de remediation structurelle et statut de cloture des findings de l'audit global du 2026-05-03.
+- `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`: archive de remediation structurelle cloturee des findings de l'audit global du 2026-05-03.
 - `app/docs/todo-done/refactors/admin-todo.md`: roadmap admin archivee; ne pas la rouvrir silencieusement.
 - `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`: cloture de convergence hermeneutique; ne pas la traiter comme active.
 - `app/docs/states/project/Frida-State-french-03-04-26.md` et `app/docs/states/project/Frida-State-english-03-04-26.md`: etats projet dates du 2026-04-03. Ils restent utiles historiquement, mais ne decrivent pas a eux seuls l'environnement OVH courant.
