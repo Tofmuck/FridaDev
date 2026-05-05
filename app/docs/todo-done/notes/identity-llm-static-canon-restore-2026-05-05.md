@@ -30,9 +30,19 @@
 - la suite de tests identity a ensuite produit un clear live a 2026-05-05T09:15:54Z (`old_len=1236`, `new_len=0`);
 - restauration finale reappliquee le 2026-05-05T09:18:20Z via `POST /api/admin/identity/static`;
 - reponse route finale: `ok=true`, `reason_code=set_applied`, `old_len=0`, `new_len=1236`, `stored_after=true`;
+- une relance avec les tests stale du conteneur a reproduit un clear live a 2026-05-05T09:28:26Z;
+- restauration finale effective reappliquee le 2026-05-05T09:29:02Z via `POST /api/admin/identity/static`;
 - fichier runtime: `/app/data/identity/llm_identity.txt`, 1293 bytes, sha256 `6a68770bab0912030bcd43c20ee994e994c52d114ad5656e190a198d899b328b`;
 - read-model apres restauration: `llm.static stored=true loaded=true injected=true`;
 - runtime representations apres restauration: bloc compile present, marqueur `[IDENTITÉ DU MODÈLE]` present, marqueur `[IDENTITÉ DE L'UTILISATEUR]` present.
+
+## Correctif safety tests
+
+- cause test confirmee: `test_server_admin_identity_static_edit_phase4.py::test_identity_static_edit_route_is_available_without_admin_token` appelait `/api/admin/identity/static` avec `subject=llm`, `action=clear` sans isoler `llm_identity_path`;
+- correctif: le test d'auth statique utilise maintenant des fichiers temporaires et un `get_resources_settings` de test;
+- durcissement adjacent: les tests d'auth `mutable` et `governance` mockent aussi leurs effets metier pour ne pas toucher les sources runtime OVH;
+- particularite OVH: `/app/tests` n'est pas bind-monte depuis le repo hote; les trois fichiers de tests patchés ont ete copies dans le conteneur courant avant la relance de preuve;
+- preuve apres relance de la suite identity patchée: `/app/data/identity/llm_identity.txt` conserve 1293 bytes et sha256 `6a68770bab0912030bcd43c20ee994e994c52d114ad5656e190a198d899b328b`.
 
 ## Limites
 

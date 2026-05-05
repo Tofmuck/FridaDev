@@ -231,14 +231,66 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         self.assertNotIn('content', observed_logs[0][1])
 
     def test_identity_governance_routes_are_available_without_admin_token(self) -> None:
-        get_response = self.client.get('/api/admin/identity/governance')
-        post_response = self.client.post(
-            '/api/admin/identity/governance',
-            json={'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3}, 'reason': 'guard'},
-        )
+        current_payload = self._governance_view({'CONTEXT_HINTS_MAX_ITEMS': 2})
+        observed_logs = []
+        original_get_runtime_section = self.server.runtime_settings.get_runtime_section
+        original_get_identity_governance_settings = self.server.runtime_settings.get_identity_governance_settings
+        original_validate_runtime_section = self.server.runtime_settings.validate_runtime_section
+        original_update_runtime_section = self.server.runtime_settings.update_runtime_section
+        original_log_event = self.server.admin_logs.log_event
+        original_build_identity_input = self.server.identity.build_identity_input
+
+        def fake_get_runtime_section(section: str, *, fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            return current_payload
+
+        def fake_get_identity_governance_settings(*, fetcher=None):
+            return current_payload
+
+        def fake_validate_runtime_section(section: str, patch_payload=None, *, fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            return {
+                'section': section,
+                'source': 'candidate',
+                'source_reason': 'validate_payload',
+                'valid': True,
+                'checks': [{'name': 'CONTEXT_HINTS_MAX_ITEMS', 'ok': True, 'detail': 'ok'}],
+            }
+
+        def fake_update_runtime_section(section: str, patch_payload, *, updated_by='admin_api', fetcher=None):
+            self.assertEqual(section, 'identity_governance')
+            self.assertEqual(updated_by, 'identity_governance_admin')
+            current_payload.payload['CONTEXT_HINTS_MAX_ITEMS'] = {
+                'value': patch_payload['CONTEXT_HINTS_MAX_ITEMS']['value'],
+                'is_secret': False,
+                'origin': 'test',
+            }
+            return current_payload
+
+        self.server.runtime_settings.get_runtime_section = fake_get_runtime_section
+        self.server.runtime_settings.get_identity_governance_settings = fake_get_identity_governance_settings
+        self.server.runtime_settings.validate_runtime_section = fake_validate_runtime_section
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+        self.server.identity.build_identity_input = lambda: {'schema_version': 'v2'}
+        try:
+            get_response = self.client.get('/api/admin/identity/governance')
+            post_response = self.client.post(
+                '/api/admin/identity/governance',
+                json={'updates': {'CONTEXT_HINTS_MAX_ITEMS': 3}, 'reason': 'guard'},
+            )
+        finally:
+            self.server.runtime_settings.get_runtime_section = original_get_runtime_section
+            self.server.runtime_settings.get_identity_governance_settings = original_get_identity_governance_settings
+            self.server.runtime_settings.validate_runtime_section = original_validate_runtime_section
+            self.server.runtime_settings.update_runtime_section = original_update_runtime_section
+            self.server.admin_logs.log_event = original_log_event
+            self.server.identity.build_identity_input = original_build_identity_input
 
         self.assertNotIn(get_response.status_code, {401, 403})
         self.assertNotIn(post_response.status_code, {401, 403})
+        self.assertEqual(post_response.status_code, 200)
+        self.assertEqual(observed_logs[0][1]['changed_keys'], ['CONTEXT_HINTS_MAX_ITEMS'])
 
 
 if __name__ == '__main__':

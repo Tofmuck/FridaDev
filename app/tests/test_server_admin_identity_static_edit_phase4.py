@@ -382,12 +382,59 @@ class ServerAdminIdentityStaticEditPhase4Tests(unittest.TestCase):
         self.assertNotIn('content', observed_logs[0][1])
 
     def test_identity_static_edit_route_is_available_without_admin_token(self) -> None:
-        response = self.client.post(
-            '/api/admin/identity/static',
-            json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
-        )
+        observed_logs = []
+        originals = {
+            'get_resources_settings': self.server.runtime_settings.get_resources_settings,
+            'log_event': self.server.admin_logs.log_event,
+            'app_root': static_identity_paths.APP_ROOT,
+            'repo_root': static_identity_paths.REPO_ROOT,
+            'host_state_root': static_identity_paths.HOST_STATE_ROOT,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            llm_file = tmp_path / 'app' / 'data' / 'identity' / 'llm.txt'
+            user_file = tmp_path / 'app' / 'data' / 'identity' / 'user.txt'
+            llm_file.parent.mkdir(parents=True)
+            llm_file.write_text('Frida temporaire', encoding='utf-8')
+            user_file.write_text('Utilisateur temporaire', encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': str(llm_file), 'origin': 'test'},
+                            'user_identity_path': {'value': str(user_file), 'origin': 'test'},
+                        },
+                    ),
+                    source='test',
+                    source_reason='test_fixture',
+                )
+
+            self.server.runtime_settings.get_resources_settings = fake_get_resources_settings
+            self.server.admin_logs.log_event = lambda event, **kwargs: observed_logs.append((event, kwargs))
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            try:
+                response = self.client.post(
+                    '/api/admin/identity/static',
+                    json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
+                )
+                stored_text = llm_file.read_text(encoding='utf-8')
+            finally:
+                self.server.runtime_settings.get_resources_settings = originals['get_resources_settings']
+                self.server.admin_logs.log_event = originals['log_event']
+                static_identity_paths.APP_ROOT = originals['app_root']
+                static_identity_paths.REPO_ROOT = originals['repo_root']
+                static_identity_paths.HOST_STATE_ROOT = originals['host_state_root']
 
         self.assertNotIn(response.status_code, {401, 403})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(stored_text, '')
+        self.assertEqual(observed_logs[0][1]['resource_field'], 'llm_identity_path')
 
 
 if __name__ == '__main__':

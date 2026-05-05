@@ -423,12 +423,42 @@ class ServerAdminIdentityMutableEditPhase3Tests(unittest.TestCase):
         self.assertNotIn('buffer_pairs', read_model['identity_staging'])
 
     def test_identity_mutable_edit_route_is_available_without_admin_token(self) -> None:
-        response = self.client.post(
-            '/api/admin/identity/mutable',
-            json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
+        current = {'llm': {'subject': 'llm', 'content': 'Frida mutable temporaire.'}}
+        observed = {'clear': [], 'logs': []}
+        original_get_mutable_identity = self.server.memory_store.get_mutable_identity
+        original_upsert_mutable_identity = self.server.memory_store.upsert_mutable_identity
+        original_clear_mutable_identity = self.server.memory_store.clear_mutable_identity
+        original_log_event = self.server.admin_logs.log_event
+
+        self.server.memory_store.get_mutable_identity = lambda subject: (
+            dict(current[subject]) if subject in current else None
+        )
+        self.server.memory_store.upsert_mutable_identity = lambda *_args, **_kwargs: self.fail(
+            'set must not be used for clear availability check'
         )
 
+        def fake_clear_mutable_identity(subject: str):
+            observed['clear'].append(subject)
+            previous = current.pop(subject, None)
+            return dict(previous) if previous is not None else None
+
+        self.server.memory_store.clear_mutable_identity = fake_clear_mutable_identity
+        self.server.admin_logs.log_event = lambda event, **kwargs: observed['logs'].append((event, kwargs))
+        try:
+            response = self.client.post(
+                '/api/admin/identity/mutable',
+                json={'subject': 'llm', 'action': 'clear', 'content': '', 'reason': 'cleanup'},
+            )
+        finally:
+            self.server.memory_store.get_mutable_identity = original_get_mutable_identity
+            self.server.memory_store.upsert_mutable_identity = original_upsert_mutable_identity
+            self.server.memory_store.clear_mutable_identity = original_clear_mutable_identity
+            self.server.admin_logs.log_event = original_log_event
+
         self.assertNotIn(response.status_code, {401, 403})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['clear'], ['llm'])
+        self.assertEqual(observed['logs'][0][1]['reason_code'], 'clear_applied')
 
 
 if __name__ == '__main__':
