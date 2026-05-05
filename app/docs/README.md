@@ -162,6 +162,7 @@ Surfaces a distinguer:
 - Note archivee lecture web URL explicite / Crawl4AI: `todo-done/notes/web-reading-truth-todo.md`
 - Note archivee dialogique / identite: `todo-done/notes/dialogic-identity-closure.md`
 - Note archivee token accounting OpenRouter: `todo-done/notes/token-counter-openrouter-todo.md`
+- Diagnostic archive `transcription indisponible` / Whisper API: `todo-done/notes/whisper-transcription-indisponible-diagnostic-2026-05-05.md`
 - Roadmap ouverte memoire de moment contextuel: `todo-todo/memory/memory-contextual-moments-todo.md`
 - Roadmap archivee `conv_store`: `todo-done/refactors/fridadev-conv-store-structural-refactor-todo.md`
 - Grounding temporel chat archive: `todo-done/notes/chat-time-grounding-todo.md`
