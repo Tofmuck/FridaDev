@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import chat_turn_logger
+from observability import identity_observability
 from observability import log_store
 from identity import identity
 from memory import memory_context_read
@@ -123,6 +124,7 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
         original_load_llm_identity = identity.load_llm_identity
         original_load_user_identity = identity.load_user_identity
         original_get_mutable_identity = identity._get_mutable_identity
+        original_safe_static_identity_source = identity._safe_static_identity_source
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
             observed.append(event)
@@ -131,6 +133,10 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
         identity.load_llm_identity = lambda: 'Frida static identity'
         identity.load_user_identity = lambda: 'User static identity'
         identity._get_mutable_identity = lambda _subject: None
+        identity._safe_static_identity_source = lambda field: {
+            'llm_identity_path': 'state/identity/frida.md',
+            'user_identity_path': 'state/identity/user.md',
+        }.get(field)
         log_store.insert_chat_log_event = fake_insert
         token = chat_turn_logger.begin_turn(
             conversation_id='conv-static-identities',
@@ -142,12 +148,24 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
             self.assertIn('DU MOD', block)
             self.assertIn("L'UTILISATEUR", block)
             self.assertEqual(used_ids, [])
+            identity_payload = chat_turn_logger.get_state('identity_prompt_injection')
+            self.assertTrue(identity_payload['injected'])
+            self.assertGreater(identity_payload['identity_block_chars'], 0)
+            self.assertEqual(identity_payload['used_identity_ids_count'], 0)
+            self.assertFalse(identity_payload['staging_included'])
+            self.assertTrue(identity_payload['subjects']['llm']['static']['present'])
+            self.assertFalse(identity_payload['subjects']['llm']['mutable']['present'])
+            self.assertTrue(identity_payload['subjects']['user']['static']['present'])
+            self.assertFalse(identity_payload['subjects']['user']['mutable']['present'])
+            self.assertNotIn('Frida static identity', repr(identity_payload))
+            self.assertNotIn('User static identity', repr(identity_payload))
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
             identity.load_llm_identity = original_load_llm_identity
             identity.load_user_identity = original_load_user_identity
             identity._get_mutable_identity = original_get_mutable_identity
+            identity._safe_static_identity_source = original_safe_static_identity_source
 
         identities_events = [event for event in observed if event['stage'] == 'identities_read']
         static_events = [event for event in identities_events if event['payload_json'].get('source_kind') == 'static']
@@ -165,6 +183,43 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
             self.assertNotIn('raw_content', payload)
             self.assertNotIn('preview', payload)
             self.assertNotIn('keys', payload)
+
+    def test_identity_prompt_injection_payload_is_compact_with_missing_llm_mutable(self) -> None:
+        payload = identity_observability.build_identity_prompt_injection_payload(
+            identity_block='[IDENTITE]\nFrida static\nUser static\nUser mutable',
+            used_identity_ids=[],
+            llm_static='Frida static',
+            llm_static_source='state/identity/frida.md',
+            user_static='User static',
+            user_static_source='state/identity/user.md',
+            frida_mutable=None,
+            user_mutable={
+                'content': 'User mutable',
+                'source_trace_id': 'trace-user',
+                'updated_by': 'identity_periodic_agent',
+                'update_reason': 'periodic_agent',
+                'updated_ts': '2026-05-13T14:43:24+02:00',
+            },
+        )
+
+        self.assertTrue(payload['injected'])
+        self.assertGreater(payload['identity_block_chars'], 0)
+        self.assertEqual(len(payload['identity_block_sha256_12']), 12)
+        self.assertFalse(payload['staging_included'])
+        self.assertTrue(payload['subjects']['llm']['static']['present'])
+        self.assertFalse(payload['subjects']['llm']['mutable']['present'])
+        self.assertTrue(payload['subjects']['user']['static']['present'])
+        self.assertTrue(payload['subjects']['user']['mutable']['present'])
+        self.assertEqual(payload['subjects']['user']['mutable']['updated_by'], 'identity_periodic_agent')
+        self.assertTrue(payload['subjects']['user']['mutable']['update_reason_present'])
+        serialized = repr(payload)
+        self.assertNotIn('Frida static', serialized)
+        self.assertNotIn('User static', serialized)
+        self.assertNotIn('User mutable', serialized)
+        self.assertNotIn("'content'", serialized)
+        self.assertNotIn("'prompt'", serialized)
+        self.assertNotIn("'messages'", serialized)
+        self.assertNotIn("'history'", serialized)
 
     def test_get_recent_context_hints_emits_identities_read_for_user_side(self) -> None:
         observed: list[dict[str, Any]] = []

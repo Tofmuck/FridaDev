@@ -1,10 +1,80 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping, Sequence
+
+_IDENTITY_HASH_CHARS = 12
 
 
 def _canonical_side(target_side: str) -> str:
     return 'frida' if str(target_side) == 'frida' else 'user'
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
+
+
+def _short_hash(value: Any) -> str | None:
+    text = _text(value)
+    if not text:
+        return None
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:_IDENTITY_HASH_CHARS]
+
+
+def _text_fingerprint(value: Any) -> dict[str, Any]:
+    text = _text(value)
+    return {
+        'present': bool(text),
+        'chars': len(text),
+        'sha256_12': _short_hash(text),
+    }
+
+
+def _empty_static_layer() -> dict[str, Any]:
+    payload = _text_fingerprint('')
+    payload['source_present'] = False
+    return payload
+
+
+def _static_layer(value: Any, *, source: Any = None) -> dict[str, Any]:
+    payload = _text_fingerprint(value)
+    source_text = _text(source)
+    payload['source_present'] = bool(source_text)
+    if source_text:
+        payload['source'] = source_text
+    return payload
+
+
+def _empty_mutable_layer() -> dict[str, Any]:
+    payload = _text_fingerprint('')
+    payload.update(
+        {
+            'source_trace_id_present': False,
+            'updated_by': None,
+            'update_reason_present': False,
+            'update_reason_chars': 0,
+            'update_reason_sha256_12': None,
+            'updated_ts': None,
+        }
+    )
+    return payload
+
+
+def _mutable_layer(value: Mapping[str, Any] | None) -> dict[str, Any]:
+    entry = value if isinstance(value, Mapping) else {}
+    payload = _text_fingerprint(entry.get('content'))
+    update_reason = _text(entry.get('update_reason'))
+    payload.update(
+        {
+            'source_trace_id_present': bool(_text(entry.get('source_trace_id'))),
+            'updated_by': _text(entry.get('updated_by')) or None,
+            'update_reason_present': bool(update_reason),
+            'update_reason_chars': len(update_reason),
+            'update_reason_sha256_12': _short_hash(update_reason),
+            'updated_ts': _text(entry.get('updated_ts') or entry.get('created_ts')) or None,
+        }
+    )
+    return payload
 
 
 def _clean_texts(values: Sequence[Any]) -> list[str]:
@@ -49,6 +119,63 @@ def build_identities_read_payload(
         limit = max(0, int(requested_limit))
         payload['requested_limit'] = limit
         payload['truncated'] = bool(limit and int(selected_count) >= limit)
+    return payload
+
+
+def empty_identity_prompt_injection_payload() -> dict[str, Any]:
+    return {
+        'injected': False,
+        'identity_block_present': False,
+        'identity_block_chars': 0,
+        'identity_block_sha256_12': None,
+        'used_identity_ids_count': 0,
+        'staging_included': False,
+        'subjects': {
+            'llm': {
+                'static': _empty_static_layer(),
+                'mutable': _empty_mutable_layer(),
+            },
+            'user': {
+                'static': _empty_static_layer(),
+                'mutable': _empty_mutable_layer(),
+            },
+        },
+    }
+
+
+def build_identity_prompt_injection_payload(
+    *,
+    identity_block: Any,
+    used_identity_ids: Sequence[Any],
+    llm_static: Any,
+    user_static: Any,
+    frida_mutable: Mapping[str, Any] | None,
+    user_mutable: Mapping[str, Any] | None,
+    llm_static_source: Any = None,
+    user_static_source: Any = None,
+) -> dict[str, Any]:
+    block = _text(identity_block)
+    payload = empty_identity_prompt_injection_payload()
+    payload.update(
+        {
+            'injected': bool(block),
+            'identity_block_present': bool(block),
+            'identity_block_chars': len(block),
+            'identity_block_sha256_12': _short_hash(block),
+            'used_identity_ids_count': len([item for item in used_identity_ids if _text(item)]),
+            'staging_included': False,
+            'subjects': {
+                'llm': {
+                    'static': _static_layer(llm_static, source=llm_static_source),
+                    'mutable': _mutable_layer(frida_mutable),
+                },
+                'user': {
+                    'static': _static_layer(user_static, source=user_static_source),
+                    'mutable': _mutable_layer(user_mutable),
+                },
+            },
+        }
+    )
     return payload
 
 

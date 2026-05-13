@@ -67,17 +67,17 @@ Fichiers probablement touches:
 - specs de logs ou Identity si un champ public operateur change
 
 Hors-scope:
-- [ ] Ne pas logger les textes `static` ou `mutable` bruts.
-- [ ] Ne pas changer la composition du prompt principal.
-- [ ] Ne pas injecter le staging dans le prompt.
-- [ ] Ne pas creer de mutable LLM pour faire passer la preuve.
+- [x] Ne pas logger les textes `static` ou `mutable` bruts.
+- [x] Ne pas changer la composition du prompt principal.
+- [x] Ne pas injecter le staging dans le prompt.
+- [x] Ne pas creer de mutable LLM pour faire passer la preuve.
 
 Cases de correction:
-- [ ] Definir une empreinte compacte de `identity_block`: presence, longueur totale, hash court, `used_identity_ids_count`, `staging_included=false`.
-- [ ] Ajouter une empreinte par sujet et couche: `llm.static`, `llm.mutable`, `user.static`, `user.mutable`, avec `present`, `chars`, hash court et metadonnees non sensibles quand disponibles.
-- [ ] Brancher cette empreinte dans `prompt_prepared` ou dans un event adjacent du meme tour, afin que la preuve soit reliee au payload final du LLM principal.
-- [ ] Garantir que l'empreinte est calculee depuis la meme base runtime que `build_identity_block()` / `build_identity_input()`.
-- [ ] Verifier que l'event ne contient aucun champ `content`, `prompt`, `messages`, `history` ou texte identitaire brut.
+- [x] Definir une empreinte compacte de `identity_block`: presence, longueur totale, hash court, `used_identity_ids_count`, `staging_included=false`.
+- [x] Ajouter une empreinte par sujet et couche: `llm.static`, `llm.mutable`, `user.static`, `user.mutable`, avec `present`, `chars`, hash court et metadonnees non sensibles quand disponibles.
+- [x] Brancher cette empreinte dans `prompt_prepared` ou dans un event adjacent du meme tour, afin que la preuve soit reliee au payload final du LLM principal.
+- [x] Garantir que l'empreinte est calculee depuis la meme base runtime que `build_identity_block()` / `build_identity_input()`.
+- [x] Verifier que l'event ne contient aucun champ `content`, `prompt`, `messages`, `history` ou texte identitaire brut.
 
 Tests attendus:
 - test unitaire de construction de l'empreinte avec `llm.mutable` absente et `user.mutable` presente;
@@ -91,7 +91,7 @@ Preuves runtime attendues:
 - preuve que le hash/longueur changent quand la source identitaire change dans un test isole, sans dump de contenu.
 
 Condition de cloture:
-- [ ] Pour un tour chat donne, l'operateur peut dire quelles couches Identity ont ete injectees, lesquelles etaient absentes, et quelle empreinte compacte correspond au bloc final.
+- [x] Pour un tour chat donne, l'operateur peut dire quelles couches Identity ont ete injectees, lesquelles etaient absentes, et quelle empreinte compacte correspond au bloc final.
 
 ## Lot 2 - Clarifier staging courant vs dernier run termine
 

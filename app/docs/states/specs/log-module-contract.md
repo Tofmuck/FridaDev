@@ -167,6 +167,10 @@ Minimum event-specific details:
     - compact redacted summary of what memory-related blocks really reached the final prompt
     - allowed fields: booleans, counts, block presence/absence only
     - forbidden: raw memory content, raw context hints, raw prompt excerpts
+  - `identity_prompt_injection`:
+    - compact redacted fingerprint of the Identity block compiled into the main prompt
+    - allowed fields: block presence, lengths, short hashes, subject/layer presence, `used_identity_ids_count`, `staging_included=false`, non-sensitive source/update metadata
+    - forbidden: raw static identity, raw mutable identity, staging buffer content, raw prompt excerpts
   - `memory_retrieval`:
     - compact redacted status of retrieval availability for this turn
     - allowed fields: `status`, `reason_code`, `error_code`, `error_class`, `top_k_requested`, `top_k_returned`

@@ -91,6 +91,10 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             },
         )
         self.assertEqual(
+            prompt_payload.get('identity_prompt_injection'),
+            self.server.identity_observability.empty_identity_prompt_injection_payload(),
+        )
+        self.assertEqual(
             prompt_payload.get('memory_retrieval'),
             {
                 'status': 'unknown',
@@ -101,6 +105,110 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'top_k_returned': 0,
             },
         )
+        self.assertNotIn('messages', prompt_payload)
+        self.assertNotIn('prompt', prompt_payload)
+        self.assertNotIn('content', prompt_payload)
+
+    def test_prompt_prepared_exposes_identity_prompt_injection_without_raw_content(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-prompt-identity-injection',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        raw_llm_static = 'frida static identity secret phrase'
+        raw_user_static = 'user static identity secret phrase'
+        raw_user_mutable = 'user mutable identity secret phrase'
+        raw_block = f'[IDENTITE]\n{raw_llm_static}\n{raw_user_static}\n{raw_user_mutable}'
+        try:
+            self.server.chat_turn_logger.set_state(
+                'identity_prompt_injection',
+                self.server.identity_observability.build_identity_prompt_injection_payload(
+                    identity_block=raw_block,
+                    used_identity_ids=['legacy-id-1'],
+                    llm_static=raw_llm_static,
+                    llm_static_source='state/identity/frida.md',
+                    user_static=raw_user_static,
+                    user_static_source='state/identity/user.md',
+                    frida_mutable=None,
+                    user_mutable={
+                        'content': raw_user_mutable,
+                        'source_trace_id': 'trace-user-1',
+                        'updated_by': 'identity_periodic_agent',
+                        'update_reason': 'periodic_agent',
+                        'updated_ts': '2026-05-13T14:43:24+02:00',
+                    },
+                ),
+            )
+            proxy = self.server._LlmChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                        'model': 'openrouter/runtime-main-model',
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'max_tokens': max_tokens,
+                        'stream': stream,
+                    }
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 123),
+            )
+            proxy.build_payload(
+                [{'role': 'user', 'content': 'bonjour'}],
+                0.7,
+                0.9,
+                400,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        prompt_event = next(event for event in observed if event.get('stage') == 'prompt_prepared')
+        prompt_payload = prompt_event['payload_json']
+        identity_payload = prompt_payload.get('identity_prompt_injection')
+        self.assertIsInstance(identity_payload, dict)
+        self.assertTrue(identity_payload.get('injected'))
+        self.assertEqual(identity_payload.get('identity_block_chars'), len(raw_block))
+        self.assertEqual(identity_payload.get('used_identity_ids_count'), 1)
+        self.assertFalse(identity_payload.get('staging_included'))
+        subjects = identity_payload.get('subjects')
+        self.assertTrue(subjects['llm']['static']['present'])
+        self.assertFalse(subjects['llm']['mutable']['present'])
+        self.assertTrue(subjects['user']['static']['present'])
+        self.assertTrue(subjects['user']['mutable']['present'])
+        self.assertEqual(subjects['user']['mutable']['updated_by'], 'identity_periodic_agent')
+        self.assertTrue(subjects['user']['mutable']['update_reason_present'])
+        self.assertEqual(len(identity_payload.get('identity_block_sha256_12')), 12)
+        self.assertEqual(len(subjects['user']['mutable']['sha256_12']), 12)
+
+        def collect_keys(value: object) -> set[str]:
+            if isinstance(value, dict):
+                keys: set[str] = set()
+                for key, item in value.items():
+                    keys.add(str(key))
+                    keys.update(collect_keys(item))
+                return keys
+            if isinstance(value, list):
+                keys = set()
+                for item in value:
+                    keys.update(collect_keys(item))
+                return keys
+            return set()
+
+        self.assertTrue({'content', 'prompt', 'messages', 'history'}.isdisjoint(collect_keys(identity_payload)))
+        serialized = repr(identity_payload)
+        self.assertNotIn(raw_llm_static, serialized)
+        self.assertNotIn(raw_user_static, serialized)
+        self.assertNotIn(raw_user_mutable, serialized)
+        self.assertNotIn(raw_block, serialized)
         self.assertNotIn('messages', prompt_payload)
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)

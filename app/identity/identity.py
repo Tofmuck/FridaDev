@@ -351,6 +351,20 @@ def build_identity_block() -> tuple[str, list[str]]:
         llm_static=llm_static,
         user_static=user_static,
     )
+    if chat_turn_logger.is_active():
+        chat_turn_logger.set_state(
+            'identity_prompt_injection',
+            identity_observability.build_identity_prompt_injection_payload(
+                identity_block=selection.block,
+                used_identity_ids=selection.used_identity_ids,
+                llm_static=llm_static,
+                llm_static_source=_safe_static_identity_source('llm_identity_path'),
+                user_static=user_static,
+                user_static_source=_safe_static_identity_source('user_identity_path'),
+                frida_mutable=selection.frida_mutable,
+                user_mutable=selection.user_mutable,
+            ),
+        )
     return selection.block, selection.used_identity_ids
 
 
