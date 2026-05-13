@@ -2,11 +2,11 @@
 
 Statut: clos, pret a archiver
 Source: audit Identity du 2026-05-13
-Classement: `app/docs/todo-todo/audits/`
+Classement: `app/docs/todo-done/audits/`
 Portee: observabilite et preuves operateur du module Identity
 Hors-scope: modification de la doctrine Identity, changement du seuil de 15 paires, creation forcee d'une mutable LLM, redesign des surfaces admin, refactor general du module Identity
 
-Note de cloture: les cinq lots de remediation sont livres, testes et couverts par preuves. Ce fichier reste temporairement dans `todo-todo/audits/` pour cette cloture documentaire et peut etre deplace vers `app/docs/todo-done/audits/` par un patch d'archivage separe.
+Note de cloture: les cinq lots de remediation sont livres, testes et couverts par preuves. Ce fichier est archive dans `app/docs/todo-done/audits/`.
 
 ## 1. Intention
 
