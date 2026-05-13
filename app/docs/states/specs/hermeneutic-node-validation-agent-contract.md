@@ -276,6 +276,12 @@ Ne doivent jamais etre journalises brutement:
 Regle forte:
 
 - l'observabilite de validation ne doit pas creer un dispositif parallele de stockage brut du dialogue recent
+- depuis le lot Memory/RAG observability 1 du 2026-05-13, le stage `validation_prompt_prepared`
+  journalise aussi l'exposition provider secondaire du `validation_agent` avant l'appel OpenRouter:
+  `payload_kind=secondary_validation_agent_provider`, distinction `main_llm_payload=false` /
+  `secondary_provider_payload=true`, presence/counts/longueurs/source kinds de `memory_retrieved`
+  et `memory_arbitration`, metriques de messages provider, et aucun contenu brut de prompt,
+  message, trace, summary ou conversation
 
 Preuves de fermeture lot 6:
 

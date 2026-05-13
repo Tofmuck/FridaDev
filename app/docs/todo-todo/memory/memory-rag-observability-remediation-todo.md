@@ -69,17 +69,17 @@ Fichiers probablement touches:
 - tests chat / hermeneutic node / validation agent
 
 Hors-scope:
-- [ ] Ne pas modifier les decisions du validation agent.
-- [ ] Ne pas modifier le prompt principal.
-- [ ] Ne pas afficher le contenu de `canonical_inputs`.
-- [ ] Ne pas faire de vrai appel provider dans les tests.
+- [x] Ne pas modifier les decisions du validation agent.
+- [x] Ne pas modifier le prompt principal.
+- [x] Ne pas afficher le contenu de `canonical_inputs`.
+- [x] Ne pas faire de vrai appel provider dans les tests.
 
 Cases de correction:
-- [ ] Ajouter un event compact lie au tour, par exemple `validation_prompt_prepared` ou equivalent.
-- [ ] Inclure seulement des metriques content-free: presence des inputs, tailles, counts, source kinds, hash courts si necessaire.
-- [ ] Distinguer clairement exposition provider secondaire et payload principal.
-- [ ] Garantir que les champs `content`, `prompt`, `messages`, `trace`, `summary`, `conversation` bruts ne sont pas logges.
-- [ ] Documenter le nouveau champ ou event si le contrat operateur/log change.
+- [x] Ajouter un event compact lie au tour, par exemple `validation_prompt_prepared` ou equivalent.
+- [x] Inclure seulement des metriques content-free: presence des inputs, tailles, counts, source kinds, hash courts si necessaire.
+- [x] Distinguer clairement exposition provider secondaire et payload principal.
+- [x] Garantir que les champs `content`, `prompt`, `messages`, `trace`, `summary`, `conversation` bruts ne sont pas logges.
+- [x] Documenter le nouveau champ ou event si le contrat operateur/log change.
 
 Tests attendus:
 - test avec `requests.post` fake prouvant que le validation agent expose une empreinte compacte;
@@ -91,7 +91,7 @@ Preuves runtime attendues:
 - preuve qu'un tour peut distinguer `main_payload` et `validation_payload` par counts/status.
 
 Condition de cloture:
-- [ ] L'operateur peut savoir qu'une memoire a ete visible du validation agent, sous quelle forme compacte, sans voir le contenu expose.
+- [x] L'operateur peut savoir qu'une memoire a ete visible du validation agent, sous quelle forme compacte, sans voir le contenu expose.
 
 ## Lot 2 - Snapshot compact de chaine memoire
 

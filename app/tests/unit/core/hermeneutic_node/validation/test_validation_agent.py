@@ -234,7 +234,9 @@ class ValidationAgentTests(unittest.TestCase):
         self.original_or_chat_completions_url = validation_agent.llm_client.or_chat_completions_url
         self.original_log_provider_metadata = validation_agent.llm_client.log_provider_metadata
         self.original_runtime_settings_getter = validation_agent.runtime_settings.get_validation_agent_model_settings
+        self.original_chat_turn_emit = validation_agent.chat_turn_logger.emit
         self.provider_logs = []
+        self.observed_events: list[dict[str, object]] = []
         validation_agent.prompt_loader.read_prompt_text = lambda _path: "SYSTEM PROMPT"
         validation_agent.llm_client.or_headers = lambda caller="llm": {
             "Authorization": f"caller={caller}"
@@ -254,12 +256,40 @@ class ValidationAgentTests(unittest.TestCase):
             }
         )
 
+        def fake_emit(
+            stage,
+            *,
+            status="ok",
+            payload=None,
+            duration_ms=None,
+            model=None,
+            prompt_kind=None,
+            reason_code=None,
+            error_code=None,
+        ):
+            self.observed_events.append(
+                {
+                    "stage": stage,
+                    "status": status,
+                    "payload": dict(payload or {}),
+                    "duration_ms": duration_ms,
+                    "model": model,
+                    "prompt_kind": prompt_kind,
+                    "reason_code": reason_code,
+                    "error_code": error_code,
+                }
+            )
+            return True
+
+        validation_agent.chat_turn_logger.emit = fake_emit
+
     def tearDown(self) -> None:
         validation_agent.prompt_loader.read_prompt_text = self.original_read_prompt
         validation_agent.llm_client.or_headers = self.original_or_headers
         validation_agent.llm_client.or_chat_completions_url = self.original_or_chat_completions_url
         validation_agent.llm_client.log_provider_metadata = self.original_log_provider_metadata
         validation_agent.runtime_settings.get_validation_agent_model_settings = self.original_runtime_settings_getter
+        validation_agent.chat_turn_logger.emit = self.original_chat_turn_emit
 
     def test_build_validated_output_rejects_invalid_primary_verdict(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
@@ -370,6 +400,115 @@ class ValidationAgentTests(unittest.TestCase):
                 )
             ],
         )
+
+    def test_validation_prompt_prepared_observes_memory_exposure_without_raw_content(self) -> None:
+        raw_trace = "RAW TRACE MEMORY SHOULD NEVER APPEAR IN LOGS"
+        raw_summary = "RAW PARENT SUMMARY SHOULD NEVER APPEAR IN LOGS"
+        raw_basket = "RAW BASKET CANDIDATE SHOULD NEVER APPEAR IN LOGS"
+        raw_reason = "RAW ARBITER REASON SHOULD NEVER APPEAR IN LOGS"
+        canonical_inputs = _canonical_inputs()
+        canonical_inputs["memory_retrieved"] = {
+            "schema_version": "v1",
+            "status": "ok",
+            "top_k_requested": 5,
+            "retrieved_count": 2,
+            "traces": [
+                {
+                    "candidate_id": "cand-trace-1",
+                    "source_kind": "trace",
+                    "source_lane": "dense",
+                    "role": "user",
+                    "content": raw_trace,
+                    "parent_summary": {"content": raw_summary},
+                },
+                {
+                    "candidate_id": "summary:abc",
+                    "source_kind": "summary",
+                    "source_lane": "summaries",
+                    "role": "summary",
+                    "content": "RAW SUMMARY CANDIDATE SHOULD NEVER APPEAR IN LOGS",
+                },
+            ],
+        }
+        canonical_inputs["memory_arbitration"] = {
+            "schema_version": "v1",
+            "status": "available",
+            "raw_candidates_count": 2,
+            "basket_candidates_count": 1,
+            "basket_candidates": [
+                {
+                    "candidate_id": "cand-trace-1",
+                    "source_kind": "trace",
+                    "source_lane": "dense",
+                    "content": raw_basket,
+                }
+            ],
+            "decisions_count": 1,
+            "kept_count": 1,
+            "rejected_count": 0,
+            "injected_candidate_ids": ["cand-trace-1"],
+            "decisions": [
+                {
+                    "candidate_id": "cand-trace-1",
+                    "keep": True,
+                    "decision_source": "llm",
+                    "reason": raw_reason,
+                }
+            ],
+        }
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=canonical_inputs,
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        event = next(item for item in self.observed_events if item["stage"] == "validation_prompt_prepared")
+        self.assertEqual(event["model"], validation_agent.PRIMARY_MODEL)
+        self.assertEqual(event["prompt_kind"], "validation_agent_secondary")
+        payload = event["payload"]
+        self.assertEqual(payload["payload_kind"], "secondary_validation_agent_provider")
+        self.assertFalse(payload["main_llm_payload"])
+        self.assertTrue(payload["secondary_provider_payload"])
+        self.assertEqual(payload["validation_status"], "prepared")
+        self.assertEqual(payload["attempt_decision_source"], "primary")
+        self.assertTrue(payload["memory_retrieved"]["present"])
+        self.assertEqual(payload["memory_retrieved"]["retrieved_count"], 2)
+        self.assertEqual(payload["memory_retrieved"]["source_kind_counts"], {"summary": 1, "trace": 1})
+        self.assertEqual(payload["memory_retrieved"]["source_lane_counts"], {"dense": 1, "summaries": 1})
+        self.assertEqual(payload["memory_retrieved"]["parent_summary_present_count"], 1)
+        self.assertEqual(payload["memory_retrieved"]["candidate_ids_count"], 2)
+        self.assertTrue(payload["memory_arbitration"]["present"])
+        self.assertEqual(payload["memory_arbitration"]["basket_candidates_count"], 1)
+        self.assertEqual(payload["memory_arbitration"]["decisions_count"], 1)
+        self.assertEqual(payload["memory_arbitration"]["kept_count"], 1)
+        self.assertEqual(payload["memory_arbitration"]["decision_source_counts"], {"llm": 1})
+        self.assertEqual(payload["memory_arbitration"]["injected_candidate_ids_count"], 1)
+        self.assertGreater(payload["canonical_inputs"]["json_chars"], 0)
+
+        event_json = json.dumps(event, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(raw_trace, event_json)
+        self.assertNotIn(raw_summary, event_json)
+        self.assertNotIn(raw_basket, event_json)
+        self.assertNotIn(raw_reason, event_json)
+        self.assertNotIn("RAW SUMMARY CANDIDATE SHOULD NEVER APPEAR IN LOGS", event_json)
+        self.assertNotIn('"content"', event_json)
+        self.assertNotIn('"messages"', event_json)
+        self.assertNotIn("SYSTEM PROMPT", event_json)
 
     def test_build_validated_output_uses_runtime_settings_models_and_sampling(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
@@ -1215,6 +1354,22 @@ class ValidationAgentTests(unittest.TestCase):
                 fail_open=True,
             ),
         )
+        prompt_events = [
+            item for item in self.observed_events if item["stage"] == "validation_prompt_prepared"
+        ]
+        self.assertEqual(len(prompt_events), 2)
+        self.assertEqual(
+            [item["payload"]["attempt_decision_source"] for item in prompt_events],
+            ["primary", "fallback"],
+        )
+        self.assertEqual(
+            [item["model"] for item in prompt_events],
+            [validation_agent.PRIMARY_MODEL, validation_agent.FALLBACK_MODEL],
+        )
+        events_json = json.dumps(prompt_events, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("primary timeout", events_json)
+        self.assertNotIn("not json", events_json)
+        self.assertNotIn("SYSTEM PROMPT", events_json)
 
     def test_build_validated_output_centers_prompt_on_validation_dialogue_context(self) -> None:
         requests_module = _FakeRequests(

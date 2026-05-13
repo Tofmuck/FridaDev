@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
 import json
 import logging
 from typing import Any, Mapping, Sequence
@@ -11,6 +12,7 @@ from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from observability import chat_turn_logger
 from . import hard_guards
 
 logger = logging.getLogger('frida.validation_agent')
@@ -89,6 +91,12 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     return {}
 
 
+def _sequence(value: Any) -> Sequence[Any]:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return value
+    return ()
+
+
 def _text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -127,6 +135,188 @@ def _bounded_json_preview(value: Any, *, max_chars: int) -> str:
         preview_chars -= 16
         bounded = _compact_json({"truncated": True, "preview": _compact_text(raw, max_chars=preview_chars)})
     return bounded
+
+
+def _int_or_zero(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _sha256_12(value: Any) -> str:
+    text = _text(value)
+    if not text:
+        return ""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def _count_by_key(items: Sequence[Any], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        payload = _mapping(item)
+        label = _text(payload.get(key)) or "unknown"
+        counts[label] = counts.get(label, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _candidate_id_hashes(items: Sequence[Any], *, limit: int = 8) -> list[str]:
+    hashes: list[str] = []
+    for item in items:
+        digest = _sha256_12(_mapping(item).get("candidate_id"))
+        if digest:
+            hashes.append(digest)
+        if len(hashes) >= limit:
+            break
+    return hashes
+
+
+def _content_chars(items: Sequence[Any], *, include_parent_summary: bool = False) -> int:
+    total = 0
+    for item in items:
+        payload = _mapping(item)
+        total += len(str(payload.get("content") or ""))
+        if include_parent_summary:
+            total += len(str(_mapping(payload.get("parent_summary")).get("content") or ""))
+    return total
+
+
+def _summarize_validation_dialogue_context(payload: Mapping[str, Any]) -> dict[str, Any]:
+    messages = _sequence(payload.get("messages"))
+    role_counts = _count_by_key(messages, "role")
+    return {
+        "present": bool(payload),
+        "message_count": _int_or_zero(payload.get("source_message_count") or len(messages)),
+        "retained_message_count": len(messages),
+        "current_user_retained": bool(payload.get("current_user_retained", False)),
+        "last_assistant_retained": bool(payload.get("last_assistant_retained", False)),
+        "truncated": bool(payload.get("truncated", False)),
+        "role_counts": role_counts,
+        "content_chars_total": _content_chars(messages),
+        "json_chars": len(_compact_json(payload)) if payload else 0,
+    }
+
+
+def _summarize_memory_retrieved(canonical_inputs: Mapping[str, Any]) -> dict[str, Any]:
+    data = _mapping(canonical_inputs.get("memory_retrieved"))
+    traces = _sequence(data.get("traces"))
+    return {
+        "present": bool(data),
+        "status": _text(data.get("status")) or ("ok" if data else "missing"),
+        "reason_code": _text(data.get("reason_code")),
+        "error_code": _text(data.get("error_code")),
+        "error_class": _text(data.get("error_class")),
+        "top_k_requested": data.get("top_k_requested"),
+        "retrieved_count": _int_or_zero(data.get("retrieved_count") or len(traces)),
+        "traces_count": len(traces),
+        "source_kind_counts": _count_by_key(traces, "source_kind"),
+        "source_lane_counts": _count_by_key(traces, "source_lane"),
+        "candidate_ids_count": sum(1 for item in traces if _text(_mapping(item).get("candidate_id"))),
+        "candidate_id_hashes": _candidate_id_hashes(traces),
+        "content_chars_total": _content_chars(traces, include_parent_summary=True),
+        "parent_summary_present_count": sum(1 for item in traces if bool(_mapping(item).get("parent_summary"))),
+    }
+
+
+def _summarize_memory_arbitration(canonical_inputs: Mapping[str, Any]) -> dict[str, Any]:
+    data = _mapping(canonical_inputs.get("memory_arbitration"))
+    basket_candidates = _sequence(data.get("basket_candidates"))
+    decisions = _sequence(data.get("decisions"))
+    injected_ids = [
+        _text(item)
+        for item in _sequence(data.get("injected_candidate_ids"))
+        if _text(item)
+    ]
+    return {
+        "present": bool(data),
+        "status": _text(data.get("status")) or ("available" if data else "missing"),
+        "reason_code": _text(data.get("reason_code")),
+        "raw_candidates_count": _int_or_zero(data.get("raw_candidates_count")),
+        "basket_candidates_count": _int_or_zero(data.get("basket_candidates_count") or len(basket_candidates)),
+        "decisions_count": _int_or_zero(data.get("decisions_count") or len(decisions)),
+        "kept_count": _int_or_zero(data.get("kept_count")),
+        "rejected_count": _int_or_zero(data.get("rejected_count")),
+        "injected_candidate_ids_count": len(injected_ids),
+        "injected_candidate_id_hashes": [_sha256_12(item) for item in injected_ids[:8]],
+        "basket_source_kind_counts": _count_by_key(basket_candidates, "source_kind"),
+        "basket_source_lane_counts": _count_by_key(basket_candidates, "source_lane"),
+        "decision_source_counts": _count_by_key(decisions, "decision_source"),
+        "basket_content_chars_total": _content_chars(basket_candidates),
+    }
+
+
+def _provider_message_summary(messages: Sequence[Mapping[str, str]]) -> dict[str, Any]:
+    role_counts = _count_by_key(messages, "role")
+    content_chars = [len(str(_mapping(message).get("content") or "")) for message in messages]
+    return {
+        "messages_count": len(messages),
+        "role_counts": role_counts,
+        "content_chars_total": sum(content_chars),
+        "system_message_chars": sum(
+            len(str(_mapping(message).get("content") or ""))
+            for message in messages
+            if _text(_mapping(message).get("role")) == "system"
+        ),
+        "user_message_chars": sum(
+            len(str(_mapping(message).get("content") or ""))
+            for message in messages
+            if _text(_mapping(message).get("role")) == "user"
+        ),
+    }
+
+
+def _emit_validation_prompt_prepared(
+    *,
+    model: str,
+    decision_source: str,
+    messages: Sequence[Mapping[str, str]],
+    validation_dialogue_context: Mapping[str, Any],
+    canonical_inputs: Mapping[str, Any],
+    hard_guard_payload: Mapping[str, Any],
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+) -> None:
+    canonical_input_keys = sorted(_text(key) for key in canonical_inputs.keys() if _text(key))
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "payload_kind": "secondary_validation_agent_provider",
+        "provider_caller": "validation_agent",
+        "main_llm_payload": False,
+        "secondary_provider_payload": True,
+        "validation_status": "prepared",
+        "attempt_decision_source": str(decision_source or "unknown"),
+        "sampling": {
+            "temperature": float(temperature),
+            "top_p": float(top_p),
+            "max_tokens": _bounded_response_max_tokens(max_tokens),
+        },
+        "provider_messages": _provider_message_summary(messages),
+        "validation_dialogue_context": _summarize_validation_dialogue_context(
+            validation_dialogue_context
+        ),
+        "canonical_inputs": {
+            "present": bool(canonical_inputs),
+            "input_keys": canonical_input_keys,
+            "input_keys_count": len(canonical_input_keys),
+            "json_chars": len(_compact_json(canonical_inputs)) if canonical_inputs else 0,
+        },
+        "memory_retrieved": _summarize_memory_retrieved(canonical_inputs),
+        "memory_arbitration": _summarize_memory_arbitration(canonical_inputs),
+        "hard_guard": {
+            "present": bool(hard_guard_payload),
+            "allowed_postures_count": len(_sequence(hard_guard_payload.get("allowed_postures"))),
+            "applied_hard_guards_count": len(_sequence(hard_guard_payload.get("applied_hard_guards"))),
+            "effect_present": bool(_text(hard_guard_payload.get("hard_guard_effect"))),
+        },
+    }
+    chat_turn_logger.emit(
+        "validation_prompt_prepared",
+        status="ok",
+        model=model,
+        prompt_kind="validation_agent_secondary",
+        payload=payload,
+    )
 
 
 def _compacted_validation_dialogue_context(value: Any) -> str:
@@ -690,6 +880,7 @@ def _request_reason_code(exc: Exception, requests_module: Any) -> str:
 def _call_model(
     *,
     model: str,
+    decision_source: str,
     system_prompt: str,
     primary_verdict: Mapping[str, Any],
     justifications: Mapping[str, Any],
@@ -703,18 +894,30 @@ def _call_model(
     allowed_postures: Sequence[str],
     requests_module: Any,
 ) -> tuple[dict[str, str], dict[str, Any]]:
+    messages = _build_messages(
+        system_prompt=system_prompt,
+        primary_verdict=primary_verdict,
+        justifications=justifications,
+        validation_dialogue_context=validation_dialogue_context,
+        canonical_inputs=canonical_inputs,
+        hard_guard_payload=hard_guard_payload,
+    )
+    _emit_validation_prompt_prepared(
+        model=model,
+        decision_source=decision_source,
+        messages=messages,
+        validation_dialogue_context=validation_dialogue_context,
+        canonical_inputs=canonical_inputs,
+        hard_guard_payload=hard_guard_payload,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+    )
     response = requests_module.post(
         llm_client.or_chat_completions_url(),
         json={
             "model": model,
-            "messages": _build_messages(
-                system_prompt=system_prompt,
-                primary_verdict=primary_verdict,
-                justifications=justifications,
-                validation_dialogue_context=validation_dialogue_context,
-                canonical_inputs=canonical_inputs,
-                hard_guard_payload=hard_guard_payload,
-            ),
+            "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": _bounded_response_max_tokens(max_tokens),
@@ -782,6 +985,7 @@ def build_validated_output(
         try:
             verdict_payload, provider_metadata = _call_model(
                 model=model,
+                decision_source=decision_source,
                 system_prompt=system_prompt,
                 primary_verdict=primary_verdict_payload,
                 justifications=justifications_payload,
