@@ -42,6 +42,7 @@ html, body { height: 100%; }
 
   /* Largeur de lecture */
   --bubble-max: 680px;
+  --composer-max: 1120px;
 
   /* Hauteurs */
   --topbar-h: 46px;
@@ -503,8 +504,8 @@ body {
   right: 0;
   padding-top: 10px;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
-  padding-left: max(clamp(16px, 4vw, 32px), calc((100% - var(--bubble-max)) / 2));
-  padding-right: max(clamp(16px, 4vw, 32px), calc((100% - var(--bubble-max)) / 2));
+  padding-left: max(clamp(16px, 4vw, 32px), calc((100vw - var(--sidebar-w) - var(--composer-max)) / 2));
+  padding-right: max(clamp(16px, 4vw, 32px), calc((100vw - var(--sidebar-w) - var(--composer-max)) / 2));
   background: var(--bg-ask);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);

@@ -202,6 +202,41 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
   });
 });
 
+test('chat composer keeps desktop textarea wide without overlapping controls', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 1440, height: 900 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+
+    const layout = await page.evaluate(() => {
+      const message = document.querySelector('#message').getBoundingClientRect();
+      const mic = document.querySelector('#btnMic').getBoundingClientRect();
+      const webSearch = document.querySelector('#btnWebSearch').getBoundingClientRect();
+      const submit = document.querySelector('#ask button[type="submit"]').getBoundingClientRect();
+      const ask = document.querySelector('#ask').getBoundingClientRect();
+      return {
+        askLeft: ask.left,
+        askRight: ask.right,
+        messageWidth: message.width,
+        messageRight: message.right,
+        micLeft: mic.left,
+        micRight: mic.right,
+        webSearchLeft: webSearch.left,
+        webSearchRight: webSearch.right,
+        submitLeft: submit.left,
+        viewportWidth: window.innerWidth,
+      };
+    });
+
+    assert.ok(layout.messageWidth >= 800, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
+    assert.ok(layout.messageRight <= layout.micLeft, 'textarea should not overlap the mic button');
+    assert.ok(layout.micRight <= layout.webSearchLeft, 'mic button should not overlap the web-search button');
+    assert.ok(layout.webSearchRight <= layout.submitLeft, 'web-search button should not overlap the submit button');
+    assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
+  });
+});
+
 test('chat stream error without updated_at rehydrates and avoids canonical optimistic assistant', async () => {
   await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'error' }) }, async (page) => {
     await page.waitForSelector('#message:not([disabled])');
