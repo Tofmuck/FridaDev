@@ -365,6 +365,7 @@ def upsert_mutable_identity(
     *,
     updated_by: str = 'system',
     update_reason: str = '',
+    audit_reason_code: str | None = None,
 ) -> dict[str, Any] | None:
     return memory_identity_mutables.upsert_mutable_identity(
         subject,
@@ -372,6 +373,7 @@ def upsert_mutable_identity(
         source_trace_id=source_trace_id,
         updated_by=updated_by,
         update_reason=update_reason,
+        audit_reason_code=audit_reason_code,
         conn_factory=_conn,
         logger=logger,
     )
@@ -382,11 +384,13 @@ def clear_mutable_identity(
     *,
     updated_by: str = 'system',
     update_reason: str = 'clear',
+    audit_reason_code: str | None = None,
 ) -> dict[str, Any] | None:
     return memory_identity_mutables.clear_mutable_identity(
         subject,
         updated_by=updated_by,
         update_reason=update_reason,
+        audit_reason_code=audit_reason_code,
         conn_factory=_conn,
         logger=logger,
     )

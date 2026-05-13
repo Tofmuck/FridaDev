@@ -371,6 +371,7 @@ def identity_mutable_edit_response(
             content,
             updated_by=contract.EDIT_UPDATED_BY,
             update_reason=reason,
+            audit_reason_code='set_applied',
         )
         stored_after = contract.current_content(updated) == content if updated is not None else False
         if not stored_after:
@@ -433,6 +434,7 @@ def identity_mutable_edit_response(
             subject,
             updated_by=contract.EDIT_UPDATED_BY,
             update_reason=reason,
+            audit_reason_code='clear_applied',
         )
     except TypeError as exc:
         if 'unexpected keyword' not in str(exc) and 'positional arguments' not in str(exc):

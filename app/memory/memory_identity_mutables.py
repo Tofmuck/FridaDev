@@ -229,6 +229,7 @@ def upsert_mutable_identity(
     *,
     updated_by: str = 'system',
     update_reason: str = '',
+    audit_reason_code: str | None = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -291,7 +292,7 @@ def upsert_mutable_identity(
                     subject=canonical_subject,
                     mutation_kind='set',
                     actor=str(updated_by or 'system'),
-                    reason_code=str(update_reason or 'set'),
+                    reason_code=str(audit_reason_code or update_reason or 'set'),
                     old_content=old_content,
                     new_content=cleaned_content,
                     source_trace_id=source_trace_id,
@@ -308,6 +309,7 @@ def clear_mutable_identity(
     *,
     updated_by: str = 'system',
     update_reason: str = 'clear',
+    audit_reason_code: str | None = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -340,7 +342,7 @@ def clear_mutable_identity(
                         subject=canonical_subject,
                         mutation_kind='clear',
                         actor=str(updated_by or 'system'),
-                        reason_code=str(update_reason or 'clear'),
+                        reason_code=str(audit_reason_code or update_reason or 'clear'),
                         old_content=str(row[1] or ''),
                         new_content='',
                         source_trace_id=str(row[2]) if row[2] is not None else None,

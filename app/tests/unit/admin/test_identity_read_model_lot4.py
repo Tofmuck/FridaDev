@@ -99,6 +99,7 @@ class IdentityReadModelLot4Tests(unittest.TestCase):
         self.assertFalse(llm_mutable['stored'])
         self.assertFalse(llm_mutable['actively_injected'])
         llm_audit = llm_mutable['last_mutation_audit']
+        admin_reason = 'obsolete mutable parce que contexte humain libre'
         self.assertTrue(llm_audit['present'])
         self.assertFalse(llm_audit['actively_injected'])
         self.assertEqual(llm_audit['storage_kind'], 'identity_mutable_audit')
@@ -112,6 +113,8 @@ class IdentityReadModelLot4Tests(unittest.TestCase):
         self.assertNotIn('content', llm_audit)
         self.assertNotIn('prompt', llm_audit)
         self.assertNotIn('messages', llm_audit)
+        self.assertNotIn('admin_reason', llm_audit)
+        self.assertNotIn(admin_reason, repr(llm_audit))
 
         user_audit = payload['subjects']['user']['mutable']['last_mutation_audit']
         self.assertFalse(user_audit['present'])

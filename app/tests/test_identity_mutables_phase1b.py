@@ -290,8 +290,10 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
                 first_content,
                 source_trace_id='00000000-0000-0000-0000-000000000010',
                 updated_by='admin_identity_mutable_edit',
-                update_reason='set_applied',
+                update_reason='raison admin libre sensible a ne pas archiver',
+                audit_reason_code='set_applied',
             )
+            latest_admin_set = memory_store.get_latest_mutable_identity_audit('llm')
             memory_store.upsert_mutable_identity(
                 'llm',
                 second_content,
@@ -303,11 +305,19 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
             cleared = memory_store.clear_mutable_identity(
                 'llm',
                 updated_by='admin_identity_mutable_edit',
-                update_reason='clear_applied',
+                update_reason='obsolete mutable parce que contexte humain libre',
+                audit_reason_code='clear_applied',
             )
             latest_clear = memory_store.get_latest_mutable_identity_audit('llm')
         finally:
             memory_store._conn = original_conn
+
+        self.assertIsNotNone(latest_admin_set)
+        self.assertEqual(latest_admin_set['mutation_kind'], 'set')
+        self.assertEqual(latest_admin_set['actor'], 'admin_identity_mutable_edit')
+        self.assertEqual(latest_admin_set['reason_code'], 'set_applied')
+        self.assertEqual(latest_admin_set['old_chars'], 0)
+        self.assertEqual(latest_admin_set['new_chars'], len(first_content))
 
         self.assertIsNotNone(latest_set)
         self.assertEqual(latest_set['mutation_kind'], 'set')
@@ -328,6 +338,8 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertEqual(len(latest_clear['old_sha256_12']), 12)
         self.assertIsNone(latest_clear['new_sha256_12'])
         self.assertNotIn('content', latest_clear)
+        self.assertNotIn('raison admin libre sensible', repr(audit_state))
+        self.assertNotIn('obsolete mutable parce que contexte humain libre', repr(audit_state))
         self.assertNotIn(first_content, repr(audit_state))
         self.assertNotIn(second_content, repr(audit_state))
 
