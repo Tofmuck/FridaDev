@@ -1,10 +1,12 @@
 # Identity observability remediation - TODO
 
-Statut: ouvert
+Statut: clos, pret a archiver
 Source: audit Identity du 2026-05-13
 Classement: `app/docs/todo-todo/audits/`
 Portee: observabilite et preuves operateur du module Identity
 Hors-scope: modification de la doctrine Identity, changement du seuil de 15 paires, creation forcee d'une mutable LLM, redesign des surfaces admin, refactor general du module Identity
+
+Note de cloture: les cinq lots de remediation sont livres, testes et couverts par preuves. Ce fichier reste temporairement dans `todo-todo/audits/` pour cette cloture documentaire et peut etre deplace vers `app/docs/todo-done/audits/` par un patch d'archivage separe.
 
 ## 1. Intention
 
@@ -25,22 +27,22 @@ Ce chantier vise uniquement:
 
 ## 2. Source de verite
 
-- [ ] Traiter ce fichier comme la source de travail active des cinq remediations issues de l'audit Identity du 2026-05-13.
-- [ ] Garder `app/docs/states/policies/identity-new-contract-plan.md` comme source doctrinale: `mutable` reste de l'identite forte, pas une preference, un confort local ou une consigne de reponse.
-- [ ] Garder `app/docs/todo-done/refactors/identity-new-contract-todo.md` comme archive operatoire: le regime actif est deja `static + mutable narrative`, avec staging de 15 paires, agent periodique, scoring deterministe, promotion et suspension.
-- [ ] Garder `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` comme contrats de lecture operateur tant qu'ils ne sont pas explicitement mis a jour.
-- [ ] Relire l'etat courant du code avant chaque lot, notamment les fichiers listes dans la section du lot, pour eviter de corriger un finding deja devenu stale.
-- [ ] Ne jamais utiliser un contenu brut identitaire, un buffer brut, un prompt utilisateur ou une conversation comme preuve documentaire: utiliser longueurs, presence, statuts, timestamps, `updated_by`, `update_reason`, reason codes et hash courts.
+- [x] Traiter ce fichier comme la source de travail active des cinq remediations issues de l'audit Identity du 2026-05-13.
+- [x] Garder `app/docs/states/policies/identity-new-contract-plan.md` comme source doctrinale: `mutable` reste de l'identite forte, pas une preference, un confort local ou une consigne de reponse.
+- [x] Garder `app/docs/todo-done/refactors/identity-new-contract-todo.md` comme archive operatoire: le regime actif est deja `static + mutable narrative`, avec staging de 15 paires, agent periodique, scoring deterministe, promotion et suspension.
+- [x] Garder `app/docs/states/specs/identity-read-model-contract.md` et `app/docs/states/specs/identity-surface-contract.md` comme contrats de lecture operateur tant qu'ils ne sont pas explicitement mis a jour.
+- [x] Relire l'etat courant du code avant chaque lot, notamment les fichiers listes dans la section du lot, pour eviter de corriger un finding deja devenu stale.
+- [x] Ne jamais utiliser un contenu brut identitaire, un buffer brut, un prompt utilisateur ou une conversation comme preuve documentaire: utiliser longueurs, presence, statuts, timestamps, `updated_by`, `update_reason`, reason codes et hash courts.
 
 ## 3. Principes de cloture
 
-- [ ] Chaque lot doit etre ferme par un patch petit, reversible et teste.
-- [ ] Chaque preuve runtime doit rester compacte et sans contenu sensible.
-- [ ] Une absence de mutable LLM est un etat admissible si les preuves montrent `no_change`, seuil non atteint, rejet deterministe ou absence de signal durable.
-- [ ] Aucun lot ne doit modifier le seuil de 15 paires, la doctrine d'admission du `mutable`, ni le statut non injecte du staging.
-- [ ] Aucun lot ne doit reactiver le legacy `identities` comme source d'injection active.
-- [ ] Les specs vivantes ne sont modifiees que si le patch runtime change un contrat operateur, un champ expose ou une preuve attendue.
-- [ ] Chaque lot doit ajouter ou mettre a jour au moins un test qui aurait echoue avec le finding initial.
+- [x] Chaque lot doit etre ferme par un patch petit, reversible et teste.
+- [x] Chaque preuve runtime doit rester compacte et sans contenu sensible.
+- [x] Une absence de mutable LLM est un etat admissible si les preuves montrent `no_change`, seuil non atteint, rejet deterministe ou absence de signal durable.
+- [x] Aucun lot ne doit modifier le seuil de 15 paires, la doctrine d'admission du `mutable`, ni le statut non injecte du staging.
+- [x] Aucun lot ne doit reactiver le legacy `identities` comme source d'injection active.
+- [x] Les specs vivantes ne sont modifiees que si le patch runtime change un contrat operateur, un champ expose ou une preuve attendue.
+- [x] Chaque lot doit ajouter ou mettre a jour au moins un test qui aurait echoue avec le finding initial.
 
 ## 4. Ordre de correction recommande
 
@@ -257,11 +259,11 @@ Condition de cloture:
 
 Ce chantier se ferme lorsque les cinq findings de l'audit Identity du 2026-05-13 sont couverts par preuves:
 
-- [ ] empreinte compacte de l'identite injectee tour par tour;
-- [ ] staging courant non confondu avec dernier run termine;
-- [ ] `reason_code` du dernier agent periodique conserve et relisible;
-- [ ] audit durable des `set` / `clear` / writes de mutables;
-- [ ] test d'integration prouvant `llm add accepted -> DB -> identity_input -> prompt`.
+- [x] empreinte compacte de l'identite injectee tour par tour;
+- [x] staging courant non confondu avec dernier run termine;
+- [x] `reason_code` du dernier agent periodique conserve et relisible;
+- [x] audit durable des `set` / `clear` / writes de mutables;
+- [x] test d'integration prouvant `llm add accepted -> DB -> identity_input -> prompt`.
 
 Ne pas ajouter de sixieme lot pour:
 - refactoriser tout Identity;
@@ -285,7 +287,7 @@ Si un futur audit decouvre un probleme distinct, creer un nouveau TODO cible au 
 
 ## Notes de prudence
 
-- [ ] Une mutable LLM absente n'est pas un bug par defaut.
-- [ ] `no_change` est une decision valide quand le signal durable est faible, ambigu ou deja couvert par le statique.
-- [ ] Les preuves doivent montrer pourquoi une mutable n'est pas ecrite, pas contourner le regime d'admission pour produire une mutable artificielle.
-- [ ] Les futures corrections doivent rester redacted-by-design: pas de dump de prompts, conversations, buffers ou contenus identitaires longs.
+- [x] Une mutable LLM absente n'est pas un bug par defaut.
+- [x] `no_change` est une decision valide quand le signal durable est faible, ambigu ou deja couvert par le statique.
+- [x] Les preuves doivent montrer pourquoi une mutable n'est pas ecrite, pas contourner le regime d'admission pour produire une mutable artificielle.
+- [x] Les futures corrections doivent rester redacted-by-design: pas de dump de prompts, conversations, buffers ou contenus identitaires longs.
