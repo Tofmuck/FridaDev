@@ -226,18 +226,18 @@ Fichiers probablement touches:
 - `app/core/llm_client.py` seulement si le test inspecte le payload final
 
 Hors-scope:
-- [ ] Ne pas rendre le test dependant d'un vrai appel OpenRouter.
-- [ ] Ne pas exiger que la production cree une mutable LLM.
-- [ ] Ne pas relacher les gardes d'admission pour fabriquer une acceptation.
-- [ ] Ne pas utiliser de texte identitaire personnel ou long comme fixture.
+- [x] Ne pas rendre le test dependant d'un vrai appel OpenRouter.
+- [x] Ne pas exiger que la production cree une mutable LLM.
+- [x] Ne pas relacher les gardes d'admission pour fabriquer une acceptation.
+- [x] Ne pas utiliser de texte identitaire personnel ou long comme fixture.
 
 Cases de correction:
-- [ ] Construire une fixture courte et explicitement identitaire pour `subject="llm"` qui passe les gardes existantes.
-- [ ] Faire passer l'operation par l'applicateur deterministe ou par un store DB de test realiste.
-- [ ] Verifier que `identity_mutables.llm` est ecrit avec `updated_by=identity_periodic_agent` ou la source attendue du chemin teste.
-- [ ] Verifier que `build_identity_input()` expose cette mutable dans `frida.mutable.content`.
-- [ ] Verifier que `build_identity_block()` ajoute une section `[MUTABLE]` sous la section modele.
-- [ ] Si possible, verifier que `build_augmented_system()` puis `llm.build_payload()` conservent cette section dans les messages envoyes au modele principal.
+- [x] Construire une fixture courte et explicitement identitaire pour `subject="llm"` qui passe les gardes existantes.
+- [x] Faire passer l'operation par l'applicateur deterministe ou par un store DB de test realiste.
+- [x] Verifier que `identity_mutables.llm` est ecrit avec `updated_by=identity_periodic_agent` ou la source attendue du chemin teste.
+- [x] Verifier que `build_identity_input()` expose cette mutable dans `frida.mutable.content`.
+- [x] Verifier que `build_identity_block()` ajoute une section `[MUTABLE]` sous la section modele.
+- [x] Si possible, verifier que `build_augmented_system()` puis `llm.build_payload()` conservent cette section dans les messages envoyes au modele principal.
 
 Tests attendus:
 - test integration sans reseau couvrant `llm add accepted -> identity_mutables -> identity_input -> identity_block`;
@@ -251,7 +251,7 @@ Preuves runtime attendues:
 - aucune modification de donnees production pour fabriquer la preuve.
 
 Condition de cloture:
-- [ ] Les tests prouvent qu'une mutable LLM acceptee atteint le prompt final, et qu'une absence de mutable LLM reste lisible comme etat normal quand aucune proposition durable n'a ete acceptee.
+- [x] Les tests prouvent qu'une mutable LLM acceptee atteint le prompt final, et qu'une absence de mutable LLM reste lisible comme etat normal quand aucune proposition durable n'a ete acceptee.
 
 ## Condition de non-prolongation
 

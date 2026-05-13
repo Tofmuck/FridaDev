@@ -15,7 +15,9 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from core import chat_prompt_context
+from core import llm_client
 from identity import identity, static_identity_content, static_identity_paths
+from memory import memory_identity_periodic_apply
 import config
 
 
@@ -449,6 +451,190 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
         self.assertNotIn('[MUTABLE]', block)
         self.assertEqual(used_ids, [])
         self.assertEqual(identity_ids, [])
+
+    def test_llm_mutable_accepted_by_periodic_apply_reaches_identity_input_block_and_prompt_payload(self) -> None:
+        class MutableStore:
+            def __init__(self) -> None:
+                self.mutable: dict[str, dict[str, str | None]] = {}
+                self.upsert_calls: list[tuple[str, str, str, str]] = []
+
+            def get_mutable_identity(self, subject: str):
+                item = self.mutable.get(subject)
+                return dict(item) if item is not None else None
+
+            def upsert_mutable_identity(
+                self,
+                subject: str,
+                content: str,
+                source_trace_id: str | None = None,
+                *,
+                updated_by: str = 'system',
+                update_reason: str = '',
+                audit_reason_code: str | None = None,
+            ):
+                payload = {
+                    'subject': subject,
+                    'content': content,
+                    'source_trace_id': source_trace_id,
+                    'updated_by': updated_by,
+                    'update_reason': update_reason,
+                }
+                self.mutable[subject] = payload
+                self.upsert_calls.append((subject, content, updated_by, update_reason))
+                return dict(payload)
+
+            def clear_mutable_identity(self, subject: str, **_kwargs):
+                return self.mutable.pop(subject, None)
+
+        def support_buffer(proposition: str, sentinel: str) -> list[dict[str, dict[str, str]]]:
+            return [
+                {
+                    'user': {
+                        'role': 'user',
+                        'content': f'utilisateur confirme {proposition}. {sentinel}-{index}',
+                    },
+                    'assistant': {
+                        'role': 'assistant',
+                        'content': f'assistant reformule {proposition}. {sentinel}-{index}',
+                    },
+                }
+                for index in range(15)
+            ]
+
+        original_get_resources = identity.runtime_settings.get_resources_settings
+        original_app_root = static_identity_paths.APP_ROOT
+        original_repo_root = static_identity_paths.REPO_ROOT
+        original_host_state_root = static_identity_paths.HOST_STATE_ROOT
+        original_get_mutable_identity = identity._get_mutable_identity
+        original_llm_get_main_model = llm_client.runtime_settings.get_main_model_settings
+
+        store = MutableStore()
+        llm_static = 'Frida garde une presence claire et stable.'
+        user_static = 'Utilisateur de test sans mutable canonique.'
+        llm_mutable = 'Frida maintient une voix stable, attentive et sobre.'
+        staging_sentinel = 'TRACE_BUFFER_NE_DOIT_PAS_ETRE_INJECTEE'
+
+        contract = {
+            'llm': {
+                'operations': [
+                    {
+                        'kind': 'add',
+                        'proposition': llm_mutable,
+                        'reason': 'signal identitaire stable observe',
+                    }
+                ]
+            },
+            'user': {
+                'operations': [
+                    {'kind': 'no_change', 'proposition': '', 'reason': 'aucune mutation user durable'},
+                ]
+            },
+            'meta': {
+                'execution_status': 'complete',
+                'buffer_pairs_count': 15,
+                'window_complete': True,
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            identity_dir = tmp_path / 'app' / 'data' / 'identity'
+            identity_dir.mkdir(parents=True)
+            (identity_dir / 'llm_identity.txt').write_text(llm_static, encoding='utf-8')
+            (identity_dir / 'user_identity.txt').write_text(user_static, encoding='utf-8')
+
+            def fake_get_resources_settings():
+                return runtime_settings.RuntimeSectionView(
+                    section='resources',
+                    payload=runtime_settings.normalize_stored_payload(
+                        'resources',
+                        {
+                            'llm_identity_path': {'value': 'data/identity/llm_identity.txt', 'origin': 'db'},
+                            'user_identity_path': {'value': 'data/identity/user_identity.txt', 'origin': 'db'},
+                        },
+                    ),
+                    source='db',
+                    source_reason='db_row',
+                )
+
+            def read_static_snapshot(subject: str) -> SimpleNamespace:
+                content = llm_static if subject == 'llm' else user_static
+                return SimpleNamespace(
+                    content=content,
+                    raw_content=content,
+                    resolved_path=identity_dir / ('llm_identity.txt' if subject == 'llm' else 'user_identity.txt'),
+                )
+
+            identity.runtime_settings.get_resources_settings = fake_get_resources_settings
+            static_identity_paths.APP_ROOT = tmp_path / 'app'
+            static_identity_paths.REPO_ROOT = tmp_path
+            static_identity_paths.HOST_STATE_ROOT = tmp_path / 'state'
+            identity._get_mutable_identity = store.get_mutable_identity
+            llm_client.runtime_settings.get_main_model_settings = lambda: SimpleNamespace(
+                payload={'model': {'value': 'openrouter/test-no-network'}}
+            )
+            try:
+                summary = memory_identity_periodic_apply.apply_periodic_agent_contract(
+                    contract,
+                    buffer_pairs=support_buffer(llm_mutable, staging_sentinel),
+                    memory_store_module=store,
+                    load_llm_identity_fn=lambda: llm_static,
+                    load_user_identity_fn=lambda: user_static,
+                    read_static_identity_snapshot_fn=read_static_snapshot,
+                )
+                payload = identity.build_identity_input()
+                block, used_ids = identity.build_identity_block()
+                augmented_system, identity_ids = chat_prompt_context.build_augmented_system(
+                    system_prompt='SYSTEM PROMPT',
+                    hermeneutical_prompt='HERMENEUTICAL PROMPT',
+                    config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+                    identity_module=identity,
+                    now_iso='2026-05-13T16:00:00Z',
+                )
+                llm_payload = llm_client.build_payload(
+                    [{'role': 'system', 'content': augmented_system}, {'role': 'user', 'content': 'question test'}],
+                    temperature=0.4,
+                    top_p=1.0,
+                    max_tokens=128,
+                )
+            finally:
+                identity.runtime_settings.get_resources_settings = original_get_resources
+                static_identity_paths.APP_ROOT = original_app_root
+                static_identity_paths.REPO_ROOT = original_repo_root
+                static_identity_paths.HOST_STATE_ROOT = original_host_state_root
+                identity._get_mutable_identity = original_get_mutable_identity
+                llm_client.runtime_settings.get_main_model_settings = original_llm_get_main_model
+
+        self.assertEqual(summary['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['llm']['content'], llm_mutable)
+        self.assertEqual(store.mutable['llm']['updated_by'], 'identity_periodic_agent')
+        self.assertEqual(store.mutable['llm']['update_reason'], 'periodic_agent')
+        self.assertEqual(store.upsert_calls, [('llm', llm_mutable, 'identity_periodic_agent', 'periodic_agent')])
+
+        self.assertEqual(payload['schema_version'], 'v2')
+        self.assertEqual(payload['frida']['mutable']['content'], llm_mutable)
+        self.assertEqual(payload['frida']['mutable']['updated_by'], 'identity_periodic_agent')
+        self.assertEqual(payload['user']['mutable']['content'], '')
+
+        model_section = block.split("[IDENTITÉ DE L'UTILISATEUR]")[0]
+        self.assertIn('[IDENTITÉ DU MODÈLE]', model_section)
+        self.assertIn('[STATIQUE]', model_section)
+        self.assertIn('[MUTABLE]', model_section)
+        self.assertIn(llm_static, model_section)
+        self.assertIn(llm_mutable, model_section)
+        self.assertNotIn(staging_sentinel, block)
+        self.assertEqual(used_ids, [])
+
+        self.assertIn('[MUTABLE]', augmented_system)
+        self.assertIn(llm_mutable, augmented_system)
+        self.assertNotIn(staging_sentinel, augmented_system)
+        self.assertEqual(identity_ids, [])
+        self.assertEqual(llm_payload['model'], 'openrouter/test-no-network')
+        self.assertEqual(llm_payload['messages'][0]['role'], 'system')
+        self.assertIn(llm_mutable, llm_payload['messages'][0]['content'])
+        self.assertNotIn(staging_sentinel, llm_payload['messages'][0]['content'])
 
     def test_static_identity_content_snapshot_exposes_runtime_resource_metadata(self) -> None:
         original_get_resources = static_identity_content.runtime_settings.get_resources_settings
