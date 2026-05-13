@@ -21,6 +21,8 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from observability import chat_turn_logger
+from observability import log_store
 from memory import memory_identity_periodic_agent
 
 
@@ -47,6 +49,21 @@ def _build_large_identity_block(subject: str, *, min_length: int) -> str:
         content = '\n'.join(lines)
         index += 1
     return content
+
+
+def _collect_keys(value: Any) -> set[str]:
+    if isinstance(value, dict):
+        keys: set[str] = set()
+        for key, item in value.items():
+            keys.add(str(key))
+            keys.update(_collect_keys(item))
+        return keys
+    if isinstance(value, list):
+        keys = set()
+        for item in value:
+            keys.update(_collect_keys(item))
+        return keys
+    return set()
 
 
 class _InMemoryIdentityStore:
@@ -188,6 +205,64 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         memory_identity_periodic_agent.static_identity_content.read_static_identity_snapshot = self.original_read_static_snapshot
         memory_identity_periodic_agent.static_identity_content.write_static_identity_content = self.original_write_static_content
 
+    def _run_threshold_window_with_logged_final_turn(
+        self,
+        *,
+        conversation_id: str,
+        proposition: str,
+        arbiter_module: Any,
+    ) -> tuple[_InMemoryIdentityStore, dict[str, Any], dict[str, Any]]:
+        store = _InMemoryIdentityStore()
+        for index in range(1, 15):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                conversation_id,
+                _support_pair(index, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id=conversation_id,
+            user_msg='redacted final turn',
+            web_search_enabled=False,
+        )
+        try:
+            summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+                conversation_id,
+                _support_pair(15, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'identity_periodic_agent')
+        return store, summary, event
+
+    def _assert_periodic_event_is_redacted(
+        self,
+        payload: dict[str, Any],
+        *,
+        forbidden_texts: list[str],
+    ) -> None:
+        self.assertTrue(
+            {'buffer_pairs', 'buffer_pairs_json', 'content', 'proposition', 'prompt', 'messages'}.isdisjoint(
+                _collect_keys(payload)
+            )
+        )
+        serialized = repr(payload)
+        for text in forbidden_texts:
+            self.assertNotIn(text, serialized)
+
     def test_completed_summary_state_keeps_contradiction_raise_conflict_visible(self) -> None:
         status, reason = memory_identity_periodic_agent._completed_summary_state(
             {
@@ -205,6 +280,112 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(status, 'completed_with_open_tension')
         self.assertEqual(reason, 'completed_with_open_tension')
+
+    def test_periodic_agent_event_preserves_completed_no_change_reason_code_for_ok_run(self) -> None:
+        proposition = 'Tof maintient une observation stable sans nouvelle canonisation.'
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'llm': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'}]},
+                'user': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'}]},
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+        )
+
+        _store, summary, event = self._run_threshold_window_with_logged_final_turn(
+            conversation_id='conv-log-no-change',
+            proposition=proposition,
+            arbiter_module=arbiter_module,
+        )
+        payload = event['payload_json']
+
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_no_change')
+        self.assertEqual(payload['reason_code'], 'completed_no_change')
+        self.assertFalse(payload['writes_applied'])
+        self.assertEqual(payload['promotion_count'], 0)
+        self.assertEqual(payload['rejection_reasons'], {})
+        self.assertTrue(payload['outcomes'])
+        self.assertTrue(all('reason_code' in outcome for outcome in payload['outcomes']))
+        self.assertTrue(all('strength' in outcome for outcome in payload['outcomes']))
+        self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'utilisateur 15', 'assistant 15'])
+
+    def test_periodic_agent_event_preserves_applied_reason_code_for_ok_write(self) -> None:
+        proposition = 'Tof maintient une attention durable aux details stables.'
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'llm': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'}]},
+                'user': {
+                    'operations': [
+                        {
+                            'kind': 'add',
+                            'proposition': proposition,
+                            'reason': 'durable identity signal',
+                        }
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+        )
+
+        store, summary, event = self._run_threshold_window_with_logged_final_turn(
+            conversation_id='conv-log-applied',
+            proposition=proposition,
+            arbiter_module=arbiter_module,
+        )
+        payload = event['payload_json']
+
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'applied')
+        self.assertEqual(payload['reason_code'], 'applied')
+        self.assertTrue(payload['writes_applied'])
+        self.assertEqual(payload['promotion_count'], 0)
+        self.assertIn('attention durable', store.mutable['user']['content'])
+        self.assertTrue(any(outcome['reason_code'].endswith('_applied') for outcome in payload['outcomes']))
+        self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'attention durable'])
+
+    def test_periodic_agent_event_preserves_open_tension_reason_code_for_ok_run(self) -> None:
+        proposition = 'Tof semble osciller entre retrait durable et besoin d exposition.'
+        arbiter_module = SimpleNamespace(
+            run_identity_periodic_agent=lambda _payload: {
+                'llm': {'operations': [{'kind': 'no_change', 'proposition': '', 'reason': 'stable canon'}]},
+                'user': {
+                    'operations': [
+                        {
+                            'kind': 'raise_conflict',
+                            'proposition': proposition,
+                            'reason': 'tension durable non resolue',
+                        }
+                    ]
+                },
+                'meta': {
+                    'execution_status': 'complete',
+                    'buffer_pairs_count': 15,
+                    'window_complete': True,
+                },
+            }
+        )
+
+        _store, summary, event = self._run_threshold_window_with_logged_final_turn(
+            conversation_id='conv-log-open-tension',
+            proposition=proposition,
+            arbiter_module=arbiter_module,
+        )
+        payload = event['payload_json']
+
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(summary['reason_code'], 'completed_with_open_tension')
+        self.assertEqual(payload['reason_code'], 'completed_with_open_tension')
+        self.assertFalse(payload['writes_applied'])
+        self.assertTrue(any(outcome['action'] == 'raise_conflict' for outcome in payload['outcomes']))
+        self._assert_periodic_event_is_redacted(payload, forbidden_texts=[proposition, 'osciller'])
 
     def test_does_not_call_agent_before_fifteen_pairs(self) -> None:
         store = _InMemoryIdentityStore()

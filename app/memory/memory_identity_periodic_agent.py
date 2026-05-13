@@ -81,11 +81,13 @@ def _emit_periodic_agent_event(
     reason_code: str,
     summary: Mapping[str, Any],
 ) -> None:
+    event_reason_code = _text(summary.get('reason_code')) or _text(reason_code)
     chat_turn_logger.emit(
         'identity_periodic_agent',
         status=status,
-        reason_code=reason_code,
+        reason_code=event_reason_code,
         payload={
+            'reason_code': event_reason_code,
             'buffer_pairs_count': int(summary.get('buffer_pairs_count') or 0),
             'buffer_target_pairs': int(summary.get('buffer_target_pairs') or BUFFER_TARGET_PAIRS),
             'buffer_cleared': bool(summary.get('buffer_cleared')),

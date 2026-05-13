@@ -149,9 +149,11 @@ Minimum event-specific details:
   - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
 - `identity_periodic_agent`
+  - payload must include the terminal `reason_code` even when top-level `status = ok`
   - `outcomes` may include `action = "raise_conflict"` with compact scoring fields when the agent keeps an unresolved tension open instead of canonizing it
   - these open tensions remain conversation-scoped latest activity only; they do not write `identity_conflicts` and do not become active canon
   - when a run ends without canonical writes but still carries an open tension, the compact `reason_code` should be `completed_with_open_tension` rather than `completed_no_change`
+  - forbidden: raw propositions, raw buffer pairs, raw identity content, prompt excerpts
 
 - `web_search`
   - dedicated event (not only a boolean in `turn_start`)

@@ -144,16 +144,16 @@ Fichiers probablement touches:
 - specs de logs/read-model si le champ expose change
 
 Hors-scope:
-- [ ] Ne pas modifier le scoring deterministe.
-- [ ] Ne pas modifier les decisions de l'agent periodique.
-- [ ] Ne pas ajouter de texte de proposition brute aux logs.
-- [ ] Ne pas fusionner `identity_periodic_agent` et `identity_periodic_agent_apply` sans decision separee.
+- [x] Ne pas modifier le scoring deterministe.
+- [x] Ne pas modifier les decisions de l'agent periodique.
+- [x] Ne pas ajouter de texte de proposition brute aux logs.
+- [x] Ne pas fusionner `identity_periodic_agent` et `identity_periodic_agent_apply` sans decision separee.
 
 Cases de correction:
-- [ ] Garantir que le `reason_code` terminal (`completed_no_change`, `applied`, `completed_with_open_tension`, etc.) est conserve dans le payload compact de `identity_periodic_agent`.
-- [ ] Verifier si le champ top-level `reason_code` du logger doit aussi etre conserve pour les statuts `ok`, ou si le read-model doit lire le payload.
-- [ ] Adapter `latest_agent_activity.reason_code` pour ne plus retourner `None` quand un run `ok` a une raison terminale connue.
-- [ ] Preserver les champs existants: `writes_applied`, `promotion_count`, `outcomes`, `rejection_reasons`, `auto_canonization_suspended`.
+- [x] Garantir que le `reason_code` terminal (`completed_no_change`, `applied`, `completed_with_open_tension`, etc.) est conserve dans le payload compact de `identity_periodic_agent`.
+- [x] Verifier si le champ top-level `reason_code` du logger doit aussi etre conserve pour les statuts `ok`, ou si le read-model doit lire le payload.
+- [x] Adapter `latest_agent_activity.reason_code` pour ne plus retourner `None` quand un run `ok` a une raison terminale connue.
+- [x] Preserver les champs existants: `writes_applied`, `promotion_count`, `outcomes`, `rejection_reasons`, `auto_canonization_suspended`.
 
 Tests attendus:
 - test periodic agent avec run `ok/completed_no_change`;
@@ -167,7 +167,7 @@ Preuves runtime attendues:
 - verification qu'aucun contenu identitaire brut n'est ajoute.
 
 Condition de cloture:
-- [ ] Le dernier run periodique utile expose un `reason_code` exploitable dans les logs et le read-model, meme quand le status est `ok`.
+- [x] Le dernier run periodique utile expose un `reason_code` exploitable dans les logs et le read-model, meme quand le status est `ok`.
 
 ## Lot 4 - Audit durable des ecritures/effacements de mutables
 
