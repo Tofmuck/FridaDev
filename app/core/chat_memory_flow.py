@@ -13,6 +13,7 @@ from memory import memory_identity_periodic_agent
 from memory import memory_pre_arbiter_basket
 from observability import chat_turn_logger
 from observability import identity_observability
+from observability import memory_chain_snapshot
 
 
 _HERMENEUTIC_MODE_OFF = 'off'
@@ -601,6 +602,13 @@ def prepare_memory_context(
             conversation_id=conversation_id,
             count=len(context_hints),
         )
+    memory_chain_snapshot.emit_memory_chain_snapshot(
+        current_mode=current_mode,
+        memory_retrieved=memory_retrieved,
+        memory_arbitration=memory_arbitration,
+        memory_traces=memory_traces,
+        context_hints=list(context_hints or []),
+    )
 
     return PreparedMemoryContext(
         current_mode=current_mode,

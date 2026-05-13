@@ -421,6 +421,7 @@ class ChatMemoryFlowPrepareContextContractsTests(unittest.TestCase):
         self.assertTrue(second_decision["redundant_with_recent"])
 
     def test_prepare_memory_context_keeps_summary_candidate_ids_stable_through_basket_and_injection(self) -> None:
+        chat_events: list[tuple[str, dict[str, object]]] = []
         raw_traces = [
             _trace(
                 "summary-1",
@@ -508,14 +509,19 @@ class ChatMemoryFlowPrepareContextContractsTests(unittest.TestCase):
         )
         admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
 
-        prepared = chat_memory_flow.prepare_memory_context(
-            conversation=conversation,
-            user_msg="preferences durables",
-            config_module=config_module,
-            memory_store_module=memory_store_module,
-            arbiter_module=arbiter_module,
-            admin_logs_module=admin_logs_module,
-        )
+        original_emit = chat_memory_flow.chat_turn_logger.emit
+        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
+        try:
+            prepared = chat_memory_flow.prepare_memory_context(
+                conversation=conversation,
+                user_msg="preferences durables",
+                config_module=config_module,
+                memory_store_module=memory_store_module,
+                arbiter_module=arbiter_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.chat_turn_logger.emit = original_emit
 
         self.assertEqual(len(prepared.memory_traces), 1)
         self.assertEqual(prepared.memory_traces[0]["candidate_id"], "summary:sum-prefs")
@@ -532,6 +538,8 @@ class ChatMemoryFlowPrepareContextContractsTests(unittest.TestCase):
                 prepared.memory_retrieved["traces"][2]["candidate_id"],
             },
         )
+        snapshot = next(kwargs["payload"] for stage, kwargs in chat_events if stage == "memory_chain_snapshot")
+        self.assertEqual(snapshot["injection"]["injection_class"], "summary_only")
 
     def test_prepare_memory_context_mode_shadow_uses_pre_arbiter_basket_for_prompt_side(self) -> None:
         events = []

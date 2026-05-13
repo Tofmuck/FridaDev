@@ -111,18 +111,18 @@ Fichiers probablement touches:
 - tests memory flow / pre-arbiter / observability
 
 Hors-scope:
-- [ ] Ne pas stocker le contenu des candidats dans le snapshot compact.
-- [ ] Ne pas changer les decisions de dedup, basket ou arbiter.
-- [ ] Ne pas modifier le seuil du panier pre-arbitre.
-- [ ] Ne pas modifier l'injection finale dans le prompt principal.
+- [x] Ne pas stocker le contenu des candidats dans le snapshot compact.
+- [x] Ne pas changer les decisions de dedup, basket ou arbiter.
+- [x] Ne pas modifier le seuil du panier pre-arbitre.
+- [x] Ne pas modifier l'injection finale dans le prompt principal.
 
 Cases de correction:
-- [ ] Definir un snapshot content-free par candidat: `candidate_id`, `source_kind`, `source_lane`, score bucket ou score arrondi, rang, dedup status, arbiter status, injected bool.
-- [ ] Relier les candidats retrieved aux candidats basket via IDs stables.
-- [ ] Capturer les candidats ecartes avant arbiter avec un `reason_code` non sensible quand disponible.
-- [ ] Capturer les decisions arbiter keep/drop avec reason code ou reason key compact.
-- [ ] Capturer les IDs injectes dans le prompt principal et distinguer `none`, `hints_only`, `summary_only`, `trace_memory`.
-- [ ] Rendre le snapshot lisible via logs ou read-model admin sans ouvrir les tables brutes.
+- [x] Definir un snapshot content-free par candidat: `candidate_id`, `source_kind`, `source_lane`, score bucket ou score arrondi, rang, dedup status, arbiter status, injected bool.
+- [x] Relier les candidats retrieved aux candidats basket via IDs stables.
+- [x] Capturer les candidats ecartes avant arbiter avec un `reason_code` non sensible quand disponible.
+- [x] Capturer les decisions arbiter keep/drop avec reason code ou reason key compact.
+- [x] Capturer les IDs injectes dans le prompt principal et distinguer `none`, `hints_only`, `summary_only`, `trace_memory`.
+- [x] Rendre le snapshot lisible via logs ou read-model admin sans ouvrir les tables brutes.
 
 Tests attendus:
 - test retrieval avec candidat qui entre dans le basket et candidat dedupe;
@@ -135,7 +135,7 @@ Preuves runtime attendues:
 - preuve qu'un candidat non injecte a un statut explicite sans relecture de contenu brut.
 
 Condition de cloture:
-- [ ] Pour un tour donne, l'operateur peut expliquer compactement ce qui a ete recupere, ecarte, garde et injecte.
+- [x] Pour un tour donne, l'operateur peut expliquer compactement ce qui a ete recupere, ecarte, garde et injecte.
 
 ## Lot 3 - Reason codes stables pour l'arbiter
 

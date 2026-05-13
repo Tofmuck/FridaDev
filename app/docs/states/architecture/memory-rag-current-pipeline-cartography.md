@@ -578,17 +578,19 @@ Nature:
 Stages pertinents verifies:
 - `memory_retrieve` (`104` rows lues)
 - `arbiter` (`2788` rows lues)
+- `memory_chain_snapshot` (stage compact ajoute le 2026-05-13)
 - `hermeneutic_node_insertion` (`1545` rows lues)
 - `prompt_prepared` (`2948` rows lues)
 
 Ce que chaque stage montre aujourd'hui:
 - `memory_retrieve`: seulement `top_k_requested` / `top_k_returned`
 - `arbiter`: counts, `mode`, `model`, `decision_source`, `fallback_used`, `rejection_reason_counts`
+- `memory_chain_snapshot`: snapshot content-free par tour de la chaine `retrieved -> basket/dedup -> arbiter keep/drop -> injected`, avec IDs/hashes, counts, score buckets, reason keys compactes et classe d'injection
 - `hermeneutic_node_insertion`: resume compact de `memory_retrieved` et `memory_arbitration`
 - `prompt_prepared`: resume de l'injection memoire effective dans le prompt, avec `injected_candidate_ids`
 
 Limite:
-- pas de snapshot brut complet des candidats retrieval persiste dans cette table.
+- pas de snapshot brut complet des candidats retrieval persiste dans cette table; le snapshot ajoute reste volontairement content-free.
 
 ### 8.2 `arbiter_decisions`
 

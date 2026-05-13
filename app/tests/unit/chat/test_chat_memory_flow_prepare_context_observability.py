@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -67,6 +68,7 @@ def _trace(
 class ChatMemoryFlowPrepareContextObservabilityTests(unittest.TestCase):
     def test_prepare_memory_context_logs_context_hints_when_present(self) -> None:
         events = []
+        chat_events: list[tuple[str, dict[str, object]]] = []
         context_hints = [{"identity_id": "id-1"}, {"identity_id": "id-2"}]
 
         config_module = SimpleNamespace(
@@ -89,18 +91,27 @@ class ChatMemoryFlowPrepareContextObservabilityTests(unittest.TestCase):
         )
         admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
 
-        _mode, memory_traces, returned_hints = chat_memory_flow.prepare_memory_context(
-            conversation=conversation,
-            user_msg="bonjour",
-            config_module=config_module,
-            memory_store_module=memory_store_module,
-            arbiter_module=arbiter_module,
-            admin_logs_module=admin_logs_module,
-        )
+        original_emit = chat_memory_flow.chat_turn_logger.emit
+        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
+        try:
+            _mode, memory_traces, returned_hints = chat_memory_flow.prepare_memory_context(
+                conversation=conversation,
+                user_msg="bonjour",
+                config_module=config_module,
+                memory_store_module=memory_store_module,
+                arbiter_module=arbiter_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.chat_turn_logger.emit = original_emit
 
         self.assertEqual(memory_traces, [])
         self.assertEqual(returned_hints, context_hints)
         self.assertEqual(_event_payloads(events, "context_hints_selected")[0]["count"], 2)
+        snapshot = next(kwargs["payload"] for stage, kwargs in chat_events if stage == "memory_chain_snapshot")
+        self.assertEqual(snapshot["injection"]["injection_class"], "hints_only")
+        self.assertEqual(snapshot["injection"]["context_hints_count"], 2)
+        self.assertEqual(snapshot["retrieval"]["retrieved_count"], 0)
 
     def test_prepare_memory_context_emits_arbiter_skipped_when_no_raw_traces(self) -> None:
         events = []
@@ -185,6 +196,8 @@ class ChatMemoryFlowPrepareContextObservabilityTests(unittest.TestCase):
         self.assertEqual(kwargs["payload"]["kept_candidates"], 0)
         self.assertEqual(kwargs["payload"]["mode"], "shadow")
         self.assertEqual(branch_events, [("no_data", "arbiter_no_traces")])
+        snapshot = next(kwargs["payload"] for stage, kwargs in chat_events if stage == "memory_chain_snapshot")
+        self.assertEqual(snapshot["injection"]["injection_class"], "none")
 
     def test_prepare_memory_context_propagates_retrieve_error_without_calling_arbiter(self) -> None:
         events = []
@@ -359,6 +372,150 @@ class ChatMemoryFlowPrepareContextObservabilityTests(unittest.TestCase):
         self.assertEqual(kwargs["payload"]["kept_candidates"], 2)
         self.assertEqual(kwargs["payload"]["mode"], "off")
         self.assertEqual(branch_events, [("mode_off", "arbiter_disabled_for_mode")])
+
+    def test_prepare_memory_context_emits_memory_chain_snapshot_without_raw_content(self) -> None:
+        events = []
+        chat_events: list[tuple[str, dict[str, object]]] = []
+        raw_keep = "RAW KEEP TRACE CONTENT SHOULD NOT LEAK"
+        raw_duplicate = "RAW KEEP TRACE CONTENT SHOULD NOT LEAK"
+        raw_drop = "RAW DROP TRACE CONTENT SHOULD NOT LEAK"
+        raw_reason = "RAW ARBITER FREEFORM REASON SHOULD NOT LEAK"
+        raw_traces = [
+            _trace(
+                "keep-a",
+                conversation_id="conv-chain-a",
+                role="user",
+                content=raw_keep,
+                timestamp="2026-04-10T09:00:00Z",
+                score=0.94,
+            ),
+            _trace(
+                "keep-duplicate",
+                conversation_id="conv-chain-a",
+                role="user",
+                content=raw_duplicate,
+                timestamp="2026-04-10T09:01:00Z",
+                score=0.75,
+            ),
+            _trace(
+                "drop-b",
+                conversation_id="conv-chain-b",
+                role="assistant",
+                content=raw_drop,
+                timestamp="2026-04-10T09:02:00Z",
+                score=0.67,
+            ),
+        ]
+
+        config_module = SimpleNamespace(
+            HERMENEUTIC_MODE="enforced_all",
+            CONTEXT_HINTS_MAX_ITEMS=2,
+            CONTEXT_HINTS_MAX_AGE_DAYS=7,
+            CONTEXT_HINTS_MIN_CONFIDENCE=0.6,
+        )
+        conversation = {
+            "id": "conv-memory-chain-snapshot",
+            "messages": [{"role": "user", "content": "hello"}],
+        }
+        memory_store_module = SimpleNamespace(
+            retrieve=lambda _msg: raw_traces,
+            record_arbiter_decisions=lambda *_args, **_kwargs: None,
+            enrich_traces_with_summaries=lambda traces: list(traces),
+            get_recent_context_hints=lambda **_kwargs: [],
+        )
+
+        def fake_filter(traces, _recent_turns):
+            self.assertEqual(len(traces), 2)
+            return [traces[0]], [
+                {
+                    "candidate_id": traces[0]["candidate_id"],
+                    "keep": True,
+                    "semantic_relevance": 0.93,
+                    "contextual_gain": 0.82,
+                    "redundant_with_recent": False,
+                    "reason": "stable_keep_code",
+                    "decision_source": "llm",
+                    "model": "openrouter/arbiter-test",
+                },
+                {
+                    "candidate_id": traces[1]["candidate_id"],
+                    "keep": False,
+                    "semantic_relevance": 0.22,
+                    "contextual_gain": 0.1,
+                    "redundant_with_recent": False,
+                    "reason": raw_reason,
+                    "decision_source": "llm",
+                    "model": "openrouter/arbiter-test",
+                },
+            ]
+
+        arbiter_module = SimpleNamespace(filter_traces_with_diagnostics=fake_filter)
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        original_emit = chat_memory_flow.chat_turn_logger.emit
+        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
+        try:
+            prepared = chat_memory_flow.prepare_memory_context(
+                conversation=conversation,
+                user_msg="bonjour",
+                config_module=config_module,
+                memory_store_module=memory_store_module,
+                arbiter_module=arbiter_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.chat_turn_logger.emit = original_emit
+
+        snapshot = next(kwargs["payload"] for stage, kwargs in chat_events if stage == "memory_chain_snapshot")
+        self.assertEqual(snapshot["schema_version"], "v1")
+        self.assertEqual(snapshot["mode"], "enforced_all")
+        self.assertEqual(snapshot["retrieval"]["retrieved_count"], 3)
+        self.assertEqual(snapshot["basket"]["basket_candidates_count"], 2)
+        self.assertEqual(snapshot["basket"]["deduped_retrieved_count"], 1)
+        self.assertEqual(snapshot["arbiter"]["decisions_count"], 2)
+        self.assertEqual(snapshot["arbiter"]["kept_count"], 1)
+        self.assertEqual(snapshot["arbiter"]["rejected_count"], 1)
+        self.assertEqual(snapshot["injection"]["injection_class"], "trace_memory")
+        self.assertEqual(snapshot["injection"]["injected_candidate_count"], 1)
+        self.assertEqual(
+            snapshot["basket"]["basket_status_counts"],
+            {"basket_representative": 2, "deduped_into_basket": 1},
+        )
+        self.assertEqual(
+            snapshot["arbiter"]["arbiter_status_counts"],
+            {"drop": 1, "keep": 1},
+        )
+        retrieved_statuses = {
+            item["basket_status"]
+            for item in snapshot["retrieved_candidates"]
+        }
+        self.assertIn("deduped_into_basket", retrieved_statuses)
+        self.assertIn("basket_representative", retrieved_statuses)
+        injection_statuses = {
+            item["prompt_injection_status"]
+            for item in snapshot["retrieved_candidates"]
+        }
+        self.assertIn("direct", injection_statuses)
+        self.assertIn("via_basket_representative", injection_statuses)
+        self.assertIn("not_injected", injection_statuses)
+        dropped = [
+            item
+            for item in snapshot["basket_candidates"]
+            if item["arbiter_status"] == "drop"
+        ][0]
+        self.assertEqual(dropped["reason_key"], "model_reason")
+        self.assertEqual(dropped["reason_chars"], len(raw_reason))
+        self.assertTrue(dropped["reason_sha256_12"])
+        self.assertEqual(len(prepared.memory_traces), 1)
+
+        event_json = json.dumps(snapshot, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(raw_keep, event_json)
+        self.assertNotIn(raw_drop, event_json)
+        self.assertNotIn(raw_reason, event_json)
+        self.assertNotIn('"content"', event_json)
+        self.assertNotIn('"prompt"', event_json)
+        self.assertNotIn('"messages"', event_json)
+        self.assertNotIn('"conversation"', event_json)
 
 
 if __name__ == "__main__":

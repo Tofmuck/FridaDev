@@ -71,6 +71,7 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn('<select id="logTurnId"', source)
         self.assertIn('<select id="logStage"', source)
         self.assertIn('<option value="turn_start">turn_start</option>', source)
+        self.assertIn('<option value="memory_chain_snapshot">memory_chain_snapshot</option>', source)
         self.assertIn('<option value="stimmung_agent">stimmung_agent</option>', source)
         self.assertIn('<option value="hermeneutic_node_insertion">hermeneutic_node_insertion</option>', source)
         self.assertIn('<option value="primary_node">primary_node</option>', source)
