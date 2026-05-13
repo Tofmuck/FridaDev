@@ -184,17 +184,17 @@ Fichiers probablement touches:
 - tests DB, admin mutable edit, periodic apply et read-model
 
 Hors-scope:
-- [ ] Ne pas stocker de contenu mutable brut supplementaire dans l'audit.
-- [ ] Ne pas exposer de secret, DSN ou prompt.
-- [ ] Ne pas changer la table canonique `identity_mutables` au-dela du strict necessaire.
-- [ ] Ne pas empecher `clear` d'effacer effectivement la mutable canonique.
+- [x] Ne pas stocker de contenu mutable brut supplementaire dans l'audit.
+- [x] Ne pas exposer de secret, DSN ou prompt.
+- [x] Ne pas changer la table canonique `identity_mutables` au-dela du strict necessaire.
+- [x] Ne pas empecher `clear` d'effacer effectivement la mutable canonique.
 
 Cases de correction:
-- [ ] Definir un stockage durable compact des mutations de mutable: subject, action, actor/update source, reason_code, old/new chars, hash courts, timestamps, source_trace_id si non sensible.
-- [ ] Couvrir les chemins admin `set` et `clear`.
-- [ ] Couvrir les chemins periodiques `add`, `tighten`, `merge`, promotion ou no-write significatif si utile.
-- [ ] Exposer dans le read-model un resume compact de la derniere mutation mutable par sujet, sans contenu brut.
-- [ ] Conserver une semantique claire entre "absence courante" et "historique de mutation".
+- [x] Definir un stockage durable compact des mutations de mutable: subject, action, actor/update source, reason_code, old/new chars, hash courts, timestamps, source_trace_id si non sensible.
+- [x] Couvrir les chemins admin `set` et `clear`.
+- [x] Couvrir les chemins periodiques `add`, `tighten`, `merge`, promotion ou no-write significatif si utile.
+- [x] Exposer dans le read-model un resume compact de la derniere mutation mutable par sujet, sans contenu brut.
+- [x] Conserver une semantique claire entre "absence courante" et "historique de mutation".
 
 Tests attendus:
 - test `set` admin cree une entree d'audit sans contenu brut;
@@ -209,7 +209,7 @@ Preuves runtime attendues:
 - verification que les logs admin restent compatibles.
 
 Condition de cloture:
-- [ ] L'absence d'une mutable canonique peut etre expliquee par une trace durable ou par l'absence explicite de trace connue, sans consulter de contenu brut.
+- [x] L'absence d'une mutable canonique peut etre expliquee par une trace durable ou par l'absence explicite de trace connue, sans consulter de contenu brut.
 
 ## Lot 5 - Test d'integration chaine mutable LLM
 

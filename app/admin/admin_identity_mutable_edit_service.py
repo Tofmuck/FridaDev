@@ -428,7 +428,16 @@ def identity_mutable_edit_response(
         )
         return response, 200
 
-    cleared = clear_mutable_identity(subject)
+    try:
+        cleared = clear_mutable_identity(
+            subject,
+            updated_by=contract.EDIT_UPDATED_BY,
+            update_reason=reason,
+        )
+    except TypeError as exc:
+        if 'unexpected keyword' not in str(exc) and 'positional arguments' not in str(exc):
+            raise
+        cleared = clear_mutable_identity(subject)
     stored_after = bool(contract.current_content(get_mutable_identity(subject)))
     if stored_after:
         response = response_payload(

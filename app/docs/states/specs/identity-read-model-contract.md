@@ -2,7 +2,7 @@
 
 Statut: spec vivante  
 Portee: lecture operator-facing read-only reemployee par `/hermeneutic-admin` et `/identity`
-Lot ferme: `Lot 2`
+Lot ferme: `Lot 4`
 
 ## But
 
@@ -156,11 +156,15 @@ Champs minimaux:
 - `updated_by`
 - `update_reason`
 - `updated_ts`
+- `last_mutation_audit`
 
 Semantique:
 - source physique: table `identity_mutables`;
 - cette couche reste une couche identitaire mouvante et non un sous-prompt operatoire;
 - `actively_injected` signifie seulement qu'elle participe a la forme compilee active;
+- `last_mutation_audit` resume la derniere mutation connue issue de `identity_mutable_audit` avec `present`, `storage_kind`, `actively_injected=false`, `subject`, `mutation_kind`, `actor`, `reason_code`, `old_chars`, `new_chars`, `old_sha256_12`, `new_sha256_12`, `source_trace_id` et `created_ts`;
+- `last_mutation_audit` ne contient jamais le contenu mutable brut et ne devient jamais une source d'injection;
+- si la mutable courante est absente, `last_mutation_audit.present=true` permet de distinguer une absence apres `clear`; `present=false` signifie seulement qu'aucun historique durable connu n'existe;
 - verite active: oui, si `content` est present.
 
 ### `legacy_fragments`

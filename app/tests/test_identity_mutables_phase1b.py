@@ -45,8 +45,14 @@ class _SchemaConnection:
 
 
 class _MutableIdentityCursor:
-    def __init__(self, state: dict[str, dict[str, object]], query_log: list[str]) -> None:
+    def __init__(
+        self,
+        state: dict[str, dict[str, object]],
+        audit_state: list[dict[str, object]],
+        query_log: list[str],
+    ) -> None:
         self._state = state
+        self._audit_state = audit_state
         self._query_log = query_log
         self._counter = 0
         self._results: list[tuple[object, ...]] = []
@@ -72,6 +78,21 @@ class _MutableIdentityCursor:
             entry['updated_ts'],
         )
 
+    def _audit_row(self, entry: dict[str, object]) -> tuple[object, ...]:
+        return (
+            entry['audit_id'],
+            entry['subject'],
+            entry['mutation_kind'],
+            entry.get('actor'),
+            entry.get('reason_code'),
+            entry['old_chars'],
+            entry['new_chars'],
+            entry.get('old_sha256_12'),
+            entry.get('new_sha256_12'),
+            entry.get('source_trace_id'),
+            entry['created_ts'],
+        )
+
     def execute(self, query, params=None):
         normalized = ' '.join(str(query).split()).lower()
         self._query_log.append(normalized)
@@ -94,9 +115,53 @@ class _MutableIdentityCursor:
             self._results = [self._row(entry)]
             return
 
+        if normalized.startswith('insert into identity_mutable_audit'):
+            (
+                subject,
+                mutation_kind,
+                actor,
+                reason_code,
+                old_chars,
+                new_chars,
+                old_sha256_12,
+                new_sha256_12,
+                source_trace_id,
+            ) = params
+            entry = {
+                'audit_id': f'00000000-0000-0000-0000-000000000{len(self._audit_state) + 1:03d}',
+                'subject': subject,
+                'mutation_kind': mutation_kind,
+                'actor': actor,
+                'reason_code': reason_code,
+                'old_chars': old_chars,
+                'new_chars': new_chars,
+                'old_sha256_12': old_sha256_12,
+                'new_sha256_12': new_sha256_12,
+                'source_trace_id': source_trace_id,
+                'created_ts': self._timestamp(),
+            }
+            self._audit_state.append(entry)
+            self._results = [self._audit_row(entry)]
+            return
+
+        if normalized.startswith('delete from identity_mutables'):
+            subject = str(params[0])
+            entry = self._state.pop(subject, None)
+            self._results = [self._row(entry)] if entry else []
+            return
+
+        if 'from identity_mutable_audit' in normalized and 'where subject = %s' in normalized:
+            subject = str(params[0])
+            matches = [entry for entry in self._audit_state if entry.get('subject') == subject]
+            self._results = [self._audit_row(matches[-1])] if matches else []
+            return
+
         if 'from identity_mutables' in normalized and 'where subject = %s' in normalized:
             subject = str(params[0])
             entry = self._state.get(subject)
+            if normalized.startswith('select content from identity_mutables'):
+                self._results = [(entry['content'],)] if entry else []
+                return
             self._results = [self._row(entry)] if entry else []
             return
 
@@ -114,8 +179,14 @@ class _MutableIdentityCursor:
 
 
 class _MutableIdentityConnection:
-    def __init__(self, state: dict[str, dict[str, object]], query_log: list[str]) -> None:
+    def __init__(
+        self,
+        state: dict[str, dict[str, object]],
+        audit_state: list[dict[str, object]],
+        query_log: list[str],
+    ) -> None:
         self._state = state
+        self._audit_state = audit_state
         self._query_log = query_log
         self.committed = False
 
@@ -126,7 +197,7 @@ class _MutableIdentityConnection:
         return False
 
     def cursor(self):
-        return _MutableIdentityCursor(self._state, self._query_log)
+        return _MutableIdentityCursor(self._state, self._audit_state, self._query_log)
 
     def commit(self):
         self.committed = True
@@ -153,14 +224,19 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertIn('create table if not exists identity_mutables', joined)
         self.assertIn('constraint identity_mutables_subject_chk', joined)
         self.assertIn('create index if not exists identity_mutables_updated_ts_idx', joined)
+        self.assertIn('create table if not exists identity_mutable_audit', joined)
+        self.assertIn('constraint identity_mutable_audit_subject_chk', joined)
+        self.assertIn('constraint identity_mutable_audit_kind_chk', joined)
+        self.assertIn('create index if not exists identity_mutable_audit_subject_created_idx', joined)
         self.assertIn('create table if not exists identity_mutable_staging', joined)
         self.assertIn('create index if not exists identity_mutable_staging_updated_ts_idx', joined)
 
     def test_mutable_identity_round_trip_keeps_one_canonical_row_per_subject(self) -> None:
         state: dict[str, dict[str, object]] = {}
+        audit_state: list[dict[str, object]] = []
         query_log: list[str] = []
         original_conn = memory_store._conn
-        memory_store._conn = lambda: _MutableIdentityConnection(state, query_log)
+        memory_store._conn = lambda: _MutableIdentityConnection(state, audit_state, query_log)
         try:
             first_llm = memory_store.upsert_mutable_identity(
                 'llm',
@@ -196,8 +272,64 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         self.assertEqual([item['subject'] for item in items], ['llm', 'user'])
         self.assertEqual(len([item for item in items if item['subject'] == 'llm']), 1)
         self.assertEqual(len(state), 2)
+        self.assertEqual(len(audit_state), 3)
         self.assertTrue(query_log)
-        self.assertTrue(all('identity_mutables' in query for query in query_log))
+        self.assertTrue(all(('identity_mutables' in query or 'identity_mutable_audit' in query) for query in query_log))
+
+    def test_mutable_identity_audit_records_set_and_clear_without_raw_content(self) -> None:
+        state: dict[str, dict[str, object]] = {}
+        audit_state: list[dict[str, object]] = []
+        query_log: list[str] = []
+        original_conn = memory_store._conn
+        memory_store._conn = lambda: _MutableIdentityConnection(state, audit_state, query_log)
+        try:
+            first_content = 'Frida conserve une voix breve et stable.'
+            second_content = 'Frida conserve une voix breve, stable et precise.'
+            memory_store.upsert_mutable_identity(
+                'llm',
+                first_content,
+                source_trace_id='00000000-0000-0000-0000-000000000010',
+                updated_by='admin_identity_mutable_edit',
+                update_reason='set_applied',
+            )
+            memory_store.upsert_mutable_identity(
+                'llm',
+                second_content,
+                source_trace_id='00000000-0000-0000-0000-000000000011',
+                updated_by='identity_periodic_agent',
+                update_reason='periodic_agent',
+            )
+            latest_set = memory_store.get_latest_mutable_identity_audit('llm')
+            cleared = memory_store.clear_mutable_identity(
+                'llm',
+                updated_by='admin_identity_mutable_edit',
+                update_reason='clear_applied',
+            )
+            latest_clear = memory_store.get_latest_mutable_identity_audit('llm')
+        finally:
+            memory_store._conn = original_conn
+
+        self.assertIsNotNone(latest_set)
+        self.assertEqual(latest_set['mutation_kind'], 'set')
+        self.assertEqual(latest_set['actor'], 'identity_periodic_agent')
+        self.assertEqual(latest_set['reason_code'], 'periodic_agent')
+        self.assertEqual(latest_set['old_chars'], len(first_content))
+        self.assertEqual(latest_set['new_chars'], len(second_content))
+        self.assertEqual(len(latest_set['old_sha256_12']), 12)
+        self.assertEqual(len(latest_set['new_sha256_12']), 12)
+
+        self.assertIsNotNone(cleared)
+        self.assertIsNotNone(latest_clear)
+        self.assertEqual(latest_clear['mutation_kind'], 'clear')
+        self.assertEqual(latest_clear['actor'], 'admin_identity_mutable_edit')
+        self.assertEqual(latest_clear['reason_code'], 'clear_applied')
+        self.assertEqual(latest_clear['old_chars'], len(second_content))
+        self.assertEqual(latest_clear['new_chars'], 0)
+        self.assertEqual(len(latest_clear['old_sha256_12']), 12)
+        self.assertIsNone(latest_clear['new_sha256_12'])
+        self.assertNotIn('content', latest_clear)
+        self.assertNotIn(first_content, repr(audit_state))
+        self.assertNotIn(second_content, repr(audit_state))
 
     def test_legacy_identity_facade_remains_distinct_from_mutable_canonical_store(self) -> None:
         observed: dict[str, object] = {}

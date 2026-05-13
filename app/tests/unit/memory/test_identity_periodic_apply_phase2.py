@@ -293,6 +293,7 @@ class IdentityPeriodicApplyPhase2Tests(unittest.TestCase):
         self.assertEqual(summary['reason_code'], 'applied')
         self.assertTrue(summary['writes_applied'])
         self.assertEqual(store.mutable['user']['content'], proposition)
+        self.assertEqual(store.upsert_calls, [('user', proposition, 'identity_periodic_agent', 'periodic_agent')])
         user_outcome = next(item for item in summary['outcomes'] if item['subject'] == 'user')
         self.assertEqual(user_outcome['action'], 'add')
         self.assertEqual(user_outcome['reason_code'], 'add_applied')

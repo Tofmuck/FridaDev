@@ -21,6 +21,7 @@ LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
 LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
 OPEN_TENSIONS_STORAGE_KIND = 'identity_periodic_agent_latest_activity'
 OPEN_TENSIONS_SCOPE_KIND = 'conversation_scoped_latest'
+MUTABLE_AUDIT_STORAGE_KIND = 'identity_mutable_audit'
 TERMINAL_STAGING_REASONS = {
     'applied',
     'completed_no_change',
@@ -333,7 +334,52 @@ def _build_static_layer(
     }
 
 
-def _build_mutable_layer(active_side: Mapping[str, Any]) -> dict[str, Any]:
+def _build_latest_mutable_audit(
+    *,
+    memory_store_module: Any,
+    subject: str,
+) -> dict[str, Any]:
+    get_latest_audit = getattr(memory_store_module, 'get_latest_mutable_identity_audit', None)
+    audit = _mapping(get_latest_audit(subject)) if callable(get_latest_audit) else {}
+    if not audit:
+        return {
+            'present': False,
+            'storage_kind': MUTABLE_AUDIT_STORAGE_KIND,
+            'actively_injected': False,
+            'subject': subject,
+            'mutation_kind': None,
+            'actor': None,
+            'reason_code': None,
+            'old_chars': 0,
+            'new_chars': 0,
+            'old_sha256_12': None,
+            'new_sha256_12': None,
+            'source_trace_id': None,
+            'created_ts': None,
+        }
+    return {
+        'present': True,
+        'storage_kind': MUTABLE_AUDIT_STORAGE_KIND,
+        'actively_injected': False,
+        'subject': _optional_text(audit.get('subject')) or subject,
+        'mutation_kind': _optional_text(audit.get('mutation_kind')),
+        'actor': _optional_text(audit.get('actor')),
+        'reason_code': _optional_text(audit.get('reason_code')),
+        'old_chars': int(audit.get('old_chars') or 0),
+        'new_chars': int(audit.get('new_chars') or 0),
+        'old_sha256_12': _optional_text(audit.get('old_sha256_12')),
+        'new_sha256_12': _optional_text(audit.get('new_sha256_12')),
+        'source_trace_id': _optional_text(audit.get('source_trace_id')),
+        'created_ts': _optional_text(audit.get('created_ts')),
+    }
+
+
+def _build_mutable_layer(
+    active_side: Mapping[str, Any],
+    *,
+    memory_store_module: Any,
+    subject: str,
+) -> dict[str, Any]:
     payload = _mapping(active_side.get('mutable'))
     content = str(payload.get('content') or '')
     present = bool(content)
@@ -347,6 +393,10 @@ def _build_mutable_layer(active_side: Mapping[str, Any]) -> dict[str, Any]:
         'updated_by': _optional_text(payload.get('updated_by')),
         'update_reason': _optional_text(payload.get('update_reason')),
         'updated_ts': _optional_text(payload.get('updated_ts')),
+        'last_mutation_audit': _build_latest_mutable_audit(
+            memory_store_module=memory_store_module,
+            subject=subject,
+        ),
     }
 
 
@@ -377,7 +427,11 @@ def _build_subject_block(
     static_snapshot = static_identity_content_module.read_static_identity_snapshot(subject)
     return {
         'static': _build_static_layer(active_side, static_snapshot=static_snapshot.__dict__),
-        'mutable': _build_mutable_layer(active_side),
+        'mutable': _build_mutable_layer(
+            active_side,
+            memory_store_module=memory_store_module,
+            subject=subject,
+        ),
         'legacy_fragments': _build_collection_layer(
             storage_kind='identities',
             snapshot=memory_store_module.list_identity_fragments(subject, limit=limit),

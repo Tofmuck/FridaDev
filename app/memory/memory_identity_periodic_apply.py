@@ -668,7 +668,7 @@ def _restore_mutable_identity(
     subject: str,
     original_item: Mapping[str, Any],
     upsert_mutable_identity: Callable[..., Any],
-    clear_mutable_identity: Callable[[str], Any] | None,
+    clear_mutable_identity: Callable[..., Any] | None,
 ) -> None:
     original_content = _text(original_item.get('content'))
     if original_content:
@@ -681,7 +681,31 @@ def _restore_mutable_identity(
         )
         return
     if callable(clear_mutable_identity):
-        clear_mutable_identity(subject)
+        _clear_mutable_identity_with_metadata(
+            clear_mutable_identity,
+            subject=subject,
+            updated_by='system',
+            update_reason='rollback_restore',
+        )
+
+
+def _clear_mutable_identity_with_metadata(
+    clear_mutable_identity: Callable[..., Any],
+    *,
+    subject: str,
+    updated_by: str,
+    update_reason: str,
+) -> Any:
+    try:
+        return clear_mutable_identity(
+            subject,
+            updated_by=updated_by,
+            update_reason=update_reason,
+        )
+    except TypeError as exc:
+        if 'unexpected keyword' not in str(exc) and 'positional arguments' not in str(exc):
+            raise
+        return clear_mutable_identity(subject)
 
 
 def _write_static_identity_content(
@@ -716,7 +740,7 @@ def _apply_canonical_writes_with_rollback(
     next_mutable_by_subject: Mapping[str, str],
     current_mutable_by_subject: Mapping[str, Mapping[str, Any]],
     upsert_mutable_identity: Callable[..., Any],
-    clear_mutable_identity: Callable[[str], Any] | None,
+    clear_mutable_identity: Callable[..., Any] | None,
     write_static_identity_content_fn: Callable[[str, str], Any] | None,
     promoted_subjects: set[str],
 ) -> bool:
@@ -756,7 +780,12 @@ def _apply_canonical_writes_with_rollback(
             else:
                 if not callable(clear_mutable_identity):
                     raise RuntimeError('clear_mutable_identity_unavailable')
-                clear_mutable_identity(subject)
+                _clear_mutable_identity_with_metadata(
+                    clear_mutable_identity,
+                    subject=subject,
+                    updated_by=_UPDATED_BY,
+                    update_reason=_PROMOTION_UPDATE_REASON if subject in promoted_subjects else 'periodic_agent',
+                )
             applied_mutable_subjects.append(subject)
             writes_applied = True
     except Exception:

@@ -56,6 +56,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         original_list_identity_fragments = self.server.memory_store.list_identity_fragments
         original_list_identity_evidence = self.server.memory_store.list_identity_evidence
         original_list_identity_conflicts = self.server.memory_store.list_identity_conflicts
+        original_get_latest_mutable_identity_audit = self.server.memory_store.get_latest_mutable_identity_audit
         original_get_identities = self.server.memory_store.get_identities
         original_get_latest_identity_staging_state = self.server.memory_store.get_latest_identity_staging_state
         original_read_static_identity_snapshot = self.server.static_identity_content.read_static_identity_snapshot
@@ -131,6 +132,18 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.server.memory_store.list_identity_fragments = fake_list_identity_fragments
         self.server.memory_store.list_identity_evidence = fake_list_identity_evidence
         self.server.memory_store.list_identity_conflicts = fake_list_identity_conflicts
+        self.server.memory_store.get_latest_mutable_identity_audit = lambda subject: {
+            'subject': subject,
+            'mutation_kind': 'set',
+            'actor': 'identity_periodic_agent',
+            'reason_code': 'periodic_agent',
+            'old_chars': 0,
+            'new_chars': 24,
+            'old_sha256_12': None,
+            'new_sha256_12': '123456789abc',
+            'source_trace_id': '11111111-1111-1111-1111-111111111111',
+            'created_ts': '2026-04-06T10:00:00Z',
+        }
         self.server.memory_store.get_latest_identity_staging_state = lambda: {
             'conversation_id': 'conv-stage-1',
             'buffer_pairs': [],
@@ -199,6 +212,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             self.server.memory_store.list_identity_fragments = original_list_identity_fragments
             self.server.memory_store.list_identity_evidence = original_list_identity_evidence
             self.server.memory_store.list_identity_conflicts = original_list_identity_conflicts
+            self.server.memory_store.get_latest_mutable_identity_audit = original_get_latest_mutable_identity_audit
             self.server.memory_store.get_identities = original_get_identities
             self.server.memory_store.get_latest_identity_staging_state = original_get_latest_identity_staging_state
             self.server.static_identity_content.read_static_identity_snapshot = original_read_static_identity_snapshot
@@ -297,6 +311,10 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertNotIn('raw_content', data['subjects']['llm']['static'])
         self.assertEqual(data['subjects']['llm']['mutable']['content'], 'Frida mutable canonique')
         self.assertTrue(data['subjects']['llm']['mutable']['actively_injected'])
+        self.assertEqual(data['subjects']['llm']['mutable']['last_mutation_audit']['storage_kind'], 'identity_mutable_audit')
+        self.assertEqual(data['subjects']['llm']['mutable']['last_mutation_audit']['mutation_kind'], 'set')
+        self.assertFalse(data['subjects']['llm']['mutable']['last_mutation_audit']['actively_injected'])
+        self.assertNotIn('content', data['subjects']['llm']['mutable']['last_mutation_audit'])
         self.assertFalse(data['subjects']['llm']['legacy_fragments']['actively_injected'])
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['storage_kind'], 'identities')
         self.assertEqual(data['subjects']['llm']['legacy_fragments']['classification'], 'legacy_diagnostic_only')
@@ -315,6 +333,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         original_list_identity_fragments = self.server.memory_store.list_identity_fragments
         original_list_identity_evidence = self.server.memory_store.list_identity_evidence
         original_list_identity_conflicts = self.server.memory_store.list_identity_conflicts
+        original_get_latest_mutable_identity_audit = self.server.memory_store.get_latest_mutable_identity_audit
         original_read_static_identity_snapshot = self.server.static_identity_content.read_static_identity_snapshot
         try:
             self.server.identity.build_identity_input = lambda: {
@@ -326,6 +345,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             self.server.memory_store.list_identity_fragments = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
             self.server.memory_store.list_identity_evidence = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
             self.server.memory_store.list_identity_conflicts = lambda *_args, **_kwargs: {'total_count': 0, 'limit': 20, 'items': []}
+            self.server.memory_store.get_latest_mutable_identity_audit = lambda *_args, **_kwargs: None
             self.server.static_identity_content.read_static_identity_snapshot = lambda subject: self.server.static_identity_content.StaticIdentitySnapshot(
                 subject=subject,
                 resource_field='llm_identity_path' if subject == 'llm' else 'user_identity_path',
@@ -343,6 +363,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             self.server.memory_store.list_identity_fragments = original_list_identity_fragments
             self.server.memory_store.list_identity_evidence = original_list_identity_evidence
             self.server.memory_store.list_identity_conflicts = original_list_identity_conflicts
+            self.server.memory_store.get_latest_mutable_identity_audit = original_get_latest_mutable_identity_audit
             self.server.static_identity_content.read_static_identity_snapshot = original_read_static_identity_snapshot
 
         self.assertEqual(response.status_code, 200)

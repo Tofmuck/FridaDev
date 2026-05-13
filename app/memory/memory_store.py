@@ -48,6 +48,7 @@ __all__ = [
     'enrich_traces_with_summaries',
     'get_mutable_identity',
     'list_mutable_identities',
+    'get_latest_mutable_identity_audit',
     'upsert_mutable_identity',
     'clear_mutable_identity',
     'get_identity_staging_state',
@@ -349,6 +350,14 @@ def list_mutable_identities() -> list[dict[str, Any]]:
     )
 
 
+def get_latest_mutable_identity_audit(subject: str) -> dict[str, Any] | None:
+    return memory_identity_mutables.get_latest_mutable_identity_audit(
+        subject,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
 def upsert_mutable_identity(
     subject: str,
     content: str,
@@ -368,9 +377,16 @@ def upsert_mutable_identity(
     )
 
 
-def clear_mutable_identity(subject: str) -> dict[str, Any] | None:
+def clear_mutable_identity(
+    subject: str,
+    *,
+    updated_by: str = 'system',
+    update_reason: str = 'clear',
+) -> dict[str, Any] | None:
     return memory_identity_mutables.clear_mutable_identity(
         subject,
+        updated_by=updated_by,
+        update_reason=update_reason,
         conn_factory=_conn,
         logger=logger,
     )

@@ -25,7 +25,7 @@ class _MutableStore:
     def __init__(self, initial: dict[str, str] | None = None) -> None:
         self.state = dict(initial or {})
         self.upsert_calls: list[tuple[str, str, str, str]] = []
-        self.clear_calls: list[str] = []
+        self.clear_calls: list[tuple[str, str, str]] = []
 
     def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
         content = self.state.get(subject, '')
@@ -52,8 +52,14 @@ class _MutableStore:
             'update_reason': update_reason,
         }
 
-    def clear_mutable_identity(self, subject: str) -> dict[str, Any] | None:
-        self.clear_calls.append(subject)
+    def clear_mutable_identity(
+        self,
+        subject: str,
+        *,
+        updated_by: str = 'system',
+        update_reason: str = '',
+    ) -> dict[str, Any] | None:
+        self.clear_calls.append((subject, updated_by, update_reason))
         previous = self.state.pop(subject, '')
         if not previous:
             return None
@@ -204,7 +210,7 @@ class IdentityMutableEditServicePhase3Tests(unittest.TestCase):
         self.assertEqual(payload['reason_code'], 'clear_applied')
         self.assertFalse(payload['stored_after'])
         self.assertNotIn('user', store.state)
-        self.assertEqual(store.clear_calls, ['user'])
+        self.assertEqual(store.clear_calls, [('user', 'admin_identity_mutable_edit', 'obsolete mutable')])
         self.assertEqual(observed_logs[0][1]['reason_code'], 'clear_applied')
 
     def test_rejects_content_above_hard_cap_without_write(self) -> None:

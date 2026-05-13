@@ -144,6 +144,25 @@ def init_db(
                 )
                 cur.execute(
                     '''
+                    CREATE TABLE IF NOT EXISTS identity_mutable_audit (
+                        audit_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        subject         TEXT        NOT NULL,
+                        mutation_kind   TEXT        NOT NULL,
+                        actor           TEXT,
+                        reason_code     TEXT,
+                        old_chars       INTEGER     NOT NULL DEFAULT 0,
+                        new_chars       INTEGER     NOT NULL DEFAULT 0,
+                        old_sha256_12   TEXT,
+                        new_sha256_12   TEXT,
+                        source_trace_id UUID,
+                        created_ts      TIMESTAMPTZ DEFAULT now(),
+                        CONSTRAINT identity_mutable_audit_subject_chk CHECK (subject IN ('llm', 'user')),
+                        CONSTRAINT identity_mutable_audit_kind_chk CHECK (mutation_kind IN ('set', 'clear'))
+                    );
+                    '''
+                )
+                cur.execute(
+                    '''
                     CREATE TABLE IF NOT EXISTS identity_mutable_staging (
                         conversation_id             TEXT PRIMARY KEY,
                         buffer_pairs_json           JSONB       NOT NULL DEFAULT '[]'::jsonb,
@@ -300,6 +319,18 @@ def init_db(
                     '''
                     CREATE INDEX IF NOT EXISTS identity_mutables_updated_ts_idx
                     ON identity_mutables (updated_ts DESC);
+                    '''
+                )
+                cur.execute(
+                    '''
+                    CREATE INDEX IF NOT EXISTS identity_mutable_audit_subject_created_idx
+                    ON identity_mutable_audit (subject, created_ts DESC);
+                    '''
+                )
+                cur.execute(
+                    '''
+                    CREATE INDEX IF NOT EXISTS identity_mutable_audit_created_idx
+                    ON identity_mutable_audit (created_ts DESC);
                     '''
                 )
                 cur.execute(
