@@ -114,6 +114,7 @@ class _InMemoryIdentityStore:
             'not_run',
         }:
             state['last_agent_status'] = 'buffering'
+            state['last_agent_reason'] = None
         if buffer_already_frozen:
             state['buffer_pairs'] = current_pairs[: int(target_pairs)]
         else:
@@ -355,6 +356,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(next_summary['status'], 'buffering')
         self.assertEqual(next_summary['last_agent_status'], 'buffering')
+        self.assertIsNone(store.get_identity_staging_state('conv-open-tension')['last_agent_reason'])
 
     def test_does_not_partially_commit_when_one_subject_is_terminally_rejected(self) -> None:
         store = _InMemoryIdentityStore()

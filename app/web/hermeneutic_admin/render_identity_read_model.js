@@ -140,6 +140,20 @@
       ? staging.latest_agent_activity
       : {};
 
+  const currentBuffer = (staging) =>
+    staging?.current_buffer &&
+    typeof staging.current_buffer === "object" &&
+    !Array.isArray(staging.current_buffer)
+      ? staging.current_buffer
+      : {};
+
+  const lastCompletedAgent = (staging) =>
+    staging?.last_completed_agent &&
+    typeof staging.last_completed_agent === "object" &&
+    !Array.isArray(staging.last_completed_agent)
+      ? staging.last_completed_agent
+      : {};
+
   const renderIdentityStaging = (target, staging, viewMode) => {
     const group = document.createElement("section");
     group.className = "admin-readonly-group";
@@ -158,6 +172,8 @@
     );
 
     const activity = latestAgentActivity(staging);
+    const buffer = currentBuffer(staging);
+    const completedAgent = lastCompletedAgent(staging);
     const meta = document.createElement("div");
     meta.className = "admin-card-meta";
     meta.appendChild(createChip(`present=${Boolean(staging.present)}`));
@@ -169,8 +185,11 @@
     );
     meta.appendChild(createChip(`gele=${Boolean(staging.buffer_frozen)}`));
     meta.appendChild(createChip(`suspendu=${Boolean(staging.auto_canonization_suspended)}`));
-    if (toText(staging.last_agent_status)) {
-      meta.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+    if (toText(buffer.status)) {
+      meta.appendChild(createChip(`buffer_status=${toText(buffer.status)}`));
+    }
+    if (toText(completedAgent.reason_code)) {
+      meta.appendChild(createChip(`dernier_run=${toText(completedAgent.reason_code)}`));
     }
     if (Number(activity.promotion_count) > 0) {
       meta.appendChild(createChip(`promotions=${Number(activity.promotion_count)}`));
@@ -206,26 +225,42 @@
         },
       ],
       [
-        "last_agent_status",
+        "current_buffer_status",
         {
-          label: "Dernier statut agent",
-          value: toText(staging.last_agent_status) || "n/a",
+          label: "Statut buffer courant",
+          value: toText(buffer.status) || "n/a",
           source: "identity_read_model",
         },
       ],
       [
-        "last_agent_reason",
+        "current_buffer_reason",
         {
-          label: "Derniere raison",
-          value: toText(staging.last_agent_reason) || "n/a",
+          label: "Raison buffer courant",
+          value: toText(buffer.reason_code) || "n/a",
           source: "identity_read_model",
         },
       ],
       [
-        "last_agent_run_ts",
+        "last_completed_agent_status",
         {
-          label: "Dernier passage",
-          value: toText(staging.last_agent_run_ts) || "n/a",
+          label: "Statut dernier run",
+          value: toText(completedAgent.status) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_completed_agent_reason",
+        {
+          label: "Raison dernier run",
+          value: toText(completedAgent.reason_code) || "n/a",
+          source: "identity_read_model",
+        },
+      ],
+      [
+        "last_completed_agent_run_ts",
+        {
+          label: "Dernier passage agent",
+          value: toText(completedAgent.run_ts) || toText(staging.last_agent_run_ts) || "n/a",
           source: "identity_read_model",
         },
       ],
@@ -515,6 +550,8 @@
         ? safePayload.subjects
         : {};
     const staging = identityStaging(safePayload);
+    const buffer = currentBuffer(staging);
+    const completedAgent = lastCompletedAgent(staging);
     const viewMode = toText(options.viewMode).toLowerCase() === "summary" ? "summary" : "full";
 
     if (metaTarget) {
@@ -528,8 +565,11 @@
       }
       appendMetaChip(metaTarget, "identity_input", toText(activeRuntime.identity_input_schema_version));
       metaTarget.appendChild(createChip(`used_ids=${Number(activeRuntime.used_identity_ids_count) || 0}`));
-      if (toText(staging.last_agent_status)) {
-        metaTarget.appendChild(createChip(`agent=${toText(staging.last_agent_status)}`));
+      if (toText(buffer.status)) {
+        metaTarget.appendChild(createChip(`buffer=${toText(buffer.status)}`));
+      }
+      if (toText(completedAgent.reason_code)) {
+        metaTarget.appendChild(createChip(`dernier_run=${toText(completedAgent.reason_code)}`));
       }
     }
 

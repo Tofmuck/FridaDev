@@ -139,7 +139,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             'buffer_frozen': False,
             'auto_canonization_suspended': False,
             'last_agent_status': 'buffering',
-            'last_agent_reason': 'below_threshold',
+            'last_agent_reason': 'completed_no_change',
             'last_agent_run_ts': '2026-04-16T10:00:00Z',
             'updated_ts': '2026-04-16T10:00:30Z',
         }
@@ -238,8 +238,23 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['identity_staging']['buffer_pairs_count'], 4)
         self.assertEqual(data['identity_staging']['buffer_target_pairs'], 15)
         self.assertEqual(data['identity_staging']['last_agent_status'], 'buffering')
+        self.assertIsNone(data['identity_staging']['last_agent_reason'])
+        self.assertEqual(data['identity_staging']['current_buffer']['status'], 'buffering')
+        self.assertEqual(data['identity_staging']['current_buffer']['reason_code'], 'below_threshold')
+        self.assertEqual(data['identity_staging']['current_buffer']['pairs_count'], 4)
+        self.assertEqual(data['identity_staging']['current_buffer']['target_pairs'], 15)
+        self.assertFalse(data['identity_staging']['current_buffer']['frozen'])
+        self.assertTrue(data['identity_staging']['last_completed_agent']['present'])
+        self.assertEqual(data['identity_staging']['last_completed_agent']['status'], 'ok')
+        self.assertEqual(
+            data['identity_staging']['last_completed_agent']['reason_code'],
+            'completed_with_open_tension',
+        )
+        self.assertEqual(data['identity_staging']['last_completed_agent']['run_ts'], '2026-04-16T10:00:31Z')
         self.assertNotIn('buffer_pairs', data['identity_staging'])
         self.assertNotIn('buffer_pairs_json', data['identity_staging'])
+        self.assertNotIn('buffer_pairs', data['identity_staging']['current_buffer'])
+        self.assertNotIn('buffer_pairs', data['identity_staging']['last_completed_agent'])
         self.assertEqual(
             data['identity_staging']['latest_agent_activity']['reason_code'],
             'completed_with_open_tension',

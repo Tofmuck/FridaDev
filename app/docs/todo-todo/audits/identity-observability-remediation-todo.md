@@ -106,17 +106,17 @@ Fichiers probablement touches:
 - tests staging, read-model et surfaces admin
 
 Hors-scope:
-- [ ] Ne pas modifier le seuil `BUFFER_TARGET_PAIRS = 15`.
-- [ ] Ne pas changer la politique de purge du buffer apres application reussie.
-- [ ] Ne pas afficher les paires du buffer.
-- [ ] Ne pas transformer le staging en canon injecte.
+- [x] Ne pas modifier le seuil `BUFFER_TARGET_PAIRS = 15`.
+- [x] Ne pas changer la politique de purge du buffer apres application reussie.
+- [x] Ne pas afficher les paires du buffer.
+- [x] Ne pas transformer le staging en canon injecte.
 
 Cases de correction:
-- [ ] Decider entre deux formes: vider `last_agent_reason` quand un nouveau buffer demarre, ou introduire des champs separes `current_buffer_*` et `last_completed_agent_*`.
-- [ ] Faire en sorte que `buffering` ne soit plus accompagne d'une raison terminale ambigue comme `completed_no_change`.
-- [ ] Garder lisible le dernier run termine avec son timestamp quand cette information reste utile a l'operateur.
-- [ ] Adapter le read-model pour exposer la distinction sans casser le contrat `identity_staging` existant plus que necessaire.
-- [ ] Adapter l'UI si un libelle actuel risque de melanger "buffer courant" et "dernier run".
+- [x] Decider entre deux formes: vider `last_agent_reason` quand un nouveau buffer demarre, ou introduire des champs separes `current_buffer_*` et `last_completed_agent_*`.
+- [x] Faire en sorte que `buffering` ne soit plus accompagne d'une raison terminale ambigue comme `completed_no_change`.
+- [x] Garder lisible le dernier run termine avec son timestamp quand cette information reste utile a l'operateur.
+- [x] Adapter le read-model pour exposer la distinction sans casser le contrat `identity_staging` existant plus que necessaire.
+- [x] Adapter l'UI si un libelle actuel risque de melanger "buffer courant" et "dernier run".
 
 Tests attendus:
 - test `append_identity_staging_pair()` apres clear d'un run `completed_no_change`;
@@ -130,7 +130,7 @@ Preuves runtime attendues:
 - absence de contenu brut du buffer dans les preuves.
 
 Condition de cloture:
-- [ ] L'operateur peut distinguer sans interpretation manuelle l'etat du buffer courant et le dernier run periodique termine.
+- [x] L'operateur peut distinguer sans interpretation manuelle l'etat du buffer courant et le dernier run periodique termine.
 
 ## Lot 3 - Conserver le reason_code du dernier agent periodique
 

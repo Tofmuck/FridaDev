@@ -94,13 +94,16 @@ Champs minimaux:
 - `last_agent_status`
 - `last_agent_reason`
 - `last_agent_run_ts`
+- `current_buffer`
+- `last_completed_agent`
 - `updated_ts`
 - `auto_canonization_suspended`
 - `latest_agent_activity`
 
 Semantique:
 - ce bloc ne requalifie pas le staging en canon actif;
-- il montre l'etat du buffer et du dernier passage agent sans dump du buffer brut;
+- il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
+- quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
 - `latest_agent_activity` resume compactement le dernier verdict utile, les promotions recentes et les tensions ouvertes `raise_conflict` pour cette conversation;
 - quand un run se termine sans write canonique mais garde au moins une tension ouverte, son resume compact ne doit pas etre aplati en `completed_no_change` et utilise `completed_with_open_tension`;
 - les tensions ouvertes du nouvel agent y vivent seulement comme activite periodique compacte conversation-scoped, avec `open_tension_count`, `open_tensions_storage_kind = "identity_periodic_agent_latest_activity"`, `open_tensions_scope_kind = "conversation_scoped_latest"` et `open_tensions_actively_injected = false`;

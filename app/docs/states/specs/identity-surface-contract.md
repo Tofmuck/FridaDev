@@ -140,11 +140,15 @@ Il expose au minimum:
 - `last_agent_status`
 - `last_agent_reason`
 - `last_agent_run_ts`
+- `current_buffer`
+- `last_completed_agent`
 - `auto_canonization_suspended`
 - `latest_agent_activity`
 
 Semantique:
 - le staging reste hors canon actif;
+- le buffer courant et le dernier run termine sont affiches comme deux lectures separees;
+- un buffer courant `buffering` ne doit pas afficher une ancienne raison terminale comme si elle expliquait encore son etat;
 - la suspension automatique doit y etre lisible noir sur blanc;
 - les promotions recentes peuvent y etre resumees de facon compacte.
 

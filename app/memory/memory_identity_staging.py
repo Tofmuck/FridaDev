@@ -5,6 +5,12 @@ from typing import Any, Callable, Mapping, Sequence
 
 
 DEFAULT_BUFFER_TARGET_PAIRS = 15
+_TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER = {
+    'applied',
+    'completed_no_change',
+    'completed_with_open_tension',
+    'not_run',
+}
 
 
 def _text(value: Any) -> str:
@@ -198,13 +204,10 @@ def append_identity_staging_pair(
                 )
                 buffer_frozen = len(next_pairs) >= buffer_target
                 next_status = _text((current_state or {}).get('last_agent_status')) or 'buffering'
-                if len(current_pairs) == 0 and next_status in {
-                    'applied',
-                    'completed_no_change',
-                    'completed_with_open_tension',
-                    'not_run',
-                }:
+                next_reason = _text((current_state or {}).get('last_agent_reason')) or None
+                if len(current_pairs) == 0 and next_status in _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER:
                     next_status = 'buffering'
+                    next_reason = None
                 cur.execute(
                     '''
                     INSERT INTO identity_mutable_staging (
@@ -245,7 +248,7 @@ def append_identity_staging_pair(
                         buffer_target,
                         bool((current_state or {}).get('auto_canonization_suspended')),
                         next_status,
-                        _text((current_state or {}).get('last_agent_reason')) or None,
+                        next_reason,
                     ),
                 )
                 row = cur.fetchone()

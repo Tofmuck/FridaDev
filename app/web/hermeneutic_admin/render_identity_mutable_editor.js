@@ -73,6 +73,20 @@
       ? payload.identity_staging
       : {};
 
+  const currentBuffer = (staging) =>
+    staging?.current_buffer &&
+    typeof staging.current_buffer === "object" &&
+    !Array.isArray(staging.current_buffer)
+      ? staging.current_buffer
+      : {};
+
+  const lastCompletedAgent = (staging) =>
+    staging?.last_completed_agent &&
+    typeof staging.last_completed_agent === "object" &&
+    !Array.isArray(staging.last_completed_agent)
+      ? staging.last_completed_agent
+      : {};
+
   const mutableBudget = (payload) => {
     const regime = runtimeRegime(payload);
     const budget =
@@ -126,6 +140,8 @@
     const loadedForRuntime = Boolean(mutableLayer.loaded_for_runtime);
     const activelyInjected = Boolean(mutableLayer.actively_injected);
     const staging = identityStaging(payload);
+    const buffer = currentBuffer(staging);
+    const completedAgent = lastCompletedAgent(staging);
     const stagingObservation = describeStagingObservation(staging);
 
     let message = "Presente: modulation identitaire canonique editable.";
@@ -158,7 +174,10 @@
         createChip(`Conversation staging: ${stagingObservation.conversationId || "n/a"}`, {
           status: Boolean(staging.present) ? "ok" : "skipped",
         }),
-        createChip(`Agent: ${toText(staging.last_agent_status) || "n/a"}`, {
+        createChip(`Buffer courant: ${toText(buffer.status) || "n/a"}`, {
+          status: Boolean(staging.auto_canonization_suspended) ? "error" : "ok",
+        }),
+        createChip(`Dernier run: ${toText(completedAgent.reason_code) || "n/a"}`, {
           status: Boolean(staging.auto_canonization_suspended) ? "error" : "ok",
         }),
       ],
@@ -172,6 +191,8 @@
     const regime = runtimeRegime(payload);
     const budget = mutableBudget(payload);
     const staging = identityStaging(payload);
+    const buffer = currentBuffer(staging);
+    const completedAgent = lastCompletedAgent(staging);
     const titleText = toText(options.title) || `${subject} mutable canonique`;
     const noteText =
       toText(options.noteText) ||
@@ -255,7 +276,10 @@
           staging_target_pairs: Number(regime.staging_target_pairs) || 0,
           staging_scope_kind: toText(staging.scope_kind) || "n/a",
           staging_conversation_id: toText(staging.conversation_id) || "n/a",
-          last_agent_status: toText(staging.last_agent_status),
+          current_buffer_status: toText(buffer.status),
+          current_buffer_reason: toText(buffer.reason_code),
+          last_completed_agent_status: toText(completedAgent.status),
+          last_completed_agent_reason: toText(completedAgent.reason_code),
           auto_canonization_suspended: Boolean(staging.auto_canonization_suspended),
         },
         "identity_mutable_editor",

@@ -21,6 +21,11 @@ LEGACY_IDENTITY_PIPELINE_RECORDED_VIA = 'persist_identity_entries'
 LEGACY_IDENTITY_PIPELINE_STORAGE = 'identities + identity_evidence + identity_conflicts'
 OPEN_TENSIONS_STORAGE_KIND = 'identity_periodic_agent_latest_activity'
 OPEN_TENSIONS_SCOPE_KIND = 'conversation_scoped_latest'
+TERMINAL_STAGING_REASONS = {
+    'applied',
+    'completed_no_change',
+    'completed_with_open_tension',
+}
 
 
 def _optional_text(value: Any) -> str | None:
@@ -145,6 +150,100 @@ def _build_latest_agent_activity(
     }
 
 
+def _empty_latest_agent_activity() -> dict[str, Any]:
+    return {
+        'present': False,
+        'conversation_id': None,
+        'turn_id': None,
+        'ts': None,
+        'status': None,
+        'reason_code': None,
+        'writes_applied': False,
+        'promotion_count': 0,
+        'promotions': [],
+        'rejection_reasons': {},
+        'open_tension_count': 0,
+        'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
+        'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
+        'open_tensions_actively_injected': False,
+        'open_tensions': [],
+    }
+
+
+def _clean_current_agent_reason(staging_state: Mapping[str, Any]) -> str | None:
+    status = _optional_text(staging_state.get('last_agent_status'))
+    reason = _optional_text(staging_state.get('last_agent_reason'))
+    if status == 'buffering' and reason in TERMINAL_STAGING_REASONS:
+        return None
+    return reason
+
+
+def _build_current_buffer_state(staging_state: Mapping[str, Any]) -> dict[str, Any]:
+    if not staging_state:
+        return {
+            'present': False,
+            'conversation_id': None,
+            'status': None,
+            'reason_code': None,
+            'pairs_count': 0,
+            'target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+            'frozen': False,
+            'updated_ts': None,
+            'auto_canonization_suspended': False,
+        }
+
+    pairs_count = int(staging_state.get('buffer_pairs_count') or 0)
+    target_pairs = int(staging_state.get('buffer_target_pairs') or memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+    frozen = bool(staging_state.get('buffer_frozen'))
+    status = _optional_text(staging_state.get('last_agent_status'))
+    reason = _clean_current_agent_reason(staging_state)
+    if status == 'buffering':
+        reason = 'threshold_reached' if frozen else 'below_threshold'
+    return {
+        'present': True,
+        'conversation_id': _optional_text(staging_state.get('conversation_id')),
+        'status': status or ('frozen' if frozen else 'buffering' if pairs_count else 'empty'),
+        'reason_code': reason,
+        'pairs_count': pairs_count,
+        'target_pairs': target_pairs,
+        'frozen': frozen,
+        'updated_ts': _optional_text(staging_state.get('updated_ts')),
+        'auto_canonization_suspended': bool(staging_state.get('auto_canonization_suspended')),
+    }
+
+
+def _build_last_completed_agent(
+    *,
+    staging_state: Mapping[str, Any],
+    latest_activity: Mapping[str, Any],
+) -> dict[str, Any]:
+    legacy_status = _optional_text(staging_state.get('last_agent_status'))
+    legacy_reason = _optional_text(staging_state.get('last_agent_reason'))
+    legacy_run_ts = _optional_text(staging_state.get('last_agent_run_ts'))
+    activity_reason = _optional_text(latest_activity.get('reason_code'))
+    reason_code = activity_reason
+    if not reason_code and legacy_reason in TERMINAL_STAGING_REASONS:
+        reason_code = legacy_reason
+    status = _optional_text(latest_activity.get('status'))
+    if not status and legacy_status in TERMINAL_STAGING_REASONS:
+        status = legacy_status
+    if not status and reason_code:
+        status = 'ok'
+    ts = _optional_text(latest_activity.get('ts')) or legacy_run_ts
+    return {
+        'present': bool(latest_activity.get('present') or reason_code or ts),
+        'conversation_id': _optional_text(latest_activity.get('conversation_id'))
+        or _optional_text(staging_state.get('conversation_id')),
+        'turn_id': _optional_text(latest_activity.get('turn_id')),
+        'status': status,
+        'reason_code': reason_code,
+        'run_ts': ts,
+        'writes_applied': bool(latest_activity.get('writes_applied')),
+        'promotion_count': int(latest_activity.get('promotion_count') or 0),
+        'open_tension_count': int(latest_activity.get('open_tension_count') or 0),
+    }
+
+
 def build_identity_runtime_regime() -> dict[str, Any]:
     return {
         'active_canon_layers': ['static', 'mutable'],
@@ -181,23 +280,12 @@ def build_identity_staging_block(
             conversation_id=conversation_id,
         )
         if conversation_id
-        else {
-            'present': False,
-            'conversation_id': None,
-            'turn_id': None,
-            'ts': None,
-            'status': None,
-            'reason_code': None,
-            'writes_applied': False,
-            'promotion_count': 0,
-            'promotions': [],
-            'rejection_reasons': {},
-            'open_tension_count': 0,
-            'open_tensions_storage_kind': OPEN_TENSIONS_STORAGE_KIND,
-            'open_tensions_scope_kind': OPEN_TENSIONS_SCOPE_KIND,
-            'open_tensions_actively_injected': False,
-            'open_tensions': [],
-        }
+        else _empty_latest_agent_activity()
+    )
+    current_buffer = _build_current_buffer_state(staging_state)
+    last_completed_agent = _build_last_completed_agent(
+        staging_state=staging_state,
+        latest_activity=latest_activity,
     )
     return {
         'storage_kind': STAGING_STORAGE_KIND,
@@ -209,8 +297,10 @@ def build_identity_staging_block(
         'buffer_target_pairs': buffer_target_pairs,
         'buffer_frozen': bool(staging_state.get('buffer_frozen')),
         'last_agent_status': _optional_text(staging_state.get('last_agent_status')),
-        'last_agent_reason': _optional_text(staging_state.get('last_agent_reason')),
+        'last_agent_reason': _clean_current_agent_reason(staging_state),
         'last_agent_run_ts': _optional_text(staging_state.get('last_agent_run_ts')),
+        'current_buffer': current_buffer,
+        'last_completed_agent': last_completed_agent,
         'updated_ts': _optional_text(staging_state.get('updated_ts')),
         'auto_canonization_suspended': bool(staging_state.get('auto_canonization_suspended')),
         'latest_agent_activity': latest_activity,

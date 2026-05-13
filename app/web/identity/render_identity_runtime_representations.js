@@ -66,6 +66,16 @@
       ? staging.latest_agent_activity
       : {};
 
+  const currentBuffer = (staging) =>
+    staging?.current_buffer && typeof staging.current_buffer === "object" && !Array.isArray(staging.current_buffer)
+      ? staging.current_buffer
+      : {};
+
+  const lastCompletedAgent = (staging) =>
+    staging?.last_completed_agent && typeof staging.last_completed_agent === "object" && !Array.isArray(staging.last_completed_agent)
+      ? staging.last_completed_agent
+      : {};
+
   const renderReadonlyEntries = (target, entries) => {
     adminUi.renderReadonlyInfoEntries(target, entries);
   };
@@ -441,6 +451,8 @@
       : {};
     const staging = identityStaging(safePayload);
     const activity = latestAgentActivity(staging);
+    const buffer = currentBuffer(staging);
+    const completedAgent = lastCompletedAgent(staging);
     const stagingScope = toText(staging.scope_kind);
     const stagingConversationId = toText(staging.conversation_id);
     renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
@@ -477,7 +489,8 @@
           `buffer=${Number(staging.buffer_pairs_count) || 0}/${Number(staging.buffer_target_pairs) || 0}`,
           `scope=${stagingScope || "n/a"}`,
           ...(stagingConversationId ? [`conversation=${stagingConversationId}`] : []),
-          `agent=${toText(staging.last_agent_status) || "n/a"}`,
+          `buffer_status=${toText(buffer.status) || "n/a"}`,
+          `dernier_run=${toText(completedAgent.reason_code) || "n/a"}`,
           `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
           `promotions=${Number(activity.promotion_count) || 0}`,
           `tensions=${Number(activity.open_tension_count) || 0}`,
