@@ -293,12 +293,14 @@ Minimum checklist groups:
   - `turn_end`
 - prompt fingerprints:
   - `identity_prompt_injection`
+    - a present object is not enough: the checklist requires positive proof through `injected=true` or `identity_block_present=true`; otherwise the item is `degraded` with `reason_code=identity_block_absent`
   - `memory_prompt_injection`
   - `hermeneutic_prompt_injection`
 - secondary providers when observed or expected:
   - `stimmung_prompt_prepared` / `stimmung_agent`
   - `validation_prompt_prepared` / `validation_agent`
   - `web_reformulation_prompt_prepared`
+  - if a secondary provider is expected or called, the matching `*_prompt_prepared` proof is mandatory; a result event or `llm_call.provider_caller` alone is `degraded` with `reason_code=missing_secondary_provider_prepared`
 - web:
   - `web_search` is `not_applicable` when web was not requested;
   - when web was requested, `ok`, `skipped` with `reason_code`, or `error` with compact cause must be represented without raw query/result content;

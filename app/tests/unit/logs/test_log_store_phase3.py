@@ -84,7 +84,8 @@ class LogStorePhase3Tests(unittest.TestCase):
                     'prompt_kind': 'chat_system_augmented',
                     'messages_count': 4,
                     'identity_prompt_injection': {
-                        'present': True,
+                        'injected': True,
+                        'identity_block_present': True,
                         'chars': 12,
                         'sha256_12': 'a' * 12,
                     },
@@ -330,6 +331,17 @@ class LogStorePhase3Tests(unittest.TestCase):
         events.insert(
             -2,
             self._event(
+                'web_reformulation_prompt_prepared',
+                payload={
+                    'provider_caller': 'web_reformulation',
+                    'secondary_provider_payload': True,
+                },
+                event_id='evt-web-reformulation-prepared',
+            ),
+        )
+        events.insert(
+            -2,
+            self._event(
                 'llm_call',
                 payload={
                     'provider_caller': 'web_reformulation',
@@ -343,7 +355,49 @@ class LogStorePhase3Tests(unittest.TestCase):
 
         web_reformulation_item = self._find_item(checklist, 'web_reformulation')
         self.assertEqual(web_reformulation_item['status'], 'ok')
+        self.assertEqual(web_reformulation_item['evidence']['prepared_count'], 1)
         self.assertEqual(web_reformulation_item['evidence']['llm_call_count'], 1)
+
+    def test_build_turn_observability_checklist_degrades_empty_identity_fingerprint(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=False)
+        prompt_event = next(event for event in events if event['stage'] == 'prompt_prepared')
+        prompt_event['payload']['identity_prompt_injection'] = {
+            'injected': False,
+            'identity_block_present': False,
+            'identity_block_chars': 0,
+            'identity_block_sha256_12': None,
+        }
+
+        checklist = log_store.build_turn_observability_checklist(events)
+
+        self.assertEqual(checklist['classification'], 'degraded')
+        self.assertLess(checklist['score'], 100)
+        identity_item = self._find_item(checklist, 'identity_prompt_injection')
+        self.assertEqual(identity_item['status'], 'degraded')
+        self.assertEqual(identity_item['reason_code'], 'identity_block_absent')
+
+    def test_build_turn_observability_checklist_requires_secondary_prepared_events(self) -> None:
+        events = [
+            event
+            for event in self._complete_turn_events(web_search_enabled=False)
+            if event['stage'] not in ('stimmung_prompt_prepared', 'validation_prompt_prepared')
+        ]
+        events.insert(
+            -2,
+            self._event(
+                'llm_call',
+                payload={'provider_caller': 'web_reformulation', 'response_chars': 11},
+                event_id='evt-web-reformulation-llm',
+            ),
+        )
+
+        checklist = log_store.build_turn_observability_checklist(events)
+
+        self.assertEqual(checklist['classification'], 'degraded')
+        for key in ('stimmung_agent', 'validation_agent', 'web_reformulation'):
+            item = self._find_item(checklist, key)
+            self.assertEqual(item['status'], 'degraded')
+            self.assertEqual(item['reason_code'], 'missing_secondary_provider_prepared')
 
     def test_build_turn_observability_checklist_fail_open_degrades_with_reason(self) -> None:
         events = self._complete_turn_events(web_search_enabled=False)
