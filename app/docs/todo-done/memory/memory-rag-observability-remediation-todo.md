@@ -1,8 +1,8 @@
 # Memory RAG observability remediation - TODO
 
-Statut: ouvert
+Statut: clos, archive
 Source: audit Memory/RAG du 2026-05-13
-Classement: `app/docs/todo-todo/memory/`
+Classement: `app/docs/todo-done/memory/`
 Portee: observabilite, preuves operateur et surfaces compactes du systeme Memory/RAG
 Hors-scope: refonte RAG, changement de doctrine memoire, modification des seuils, top-k, scoring, prompts, creation d'une nouvelle architecture retrieval, exposition de contenu brut
 
@@ -26,23 +26,23 @@ Ce chantier vise uniquement:
 
 ## 2. Source de verite
 
-- [ ] Traiter ce fichier comme la source de travail active des six remediations issues de l'audit Memory/RAG du 2026-05-13.
-- [ ] Garder `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md` comme cartographie active a corriger quand les constats runtime summaries/top-k sont documentes.
-- [ ] Garder `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md` comme contrat du panier pre-arbitre.
-- [ ] Garder `app/docs/states/specs/memory-rag-summaries-lane-contract.md` comme contrat minimal de la lane summaries, a rafraichir sans changer la doctrine.
-- [ ] Garder `app/docs/states/specs/memory-admin-surface-contract.md` comme contrat de surface admin tant qu'il n'est pas explicitement modifie.
-- [ ] Relire l'etat courant du code avant chaque lot pour eviter de corriger un finding deja stale.
-- [ ] Ne jamais utiliser un contenu brut conversationnel, trace, summary, prompt, message, token, DSN ou secret comme preuve documentaire.
+- [x] Traiter ce fichier comme la source de travail active des six remediations issues de l'audit Memory/RAG du 2026-05-13.
+- [x] Garder `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md` comme cartographie active a corriger quand les constats runtime summaries/top-k sont documentes.
+- [x] Garder `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md` comme contrat du panier pre-arbitre.
+- [x] Garder `app/docs/states/specs/memory-rag-summaries-lane-contract.md` comme contrat minimal de la lane summaries, a rafraichir sans changer la doctrine.
+- [x] Garder `app/docs/states/specs/memory-admin-surface-contract.md` comme contrat de surface admin tant qu'il n'est pas explicitement modifie.
+- [x] Relire l'etat courant du code avant chaque lot pour eviter de corriger un finding deja stale.
+- [x] Ne jamais utiliser un contenu brut conversationnel, trace, summary, prompt, message, token, DSN ou secret comme preuve documentaire.
 
 ## 3. Principes de cloture
 
-- [ ] Chaque lot doit etre ferme par un patch petit, reversible et teste.
-- [ ] Chaque preuve runtime doit rester compacte: presence, counts, longueurs, statuts, timestamps, source kinds, reason codes, hash courts.
-- [ ] Aucun lot ne doit changer les seuils, le scoring, le top-k, les prompts ou la composition runtime hors bug explicitement confirme.
-- [ ] Aucun lot ne doit exposer de contenu brut dans les logs compacts, le read-model admin ou les preuves de cloture.
-- [ ] Les specs vivantes ne sont modifiees que si un champ expose, une attente operateur ou une preuve attendue change.
-- [ ] Chaque lot runtime doit ajouter ou adapter au moins un test qui aurait echoue avec le finding initial.
-- [ ] Les lots de documentation ne doivent pas deplacer la doctrine memoire ni ouvrir un refactor general.
+- [x] Chaque lot doit etre ferme par un patch petit, reversible et teste.
+- [x] Chaque preuve runtime doit rester compacte: presence, counts, longueurs, statuts, timestamps, source kinds, reason codes, hash courts.
+- [x] Aucun lot ne doit changer les seuils, le scoring, le top-k, les prompts ou la composition runtime hors bug explicitement confirme.
+- [x] Aucun lot ne doit exposer de contenu brut dans les logs compacts, le read-model admin ou les preuves de cloture.
+- [x] Les specs vivantes ne sont modifiees que si un champ expose, une attente operateur ou une preuve attendue change.
+- [x] Chaque lot runtime doit ajouter ou adapter au moins un test qui aurait echoue avec le finding initial.
+- [x] Les lots de documentation ne doivent pas deplacer la doctrine memoire ni ouvrir un refactor general.
 
 ## 4. Ordre de correction recommande
 
@@ -293,11 +293,15 @@ Condition de cloture:
 
 ## Condition de non-prolongation
 
-- [ ] Le chantier se ferme quand les six lots ci-dessus couvrent les sept findings de l'audit par tests et preuves compactes.
-- [ ] Aucun lot 7 ne doit etre ajoute pour refondre Memory/RAG, changer les seuils, ajouter un reranker, creer une nouvelle memoire ou revoir la doctrine.
-- [ ] Les sujets decouverts hors observabilite compacte doivent etre sortis dans un audit ou TODO separe, avec justification explicite.
-- [ ] La cloture ne depend pas d'une amelioration subjective de la pertinence RAG, seulement de la capacite a prouver la chaine existante.
-- [ ] Une fois les six lots livres, ce fichier doit etre marque clos puis archive dans `app/docs/todo-done/` selon les conventions du depot.
+- [x] Le chantier se ferme quand les six lots ci-dessus couvrent les sept findings de l'audit par tests et preuves compactes.
+- [x] Aucun lot 7 ne doit etre ajoute pour refondre Memory/RAG, changer les seuils, ajouter un reranker, creer une nouvelle memoire ou revoir la doctrine.
+- [x] Les sujets decouverts hors observabilite compacte doivent etre sortis dans un audit ou TODO separe, avec justification explicite.
+- [x] La cloture ne depend pas d'une amelioration subjective de la pertinence RAG, seulement de la capacite a prouver la chaine existante.
+- [x] Une fois les six lots livres, ce fichier doit etre marque clos puis archive dans `app/docs/todo-done/` selon les conventions du depot.
+
+Note de cloture, 2026-05-14:
+- les six lots sont livres et audites, avec les correctifs cibles sur reason-code aggregation, endpoint arbiter-decisions content-minimized et `mixed_lane_turns` legacy;
+- ce fichier est archive comme preuve de chantier termine, sans ouvrir de Lot 7.
 
 ## Matrice findings -> lots
 
@@ -313,10 +317,10 @@ Condition de cloture:
 
 ## Notes de prudence
 
-- [ ] Ne jamais transformer ce chantier en refactor general de `app/memory/`.
-- [ ] Ne jamais confondre memoire durable RAG, summaries, context hints, recent context, stimmung et identities.
-- [ ] Ne jamais presenter un hash comme une anonymisation cryptographique suffisante si le contenu source est faible ou devinable.
-- [ ] Ne jamais stocker un prompt, message, trace, summary ou conversation brut dans un nouvel event compact.
-- [ ] Ne jamais introduire un endpoint admin brut par commodite sans contrat explicite et test de redaction de la surface par defaut.
-- [ ] Ne jamais modifier les decisions de retrieval/arbitrage pour satisfaire une preuve d'observabilite.
-- [ ] Ne pas requalifier le choix "pas de reranker actif" sans rouvrir explicitement la decision documentaire existante.
+- [x] Ne jamais transformer ce chantier en refactor general de `app/memory/`.
+- [x] Ne jamais confondre memoire durable RAG, summaries, context hints, recent context, stimmung et identities.
+- [x] Ne jamais presenter un hash comme une anonymisation cryptographique suffisante si le contenu source est faible ou devinable.
+- [x] Ne jamais stocker un prompt, message, trace, summary ou conversation brut dans un nouvel event compact.
+- [x] Ne jamais introduire un endpoint admin brut par commodite sans contrat explicite et test de redaction de la surface par defaut.
+- [x] Ne jamais modifier les decisions de retrieval/arbitrage pour satisfaire une preuve d'observabilite.
+- [x] Ne pas requalifier le choix "pas de reranker actif" sans rouvrir explicitement la decision documentaire existante.
