@@ -183,9 +183,10 @@ Minimum event-specific details:
   - forbidden: exception message, stack trace, prompt, messages, identity, memory, traces, summaries, canonical input dumps
 
 - `hermeneutic_node_insertion`
-  - compact proof of the final hermeneutic block insertion path
-  - allowed fields: insertion presence, final posture/regime labels, source, fallback flags, compact reason code, block length and short hash when available
-  - forbidden: raw `[JUGEMENT HERMENEUTIQUE]` block, raw validation rationale, prompt excerpts, canonical input dumps
+  - compact proof that the hermeneutic node entrypoint was reached, with a redacted input-shape summary
+  - allowed fields: `insertion_point_reached`, mode, input-family presence flags, counts, lengths, statuses and compact reason/error codes for time, memory, summary, identity, recent context/window, user-turn signals, stimmung and web inputs
+  - this stage does not describe the final `[JUGEMENT HERMENEUTIQUE]` block injected into the main prompt; that final block is observed through `prompt_prepared.hermeneutic_prompt_injection`
+  - forbidden: raw `[JUGEMENT HERMENEUTIQUE]` block, raw validation rationale, prompt excerpts, canonical input dumps, raw messages, raw memory, raw identity or raw web content
 
 - `validation_prompt_prepared`
   - content-free proof of the secondary provider payload prepared by `validation_agent`
