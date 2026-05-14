@@ -143,21 +143,30 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
 
         primary_event = next(item for item in observed_events if item['stage'] == 'primary_node')
         self.assertEqual(primary_event['status'], 'ok')
-        self.assertEqual(
-            primary_event['payload_json'],
-            {
-                'upstream_recommendation_posture': 'clarify',
-                'upstream_output_regime_proposed': 'meta',
-                'upstream_active_signal_families': ['referent', 'ancrage_de_source'],
-                'upstream_constraint_present': True,
-                'epistemic_regime': 'ouvert',
-                'proof_regime': 'source_explicite_requise',
-                'source_conflicts_count': 2,
-                'fail_open': False,
-                'state_used': True,
-                'degraded_fields_count': 0,
-            },
-        )
+        primary_payload = primary_event['payload_json']
+        expected_primary_payload = {
+            'upstream_recommendation_posture': 'clarify',
+            'upstream_output_regime_proposed': 'meta',
+            'upstream_active_signal_families': ['referent', 'ancrage_de_source'],
+            'upstream_constraint_present': True,
+            'epistemic_regime': 'ouvert',
+            'proof_regime': 'source_explicite_requise',
+            'source_conflicts_count': 2,
+            'fail_open': False,
+            'state_used': True,
+            'degraded_fields_count': 0,
+        }
+        for key, expected in expected_primary_payload.items():
+            self.assertEqual(primary_payload.get(key), expected)
+        self.assertFalse(primary_payload['node_state_read_present'])
+        self.assertTrue(primary_payload['node_state_read_valid'])
+        self.assertEqual(primary_payload['node_state_read_reason_code'], 'not_found')
+        self.assertTrue(primary_payload['node_state_write_attempted'])
+        self.assertTrue(primary_payload['node_state_write_succeeded'])
+        self.assertTrue(primary_payload['node_state_write_changed'])
+        self.assertEqual(primary_payload['node_state_write_reason_code'], 'written')
+        self.assertEqual(primary_payload['node_state_schema_version'], 'v1')
+        self.assertRegex(primary_payload['node_state_sha256_12'], r'^[0-9a-f]{12}$')
 
         validation_event = next(item for item in observed_events if item['stage'] == 'validation_agent')
         self.assertEqual(validation_event['status'], 'ok')
@@ -213,6 +222,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
             self.assertNotIn('validation_dialogue_context', payload)
             self.assertNotIn('justifications', payload)
             self.assertNotIn('canonical_inputs', payload)
+            self.assertNotIn('node_state', payload)
             self.assertNotIn('prompt', payload)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
