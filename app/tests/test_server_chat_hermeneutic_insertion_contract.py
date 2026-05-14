@@ -335,18 +335,17 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(len(primary_calls), 2)
         self.assertIsNone(primary_calls[0].get('existing_node_state'))
+        second_existing_state = primary_calls[1].get('existing_node_state')
+        self.assertEqual(second_existing_state.get('schema_version'), 'v1')
+        self.assertEqual(second_existing_state.get('conversation_id'), 'conv-node-state-persistence-phase14')
+        self.assertRegex(second_existing_state.get('updated_at'), r'^\d{4}-\d{2}-\d{2}T')
+        self.assertEqual(second_existing_state.get('last_judgment_posture'), 'answer')
         self.assertEqual(
-            primary_calls[1].get('existing_node_state'),
+            second_existing_state.get('last_answer_output_regime'),
             {
-                'schema_version': 'v1',
-                'conversation_id': 'conv-node-state-persistence-phase14',
-                'updated_at': '2026-04-02T12:01:00Z',
-                'last_judgment_posture': 'answer',
-                'last_answer_output_regime': {
-                    'discursive_regime': 'simple',
-                    'resituation_level': 'none',
-                    'time_reference_mode': 'atemporal',
-                },
+                'discursive_regime': 'simple',
+                'resituation_level': 'none',
+                'time_reference_mode': 'atemporal',
             },
         )
         self.assertEqual(
@@ -373,6 +372,257 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         serialized = repr(primary_events)
         self.assertNotIn('Bonjour', serialized)
         self.assertNotIn('Encore', serialized)
+        self.assertNotIn('BACKEND SYSTEM PROMPT', serialized)
+
+    def test_api_chat_persists_final_validated_node_state_when_validation_overrides_primary(self) -> None:
+        observed_events: list[dict] = []
+        primary_calls: list[dict] = []
+        validation_sequence = [
+            ('answer', 'simple', ['posture_answer', 'regime_simple']),
+            ('clarify', 'meta', ['posture_clarify', 'regime_meta']),
+            ('suspend', 'simple', ['posture_suspend', 'regime_simple']),
+        ]
+        conversation = {
+            'id': 'conv-node-state-final-validation-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok final state'}}]}
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=lambda *_args, **_kwargs: FakeResponse(),
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_primary_node(**kwargs):
+            primary_calls.append(dict(kwargs))
+            return {
+                'primary_verdict': {
+                    'schema_version': 'v1',
+                    'epistemic_regime': 'incertain',
+                    'proof_regime': 'source_explicite_requise',
+                    'uncertainty_posture': 'prudente',
+                    'judgment_posture': 'answer',
+                    'discursive_regime': 'simple',
+                    'resituation_level': 'none',
+                    'time_reference_mode': 'atemporal',
+                    'source_priority': [],
+                    'source_conflicts': [],
+                    'upstream_advisory': {
+                        'schema_version': 'v1',
+                        'recommended_judgment_posture': 'answer',
+                        'proposed_output_regime': 'simple',
+                        'active_signal_families': [],
+                        'active_signal_families_count': 0,
+                        'constraint_present': False,
+                    },
+                    'pipeline_directives_provisional': ['posture_answer'],
+                    'audit': {
+                        'fail_open': False,
+                        'state_used': bool(kwargs.get('existing_node_state')),
+                        'degraded_fields': [],
+                    },
+                },
+                'node_state': {
+                    'schema_version': 'v1',
+                    'conversation_id': kwargs['conversation_id'],
+                    'updated_at': '2026-04-02T12:01:00Z',
+                    'last_judgment_posture': 'answer',
+                    'last_answer_output_regime': {
+                        'discursive_regime': 'simple',
+                        'resituation_level': 'none',
+                        'time_reference_mode': 'atemporal',
+                    },
+                },
+            }
+
+        def fake_validation_agent(**_kwargs):
+            posture, output_regime, directives = validation_sequence.pop(0)
+            return self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': posture if posture != 'answer' else 'confirm',
+                    'final_judgment_posture': posture,
+                    'final_output_regime': output_regime,
+                    'pipeline_directives_final': directives,
+                    'arbiter_followed_upstream': posture == 'answer',
+                    'advisory_recommendations_followed': [],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'final validated state',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+
+        self.server.chat_service.primary_node.build_primary_node = fake_primary_node
+        self.server.chat_service.validation_agent.build_validated_output = fake_validation_agent
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'message de test'},
+            ]
+        )
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = (
+            lambda event, **_kwargs: observed_events.append(event) or True
+        )
+        try:
+            responses = [
+                self.client.post('/api/chat', json={'message': 'Premiere'}),
+                self.client.post('/api/chat', json={'message': 'Deuxieme'}),
+                self.client.post('/api/chat', json={'message': 'Troisieme'}),
+            ]
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertTrue(all(response.status_code == 200 for response in responses))
+        self.assertEqual(len(primary_calls), 3)
+        self.assertIsNone(primary_calls[0].get('existing_node_state'))
+        self.assertEqual(primary_calls[1]['existing_node_state']['last_judgment_posture'], 'answer')
+        self.assertEqual(primary_calls[2]['existing_node_state']['last_judgment_posture'], 'clarify')
+
+        persisted_states = [item['state'] for item in observed_state['node_state_writes']]
+        self.assertEqual([state['last_judgment_posture'] for state in persisted_states], ['answer', 'clarify', 'suspend'])
+        self.assertEqual(
+            persisted_states[1]['last_answer_output_regime'],
+            persisted_states[0]['last_answer_output_regime'],
+        )
+        self.assertEqual(
+            persisted_states[2]['last_answer_output_regime'],
+            persisted_states[0]['last_answer_output_regime'],
+        )
+        self.assertNotEqual(persisted_states[1]['last_judgment_posture'], 'answer')
+        primary_events = [item for item in observed_events if item.get('stage') == 'primary_node']
+        self.assertEqual(len(primary_events), 3)
+        self.assertTrue(all(item['payload_json']['node_state_write_succeeded'] for item in primary_events))
+        serialized = repr({'events': primary_events, 'writes': observed_state['node_state_writes']})
+        self.assertNotIn('Premiere', serialized)
+        self.assertNotIn('Deuxieme', serialized)
+        self.assertNotIn('Troisieme', serialized)
+        self.assertNotIn('BACKEND SYSTEM PROMPT', serialized)
+
+    def test_api_chat_skips_node_state_write_when_validated_output_missing(self) -> None:
+        observed_events: list[dict] = []
+        primary_calls: list[dict] = []
+        conversation = {
+            'id': 'conv-node-state-invalid-validation-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok invalid state skip'}}]}
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=lambda *_args, **_kwargs: FakeResponse(),
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_primary_node(**kwargs):
+            primary_calls.append(dict(kwargs))
+            return {
+                'primary_verdict': {
+                    'schema_version': 'v1',
+                    'epistemic_regime': 'incertain',
+                    'proof_regime': 'source_explicite_requise',
+                    'uncertainty_posture': 'prudente',
+                    'judgment_posture': 'answer',
+                    'discursive_regime': 'simple',
+                    'resituation_level': 'none',
+                    'time_reference_mode': 'atemporal',
+                    'source_priority': [],
+                    'source_conflicts': [],
+                    'upstream_advisory': {
+                        'schema_version': 'v1',
+                        'recommended_judgment_posture': 'answer',
+                        'proposed_output_regime': 'simple',
+                        'active_signal_families': [],
+                        'active_signal_families_count': 0,
+                        'constraint_present': False,
+                    },
+                    'pipeline_directives_provisional': ['posture_answer'],
+                    'audit': {
+                        'fail_open': False,
+                        'state_used': bool(kwargs.get('existing_node_state')),
+                        'degraded_fields': [],
+                    },
+                },
+                'node_state': {
+                    'schema_version': 'v1',
+                    'conversation_id': kwargs['conversation_id'],
+                    'updated_at': '2026-04-02T12:01:00Z',
+                    'last_judgment_posture': 'answer',
+                    'last_answer_output_regime': {
+                        'discursive_regime': 'simple',
+                        'resituation_level': 'none',
+                        'time_reference_mode': 'atemporal',
+                    },
+                },
+            }
+
+        self.server.chat_service.primary_node.build_primary_node = fake_primary_node
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={},
+                status='error',
+                model='openai/gpt-5.4-mini',
+                decision_source='fail_open',
+                reason_code='validation_error',
+            )
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'message invalide'},
+            ]
+        )
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = (
+            lambda event, **_kwargs: observed_events.append(event) or True
+        )
+        try:
+            response = self.client.post('/api/chat', json={'message': 'A verifier'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(primary_calls), 1)
+        self.assertEqual(observed_state['node_state_writes'], [])
+        primary_event = next(item for item in observed_events if item.get('stage') == 'primary_node')
+        payload = primary_event['payload_json']
+        self.assertFalse(payload['node_state_write_attempted'])
+        self.assertFalse(payload['node_state_write_succeeded'])
+        self.assertEqual(payload['node_state_write_reason_code'], 'validated_output_missing')
+        serialized = repr(primary_event)
+        self.assertNotIn('A verifier', serialized)
+        self.assertNotIn('message invalide', serialized)
         self.assertNotIn('BACKEND SYSTEM PROMPT', serialized)
 
     def test_api_chat_injects_suspend_block_when_validation_agent_fail_opens(self) -> None:
@@ -458,6 +708,10 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         )
         self.assertIn('Consigne de regime: Reste dans une reprise locale, sobre, dialogique et non meta.', system_prompt)
         self.assertIn('Directives finales actives: posture_suspend, regime_simple, fallback_validation.', system_prompt)
+        self.assertEqual(len(observed_state['node_state_writes']), 1)
+        persisted_state = observed_state['node_state_writes'][0]['state']
+        self.assertEqual(persisted_state['last_judgment_posture'], 'suspend')
+        self.assertIsNone(persisted_state['last_answer_output_regime'])
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_emits_override_logs_and_projects_answer_block_without_raw_dump(self) -> None:

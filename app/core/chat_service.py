@@ -11,6 +11,7 @@ from core import chat_session_flow
 from core import chat_turn_runtime_inputs
 from core import conversations_prompt_window
 from core import stimmung_agent
+from core.hermeneutic_node.runtime import node_state as runtime_node_state
 from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
@@ -44,6 +45,22 @@ def _mapping(value: Any) -> dict[str, Any]:
     if isinstance(value, Mapping):
         return dict(value)
     return {}
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
+
+
+_FINAL_ANSWER_OUTPUT_REGIME = {
+    'discursive_regime': 'simple',
+    'resituation_level': 'none',
+    'time_reference_mode': 'atemporal',
+}
+_FINAL_NON_ANSWER_OUTPUT_REGIME = {
+    'discursive_regime': 'meta',
+    'resituation_level': 'none',
+    'time_reference_mode': 'atemporal',
+}
 
 
 def _read_hermeneutic_node_state(
@@ -84,6 +101,17 @@ def _existing_node_state_from_read(read_result: Mapping[str, Any] | None) -> dic
     return state or None
 
 
+def _skipped_hermeneutic_node_state_write(reason_code: str) -> dict[str, Any]:
+    return {
+        'attempted': False,
+        'written': False,
+        'changed': False,
+        'reason_code': _text(reason_code) or 'not_applicable',
+        'schema_version': '',
+        'state_sha256_12': '',
+    }
+
+
 def _write_hermeneutic_node_state(
     *,
     memory_store_module: Any,
@@ -113,6 +141,41 @@ def _write_hermeneutic_node_state(
             'error_class': exc.__class__.__name__,
         }
     return _mapping(result)
+
+
+def _build_final_hermeneutic_node_state(
+    *,
+    conversation_id: str,
+    now_iso: str,
+    validated_result: Any,
+    existing_node_state: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any] | None, str]:
+    validated_output = _mapping(getattr(validated_result, 'validated_output', None))
+    if not validated_output:
+        return None, 'validated_output_missing'
+
+    final_judgment_posture = _text(validated_output.get('final_judgment_posture'))
+    final_output_regime = _text(validated_output.get('final_output_regime'))
+    if final_judgment_posture == 'answer':
+        if final_output_regime != 'simple':
+            return None, 'unsupported_final_output_regime'
+        output_regime = _FINAL_ANSWER_OUTPUT_REGIME
+    elif final_judgment_posture in {'clarify', 'suspend'}:
+        output_regime = _FINAL_NON_ANSWER_OUTPUT_REGIME
+    else:
+        return None, 'invalid_final_judgment_posture'
+
+    try:
+        state = runtime_node_state.build_node_state(
+            conversation_id=conversation_id,
+            updated_at=now_iso,
+            judgment_posture=final_judgment_posture,
+            output_regime=output_regime,
+            existing_node_state=existing_node_state,
+        )
+    except Exception:
+        return None, 'invalid_validated_node_state'
+    return state, ''
 
 
 def _record_identity_entries_for_mode(
@@ -209,19 +272,6 @@ def _run_hermeneutic_node_insertion_point(
         web_input=web_input,
         existing_node_state=existing_node_state,
     )
-    node_state_write = _write_hermeneutic_node_state(
-        memory_store_module=memory_store_module,
-        conversation_id=conversation_id,
-        node_state_payload=_mapping(primary_payload).get('node_state'),
-    )
-    node_state_persistence = hermeneutic_node_logger.build_node_state_persistence_payload(
-        read_result=node_state_read,
-        write_result=node_state_write,
-    )
-    hermeneutic_node_logger.emit_primary_node(
-        primary_payload=primary_payload,
-        node_state_persistence=node_state_persistence,
-    )
     validation_dialogue_context = _resolve_validation_dialogue_context(
         conversation=conversation,
         recent_context_payload=recent_context_input,
@@ -246,6 +296,28 @@ def _run_hermeneutic_node_insertion_point(
             'web_input': _mapping(web_input),
         },
         requests_module=requests_module,
+    )
+    final_node_state, skip_write_reason = _build_final_hermeneutic_node_state(
+        conversation_id=conversation_id,
+        now_iso=now_iso,
+        validated_result=validated_result,
+        existing_node_state=existing_node_state,
+    )
+    if final_node_state is None:
+        node_state_write = _skipped_hermeneutic_node_state_write(skip_write_reason)
+    else:
+        node_state_write = _write_hermeneutic_node_state(
+            memory_store_module=memory_store_module,
+            conversation_id=conversation_id,
+            node_state_payload=final_node_state,
+        )
+    node_state_persistence = hermeneutic_node_logger.build_node_state_persistence_payload(
+        read_result=node_state_read,
+        write_result=node_state_write,
+    )
+    hermeneutic_node_logger.emit_primary_node(
+        primary_payload=primary_payload,
+        node_state_persistence=node_state_persistence,
     )
     hermeneutic_node_logger.emit_validation_agent(
         validation_dialogue_context=validation_dialogue_context,

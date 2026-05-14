@@ -30,6 +30,7 @@ def patch_server_chat_pipeline(
         'node_state_writes': [],
     }
     node_state_store: dict[str, dict[str, Any]] = {}
+    observed['node_state_store'] = node_state_store
 
     def patch_attr(obj, name, value):
         originals.append((obj, name, getattr(obj, name)))
@@ -170,7 +171,7 @@ def patch_server_chat_pipeline(
                 'schema_version': '',
                 'state_sha256_12': '',
             }
-            observed['node_state_writes'].append(dict(result))
+            observed['node_state_writes'].append(dict(result, state=None))
             return result
         next_state = copy.deepcopy(dict(state or {}))
         old_state = copy.deepcopy(node_state_store.get(conv_id))
@@ -184,7 +185,7 @@ def patch_server_chat_pipeline(
             'schema_version': str(next_state.get('schema_version') or ''),
             'state_sha256_12': _state_hash(next_state),
         }
-        observed['node_state_writes'].append(dict(result))
+        observed['node_state_writes'].append(dict(result, state=copy.deepcopy(next_state)))
         return result
 
     patch_attr(server_module.memory_store, 'read_hermeneutic_node_state', fake_read_node_state)

@@ -7,7 +7,7 @@ Note runtime 2026-05-14:
 
 - le `node_state` est persiste en PostgreSQL dans `hermeneutic_node_states`;
 - le runtime chat relit cet etat par `conversation_id` avant `build_primary_node(existing_node_state=...)`;
-- le runtime chat reecrit l'etat valide produit par le noeud apres chaque jugement;
+- le runtime chat reecrit l'etat derive du verdict final valide par `validation_agent`, pas du verdict primaire pre-validation;
 - l'observabilite reste compacte et ne journalise pas le contenu brut de l'etat.
 
 ## 1. Purpose
@@ -57,7 +57,7 @@ Les cibles code sont:
 
 ## 3. Doctrine / Runtime / Observability Boundary
 
-`node_state` appartient au runtime primaire du noeud.
+`node_state` appartient au runtime du noeud hermeneutique.
 
 Il ne se confond pas avec:
 
@@ -112,6 +112,8 @@ Separation normative minimale:
   - ce que le noeud retient pour piloter le tour suivant
 - `primary verdict payload`
   - ce que le noeud decide sur ce tour
+- `validated_output`
+  - verdict final arbitral consomme par l'aval et source de mise a jour du state persistant
 - `observability.chat_log_events`
   - evenements techniques du pipeline
 - futur snapshot / audit hermeneutique
@@ -156,7 +158,7 @@ Definitions minimales:
 - `updated_at`
   - date de derniere mise a jour du state
 - `last_judgment_posture`
-  - derniere posture primaire observee
+  - derniere posture finale validee
 - `last_answer_output_regime`
   - dernier `output_regime` substantif reutilisable
 
@@ -164,6 +166,7 @@ Regle structurante:
 
 - `last_answer_output_regime` ne conserve que le dernier regime substantif reutilisable
 - il ne doit pas devenir un mini-historique
+- il n'est mis a jour que lorsque `validated_output.final_judgment_posture = answer`
 
 ## 7. Minimal Inertia Rules
 
@@ -177,7 +180,7 @@ Les regles minimales d'inertie retenues sont:
 Lecture operationnelle minimale:
 
 - `answer`
-  - peut mettre a jour `last_answer_output_regime`
+  - peut mettre a jour `last_answer_output_regime` quand le verdict final valide reste `answer`
 - `clarify`
   - met a jour `last_judgment_posture` mais ne remplace pas automatiquement `last_answer_output_regime`
 - `suspend`

@@ -340,6 +340,11 @@ Preuves runtime attendues:
 Condition de cloture:
 - [x] Le runtime chat persiste, relit, passe et met a jour le `node_state` par conversation, avec preuve compacte et test de deux tours successifs.
 
+Correction ciblee post-Lot 6:
+- [x] Persister le `node_state` depuis le verdict final valide par `validation_agent`, et non depuis le `primary_node` pre-validation.
+- [x] Conserver `last_answer_output_regime` lors des verdicts finaux `clarify` ou `suspend`, et ne le mettre a jour que pour un verdict final `answer`.
+- [x] Ne pas ecrire d'etat si `validated_output` est absent ou incompatible avec le contrat de `node_state`; exposer un reason code compact.
+
 ## Lot 7 - Docs stale et cloture
 
 Objectif: corriger les docs actives devenues stale sur logs/tests et fermer ce TODO uniquement quand les lots runtime sont livres.
