@@ -99,7 +99,6 @@ def _read_durable_state(
                 WHERE NOT keep
                 GROUP BY reason
                 ORDER BY COUNT(*) DESC, reason ASC
-                LIMIT 5
                 '''
             )
             rejection_rows = cur.fetchall()

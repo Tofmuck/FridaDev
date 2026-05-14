@@ -371,13 +371,17 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(activity["normal_empty_events"], 2)
         self.assertEqual(activity["retrieve_error_events"], 1)
 
-    def test_durable_state_exposes_rejection_reason_code_counts_without_raw_reasons(self) -> None:
-        raw_reason = "sensitive freeform reason because user pasted private context"
+    def test_durable_state_exposes_full_rejection_reason_code_counts_without_raw_reasons(self) -> None:
+        raw_reasons = [
+            f"sensitive freeform reason {index} because user pasted private context"
+            for index in range(7)
+        ]
 
         class FakeCursor:
             def __init__(self):
                 self.fetchone_calls = 0
                 self.fetchall_calls = 0
+                self.current_query = ""
 
             def __enter__(self):
                 return self
@@ -385,7 +389,8 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             def __exit__(self, exc_type, exc, tb):
                 return False
 
-            def execute(self, _query, _params=None):
+            def execute(self, query, _params=None):
+                self.current_query = str(query)
                 return None
 
             def fetchone(self):
@@ -400,10 +405,11 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
                 self.fetchall_calls += 1
                 if self.fetchall_calls == 1:
                     return []
-                return [
-                    (raw_reason, 2),
-                    ('fallback:parse_or_runtime_error', 1),
-                ]
+                rows = [(reason, 1) for reason in raw_reasons]
+                rows.append(('fallback:parse_or_runtime_error', 1))
+                if 'LIMIT 5' in self.current_query:
+                    return rows[:5]
+                return rows
 
         class FakeConn:
             def __enter__(self):
@@ -421,12 +427,13 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(
             decisions["top_rejection_reason_code_counts"],
             {
-                "model_reason": 2,
+                "model_reason": 7,
                 "fallback_parse_or_runtime_error": 1,
             },
         )
         self.assertNotIn("top_rejection_reasons", decisions)
-        self.assertNotIn(raw_reason, str(decisions))
+        for raw_reason in raw_reasons:
+            self.assertNotIn(raw_reason, str(decisions))
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])
