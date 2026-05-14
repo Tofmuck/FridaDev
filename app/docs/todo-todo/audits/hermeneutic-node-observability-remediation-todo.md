@@ -72,17 +72,17 @@ Fichiers probablement touches:
 - `app/tests/integration/frontend_admin/test_frontend_hermeneutic_admin_phase6.py`
 
 Hors-scope:
-- [ ] Ne pas supprimer les donnees legacy en DB.
-- [ ] Ne pas requalifier le legacy Identity comme source d'injection active.
-- [ ] Ne pas ajouter une route de detail brut dans ce lot.
-- [ ] Ne pas changer les surfaces Identity canoniques hors redaction de la vue Hermeneutic Admin.
+- [x] Ne pas supprimer les donnees legacy en DB.
+- [x] Ne pas requalifier le legacy Identity comme source d'injection active.
+- [x] Ne pas ajouter une route de detail brut dans ce lot.
+- [x] Ne pas changer les surfaces Identity canoniques hors redaction de la vue Hermeneutic Admin.
 
 Cases de correction:
-- [ ] Identifier les champs bruts actuellement servis par defaut dans `identity-candidates`.
-- [ ] Remplacer les champs bruts par une projection compacte: `subject`, `source_kind`, `status`, `weight`, `chars`, `sha256_12`, timestamps et reason codes quand disponibles.
-- [ ] Supprimer de la reponse par defaut les cles qui portent du texte brut ou qui permettent de reconstruire un contenu identitaire.
-- [ ] Adapter le rendu frontend pour afficher les champs compacts sans supposer un titre extrait du contenu brut.
-- [ ] Mettre a jour la spec admin si le contrat API expose change.
+- [x] Identifier les champs bruts actuellement servis par defaut dans `identity-candidates`.
+- [x] Remplacer les champs bruts par une projection compacte: `subject`, `source_kind`, `status`, `weight`, `chars`, `sha256_12`, timestamps et reason codes quand disponibles.
+- [x] Supprimer de la reponse par defaut les cles qui portent du texte brut ou qui permettent de reconstruire un contenu identitaire.
+- [x] Adapter le rendu frontend pour afficher les champs compacts sans supposer un titre extrait du contenu brut.
+- [x] Mettre a jour la spec admin si le contrat API expose change.
 
 Tests attendus:
 - test API Hermeneutic Admin: absence des cles brutes dans `identity-candidates`;
@@ -96,7 +96,7 @@ Preuves runtime attendues:
 - aucune citation de contenu identitaire dans la preuve.
 
 Condition de cloture:
-- [ ] L'admin Hermeneutic charge par defaut une projection `identity-candidates` exploitable sans servir de contenu legacy Identity brut au navigateur.
+- [x] L'admin Hermeneutic charge par defaut une projection `identity-candidates` exploitable sans servir de contenu legacy Identity brut au navigateur.
 
 ## Lot 2 - Empreinte du bloc hermeneutique injecte
 

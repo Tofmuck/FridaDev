@@ -434,7 +434,10 @@
       emptyMessage: "Aucun fragment legacy d'identite disponible.",
       source: "identity",
       identifyTitle: (item, index) => {
-        return toText(item?.identity_id) || toText(item?.content) || `Fragment legacy ${index + 1}`;
+        return toText(item?.identity_id)
+          || toText(item?.source_kind)
+          || toText(item?.subject)
+          || `Fragment legacy ${index + 1}`;
       },
     });
   };

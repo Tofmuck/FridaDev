@@ -1,10 +1,74 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Tuple
 
 from admin import admin_stage_latency_summary
 from admin.admin_memory_arbiter_preview import compact_arbiter_decision_items
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
+
+
+def _sha256_12(value: Any) -> str:
+    text = _text(value)
+    if not text:
+        return ''
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
+def _compact_reason_code(value: Any, *, fallback: str = 'text_reason_present') -> str:
+    text = _text(value).lower().replace('-', '_')
+    if not text:
+        return ''
+    if len(text) <= 64 and all(char.isalnum() or char == '_' for char in text):
+        return text
+    return fallback
+
+
+def compact_identity_candidate_item(item: Any) -> Dict[str, Any]:
+    payload = item if isinstance(item, dict) else {}
+    content = _text(payload.get('content'))
+    content_norm = _text(payload.get('content_norm'))
+    reason = _text(payload.get('last_reason') or payload.get('reason'))
+    override_note = _text(payload.get('override_reason'))
+    identity_id = _text(payload.get('identity_id') or payload.get('id'))
+    source_kind = _text(payload.get('source_kind')) or 'legacy_identity'
+
+    return {
+        'identity_id': identity_id,
+        'subject': _text(payload.get('subject')),
+        'source_kind': source_kind,
+        'status': _text(payload.get('status')),
+        'weight': payload.get('weight'),
+        'confidence': payload.get('confidence'),
+        'created_ts': payload.get('created_ts'),
+        'last_seen_ts': payload.get('last_seen_ts'),
+        'source_trace_id': _text(payload.get('source_trace_id')),
+        'stability': payload.get('stability'),
+        'utterance_mode': payload.get('utterance_mode'),
+        'recurrence': payload.get('recurrence'),
+        'scope': payload.get('scope'),
+        'evidence_kind': payload.get('evidence_kind'),
+        'content_chars': len(content),
+        'content_sha256_12': _sha256_12(content),
+        'content_norm_chars': len(content_norm),
+        'content_norm_sha256_12': _sha256_12(content_norm),
+        'reason_code': _compact_reason_code(payload.get('reason_code') or reason),
+        'reason_chars': len(reason),
+        'reason_sha256_12': _sha256_12(reason),
+        'override_state': payload.get('override_state'),
+        'override_actor': payload.get('override_actor'),
+        'override_ts': payload.get('override_ts'),
+        'override_note_code': _compact_reason_code(override_note, fallback='override_note_present'),
+        'override_note_chars': len(override_note),
+        'override_note_sha256_12': _sha256_12(override_note),
+        'legacy_only': True,
+        'evidence_only': True,
+        'drives_active_injection': False,
+    }
 
 
 def identity_candidates_response(
@@ -40,10 +104,13 @@ def identity_candidates_response(
 
     entries.sort(key=lambda e: float(e.get('weight') or 0.0), reverse=True)
     entries = entries[:limit]
+    compact_entries = [compact_identity_candidate_item(entry) for entry in entries]
     return {
         'ok': True,
-        'items': entries,
-        'count': len(entries),
+        'items': compact_entries,
+        'count': len(compact_entries),
+        'projection_version': 'identity_candidates_content_minimized_v1',
+        'content_minimized': True,
         'legacy_only': True,
         'evidence_only': True,
         'drives_active_injection': False,

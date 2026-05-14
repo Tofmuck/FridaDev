@@ -63,13 +63,38 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
     def test_identity_candidates_limit_fallback_sort_by_weight_and_mark_legacy_surface(self) -> None:
         observed = {'calls': []}
         original_get_identities = self.server.memory_store.get_identities
+        raw_content = 'RAW LEGACY IDENTITY CONTENT should not be served'
+        raw_content_norm = 'raw legacy identity content should not be served'
+        raw_last_reason = 'operator free-text last reason should not be served'
+        raw_override_reason = 'operator free-text override reason should not be served'
 
         def fake_get_identities(subject: str, top_n: int, status=None):
             observed['calls'].append((subject, top_n, status))
             if subject == 'user':
                 return [
                     {'identity_id': 'u-low', 'weight': 0.2},
-                    {'identity_id': 'u-high', 'weight': 0.9},
+                    {
+                        'identity_id': 'u-high',
+                        'subject': 'user',
+                        'weight': 0.9,
+                        'status': 'accepted',
+                        'content': raw_content,
+                        'content_norm': raw_content_norm,
+                        'last_reason': raw_last_reason,
+                        'override_reason': raw_override_reason,
+                        'override_state': 'accepted',
+                        'override_actor': 'admin',
+                        'override_ts': '2026-05-14T10:00:00Z',
+                        'created_ts': '2026-05-14T09:00:00Z',
+                        'last_seen_ts': '2026-05-14T09:30:00Z',
+                        'source_trace_id': 'trace-1',
+                        'stability': 'durable',
+                        'utterance_mode': 'normal',
+                        'recurrence': 'repeated',
+                        'scope': 'identity',
+                        'evidence_kind': 'statement',
+                        'confidence': 0.84,
+                    },
                 ]
             return [
                 {'identity_id': 'l-mid', 'weight': 0.5},
@@ -94,12 +119,45 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
             ['u-high', 'l-mid', 'u-low', 'l-zero'],
         )
         self.assertEqual(data['count'], 4)
+        self.assertEqual(data['projection_version'], 'identity_candidates_content_minimized_v1')
+        self.assertTrue(data['content_minimized'])
         self.assertTrue(data['legacy_only'])
         self.assertTrue(data['evidence_only'])
         self.assertFalse(data['drives_active_injection'])
         self.assertEqual(data['active_identity_source'], 'identity_mutables')
         self.assertEqual(data['active_prompt_contract'], 'static + mutable narrative')
         self.assertTrue(data['legacy_mutators_disabled'])
+        first_item = data['items'][0]
+        self.assertEqual(first_item['identity_id'], 'u-high')
+        self.assertEqual(first_item['subject'], 'user')
+        self.assertEqual(first_item['source_kind'], 'legacy_identity')
+        self.assertEqual(first_item['status'], 'accepted')
+        self.assertEqual(first_item['weight'], 0.9)
+        self.assertEqual(first_item['confidence'], 0.84)
+        self.assertEqual(first_item['created_ts'], '2026-05-14T09:00:00Z')
+        self.assertEqual(first_item['last_seen_ts'], '2026-05-14T09:30:00Z')
+        self.assertEqual(first_item['source_trace_id'], 'trace-1')
+        self.assertEqual(first_item['content_chars'], len(raw_content))
+        self.assertEqual(len(first_item['content_sha256_12']), 12)
+        self.assertEqual(first_item['content_norm_chars'], len(raw_content_norm))
+        self.assertEqual(len(first_item['content_norm_sha256_12']), 12)
+        self.assertEqual(first_item['reason_code'], 'text_reason_present')
+        self.assertEqual(first_item['reason_chars'], len(raw_last_reason))
+        self.assertEqual(len(first_item['reason_sha256_12']), 12)
+        self.assertEqual(first_item['override_note_code'], 'override_note_present')
+        self.assertEqual(first_item['override_note_chars'], len(raw_override_reason))
+        self.assertEqual(len(first_item['override_note_sha256_12']), 12)
+        self.assertTrue(first_item['legacy_only'])
+        self.assertTrue(first_item['evidence_only'])
+        self.assertFalse(first_item['drives_active_injection'])
+        forbidden_keys = {'content', 'content_norm', 'last_reason', 'override_reason'}
+        for item in data['items']:
+            self.assertTrue(forbidden_keys.isdisjoint(item))
+        serialized = str(data)
+        self.assertNotIn(raw_content, serialized)
+        self.assertNotIn(raw_content_norm, serialized)
+        self.assertNotIn(raw_last_reason, serialized)
+        self.assertNotIn(raw_override_reason, serialized)
 
     def test_identity_candidates_rejects_invalid_subject(self) -> None:
         response = self.client.get('/api/admin/hermeneutics/identity-candidates?subject=robot')
