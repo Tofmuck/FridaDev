@@ -62,7 +62,7 @@ Preuves runtime relues pour cette phase:
   - `identity_extractor`: `p50=1049.938ms`, `p95=1925.069ms`, `max=3074.631ms`;
 - le dashboard actuel retourne encore `latency_ms=0` pour `retrieve/arbiter/identity_extractor` quand le fichier courant `admin.log.jsonl` ne porte pas les historiques rotates;
 - `prompt_prepared` persiste deja `memory_items_used`, `estimated_prompt_tokens` et `memory_prompt_injection`, mais pas les `candidate_id` injectes;
-- `arbiter` persiste deja `raw_candidates`, `kept_candidates`, `rejected_candidates`, `decision_source`, `fallback_used`, `rejection_reason_counts`;
+- `arbiter` persiste deja `raw_candidates`, `kept_candidates`, `rejected_candidates`, `decision_source`, `fallback_used`, `fallback_decisions`, `rejection_reason_code_counts`;
 - `hermeneutic_node_insertion` persiste deja des resumes compacts `memory_retrieved.retrieved_count` et `memory_arbitration.{status,kept_count,rejected_count,decisions_count}`;
 - `duration_ms` n'est actuellement persiste dans `chat_log_events` que pour `memory_retrieve`, pas pour `arbiter`, `prompt_prepared` ni `hermeneutic_node_insertion`.
 

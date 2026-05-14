@@ -193,8 +193,9 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['decision_source'], 'mixed')
         self.assertTrue(payload['fallback_used'])
         self.assertEqual(payload['fallback_decisions'], 1)
-        self.assertEqual(payload['rejection_reason_counts']['below_contextual_gain_threshold'], 1)
-        self.assertEqual(payload['rejection_reason_counts']['fallback:parse_or_runtime_error'], 1)
+        self.assertEqual(payload['rejection_reason_code_counts']['below_contextual_gain_threshold'], 1)
+        self.assertEqual(payload['rejection_reason_code_counts']['fallback_parse_or_runtime_error'], 1)
+        self.assertNotIn('rejection_reason_counts', payload)
         self.assertNotIn('candidate_content', payload)
         self.assertNotIn('candidates', payload)
 
@@ -295,8 +296,9 @@ class ChatInstrumentationPhase2Tests(unittest.TestCase):
         self.assertEqual(payload['decision_source'], 'mixed')
         self.assertTrue(payload['fallback_used'])
         self.assertEqual(payload['fallback_decisions'], 1)
-        self.assertEqual(payload['rejection_reason_counts']['below_contextual_gain_threshold'], 1)
-        self.assertEqual(payload['rejection_reason_counts']['fallback:parse_or_runtime_error'], 1)
+        self.assertEqual(payload['rejection_reason_code_counts']['below_contextual_gain_threshold'], 1)
+        self.assertEqual(payload['rejection_reason_code_counts']['fallback_parse_or_runtime_error'], 1)
+        self.assertNotIn('rejection_reason_counts', payload)
         self.assertEqual(payload['error_class'], 'RuntimeError')
 
 if __name__ == '__main__':

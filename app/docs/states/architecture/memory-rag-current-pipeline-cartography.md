@@ -584,8 +584,8 @@ Stages pertinents verifies:
 
 Ce que chaque stage montre aujourd'hui:
 - `memory_retrieve`: seulement `top_k_requested` / `top_k_returned`
-- `arbiter`: counts, `mode`, `model`, `decision_source`, `fallback_used`, `rejection_reason_counts`
-- `memory_chain_snapshot`: snapshot content-free par tour de la chaine `retrieved -> basket/dedup -> arbiter keep/drop -> injected`, avec IDs/hashes, counts, score buckets, reason keys compactes et classe d'injection
+- `arbiter`: counts, `mode`, `model`, `decision_source`, `fallback_used`, `fallback_decisions`, `rejection_reason_code_counts`
+- `memory_chain_snapshot`: snapshot content-free par tour de la chaine `retrieved -> basket/dedup -> arbiter keep/drop -> injected`, avec IDs/hashes, counts, score buckets, `reason_code` stable, longueur/hash court de raison et classe d'injection
 - `hermeneutic_node_insertion`: resume compact de `memory_retrieved` et `memory_arbitration`
 - `prompt_prepared`: resume de l'injection memoire effective dans le prompt, avec `injected_candidate_ids`
 

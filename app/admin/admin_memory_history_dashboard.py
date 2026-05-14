@@ -5,6 +5,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from admin import admin_stage_latency_summary
 from memory import memory_pre_arbiter_basket
+from observability.memory_arbiter_reason_codes import compact_reason_code_counts_from_mapping
 
 _RECENT_TURN_STAGES = (
     'embedding',
@@ -313,13 +314,20 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'summary_generation_observed': bool(data.get('summary_generation_observed')),
         }
     if stage == 'arbiter':
+        reason_code_counts = _safe_mapping(data.get('rejection_reason_code_counts'))
+        if not reason_code_counts:
+            reason_code_counts = compact_reason_code_counts_from_mapping(
+                _safe_mapping(data.get('rejection_reason_counts'))
+            )
         return {
             'raw_candidates': _to_int(data.get('raw_candidates')),
             'kept_candidates': _to_int(data.get('kept_candidates')),
             'rejected_candidates': _to_int(data.get('rejected_candidates')),
             'decision_source': str(data.get('decision_source') or ''),
             'fallback_used': bool(data.get('fallback_used')),
+            'fallback_decisions': _to_int(data.get('fallback_decisions')),
             'model': str(data.get('model') or ''),
+            'rejection_reason_code_counts': reason_code_counts,
             'reason_code': str(data.get('reason_code') or ''),
             'retrieval_status': str(data.get('retrieval_status') or ''),
             'retrieval_error_code': str(data.get('retrieval_error_code') or ''),

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import hashlib
-import re
 from typing import Any, Mapping, Sequence
 
 from observability import chat_turn_logger
+from observability.memory_arbiter_reason_codes import compact_arbiter_reason_observability
 
 
 SCHEMA_VERSION = "v1"
 MAX_RECORDED_CANDIDATES = 24
-_STABLE_REASON_RE = re.compile(r"^[a-z0-9_:-]{3,72}$")
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -98,38 +97,6 @@ def _count_by_key(items: Sequence[Any], key: str) -> dict[str, int]:
         label = _text(payload.get(key)) or "unknown"
         counts[label] = counts.get(label, 0) + 1
     return dict(sorted(counts.items()))
-
-
-def _reason_observability(reason: Any) -> dict[str, Any]:
-    text = _text(reason)
-    if not text:
-        return {
-            "reason_key": "unspecified",
-            "reason_chars": 0,
-            "reason_sha256_12": "",
-        }
-
-    fragments = [fragment.strip() for fragment in text.split("|") if fragment.strip()]
-    reason_key = "model_reason"
-    for fragment in fragments:
-        raw_fragment = fragment.strip()
-        if re.search(r"\s", raw_fragment):
-            continue
-        normalized = raw_fragment.lower()
-        normalized = normalized.split("(", 1)[0].strip()
-        normalized = re.sub(r"\s+", "_", normalized)
-        if normalized.startswith("fallback:"):
-            reason_key = "fallback"
-            break
-        if _STABLE_REASON_RE.match(normalized):
-            reason_key = normalized[:72]
-            break
-
-    return {
-        "reason_key": reason_key,
-        "reason_chars": len(text),
-        "reason_sha256_12": _sha256_12(text),
-    }
 
 
 def _decision_status(decision: Mapping[str, Any] | None, *, arbitration_status: str, reason_code: str) -> str:
@@ -273,7 +240,7 @@ def _basket_candidate_snapshot(
                 "semantic_relevance": _rounded_score(decision.get("semantic_relevance")),
                 "contextual_gain": _rounded_score(decision.get("contextual_gain")),
                 "redundant_with_recent": bool(decision.get("redundant_with_recent", False)),
-                **_reason_observability(decision.get("reason")),
+                **compact_arbiter_reason_observability(decision.get("reason")),
             }
         )
     return out

@@ -66,6 +66,7 @@ La surface doit rendre lisibles, au minimum :
 - embeddings
 - panier pre-arbitre
 - arbitre
+  - les agregats de rejet doivent etre exposes sous forme de `reason_code` stable, par exemple `rejection_reason_code_counts` / `top_rejection_reason_code_counts`, jamais comme texte libre de raison;
 - injection memoire
 - lectures recentes utiles par tour
 - decisions arbitre persistees

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from memory import arbiter
+from memory import memory_arbiter_audit
 from memory import memory_store
 import config
 
@@ -703,6 +705,105 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
         self.assertEqual(observed['models'], [config.ARBITER_MODEL])
         self.assertTrue(observed['committed'])
+
+    def test_record_arbiter_decisions_emits_reason_code_counts_without_raw_reasons(self) -> None:
+        raw_reason = 'sensitive freeform reason because user pasted private context'
+        observed = {'events': [], 'committed': False}
+        original_conn = memory_store._conn
+        original_emit = memory_arbiter_audit.chat_turn_logger.emit
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params):
+                return None
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+            def commit(self):
+                observed['committed'] = True
+                return None
+
+        def fake_emit(stage, **kwargs):
+            observed['events'].append((stage, kwargs))
+            return True
+
+        memory_store._conn = lambda: FakeConnection()
+        memory_arbiter_audit.chat_turn_logger.emit = fake_emit
+        try:
+            memory_store.record_arbiter_decisions(
+                conversation_id='conv-phase4-arbiter-reasons',
+                traces=[
+                    {'candidate_id': 'cand-1', 'role': 'user', 'content': 'drop a', 'score': 0.4},
+                    {'candidate_id': 'cand-2', 'role': 'user', 'content': 'drop b', 'score': 0.3},
+                    {'candidate_id': 'cand-3', 'role': 'assistant', 'content': 'keep c', 'score': 0.9},
+                ],
+                decisions=[
+                    {
+                        'candidate_id': 'cand-1',
+                        'keep': False,
+                        'semantic_relevance': 0.2,
+                        'contextual_gain': 0.1,
+                        'redundant_with_recent': False,
+                        'reason': raw_reason,
+                        'decision_source': 'llm',
+                    },
+                    {
+                        'candidate_id': 'cand-2',
+                        'keep': False,
+                        'semantic_relevance': 0.2,
+                        'contextual_gain': 0.1,
+                        'redundant_with_recent': False,
+                        'reason': 'fallback:timeout',
+                        'decision_source': 'fallback',
+                    },
+                    {
+                        'candidate_id': 'cand-3',
+                        'keep': True,
+                        'semantic_relevance': 0.9,
+                        'contextual_gain': 0.8,
+                        'redundant_with_recent': False,
+                        'reason': 'kept because useful',
+                        'decision_source': 'llm',
+                    },
+                ],
+                effective_model='openrouter/arbiter-runtime-db',
+                mode='enforced_all',
+            )
+        finally:
+            memory_store._conn = original_conn
+            memory_arbiter_audit.chat_turn_logger.emit = original_emit
+
+        self.assertTrue(observed['committed'])
+        self.assertEqual(len(observed['events']), 1)
+        stage, kwargs = observed['events'][0]
+        self.assertEqual(stage, 'arbiter')
+        payload = kwargs['payload']
+        self.assertEqual(payload['kept_candidates'], 1)
+        self.assertEqual(payload['rejected_candidates'], 2)
+        self.assertEqual(payload['decision_source'], 'mixed')
+        self.assertTrue(payload['fallback_used'])
+        self.assertEqual(payload['fallback_decisions'], 1)
+        self.assertEqual(
+            payload['rejection_reason_code_counts'],
+            {'fallback_timeout': 1, 'model_reason': 1},
+        )
+        self.assertNotIn('rejection_reason_counts', payload)
+        event_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(raw_reason, event_json)
+        self.assertNotIn('private context', event_json)
 
     def test_record_arbiter_decisions_persists_effective_model_even_if_runtime_changes_before_insert(self) -> None:
         observed = {'persisted_models': [], 'request_models': []}

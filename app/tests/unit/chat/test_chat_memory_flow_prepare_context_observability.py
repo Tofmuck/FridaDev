@@ -503,7 +503,7 @@ class ChatMemoryFlowPrepareContextObservabilityTests(unittest.TestCase):
             for item in snapshot["basket_candidates"]
             if item["arbiter_status"] == "drop"
         ][0]
-        self.assertEqual(dropped["reason_key"], "model_reason")
+        self.assertEqual(dropped["reason_code"], "model_reason")
         self.assertEqual(dropped["reason_chars"], len(raw_reason))
         self.assertTrue(dropped["reason_sha256_12"])
         self.assertEqual(len(prepared.memory_traces), 1)

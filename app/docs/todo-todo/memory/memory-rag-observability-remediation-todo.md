@@ -152,17 +152,17 @@ Fichiers probablement touches:
 - tests arbiter / logs / admin memory
 
 Hors-scope:
-- [ ] Ne pas modifier le prompt ou le jugement de l'arbiter.
-- [ ] Ne pas modifier les seuils `semantic_relevance` ou `contextual_gain`.
-- [ ] Ne pas supprimer l'audit durable existant sans decision separee.
-- [ ] Ne pas exposer la raison libre dans les agregats compacts.
+- [x] Ne pas modifier le prompt ou le jugement de l'arbiter.
+- [x] Ne pas modifier les seuils `semantic_relevance` ou `contextual_gain`.
+- [x] Ne pas supprimer l'audit durable existant sans decision separee.
+- [x] Ne pas exposer la raison libre dans les agregats compacts.
 
 Cases de correction:
-- [ ] Definir un vocabulaire minimal de `reason_code` stable pour les rejets courants.
-- [ ] Mapper les raisons libres du modele vers ces codes au moment de l'observabilite compacte.
-- [ ] Conserver au besoin `reason_chars` et `reason_sha256_12`, sans texte brut.
-- [ ] Preserver les champs existants utiles: kept/dropped counts, decision_source, model, fallback_used.
-- [ ] Adapter les surfaces admin qui affichent les agregats de rejet.
+- [x] Definir un vocabulaire minimal de `reason_code` stable pour les rejets courants.
+- [x] Mapper les raisons libres du modele vers ces codes au moment de l'observabilite compacte.
+- [x] Conserver au besoin `reason_chars` et `reason_sha256_12`, sans texte brut.
+- [x] Preserver les champs existants utiles: kept/dropped counts, decision_source, model, fallback_used.
+- [x] Adapter les surfaces admin qui affichent les agregats de rejet.
 
 Tests attendus:
 - test rejection reason libre longue ou sensible -> code stable seulement dans l'event compact;
@@ -174,7 +174,7 @@ Preuves runtime attendues:
 - verification explicite qu'aucune phrase libre n'apparait dans l'agregat compact.
 
 Condition de cloture:
-- [ ] Les rejets arbiter sont aggregables par codes stables sans fuite de texte libre.
+- [x] Les rejets arbiter sont aggregables par codes stables sans fuite de texte libre.
 
 ## Lot 4 - Admin Memory content-minimized par defaut
 

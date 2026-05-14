@@ -59,7 +59,7 @@ class LogMarkdownExportPhase6Tests(unittest.TestCase):
                         18,
                         {
                             'rejected_candidates': 2,
-                            'rejection_reason_counts': {'below_threshold': 2},
+                            'rejection_reason_code_counts': {'below_semantic_threshold': 2},
                             'long_text': long_value,
                         },
                     ),
@@ -94,7 +94,7 @@ class LogMarkdownExportPhase6Tests(unittest.TestCase):
         self.assertLess(markdown.find('turn_start'), markdown.find('arbiter'))
         self.assertIn('`prompt_kind`', markdown)
         self.assertIn('`rejected_candidates`', markdown)
-        self.assertIn('`rejection_reason_counts`', markdown)
+        self.assertIn('`rejection_reason_code_counts`', markdown)
         self.assertNotIn('x' * 200, markdown)
 
         self.assertIn('WHERE conversation_id = %s', str(observed['query']))

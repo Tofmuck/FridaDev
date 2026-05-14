@@ -234,11 +234,11 @@
           : "Aucun doublon notable remonte",
         source: durable.source_kind || "durable_persistence",
       }],
-      ["top_rejection_reasons", {
-        label: "Rejets arbitre les plus frequents",
-        value: Object.keys(decisions.top_rejection_reasons || {}).length
-          ? Object.entries(decisions.top_rejection_reasons).map(([reason, count]) => `${reason}=${count}`).join(" | ")
-          : "Aucune raison remontee",
+      ["top_rejection_reason_code_counts", {
+        label: "Codes de rejet arbitre les plus frequents",
+        value: Object.keys(decisions.top_rejection_reason_code_counts || {}).length
+          ? Object.entries(decisions.top_rejection_reason_code_counts).map(([reasonCode, count]) => `${reasonCode}=${count}`).join(" | ")
+          : "Aucun code remonte",
         source: durable.source_kind || "durable_persistence",
       }],
     );

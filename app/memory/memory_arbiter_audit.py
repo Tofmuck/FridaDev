@@ -3,28 +3,9 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from observability import chat_turn_logger
-
-
-def _compact_reason_key(reason: Any, *, max_chars: int = 72) -> str:
-    text = str(reason or '').strip()
-    if not text:
-        return 'unspecified'
-    primary = text.split('|', 1)[0].strip()
-    normalized = ' '.join(primary.split())
-    if len(normalized) <= max_chars:
-        return normalized
-    return normalized[: max_chars - 3].rstrip() + '...'
-
-
-def _rejection_reason_counts(decisions: list[dict[str, Any]], *, limit: int = 5) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for decision in decisions:
-        if bool(decision.get('keep', False)):
-            continue
-        key = _compact_reason_key(decision.get('reason'))
-        counts[key] = counts.get(key, 0) + 1
-    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
-    return {key: value for key, value in ordered[:limit]}
+from observability.memory_arbiter_reason_codes import (
+    rejection_reason_code_counts as build_rejection_reason_code_counts,
+)
 
 
 def _decision_source_counts(decisions: list[dict[str, Any]]) -> dict[str, int]:
@@ -241,7 +222,7 @@ def record_arbiter_decisions(
     decision_source_counts = _decision_source_counts(decisions)
     decision_source = _resolve_decision_source(decision_source_counts)
     fallback_decisions = int(decision_source_counts.get('fallback', 0))
-    rejection_reason_counts = _rejection_reason_counts(decisions)
+    rejection_reason_code_counts = build_rejection_reason_code_counts(decisions)
     arbiter_payload: dict[str, Any] = {
         'raw_candidates': len(traces),
         'kept_candidates': kept_candidates,
@@ -251,8 +232,8 @@ def record_arbiter_decisions(
         'decision_source': decision_source,
         'fallback_used': bool(fallback_decisions > 0),
     }
-    if rejection_reason_counts:
-        arbiter_payload['rejection_reason_counts'] = rejection_reason_counts
+    if rejection_reason_code_counts:
+        arbiter_payload['rejection_reason_code_counts'] = rejection_reason_code_counts
     if fallback_decisions > 0:
         arbiter_payload['fallback_decisions'] = fallback_decisions
 

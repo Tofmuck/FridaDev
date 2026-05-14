@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from observability.memory_arbiter_reason_codes import compact_reason_code_counts_from_mapping
+
 
 def _to_int(value: Any, fallback: int = 0) -> int:
     try:
@@ -16,16 +18,6 @@ def _utc_iso(value: Any) -> str | None:
         return value.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     text = str(value or '').strip()
     return text or None
-
-
-def _reason_key(reason: Any, *, max_chars: int = 72) -> str:
-    raw = ' '.join(str(reason or '').split())
-    if not raw:
-        return 'unspecified'
-    compact = raw.split('|', 1)[0].strip()
-    if len(compact) <= max_chars:
-        return compact
-    return compact[: max_chars - 3].rstrip() + '...'
 
 
 def _compact_excerpt(text: Any, *, max_chars: int = 140) -> str:
@@ -148,10 +140,10 @@ def _read_durable_state(
             'llm_count': _to_int(arbiter_row[4]),
             'conversations': _to_int(arbiter_row[5]),
             'latest_ts': _utc_iso(arbiter_row[6]),
-            'top_rejection_reasons': {
-                _reason_key(row[0]): _to_int(row[1])
+            'top_rejection_reason_code_counts': compact_reason_code_counts_from_mapping({
+                str(row[0] or ''): _to_int(row[1])
                 for row in rejection_rows
-            },
+            }),
         },
     }
 

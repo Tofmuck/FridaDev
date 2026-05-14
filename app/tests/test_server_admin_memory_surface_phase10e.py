@@ -120,7 +120,14 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
                 datetime(2026, 4, 12, 8, 57, tzinfo=timezone.utc),
                 'arbiter',
                 'ok',
-                {'kept_candidates': 2, 'decision_source': 'llm'},
+                {
+                    'kept_candidates': 2,
+                    'rejected_candidates': 1,
+                    'decision_source': 'llm',
+                    'rejection_reason_counts': {
+                        'sensitive freeform reason because user pasted private context': 1,
+                    },
+                },
             ),
             (
                 'conv-memory',
@@ -200,6 +207,11 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(stages['embedding']['payload']['source_kind'], 'query')
         self.assertEqual(stages['memory_retrieve']['payload']['reason_code'], '')
         self.assertEqual(stages['memory_retrieve']['payload']['error_code'], '')
+        self.assertEqual(
+            stages['arbiter']['payload']['rejection_reason_code_counts'],
+            {'model_reason': 1},
+        )
+        self.assertNotIn('rejection_reason_counts', stages['arbiter']['payload'])
         self.assertEqual(stages['summaries']['payload']['summary_count_used'], 1)
         self.assertTrue(stages['summaries']['payload']['in_prompt'])
         self.assertTrue(stages['summaries']['payload']['summary_generation_observed'])
@@ -358,6 +370,63 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(activity["status_counts"], {"ok": 3, "error": 1})
         self.assertEqual(activity["normal_empty_events"], 2)
         self.assertEqual(activity["retrieve_error_events"], 1)
+
+    def test_durable_state_exposes_rejection_reason_code_counts_without_raw_reasons(self) -> None:
+        raw_reason = "sensitive freeform reason because user pasted private context"
+
+        class FakeCursor:
+            def __init__(self):
+                self.fetchone_calls = 0
+                self.fetchall_calls = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params=None):
+                return None
+
+            def fetchone(self):
+                self.fetchone_calls += 1
+                if self.fetchone_calls == 1:
+                    return (3, 2, 0, 2, 2, 1, 0, datetime(2026, 5, 13, 9, 0, tzinfo=timezone.utc))
+                if self.fetchone_calls == 2:
+                    return (0, 0, 0, None)
+                return (2, 1, 1, 1, 1, 1, datetime(2026, 5, 13, 9, 1, tzinfo=timezone.utc))
+
+            def fetchall(self):
+                self.fetchall_calls += 1
+                if self.fetchall_calls == 1:
+                    return []
+                return [
+                    (raw_reason, 2),
+                    ('fallback:parse_or_runtime_error', 1),
+                ]
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_durable_state(conn_factory=lambda: FakeConn())
+        decisions = payload["arbiter_decisions"]
+
+        self.assertEqual(
+            decisions["top_rejection_reason_code_counts"],
+            {
+                "model_reason": 2,
+                "fallback_parse_or_runtime_error": 1,
+            },
+        )
+        self.assertNotIn("top_rejection_reasons", decisions)
+        self.assertNotIn(raw_reason, str(decisions))
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])
