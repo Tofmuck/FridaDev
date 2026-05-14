@@ -393,6 +393,9 @@ def chat_response(
 
     chat_turn_logger.set_state('summary_generation_observed', False)
     if summarizer_module.maybe_summarize(conversation, runtime_main_model):
+        mark_persist_phase = getattr(conv_store_module, 'mark_next_persist_phase', None)
+        if callable(mark_persist_phase):
+            mark_persist_phase('summary')
         conv_store_module.save_conversation(conversation)
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
         chat_turn_logger.set_state('summary_generation_observed', True)

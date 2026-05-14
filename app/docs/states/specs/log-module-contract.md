@@ -241,7 +241,17 @@ Minimum event-specific details:
   - `raw_candidates`, `kept_candidates`, `mode`
 
 - `persist_response`
-  - `conversation_saved`, `messages_written`
+  - `conversation_saved`, `messages_written`, `persist_phase`
+  - stable `persist_phase` values:
+    - `conversation_init`: conversation shell/catalog saved before the user message is appended
+    - `user_turn`: user message preservation without a final assistant response
+    - `summary`: save triggered after summary generation / summary markers
+    - `assistant_final`: final assistant response save
+    - `assistant_interrupted`: interrupted/partial assistant marker save
+    - `unknown`: compatibility fallback for legacy or unclassified saves
+  - goal: count final assistant saves without confusing them with user-turn preservation, summary saves or interrupted markers
+  - `persist_response` describes the canonical conversation save only; derived writes such as memory traces or identity writes remain observed by their own stages/events
+  - forbidden: raw conversation, raw messages, prompt excerpts
 
 - `turn_end`
   - `total_duration_ms`, `final_status`

@@ -121,6 +121,105 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)
 
+    def test_conv_store_proxy_emits_persist_response_phase_taxonomy(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        base_module = SimpleNamespace(save_conversation=lambda *_args, **_kwargs: None)
+        proxy = self.server._ConvStoreChatLogProxy(
+            base_module=base_module,
+            token_utils_module=SimpleNamespace(),
+        )
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-persist-phase-taxonomy',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [{'role': 'system', 'content': 'SYSTEM'}],
+                },
+            )
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [
+                        {'role': 'system', 'content': 'SYSTEM'},
+                        {'role': 'user', 'content': 'u', 'summarized_by': 'summary-1'},
+                    ],
+                },
+            )
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [
+                        {'role': 'system', 'content': 'SYSTEM'},
+                        {'role': 'user', 'content': 'u'},
+                    ],
+                },
+            )
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [
+                        {'role': 'system', 'content': 'SYSTEM'},
+                        {'role': 'user', 'content': 'u'},
+                        {'role': 'assistant', 'content': 'a'},
+                    ],
+                },
+            )
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [
+                        {'role': 'system', 'content': 'SYSTEM'},
+                        {'role': 'user', 'content': 'u'},
+                        {
+                            'role': 'assistant',
+                            'content': '',
+                            'meta': {'assistant_turn': {'status': 'interrupted'}},
+                        },
+                    ],
+                },
+            )
+            proxy.mark_next_persist_phase('unknown')
+            proxy.save_conversation(
+                {
+                    'id': 'conv-persist-phase-taxonomy',
+                    'messages': [{'role': 'system', 'content': 'SYSTEM'}],
+                },
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        persist_events = [event for event in observed if event.get('stage') == 'persist_response']
+        self.assertEqual(
+            [event['payload_json']['persist_phase'] for event in persist_events],
+            [
+                'conversation_init',
+                'summary',
+                'user_turn',
+                'assistant_final',
+                'assistant_interrupted',
+                'conversation_init',
+            ],
+        )
+        for event in persist_events:
+            payload = event['payload_json']
+            self.assertTrue(payload['conversation_saved'])
+            self.assertIn('messages_written', payload)
+            self.assertNotIn('messages', payload)
+            self.assertNotIn('content', payload)
+            self.assertNotIn('conversation', payload)
+
     def test_prompt_prepared_exposes_identity_prompt_injection_without_raw_content(self) -> None:
         observed: list[dict[str, object]] = []
         original_insert = self.server.log_store.insert_chat_log_event

@@ -36,6 +36,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
 
     def test_api_chat_stream_keeps_content_type_and_conversation_headers(self) -> None:
         observed = {'stream_kw': None, 'stream_completed': False, 'now_iso_flags': []}
+        observed_events: list[dict] = []
         conversation = {
             'id': 'conv-stream-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -69,17 +70,24 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
             requests_post=fake_requests_post,
         )
         original_now_iso = self.server.chat_service._now_iso
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
         now_values = iter(['2026-03-26T00:00:10Z', '2026-03-26T00:00:20Z'])
 
         def fake_now_iso():
             observed['now_iso_flags'].append(observed['stream_completed'])
             return next(now_values)
 
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
         self.server.chat_service._now_iso = fake_now_iso
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
         finally:
             self.server.chat_service._now_iso = original_now_iso
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
         self.assertEqual(response.status_code, 200)
@@ -94,6 +102,10 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['timestamp'], '2026-03-26T00:00:20Z')
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), '2026-03-26T00:00:20Z')
         self.assertEqual(observed['now_iso_flags'], [False, True])
+        persist_events = [item for item in observed_events if item['stage'] == 'persist_response']
+        self.assertGreaterEqual(len(persist_events), 2)
+        self.assertEqual(persist_events[0]['payload_json']['persist_phase'], 'conversation_init')
+        self.assertEqual(persist_events[-1]['payload_json']['persist_phase'], 'assistant_final')
 
     def test_api_chat_stream_normalizes_ordinary_turn_for_first_party_surface(self) -> None:
         conversation = {
@@ -266,6 +278,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
 
     def test_api_chat_stream_emits_error_terminal_when_upstream_breaks_mid_stream(self) -> None:
+        observed_events: list[dict] = []
         conversation = {
             'id': 'conv-stream-error-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -299,11 +312,19 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
             requests_post=fake_requests_post,
         )
         original_exc = self.server.requests.exceptions.RequestException
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
         self.server.requests.exceptions.RequestException = _FakeRequestException
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour', 'stream': True}, buffered=True)
         finally:
             self.server.requests.exceptions.RequestException = original_exc
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
         text, terminal = self._split_stream_body(response)
@@ -336,6 +357,9 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         )
         self.assertTrue(observed_state['save_calls'][-1]['kwargs'].get('updated_at'))
         self.assertEqual(observed_state['save_new_traces_calls'], [])
+        persist_events = [item for item in observed_events if item['stage'] == 'persist_response']
+        self.assertGreaterEqual(len(persist_events), 2)
+        self.assertEqual(persist_events[-1]['payload_json']['persist_phase'], 'assistant_interrupted')
 
     def test_api_chat_stream_emits_error_terminal_when_local_finalize_breaks_and_does_not_persist_fragment(self) -> None:
         conversation = {

@@ -64,6 +64,12 @@ def _persistence_failure_payload(result: Any) -> dict[str, Any]:
     }
 
 
+def _mark_next_persist_phase(conv_store_module: Any, phase: str) -> None:
+    marker = getattr(conv_store_module, 'mark_next_persist_phase', None)
+    if callable(marker):
+        marker(phase)
+
+
 def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     dialog_messages = [
         dict(message or {})
@@ -172,6 +178,7 @@ def run_llm_exchange(
             )
             updated_at = now_iso_func()
             conv_store_module.append_message(conversation, 'assistant', text, timestamp=updated_at)
+            _mark_next_persist_phase(conv_store_module, 'assistant_final')
             save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
             if not _save_result_ok(save_result):
                 return _json_result(_persistence_failure_payload(save_result), 503)
@@ -413,6 +420,13 @@ def run_llm_exchange(
                             terminal_error_code or 'stream_protocol_error',
                         ),
                     )
+                if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE and assistant_appended:
+                    persist_phase = 'assistant_final'
+                elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
+                    persist_phase = 'assistant_interrupted'
+                else:
+                    persist_phase = 'user_turn'
+                _mark_next_persist_phase(conv_store_module, persist_phase)
                 save_result = conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
                 if _save_result_ok(save_result):
                     persisted_updated_at = _save_result_updated_at(save_result, final_updated_at)
@@ -464,6 +478,7 @@ def run_llm_exchange(
                     ),
                 )
                 try:
+                    _mark_next_persist_phase(conv_store_module, 'assistant_interrupted')
                     if final_updated_at is None:
                         save_result = conv_store_module.save_conversation(conversation)
                     else:
@@ -540,6 +555,7 @@ def run_llm_exchange(
         )
 
     except requests_module.exceptions.RequestException as exc:
+        _mark_next_persist_phase(conv_store_module, 'user_turn')
         conv_store_module.save_conversation(conversation)
         admin_logs_module.log_event(
             'llm_error',
@@ -550,6 +566,7 @@ def run_llm_exchange(
         )
         return _json_result({'ok': False, 'error': f'Connexion au LLM: {exc}'}, 502)
     except Exception as exc:
+        _mark_next_persist_phase(conv_store_module, 'user_turn')
         conv_store_module.save_conversation(conversation)
         admin_logs_module.log_event(
             'llm_error',

@@ -288,6 +288,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
             persist_event['payload_json'],
             {
                 'conversation_saved': False,
+                'persist_phase': 'assistant_final',
                 'catalog_saved': True,
                 'messages_saved': False,
                 'message_count': 3,
@@ -296,6 +297,50 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
             },
         )
         self.assertEqual(len(observed_state['save_new_traces_calls']), 0)
+
+    def test_api_chat_persist_response_phases_json_success(self) -> None:
+        observed_events: list[dict] = []
+        conversation = {
+            'id': 'conv-persist-response-json-phase',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok persist phase'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        _observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+        finally:
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        persist_events = [item for item in observed_events if item['stage'] == 'persist_response']
+        self.assertGreaterEqual(len(persist_events), 2)
+        self.assertEqual(persist_events[0]['payload_json']['persist_phase'], 'conversation_init')
+        self.assertEqual(persist_events[-1]['payload_json']['persist_phase'], 'assistant_final')
+        self.assertTrue(persist_events[-1]['payload_json']['conversation_saved'])
+        self.assertNotIn('messages', persist_events[-1]['payload_json'])
+        self.assertNotIn('content', persist_events[-1]['payload_json'])
 
     def test_api_chat_emits_hard_guard_name_effect_and_final_posture_in_validation_logs(self) -> None:
         observed_events: list[dict] = []

@@ -115,24 +115,24 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Ajouter ou documenter un champ compact `persist_phase` sur `persist_response`.
-- [ ] Stabiliser le vocabulaire minimal, par exemple `user_turn`, `summary`, `assistant_final`, `assistant_interrupted`, ou noms locaux plus exacts.
-- [ ] Verifier que JSON et streaming emettent une phase exploitable pour la sauvegarde assistant finale.
-- [ ] Documenter dans `log-module-contract.md` la difference entre persistence canonique et ecritures derivees.
+- [x] Ajouter ou documenter un champ compact `persist_phase` sur `persist_response`.
+- [x] Stabiliser le vocabulaire minimal, par exemple `user_turn`, `summary`, `assistant_final`, `assistant_interrupted`, ou noms locaux plus exacts.
+- [x] Verifier que JSON et streaming emettent une phase exploitable pour la sauvegarde assistant finale.
+- [x] Documenter dans `log-module-contract.md` la difference entre persistence canonique et ecritures derivees.
 
 Tests attendus:
 
-- [ ] Test JSON: `persist_response.persist_phase=assistant_final` quand la reponse finale est sauvegardee.
-- [ ] Test streaming: meme contrat ou divergence explicitement documentee.
-- [ ] Test interruption si le chemin existe: phase distincte ou raison compacte.
+- [x] Test JSON: `persist_response.persist_phase=assistant_final` quand la reponse finale est sauvegardee.
+- [x] Test streaming: meme contrat ou divergence explicitement documentee.
+- [x] Test interruption si le chemin existe: phase distincte ou raison compacte.
 
 Preuves runtime attendues:
 
-- [ ] Lecture compacte de tours recents montrant des phases distinctes sans contenu brut.
+- [x] Lecture compacte de tours recents montrant des phases distinctes sans contenu brut.
 
 Condition de cloture:
 
-- [ ] Un operateur peut compter les sauvegardes finales assistant sans les confondre avec user turn, summary ou interruption.
+- [x] Un operateur peut compter les sauvegardes finales assistant sans les confondre avec user turn, summary ou interruption.
 
 ## Lot 2 - Segmenter les metriques llm_call
 
@@ -307,7 +307,7 @@ Condition de cloture:
 
 Le chantier se ferme quand:
 
-- [ ] `persist_response` est non ambigu pour les metriques de persistence.
+- [x] `persist_response` est non ambigu pour les metriques de persistence.
 - [ ] Les metriques LLM sont segmentees par `provider_caller`.
 - [ ] La barriere post-save JSON/streaming est testee ou documentee explicitement.
 - [ ] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.

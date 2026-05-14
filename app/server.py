@@ -18,6 +18,7 @@ import config
 from core import llm_client as llm
 from core import prompt_loader
 from tools import web_search as ws
+from core import assistant_turn_state
 from core import chat_stream_control
 from core import conv_store
 from core import chat_service
@@ -202,11 +203,65 @@ def _assistant_message_count(conversation: dict[str, Any]) -> int:
     return sum(1 for message in messages if str(message.get('role') or '') == 'assistant')
 
 
-def _conversation_save_payload(conversation: dict[str, Any], result: Any) -> tuple[bool, dict[str, Any], str | None]:
+_PERSIST_PHASES = {
+    'conversation_init',
+    'user_turn',
+    'summary',
+    'assistant_final',
+    'assistant_interrupted',
+    'unknown',
+}
+_NEXT_PERSIST_PHASE_STATE_KEY = '_next_persist_phase'
+
+
+def _normalize_persist_phase(value: Any) -> str:
+    phase = str(value or '').strip().lower()
+    return phase if phase in _PERSIST_PHASES else 'unknown'
+
+
+def _dialog_messages(conversation: dict[str, Any]) -> list[dict[str, Any]]:
+    messages = conversation.get('messages', [])
+    if not isinstance(messages, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if str(message.get('role') or '').strip().lower() in {'user', 'assistant'}:
+            out.append(message)
+    return out
+
+
+def _infer_persist_phase(conversation: dict[str, Any]) -> str:
+    dialog_messages = _dialog_messages(conversation)
+    if not dialog_messages:
+        return 'conversation_init'
+
+    last_message = dialog_messages[-1]
+    last_role = str(last_message.get('role') or '').strip().lower()
+    if last_role == 'assistant':
+        if assistant_turn_state.is_interrupted_assistant_turn(last_message):
+            return 'assistant_interrupted'
+        return 'assistant_final'
+
+    if any(str(message.get('summarized_by') or '').strip() for message in dialog_messages):
+        return 'summary'
+    if last_role == 'user':
+        return 'user_turn'
+    return 'unknown'
+
+
+def _conversation_save_payload(
+    conversation: dict[str, Any],
+    result: Any,
+    *,
+    persist_phase: str,
+) -> tuple[bool, dict[str, Any], str | None]:
     if result is None:
         message_count = len(conversation.get('messages', [])) if isinstance(conversation.get('messages'), list) else 0
         return True, {
             'conversation_saved': True,
+            'persist_phase': persist_phase,
             'catalog_saved': True,
             'messages_saved': True,
             'message_count': message_count,
@@ -217,6 +272,7 @@ def _conversation_save_payload(conversation: dict[str, Any], result: Any) -> tup
     reason = getattr(result, 'reason', None)
     payload = {
         'conversation_saved': ok,
+        'persist_phase': persist_phase,
         'catalog_saved': bool(getattr(result, 'catalog_saved', False)),
         'messages_saved': bool(getattr(result, 'messages_saved', False)),
         'message_count': int(getattr(result, 'message_count', 0) or 0),
@@ -233,6 +289,17 @@ class _ConvStoreChatLogProxy:
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._base, name)
+
+    def mark_next_persist_phase(self, phase: str) -> None:
+        chat_turn_logger.set_state(_NEXT_PERSIST_PHASE_STATE_KEY, _normalize_persist_phase(phase))
+
+    def _consume_next_persist_phase(self, conversation: dict[str, Any]) -> str:
+        raw_phase = chat_turn_logger.get_state(_NEXT_PERSIST_PHASE_STATE_KEY)
+        chat_turn_logger.set_state(_NEXT_PERSIST_PHASE_STATE_KEY, None)
+        phase = _normalize_persist_phase(raw_phase)
+        if phase != 'unknown':
+            return phase
+        return _infer_persist_phase(conversation)
 
     def load_conversation(self, conversation_id: str, system_prompt: str):
         conversation = self._base.load_conversation(conversation_id, system_prompt)
@@ -321,8 +388,13 @@ class _ConvStoreChatLogProxy:
         return prompt_messages
 
     def save_conversation(self, conversation: dict[str, Any], *args: Any, **kwargs: Any):
+        persist_phase = self._consume_next_persist_phase(conversation)
         result = self._base.save_conversation(conversation, *args, **kwargs)
-        ok, payload, reason = _conversation_save_payload(conversation, result)
+        ok, payload, reason = _conversation_save_payload(
+            conversation,
+            result,
+            persist_phase=persist_phase,
+        )
         chat_turn_logger.emit(
             'persist_response',
             status='ok' if ok else 'error',
