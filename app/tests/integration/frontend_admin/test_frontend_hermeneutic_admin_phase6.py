@@ -49,6 +49,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("static + mutable narrative", source)
         self.assertIn("identity_mutables", source)
         self.assertIn("Corrections recentes", source)
+        self.assertIn("stages provider/prompt critiques", source)
+        self.assertIn("stimmung_prompt_prepared", source)
+        self.assertIn("llm_call", source)
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/log"', source)
         self.assertIn('href="/identity"', source)
@@ -137,6 +140,9 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn("bascule exacte", render_source)
         self.assertIn("compile=", render_source)
         self.assertIn("item?.source_kind", render_source)
+        self.assertIn("sanitizeStagePayload", render_source)
+        self.assertIn("FORBIDDEN_STAGE_PAYLOAD_KEYS", render_source)
+        self.assertIn("not_observed", render_source)
         self.assertNotIn("prompt=", render_source)
         self.assertNotIn("item?.content", render_source)
         self.assertIn("Repères runtime et compilation active", identity_render_source)
@@ -179,13 +185,42 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('id="hermeneuticIdentityList"', source)
         self.assertIn('id="hermeneuticCorrectionsList"', source)
         self.assertIn("stimmung_agent", source)
+        self.assertIn("stimmung_prompt_prepared", source)
         self.assertIn("hermeneutic_node_insertion", source)
         self.assertIn("primary_node", source)
+        self.assertIn("validation_prompt_prepared", source)
         self.assertIn("validation_agent", source)
+        self.assertIn("prompt_prepared", source)
+        self.assertIn("llm_call", source)
         self.assertIn('id="hermeneuticIdentityLegacyNote"', source)
         self.assertNotIn("force_accept", source)
         self.assertNotIn("force_reject", source)
         self.assertNotIn("relabel", source)
+
+    def test_render_lists_critical_hermeneutic_stages_in_operator_order(self) -> None:
+        source = (APP_DIR / "web" / "hermeneutic_admin" / "render.js").read_text(encoding="utf-8")
+        critical_stages = [
+            "stimmung_agent",
+            "stimmung_prompt_prepared",
+            "hermeneutic_node_insertion",
+            "primary_node",
+            "validation_prompt_prepared",
+            "validation_agent",
+            "prompt_prepared",
+            "llm_call",
+        ]
+
+        previous_index = -1
+        for stage in critical_stages:
+            needle = f'"{stage}"'
+            self.assertIn(needle, source)
+            current_index = source.index(needle)
+            self.assertGreater(current_index, previous_index)
+            previous_index = current_index
+
+        for forbidden_key in ("prompt", "messages", "content", "user_message", "recent_window"):
+            self.assertIn(f'"{forbidden_key}"', source)
+        self.assertIn("sanitizeStagePayload(payload)", source)
 
 
 if __name__ == "__main__":

@@ -6,17 +6,17 @@
 
   const STAGE_ORDER = [
     "stimmung_agent",
+    "stimmung_prompt_prepared",
     "hermeneutic_node_insertion",
     "primary_node",
+    "validation_prompt_prepared",
     "validation_agent",
+    "prompt_prepared",
+    "llm_call",
   ];
 
-  const STAGE_LABELS = Object.freeze({
-    stimmung_agent: "stimmung_agent",
-    hermeneutic_node_insertion: "hermeneutic_node_insertion",
-    primary_node: "primary_node",
-    validation_agent: "validation_agent",
-  });
+  const STAGE_LABELS = Object.freeze(Object.fromEntries(STAGE_ORDER.map((stage) => [stage, stage])));
+  const FORBIDDEN_STAGE_PAYLOAD_KEYS = new Set(["prompt", "messages", "content", "user_message", "recent_window"]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -48,6 +48,16 @@
     if (typeof value === "string") return compactJson(value, 800);
     if (typeof value === "number" || typeof value === "boolean") return String(value);
     return compactJson(value, 1200);
+  };
+
+  const sanitizeStagePayload = (value) => {
+    if (Array.isArray(value)) return value.map((item) => sanitizeStagePayload(item));
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !FORBIDDEN_STAGE_PAYLOAD_KEYS.has(key))
+        .map(([key, item]) => [key, sanitizeStagePayload(item)]),
+    );
   };
 
   const buildModeObservationBody = (dashboard) => {
@@ -252,7 +262,9 @@
   const renderStagePayload = (target, stage, payload) => {
     if (!target) return;
     target.innerHTML = "";
-    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? sanitizeStagePayload(payload)
+      : {};
 
     if (stage === "hermeneutic_node_insertion" && safePayload.inputs && typeof safePayload.inputs === "object") {
       const summaryGrid = document.createElement("div");
@@ -309,7 +321,7 @@
       meta.className = "admin-card-meta";
       meta.appendChild(createChip(`events=${stageItems.length}`));
       if (!stageItems.length) {
-        meta.appendChild(createChip("non observe"));
+        meta.appendChild(createChip("not_observed"));
       } else {
         const latest = stageItems[0];
         const status = toText(latest?.status).toLowerCase();

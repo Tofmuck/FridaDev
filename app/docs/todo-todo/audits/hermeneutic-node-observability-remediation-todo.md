@@ -211,17 +211,17 @@ Fichiers probablement touches:
 - `app/tests/integration/frontend_admin/test_frontend_hermeneutic_admin_phase6.py`
 
 Hors-scope:
-- [ ] Ne pas creer une nouvelle base de logs.
-- [ ] Ne pas afficher de payload brut dans l'admin.
-- [ ] Ne pas changer les events runtime pour compenser une liste frontend incomplete, sauf si un event manque vraiment.
-- [ ] Ne pas refondre l'UX Hermeneutic Admin au-dela de la lisibilite des stages.
+- [x] Ne pas creer une nouvelle base de logs.
+- [x] Ne pas afficher de payload brut dans l'admin.
+- [x] Ne pas changer les events runtime pour compenser une liste frontend incomplete, sauf si un event manque vraiment.
+- [x] Ne pas refondre l'UX Hermeneutic Admin au-dela de la lisibilite des stages.
 
 Cases de correction:
-- [ ] Lister les stages critiques attendus: `stimmung_agent`, `stimmung_prompt_prepared`, `primary_node`, `validation_prompt_prepared`, `validation_agent`, `prompt_prepared`, `llm_payload` ou equivalent courant.
-- [ ] Exposer ou afficher ces stages quand ils existent dans les logs compacts.
-- [ ] Rendre explicite un stage absent: `not_observed`, `not_applicable` ou `missing`.
-- [ ] Preserver les reason codes, error classes, provider callers et latences compactes.
-- [ ] Adapter les tests frontend/admin aux stages ajoutes.
+- [x] Lister les stages critiques attendus: `stimmung_agent`, `stimmung_prompt_prepared`, `hermeneutic_node_insertion`, `primary_node`, `validation_prompt_prepared`, `validation_agent`, `prompt_prepared`, `llm_call`.
+- [x] Exposer ou afficher ces stages quand ils existent dans les logs compacts.
+- [x] Rendre explicite un stage absent: `not_observed`, `not_applicable` ou `missing`.
+- [x] Preserver les reason codes, error classes, provider callers et latences compactes.
+- [x] Adapter les tests frontend/admin aux stages ajoutes.
 
 Tests attendus:
 - test service admin: les stages critiques presents en logs sont retournes;
@@ -235,7 +235,7 @@ Preuves runtime attendues:
 - aucune valeur brute de prompt ou conversation dans la preuve.
 
 Condition de cloture:
-- [ ] L'operateur peut suivre les stages hermeneutiques critiques depuis l'admin sans ouvrir la DB ni lire des payloads bruts.
+- [x] L'operateur peut suivre les stages hermeneutiques critiques depuis l'admin sans ouvrir la DB ni lire des payloads bruts.
 
 ## Lot 5 - Fail-open primary_node avec cause compacte
 
