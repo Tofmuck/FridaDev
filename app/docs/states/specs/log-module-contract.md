@@ -86,6 +86,7 @@ The MVP event list is:
 - `web_search`
 - `context_build`
 - `stimmung_prompt_prepared`
+- `primary_node`
 - `prompt_prepared`
 - `llm_call`
 - `arbiter`
@@ -170,6 +171,12 @@ Minimum event-specific details:
   - must be distinguishable from the main LLM payload and from `validation_prompt_prepared`
   - allowed fields: `payload_kind`, `provider_caller=stimmung_agent`, secondary/main booleans, model, sampling settings, `timeout_s`, message counts, role counts, prompt/user char counts, recent-window counts, attempt source, fail-open/reason flags
   - forbidden: raw prompt, raw messages, raw content, raw current user message, raw recent window, canonical input dumps
+
+- `primary_node`
+  - compact proof of the primary hermeneutic verdict status
+  - allowed fields: upstream posture/regime labels, signal-family codes, conflict counts, `fail_open`, `state_used`, degraded-field counts
+  - when `fail_open=true`, allowed cause fields are `fallback_used`, `fallback_source=primary_node`, `node_stage=primary_node`, stable `reason_code` and compact `error_class`
+  - forbidden: exception message, stack trace, prompt, messages, identity, memory, traces, summaries, canonical input dumps
 
 - `prompt_prepared`
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`

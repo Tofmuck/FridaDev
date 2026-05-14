@@ -48,6 +48,9 @@ _FALLBACK_DEGRADED_FIELDS = [
     "source_conflicts",
     "pipeline_directives_provisional",
 ]
+_PRIMARY_NODE_STAGE = "primary_node"
+_FALLBACK_SOURCE = "primary_node"
+_ERROR_CLASS_MAX_CHARS = 80
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -64,6 +67,27 @@ def _sequence(value: Any) -> Sequence[Any]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _compact_error_class(exc: Exception | None) -> str:
+    if exc is None:
+        return "unknown_error"
+    name = _text(exc.__class__.__name__) or "Exception"
+    safe_name = "".join(char if char.isalnum() or char == "_" else "_" for char in name)
+    return safe_name[:_ERROR_CLASS_MAX_CHARS] or "Exception"
+
+
+def _fallback_reason_code(exc: Exception | None) -> str:
+    if exc is None:
+        return "unknown_error"
+    if exc.__class__.__name__ == "JSONDecodeError":
+        return "parse_error"
+    message_code = _text(exc.args[0] if exc.args else "")
+    if "node_state" in message_code:
+        return "invalid_node_state"
+    if message_code.startswith("invalid_"):
+        return "invalid_input"
+    return "runtime_error"
 
 
 def _validated_conversation_id(conversation_id: Any) -> str:
@@ -143,7 +167,24 @@ def _build_primary_verdict(
     fail_open: bool,
     state_used: bool,
     degraded_fields: Sequence[str],
+    fallback_reason_code: str = "",
+    fallback_error_class: str = "",
 ) -> dict[str, Any]:
+    audit_payload: dict[str, Any] = {
+        "fail_open": bool(fail_open),
+        "state_used": bool(state_used),
+        "degraded_fields": _stable_unique(list(degraded_fields)),
+    }
+    if fail_open:
+        audit_payload.update(
+            {
+                "fallback_used": True,
+                "fallback_source": _FALLBACK_SOURCE,
+                "node_stage": _PRIMARY_NODE_STAGE,
+                "reason_code": _text(fallback_reason_code) or "unknown_error",
+                "error_class": _text(fallback_error_class) or "unknown_error",
+            }
+        )
     return {
         "schema_version": PRIMARY_VERDICT_SCHEMA_VERSION,
         "epistemic_regime": str(epistemic_payload["epistemic_regime"]),
@@ -166,11 +207,7 @@ def _build_primary_verdict(
             source_conflicts=source_conflicts,
             fail_open=fail_open,
         ),
-        "audit": {
-            "fail_open": bool(fail_open),
-            "state_used": bool(state_used),
-            "degraded_fields": _stable_unique(list(degraded_fields)),
-        },
+        "audit": audit_payload,
     }
 
 
@@ -193,6 +230,8 @@ def _fallback_result(
     conversation_id: str,
     updated_at: str,
     usable_existing_node_state: Mapping[str, Any] | None,
+    reason_code: str,
+    error_class: str,
 ) -> dict[str, Any]:
     fallback_node_state = build_node_state(
         conversation_id=conversation_id,
@@ -211,6 +250,8 @@ def _fallback_result(
         fail_open=True,
         state_used=False,
         degraded_fields=_FALLBACK_DEGRADED_FIELDS,
+        fallback_reason_code=reason_code,
+        fallback_error_class=error_class,
     )
     return {
         "primary_verdict": fallback_primary_verdict,
@@ -316,9 +357,11 @@ def build_primary_node(
             "primary_verdict": primary_verdict,
             "node_state": next_node_state,
         }
-    except Exception:
+    except Exception as exc:
         return _fallback_result(
             conversation_id=conversation_id_value,
             updated_at=updated_at_value,
             usable_existing_node_state=usable_existing_node_state,
+            reason_code=_fallback_reason_code(exc),
+            error_class=_compact_error_class(exc),
         )

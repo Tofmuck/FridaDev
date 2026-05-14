@@ -438,6 +438,68 @@ class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
         self.assertNotIn('historique brut', serialized)
         self.assertNotIn('tour utilisateur brut', serialized)
 
+    def test_primary_node_fail_open_event_keeps_compact_cause_without_raw_exception(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-primary-fail-open',
+            user_msg='message utilisateur brut a ne pas logger',
+            web_search_enabled=False,
+        )
+        try:
+            hermeneutic_node_logger.emit_primary_node(
+                primary_payload={
+                    'primary_verdict': {
+                        'epistemic_regime': 'suspendu',
+                        'proof_regime': 'source_explicite_requise',
+                        'judgment_posture': 'suspend',
+                        'discursive_regime': 'meta',
+                        'source_conflicts': [],
+                        'upstream_advisory': {
+                            'recommended_judgment_posture': 'suspend',
+                            'proposed_output_regime': 'meta',
+                            'active_signal_families': [],
+                            'constraint_present': False,
+                        },
+                        'audit': {
+                            'fail_open': True,
+                            'state_used': False,
+                            'degraded_fields': ['epistemic_regime'],
+                            'fallback_used': True,
+                            'fallback_source': 'primary_node',
+                            'node_stage': 'primary_node',
+                            'reason_code': 'runtime_error',
+                            'error_class': 'RuntimeError',
+                        },
+                    },
+                },
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'primary_node')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'error')
+        self.assertTrue(payload['fail_open'])
+        self.assertTrue(payload['fallback_used'])
+        self.assertEqual(payload['fallback_source'], 'primary_node')
+        self.assertEqual(payload['node_stage'], 'primary_node')
+        self.assertEqual(payload['reason_code'], 'runtime_error')
+        self.assertEqual(payload['error_class'], 'RuntimeError')
+        self.assertEqual(payload['degraded_fields_count'], 1)
+        serialized = repr(payload)
+        self.assertNotIn('message utilisateur brut', serialized)
+        self.assertNotIn('prompt', serialized)
+        self.assertNotIn('stack', serialized)
+        self.assertNotIn('traceback', serialized)
+
 
 if __name__ == '__main__':
     unittest.main()

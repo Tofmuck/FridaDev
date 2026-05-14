@@ -51,6 +51,13 @@ _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "audit",
 }
 _ALLOWED_PRIMARY_AUDIT_KEYS = {"fail_open", "state_used", "degraded_fields"}
+_ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS = _ALLOWED_PRIMARY_AUDIT_KEYS | {
+    "fallback_used",
+    "fallback_source",
+    "node_stage",
+    "reason_code",
+    "error_class",
+}
 _ALLOWED_UPSTREAM_ADVISORY_KEYS = {
     "schema_version",
     "recommended_judgment_posture",
@@ -431,12 +438,19 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
             raise ValueError("invalid_primary_verdict")
 
     audit_payload = _mapping(payload.get("audit"))
-    if set(audit_payload.keys()) != _ALLOWED_PRIMARY_AUDIT_KEYS:
+    audit_keys = set(audit_payload.keys())
+    if audit_keys != _ALLOWED_PRIMARY_AUDIT_KEYS and audit_keys != _ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS:
         raise ValueError("invalid_primary_verdict")
     if not isinstance(audit_payload.get("fail_open"), bool):
         raise ValueError("invalid_primary_verdict")
     if not isinstance(audit_payload.get("state_used"), bool):
         raise ValueError("invalid_primary_verdict")
+    if audit_keys == _ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS:
+        if not bool(audit_payload.get("fail_open")):
+            raise ValueError("invalid_primary_verdict")
+        for field_name in ("fallback_source", "node_stage", "reason_code", "error_class"):
+            if not _text(audit_payload.get(field_name)):
+                raise ValueError("invalid_primary_verdict")
 
     upstream_advisory_payload = _validated_upstream_advisory(
         payload.get("upstream_advisory"),
@@ -445,7 +459,7 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
         fallback_constraint_present=bool(payload.get("source_conflicts")),
     )
 
-    return {
+    result = {
         "schema_version": SCHEMA_VERSION,
         "epistemic_regime": _text(payload.get("epistemic_regime")),
         "proof_regime": _text(payload.get("proof_regime")),
@@ -472,6 +486,17 @@ def _validated_primary_verdict(value: Any) -> dict[str, Any]:
             else [],
         },
     }
+    if audit_keys == _ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS:
+        result["audit"].update(
+            {
+                "fallback_used": bool(audit_payload.get("fallback_used")),
+                "fallback_source": _text(audit_payload.get("fallback_source")),
+                "node_stage": _text(audit_payload.get("node_stage")),
+                "reason_code": _text(audit_payload.get("reason_code")),
+                "error_class": _text(audit_payload.get("error_class")),
+            }
+        )
+    return result
 
 
 def _validated_upstream_advisory(

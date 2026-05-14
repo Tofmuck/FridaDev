@@ -300,6 +300,50 @@ class ValidationAgentTests(unittest.TestCase):
                 canonical_inputs={},
             )
 
+    def test_build_validated_output_accepts_primary_fail_open_compact_cause(self) -> None:
+        primary_verdict = _primary_verdict(
+            judgment_posture="suspend",
+            discursive_regime="meta",
+            epistemic_regime="suspendu",
+            proof_regime="source_explicite_requise",
+            uncertainty_posture="bloquante",
+        )
+        primary_verdict["pipeline_directives_provisional"] = [
+            "posture_suspend",
+            "fallback_primary_verdict",
+        ]
+        primary_verdict["audit"] = {
+            "fail_open": True,
+            "state_used": False,
+            "degraded_fields": ["epistemic_regime"],
+            "fallback_used": True,
+            "fallback_source": "primary_node",
+            "node_stage": "primary_node",
+            "reason_code": "runtime_error",
+            "error_class": "RuntimeError",
+        }
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=primary_verdict,
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=_FakeRequests(
+                [
+                    _FakeResponse(
+                        _arbiter_json(
+                            final_judgment_posture="suspend",
+                            final_output_regime="simple",
+                            arbiter_reason="fallback primaire garde en suspension",
+                        )
+                    )
+                ]
+            ),
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.validated_output["final_judgment_posture"], "suspend")
+
     def test_build_validated_output_rejects_invalid_validation_dialogue_context(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
             validation_agent.build_validated_output(

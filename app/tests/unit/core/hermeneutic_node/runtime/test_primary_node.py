@@ -613,6 +613,11 @@ class PrimaryNodeTests(unittest.TestCase):
                         "source_conflicts",
                         "pipeline_directives_provisional",
                     ],
+                    "fallback_used": True,
+                    "fallback_source": "primary_node",
+                    "node_stage": "primary_node",
+                    "reason_code": "invalid_input",
+                    "error_class": "ValueError",
                 },
             },
         )
@@ -645,6 +650,33 @@ class PrimaryNodeTests(unittest.TestCase):
             "pipeline_directives_provisional",
             "audit",
         })
+
+    def test_build_primary_node_fail_open_cause_redacts_runtime_exception_message(self) -> None:
+        original_builder = primary_node.build_epistemic_regime
+
+        def raise_runtime_error(**_kwargs):
+            raise RuntimeError("secret prompt details should stay private")
+
+        primary_node.build_epistemic_regime = raise_runtime_error
+        try:
+            payload = primary_node.build_primary_node(
+                conversation_id="conv-1",
+                updated_at="2026-04-02T12:00:00Z",
+                time_input=_time(),
+                user_turn_input=_user_turn(),
+                user_turn_signals=_signals(),
+            )
+        finally:
+            primary_node.build_epistemic_regime = original_builder
+
+        audit = payload["primary_verdict"]["audit"]
+        self.assertTrue(audit["fail_open"])
+        self.assertTrue(audit["fallback_used"])
+        self.assertEqual(audit["fallback_source"], "primary_node")
+        self.assertEqual(audit["node_stage"], "primary_node")
+        self.assertEqual(audit["reason_code"], "runtime_error")
+        self.assertEqual(audit["error_class"], "RuntimeError")
+        self.assertNotIn("secret prompt details", repr(payload))
 
 
 if __name__ == "__main__":

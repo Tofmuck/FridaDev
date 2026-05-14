@@ -256,17 +256,17 @@ Fichiers probablement touches:
 - `app/tests/test_server_chat_hermeneutic_insertion_contract.py`
 
 Hors-scope:
-- [ ] Ne pas changer les conditions de fail-open.
-- [ ] Ne pas bloquer la reponse utilisateur sur une erreur du noeud.
-- [ ] Ne pas logger exception message complet, stack trace complete, canonical inputs ou contenu prompt.
-- [ ] Ne pas modifier le validation agent dans ce lot sauf pour preserver la cause compacte deja produite.
+- [x] Ne pas changer les conditions de fail-open.
+- [x] Ne pas bloquer la reponse utilisateur sur une erreur du noeud.
+- [x] Ne pas logger exception message complet, stack trace complete, canonical inputs ou contenu prompt.
+- [x] Ne pas modifier le validation agent dans ce lot sauf pour preserver la cause compacte deja produite.
 
 Cases de correction:
-- [ ] Definir un vocabulaire compact: `reason_code`, `error_class`, `fallback_used`, `fallback_source`, `node_stage`.
-- [ ] Conserver cette cause dans le payload `primary_node` et dans le log de tour.
-- [ ] Distinguer parse error, invalid input, invalid node_state, provider/runtime error et unknown error quand c'est possible sans fuite.
-- [ ] Garantir que les erreurs techniques longues sont reduites a classe/code/hash court.
-- [ ] Adapter l'admin si les causes fail-open doivent etre visibles dans une synthese existante.
+- [x] Definir un vocabulaire compact: `reason_code`, `error_class`, `fallback_used`, `fallback_source`, `node_stage`.
+- [x] Conserver cette cause dans le payload `primary_node` et dans le log de tour.
+- [x] Distinguer parse error, invalid input, invalid node_state, provider/runtime error et unknown error quand c'est possible sans fuite.
+- [x] Garantir que les erreurs techniques longues sont reduites a classe/code/hash court.
+- [x] Adapter l'admin si les causes fail-open doivent etre visibles dans une synthese existante.
 
 Tests attendus:
 - test `primary_node` exception -> fallback avec `reason_code` stable;
@@ -279,7 +279,7 @@ Preuves runtime attendues:
 - aucune stack trace, prompt ou canonical input brut dans l'event compact.
 
 Condition de cloture:
-- [ ] Un fail-open `primary_node` est operable: on sait pourquoi il a degrade, sans exposer de contenu ni casser la reponse.
+- [x] Un fail-open `primary_node` est operable: on sait pourquoi il a degrade, sans exposer de contenu ni casser la reponse.
 
 ## Lot 6 - Activation runtime du node_state persistant
 

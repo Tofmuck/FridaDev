@@ -216,7 +216,8 @@ def build_primary_node_payload(
     upstream_advisory = _mapping(primary_verdict.get("upstream_advisory"))
     audit = _mapping(primary_verdict.get("audit"))
     degraded_fields = [value for value in (_text(item) for item in _sequence(audit.get("degraded_fields"))) if value]
-    return {
+    fail_open = bool(audit.get("fail_open", False))
+    payload = {
         "upstream_recommendation_posture": _text(
             upstream_advisory.get("recommended_judgment_posture") or primary_verdict.get("judgment_posture")
         ),
@@ -243,6 +244,17 @@ def build_primary_node_payload(
         "state_used": bool(audit.get("state_used", False)),
         "degraded_fields_count": len(degraded_fields),
     }
+    if fail_open or bool(audit.get("fallback_used", False)):
+        payload.update(
+            {
+                "fallback_used": bool(audit.get("fallback_used", fail_open)),
+                "fallback_source": _text(audit.get("fallback_source")) or "primary_node",
+                "node_stage": _text(audit.get("node_stage")) or "primary_node",
+                "reason_code": _text(audit.get("reason_code")) or "unknown_error",
+                "error_class": _text(audit.get("error_class")) or "unknown_error",
+            }
+        )
+    return payload
 
 
 def emit_primary_node(

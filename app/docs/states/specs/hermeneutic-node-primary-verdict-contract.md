@@ -221,7 +221,8 @@ Regles minimales:
 3. `audit.fail_open = True`
 4. `audit.degraded_fields` doit nommer les champs effectivement degrades
 5. `pipeline_directives_provisional` doit contenir un code explicite de fallback, par exemple `fallback_primary_verdict`
-6. le fail-open ne doit pas prendre la forme d'un verdict substantif normal
+6. `audit.fallback_used`, `audit.fallback_source`, `audit.node_stage`, `audit.reason_code` et `audit.error_class` doivent porter une cause technique compacte, sans message d'exception brut
+7. le fail-open ne doit pas prendre la forme d'un verdict substantif normal
 
 Contraintes minimales de surete:
 
@@ -241,6 +242,8 @@ Les champs minimaux d'auditabilite retenus sont:
 - `audit.fail_open`
 - `audit.state_used`
 - `audit.degraded_fields`
+- `audit.fallback_used`, uniquement en fail-open primaire
+- `audit.fallback_source`, `audit.node_stage`, `audit.reason_code`, `audit.error_class`, uniquement en fail-open primaire
 
 Definitions minimales:
 
@@ -252,12 +255,17 @@ Definitions minimales:
   - dit si `node_state` a ete mobilise pour stabiliser le verdict courant
 - `audit.degraded_fields`
   - liste compacte des champs dont la valeur a ete degradee ou synthetisee par fallback
+- `audit.reason_code`
+  - code stable et compact, par exemple `invalid_input`, `invalid_node_state`, `parse_error`, `runtime_error` ou `unknown_error`
+- `audit.error_class`
+  - classe courte de l'erreur technique, sans message d'exception, stack trace, prompt, canonical input ou contenu conversationnel
 
 Regles fortes:
 
 - ce bloc n'est pas un event log
 - il ne porte ni timings, ni branches detaillees, ni erreurs longues
 - il ne remplace pas une future table d'audit hermeneutique complete
+- en fail-open primaire, il doit suffire a expliquer la degradation a l'operateur sans ouvrir les payloads bruts
 
 ## 9. Boundary With `node_state`
 
