@@ -117,17 +117,17 @@ Fichiers probablement touches:
 - `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py`
 
 Hors-scope:
-- [ ] Ne pas modifier le texte du bloc hermeneutique injecte.
-- [ ] Ne pas modifier le prompt principal ni les decisions du noeud.
-- [ ] Ne pas logger le bloc, le prompt, les messages ou les canonical inputs bruts.
-- [ ] Ne pas melanger cette empreinte avec les empreintes Identity ou Memory/RAG deja existantes.
+- [x] Ne pas modifier le texte du bloc hermeneutique injecte.
+- [x] Ne pas modifier le prompt principal ni les decisions du noeud.
+- [x] Ne pas logger le bloc, le prompt, les messages ou les canonical inputs bruts.
+- [x] Ne pas melanger cette empreinte avec les empreintes Identity ou Memory/RAG deja existantes.
 
 Cases de correction:
-- [ ] Calculer l'empreinte depuis le meme bloc que celui assemble pour le prompt principal.
-- [ ] Ajouter un objet compact `hermeneutic_prompt_injection` dans `prompt_prepared` ou un event adjacent du meme tour.
-- [ ] Inclure uniquement des metriques content-free: `present`, `chars`, `sha256_12`, `final_judgment_posture`, `final_output_regime`, `epistemic_regime`, `directives_count`, `source` et flags de fallback si disponibles.
-- [ ] Distinguer bloc absent, bloc present normal et bloc present apres fallback.
-- [ ] Verifier que l'empreinte ne contient aucune directive brute.
+- [x] Calculer l'empreinte depuis le meme bloc que celui assemble pour le prompt principal.
+- [x] Ajouter un objet compact `hermeneutic_prompt_injection` dans `prompt_prepared` ou un event adjacent du meme tour.
+- [x] Inclure uniquement des metriques content-free: `present`, `chars`, `sha256_12`, `final_judgment_posture`, `final_output_regime`, `epistemic_regime`, `directives_count`, `source` et flags de fallback si disponibles.
+- [x] Distinguer bloc absent, bloc present normal et bloc present apres fallback.
+- [x] Verifier que l'empreinte ne contient aucune directive brute.
 
 Tests attendus:
 - test prompt principal avec bloc hermeneutique present: `hermeneutic_prompt_injection.present=true`;
@@ -141,7 +141,7 @@ Preuves runtime attendues:
 - preuve que l'absence de bloc, si elle arrive, est explicite.
 
 Condition de cloture:
-- [ ] Pour un tour donne, l'operateur peut prouver quel bloc hermeneutique a ete injecte par empreinte compacte, sans lire le prompt complet.
+- [x] Pour un tour donne, l'operateur peut prouver quel bloc hermeneutique a ete injecte par empreinte compacte, sans lire le prompt complet.
 
 ## Lot 3 - stimmung_prompt_prepared content-free
 

@@ -176,6 +176,11 @@ Minimum event-specific details:
     - compact redacted fingerprint of the Identity block compiled into the main prompt
     - allowed fields: block presence, lengths, short hashes, subject/layer presence, `used_identity_ids_count`, `staging_included=false`, non-sensitive source/update metadata
     - forbidden: raw static identity, raw mutable identity, staging buffer content, raw prompt excerpts
+  - `hermeneutic_prompt_injection`:
+    - compact redacted fingerprint of the `[JUGEMENT HERMENEUTIQUE]` block compiled into the main prompt
+    - must be computed from the same block string that is passed to prompt assembly, not from an approximate projection
+    - allowed fields: `present`, `chars`, short hash, final posture/regime labels, `epistemic_regime`, `directives_count`, `source`, `fallback`, compact `reason_code`
+    - forbidden: raw hermeneutic block, raw directives, raw validation rationale, canonical inputs, raw prompt excerpts
   - `memory_retrieval`:
     - compact redacted status of retrieval availability for this turn
     - allowed fields: `status`, `reason_code`, `error_code`, `error_class`, `top_k_requested`, `top_k_returned`

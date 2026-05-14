@@ -317,11 +317,18 @@ def chat_response(
         web_input=web_payload,
         requests_module=requests_module,
     )
+    hermeneutic_node_runtime_payload = _mapping(hermeneutic_node_runtime)
+    validated_result = hermeneutic_node_runtime_payload.get('validated_result')
+    primary_payload = _mapping(hermeneutic_node_runtime_payload.get('primary_payload'))
     hermeneutic_judgment_block = chat_prompt_context.build_hermeneutic_judgment_block(
-        validated_output=getattr(
-            _mapping(hermeneutic_node_runtime).get('validated_result'),
-            'validated_output',
-            None,
+        validated_output=getattr(validated_result, 'validated_output', None),
+    )
+    chat_turn_logger.set_state(
+        'hermeneutic_prompt_injection',
+        hermeneutic_node_logger.build_hermeneutic_prompt_injection_payload(
+            hermeneutic_judgment_block=hermeneutic_judgment_block,
+            primary_payload=primary_payload,
+            validated_result=validated_result,
         ),
     )
     augmented_system = chat_prompt_context.inject_hermeneutic_judgment_block(

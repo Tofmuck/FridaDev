@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -100,6 +101,10 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(
             prompt_payload.get('identity_prompt_injection'),
             self.server.identity_observability.empty_identity_prompt_injection_payload(),
+        )
+        self.assertEqual(
+            prompt_payload.get('hermeneutic_prompt_injection'),
+            self.server.hermeneutic_node_logger.empty_hermeneutic_prompt_injection_payload(),
         )
         self.assertEqual(
             prompt_payload.get('memory_retrieval'),
@@ -219,6 +224,131 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('messages', prompt_payload)
         self.assertNotIn('prompt', prompt_payload)
         self.assertNotIn('content', prompt_payload)
+
+    def test_prompt_prepared_exposes_hermeneutic_prompt_injection_without_raw_block(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-prompt-hermeneutic-injection',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        raw_block = (
+            '[JUGEMENT HERMENEUTIQUE]\n'
+            'Posture finale validee: answer.\n'
+            'Regime final valide: simple.\n'
+            'Consigne hermeneutique: Tu peux produire une reponse substantive normale.\n'
+            'Directives finales actives: posture_answer, regime_simple.'
+        )
+        try:
+            validated_result = self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'challenge',
+                    'final_judgment_posture': 'answer',
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': False,
+                    'advisory_recommendations_followed': [],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'raw arbiter reason kept out of prompt_prepared',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+            self.server.chat_turn_logger.set_state(
+                'hermeneutic_prompt_injection',
+                self.server.hermeneutic_node_logger.build_hermeneutic_prompt_injection_payload(
+                    hermeneutic_judgment_block=raw_block,
+                    primary_payload={'primary_verdict': {'epistemic_regime': 'incertain'}},
+                    validated_result=validated_result,
+                ),
+            )
+            proxy = self.server._LlmChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                        'model': 'openrouter/runtime-main-model',
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'max_tokens': max_tokens,
+                        'stream': stream,
+                    }
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 123),
+            )
+            proxy.build_payload(
+                [{'role': 'user', 'content': 'bonjour'}],
+                0.7,
+                0.9,
+                400,
+                stream=False,
+            )
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        prompt_event = next(event for event in observed if event.get('stage') == 'prompt_prepared')
+        prompt_payload = prompt_event['payload_json']
+        hermeneutic_payload = prompt_payload.get('hermeneutic_prompt_injection')
+        self.assertIsInstance(hermeneutic_payload, dict)
+        self.assertTrue(hermeneutic_payload.get('present'))
+        self.assertEqual(hermeneutic_payload.get('chars'), len(raw_block))
+        self.assertEqual(
+            hermeneutic_payload.get('sha256_12'),
+            hashlib.sha256(raw_block.encode('utf-8')).hexdigest()[:12],
+        )
+        self.assertEqual(hermeneutic_payload.get('final_judgment_posture'), 'answer')
+        self.assertEqual(hermeneutic_payload.get('final_output_regime'), 'simple')
+        self.assertEqual(hermeneutic_payload.get('epistemic_regime'), 'incertain')
+        self.assertEqual(hermeneutic_payload.get('directives_count'), 2)
+        self.assertEqual(hermeneutic_payload.get('source'), 'primary')
+        self.assertFalse(hermeneutic_payload.get('fallback'))
+        self.assertEqual(hermeneutic_payload.get('reason_code'), '')
+        serialized = repr(hermeneutic_payload)
+        self.assertNotIn(raw_block, serialized)
+        self.assertNotIn('[JUGEMENT HERMENEUTIQUE]', serialized)
+        self.assertNotIn('posture_answer', serialized)
+        self.assertNotIn('raw arbiter reason', serialized)
+        self.assertNotIn('messages', prompt_payload)
+        self.assertNotIn('prompt', prompt_payload)
+        self.assertNotIn('content', prompt_payload)
+
+    def test_prompt_prepared_exposes_hermeneutic_fallback_as_compact_reason_code(self) -> None:
+        validated_result = self.server.chat_service.validation_agent.ValidationAgentResult(
+            validated_output={
+                'schema_version': 'v1',
+                'validation_decision': 'suspend',
+                'final_judgment_posture': 'suspend',
+                'final_output_regime': 'simple',
+                'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
+            },
+            status='error',
+            model='openai/gpt-5.4-mini',
+            decision_source='fail_open',
+            reason_code='timeout',
+        )
+        payload = self.server.hermeneutic_node_logger.build_hermeneutic_prompt_injection_payload(
+            hermeneutic_judgment_block='[JUGEMENT HERMENEUTIQUE]\nPosture finale validee: suspend.',
+            primary_payload={'primary_verdict': {'epistemic_regime': 'indetermine'}},
+            validated_result=validated_result,
+        )
+
+        self.assertTrue(payload.get('present'))
+        self.assertTrue(payload.get('fallback'))
+        self.assertEqual(payload.get('reason_code'), 'timeout')
+        self.assertEqual(payload.get('source'), 'fail_open')
+        self.assertEqual(payload.get('directives_count'), 3)
+        self.assertNotIn('fallback_validation', repr(payload))
 
     def test_prompt_prepared_exposes_memory_retrieval_status_without_raw_error(self) -> None:
         observed: list[dict[str, object]] = []

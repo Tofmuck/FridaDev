@@ -40,6 +40,7 @@ from memory import summarizer
 from memory import memory_store
 from memory import arbiter
 from observability import chat_turn_logger
+from observability import hermeneutic_node_logger
 from observability import identity_observability
 from observability import log_store
 from observability import log_markdown_export
@@ -360,6 +361,9 @@ class _LlmChatLogProxy:
         identity_prompt_injection = chat_turn_logger.get_state('identity_prompt_injection')
         if not isinstance(identity_prompt_injection, dict):
             identity_prompt_injection = identity_observability.empty_identity_prompt_injection_payload()
+        hermeneutic_prompt_injection = chat_turn_logger.get_state('hermeneutic_prompt_injection')
+        if not isinstance(hermeneutic_prompt_injection, dict):
+            hermeneutic_prompt_injection = hermeneutic_node_logger.empty_hermeneutic_prompt_injection_payload()
         memory_retrieval = chat_turn_logger.get_state('memory_retrieval')
         if not isinstance(memory_retrieval, dict):
             memory_retrieval = {
@@ -381,6 +385,7 @@ class _LlmChatLogProxy:
                 'memory_items_used': int(chat_turn_logger.get_state('memory_items_used', 0) or 0),
                 'memory_prompt_injection': dict(memory_prompt_injection),
                 'identity_prompt_injection': dict(identity_prompt_injection),
+                'hermeneutic_prompt_injection': dict(hermeneutic_prompt_injection),
                 'memory_retrieval': dict(memory_retrieval),
             },
         )

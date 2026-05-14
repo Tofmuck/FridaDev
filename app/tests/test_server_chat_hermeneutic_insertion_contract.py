@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -81,6 +82,7 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_hermeneutic_judgment_block_from_validated_output(self) -> None:
+        observed_events: list[dict] = []
         conversation = {
             'id': 'conv-validated-phase14',
             'created_at': '2026-03-26T00:00:00Z',
@@ -104,9 +106,11 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         original_primary_node = self.server.chat_service.primary_node.build_primary_node
         original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
         original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
             'primary_verdict': {
                 'schema_version': 'v1',
+                'epistemic_regime': 'incertain',
                 'judgment_posture': 'clarify',
                 'discursive_regime': 'meta',
                 'pipeline_directives_provisional': ['posture_clarify', 'regime_meta'],
@@ -143,12 +147,19 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 {'role': 'user', 'content': 'Bonjour'},
             ]
         )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour'})
         finally:
             self.server.chat_service.primary_node.build_primary_node = original_primary_node
             self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
             self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
             restore()
 
         self.assertEqual(response.status_code, 200)
@@ -167,6 +178,40 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertNotIn('primary_verdict', system_prompt)
         self.assertNotIn('validation_dialogue_context', system_prompt)
         self.assertNotIn('justifications', system_prompt)
+        expected_block = self.server.chat_service.chat_prompt_context.build_hermeneutic_judgment_block(
+            validated_output={
+                'schema_version': 'v1',
+                'validation_decision': 'challenge',
+                'final_judgment_posture': 'answer',
+                'final_output_regime': 'simple',
+                'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                'arbiter_followed_upstream': False,
+                'advisory_recommendations_followed': [],
+                'advisory_recommendations_overridden': [
+                    'upstream_recommendation_posture',
+                    'upstream_output_regime_proposed',
+                ],
+                'applied_hard_guards': [],
+                'arbiter_reason': 'lecture locale suffisante malgre la recommandation amont',
+            },
+        )
+        prompt_prepared = next(event for event in observed_events if event.get('stage') == 'prompt_prepared')
+        hermeneutic_injection = prompt_prepared['payload_json'].get('hermeneutic_prompt_injection')
+        self.assertIsInstance(hermeneutic_injection, dict)
+        self.assertTrue(hermeneutic_injection.get('present'))
+        self.assertEqual(hermeneutic_injection.get('chars'), len(expected_block))
+        self.assertEqual(
+            hermeneutic_injection.get('sha256_12'),
+            hashlib.sha256(expected_block.encode('utf-8')).hexdigest()[:12],
+        )
+        self.assertEqual(hermeneutic_injection.get('final_judgment_posture'), 'answer')
+        self.assertEqual(hermeneutic_injection.get('final_output_regime'), 'simple')
+        self.assertEqual(hermeneutic_injection.get('epistemic_regime'), 'incertain')
+        self.assertEqual(hermeneutic_injection.get('directives_count'), 2)
+        self.assertEqual(hermeneutic_injection.get('source'), 'primary')
+        self.assertFalse(hermeneutic_injection.get('fallback'))
+        self.assertNotIn(expected_block, repr(hermeneutic_injection))
+        self.assertNotIn('posture_answer', repr(hermeneutic_injection))
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_suspend_block_when_validation_agent_fail_opens(self) -> None:

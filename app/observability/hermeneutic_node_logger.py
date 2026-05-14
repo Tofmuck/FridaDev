@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping, Sequence
 
 from observability import chat_turn_logger
@@ -19,6 +20,12 @@ def _sequence(value: Any) -> Sequence[Any]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _sha256_12(value: str) -> str:
+    if not value:
+        return ""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
 
 
 def _bool_str(value: Any) -> bool:
@@ -344,6 +351,58 @@ def emit_validation_agent(
         ),
         model=_text(getattr(validated_result, "model", "")) or None,
     )
+
+
+def empty_hermeneutic_prompt_injection_payload() -> dict[str, Any]:
+    return {
+        "present": False,
+        "chars": 0,
+        "sha256_12": "",
+        "final_judgment_posture": "",
+        "final_output_regime": "",
+        "epistemic_regime": "",
+        "directives_count": 0,
+        "source": "not_injected",
+        "fallback": False,
+        "reason_code": "",
+    }
+
+
+def build_hermeneutic_prompt_injection_payload(
+    *,
+    hermeneutic_judgment_block: Any,
+    primary_payload: Mapping[str, Any] | None,
+    validated_result: Any,
+) -> dict[str, Any]:
+    block = str(hermeneutic_judgment_block or "")
+    primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
+    validated_output = _mapping(getattr(validated_result, "validated_output", None))
+    directives = [
+        value
+        for value in (_text(item) for item in _sequence(validated_output.get("pipeline_directives_final")))
+        if value
+    ]
+    status = _text(getattr(validated_result, "status", ""))
+    decision_source = _text(getattr(validated_result, "decision_source", ""))
+    reason_code = _text(getattr(validated_result, "reason_code", ""))
+    fallback = bool(status and status != "ok") or decision_source in {"fallback", "fail_open"} or bool(reason_code)
+
+    payload = empty_hermeneutic_prompt_injection_payload()
+    payload.update(
+        {
+            "present": bool(block.strip()),
+            "chars": len(block),
+            "sha256_12": _sha256_12(block),
+            "final_judgment_posture": _text(validated_output.get("final_judgment_posture")),
+            "final_output_regime": _text(validated_output.get("final_output_regime")),
+            "epistemic_regime": _text(primary_verdict.get("epistemic_regime")),
+            "directives_count": len(directives),
+            "source": decision_source or ("validation_agent" if validated_output else "not_injected"),
+            "fallback": fallback,
+            "reason_code": reason_code,
+        }
+    )
+    return payload
 
 
 def build_hermeneutic_node_insertion_payload(
