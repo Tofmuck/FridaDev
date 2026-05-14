@@ -377,6 +377,44 @@ Current admin surface:
 - aggregates are computed from the events actually read for that snapshot; if `source.events_truncated=true`, the output is a bounded-window metric, not a whole-history metric;
 - the read is backend-only preparation for dashboards; it does not prove frontend rendering quality.
 
+`/log` compact visualizations:
+- checklist distribution:
+  - source: `checklist.classification_counts` and `turns_observed_count`;
+  - window: the `/api/admin/logs/chat/metrics` event window, currently requested by `/log` with `event_limit=2000`;
+  - semantics: share/counts of observed turns classified as `complete`, `degraded`, `partial` or `legacy_incomplete`;
+  - truncation: if `source.events_truncated=true`, the UI must label the window as truncated and treat counts as bounded-window counts;
+  - empty/degraded behavior: render an empty state when no turn is observed, never infer history completeness from zeros.
+- provider lanes:
+  - source: `llm_call_provider_metrics`;
+  - window: same metrics event window;
+  - semantics: LLM calls grouped by `provider_caller`, with main and secondary lanes kept separate;
+  - truncation: same `source.events_truncated` handling;
+  - empty/degraded behavior: zero calls render as an empty/provider-missing state, not as a runtime failure.
+- RAG funnel:
+  - source: `rag_funnel`;
+  - window: same metrics event window;
+  - semantics: candidate counters for `retrieved -> basket -> kept -> injected`, plus legacy prompt fallback counts as a degraded compatibility signal;
+  - truncation: same `source.events_truncated` handling;
+  - empty/degraded behavior: zero candidates render as no RAG signal in the window, not as proof that RAG is disabled.
+- web flow:
+  - source: `web`;
+  - window: same metrics event window;
+  - semantics: requested turns, successful web events, injected turns, skipped events and error events;
+  - truncation: same `source.events_truncated` handling;
+  - empty/degraded behavior: zero requested turns render as web not requested in the window.
+- errors/skips/fallbacks:
+  - source: `errors_by_stage`, `skipped_by_stage`, `fallback_fail_open.by_stage`;
+  - window: same metrics event window;
+  - semantics: top stage names with error, skip or fallback counts;
+  - truncation: same `source.events_truncated` handling;
+  - empty/degraded behavior: empty stage counts render as no anomaly in the window; unknown/free-form labels must be sanitized before rendering.
+
+Signals intentionally not charted in `/log` until their aggregate source is explicit:
+- latency p50/p95 by stage/provider;
+- persistence assistant finale as a whole-window curve;
+- embeddings health;
+- any legacy ambiguous or content-derived label.
+
 Minimum aggregate groups:
 - checklist distribution:
   - `turns_observed_count`;

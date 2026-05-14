@@ -525,10 +525,88 @@ test('admin settings validate/save shows invalid checks and blocks patch', async
   });
 });
 
-function logsMockScript() {
+function logsMockScript({ metricsMode = 'nominal' } = {}) {
+  const nominalMetrics = {
+    ok: true,
+    kind: 'full_turn_metrics_snapshot',
+    events_count: 4,
+    turns_observed_count: 1,
+    checklist: {
+      classification_counts: {
+        complete: 1,
+        degraded: 0,
+        partial: 0,
+        legacy_incomplete: 0,
+      },
+    },
+    llm_call_provider_metrics: {
+      main_llm_call_count: 1,
+      secondary_llm_call_count: 1,
+      unknown_llm_call_count: 0,
+    },
+    fallback_fail_open: { total_count: 1, by_stage: { validation_agent: 1 } },
+    rag_funnel: {
+      retrieved_candidates_total: 2,
+      basketed_candidates_total: 1,
+      kept_candidates_total: 1,
+      injected_candidates_total: 1,
+      prompt_fallback_turns: 0,
+    },
+    web: {
+      requested_turns: 1,
+      successful_count: 1,
+      injected_turns: 1,
+      skipped_count: 1,
+      error_count: 0,
+    },
+    errors_by_stage: { validation_agent: 1 },
+    skipped_by_stage: { web_search: 1, 'free form stage label': 1 },
+    source: { events_total: 4, events_read: 4, events_truncated: false },
+    redaction: { raw_event_payloads_included: false },
+  };
+  const emptyTruncatedMetrics = {
+    ok: true,
+    kind: 'full_turn_metrics_snapshot',
+    events_count: 0,
+    turns_observed_count: 0,
+    checklist: {
+      classification_counts: {
+        complete: 0,
+        degraded: 0,
+        partial: 0,
+        legacy_incomplete: 0,
+      },
+    },
+    llm_call_provider_metrics: {
+      main_llm_call_count: 0,
+      secondary_llm_call_count: 0,
+      unknown_llm_call_count: 0,
+    },
+    fallback_fail_open: { total_count: 0, by_stage: {} },
+    rag_funnel: {
+      retrieved_candidates_total: 0,
+      basketed_candidates_total: 0,
+      kept_candidates_total: 0,
+      injected_candidates_total: 0,
+      prompt_fallback_turns: 0,
+    },
+    web: {
+      requested_turns: 0,
+      successful_count: 0,
+      injected_turns: 0,
+      skipped_count: 0,
+      error_count: 0,
+    },
+    errors_by_stage: {},
+    skipped_by_stage: {},
+    source: { events_total: 10, events_read: 0, events_truncated: true },
+    redaction: { raw_event_payloads_included: false },
+  };
+  const metricsPayload = metricsMode === 'empty-truncated' ? emptyTruncatedMetrics : nominalMetrics;
   return `
     (() => {
       const state = { calls: [], downloads: [] };
+      const metricsPayload = ${JSON.stringify(metricsPayload)};
       window.__fridaBrowserState = state;
       window.URL.createObjectURL = (blob) => {
         state.downloads.push({ type: blob.type, size: blob.size });
@@ -556,43 +634,7 @@ function logsMockScript() {
         }
 
         if (url.pathname === "/api/admin/logs/chat/metrics" && method === "GET") {
-          return new Response(JSON.stringify({
-            ok: true,
-            kind: "full_turn_metrics_snapshot",
-            events_count: 4,
-            turns_observed_count: 1,
-            checklist: {
-              classification_counts: {
-                complete: 1,
-                degraded: 0,
-                partial: 0,
-                legacy_incomplete: 0,
-              },
-            },
-            llm_call_provider_metrics: {
-              main_llm_call_count: 1,
-              secondary_llm_call_count: 1,
-              unknown_llm_call_count: 0,
-            },
-            fallback_fail_open: { total_count: 0 },
-            rag_funnel: {
-              retrieved_candidates_total: 2,
-              basketed_candidates_total: 1,
-              kept_candidates_total: 1,
-              injected_candidates_total: 1,
-              prompt_fallback_turns: 0,
-            },
-            web: {
-              requested_turns: 1,
-              successful_count: 1,
-              skipped_count: 0,
-              error_count: 0,
-            },
-            errors_by_stage: {},
-            skipped_by_stage: {},
-            source: { events_total: 4, events_read: 4, events_truncated: false },
-            redaction: { raw_event_payloads_included: false },
-          }), {
+          return new Response(JSON.stringify(metricsPayload), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -691,6 +733,14 @@ test('logs page applies filters and exports scoped markdown in browser', async (
     await page.waitForFunction(() =>
       document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
     await assertTextContains(page.locator('#logCockpitCards'), 'complete=1');
+    await assertTextContains(page.locator('#logCockpitCards'), 'checklist.classification_counts');
+    await assertTextContains(page.locator('#logCockpitCards'), 'retrieved');
+    await assertTextContains(page.locator('#logCockpitCards'), 'success');
+    await assertTextContains(page.locator('#logCockpitCards'), 'fallback:validation_agent');
+    const miniBarRows = await page.locator('#logCockpitCards .log-mini-bar-row').count();
+    assert.ok(miniBarRows >= 12, `expected compact metric bars, got ${miniBarRows}`);
+    const cockpitText = await page.locator('#logCockpitCards').textContent();
+    assert.equal(String(cockpitText || '').includes('free form stage label'), false);
     await assertTextContains(page.locator('#logTurns'), 'retrieved=2');
     await assertTextContains(page.locator('#logGroups'), 'llm_call');
     assert.equal(await page.locator('#exportTurnLogs').isDisabled(), false);
@@ -731,6 +781,21 @@ test('logs page applies filters and exports scoped markdown in browser', async (
     assert.equal(exportParams.get('conversation_id'), 'conv-1');
     assert.equal(exportParams.get('turn_id'), 'turn-1');
     assert.deepEqual(state.downloads, [{ type: 'text/markdown;charset=utf-8', size: 9 }]);
+  });
+});
+
+test('logs cockpit renders compact empty and truncated metric states', async () => {
+  await openBrowserPage({
+    pathSuffix: '/log.html',
+    mockScript: logsMockScript({ metricsMode: 'empty-truncated' }),
+  }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#logCockpitSourceChip')?.textContent.includes('source tronquee'));
+
+    await assertTextContains(page.locator('#logCockpitCards'), 'Aucun tour observe dans la fenetre.');
+    await assertTextContains(page.locator('#logCockpitCards'), 'Aucun signal RAG observe.');
+    await assertTextContains(page.locator('#logCockpitCards'), 'Fenetre metrics tronquee');
+    await assertTextContains(page.locator('#logCockpitWindowChip'), 'events=0 / 10');
   });
 });
 

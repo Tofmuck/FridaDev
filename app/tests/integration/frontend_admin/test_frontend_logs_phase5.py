@@ -110,6 +110,9 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn("renderTurnRows", source)
         self.assertIn("loadCockpitMetrics", source)
         self.assertIn("loadTurnPipeline", source)
+        self.assertIn("METRICS_EVENT_LIMIT", source)
+        self.assertIn("METRIC_VISUAL_SOURCES", source)
+        self.assertIn("sanitizeMetricLabel", source)
         self.assertIn("elements.turnId.disabled = true", source)
         self.assertIn("query.set(\"conversation_id\", conversationId)", source)
         self.assertIn("query.set(\"turn_id\", turnId)", source)
@@ -217,6 +220,7 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
                 "web": {
                     "requested_turns": 1,
                     "successful_count": 1,
+                    "injected_turns": 1,
                     "skipped_count": 0,
                     "error_count": 0,
                 },
@@ -448,6 +452,12 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn("main_llm_call_count", source)
         self.assertIn("secondary_llm_call_count", source)
         self.assertIn("rag_funnel", source)
+        self.assertIn("createMiniBars", source)
+        self.assertIn("objectMetricRows", source)
+        self.assertIn("checklist.classification_counts", source)
+        self.assertIn("llm_call_provider_metrics", source)
+        self.assertIn("errors_by_stage/skipped_by_stage/fallback_fail_open.by_stage", source)
+        self.assertIn("BLOCKED_METRIC_LABELS", source)
         self.assertIn("log-turn-table", source)
         self.assertNotIn("JSON.stringify(event.payload", source)
 

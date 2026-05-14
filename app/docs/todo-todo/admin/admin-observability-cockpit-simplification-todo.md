@@ -444,17 +444,17 @@ Fichiers probablement touches:
 
 Cases de correction:
 
-- [ ] Pour chaque courbe, nommer la source exacte.
-- [ ] Pour chaque courbe, documenter la fenetre, le mode de troncature et la semantique.
-- [ ] Preferer mini-courbes compactes ou tableaux tendances a des grands panneaux decoratifs.
-- [ ] Garder une alternative tabulaire pour les counts importants.
-- [ ] Ne pas ajouter de bibliotheque graphique lourde sans besoin confirme.
+- [x] Pour chaque courbe, nommer la source exacte.
+- [x] Pour chaque courbe, documenter la fenetre, le mode de troncature et la semantique.
+- [x] Preferer mini-courbes compactes ou tableaux tendances a des grands panneaux decoratifs.
+- [x] Garder une alternative tabulaire pour les counts importants.
+- [x] Ne pas ajouter de bibliotheque graphique lourde sans besoin confirme.
 
 Tests attendus:
 
-- [ ] Test transformation metriques -> serie.
-- [ ] Test empty/truncated state.
-- [ ] Test que les courbes ne rendent pas de labels issus de contenu brut.
+- [x] Test transformation metriques -> serie.
+- [x] Test empty/truncated state.
+- [x] Test que les courbes ne rendent pas de labels issus de contenu brut.
 
 Preuves runtime attendues:
 
@@ -463,7 +463,7 @@ Preuves runtime attendues:
 
 Condition de cloture:
 
-- [ ] Les courbes aident a decider quoi ouvrir/debugger; elles ne deviennent pas une nouvelle couche de bruit.
+- [x] Les courbes aident a decider quoi ouvrir/debugger; elles ne deviennent pas une nouvelle couche de bruit.
 
 ## 8. Hors-scope global du TODO
 
@@ -495,11 +495,11 @@ Pas de rebuild runtime pour ce commit docs-only.
 
 ## 10. Criteres de cloture du chantier complet
 
-- [ ] Les deux P1 content-free sont corriges et prouves.
-- [ ] Le pipeline par tour est lisible par conversation/tour sans relecture manuelle de toute la timeline.
-- [ ] `/log` affiche une synthese cockpit minimale.
-- [ ] Memory Admin est plus compacte et couvre `memory_chain_snapshot`.
-- [ ] Hermeneutic/Identity distinguent cockpit, diagnostic et edition.
-- [ ] Les courbes ajoutees sont limitees aux signaux fiables.
-- [ ] Les specs vivantes sont mises a jour seulement si un contrat runtime ou operateur change.
+- [x] Les deux P1 content-free sont corriges et prouves.
+- [x] Le pipeline par tour est lisible par conversation/tour sans relecture manuelle de toute la timeline.
+- [x] `/log` affiche une synthese cockpit minimale.
+- [x] Memory Admin est plus compacte et couvre `memory_chain_snapshot`.
+- [x] Hermeneutic/Identity distinguent cockpit, diagnostic et edition.
+- [x] Les courbes ajoutees sont limitees aux signaux fiables.
+- [x] Les specs vivantes sont mises a jour seulement si un contrat runtime ou operateur change.
 - [ ] Le chantier est archive dans `app/docs/todo-done/` avec preuves compactes.

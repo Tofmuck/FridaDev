@@ -43,6 +43,14 @@
   const LOG_METRICS_ENDPOINT = "/api/admin/logs/chat/metrics";
   const LOG_TURNS_ENDPOINT = "/api/admin/logs/chat/turns";
   const LOG_EXPORT_MARKDOWN_ENDPOINT = "/api/admin/logs/chat/export.md";
+  const METRICS_EVENT_LIMIT = 2000;
+  const METRIC_VISUAL_SOURCES = Object.freeze({
+    classification: "checklist.classification_counts",
+    providers: "llm_call_provider_metrics",
+    rag: "rag_funnel",
+    web: "web",
+    anomalies: "errors_by_stage/skipped_by_stage/fallback_fail_open.by_stage",
+  });
   const BLOCKED_PAYLOAD_KEYS = new Set([
     "canonical_inputs",
     "content",
@@ -59,6 +67,16 @@
     "raw_query",
     "result_snippet",
     "search_snippet",
+  ]);
+  const BLOCKED_METRIC_LABELS = new Set([
+    "canonical_inputs",
+    "content",
+    "context_block",
+    "messages",
+    "prompt",
+    "query",
+    "raw_identity",
+    "raw_query",
   ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -162,7 +180,7 @@
 
   const buildMetricsQuery = () => {
     const query = new URLSearchParams();
-    query.set("event_limit", "2000");
+    query.set("event_limit", String(METRICS_EVENT_LIMIT));
     return query.toString();
   };
 
@@ -274,6 +292,14 @@
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  const sanitizeMetricLabel = (value) => {
+    const text = toText(value).toLowerCase();
+    if (!text) return "unknown";
+    if (BLOCKED_METRIC_LABELS.has(text)) return "redacted_label";
+    if (!/^[a-z0-9_:-]{1,48}$/.test(text)) return "unknown";
+    return text;
+  };
+
   const sumObjectValues = (value) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
     return Object.values(value).reduce((total, entry) => total + safeCount(entry), 0);
@@ -284,6 +310,76 @@
     if (text.length <= 18) return text || "n/a";
     return `${text.slice(0, 8)}...${text.slice(-6)}`;
   };
+
+  const metricWindowText = (source, metrics) =>
+    `fenetre events=${safeCount(source.events_read ?? metrics?.events_count)} / ${safeCount(source.events_total ?? metrics?.events_count)}; limit=${METRICS_EVENT_LIMIT}`;
+
+  const createMiniBars = (rows, options = {}) => {
+    const container = document.createElement("div");
+    container.className = "log-mini-bars";
+    const normalizedRows = rows
+      .map((row) => ({
+        label: sanitizeMetricLabel(row.label),
+        value: safeCount(row.value),
+        status: row.status || "",
+      }))
+      .filter((row) => options.showZero || row.value > 0);
+
+    if (!normalizedRows.length) {
+      const empty = document.createElement("p");
+      empty.className = "log-mini-empty";
+      empty.textContent = options.emptyMessage || "Aucun signal dans la fenetre.";
+      container.appendChild(empty);
+      return container;
+    }
+
+    const maxValue = Math.max(
+      1,
+      safeCount(options.maxValue),
+      ...normalizedRows.map((row) => row.value),
+    );
+
+    for (const row of normalizedRows) {
+      const line = document.createElement("div");
+      line.className = "log-mini-bar-row";
+      if (row.status) line.dataset.status = row.status;
+
+      const label = document.createElement("span");
+      label.className = "log-mini-bar-label";
+      label.textContent = row.label;
+      line.appendChild(label);
+
+      const track = document.createElement("span");
+      track.className = "log-mini-bar-track";
+      const fill = document.createElement("span");
+      fill.className = "log-mini-bar-fill";
+      fill.style.width = row.value > 0 ? `${Math.max(2, Math.round((row.value / maxValue) * 100))}%` : "0";
+      track.appendChild(fill);
+      line.appendChild(track);
+
+      const value = document.createElement("span");
+      value.className = "log-mini-bar-value";
+      value.textContent = String(row.value);
+      line.appendChild(value);
+      container.appendChild(line);
+    }
+
+    return container;
+  };
+
+  const objectMetricRows = (source, prefix, status) => {
+    if (!source || typeof source !== "object" || Array.isArray(source)) return [];
+    return Object.entries(source)
+      .map(([key, value]) => ({
+        label: `${prefix}:${sanitizeMetricLabel(key)}`,
+        value: safeCount(value),
+        status,
+      }))
+      .filter((row) => row.value > 0)
+      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label));
+  };
+
+  const rowsOrEmpty = (rows) => (rows.some((row) => safeCount(row.value) > 0) ? rows : []);
 
   const createMetricCard = (title, chips, options = {}) => {
     const card = document.createElement("article");
@@ -297,6 +393,7 @@
       const source = document.createElement("span");
       source.className = "admin-card-source";
       source.textContent = options.source;
+      source.title = options.source;
       head.appendChild(source);
     }
     card.appendChild(head);
@@ -307,6 +404,15 @@
       appendChip(meta, chip.text, chip.status || "");
     }
     card.appendChild(meta);
+    if (options.body) {
+      card.appendChild(options.body);
+    }
+    if (options.note) {
+      const note = document.createElement("p");
+      note.className = "log-mini-note";
+      note.textContent = options.note;
+      card.appendChild(note);
+    }
     return card;
   };
 
@@ -351,6 +457,40 @@
     elements.cockpitSourceChip.textContent = eventsTruncated ? "source tronquee" : "source complete";
     elements.cockpitSourceChip.dataset.status = eventsTruncated ? "degraded" : "ok";
     elements.cockpitWindowChip.textContent = `events=${safeCount(source.events_read ?? metrics?.events_count)} / ${safeCount(source.events_total ?? metrics?.events_count)}`;
+    const observedTurns = safeCount(metrics?.turns_observed_count);
+    const sourceWindow = metricWindowText(source, metrics);
+    const classRows = [
+      { label: "complete", value: classes.complete, status: "complete" },
+      { label: "degraded", value: classes.degraded, status: "degraded" },
+      { label: "partial", value: classes.partial, status: "partial" },
+      { label: "legacy_incomplete", value: classes.legacy_incomplete, status: "legacy_incomplete" },
+      { label: "unknown", value: classes.unknown, status: safeCount(classes.unknown) ? "degraded" : "" },
+    ];
+    const providerRows = [
+      { label: "main", value: llm.main_llm_call_count, status: safeCount(llm.main_llm_call_count) ? "ok" : "" },
+      { label: "secondary", value: llm.secondary_llm_call_count },
+      { label: "unknown", value: llm.unknown_llm_call_count, status: safeCount(llm.unknown_llm_call_count) ? "degraded" : "" },
+    ];
+    const ragRows = [
+      { label: "retrieved", value: rag.retrieved_candidates_total },
+      { label: "basket", value: rag.basketed_candidates_total },
+      { label: "kept", value: rag.kept_candidates_total },
+      { label: "injected", value: rag.injected_candidates_total, status: safeCount(rag.injected_candidates_total) ? "ok" : "" },
+    ];
+    const webRows = [
+      { label: "requested", value: web.requested_turns },
+      { label: "success", value: web.successful_count, status: "ok" },
+      { label: "injected", value: web.injected_turns, status: safeCount(web.injected_turns) ? "ok" : "" },
+      { label: "skipped", value: web.skipped_count, status: safeCount(web.skipped_count) ? "skipped" : "" },
+      { label: "error", value: web.error_count, status: safeCount(web.error_count) ? "error" : "" },
+    ];
+    const anomalyRows = [
+      ...objectMetricRows(errorsByStage, "error", "error"),
+      ...objectMetricRows(skippedByStage, "skip", "skipped"),
+      ...objectMetricRows(fallback.by_stage, "fallback", "degraded"),
+    ]
+      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label))
+      .slice(0, 6);
 
     const cards = [
       createMetricCard(
@@ -362,7 +502,15 @@
           { text: `partial=${safeCount(classes.partial)}`, status: "partial" },
           { text: `legacy=${safeCount(classes.legacy_incomplete)}`, status: "legacy_incomplete" },
         ],
-        { source: metrics?.kind || "metrics" },
+        {
+          source: METRIC_VISUAL_SOURCES.classification,
+          body: createMiniBars(observedTurns > 0 ? rowsOrEmpty(classRows) : [], {
+            maxValue: observedTurns,
+            showZero: true,
+            emptyMessage: "Aucun tour observe dans la fenetre.",
+          }),
+          note: `source=${METRIC_VISUAL_SOURCES.classification}; ${sourceWindow}; semantics=classification par tour observe.`,
+        },
       ),
       createMetricCard(
         "Providers",
@@ -371,6 +519,14 @@
           { text: `secondary=${safeCount(llm.secondary_llm_call_count)}` },
           { text: `unknown=${safeCount(llm.unknown_llm_call_count)}`, status: safeCount(llm.unknown_llm_call_count) ? "degraded" : "" },
         ],
+        {
+          source: METRIC_VISUAL_SOURCES.providers,
+          body: createMiniBars(rowsOrEmpty(providerRows), {
+            showZero: true,
+            emptyMessage: "Aucun appel provider observe.",
+          }),
+          note: `source=${METRIC_VISUAL_SOURCES.providers}; ${sourceWindow}; semantics=appels LLM par provider_caller.`,
+        },
       ),
       createMetricCard(
         "RAG",
@@ -381,18 +537,47 @@
           { text: `injected=${safeCount(rag.injected_candidates_total)}`, status: safeCount(rag.injected_candidates_total) ? "ok" : "" },
           { text: `legacy=${safeCount(rag.prompt_fallback_turns)}`, status: safeCount(rag.prompt_fallback_turns) ? "degraded" : "" },
         ],
+        {
+          source: METRIC_VISUAL_SOURCES.rag,
+          body: createMiniBars(rowsOrEmpty(ragRows), {
+            showZero: true,
+            emptyMessage: "Aucun signal RAG observe.",
+          }),
+          note: `source=${METRIC_VISUAL_SOURCES.rag}; ${sourceWindow}; semantics=candidats retrieved -> basket -> kept -> injected.`,
+        },
       ),
       createMetricCard(
-        "Web / erreurs",
+        "Web",
         [
           { text: `requested=${safeCount(web.requested_turns)}` },
           { text: `ok=${safeCount(web.successful_count)}`, status: "ok" },
+          { text: `injected=${safeCount(web.injected_turns)}`, status: safeCount(web.injected_turns) ? "ok" : "" },
           { text: `skipped=${safeCount(web.skipped_count)}`, status: "skipped" },
           { text: `error=${safeCount(web.error_count)}`, status: safeCount(web.error_count) ? "error" : "" },
+        ],
+        {
+          source: METRIC_VISUAL_SOURCES.web,
+          body: createMiniBars(rowsOrEmpty(webRows), {
+            showZero: true,
+            emptyMessage: "Web non sollicite dans la fenetre.",
+          }),
+          note: `source=${METRIC_VISUAL_SOURCES.web}; ${sourceWindow}; semantics=tours web demandes, succes, injection, skips et erreurs.`,
+        },
+      ),
+      createMetricCard(
+        "Erreurs / skips",
+        [
           { text: `fallback=${safeCount(fallback.total_count)}`, status: safeCount(fallback.total_count) ? "degraded" : "" },
           { text: `stage_errors=${sumObjectValues(errorsByStage)}`, status: sumObjectValues(errorsByStage) ? "error" : "" },
           { text: `stage_skips=${sumObjectValues(skippedByStage)}`, status: sumObjectValues(skippedByStage) ? "skipped" : "" },
         ],
+        {
+          source: METRIC_VISUAL_SOURCES.anomalies,
+          body: createMiniBars(anomalyRows, {
+            emptyMessage: "Aucune erreur, skip ou fallback dans la fenetre.",
+          }),
+          note: `source=${METRIC_VISUAL_SOURCES.anomalies}; ${sourceWindow}; semantics=top stages avec erreur, skip ou fallback.`,
+        },
       ),
     ];
 
