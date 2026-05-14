@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -30,6 +31,142 @@ class _NoopLogger:
 
 
 class LogStorePhase3Tests(unittest.TestCase):
+    def test_build_llm_call_provider_metrics_segments_main_secondary_and_unknown(self) -> None:
+        metrics = log_store.build_llm_call_provider_metrics(
+            [
+                {
+                    'provider_caller': 'llm',
+                    'status': 'ok',
+                    'calls_count': 2,
+                    'duration_ms_total': 120,
+                    'duration_ms_count': 2,
+                    'response_chars_total': 42,
+                    'latest_ts': datetime(2026, 5, 14, 10, 0, tzinfo=timezone.utc),
+                },
+                {
+                    'provider_caller': 'stimmung_agent',
+                    'status': 'ok',
+                    'calls_count': 1,
+                    'duration_ms_total': 40,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 6,
+                    'latest_ts': datetime(2026, 5, 14, 10, 1, tzinfo=timezone.utc),
+                },
+                {
+                    'provider_caller': 'validation_agent',
+                    'status': 'error',
+                    'calls_count': 1,
+                    'duration_ms_total': 20,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 0,
+                    'latest_ts': datetime(2026, 5, 14, 10, 2, tzinfo=timezone.utc),
+                },
+                {
+                    'provider_caller': 'web_reformulation',
+                    'status': 'ok',
+                    'calls_count': 1,
+                    'duration_ms_total': 10,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 12,
+                    'latest_ts': datetime(2026, 5, 14, 10, 3, tzinfo=timezone.utc),
+                },
+                {
+                    'provider_caller': '',
+                    'status': 'ok',
+                    'calls_count': 1,
+                    'duration_ms_total': 5,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 0,
+                    'latest_ts': datetime(2026, 5, 14, 10, 4, tzinfo=timezone.utc),
+                },
+                {
+                    'provider_caller': 'legacy_sidecar',
+                    'status': 'ok',
+                    'calls_count': 1,
+                    'duration_ms_total': 7,
+                    'duration_ms_count': 1,
+                    'response_chars_total': 0,
+                    'latest_ts': datetime(2026, 5, 14, 10, 5, tzinfo=timezone.utc),
+                },
+            ]
+        )
+
+        self.assertEqual(metrics['main_provider_caller'], 'llm')
+        self.assertEqual(
+            metrics['secondary_provider_callers'],
+            ['stimmung_agent', 'validation_agent', 'web_reformulation'],
+        )
+        self.assertEqual(metrics['main_llm_call_count'], 2)
+        self.assertEqual(metrics['secondary_llm_call_count'], 3)
+        self.assertEqual(metrics['unknown_llm_call_count'], 2)
+        self.assertEqual(metrics['total_llm_call_count'], 7)
+
+        by_caller = metrics['by_provider_caller']
+        self.assertEqual(by_caller['llm']['total_count'], 2)
+        self.assertEqual(by_caller['llm']['ok_count'], 2)
+        self.assertEqual(by_caller['stimmung_agent']['total_count'], 1)
+        self.assertEqual(by_caller['validation_agent']['error_count'], 1)
+        self.assertEqual(by_caller['web_reformulation']['response_chars_total'], 12)
+        self.assertEqual(by_caller['unknown']['total_count'], 2)
+        self.assertEqual(by_caller['unknown']['ok_count'], 2)
+        self.assertNotIn('legacy_sidecar', by_caller)
+        serialized = json.dumps(metrics, sort_keys=True)
+        for forbidden in ('prompt', 'messages', 'content', 'response_text'):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_read_llm_call_provider_metrics_queries_llm_calls_only(self) -> None:
+        observed: dict[str, Any] = {'queries': []}
+
+        class FakeCursor:
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                observed['queries'].append((query, params))
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    ('llm', 'ok', 3, 90, 3, 120, datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc)),
+                    ('validation_agent', 'ok', 1, 30, 1, 8, datetime(2026, 5, 14, 12, 1, tzinfo=timezone.utc)),
+                    ('', 'ok', 1, 10, 1, 0, datetime(2026, 5, 14, 12, 2, tzinfo=timezone.utc)),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        result = log_store.read_llm_call_provider_metrics(
+            ts_from='2026-05-14T00:00:00Z',
+            ts_to='2026-05-15T00:00:00Z',
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(result['main_llm_call_count'], 3)
+        self.assertEqual(result['secondary_llm_call_count'], 1)
+        self.assertEqual(result['unknown_llm_call_count'], 1)
+        self.assertEqual(result['by_provider_caller']['llm']['avg_duration_ms'], 30.0)
+        self.assertEqual(result['filters']['ts_from'], '2026-05-14T00:00:00Z')
+        self.assertEqual(result['filters']['ts_to'], '2026-05-15T00:00:00Z')
+
+        joined_queries = '\n'.join(str(query) for query, _params in observed['queries'])
+        self.assertIn("stage = 'llm_call'", joined_queries)
+        self.assertIn('payload_json->>\'provider_caller\'', joined_queries)
+        self.assertIn('GROUP BY provider_caller, status', joined_queries)
+        self.assertEqual(
+            observed['queries'][0][1],
+            ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z'),
+        )
+
     def test_read_chat_log_metadata_returns_conversations_and_turns_for_selected_conversation(self) -> None:
         observed: dict[str, Any] = {'queries': []}
 

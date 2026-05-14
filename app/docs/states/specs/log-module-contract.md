@@ -232,6 +232,9 @@ Minimum event-specific details:
 
 - `llm_call`
   - `model`, `mode`, `timeout_s`, `response_chars`
+  - every metric or dashboard derived from `llm_call` must group by compact `provider_caller`
+  - `provider_caller=llm` is the only main-provider lane; secondary lanes currently expected in the full chat turn are `stimmung_agent`, `validation_agent`, and `web_reformulation`
+  - legacy or missing `provider_caller` values must be classified explicitly as `unknown`, never merged into the main `llm` lane
   - optional provider truth fields when available from OpenRouter:
     - `provider_caller`, `provider_title`
     - `provider_generation_id`, `provider_model`

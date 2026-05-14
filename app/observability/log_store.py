@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Sequence
 
 import psycopg
 
@@ -15,6 +15,20 @@ logger = logging.getLogger('frida.log_store')
 
 _STATUS_ALLOWED = {'ok', 'error', 'skipped'}
 _REQUIRED_FIELDS = {'event_id', 'conversation_id', 'turn_id', 'ts', 'stage', 'status'}
+_LLM_CALL_MAIN_PROVIDER_CALLER = 'llm'
+_LLM_CALL_SECONDARY_PROVIDER_CALLERS = (
+    'stimmung_agent',
+    'validation_agent',
+    'web_reformulation',
+)
+_LLM_CALL_KNOWN_PROVIDER_CALLERS = (
+    _LLM_CALL_MAIN_PROVIDER_CALLER,
+    *_LLM_CALL_SECONDARY_PROVIDER_CALLERS,
+)
+_LLM_CALL_AGGREGATE_PROVIDER_CALLERS = (
+    *_LLM_CALL_KNOWN_PROVIDER_CALLERS,
+    'unknown',
+)
 
 
 def _conn() -> Any:
@@ -35,6 +49,115 @@ def _validate_iso8601_filter(value: str | None, *, field_name: str) -> str | Non
     except ValueError as exc:
         raise ValueError(f'invalid {field_name} timestamp: {raw}') from exc
     return raw
+
+
+def _to_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _utc_iso(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).isoformat()
+    text = str(value or '').strip()
+    return text or None
+
+
+def normalize_llm_call_provider_caller(value: Any) -> str:
+    caller = str(value or '').strip().lower()
+    if caller in _LLM_CALL_KNOWN_PROVIDER_CALLERS:
+        return caller
+    return 'unknown'
+
+
+def _empty_llm_call_provider_bucket(provider_caller: str) -> dict[str, Any]:
+    return {
+        'provider_caller': provider_caller,
+        'total_count': 0,
+        'ok_count': 0,
+        'error_count': 0,
+        'skipped_count': 0,
+        'unknown_status_count': 0,
+        'duration_ms_total': 0,
+        'duration_ms_count': 0,
+        'avg_duration_ms': None,
+        'response_chars_total': 0,
+        'latest_ts': None,
+    }
+
+
+def _llm_call_metric_row_value(row: Mapping[str, Any] | Sequence[Any], key: str, index: int) -> Any:
+    if isinstance(row, Mapping):
+        return row.get(key)
+    try:
+        return row[index]
+    except (IndexError, TypeError):
+        return None
+
+
+def build_llm_call_provider_metrics(rows: Sequence[Mapping[str, Any] | Sequence[Any]]) -> dict[str, Any]:
+    """Build content-free llm_call metrics grouped by provider_caller.
+
+    Legacy rows without a known provider_caller are intentionally grouped under
+    ``unknown`` so they cannot be mistaken for the main runtime LLM.
+    """
+    by_provider_caller = {
+        caller: _empty_llm_call_provider_bucket(caller)
+        for caller in _LLM_CALL_AGGREGATE_PROVIDER_CALLERS
+    }
+
+    for row in rows:
+        provider_caller = normalize_llm_call_provider_caller(
+            _llm_call_metric_row_value(row, 'provider_caller', 0)
+        )
+        status = str(_llm_call_metric_row_value(row, 'status', 1) or '').strip().lower()
+        calls_count = _to_int(_llm_call_metric_row_value(row, 'calls_count', 2))
+        duration_ms_total = _to_int(_llm_call_metric_row_value(row, 'duration_ms_total', 3))
+        duration_ms_count = _to_int(_llm_call_metric_row_value(row, 'duration_ms_count', 4))
+        response_chars_total = _to_int(_llm_call_metric_row_value(row, 'response_chars_total', 5))
+        latest_ts = _utc_iso(_llm_call_metric_row_value(row, 'latest_ts', 6))
+
+        bucket = by_provider_caller[provider_caller]
+        bucket['total_count'] += calls_count
+        if status in _STATUS_ALLOWED:
+            bucket[f'{status}_count'] += calls_count
+        else:
+            bucket['unknown_status_count'] += calls_count
+        bucket['duration_ms_total'] += duration_ms_total
+        bucket['duration_ms_count'] += duration_ms_count
+        bucket['response_chars_total'] += response_chars_total
+        if latest_ts and (not bucket['latest_ts'] or latest_ts > str(bucket['latest_ts'])):
+            bucket['latest_ts'] = latest_ts
+
+    total_llm_call_count = sum(
+        int(bucket['total_count'])
+        for bucket in by_provider_caller.values()
+    )
+    secondary_llm_call_count = sum(
+        int(by_provider_caller[caller]['total_count'])
+        for caller in _LLM_CALL_SECONDARY_PROVIDER_CALLERS
+    )
+
+    for bucket in by_provider_caller.values():
+        duration_count = int(bucket['duration_ms_count'])
+        if duration_count > 0:
+            bucket['avg_duration_ms'] = round(
+                float(bucket['duration_ms_total']) / float(duration_count),
+                3,
+            )
+
+    return {
+        'main_provider_caller': _LLM_CALL_MAIN_PROVIDER_CALLER,
+        'secondary_provider_callers': list(_LLM_CALL_SECONDARY_PROVIDER_CALLERS),
+        'known_provider_callers': list(_LLM_CALL_KNOWN_PROVIDER_CALLERS),
+        'by_provider_caller': by_provider_caller,
+        'total_llm_call_count': total_llm_call_count,
+        'main_llm_call_count': int(by_provider_caller[_LLM_CALL_MAIN_PROVIDER_CALLER]['total_count']),
+        'secondary_llm_call_count': secondary_llm_call_count,
+        'unknown_llm_call_count': int(by_provider_caller['unknown']['total_count']),
+    }
 
 
 def init_log_storage(
@@ -325,6 +448,79 @@ def read_chat_log_events(
             'ts_to': ts_to_s,
         },
     }
+
+
+def read_llm_call_provider_metrics(
+    *,
+    ts_from: str | None = None,
+    ts_to: str | None = None,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    """Read content-free llm_call counts grouped by provider_caller."""
+    ts_from_s = _validate_iso8601_filter(ts_from, field_name='ts_from')
+    ts_to_s = _validate_iso8601_filter(ts_to, field_name='ts_to')
+
+    where_clauses: list[str] = ["stage = 'llm_call'"]
+    where_params: list[Any] = []
+    if ts_from_s:
+        where_clauses.append('ts >= %s::timestamptz')
+        where_params.append(ts_from_s)
+    if ts_to_s:
+        where_clauses.append('ts <= %s::timestamptz')
+        where_params.append(ts_to_s)
+    where_sql = ' AND '.join(where_clauses)
+
+    rows: list[tuple[Any, ...]] = []
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    WITH llm_calls AS (
+                        SELECT
+                            COALESCE(NULLIF(payload_json->>'provider_caller', ''), '') AS provider_caller,
+                            status,
+                            duration_ms,
+                            CASE
+                                WHEN COALESCE(payload_json->>'response_chars', '') ~ '^[0-9]+$'
+                                THEN (payload_json->>'response_chars')::bigint
+                                ELSE 0
+                            END AS response_chars,
+                            ts
+                        FROM observability.chat_log_events
+                        WHERE {where_sql}
+                    )
+                    SELECT
+                        provider_caller,
+                        status,
+                        COUNT(*)::int AS calls_count,
+                        COALESCE(SUM(duration_ms), 0)::bigint AS duration_ms_total,
+                        COUNT(duration_ms)::int AS duration_ms_count,
+                        COALESCE(SUM(response_chars), 0)::bigint AS response_chars_total,
+                        MAX(ts) AS latest_ts
+                    FROM llm_calls
+                    GROUP BY provider_caller, status
+                    ORDER BY provider_caller ASC, status ASC
+                    ''',
+                    tuple(where_params),
+                )
+                rows = cur.fetchall()
+    except Exception as exc:
+        logger_instance.error('llm_call_provider_metrics_read_failed err=%s', exc)
+        result = build_llm_call_provider_metrics([])
+        result['filters'] = {
+            'ts_from': ts_from_s,
+            'ts_to': ts_to_s,
+        }
+        return result
+
+    result = build_llm_call_provider_metrics(rows)
+    result['filters'] = {
+        'ts_from': ts_from_s,
+        'ts_to': ts_to_s,
+    }
+    return result
 
 
 def read_chat_log_metadata(

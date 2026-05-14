@@ -155,23 +155,23 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Formaliser que toute metrique LLM est groupee par `provider_caller`.
-- [ ] Verifier les valeurs attendues: `llm`, `stimmung_agent`, `validation_agent`, `web_reformulation`.
-- [ ] Distinguer explicitement payload principal et payload secondaire dans les lectures agregees.
-- [ ] Ajouter un test ou une lecture agregee qui prouve que `llm_call[llm]` ne capture pas les providers secondaires.
+- [x] Formaliser que toute metrique LLM est groupee par `provider_caller`.
+- [x] Verifier les valeurs attendues: `llm`, `stimmung_agent`, `validation_agent`, `web_reformulation`.
+- [x] Distinguer explicitement payload principal et payload secondaire dans les lectures agregees.
+- [x] Ajouter un test ou une lecture agregee qui prouve que `llm_call[llm]` ne capture pas les providers secondaires.
 
 Tests attendus:
 
-- [ ] Test d'agregation sur plusieurs events avec callers distincts.
-- [ ] Test de non-regression des payloads compacts `stimmung_prompt_prepared`, `validation_prompt_prepared`, `web_reformulation_prompt_prepared`.
+- [x] Test d'agregation sur plusieurs events avec callers distincts.
+- [x] Test de non-regression des payloads compacts `stimmung_prompt_prepared`, `validation_prompt_prepared`, `web_reformulation_prompt_prepared`.
 
 Preuves runtime attendues:
 
-- [ ] Counts par `provider_caller`, avec presence du principal et absence de fusion avec les secondaires.
+- [x] Counts par `provider_caller`, avec presence du principal et absence de fusion avec les secondaires.
 
 Condition de cloture:
 
-- [ ] Les futures courbes de latence, erreur et tokens peuvent etre filtrees par caller sans ambiguite.
+- [x] Les futures courbes de latence, erreur et tokens peuvent etre filtrees par caller sans ambiguite.
 
 ## Lot 3 - Barriere post-save canonique JSON/streaming
 
@@ -308,7 +308,7 @@ Condition de cloture:
 Le chantier se ferme quand:
 
 - [x] `persist_response` est non ambigu pour les metriques de persistence.
-- [ ] Les metriques LLM sont segmentees par `provider_caller`.
+- [x] Les metriques LLM sont segmentees par `provider_caller`.
 - [ ] La barriere post-save JSON/streaming est testee ou documentee explicitement.
 - [ ] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.
 - [ ] Le dashboard/courbes futur est cadre avec des signaux fiables, sans implementation prematuree.
