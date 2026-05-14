@@ -382,6 +382,33 @@ body.admin-page {
   color: var(--accent);
 }
 
+.admin-chip[data-status="degraded"],
+.admin-chip[data-status="partial"],
+.admin-chip[data-status="interrupted"],
+.admin-chip[data-status="not_saved"] {
+  background: var(--accent-bg);
+  border-color: rgba(90, 62, 27, 0.20);
+  color: var(--accent);
+}
+
+.admin-chip[data-status="complete"],
+.admin-chip[data-status="saved"],
+.admin-chip[data-status="present"],
+.admin-chip[data-status="success"] {
+  background: var(--ok-bg);
+  border-color: rgba(62, 108, 78, 0.22);
+  color: var(--ok);
+}
+
+.admin-chip[data-status="legacy_incomplete"],
+.admin-chip[data-status="missing"],
+.admin-chip[data-status="absent"],
+.admin-chip[data-status="failed"] {
+  background: var(--error-bg);
+  border-color: rgba(159, 61, 41, 0.26);
+  color: var(--error);
+}
+
 .admin-form {
   margin-top: 16px;
   display: grid;
@@ -686,6 +713,59 @@ body.admin-page {
   color: var(--fg-muted);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.log-turns-wrap {
+  overflow-x: auto;
+}
+
+.log-turn-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.log-turn-table th,
+.log-turn-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-muted);
+  vertical-align: top;
+  text-align: left;
+}
+
+.log-turn-table th {
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.log-turn-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.log-turn-scope {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.log-turn-scope strong,
+.log-turn-scope span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-turn-scope span {
+  color: var(--fg-muted);
+  font-size: 12px;
 }
 
 .admin-check-list {

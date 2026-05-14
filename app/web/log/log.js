@@ -24,6 +24,12 @@
     groups: document.getElementById("logGroups"),
     countChip: document.getElementById("logCountChip"),
     pageChip: document.getElementById("logPageChip"),
+    cockpitCards: document.getElementById("logCockpitCards"),
+    cockpitSourceChip: document.getElementById("logCockpitSourceChip"),
+    cockpitWindowChip: document.getElementById("logCockpitWindowChip"),
+    turns: document.getElementById("logTurns"),
+    turnCountChip: document.getElementById("logTurnCountChip"),
+    turnSourceChip: document.getElementById("logTurnSourceChip"),
   };
 
   const state = {
@@ -34,7 +40,26 @@
     nextOffset: null,
   };
   const LOG_METADATA_ENDPOINT = "/api/admin/logs/chat/metadata";
+  const LOG_METRICS_ENDPOINT = "/api/admin/logs/chat/metrics";
+  const LOG_TURNS_ENDPOINT = "/api/admin/logs/chat/turns";
   const LOG_EXPORT_MARKDOWN_ENDPOINT = "/api/admin/logs/chat/export.md";
+  const BLOCKED_PAYLOAD_KEYS = new Set([
+    "canonical_inputs",
+    "content",
+    "context_block",
+    "identity",
+    "identity_text",
+    "memory",
+    "memory_trace",
+    "memory_traces",
+    "messages",
+    "prompt",
+    "query",
+    "raw_identity",
+    "raw_query",
+    "result_snippet",
+    "search_snippet",
+  ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -62,13 +87,10 @@
       return cleaned.length > 120 ? `${cleaned.slice(0, 117)}...` : cleaned;
     }
     if (Array.isArray(value)) {
-      if (!value.length) return "[]";
-      const preview = value.slice(0, 3).map((entry) => compactValue(entry)).join(", ");
-      return value.length > 3 ? `[${preview}, ...] (${value.length})` : `[${preview}]`;
+      return `array[${value.length}]`;
     }
     if (typeof value === "object") {
-      const keys = Object.keys(value);
-      return `{${keys.slice(0, 3).join(", ")}${keys.length > 3 ? ", ..." : ""}}`;
+      return `object[${Object.keys(value).length}]`;
     }
     return String(value);
   };
@@ -90,6 +112,7 @@
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
     return Object.keys(payload)
       .sort()
+      .filter((key) => !BLOCKED_PAYLOAD_KEYS.has(key))
       .slice(0, 12)
       .map((key) =>
         `${key}=${
@@ -134,6 +157,21 @@
     if (filters.turn_id) query.set("turn_id", filters.turn_id);
     if (filters.stage) query.set("stage", filters.stage);
     if (filters.status) query.set("status", filters.status);
+    return query.toString();
+  };
+
+  const buildMetricsQuery = () => {
+    const query = new URLSearchParams();
+    query.set("event_limit", "2000");
+    return query.toString();
+  };
+
+  const buildTurnsQuery = (filters) => {
+    const query = new URLSearchParams();
+    query.set("limit", String(Math.min(filters.limit, 100)));
+    query.set("offset", String(filters.offset));
+    if (filters.conversation_id) query.set("conversation_id", filters.conversation_id);
+    if (filters.turn_id) query.set("turn_id", filters.turn_id);
     return query.toString();
   };
 
@@ -219,12 +257,279 @@
     return chip;
   };
 
+  const appendChip = (parent, text, status = "") => {
+    parent.appendChild(createChip(text, status ? { status } : {}));
+  };
+
+  const statusTone = (value) => {
+    const status = toText(value).toLowerCase();
+    if (["ok", "complete", "saved", "present", "success"].includes(status)) return status;
+    if (["degraded", "partial", "skipped", "interrupted", "not_saved"].includes(status)) return status;
+    if (["error", "legacy_incomplete", "missing", "absent", "failed"].includes(status)) return status;
+    return "";
+  };
+
+  const safeCount = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const sumObjectValues = (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+    return Object.values(value).reduce((total, entry) => total + safeCount(entry), 0);
+  };
+
+  const shortId = (value) => {
+    const text = toText(value);
+    if (text.length <= 18) return text || "n/a";
+    return `${text.slice(0, 8)}...${text.slice(-6)}`;
+  };
+
+  const createMetricCard = (title, chips, options = {}) => {
+    const card = document.createElement("article");
+    card.className = "admin-card";
+    const head = document.createElement("div");
+    head.className = "admin-card-head";
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    head.appendChild(heading);
+    if (options.source) {
+      const source = document.createElement("span");
+      source.className = "admin-card-source";
+      source.textContent = options.source;
+      head.appendChild(source);
+    }
+    card.appendChild(head);
+    const meta = document.createElement("div");
+    meta.className = "admin-card-meta";
+    for (const chip of chips) {
+      if (!chip) continue;
+      appendChip(meta, chip.text, chip.status || "");
+    }
+    card.appendChild(meta);
+    return card;
+  };
+
+  const renderCockpitEmpty = (message, stateValue = "") => {
+    elements.cockpitCards.innerHTML = "";
+    const empty = document.createElement("p");
+    empty.className = "admin-readonly-empty";
+    empty.textContent = message;
+    if (stateValue) empty.dataset.state = stateValue;
+    elements.cockpitCards.appendChild(empty);
+  };
+
+  const renderTurnsEmpty = (message) => {
+    elements.turns.innerHTML = "";
+    const empty = document.createElement("p");
+    empty.className = "admin-readonly-empty";
+    empty.textContent = message;
+    elements.turns.appendChild(empty);
+  };
+
   const renderEmpty = (message) => {
     elements.groups.innerHTML = "";
     const empty = document.createElement("p");
     empty.className = "admin-readonly-empty";
     empty.textContent = message;
     elements.groups.appendChild(empty);
+  };
+
+  const renderCockpit = (metrics) => {
+    const source = metrics?.source || {};
+    const checklist = metrics?.checklist || {};
+    const classes = checklist.classification_counts || {};
+    const llm = metrics?.llm_call_provider_metrics || {};
+    const web = metrics?.web || {};
+    const rag = metrics?.rag_funnel || {};
+    const fallback = metrics?.fallback_fail_open || {};
+    const errorsByStage = metrics?.errors_by_stage || {};
+    const skippedByStage = metrics?.skipped_by_stage || {};
+    const eventsTruncated = Boolean(source.events_truncated);
+
+    elements.cockpitCards.innerHTML = "";
+    elements.cockpitSourceChip.textContent = eventsTruncated ? "source tronquee" : "source complete";
+    elements.cockpitSourceChip.dataset.status = eventsTruncated ? "degraded" : "ok";
+    elements.cockpitWindowChip.textContent = `events=${safeCount(source.events_read ?? metrics?.events_count)} / ${safeCount(source.events_total ?? metrics?.events_count)}`;
+
+    const cards = [
+      createMetricCard(
+        "Etat global",
+        [
+          { text: `tours=${safeCount(metrics?.turns_observed_count)}` },
+          { text: `complete=${safeCount(classes.complete)}`, status: "complete" },
+          { text: `degraded=${safeCount(classes.degraded)}`, status: "degraded" },
+          { text: `partial=${safeCount(classes.partial)}`, status: "partial" },
+          { text: `legacy=${safeCount(classes.legacy_incomplete)}`, status: "legacy_incomplete" },
+        ],
+        { source: metrics?.kind || "metrics" },
+      ),
+      createMetricCard(
+        "Providers",
+        [
+          { text: `main=${safeCount(llm.main_llm_call_count)}`, status: safeCount(llm.main_llm_call_count) ? "ok" : "" },
+          { text: `secondary=${safeCount(llm.secondary_llm_call_count)}` },
+          { text: `unknown=${safeCount(llm.unknown_llm_call_count)}`, status: safeCount(llm.unknown_llm_call_count) ? "degraded" : "" },
+        ],
+      ),
+      createMetricCard(
+        "RAG",
+        [
+          { text: `retrieved=${safeCount(rag.retrieved_candidates_total)}` },
+          { text: `basket=${safeCount(rag.basketed_candidates_total)}` },
+          { text: `kept=${safeCount(rag.kept_candidates_total)}` },
+          { text: `injected=${safeCount(rag.injected_candidates_total)}`, status: safeCount(rag.injected_candidates_total) ? "ok" : "" },
+          { text: `legacy=${safeCount(rag.prompt_fallback_turns)}`, status: safeCount(rag.prompt_fallback_turns) ? "degraded" : "" },
+        ],
+      ),
+      createMetricCard(
+        "Web / erreurs",
+        [
+          { text: `requested=${safeCount(web.requested_turns)}` },
+          { text: `ok=${safeCount(web.successful_count)}`, status: "ok" },
+          { text: `skipped=${safeCount(web.skipped_count)}`, status: "skipped" },
+          { text: `error=${safeCount(web.error_count)}`, status: safeCount(web.error_count) ? "error" : "" },
+          { text: `fallback=${safeCount(fallback.total_count)}`, status: safeCount(fallback.total_count) ? "degraded" : "" },
+          { text: `stage_errors=${sumObjectValues(errorsByStage)}`, status: sumObjectValues(errorsByStage) ? "error" : "" },
+          { text: `stage_skips=${sumObjectValues(skippedByStage)}`, status: sumObjectValues(skippedByStage) ? "skipped" : "" },
+        ],
+      ),
+    ];
+
+    for (const card of cards) {
+      elements.cockpitCards.appendChild(card);
+    }
+
+    if (eventsTruncated) {
+      const warning = document.createElement("p");
+      warning.className = "admin-status";
+      warning.dataset.state = "error";
+      warning.textContent = "Fenetre metrics tronquee: les compteurs ne couvrent que les events lus.";
+      elements.cockpitCards.appendChild(warning);
+    }
+  };
+
+  const appendTurnText = (parent, label, value, status = "") => {
+    appendChip(parent, `${label}=${value}`, statusTone(status));
+  };
+
+  const renderTurnRows = (items) => {
+    elements.turns.innerHTML = "";
+    if (!items.length) {
+      renderTurnsEmpty("Aucun tour pour ces filtres.");
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.className = "log-turn-table";
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    for (const label of ["Conversation / tour", "Etat", "Persistence", "Providers", "RAG", "Identity / Hermeneutic", "Web / erreurs", "Latest"]) {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headRow.appendChild(th);
+    }
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const item of items) {
+      const row = document.createElement("tr");
+      const persistence = item?.persistence || {};
+      const providers = item?.providers || {};
+      const mainProvider = providers.main || {};
+      const secondary = providers.secondary || {};
+      const rag = item?.rag || {};
+      const identity = item?.identity || {};
+      const hermeneutic = item?.hermeneutic || {};
+      const nodeState = hermeneutic.node_state || {};
+      const web = item?.web || {};
+      const errors = item?.errors || {};
+
+      const scopeCell = document.createElement("td");
+      const scope = document.createElement("div");
+      scope.className = "log-turn-scope";
+      const conv = document.createElement("strong");
+      conv.title = toText(item?.conversation_id);
+      conv.textContent = shortId(item?.conversation_id);
+      const turn = document.createElement("span");
+      turn.title = toText(item?.turn_id);
+      turn.textContent = shortId(item?.turn_id);
+      scope.appendChild(conv);
+      scope.appendChild(turn);
+      scopeCell.appendChild(scope);
+      row.appendChild(scopeCell);
+
+      const stateCell = document.createElement("td");
+      const stateMeta = document.createElement("div");
+      stateMeta.className = "log-turn-cell";
+      appendChip(stateMeta, toText(item?.classification) || "unknown", statusTone(item?.classification));
+      appendTurnText(stateMeta, "score", safeCount(item?.score));
+      if (item?.flags?.events_truncated) appendChip(stateMeta, "events tronques", "degraded");
+      stateCell.appendChild(stateMeta);
+      row.appendChild(stateCell);
+
+      const persistCell = document.createElement("td");
+      const persistMeta = document.createElement("div");
+      persistMeta.className = "log-turn-cell";
+      appendChip(persistMeta, toText(persistence.status) || "missing", statusTone(persistence.status));
+      appendTurnText(persistMeta, "final", persistence.assistant_final_saved ? "saved" : "absent", persistence.assistant_final_saved ? "saved" : "missing");
+      if (persistence.assistant_interrupted) appendChip(persistMeta, "interrupted", "interrupted");
+      persistCell.appendChild(persistMeta);
+      row.appendChild(persistCell);
+
+      const providersCell = document.createElement("td");
+      const providersMeta = document.createElement("div");
+      providersMeta.className = "log-turn-cell";
+      appendTurnText(providersMeta, "main", toText(mainProvider.status) || "missing", mainProvider.status);
+      appendTurnText(providersMeta, "chars", safeCount(mainProvider.response_chars));
+      for (const key of ["stimmung", "validation", "web_reformulation"]) {
+        const provider = secondary[key] || {};
+        appendTurnText(providersMeta, key, toText(provider.status) || "n/a", provider.status);
+      }
+      providersCell.appendChild(providersMeta);
+      row.appendChild(providersCell);
+
+      const ragCell = document.createElement("td");
+      const ragMeta = document.createElement("div");
+      ragMeta.className = "log-turn-cell";
+      appendTurnText(ragMeta, "retrieved", safeCount(rag.retrieved));
+      appendTurnText(ragMeta, "basket", rag.basket == null ? "n/a" : safeCount(rag.basket));
+      appendTurnText(ragMeta, "kept", rag.kept == null ? "n/a" : safeCount(rag.kept));
+      appendTurnText(ragMeta, "injected", safeCount(rag.injected), safeCount(rag.injected) ? "ok" : "");
+      if (rag.legacy_reason_code) appendChip(ragMeta, "legacy", "degraded");
+      ragCell.appendChild(ragMeta);
+      row.appendChild(ragCell);
+
+      const blocksCell = document.createElement("td");
+      const blocksMeta = document.createElement("div");
+      blocksMeta.className = "log-turn-cell";
+      appendTurnText(blocksMeta, "identity", toText(identity.status) || "missing", identity.status);
+      appendTurnText(blocksMeta, "id_chars", safeCount(identity.chars));
+      appendTurnText(blocksMeta, "herm", toText(hermeneutic.status) || "missing", hermeneutic.status);
+      appendTurnText(blocksMeta, "node_read", nodeState.read_valid ? "ok" : "miss", nodeState.read_valid ? "ok" : "degraded");
+      appendTurnText(blocksMeta, "node_write", nodeState.write_succeeded ? "ok" : "skip", nodeState.write_succeeded ? "ok" : "skipped");
+      blocksCell.appendChild(blocksMeta);
+      row.appendChild(blocksCell);
+
+      const webCell = document.createElement("td");
+      const webMeta = document.createElement("div");
+      webMeta.className = "log-turn-cell";
+      appendTurnText(webMeta, "web", toText(web.status) || "n/a", web.status);
+      appendTurnText(webMeta, "requested", web.requested ? "yes" : "no");
+      appendTurnText(webMeta, "errors", safeCount(errors.error_count), safeCount(errors.error_count) ? "error" : "");
+      appendTurnText(webMeta, "fallbacks", safeCount(errors.fallback_count), safeCount(errors.fallback_count) ? "degraded" : "");
+      webCell.appendChild(webMeta);
+      row.appendChild(webCell);
+
+      const latestCell = document.createElement("td");
+      latestCell.textContent = toText(item?.latest_ts) || "n/a";
+      row.appendChild(latestCell);
+
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    elements.turns.appendChild(table);
   };
 
   const renderEvents = (items) => {
@@ -354,6 +659,53 @@
     }
   };
 
+  const loadCockpitMetrics = async () => {
+    try {
+      const response = await adminApi.fetchAdmin(`${LOG_METRICS_ENDPOINT}?${buildMetricsQuery()}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        elements.cockpitSourceChip.textContent = "metrics indisponibles";
+        elements.cockpitSourceChip.dataset.status = "error";
+        renderCockpitEmpty(adminApi.errorMessage(data, `Echec metrics (${response.status}).`), "error");
+        return;
+      }
+      renderCockpit(data);
+    } catch (error) {
+      elements.cockpitSourceChip.textContent = "metrics erreur";
+      elements.cockpitSourceChip.dataset.status = "error";
+      renderCockpitEmpty(`Erreur metrics: ${error?.message || error}`, "error");
+    }
+  };
+
+  const loadTurnPipeline = async () => {
+    const filters = readFilters();
+    try {
+      const response = await adminApi.fetchAdmin(`${LOG_TURNS_ENDPOINT}?${buildTurnsQuery(filters)}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        elements.turnCountChip.textContent = "0 tour";
+        elements.turnSourceChip.textContent = "turns indisponibles";
+        elements.turnSourceChip.dataset.status = "error";
+        renderTurnsEmpty(adminApi.errorMessage(data, `Echec tours (${response.status}).`));
+        return;
+      }
+      const items = Array.isArray(data.items) ? data.items : [];
+      elements.turnCountChip.textContent = `${Number(data.count) || items.length} tour${items.length > 1 ? "s" : ""} / ${Number(data.total) || items.length}`;
+      elements.turnSourceChip.textContent = data?.source?.turns_truncated ? "fenetre tronquee" : "read-model";
+      elements.turnSourceChip.dataset.status = data?.source?.turns_truncated ? "degraded" : "ok";
+      renderTurnRows(items);
+    } catch (error) {
+      elements.turnCountChip.textContent = "0 tour";
+      elements.turnSourceChip.textContent = "turns erreur";
+      elements.turnSourceChip.dataset.status = "error";
+      renderTurnsEmpty(`Erreur tours: ${error?.message || error}`);
+    }
+  };
+
+  const loadCockpit = async () => {
+    await Promise.all([loadCockpitMetrics(), loadTurnPipeline()]);
+  };
+
   const loadLogs = async () => {
     const filters = readFilters();
     state.limit = filters.limit;
@@ -428,7 +780,7 @@
       elements.offset.value = "0";
       setStatusBanner(`Suppression ok (${data.deleted_count || 0} evenement(s) supprime(s)).`, "ok");
       await loadMetadata({ conversationId, preserveTurnSelection: false });
-      await loadLogs();
+      await Promise.all([loadCockpit(), loadLogs()]);
     } catch (error) {
       setStatusBanner(`Erreur suppression logs: ${error?.message || error}`, "error");
     }
@@ -495,12 +847,13 @@
   elements.filtersForm.addEventListener("submit", (event) => {
     event.preventDefault();
     elements.offset.value = "0";
+    void loadCockpit();
     void loadLogs();
   });
 
   elements.refresh.addEventListener("click", async () => {
     await loadMetadata({ preserveTurnSelection: true });
-    await loadLogs();
+    await Promise.all([loadCockpit(), loadLogs()]);
   });
 
   elements.conversationId.addEventListener("change", async () => {
@@ -510,7 +863,7 @@
       conversationId: elements.conversationId.value,
       preserveTurnSelection: false,
     });
-    await loadLogs();
+    await Promise.all([loadCockpit(), loadLogs()]);
   });
 
   elements.turnId.addEventListener("change", () => {
@@ -525,19 +878,21 @@
     elements.limit.value = "100";
     elements.offset.value = "0";
     await loadMetadata({ conversationId: "", preserveTurnSelection: false });
-    await loadLogs();
+    await Promise.all([loadCockpit(), loadLogs()]);
   });
 
   elements.prevPage.addEventListener("click", () => {
     const limit = toBoundedInt(elements.limit.value, 100, 1, 500);
     const currentOffset = toBoundedInt(elements.offset.value, 0, 0, 1000000);
     elements.offset.value = String(Math.max(0, currentOffset - limit));
+    void loadCockpit();
     void loadLogs();
   });
 
   elements.nextPage.addEventListener("click", () => {
     if (state.nextOffset == null) return;
     elements.offset.value = String(state.nextOffset);
+    void loadCockpit();
     void loadLogs();
   });
 
@@ -561,6 +916,6 @@
   syncScopeButtons();
   void (async () => {
     await loadMetadata({ conversationId: "", preserveTurnSelection: false });
-    await loadLogs();
+    await Promise.all([loadCockpit(), loadLogs()]);
   })();
 })();

@@ -30,6 +30,38 @@
       </div>
     </header>
 
+    <p id="logStatusBanner" class="admin-status" role="status" aria-live="polite">Chargement des logs...</p>
+
+    <section class="admin-section-block" aria-labelledby="logs-cockpit-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Cockpit</p>
+          <h2 id="logs-cockpit-title">Synthese des tours</h2>
+        </div>
+        <div class="admin-inline-meta">
+          <span id="logCockpitSourceChip" class="admin-chip">metrics</span>
+          <span id="logCockpitWindowChip" class="admin-chip">fenetre recente</span>
+        </div>
+      </div>
+
+      <div id="logCockpitCards" class="admin-section-grid"></div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="logs-turns-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Pipeline</p>
+          <h2 id="logs-turns-title">Tours recents</h2>
+        </div>
+        <div class="admin-inline-meta">
+          <span id="logTurnCountChip" class="admin-chip">0 tour</span>
+          <span id="logTurnSourceChip" class="admin-chip">read-model</span>
+        </div>
+      </div>
+
+      <div id="logTurns" class="log-turns-wrap"></div>
+    </section>
+
     <section class="admin-section-block" aria-labelledby="logs-filters-title">
       <div class="admin-section-head">
         <div>
@@ -112,8 +144,6 @@
       </form>
     </section>
 
-    <p id="logStatusBanner" class="admin-status" role="status" aria-live="polite">Chargement des logs...</p>
-
     <section class="admin-section-block" aria-labelledby="logs-actions-title">
       <div class="admin-section-head">
         <div>
@@ -142,8 +172,8 @@
       </div>
     </section>
 
-    <section class="admin-section-block" aria-labelledby="logs-results-title">
-      <div class="admin-section-head">
+    <details class="admin-section-block admin-disclosure" aria-labelledby="logs-results-title">
+      <summary class="admin-disclosure-summary">
         <div>
           <p class="admin-kicker">Timeline</p>
           <h2 id="logs-results-title">Evenements par tour</h2>
@@ -152,10 +182,12 @@
           <span id="logCountChip" class="admin-chip">0 evenement</span>
           <span id="logPageChip" class="admin-chip">offset 0</span>
         </div>
-      </div>
+      </summary>
 
-      <div id="logGroups" class="admin-readonly-stack"></div>
-    </section>
+      <div class="admin-disclosure-body">
+        <div id="logGroups" class="admin-readonly-stack"></div>
+      </div>
+    </details>
   </main>
 
   <script src="admin_api.js"></script>

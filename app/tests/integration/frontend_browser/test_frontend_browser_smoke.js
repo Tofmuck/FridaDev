@@ -555,6 +555,90 @@ function logsMockScript() {
           });
         }
 
+        if (url.pathname === "/api/admin/logs/chat/metrics" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            kind: "full_turn_metrics_snapshot",
+            events_count: 4,
+            turns_observed_count: 1,
+            checklist: {
+              classification_counts: {
+                complete: 1,
+                degraded: 0,
+                partial: 0,
+                legacy_incomplete: 0,
+              },
+            },
+            llm_call_provider_metrics: {
+              main_llm_call_count: 1,
+              secondary_llm_call_count: 1,
+              unknown_llm_call_count: 0,
+            },
+            fallback_fail_open: { total_count: 0 },
+            rag_funnel: {
+              retrieved_candidates_total: 2,
+              basketed_candidates_total: 1,
+              kept_candidates_total: 1,
+              injected_candidates_total: 1,
+              prompt_fallback_turns: 0,
+            },
+            web: {
+              requested_turns: 1,
+              successful_count: 1,
+              skipped_count: 0,
+              error_count: 0,
+            },
+            errors_by_stage: {},
+            skipped_by_stage: {},
+            source: { events_total: 4, events_read: 4, events_truncated: false },
+            redaction: { raw_event_payloads_included: false },
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat/turns" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            kind: "chat_turn_pipeline_read_model",
+            count: 1,
+            total: 1,
+            next_offset: null,
+            source: { source_kind: "chat_log_events", turns_truncated: false },
+            redaction: { raw_event_payloads_included: false },
+            items: [{
+              kind: "chat_turn_pipeline_item",
+              conversation_id: "conv-1",
+              turn_id: "turn-1",
+              classification: "complete",
+              score: 100,
+              latest_ts: "2026-05-03T10:00:00Z",
+              persistence: { status: "saved", assistant_final_saved: true, assistant_interrupted: false },
+              providers: {
+                main: { status: "ok", response_chars: 42 },
+                secondary: {
+                  stimmung: { status: "ok" },
+                  validation: { status: "ok" },
+                  web_reformulation: { status: "not_applicable" },
+                },
+              },
+              rag: { retrieved: 2, basket: 1, kept: 1, injected: 1 },
+              identity: { status: "present", chars: 12 },
+              hermeneutic: {
+                status: "present",
+                node_state: { read_valid: true, write_succeeded: true },
+              },
+              web: { status: "ok", requested: true },
+              errors: { error_count: 0, fallback_count: 0 },
+              flags: { events_truncated: false, raw_event_payloads_included: false },
+            }],
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (url.pathname === "/api/admin/logs/chat" && method === "GET") {
           return new Response(JSON.stringify({
             ok: true,
@@ -606,6 +690,8 @@ test('logs page applies filters and exports scoped markdown in browser', async (
 
     await page.waitForFunction(() =>
       document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
+    await assertTextContains(page.locator('#logCockpitCards'), 'complete=1');
+    await assertTextContains(page.locator('#logTurns'), 'retrieved=2');
     await assertTextContains(page.locator('#logGroups'), 'llm_call');
     assert.equal(await page.locator('#exportTurnLogs').isDisabled(), false);
 
@@ -623,6 +709,19 @@ test('logs page applies filters and exports scoped markdown in browser', async (
     assert.equal(readParams.get('turn_id'), 'turn-1');
     assert.equal(readParams.get('stage'), 'llm_call');
     assert.equal(readParams.get('status'), 'ok');
+
+    const metricsCall = state.calls
+      .filter((call) => call.method === 'GET' && call.path === '/api/admin/logs/chat/metrics')
+      .at(-1);
+    assert.ok(metricsCall, 'cockpit metrics should be called');
+
+    const turnsCall = state.calls
+      .filter((call) => call.method === 'GET' && call.path === '/api/admin/logs/chat/turns')
+      .at(-1);
+    assert.ok(turnsCall, 'turn pipeline should be called');
+    const turnsParams = new URLSearchParams(turnsCall.search);
+    assert.equal(turnsParams.get('conversation_id'), 'conv-1');
+    assert.equal(turnsParams.get('turn_id'), 'turn-1');
 
     const exportCall = state.calls
       .filter((call) => call.method === 'GET' && call.path === '/api/admin/logs/chat/export.md')

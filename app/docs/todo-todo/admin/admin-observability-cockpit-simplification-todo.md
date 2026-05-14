@@ -279,22 +279,24 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Consommer `/api/admin/logs/chat/metrics` pour un bandeau compact.
-- [ ] Afficher la repartition `complete / degraded / partial / legacy`.
-- [ ] Afficher provider principal et providers secondaires sans les fusionner.
-- [ ] Afficher persistence assistant finale, interruptions et echecs de persistence.
-- [ ] Afficher erreurs/fallbacks par stage sous forme compacte.
-- [ ] Afficher les statuts RAG, Identity, Hermeneutic et Web par conversation/tour.
-- [ ] Ajouter une table de tours recents avec tri/filtre minimal.
-- [ ] Garder la timeline brute repliee ou secondaire, avec acces debug explicite.
+- [x] Consommer `/api/admin/logs/chat/metrics` pour un bandeau compact.
+- [x] Afficher la repartition `complete / degraded / partial / legacy`.
+- [x] Afficher provider principal et providers secondaires sans les fusionner.
+- [x] Afficher persistence assistant finale, interruptions et echecs de persistence.
+- [x] Afficher erreurs/fallbacks par stage sous forme compacte.
+- [x] Afficher les statuts RAG, Identity, Hermeneutic et Web par conversation/tour.
+- [x] Ajouter une table de tours recents avec tri/filtre minimal.
+- [x] Garder la timeline brute repliee ou secondaire, avec acces debug explicite.
 - [ ] Remplacer les filtres stage statiques si possible par une liste derivee ou documenter leur limite.
+
+Note: le filtre `stage` reste statique dans ce lot pour eviter d'ajouter une lecture metadata supplementaire; a reprendre seulement si un endpoint de stages derives est ajoute sans parser la timeline brute cote frontend.
 
 Tests attendus:
 
-- [ ] Test JS ou rendu cible sur payload metrics minimal.
-- [ ] Test empty/error state.
-- [ ] Test qu'aucun payload brut n'est affiche dans le bandeau.
-- [ ] Test de non-regression de lecture timeline.
+- [x] Test JS ou rendu cible sur payload metrics minimal.
+- [x] Test empty/error state.
+- [x] Test qu'aucun payload brut n'est affiche dans le bandeau.
+- [x] Test de non-regression de lecture timeline.
 
 Preuves runtime attendues:
 
@@ -303,7 +305,7 @@ Preuves runtime attendues:
 
 Condition de cloture:
 
-- [ ] Depuis `/log`, un operateur sait en moins d'un ecran si les tours recents sont complets, degrades, partiels ou legacy, et peut ouvrir la timeline seulement si necessaire.
+- [x] Depuis `/log`, un operateur sait en moins d'un ecran si les tours recents sont complets, degrades, partiels ou legacy, et peut ouvrir la timeline seulement si necessaire.
 
 ## Lot 4 - Simplifier Memory Admin
 
