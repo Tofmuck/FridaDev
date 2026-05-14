@@ -51,6 +51,21 @@ def _safe_sequence(value: Any) -> list[Any]:
     return []
 
 
+def _injection_class_from_lanes(lanes: Sequence[str]) -> str:
+    lane_list = [str(item).strip() for item in lanes if str(item).strip()]
+    if not lane_list:
+        return 'none'
+    if len(lane_list) > 1:
+        return 'mixed'
+    if lane_list[0] == 'context_hints':
+        return 'hints_only'
+    if lane_list[0] == 'summary_context':
+        return 'summary_context_only'
+    if lane_list[0] == 'trace_memory':
+        return 'trace_memory_only'
+    return lane_list[0]
+
+
 def _read_retrieval_summary(
     *,
     conn_factory: Callable[[], Any],
@@ -425,24 +440,38 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             injection.get('summary_context_injected_count', injection.get('memory_context_summary_count'))
         )
         context_hints_count = _to_int(injection.get('context_hints_injected_count'))
+        trace_memory_injected = bool(
+            injection.get('trace_memory_injected', injection.get('memory_traces_injected'))
+        ) or trace_memory_count > 0
+        summary_context_injected = bool(
+            injection.get('summary_context_injected', injection.get('memory_context_injected'))
+        ) or summary_context_count > 0
+        context_hints_injected = bool(injection.get('context_hints_injected')) or context_hints_count > 0
+        injection_lanes = [
+            str(item).strip()
+            for item in _safe_sequence(injection.get('injection_lanes'))
+            if str(item).strip()
+        ]
+        if not injection_lanes:
+            if trace_memory_injected:
+                injection_lanes.append('trace_memory')
+            if summary_context_injected:
+                injection_lanes.append('summary_context')
+            if context_hints_injected:
+                injection_lanes.append('context_hints')
+        injection_class = str(injection.get('injection_class') or '').strip() or _injection_class_from_lanes(
+            injection_lanes
+        )
         return {
             'injected': bool(injection.get('injected')),
-            'injection_class': str(injection.get('injection_class') or ''),
-            'injection_lane_count': _to_int(injection.get('injection_lane_count')),
-            'injection_lanes': [
-                str(item).strip()
-                for item in _safe_sequence(injection.get('injection_lanes'))
-                if str(item).strip()
-            ],
-            'trace_memory_injected': bool(
-                injection.get('trace_memory_injected', injection.get('memory_traces_injected'))
-            ) or trace_memory_count > 0,
+            'injection_class': injection_class,
+            'injection_lane_count': _to_int(injection.get('injection_lane_count')) or len(injection_lanes),
+            'injection_lanes': injection_lanes,
+            'trace_memory_injected': trace_memory_injected,
             'trace_memory_injected_count': trace_memory_count,
-            'summary_context_injected': bool(
-                injection.get('summary_context_injected', injection.get('memory_context_injected'))
-            ) or summary_context_count > 0,
+            'summary_context_injected': summary_context_injected,
             'summary_context_injected_count': summary_context_count,
-            'context_hints_injected': bool(injection.get('context_hints_injected')) or context_hints_count > 0,
+            'context_hints_injected': context_hints_injected,
             'memory_traces_injected_count': _to_int(injection.get('memory_traces_injected_count')),
             'memory_context_summary_count': _to_int(injection.get('memory_context_summary_count')),
             'context_hints_injected_count': context_hints_count,
