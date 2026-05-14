@@ -65,8 +65,8 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         original_get_identities = self.server.memory_store.get_identities
         raw_content = 'RAW LEGACY IDENTITY CONTENT should not be served'
         raw_content_norm = 'raw legacy identity content should not be served'
-        raw_last_reason = 'operator free-text last reason should not be served'
-        raw_override_reason = 'operator free-text override reason should not be served'
+        raw_last_reason = 'secret_familial'
+        raw_override_reason = 'burnout'
 
         def fake_get_identities(subject: str, top_n: int, status=None):
             observed['calls'].append((subject, top_n, status))
@@ -158,6 +158,37 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertNotIn(raw_content_norm, serialized)
         self.assertNotIn(raw_last_reason, serialized)
         self.assertNotIn(raw_override_reason, serialized)
+
+    def test_identity_candidates_preserves_explicit_stable_reason_code(self) -> None:
+        original_get_identities = self.server.memory_store.get_identities
+
+        def fake_get_identities(subject: str, top_n: int, status=None):
+            if subject != 'llm':
+                return []
+            return [
+                {
+                    'identity_id': 'l-technical',
+                    'subject': 'llm',
+                    'weight': 0.7,
+                    'reason_code': 'legacy_identity_extractor',
+                    'last_reason': 'operator note should stay compact',
+                },
+            ]
+
+        self.server.memory_store.get_identities = fake_get_identities
+        try:
+            response = self.client.get('/api/admin/hermeneutics/identity-candidates?subject=llm')
+        finally:
+            self.server.memory_store.get_identities = original_get_identities
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data['count'], 1)
+        item = data['items'][0]
+        self.assertEqual(item['reason_code'], 'legacy_identity_extractor')
+        self.assertEqual(item['reason_chars'], len('operator note should stay compact'))
+        self.assertEqual(len(item['reason_sha256_12']), 12)
+        self.assertNotIn('operator note should stay compact', str(data))
 
     def test_identity_candidates_rejects_invalid_subject(self) -> None:
         response = self.client.get('/api/admin/hermeneutics/identity-candidates?subject=robot')

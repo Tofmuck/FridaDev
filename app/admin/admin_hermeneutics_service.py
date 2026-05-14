@@ -8,6 +8,36 @@ from admin import admin_stage_latency_summary
 from admin.admin_memory_arbiter_preview import compact_arbiter_decision_items
 
 
+_STABLE_REASON_CODES = frozenset(
+    {
+        'accepted',
+        'deferred',
+        'rejected',
+        'completed_no_change',
+        'completed_with_open_tension',
+        'applied',
+        'legacy_identity',
+        'legacy_identity_extractor',
+        'manual_override',
+        'admin_override',
+        'system_override',
+        'operator_override',
+    }
+)
+_STABLE_REASON_CODE_PREFIXES = (
+    'admin_',
+    'auto_',
+    'identity_',
+    'legacy_',
+    'manual_',
+    'operator_',
+    'periodic_',
+    'read_model_',
+    'system_',
+    'validation_',
+)
+
+
 def _text(value: Any) -> str:
     return str(value or '').strip()
 
@@ -19,13 +49,19 @@ def _sha256_12(value: Any) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
 
 
-def _compact_reason_code(value: Any, *, fallback: str = 'text_reason_present') -> str:
+def _compact_explicit_reason_code(value: Any) -> str:
     text = _text(value).lower().replace('-', '_')
     if not text:
         return ''
-    if len(text) <= 64 and all(char.isalnum() or char == '_' for char in text):
+    if len(text) > 64 or not all(char.isalnum() or char == '_' for char in text):
+        return 'technical_reason_present'
+    if text in _STABLE_REASON_CODES or text.startswith(_STABLE_REASON_CODE_PREFIXES):
         return text
-    return fallback
+    return 'technical_reason_present'
+
+
+def _free_text_reason_marker(value: Any, *, marker: str) -> str:
+    return marker if _text(value) else ''
 
 
 def compact_identity_candidate_item(item: Any) -> Dict[str, Any]:
@@ -56,13 +92,14 @@ def compact_identity_candidate_item(item: Any) -> Dict[str, Any]:
         'content_sha256_12': _sha256_12(content),
         'content_norm_chars': len(content_norm),
         'content_norm_sha256_12': _sha256_12(content_norm),
-        'reason_code': _compact_reason_code(payload.get('reason_code') or reason),
+        'reason_code': _compact_explicit_reason_code(payload.get('reason_code'))
+        or _free_text_reason_marker(reason, marker='text_reason_present'),
         'reason_chars': len(reason),
         'reason_sha256_12': _sha256_12(reason),
         'override_state': payload.get('override_state'),
         'override_actor': payload.get('override_actor'),
         'override_ts': payload.get('override_ts'),
-        'override_note_code': _compact_reason_code(override_note, fallback='override_note_present'),
+        'override_note_code': _free_text_reason_marker(override_note, marker='override_note_present'),
         'override_note_chars': len(override_note),
         'override_note_sha256_12': _sha256_12(override_note),
         'legacy_only': True,

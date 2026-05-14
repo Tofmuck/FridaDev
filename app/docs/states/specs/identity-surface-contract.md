@@ -65,7 +65,7 @@ La surface `Identity` reemploie les contrats deja fermes:
 
 Le legacy `identity-candidates` reste visible seulement comme couche legacy/evidence-only et ne redevient pas une verite d'injection active.
 Depuis B6, il doit etre lu comme pipeline legacy diagnostique (`persist_identity_entries` -> `identities` / `identity_evidence` / `identity_conflicts`) et non comme une source active concurrente.
-Depuis le lot Hermeneutic Node Observability 1, `/api/admin/hermeneutics/identity-candidates` est content-minimized par defaut: la reponse expose les metadonnees legacy, longueurs et hash courts (`content_chars`, `content_sha256_12`, `content_norm_chars`, `content_norm_sha256_12`, `reason_code`, `reason_chars`, `reason_sha256_12`), mais ne sert pas les cles brutes `content`, `content_norm`, `last_reason` ou `override_reason` au navigateur.
+Depuis le lot Hermeneutic Node Observability 1, `/api/admin/hermeneutics/identity-candidates` est content-minimized par defaut: la reponse expose les metadonnees legacy, longueurs et hash courts (`content_chars`, `content_sha256_12`, `content_norm_chars`, `content_norm_sha256_12`, `reason_code`, `reason_chars`, `reason_sha256_12`), mais ne sert pas les cles brutes `content`, `content_norm`, `last_reason` ou `override_reason` au navigateur. Les champs texte libre `last_reason` et `override_reason` ne sont jamais transformes en `reason_code` lisible: ils deviennent seulement `text_reason_present` / `override_note_present` avec longueur et hash court.
 
 ## Contrat JSON runtime representations
 
