@@ -18,6 +18,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import stimmung_agent
+from observability import chat_turn_logger
+from observability import log_store
 
 
 class _FakeRequests:
@@ -144,6 +146,107 @@ class StimmungAgentTests(unittest.TestCase):
                 )
             ],
         )
+
+    def test_build_affective_turn_signal_emits_stimmung_prompt_prepared_without_raw_payload(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-stimmung-prepared',
+            user_msg='message courant ultra sensible',
+            web_search_enabled=False,
+        )
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    '{"schema_version":"v1","present":true,"tones":[{"tone":"curiosite","strength":5}],"dominant_tone":"curiosite","confidence":0.74}'
+                )
+            ]
+        )
+        recent_window_input_payload = {
+            'schema_version': 'v1',
+            'turn_count': 2,
+            'max_recent_turns': 5,
+            'has_in_progress_turn': True,
+            'turns': [
+                {
+                    'turn_status': 'complete',
+                    'messages': [
+                        {'role': 'user', 'content': 'ancien contenu prive'},
+                        {'role': 'assistant', 'content': 'ancienne reponse privee'},
+                    ],
+                },
+                {
+                    'turn_status': 'in_progress',
+                    'messages': [{'role': 'user', 'content': 'message courant ultra sensible'}],
+                },
+            ],
+        }
+        try:
+            stimmung_agent.build_affective_turn_signal(
+                user_msg='message courant ultra sensible',
+                recent_window_input_payload=recent_window_input_payload,
+                requests_module=requests_module,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'stimmung_prompt_prepared')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(payload['model'], stimmung_agent.PRIMARY_MODEL)
+        self.assertEqual(payload['prompt_kind'], 'stimmung_agent_secondary')
+        self.assertEqual(payload['payload_kind'], 'secondary_stimmung_agent_provider')
+        self.assertEqual(payload['provider_caller'], 'stimmung_agent')
+        self.assertTrue(payload['secondary_provider_payload'])
+        self.assertFalse(payload['main_llm_payload'])
+        self.assertEqual(payload['attempt_decision_source'], 'primary')
+        self.assertEqual(payload['messages_count'], 2)
+        self.assertEqual(payload['message_role_counts'], {'system': 1, 'user': 1})
+        self.assertTrue(payload['system_prompt_present'])
+        self.assertGreater(payload['system_prompt_chars'], 0)
+        self.assertTrue(payload['recent_window_present'])
+        self.assertEqual(payload['recent_turn_count'], 2)
+        self.assertEqual(payload['recent_turns_with_messages_count'], 2)
+        self.assertTrue(payload['recent_has_in_progress_turn'])
+        self.assertEqual(payload['recent_max_turns'], 5)
+        self.assertTrue(payload['current_user_present'])
+        self.assertGreater(payload['current_user_chars'], 0)
+        self.assertGreater(payload['input_chars_total'], 0)
+        self.assertEqual(
+            payload['sampling'],
+            {'temperature': 0.1, 'top_p': 1.0, 'max_tokens': 220, 'timeout_s': 10},
+        )
+        self.assertFalse(payload['fail_open'])
+        self.assertEqual(payload['reason_code'], '')
+
+        def collect_keys(value: object) -> set[str]:
+            if isinstance(value, dict):
+                keys: set[str] = set()
+                for key, item in value.items():
+                    keys.add(str(key))
+                    keys.update(collect_keys(item))
+                return keys
+            if isinstance(value, list):
+                keys = set()
+                for item in value:
+                    keys.update(collect_keys(item))
+                return keys
+            return set()
+
+        forbidden_keys = {'prompt', 'messages', 'content', 'user_message', 'recent_window'}
+        self.assertTrue(forbidden_keys.isdisjoint(collect_keys(payload)))
+        serialized = repr(payload)
+        self.assertNotIn('SYSTEM PROMPT', serialized)
+        self.assertNotIn('ancien contenu prive', serialized)
+        self.assertNotIn('ancienne reponse privee', serialized)
+        self.assertNotIn('message courant ultra sensible', serialized)
 
     def test_build_affective_turn_signal_uses_runtime_settings_models_and_sampling(self) -> None:
         stimmung_agent.runtime_settings.get_stimmung_agent_model_settings = lambda: types.SimpleNamespace(
@@ -337,6 +440,19 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['dominant_tone'], 'neutralite')
 
     def test_build_affective_turn_signal_returns_fail_open_after_double_failure(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-stimmung-fail-open',
+            user_msg='Je ne comprends rien',
+            web_search_enabled=False,
+        )
         requests_module = _FakeRequests(
             [
                 _FakeRequests.exceptions.Timeout('primary timeout'),
@@ -346,10 +462,14 @@ class StimmungAgentTests(unittest.TestCase):
             ]
         )
 
-        result = stimmung_agent.build_affective_turn_signal(
-            user_msg='Je ne comprends rien',
-            requests_module=requests_module,
-        )
+        try:
+            result = stimmung_agent.build_affective_turn_signal(
+                user_msg='Je ne comprends rien',
+                requests_module=requests_module,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
 
         self.assertEqual(result.status, 'error')
         self.assertEqual(result.decision_source, 'fail_open')
@@ -369,6 +489,15 @@ class StimmungAgentTests(unittest.TestCase):
                 'confidence': 0.0,
             },
         )
+        prepared_events = [item for item in observed if item['stage'] == 'stimmung_prompt_prepared']
+        self.assertEqual(len(prepared_events), 2)
+        self.assertEqual(
+            [item['payload_json']['attempt_decision_source'] for item in prepared_events],
+            ['primary', 'fallback'],
+        )
+        self.assertTrue(all(item['payload_json']['secondary_provider_payload'] for item in prepared_events))
+        self.assertTrue(all(not item['payload_json']['main_llm_payload'] for item in prepared_events))
+        self.assertNotIn('Je ne comprends rien', repr([item['payload_json'] for item in prepared_events]))
 
 
 if __name__ == '__main__':

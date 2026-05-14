@@ -11,6 +11,7 @@ from admin import runtime_settings
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core import llm_client
 from core import prompt_loader
+from observability import hermeneutic_node_logger
 
 logger = logging.getLogger('frida.stimmung_agent')
 
@@ -306,21 +307,34 @@ def _call_model(
     user_msg: str,
     recent_window_input_payload: Mapping[str, Any] | None,
     model: str,
+    decision_source: str,
     timeout_s: int,
     temperature: float,
     top_p: float,
     max_tokens: int,
     requests_module: Any,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    messages = _build_messages(
+        system_prompt=system_prompt,
+        user_msg=user_msg,
+        recent_window_input_payload=recent_window_input_payload,
+    )
+    hermeneutic_node_logger.emit_stimmung_prompt_prepared(
+        model=model,
+        decision_source=decision_source,
+        messages=messages,
+        recent_window_input_payload=recent_window_input_payload,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        timeout_s=timeout_s,
+        context_window_turns=CONTEXT_WINDOW_TURNS,
+    )
     response = requests_module.post(
         llm_client.or_chat_completions_url(),
         json={
             'model': model,
-            'messages': _build_messages(
-                system_prompt=system_prompt,
-                user_msg=user_msg,
-                recent_window_input_payload=recent_window_input_payload,
-            ),
+            'messages': messages,
             'temperature': temperature,
             'top_p': top_p,
             'max_tokens': max_tokens,
@@ -366,6 +380,7 @@ def build_affective_turn_signal(
                 user_msg=user_msg,
                 recent_window_input_payload=recent_window_input_payload,
                 model=model,
+                decision_source=decision_source,
                 timeout_s=runtime_model_settings['timeout_s'],
                 temperature=runtime_model_settings['temperature'],
                 top_p=runtime_model_settings['top_p'],

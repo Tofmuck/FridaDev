@@ -405,6 +405,121 @@ def build_hermeneutic_prompt_injection_payload(
     return payload
 
 
+def _provider_message_stats(messages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    role_counts: dict[str, int] = {}
+    system_prompt_chars = 0
+    current_user_chars = 0
+    input_chars_total = 0
+    for message in messages:
+        message_payload = _mapping(message)
+        role = _text(message_payload.get("role")) or "unknown"
+        content_chars = len(str(message_payload.get("content") or ""))
+        input_chars_total += content_chars
+        role_counts[role] = role_counts.get(role, 0) + 1
+        if role == "system":
+            system_prompt_chars += content_chars
+        if role == "user":
+            current_user_chars += content_chars
+    return {
+        "messages_count": len(messages),
+        "message_role_counts": role_counts,
+        "system_prompt_present": system_prompt_chars > 0,
+        "system_prompt_chars": system_prompt_chars,
+        "current_user_present": current_user_chars > 0,
+        "current_user_chars": current_user_chars,
+        "input_chars_total": input_chars_total,
+    }
+
+
+def _recent_window_stats(payload: Mapping[str, Any] | None, *, context_window_turns: int) -> dict[str, Any]:
+    data = _mapping(payload)
+    turns = list(_sequence(data.get("turns")))
+    turn_count_raw = data.get("turn_count")
+    try:
+        turn_count = int(turn_count_raw)
+    except (TypeError, ValueError):
+        turn_count = len(turns)
+    turns_with_messages_count = 0
+    for turn in turns:
+        if _sequence(_mapping(turn).get("messages")):
+            turns_with_messages_count += 1
+    return {
+        "recent_window_present": bool(data),
+        "recent_turn_count": max(0, turn_count),
+        "recent_turns_with_messages_count": turns_with_messages_count,
+        "recent_has_in_progress_turn": bool(data.get("has_in_progress_turn", False)),
+        "recent_max_turns": int(data.get("max_recent_turns") or context_window_turns or 0),
+    }
+
+
+def build_stimmung_prompt_prepared_payload(
+    *,
+    decision_source: str,
+    messages: Sequence[Mapping[str, Any]],
+    recent_window_input_payload: Mapping[str, Any] | None,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+    timeout_s: int,
+    context_window_turns: int,
+) -> dict[str, Any]:
+    payload = {
+        "schema_version": "v1",
+        "payload_kind": "secondary_stimmung_agent_provider",
+        "provider_caller": "stimmung_agent",
+        "secondary_provider_payload": True,
+        "main_llm_payload": False,
+        "stimmung_status": "prepared",
+        "attempt_decision_source": _text(decision_source) or "unknown",
+        "sampling": {
+            "temperature": float(temperature),
+            "top_p": float(top_p),
+            "max_tokens": int(max_tokens),
+            "timeout_s": int(timeout_s),
+        },
+        "fail_open": False,
+        "reason_code": "",
+    }
+    payload.update(_provider_message_stats(messages))
+    payload.update(
+        _recent_window_stats(
+            recent_window_input_payload,
+            context_window_turns=context_window_turns,
+        )
+    )
+    return payload
+
+
+def emit_stimmung_prompt_prepared(
+    *,
+    model: str,
+    decision_source: str,
+    messages: Sequence[Mapping[str, Any]],
+    recent_window_input_payload: Mapping[str, Any] | None,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+    timeout_s: int,
+    context_window_turns: int,
+) -> bool:
+    return chat_turn_logger.emit(
+        "stimmung_prompt_prepared",
+        status="ok",
+        model=_text(model) or None,
+        prompt_kind="stimmung_agent_secondary",
+        payload=build_stimmung_prompt_prepared_payload(
+            decision_source=decision_source,
+            messages=messages,
+            recent_window_input_payload=recent_window_input_payload,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            timeout_s=timeout_s,
+            context_window_turns=context_window_turns,
+        ),
+    )
+
+
 def build_hermeneutic_node_insertion_payload(
     *,
     time_input: Mapping[str, Any] | None = None,

@@ -239,6 +239,14 @@ Observability canonique minimale au seam:
 - `inputs.stimmung.shift_state`
 - `inputs.stimmung.turns_considered`
 
+Observability minimale du provider secondaire:
+
+- `stimmung_prompt_prepared` est emis avant l'appel provider du `stimmung_agent`
+- cet event prouve content-free que le provider secondaire a recu un payload prepare
+- il doit distinguer `provider_caller=stimmung_agent`, `secondary_provider_payload=true` et `main_llm_payload=false`
+- il peut exposer les counts, longueurs, reglages de sampling, timeout, source de tentative et flags de fallback
+- il ne doit pas exposer le prompt du `stimmung_agent`, les messages, le tour utilisateur courant, la fenetre recente ou un contenu conversationnel brut
+
 Contraintes:
 
 - pas de texte brut utilisateur

@@ -85,6 +85,7 @@ The MVP event list is:
 - `identity_write`
 - `web_search`
 - `context_build`
+- `stimmung_prompt_prepared`
 - `prompt_prepared`
 - `llm_call`
 - `arbiter`
@@ -163,6 +164,12 @@ Minimum event-specific details:
 
 - `context_build`
   - `estimated_context_tokens`, `token_limit`, `truncated`
+
+- `stimmung_prompt_prepared`
+  - content-free proof of the secondary provider payload prepared by `stimmung_agent`
+  - must be distinguishable from the main LLM payload and from `validation_prompt_prepared`
+  - allowed fields: `payload_kind`, `provider_caller=stimmung_agent`, secondary/main booleans, model, sampling settings, `timeout_s`, message counts, role counts, prompt/user char counts, recent-window counts, attempt source, fail-open/reason flags
+  - forbidden: raw prompt, raw messages, raw content, raw current user message, raw recent window, canonical input dumps
 
 - `prompt_prepared`
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`

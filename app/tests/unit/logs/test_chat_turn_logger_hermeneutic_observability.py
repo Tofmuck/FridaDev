@@ -360,6 +360,84 @@ class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
         self.assertNotIn('prompt', payload)
         self.assertNotIn('raw_output', payload)
 
+    def test_stimmung_prompt_prepared_emits_provider_secondary_fingerprint_without_raw_payload(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        log_store.insert_chat_log_event = fake_insert
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-stimmung-prepared-log',
+            user_msg='tour utilisateur brut',
+            web_search_enabled=False,
+        )
+        try:
+            hermeneutic_node_logger.emit_stimmung_prompt_prepared(
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                messages=[
+                    {'role': 'system', 'content': 'PROMPT SYSTEME SENSIBLE'},
+                    {'role': 'user', 'content': 'fenetre locale et tour utilisateur brut'},
+                ],
+                recent_window_input_payload={
+                    'schema_version': 'v1',
+                    'turn_count': 2,
+                    'max_recent_turns': 5,
+                    'has_in_progress_turn': True,
+                    'turns': [
+                        {'messages': [{'role': 'user', 'content': 'historique brut'}]},
+                        {'messages': [{'role': 'user', 'content': 'tour utilisateur brut'}]},
+                    ],
+                },
+                temperature=0.1,
+                top_p=1.0,
+                max_tokens=220,
+                timeout_s=10,
+                context_window_turns=5,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+
+        event = next(item for item in observed if item['stage'] == 'stimmung_prompt_prepared')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(payload['prompt_kind'], 'stimmung_agent_secondary')
+        self.assertEqual(payload['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(payload['payload_kind'], 'secondary_stimmung_agent_provider')
+        self.assertEqual(payload['provider_caller'], 'stimmung_agent')
+        self.assertTrue(payload['secondary_provider_payload'])
+        self.assertFalse(payload['main_llm_payload'])
+        self.assertEqual(payload['messages_count'], 2)
+        self.assertEqual(payload['message_role_counts'], {'system': 1, 'user': 1})
+        self.assertTrue(payload['system_prompt_present'])
+        self.assertEqual(payload['recent_turn_count'], 2)
+        self.assertEqual(payload['recent_turns_with_messages_count'], 2)
+        self.assertEqual(payload['sampling']['timeout_s'], 10)
+
+        def collect_keys(value: object) -> set[str]:
+            if isinstance(value, dict):
+                keys: set[str] = set()
+                for key, item in value.items():
+                    keys.add(str(key))
+                    keys.update(collect_keys(item))
+                return keys
+            if isinstance(value, list):
+                keys = set()
+                for item in value:
+                    keys.update(collect_keys(item))
+                return keys
+            return set()
+
+        self.assertTrue({'prompt', 'messages', 'content', 'user_message', 'recent_window'}.isdisjoint(collect_keys(payload)))
+        serialized = repr(payload)
+        self.assertNotIn('PROMPT SYSTEME SENSIBLE', serialized)
+        self.assertNotIn('historique brut', serialized)
+        self.assertNotIn('tour utilisateur brut', serialized)
+
 
 if __name__ == '__main__':
     unittest.main()

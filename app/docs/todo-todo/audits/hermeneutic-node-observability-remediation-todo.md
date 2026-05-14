@@ -163,17 +163,17 @@ Fichiers probablement touches:
 - `app/tests/test_server_logs_phase3.py`
 
 Hors-scope:
-- [ ] Ne pas modifier le prompt du `stimmung_agent`.
-- [ ] Ne pas modifier ses decisions, son modele, ses settings ou son fail-open.
-- [ ] Ne pas logger le prompt secondaire, les messages, le recent window ou le tour utilisateur brut.
-- [ ] Ne pas fusionner l'observabilite `stimmung_agent` avec celle du validation agent.
+- [x] Ne pas modifier le prompt du `stimmung_agent`.
+- [x] Ne pas modifier ses decisions, son modele, ses settings ou son fail-open.
+- [x] Ne pas logger le prompt secondaire, les messages, le recent window ou le tour utilisateur brut.
+- [x] Ne pas fusionner l'observabilite `stimmung_agent` avec celle du validation agent.
 
 Cases de correction:
-- [ ] Ajouter un event compact `stimmung_prompt_prepared` ou un nom equivalent coherent avec le logger existant.
-- [ ] Relier l'event au tour quand les IDs sont disponibles, sans creer de couplage fragile.
-- [ ] Inclure les metriques content-free utiles: provider caller, model id hash ou famille non sensible, input sections presentes, counts, longueurs, hash courts si necessaire, fail-open status.
-- [ ] Distinguer exposition provider secondaire du payload principal LLM.
-- [ ] Garantir l'absence de cles brutes comme `prompt`, `messages`, `content`, `user_message`, `recent_window`.
+- [x] Ajouter un event compact `stimmung_prompt_prepared` ou un nom equivalent coherent avec le logger existant.
+- [x] Relier l'event au tour quand les IDs sont disponibles, sans creer de couplage fragile.
+- [x] Inclure les metriques content-free utiles: provider caller, model id hash ou famille non sensible, input sections presentes, counts, longueurs, hash courts si necessaire, fail-open status.
+- [x] Distinguer exposition provider secondaire du payload principal LLM.
+- [x] Garantir l'absence de cles brutes comme `prompt`, `messages`, `content`, `user_message`, `recent_window`.
 
 Tests attendus:
 - test avec appel provider fake prouvant l'emission de l'event prepare;
@@ -187,7 +187,7 @@ Preuves runtime attendues:
 - aucune exposition de prompt ou message brut.
 
 Condition de cloture:
-- [ ] L'operateur peut savoir qu'un provider secondaire `stimmung_agent` a recu un payload, avec quelles familles d'inputs compactes, sans voir le contenu expose.
+- [x] L'operateur peut savoir qu'un provider secondaire `stimmung_agent` a recu un payload, avec quelles familles d'inputs compactes, sans voir le contenu expose.
 
 ## Lot 4 - Hermeneutic Admin affiche les stages critiques
 
