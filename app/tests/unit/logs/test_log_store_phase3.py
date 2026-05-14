@@ -31,6 +31,108 @@ class _NoopLogger:
 
 
 class LogStorePhase3Tests(unittest.TestCase):
+    def _event(
+        self,
+        stage: str,
+        *,
+        status: str = 'ok',
+        payload: dict[str, Any] | None = None,
+        event_id: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            'event_id': event_id or f'evt-{stage}',
+            'conversation_id': 'conv-checklist',
+            'turn_id': 'turn-checklist',
+            'ts': '2026-05-14T12:00:00+00:00',
+            'stage': stage,
+            'status': status,
+            'duration_ms': None,
+            'payload': dict(payload or {}),
+        }
+
+    def _complete_turn_events(self, *, web_search_enabled: bool = False) -> list[dict[str, Any]]:
+        return [
+            self._event('turn_start', payload={'web_search_enabled': web_search_enabled, 'user_msg_chars': 7}),
+            self._event(
+                'stimmung_prompt_prepared',
+                payload={'provider_caller': 'stimmung_agent', 'secondary_provider_payload': True},
+            ),
+            self._event('stimmung_agent', payload={'provider_caller': 'stimmung_agent'}),
+            self._event('hermeneutic_node_insertion', payload={'insertion_point_reached': True}),
+            self._event(
+                'primary_node',
+                payload={
+                    'fail_open': False,
+                    'node_state_read_present': True,
+                    'node_state_read_valid': True,
+                    'node_state_read_reason_code': 'ok',
+                    'node_state_write_attempted': True,
+                    'node_state_write_succeeded': True,
+                    'node_state_write_changed': False,
+                    'node_state_write_reason_code': 'unchanged',
+                    'node_state_schema_version': 'v1',
+                },
+            ),
+            self._event(
+                'validation_prompt_prepared',
+                payload={'provider_caller': 'validation_agent', 'secondary_provider_payload': True},
+            ),
+            self._event('validation_agent', payload={'provider_caller': 'validation_agent'}),
+            self._event(
+                'prompt_prepared',
+                payload={
+                    'prompt_kind': 'chat_system_augmented',
+                    'messages_count': 4,
+                    'identity_prompt_injection': {
+                        'present': True,
+                        'chars': 12,
+                        'sha256_12': 'a' * 12,
+                    },
+                    'memory_prompt_injection': {
+                        'injected': False,
+                        'injection_class': 'none',
+                        'trace_memory_injected': False,
+                        'summary_context_injected': False,
+                        'context_hints_injected': False,
+                    },
+                    'memory_retrieval': {
+                        'status': 'ok',
+                        'reason_code': 'no_data',
+                        'top_k_returned': 0,
+                    },
+                    'hermeneutic_prompt_injection': {
+                        'present': True,
+                        'chars': 23,
+                        'sha256_12': 'b' * 12,
+                    },
+                    'prompt': 'RAW PROMPT MUST NOT LEAK',
+                    'messages': ['RAW MESSAGE MUST NOT LEAK'],
+                },
+            ),
+            self._event('llm_call', payload={'provider_caller': 'llm', 'response_chars': 17}),
+            self._event(
+                'persist_response',
+                payload={'persist_phase': 'assistant_final', 'conversation_saved': True, 'messages_written': 3},
+            ),
+            self._event('turn_end', payload={'final_status': 'ok'}),
+        ]
+
+    def _find_item(self, checklist: dict[str, Any], key: str) -> dict[str, Any]:
+        return next(item for item in checklist['items'] if item['key'] == key)
+
+    def _collect_keys(self, value: Any) -> set[str]:
+        if isinstance(value, dict):
+            keys = set(value.keys())
+            for child in value.values():
+                keys.update(self._collect_keys(child))
+            return keys
+        if isinstance(value, list):
+            keys: set[str] = set()
+            for child in value:
+                keys.update(self._collect_keys(child))
+            return keys
+        return set()
+
     def test_build_llm_call_provider_metrics_segments_main_secondary_and_unknown(self) -> None:
         metrics = log_store.build_llm_call_provider_metrics(
             [
@@ -166,6 +268,125 @@ class LogStorePhase3Tests(unittest.TestCase):
             observed['queries'][0][1],
             ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z'),
         )
+
+    def test_build_turn_observability_checklist_complete_turn_without_web(self) -> None:
+        checklist = log_store.build_turn_observability_checklist(
+            self._complete_turn_events(web_search_enabled=False)
+        )
+
+        self.assertEqual(checklist['kind'], 'turn_observability_checklist')
+        self.assertEqual(checklist['classification'], 'complete')
+        self.assertEqual(checklist['score'], 100)
+        self.assertEqual(self._find_item(checklist, 'turn_start')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'llm_call_main')['status'], 'ok')
+        self.assertEqual(
+            self._find_item(checklist, 'persist_response_assistant_final')['reason_code'],
+            'assistant_final_saved',
+        )
+        self.assertEqual(self._find_item(checklist, 'identity_prompt_injection')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'memory_prompt_injection')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'hermeneutic_prompt_injection')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'stimmung_agent')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'validation_agent')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'web_search')['status'], 'not_applicable')
+        self.assertEqual(self._find_item(checklist, 'node_state')['status'], 'ok')
+        self.assertEqual(self._find_item(checklist, 'stage_errors')['status'], 'ok')
+
+        serialized = json.dumps(checklist, sort_keys=True)
+        self.assertNotIn('RAW PROMPT MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW MESSAGE MUST NOT LEAK', serialized)
+        for forbidden_key in ('prompt', 'messages', 'content', 'query', 'payload'):
+            self.assertNotIn(forbidden_key, self._collect_keys(checklist))
+
+    def test_build_turn_observability_checklist_web_skipped_with_reason_is_observed(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=True)
+        events.insert(
+            1,
+            self._event(
+                'web_search',
+                status='skipped',
+                payload={
+                    'enabled': True,
+                    'reason_code': 'no_data',
+                    'results_count': 0,
+                    'context_injected': False,
+                    'read_state': 'no_results',
+                    'query': 'RAW QUERY MUST NOT LEAK',
+                },
+            ),
+        )
+
+        checklist = log_store.build_turn_observability_checklist(events)
+
+        self.assertEqual(checklist['classification'], 'complete')
+        web_item = self._find_item(checklist, 'web_search')
+        self.assertEqual(web_item['status'], 'ok')
+        self.assertEqual(web_item['reason_code'], 'observed_skipped')
+        self.assertEqual(web_item['evidence']['read_state'], 'no_results')
+        self.assertNotIn('RAW QUERY MUST NOT LEAK', json.dumps(checklist, sort_keys=True))
+
+    def test_build_turn_observability_checklist_detects_secondary_llm_call_provider(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=False)
+        events.insert(
+            -2,
+            self._event(
+                'llm_call',
+                payload={
+                    'provider_caller': 'web_reformulation',
+                    'response_chars': 11,
+                },
+                event_id='evt-web-reformulation-llm',
+            ),
+        )
+
+        checklist = log_store.build_turn_observability_checklist(events)
+
+        web_reformulation_item = self._find_item(checklist, 'web_reformulation')
+        self.assertEqual(web_reformulation_item['status'], 'ok')
+        self.assertEqual(web_reformulation_item['evidence']['llm_call_count'], 1)
+
+    def test_build_turn_observability_checklist_fail_open_degrades_with_reason(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=False)
+        primary_event = next(event for event in events if event['stage'] == 'primary_node')
+        primary_event['payload'].update(
+            {
+                'fail_open': True,
+                'reason_code': 'runtime_error',
+                'error_class': 'RuntimeError',
+            }
+        )
+
+        checklist = log_store.build_turn_observability_checklist(events)
+
+        self.assertEqual(checklist['classification'], 'degraded')
+        self.assertLess(checklist['score'], 100)
+        node_state_item = self._find_item(checklist, 'node_state')
+        self.assertEqual(node_state_item['status'], 'degraded')
+        self.assertEqual(node_state_item['reason_code'], 'runtime_error')
+
+    def test_build_turn_observability_checklist_legacy_and_unknown_provider_are_partial(self) -> None:
+        checklist = log_store.build_turn_observability_checklist(
+            [
+                self._event('turn_start', payload={'web_search_enabled': False}),
+                self._event('llm_call', payload={'response_chars': 5}),
+                self._event('turn_end', payload={'final_status': 'ok'}),
+            ]
+        )
+
+        self.assertEqual(checklist['classification'], 'legacy_incomplete')
+        self.assertEqual(self._find_item(checklist, 'prompt_prepared')['status'], 'missing')
+        llm_item = self._find_item(checklist, 'llm_call_main')
+        self.assertEqual(llm_item['status'], 'missing')
+        self.assertEqual(llm_item['reason_code'], 'missing_main_llm_call')
+        self.assertEqual(llm_item['evidence']['unknown_llm_call_count'], 1)
+
+    def test_build_turn_observability_checklist_accepts_empty_legacy_logs(self) -> None:
+        checklist = log_store.build_turn_observability_checklist([])
+
+        self.assertEqual(checklist['classification'], 'legacy_incomplete')
+        self.assertEqual(checklist['score'], 0)
+        self.assertEqual(checklist['events_count'], 0)
+        self.assertTrue(checklist['items'])
 
     def test_read_chat_log_metadata_returns_conversations_and_turns_for_selected_conversation(self) -> None:
         observed: dict[str, Any] = {'queries': []}

@@ -268,7 +268,53 @@ Minimum event-specific details:
 - `branch_skipped`
   - `reason_code`, `reason_short`
 
-## 7) Redaction policy (allowed vs forbidden)
+## 7) Derived compact reads
+
+These reads are not runtime events. They are content-free operator projections built from
+`observability.chat_log_events`.
+
+### `turn_observability_checklist`
+
+Goal:
+- classify one turn as `complete`, `degraded`, `partial`, or `legacy_incomplete`;
+- expose a numeric completeness score for future dashboards;
+- explain missing/degraded proof points without reading prompt, message, identity, memory, web query or provider payload content.
+
+Source:
+- existing events for one `(conversation_id, turn_id)`;
+- no new runtime event is required for this read.
+
+Minimum checklist groups:
+- main funnel:
+  - `turn_start`
+  - `prompt_prepared`
+  - `llm_call` where `provider_caller=llm`
+  - `persist_response` where `persist_phase=assistant_final`
+  - `turn_end`
+- prompt fingerprints:
+  - `identity_prompt_injection`
+  - `memory_prompt_injection`
+  - `hermeneutic_prompt_injection`
+- secondary providers when observed or expected:
+  - `stimmung_prompt_prepared` / `stimmung_agent`
+  - `validation_prompt_prepared` / `validation_agent`
+  - `web_reformulation_prompt_prepared`
+- web:
+  - `web_search` is `not_applicable` when web was not requested;
+  - when web was requested, `ok`, `skipped` with `reason_code`, or `error` with compact cause must be represented without raw query/result content;
+- node state:
+  - compact `primary_node.node_state_*` read/write status when the hermeneutic node runs;
+- status hygiene:
+  - error stages and skipped stages without `reason_code`.
+
+Allowed output fields:
+- score, classification, item status, item `reason_code`, stage names, counts, booleans, compact node-state fields, web `read_state`, and provider caller classification.
+
+Forbidden output fields:
+- raw event payload copies;
+- prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, tokens, exception messages or stack traces.
+
+## 8) Redaction policy (allowed vs forbidden)
 Allowed by default:
 - counters, booleans, durations, limits, truncated flags
 - short previews and keys
@@ -294,7 +340,7 @@ Identity exception:
 - single-line text only
 - no sensitive raw payload
 
-## 8) MVP deletion scope decision
+## 9) MVP deletion scope decision
 MVP retained scope:
 - `conversation_logs` (delete logs for one conversation)
 - `turn_logs` (delete logs for one turn inside one conversation)
@@ -307,14 +353,14 @@ Why:
 - `turn_logs` is retained for focused cleanup when a single turn must be removed.
 - `all_logs` is intentionally not retained for MVP to avoid broad destructive action.
 
-## 9) Non-regression rule
+## 10) Non-regression rule
 `delete logs` is never allowed to affect business-memory continuity.
 After deleting logs:
 - the log viewer remains empty for the deleted scope,
 - logs reappear only from new runtime events,
 - memory replay/reconstruction is forbidden.
 
-## 10) UI contract baseline
+## 11) UI contract baseline
 Future logs UI must:
 - reuse `app/web/admin.css` first,
 - reuse existing admin component language (`admin-shell`, cards, chips, statuses, buttons),

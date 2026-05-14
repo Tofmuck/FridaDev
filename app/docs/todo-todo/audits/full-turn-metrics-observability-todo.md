@@ -237,27 +237,27 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Definir un funnel attendu: `turn_start -> prompt_prepared -> llm_call[llm] -> persist_response[assistant_final] -> turn_end`.
-- [ ] Integrer les empreintes Identity, Memory et Hermeneutic quand elles sont attendues.
-- [ ] Integrer providers secondaires quand ils sont presents: stimmung, validation, web reformulation.
-- [ ] Integrer statut web quand web est demande: requested, skipped, success, injected.
-- [ ] Integrer `node_state` read/write quand le noeud hermeneutique tourne.
-- [ ] Produire un resultat compact: score numerique ou checklist par tour.
+- [x] Definir un funnel attendu: `turn_start -> prompt_prepared -> llm_call[llm] -> persist_response[assistant_final] -> turn_end`.
+- [x] Integrer les empreintes Identity, Memory et Hermeneutic quand elles sont attendues.
+- [x] Integrer providers secondaires quand ils sont presents: stimmung, validation, web reformulation.
+- [x] Integrer statut web quand web est demande: requested, skipped, success, injected.
+- [x] Integrer `node_state` read/write quand le noeud hermeneutique tourne.
+- [x] Produire un resultat compact: score numerique ou checklist par tour.
 
 Tests attendus:
 
-- [ ] Tour complet nominal: score/checklist complet.
-- [ ] Tour sans web: absence web marquee non applicable, pas comme erreur.
-- [ ] Tour avec fallback/fail-open: score degrade avec `reason_code`.
-- [ ] Tour legacy incomplet: score partiel sans exception.
+- [x] Tour complet nominal: score/checklist complet.
+- [x] Tour sans web: absence web marquee non applicable, pas comme erreur.
+- [x] Tour avec fallback/fail-open: score degrade avec `reason_code`.
+- [x] Tour legacy incomplet: score partiel sans exception.
 
 Preuves runtime attendues:
 
-- [ ] Lecture compacte d'un tour recent avec checklist, statuses et reasons, sans prompt ni messages.
+- [x] Lecture compacte d'un tour recent avec checklist, statuses et reasons, sans prompt ni messages.
 
 Condition de cloture:
 
-- [ ] Un operateur peut distinguer tour sain, tour partiellement observable et tour degrade sans ouvrir les contenus.
+- [x] Un operateur peut distinguer tour sain, tour partiellement observable et tour degrade sans ouvrir les contenus.
 
 ## Lot 5 - Preparation dashboard/courbes
 
@@ -310,7 +310,7 @@ Le chantier se ferme quand:
 - [x] `persist_response` est non ambigu pour les metriques de persistence.
 - [x] Les metriques LLM sont segmentees par `provider_caller`.
 - [x] La barriere post-save JSON/streaming est testee ou documentee explicitement.
-- [ ] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.
+- [x] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.
 - [ ] Le dashboard/courbes futur est cadre avec des signaux fiables, sans implementation prematuree.
 
 Ne pas prolonger ce TODO pour:
