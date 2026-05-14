@@ -893,6 +893,28 @@ def api_admin_chat_logs_metadata():
     )
 
 
+@app.get('/api/admin/logs/chat/metrics')
+def api_admin_chat_logs_metrics():
+    raw_event_limit = request.args.get('event_limit', '2000')
+    try:
+        event_limit = int(raw_event_limit)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid event_limit parameter'}), 400
+    if event_limit <= 0:
+        return jsonify({'ok': False, 'error': 'invalid event_limit parameter'}), 400
+
+    try:
+        metrics = log_store.read_full_turn_metrics_snapshot(
+            ts_from=request.args.get('ts_from'),
+            ts_to=request.args.get('ts_to'),
+            event_limit=event_limit,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    return jsonify({'ok': True, **metrics})
+
+
 @app.delete('/api/admin/logs/chat')
 def api_admin_chat_logs_delete():
     try:

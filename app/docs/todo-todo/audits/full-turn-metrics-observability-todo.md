@@ -280,28 +280,28 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Proposer les courbes de latence par `provider_caller`.
-- [ ] Proposer les taux fallback/fail-open par `reason_code`.
-- [ ] Proposer les lanes prompt: trace memory, summaries, context hints, identity, hermeneutic block.
-- [ ] Proposer le funnel RAG: retrieved, basketed, kept, injected.
-- [ ] Proposer les metriques `node_state`: hit rate, invalid rate, write changed/unchanged.
-- [ ] Proposer les metriques web: requested, skipped, successful, injected chars, `read_state`.
-- [ ] Proposer les erreurs par stage.
-- [ ] Choisir une surface sans dupliquer `/log`, Memory Admin et Hermeneutic Admin.
+- [x] Proposer les courbes de latence par `provider_caller`.
+- [x] Proposer les taux fallback/fail-open par `reason_code`.
+- [x] Proposer les lanes prompt: trace memory, summaries, context hints, identity, hermeneutic block.
+- [x] Proposer le funnel RAG: retrieved, basketed, kept, injected.
+- [x] Proposer les metriques `node_state`: hit rate, invalid rate, write changed/unchanged.
+- [x] Proposer les metriques web: requested, skipped, successful, injected chars, `read_state`.
+- [x] Proposer les erreurs par stage.
+- [x] Choisir une surface sans dupliquer `/log`, Memory Admin et Hermeneutic Admin.
 
 Tests attendus:
 
-- [ ] Tests d'agregats avec fixtures compactes multi-stages.
-- [ ] Tests de filtrage par periode, stage et provider/caller si expose.
-- [ ] Tests de redaction: aucune courbe ou tooltip ne charge du contenu brut.
+- [x] Tests d'agregats avec fixtures compactes multi-stages.
+- [x] Tests de filtrage par periode, stage et provider/caller si expose.
+- [x] Tests de redaction: aucune courbe ou tooltip ne charge du contenu brut.
 
 Preuves runtime attendues:
 
-- [ ] Snapshot compact de metriques agregees sur une fenetre courte, sans contenu.
+- [x] Snapshot compact de metriques agregees sur une fenetre courte, sans contenu.
 
 Condition de cloture:
 
-- [ ] Les courbes proposees reposent uniquement sur signaux clarifies par Lots 1-4.
+- [x] Les courbes proposees reposent uniquement sur signaux clarifies par Lots 1-4.
 
 ## 7. Condition de non-prolongation
 
@@ -311,7 +311,7 @@ Le chantier se ferme quand:
 - [x] Les metriques LLM sont segmentees par `provider_caller`.
 - [x] La barriere post-save JSON/streaming est testee ou documentee explicitement.
 - [x] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.
-- [ ] Le dashboard/courbes futur est cadre avec des signaux fiables, sans implementation prematuree.
+- [x] Le dashboard/courbes futur est cadre avec des signaux fiables, sans implementation prematuree.
 
 Ne pas prolonger ce TODO pour:
 

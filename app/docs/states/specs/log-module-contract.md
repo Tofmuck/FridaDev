@@ -316,6 +316,72 @@ Forbidden output fields:
 - raw event payload copies;
 - prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, tokens, exception messages or stack traces.
 
+### `full_turn_metrics_snapshot`
+
+Goal:
+- prepare future dashboard curves from already-clarified log signals;
+- expose one compact aggregate read over a short log window;
+- avoid a second observability layer, a new event stream, or a separate metrics store.
+
+Source:
+- existing `observability.chat_log_events`;
+- `turn_observability_checklist` derived per turn;
+- `llm_call` provider metrics grouped by `provider_caller`;
+- `prompt_prepared`, `memory_chain_snapshot`, `primary_node`, `web_search`, status and reason-code fields.
+
+Current admin surface:
+- `GET /api/admin/logs/chat/metrics`;
+- optional filters: `ts_from`, `ts_to`, `event_limit`;
+- aggregates are computed from the events actually read for that snapshot; if `source.events_truncated=true`, the output is a bounded-window metric, not a whole-history metric;
+- the read is backend-only preparation for dashboards; it does not prove frontend rendering quality.
+
+Minimum aggregate groups:
+- checklist distribution:
+  - `turns_observed_count`;
+  - classification counts (`complete`, `degraded`, `partial`, `legacy_incomplete`);
+  - score min/avg/max.
+- LLM/provider:
+  - nested `llm_call_provider_metrics`;
+  - all curves derived from `llm_call` must stay segmented by `provider_caller`.
+- fallback/fail-open:
+  - total count;
+  - counts by compact `reason_code`;
+  - counts by stage.
+- prompt lanes:
+  - trace memory injected turns/counts;
+  - summary/context injected turns/counts;
+  - context hints injected turns/counts;
+  - identity block present turns/chars;
+  - hermeneutic block present turns/chars;
+  - mixed-lane turns.
+- RAG funnel:
+  - retrieved candidates;
+  - basketed candidates;
+  - deduped retrieved candidates;
+  - kept candidates;
+  - injected candidates;
+  - prompt fallback counts when a legacy turn lacks `memory_chain_snapshot`.
+- node state:
+  - read observed, hit, miss and invalid counts;
+  - read hit and invalid rates;
+  - write attempted, changed, unchanged, failed and skipped counts.
+- web:
+  - requested/not-requested turns;
+  - ok/skipped/error counts;
+  - injected turns and injected chars;
+  - `read_state` counts.
+- status hygiene:
+  - errors by stage;
+  - skipped stages by stage.
+
+Allowed output fields:
+- counts, booleans, rates, compact classifications, stage names, provider callers, reason codes, status counts, char totals and explicit truncation/source metadata.
+
+Forbidden output fields:
+- raw event payload copies;
+- prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, tokens, exception messages or stack traces;
+- frontend/UI telemetry, browser console errors, Playwright screenshots or rendered dashboard assertions.
+
 ## 8) Redaction policy (allowed vs forbidden)
 Allowed by default:
 - counters, booleans, durations, limits, truncated flags

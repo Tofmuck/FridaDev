@@ -10,6 +10,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from observability.full_turn_metrics_snapshot import build_full_turn_metrics_snapshot
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
 logger = logging.getLogger('frida.log_store')
@@ -567,6 +568,131 @@ def read_turn_observability_checklist(
         'events_truncated': _to_int(events_result.get('total')) > _to_int(events_result.get('count')),
     }
     return checklist
+
+
+def read_full_turn_metrics_snapshot(
+    *,
+    ts_from: str | None = None,
+    ts_to: str | None = None,
+    event_limit: int = 2000,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    """Read content-free aggregate metrics for future full-turn dashboards."""
+    ts_from_s = _validate_iso8601_filter(ts_from, field_name='ts_from')
+    ts_to_s = _validate_iso8601_filter(ts_to, field_name='ts_to')
+    event_limit_i = max(1, min(int(event_limit), 5000))
+
+    where_clauses: list[str] = []
+    where_params: list[Any] = []
+    if ts_from_s:
+        where_clauses.append('ts >= %s::timestamptz')
+        where_params.append(ts_from_s)
+    if ts_to_s:
+        where_clauses.append('ts <= %s::timestamptz')
+        where_params.append(ts_to_s)
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+
+    events: list[dict[str, Any]] = []
+    total = 0
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    SELECT COUNT(*)
+                    FROM observability.chat_log_events
+                    {where_sql}
+                    ''',
+                    tuple(where_params),
+                )
+                total = int((cur.fetchone() or [0])[0] or 0)
+
+                cur.execute(
+                    f'''
+                    SELECT
+                        event_id,
+                        conversation_id,
+                        turn_id,
+                        ts,
+                        stage,
+                        status,
+                        duration_ms,
+                        payload_json
+                    FROM observability.chat_log_events
+                    {where_sql}
+                    ORDER BY ts DESC, event_id DESC
+                    LIMIT %s
+                    ''',
+                    tuple(where_params + [event_limit_i]),
+                )
+                rows = cur.fetchall()
+    except Exception as exc:
+        logger_instance.error('full_turn_metrics_snapshot_read_failed err=%s', exc)
+        snapshot = build_full_turn_metrics_snapshot(
+            [],
+            llm_call_provider_metrics=build_llm_call_provider_metrics([]),
+        )
+        snapshot['filters'] = {
+            'ts_from': ts_from_s,
+            'ts_to': ts_to_s,
+            'event_limit': event_limit_i,
+        }
+        snapshot['source'] = {
+            'events_total': 0,
+            'events_read': 0,
+            'events_truncated': False,
+            'read_error': True,
+        }
+        return snapshot
+
+    for row in rows:
+        payload_json = row[7]
+        if not isinstance(payload_json, dict):
+            payload_json = {}
+        events.append(
+            {
+                'event_id': str(row[0] or ''),
+                'conversation_id': str(row[1] or ''),
+                'turn_id': str(row[2] or ''),
+                'ts': row[3].astimezone(timezone.utc).isoformat() if isinstance(row[3], datetime) else str(row[3]),
+                'stage': str(row[4] or ''),
+                'status': str(row[5] or ''),
+                'duration_ms': int(row[6]) if row[6] is not None else None,
+                'payload': payload_json,
+            }
+        )
+
+    llm_metrics = build_llm_call_provider_metrics(
+        [
+            (
+                event.get('payload', {}).get('provider_caller'),
+                event.get('status'),
+                1,
+                _to_int(event.get('duration_ms')),
+                1 if event.get('duration_ms') is not None else 0,
+                _to_int(event.get('payload', {}).get('response_chars')),
+                event.get('ts'),
+            )
+            for event in events
+            if event.get('stage') == 'llm_call'
+        ]
+    )
+    snapshot = build_full_turn_metrics_snapshot(
+        events,
+        llm_call_provider_metrics=llm_metrics,
+    )
+    snapshot['filters'] = {
+        'ts_from': ts_from_s,
+        'ts_to': ts_to_s,
+        'event_limit': event_limit_i,
+    }
+    snapshot['source'] = {
+        'events_total': total,
+        'events_read': len(events),
+        'events_truncated': total > len(events),
+    }
+    return snapshot
 
 
 def read_chat_log_metadata(

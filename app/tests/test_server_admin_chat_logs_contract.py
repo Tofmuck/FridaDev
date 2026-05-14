@@ -150,6 +150,57 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(response_ok.status_code, 200)
         self.assertTrue(response_ok.get_json()['ok'])
 
+    def test_admin_chat_logs_metrics_route_returns_compact_snapshot(self) -> None:
+        observed = {'kwargs': None}
+        original_read_metrics = self.server.log_store.read_full_turn_metrics_snapshot
+
+        def fake_read_full_turn_metrics_snapshot(**kwargs):
+            observed['kwargs'] = kwargs
+            return {
+                'kind': 'full_turn_metrics_snapshot',
+                'events_count': 12,
+                'turns_observed_count': 2,
+                'checklist': {'classification_counts': {'complete': 1, 'degraded': 1}},
+                'llm_call_provider_metrics': {'main_llm_call_count': 2, 'secondary_llm_call_count': 1},
+                'web': {'requested_turns': 1},
+                'node_state': {'read_hit_count': 1},
+                'errors_by_stage': {},
+                'filters': {
+                    'ts_from': '2026-05-14T00:00:00Z',
+                    'ts_to': '2026-05-15T00:00:00Z',
+                    'event_limit': 50,
+                },
+                'source': {'events_total': 12, 'events_read': 12, 'events_truncated': False},
+            }
+
+        self.server.log_store.read_full_turn_metrics_snapshot = fake_read_full_turn_metrics_snapshot
+        try:
+            response = self.client.get(
+                '/api/admin/logs/chat/metrics'
+                '?ts_from=2026-05-14T00:00:00Z&ts_to=2026-05-15T00:00:00Z&event_limit=50'
+            )
+        finally:
+            self.server.log_store.read_full_turn_metrics_snapshot = original_read_metrics
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['kind'], 'full_turn_metrics_snapshot')
+        self.assertEqual(data['turns_observed_count'], 2)
+        self.assertEqual(data['checklist']['classification_counts']['complete'], 1)
+        self.assertEqual(data['llm_call_provider_metrics']['main_llm_call_count'], 2)
+        self.assertEqual(data['web']['requested_turns'], 1)
+        self.assertEqual(data['node_state']['read_hit_count'], 1)
+        self.assertEqual(observed['kwargs']['ts_from'], '2026-05-14T00:00:00Z')
+        self.assertEqual(observed['kwargs']['ts_to'], '2026-05-15T00:00:00Z')
+        self.assertEqual(observed['kwargs']['event_limit'], 50)
+
+    def test_admin_chat_logs_metrics_route_rejects_invalid_event_limit(self) -> None:
+        response = self.client.get('/api/admin/logs/chat/metrics?event_limit=bad')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid event_limit parameter'})
+
     def test_admin_chat_logs_route_rejects_invalid_pagination(self) -> None:
         response = self.client.get('/api/admin/logs/chat?limit=abc&offset=0')
         self.assertEqual(response.status_code, 400)

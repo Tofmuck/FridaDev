@@ -270,6 +270,191 @@ class LogStorePhase3Tests(unittest.TestCase):
             ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z'),
         )
 
+    def test_build_full_turn_metrics_snapshot_covers_dashboard_signals_without_raw_payloads(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=True)
+        prompt_event = next(event for event in events if event['stage'] == 'prompt_prepared')
+        prompt_event['payload']['memory_prompt_injection'].update(
+            {
+                'injected': True,
+                'injection_class': 'mixed',
+                'trace_memory_injected': True,
+                'trace_memory_injected_count': 2,
+                'summary_context_injected': True,
+                'summary_context_injected_count': 1,
+                'context_hints_injected': True,
+                'context_hints_injected_count': 3,
+                'injected_candidate_ids': ['cand-a', 'cand-b'],
+            }
+        )
+        primary_event = next(event for event in events if event['stage'] == 'primary_node')
+        primary_event['payload']['node_state_write_changed'] = True
+        validation_event = next(event for event in events if event['stage'] == 'validation_agent')
+        validation_event['payload'].update({'fallback_used': True, 'reason_code': 'validation_fail_open'})
+        events.insert(
+            1,
+            self._event(
+                'web_search',
+                payload={
+                    'enabled': True,
+                    'results_count': 2,
+                    'context_injected': True,
+                    'injected_chars': 77,
+                    'read_state': 'page_read',
+                    'query': 'RAW QUERY MUST NOT LEAK',
+                    'context_block': 'RAW WEB CONTEXT MUST NOT LEAK',
+                },
+            ),
+        )
+        events.insert(
+            2,
+            self._event(
+                'memory_chain_snapshot',
+                payload={
+                    'retrieval': {'retrieved_count': 4},
+                    'basket': {'basket_candidates_count': 3, 'deduped_retrieved_count': 1},
+                    'arbiter': {'kept_count': 2},
+                    'injection': {'injected_candidate_count': 2},
+                    'retrieved_candidates': [{'content': 'RAW MEMORY MUST NOT LEAK'}],
+                },
+            ),
+        )
+        events.append(
+            self._event(
+                'embedding',
+                status='error',
+                payload={'error_code': 'embedding_failed', 'message': 'RAW ERROR MUST NOT LEAK'},
+                event_id='evt-embedding-error',
+            )
+        )
+        llm_metrics = log_store.build_llm_call_provider_metrics(
+            [
+                ('llm', 'ok', 1, 100, 1, 20, datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc)),
+                ('validation_agent', 'ok', 1, 40, 1, 5, datetime(2026, 5, 14, 12, 1, tzinfo=timezone.utc)),
+            ]
+        )
+
+        metrics = log_store.build_full_turn_metrics_snapshot(
+            events,
+            llm_call_provider_metrics=llm_metrics,
+        )
+
+        self.assertEqual(metrics['kind'], 'full_turn_metrics_snapshot')
+        self.assertEqual(metrics['events_count'], len(events))
+        self.assertEqual(metrics['turns_observed_count'], 1)
+        self.assertEqual(metrics['checklist']['classification_counts']['degraded'], 1)
+        self.assertEqual(metrics['llm_call_provider_metrics']['main_llm_call_count'], 1)
+        self.assertEqual(metrics['llm_call_provider_metrics']['secondary_llm_call_count'], 1)
+        self.assertEqual(metrics['prompt_lanes']['trace_memory']['turns_injected'], 1)
+        self.assertEqual(metrics['prompt_lanes']['trace_memory']['items_injected_total'], 2)
+        self.assertEqual(metrics['prompt_lanes']['summary_context']['items_injected_total'], 1)
+        self.assertEqual(metrics['prompt_lanes']['context_hints']['items_injected_total'], 3)
+        self.assertEqual(metrics['prompt_lanes']['identity_block']['turns_present'], 1)
+        self.assertEqual(metrics['prompt_lanes']['hermeneutic_block']['turns_present'], 1)
+        self.assertEqual(metrics['prompt_lanes']['turns_with_mixed_lanes'], 1)
+        self.assertEqual(metrics['rag_funnel']['retrieved_candidates_total'], 4)
+        self.assertEqual(metrics['rag_funnel']['basketed_candidates_total'], 3)
+        self.assertEqual(metrics['rag_funnel']['kept_candidates_total'], 2)
+        self.assertEqual(metrics['rag_funnel']['injected_candidates_total'], 2)
+        self.assertEqual(metrics['node_state']['read_hit_count'], 1)
+        self.assertEqual(metrics['node_state']['write_changed_count'], 1)
+        self.assertEqual(metrics['web']['requested_turns'], 1)
+        self.assertEqual(metrics['web']['successful_count'], 1)
+        self.assertEqual(metrics['web']['injected_chars_total'], 77)
+        self.assertEqual(metrics['web']['read_state_counts']['page_read'], 1)
+        self.assertEqual(metrics['fallback_fail_open']['by_reason_code']['validation_fail_open'], 1)
+        self.assertEqual(metrics['errors_by_stage']['embedding'], 1)
+
+        serialized = json.dumps(metrics, sort_keys=True)
+        for forbidden_value in (
+            'RAW QUERY MUST NOT LEAK',
+            'RAW WEB CONTEXT MUST NOT LEAK',
+            'RAW MEMORY MUST NOT LEAK',
+            'RAW ERROR MUST NOT LEAK',
+            'RAW PROMPT MUST NOT LEAK',
+            'RAW MESSAGE MUST NOT LEAK',
+        ):
+            self.assertNotIn(forbidden_value, serialized)
+        for forbidden_key in ('payload', 'prompt', 'messages', 'content', 'query', 'context_block'):
+            self.assertNotIn(forbidden_key, self._collect_keys(metrics))
+
+    def test_read_full_turn_metrics_snapshot_uses_same_event_window_for_llm_metrics(self) -> None:
+        observed: dict[str, Any] = {'queries': []}
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self._step = 0
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                observed['queries'].append((query, params))
+                self._step += 1
+
+            def fetchone(self) -> tuple[int]:
+                return (3,)
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    (
+                        'evt-llm',
+                        'conv-metrics',
+                        'turn-1',
+                        datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+                        'llm_call',
+                        'ok',
+                        100,
+                        {'provider_caller': 'llm', 'response_chars': 20},
+                    ),
+                    (
+                        'evt-validation',
+                        'conv-metrics',
+                        'turn-1',
+                        datetime(2026, 5, 14, 12, 1, tzinfo=timezone.utc),
+                        'llm_call',
+                        'ok',
+                        40,
+                        {'provider_caller': 'validation_agent', 'response_chars': 5},
+                    ),
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        result = log_store.read_full_turn_metrics_snapshot(
+            ts_from='2026-05-14T00:00:00Z',
+            ts_to='2026-05-15T00:00:00Z',
+            event_limit=2,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(result['source']['events_total'], 3)
+        self.assertEqual(result['source']['events_read'], 2)
+        self.assertTrue(result['source']['events_truncated'])
+        self.assertEqual(result['filters']['event_limit'], 2)
+        self.assertEqual(result['llm_call_provider_metrics']['main_llm_call_count'], 1)
+        self.assertEqual(result['llm_call_provider_metrics']['secondary_llm_call_count'], 1)
+        self.assertEqual(result['llm_call_provider_metrics']['by_provider_caller']['llm']['avg_duration_ms'], 100.0)
+        joined_queries = '\n'.join(str(query) for query, _params in observed['queries'])
+        self.assertIn('FROM observability.chat_log_events', joined_queries)
+        self.assertIn('LIMIT %s', joined_queries)
+        self.assertNotIn('WITH llm_calls', joined_queries)
+        self.assertEqual(
+            observed['queries'][1][1],
+            ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z', 2),
+        )
+
     def test_build_turn_observability_checklist_complete_turn_without_web(self) -> None:
         checklist = log_store.build_turn_observability_checklist(
             self._complete_turn_events(web_search_enabled=False)
