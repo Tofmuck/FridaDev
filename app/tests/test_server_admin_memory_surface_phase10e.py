@@ -216,6 +216,10 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(stages['summaries']['payload']['summary_count_used'], 1)
         self.assertTrue(stages['summaries']['payload']['in_prompt'])
         self.assertTrue(stages['summaries']['payload']['summary_generation_observed'])
+        self.assertTrue(stages['prompt_prepared']['payload']['trace_memory_injected'])
+        self.assertEqual(stages['prompt_prepared']['payload']['trace_memory_injected_count'], 2)
+        self.assertFalse(stages['prompt_prepared']['payload']['summary_context_injected'])
+        self.assertFalse(stages['prompt_prepared']['payload']['context_hints_injected'])
         self.assertEqual(stages['branch_skipped']['payload']['reason_code'], 'no_data')
 
     def test_read_recent_turns_distinguishes_retrieve_error_from_no_data(self) -> None:
@@ -489,6 +493,86 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         self.assertNotIn(raw_content, payload_json)
         self.assertNotIn(raw_reason, payload_json)
+
+    def test_injection_summary_separates_prompt_lanes(self) -> None:
+        summary_row = (
+            9,
+            6,
+            2,
+            3,
+            4,
+            1,
+            2,
+            1,
+            2,
+            1,
+            datetime(2026, 5, 14, 8, 0, tzinfo=timezone.utc),
+            1.5,
+            2.5,
+            3.5,
+        )
+        latest_payload = {
+            "injected": True,
+            "injection_class": "mixed",
+            "injection_lanes": ["trace_memory", "summary_context"],
+            "trace_memory_injected": True,
+            "trace_memory_injected_count": 2,
+            "summary_context_injected": True,
+            "summary_context_injected_count": 1,
+            "context_hints_injected": False,
+            "context_hints_injected_count": 0,
+            "injected_candidate_ids": ["cand-a", "cand-b"],
+        }
+
+        class FakeCursor:
+            def __init__(self):
+                self.fetchone_calls = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params=None):
+                return None
+
+            def fetchone(self):
+                self.fetchone_calls += 1
+                if self.fetchone_calls == 1:
+                    return summary_row
+                return (latest_payload,)
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_injection_summary(
+            conn_factory=lambda: FakeConn(),
+            window_days=7,
+        )
+        activity = payload["recent_activity"]
+
+        self.assertEqual(activity["events_count"], 9)
+        self.assertEqual(activity["injected_turns"], 6)
+        self.assertEqual(activity["trace_memory_injected_turns"], 2)
+        self.assertEqual(activity["summary_context_injected_turns"], 3)
+        self.assertEqual(activity["context_hints_injected_turns"], 4)
+        self.assertEqual(activity["hints_only_turns"], 1)
+        self.assertEqual(activity["summary_context_only_turns"], 2)
+        self.assertEqual(activity["trace_memory_only_turns"], 1)
+        self.assertEqual(activity["trace_memory_turns"], 2)
+        self.assertEqual(activity["mixed_lane_turns"], 1)
+        self.assertEqual(activity["avg_trace_memory_injected_count"], 1.5)
+        self.assertEqual(activity["avg_summary_context_injected_count"], 2.5)
+        self.assertEqual(activity["avg_context_hints_injected_count"], 3.5)
+        self.assertEqual(activity["latest_injected_candidate_ids"], ["cand-a", "cand-b"])
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])

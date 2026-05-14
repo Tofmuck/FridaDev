@@ -20,7 +20,14 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 def empty_memory_prompt_injection_summary() -> dict[str, Any]:
     return {
         'injected': False,
+        'injection_class': 'none',
+        'injection_lanes': [],
+        'injection_lane_count': 0,
         'prompt_block_count': 0,
+        'trace_memory_injected': False,
+        'trace_memory_injected_count': 0,
+        'summary_context_injected': False,
+        'summary_context_injected_count': 0,
         'memory_traces_injected': False,
         'memory_traces_injected_count': 0,
         'injected_candidate_ids': [],
@@ -44,6 +51,38 @@ def _unique_parent_summary_count(memory_traces: Sequence[Any]) -> int:
     return count
 
 
+def _active_summary_count(prompt_messages: Sequence[Any]) -> int:
+    count = 0
+    for message in prompt_messages:
+        payload = _mapping(message)
+        if str(payload.get('role') or '') != 'system':
+            continue
+        content = str(payload.get('content') or '')
+        if conversations_prompt_window.is_active_summary_prompt_message(payload):
+            count += 1
+            continue
+        if content.startswith(conversations_prompt_window.ACTIVE_SUMMARY_BLOCK_HEADER_PREFIXES):
+            count += 1
+    return count
+
+
+def _memory_context_summary_count(prompt_messages: Sequence[Any], memory_traces: Sequence[Any]) -> int:
+    trace_parent_count = _unique_parent_summary_count(memory_traces)
+    if trace_parent_count:
+        return trace_parent_count
+
+    count = 0
+    for message in prompt_messages:
+        payload = _mapping(message)
+        if str(payload.get('role') or '') != 'system':
+            continue
+        content = str(payload.get('content') or '')
+        if not content.startswith(conversations_prompt_window.MEMORY_CONTEXT_BLOCK_HEADER_PREFIX):
+            continue
+        count += max(1, content.count(conversations_prompt_window.MEMORY_CONTEXT_BLOCK_HEADER_PREFIX))
+    return count
+
+
 def _injected_candidate_ids(memory_traces: Sequence[Any]) -> list[str]:
     seen: set[str] = set()
     candidate_ids: list[str] = []
@@ -56,6 +95,21 @@ def _injected_candidate_ids(memory_traces: Sequence[Any]) -> list[str]:
     return candidate_ids
 
 
+def _injection_class(lanes: Sequence[str]) -> str:
+    lane_list = list(lanes)
+    if not lane_list:
+        return 'none'
+    if len(lane_list) > 1:
+        return 'mixed'
+    if lane_list[0] == 'context_hints':
+        return 'hints_only'
+    if lane_list[0] == 'summary_context':
+        return 'summary_context_only'
+    if lane_list[0] == 'trace_memory':
+        return 'trace_memory_only'
+    return lane_list[0]
+
+
 def build_memory_prompt_injection_summary(
     prompt_messages: Sequence[Any],
     *,
@@ -65,8 +119,10 @@ def build_memory_prompt_injection_summary(
     summary = empty_memory_prompt_injection_summary()
     traces_seq = _sequence(memory_traces)
     hints_seq = _sequence(context_hints)
+    prompt_seq = _sequence(prompt_messages)
+    active_summary_count = _active_summary_count(prompt_seq)
 
-    for message in _sequence(prompt_messages):
+    for message in prompt_seq:
         payload = _mapping(message)
         if str(payload.get('role') or '') != 'system':
             continue
@@ -77,22 +133,46 @@ def build_memory_prompt_injection_summary(
             continue
         if not summary['memory_context_injected'] and content.startswith(conversations_prompt_window.MEMORY_CONTEXT_BLOCK_HEADER_PREFIX):
             summary['memory_context_injected'] = True
-            summary['memory_context_summary_count'] = _unique_parent_summary_count(traces_seq)
+            summary['memory_context_summary_count'] = _memory_context_summary_count(prompt_seq, traces_seq)
             continue
         if not summary['memory_traces_injected'] and content.startswith(conversations_prompt_window.MEMORY_TRACES_BLOCK_HEADER):
             summary['memory_traces_injected'] = True
             summary['memory_traces_injected_count'] = len(traces_seq)
             summary['injected_candidate_ids'] = _injected_candidate_ids(traces_seq)
 
+    summary['trace_memory_injected'] = bool(summary['memory_traces_injected'])
+    summary['trace_memory_injected_count'] = int(summary['memory_traces_injected_count'])
+    summary['summary_context_injected_count'] = int(active_summary_count) + int(
+        summary['memory_context_summary_count']
+    )
+    summary['summary_context_injected'] = bool(summary['summary_context_injected_count'])
+
+    lanes = []
+    if summary['trace_memory_injected']:
+        lanes.append('trace_memory')
+    if summary['summary_context_injected']:
+        lanes.append('summary_context')
+    if summary['context_hints_injected']:
+        lanes.append('context_hints')
+    summary['injection_lanes'] = lanes
+    summary['injection_lane_count'] = len(lanes)
+    summary['injection_class'] = _injection_class(lanes)
+
     summary['prompt_block_count'] = int(
         bool(summary['context_hints_injected'])
-        + bool(summary['memory_context_injected'])
+        + bool(summary['summary_context_injected'])
         + bool(summary['memory_traces_injected'])
     )
     summary['injected'] = bool(summary['prompt_block_count'])
 
     if summary['context_hints_injected'] and summary['context_hints_injected_count'] == 0 and not hints_seq:
         summary['context_hints_injected'] = False
+        if 'context_hints' in summary['injection_lanes']:
+            summary['injection_lanes'] = [
+                lane for lane in summary['injection_lanes'] if lane != 'context_hints'
+            ]
+            summary['injection_lane_count'] = len(summary['injection_lanes'])
+            summary['injection_class'] = _injection_class(summary['injection_lanes'])
         summary['prompt_block_count'] = max(0, int(summary['prompt_block_count']) - 1)
         summary['injected'] = bool(summary['prompt_block_count'])
 

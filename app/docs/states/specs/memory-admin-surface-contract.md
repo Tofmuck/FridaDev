@@ -69,6 +69,8 @@ La surface doit rendre lisibles, au minimum :
 - arbitre
   - les agregats de rejet doivent etre exposes sous forme de `reason_code` stable, par exemple `rejection_reason_code_counts` / `top_rejection_reason_code_counts`, jamais comme texte libre de raison;
 - injection memoire
+  - les agregats d'injection doivent distinguer `trace_memory`, `summary_context` et `context_hints`;
+  - le bool historique `injected` reste compatible mais ne suffit pas a qualifier une injection RAG durable;
 - lectures recentes utiles par tour
 - decisions arbitre persistees
   - l'apercu par defaut de `/api/admin/memory/dashboard` expose uniquement une projection compacte: role, scores, verdict, timestamps, `reason_code`, longueurs et hash courts;
@@ -86,6 +88,7 @@ Pour l inspection read-only par tour, la surface couvre les stages memory / RAG 
 - `hermeneutic_node_insertion`
 - `prompt_prepared`
   - expose le resume redacted `memory_retrieval` quand il existe, afin que le tour aval ne ressemble pas a un simple `no_data`
+  - expose `memory_prompt_injection` avec lanes separees: `trace_memory_injected`, `summary_context_injected`, `context_hints_injected`, counts par lane et `injection_class`
 - `branch_skipped`
 
 ## Provenances a distinguer explicitement

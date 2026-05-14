@@ -291,6 +291,9 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
 
         self.assertIn("const formatMemoryPromptInjection", source)
         self.assertIn('key === "memory_prompt_injection"', source)
+        self.assertIn("injection_class", source)
+        self.assertIn("trace_memory_injected_count", source)
+        self.assertIn("summary_context_injected_count", source)
         self.assertIn("memory_traces_injected_count", source)
         self.assertIn("memory_context_summary_count", source)
         self.assertIn("context_hints_injected_count", source)

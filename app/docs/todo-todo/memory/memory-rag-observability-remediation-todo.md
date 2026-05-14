@@ -230,16 +230,16 @@ Fichiers probablement touches:
 - tests prompt context / logs / admin memory
 
 Hors-scope:
-- [ ] Ne pas modifier les blocs de prompt eux-memes.
-- [ ] Ne pas changer les decisions d'injection.
-- [ ] Ne pas requalifier les context hints comme memoire durable.
-- [ ] Ne pas supprimer l'ancien champ avant compatibilite explicite si l'UI en depend.
+- [x] Ne pas modifier les blocs de prompt eux-memes.
+- [x] Ne pas changer les decisions d'injection.
+- [x] Ne pas requalifier les context hints comme memoire durable.
+- [x] Ne pas supprimer l'ancien champ avant compatibilite explicite si l'UI en depend.
 
 Cases de correction:
-- [ ] Ajouter des booleens/champs distincts: `trace_memory_injected`, `summary_context_injected`, `context_hints_injected`.
-- [ ] Garder des counts separes pour chaque lane.
-- [ ] Clarifier la synthese admin: injection memoire durable vs contexte recent/hints.
-- [ ] Conserver ou deprecier proprement le bool `injected` global.
+- [x] Ajouter des booleens/champs distincts: `trace_memory_injected`, `summary_context_injected`, `context_hints_injected`.
+- [x] Garder des counts separes pour chaque lane.
+- [x] Clarifier la synthese admin: injection memoire durable vs contexte recent/hints.
+- [x] Conserver ou deprecier proprement le bool `injected` global.
 
 Tests attendus:
 - test prompt avec trace memory seule;
@@ -252,7 +252,7 @@ Preuves runtime attendues:
 - exemple compact d'un tour `hints_only` et d'un tour `trace_memory`.
 
 Condition de cloture:
-- [ ] L'operateur peut savoir si une injection vient de la memoire durable, d'un summary/context parent ou des context hints.
+- [x] L'operateur peut savoir si une injection vient de la memoire durable, d'un summary/context parent ou des context hints.
 
 ## Lot 6 - Corriger les docs actives summaries/top-k
 

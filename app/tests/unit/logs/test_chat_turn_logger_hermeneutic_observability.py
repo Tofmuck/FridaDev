@@ -21,6 +21,7 @@ from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 from observability import log_store
 from observability import prompt_injection_summary
+from core import conversations_prompt_window
 
 
 class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
@@ -241,7 +242,14 @@ class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
             summary,
             {
                 'injected': True,
+                'injection_class': 'mixed',
+                'injection_lanes': ['trace_memory', 'summary_context', 'context_hints'],
+                'injection_lane_count': 3,
                 'prompt_block_count': 3,
+                'trace_memory_injected': True,
+                'trace_memory_injected_count': 2,
+                'summary_context_injected': True,
+                'summary_context_injected_count': 2,
                 'memory_traces_injected': True,
                 'memory_traces_injected_count': 2,
                 'injected_candidate_ids': ['cand-user', 'cand-assistant'],
@@ -253,6 +261,58 @@ class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
         )
         self.assertNotIn('content', summary)
         self.assertNotIn('preview', summary)
+
+    def test_memory_prompt_injection_summary_classifies_lanes_independently(self) -> None:
+        trace_summary = prompt_injection_summary.build_memory_prompt_injection_summary(
+            [
+                {
+                    'role': 'system',
+                    'content': conversations_prompt_window.MEMORY_TRACES_BLOCK_HEADER + '\nUtilisateur : preference durable',
+                }
+            ],
+            memory_traces=[{'candidate_id': 'cand-trace', 'content': 'preference durable'}],
+            context_hints=[],
+        )
+        self.assertEqual(trace_summary['injection_class'], 'trace_memory_only')
+        self.assertEqual(trace_summary['injection_lanes'], ['trace_memory'])
+        self.assertTrue(trace_summary['trace_memory_injected'])
+        self.assertEqual(trace_summary['trace_memory_injected_count'], 1)
+        self.assertFalse(trace_summary['summary_context_injected'])
+        self.assertFalse(trace_summary['context_hints_injected'])
+
+        hints_summary = prompt_injection_summary.build_memory_prompt_injection_summary(
+            [
+                {
+                    'role': 'system',
+                    'content': conversations_prompt_window.CONTEXT_HINTS_BLOCK_HEADER + '\n- Utilisateur: projet FridaDev (confidence: 0.90)',
+                }
+            ],
+            memory_traces=[],
+            context_hints=[{'content': 'projet FridaDev'}],
+        )
+        self.assertEqual(hints_summary['injection_class'], 'hints_only')
+        self.assertEqual(hints_summary['injection_lanes'], ['context_hints'])
+        self.assertFalse(hints_summary['trace_memory_injected'])
+        self.assertFalse(hints_summary['summary_context_injected'])
+        self.assertTrue(hints_summary['context_hints_injected'])
+        self.assertEqual(hints_summary['context_hints_injected_count'], 1)
+
+        summary_context = prompt_injection_summary.build_memory_prompt_injection_summary(
+            [
+                {
+                    'role': 'system',
+                    'content': '[Résumé de la période du 2026-04-01]\nRésumé actif',
+                }
+            ],
+            memory_traces=[],
+            context_hints=[],
+        )
+        self.assertEqual(summary_context['injection_class'], 'summary_context_only')
+        self.assertEqual(summary_context['injection_lanes'], ['summary_context'])
+        self.assertFalse(summary_context['trace_memory_injected'])
+        self.assertTrue(summary_context['summary_context_injected'])
+        self.assertEqual(summary_context['summary_context_injected_count'], 1)
+        self.assertFalse(summary_context['memory_context_injected'])
 
     def test_stimmung_agent_stage_emits_compact_upstream_payload(self) -> None:
         observed: list[dict[str, Any]] = []

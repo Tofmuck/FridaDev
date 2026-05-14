@@ -78,11 +78,12 @@
       return compactValue(value);
     }
     const injected = Boolean(value.injected);
-    const traces = toBoundedInt(value.memory_traces_injected_count, 0, 0, 9999);
-    const memoryContext = toBoundedInt(value.memory_context_summary_count, 0, 0, 9999);
+    const lane = toText(value.injection_class) || "unknown";
+    const traces = toBoundedInt(value.trace_memory_injected_count ?? value.memory_traces_injected_count, 0, 0, 9999);
+    const memoryContext = toBoundedInt(value.summary_context_injected_count ?? value.memory_context_summary_count, 0, 0, 9999);
     const hints = toBoundedInt(value.context_hints_injected_count, 0, 0, 9999);
     const blocks = toBoundedInt(value.prompt_block_count, 0, 0, 9999);
-    return `injected=${injected} traces=${traces} memory_context=${memoryContext} hints=${hints} blocks=${blocks}`;
+    return `injected=${injected} lane=${lane} traces=${traces} summary_context=${memoryContext} hints=${hints} blocks=${blocks}`;
   };
 
   const payloadEntries = (payload) => {

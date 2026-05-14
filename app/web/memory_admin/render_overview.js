@@ -376,9 +376,22 @@
         source: injection.source_kind,
         chips: [
           `events=${toNumber(activity.events_count)}`,
-          `injected=${toNumber(activity.injected_turns)}`,
-          `traces=${toNumber(activity.avg_memory_traces_injected_count)}`,
-          `summaries=${toNumber(activity.avg_memory_context_summary_count)}`,
+          `global=${toNumber(activity.injected_turns)}`,
+          `trace_turns=${toNumber(activity.trace_memory_injected_turns)}`,
+          `summary_turns=${toNumber(activity.summary_context_injected_turns)}`,
+          `hint_turns=${toNumber(activity.context_hints_injected_turns)}`,
+        ],
+      }),
+      buildCard({
+        title: "Lanes d injection",
+        body: "Separation operateur entre memoire durable, contexte summary et indices recents.",
+        source: injection.source_kind,
+        chips: [
+          `hints_only=${toNumber(activity.hints_only_turns)}`,
+          `summary_only=${toNumber(activity.summary_context_only_turns)}`,
+          `trace_only=${toNumber(activity.trace_memory_only_turns)}`,
+          `trace_any=${toNumber(activity.trace_memory_turns)}`,
+          `mixed=${toNumber(activity.mixed_lane_turns)}`,
         ],
       }),
       buildCard({
@@ -425,7 +438,10 @@
       meta.appendChild(createChip(`retrieved=${toNumber(retrieval.top_k_returned)}`));
       meta.appendChild(createChip(`basket=${toNumber(stages.hermeneutic_node_insertion?.payload?.basket_candidates_count)}`));
       meta.appendChild(createChip(`kept=${toNumber(arbitration.kept_candidates)}`));
-      meta.appendChild(createChip(`injected=${toNumber(prompt.memory_traces_injected_count)}`));
+      meta.appendChild(createChip(`trace=${toNumber(prompt.trace_memory_injected_count || prompt.memory_traces_injected_count)}`));
+      meta.appendChild(createChip(`summary=${toNumber(prompt.summary_context_injected_count || prompt.memory_context_summary_count)}`));
+      meta.appendChild(createChip(`hints=${toNumber(prompt.context_hints_injected_count)}`));
+      if (toText(prompt.injection_class)) meta.appendChild(createChip(`lane=${toText(prompt.injection_class)}`));
       card.appendChild(meta);
 
       const grid = document.createElement("div");

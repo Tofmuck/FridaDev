@@ -167,6 +167,8 @@ Minimum event-specific details:
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`
   - `memory_prompt_injection`:
     - compact redacted summary of what memory-related blocks really reached the final prompt
+    - must separate the operator lanes `trace_memory`, `summary_context`, and `context_hints`
+    - `injected` remains a backward-compatible global bool and must not be the only operator truth for durable RAG injection
     - allowed fields: booleans, counts, block presence/absence only
     - forbidden: raw memory content, raw context hints, raw prompt excerpts
   - `identity_prompt_injection`:
