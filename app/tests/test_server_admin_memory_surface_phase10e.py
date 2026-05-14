@@ -577,6 +577,73 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(activity["avg_context_hints_injected_count"], 3.5)
         self.assertEqual(activity["latest_injected_candidate_ids"], ["cand-a", "cand-b"])
 
+    def test_injection_summary_sql_derives_mixed_lane_turns_from_legacy_counts(self) -> None:
+        summary_row = (
+            3,
+            3,
+            2,
+            1,
+            3,
+            1,
+            0,
+            0,
+            2,
+            2,
+            datetime(2026, 5, 14, 8, 0, tzinfo=timezone.utc),
+            1.5,
+            1.0,
+            2.0,
+        )
+        queries: list[str] = []
+
+        class FakeCursor:
+            def __init__(self):
+                self.fetchone_calls = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, _params=None):
+                queries.append(str(query))
+
+            def fetchone(self):
+                self.fetchone_calls += 1
+                if self.fetchone_calls == 1:
+                    return summary_row
+                return ({},)
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_injection_summary(
+            conn_factory=lambda: FakeConn(),
+            window_days=7,
+        )
+        activity = payload["recent_activity"]
+
+        self.assertEqual(activity["mixed_lane_turns"], 2)
+        summary_sql = queries[0]
+        self.assertIn("lane_flags", summary_sql)
+        self.assertIn("trace_memory_lane", summary_sql)
+        self.assertIn("summary_context_lane", summary_sql)
+        self.assertIn("context_hints_lane", summary_sql)
+        self.assertIn("memory_traces_injected_count", summary_sql)
+        self.assertIn("memory_context_summary_count", summary_sql)
+        self.assertIn("context_hints_injected_count", summary_sql)
+        self.assertIn("CASE WHEN trace_memory_lane THEN 1 ELSE 0 END", summary_sql)
+        self.assertIn(">= 2", summary_sql)
+        self.assertNotIn("injection_class', '') = 'mixed'", summary_sql)
+
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])
         expected = {'retrieve': {'count': 1, 'p50_ms': 12.0, 'p95_ms': 12.0}}

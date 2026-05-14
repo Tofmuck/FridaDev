@@ -251,90 +251,90 @@ def _read_injection_summary(
         with conn.cursor() as cur:
             cur.execute(
                 '''
+                WITH prompt_events AS (
+                    SELECT
+                        ts,
+                        payload_json->'memory_prompt_injection' AS injection
+                    FROM observability.chat_log_events
+                    WHERE stage = 'prompt_prepared'
+                      AND ts >= (now() - make_interval(days => %s))
+                ),
+                lane_flags AS (
+                    SELECT
+                        ts,
+                        injection,
+                        (
+                            COALESCE(
+                                injection->>'trace_memory_injected',
+                                injection->>'memory_traces_injected',
+                                'false'
+                            ) = 'true'
+                            OR COALESCE(
+                                NULLIF(injection->>'trace_memory_injected_count', '')::int,
+                                NULLIF(injection->>'memory_traces_injected_count', '')::int,
+                                0
+                            ) > 0
+                        ) AS trace_memory_lane,
+                        (
+                            COALESCE(
+                                injection->>'summary_context_injected',
+                                injection->>'memory_context_injected',
+                                'false'
+                            ) = 'true'
+                            OR COALESCE(
+                                NULLIF(injection->>'summary_context_injected_count', '')::int,
+                                NULLIF(injection->>'memory_context_summary_count', '')::int,
+                                0
+                            ) > 0
+                        ) AS summary_context_lane,
+                        (
+                            COALESCE(injection->>'context_hints_injected', 'false') = 'true'
+                            OR COALESCE(NULLIF(injection->>'context_hints_injected_count', '')::int, 0) > 0
+                        ) AS context_hints_lane
+                    FROM prompt_events
+                )
                 SELECT
                     COUNT(*)::int AS events_count,
                     COUNT(*) FILTER (
-                        WHERE COALESCE(payload_json->'memory_prompt_injection'->>'injected', 'false') = 'true'
+                        WHERE COALESCE(injection->>'injected', 'false') = 'true'
                     )::int AS injected_turns,
+                    COUNT(*) FILTER (WHERE trace_memory_lane)::int AS trace_memory_injected_turns,
+                    COUNT(*) FILTER (WHERE summary_context_lane)::int AS summary_context_injected_turns,
+                    COUNT(*) FILTER (WHERE context_hints_lane)::int AS context_hints_injected_turns,
                     COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'trace_memory_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_traces_injected',
-                            'false'
-                        ) = 'true'
-                    )::int AS trace_memory_injected_turns,
-                    COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'summary_context_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_context_injected',
-                            'false'
-                        ) = 'true'
-                    )::int AS summary_context_injected_turns,
-                    COUNT(*) FILTER (
-                        WHERE COALESCE(payload_json->'memory_prompt_injection'->>'context_hints_injected', 'false') = 'true'
-                    )::int AS context_hints_injected_turns,
-                    COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'trace_memory_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_traces_injected',
-                            'false'
-                        ) = 'false'
-                          AND COALESCE(
-                            payload_json->'memory_prompt_injection'->>'summary_context_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_context_injected',
-                            'false'
-                          ) = 'false'
-                          AND COALESCE(payload_json->'memory_prompt_injection'->>'context_hints_injected', 'false') = 'true'
+                        WHERE NOT trace_memory_lane
+                          AND NOT summary_context_lane
+                          AND context_hints_lane
                     )::int AS hints_only_turns,
                     COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'trace_memory_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_traces_injected',
-                            'false'
-                        ) = 'false'
-                          AND COALESCE(
-                            payload_json->'memory_prompt_injection'->>'summary_context_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_context_injected',
-                            'false'
-                          ) = 'true'
-                          AND COALESCE(payload_json->'memory_prompt_injection'->>'context_hints_injected', 'false') = 'false'
+                        WHERE NOT trace_memory_lane
+                          AND summary_context_lane
+                          AND NOT context_hints_lane
                     )::int AS summary_context_only_turns,
                     COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'trace_memory_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_traces_injected',
-                            'false'
-                        ) = 'true'
-                          AND COALESCE(
-                            payload_json->'memory_prompt_injection'->>'summary_context_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_context_injected',
-                            'false'
-                          ) = 'false'
-                          AND COALESCE(payload_json->'memory_prompt_injection'->>'context_hints_injected', 'false') = 'false'
+                        WHERE trace_memory_lane
+                          AND NOT summary_context_lane
+                          AND NOT context_hints_lane
                     )::int AS trace_memory_only_turns,
+                    COUNT(*) FILTER (WHERE trace_memory_lane)::int AS trace_memory_turns,
                     COUNT(*) FILTER (
-                        WHERE COALESCE(
-                            payload_json->'memory_prompt_injection'->>'trace_memory_injected',
-                            payload_json->'memory_prompt_injection'->>'memory_traces_injected',
-                            'false'
-                        ) = 'true'
-                    )::int AS trace_memory_turns,
-                    COUNT(*) FILTER (
-                        WHERE COALESCE(payload_json->'memory_prompt_injection'->>'injection_class', '') = 'mixed'
+                        WHERE (
+                            CASE WHEN trace_memory_lane THEN 1 ELSE 0 END
+                            + CASE WHEN summary_context_lane THEN 1 ELSE 0 END
+                            + CASE WHEN context_hints_lane THEN 1 ELSE 0 END
+                        ) >= 2
                     )::int AS mixed_lane_turns,
                     MAX(ts) AS latest_ts,
                     AVG(NULLIF(COALESCE(
-                        payload_json->'memory_prompt_injection'->>'trace_memory_injected_count',
-                        payload_json->'memory_prompt_injection'->>'memory_traces_injected_count'
+                        injection->>'trace_memory_injected_count',
+                        injection->>'memory_traces_injected_count'
                     ), '')::double precision) AS avg_trace_count,
                     AVG(NULLIF(COALESCE(
-                        payload_json->'memory_prompt_injection'->>'summary_context_injected_count',
-                        payload_json->'memory_prompt_injection'->>'memory_context_summary_count'
+                        injection->>'summary_context_injected_count',
+                        injection->>'memory_context_summary_count'
                     ), '')::double precision) AS avg_summary_count,
-                    AVG(NULLIF(payload_json->'memory_prompt_injection'->>'context_hints_injected_count', '')::double precision) AS avg_hint_count
-                FROM observability.chat_log_events
-                WHERE stage = 'prompt_prepared'
-                  AND ts >= (now() - make_interval(days => %s))
+                    AVG(NULLIF(injection->>'context_hints_injected_count', '')::double precision) AS avg_hint_count
+                FROM lane_flags
                 ''',
                 (window_days,),
             )
