@@ -10,6 +10,7 @@ from observability.memory_arbiter_reason_codes import compact_reason_code_counts
 _RECENT_TURN_STAGES = (
     'embedding',
     'memory_retrieve',
+    'memory_chain_snapshot',
     'summaries',
     'arbiter',
     'hermeneutic_node_insertion',
@@ -136,24 +137,43 @@ def _read_embeddings_summary(
                 '''
                 SELECT
                     COALESCE(NULLIF(payload_json->>'source_kind', ''), 'unknown') AS source_kind,
+                    COALESCE(NULLIF(status, ''), 'unknown') AS status,
+                    CASE
+                        WHEN COALESCE(payload_json->>'dimensions', '') ~ '^[0-9]+$'
+                        THEN (payload_json->>'dimensions')::int
+                        ELSE 0
+                    END AS dimensions,
                     COUNT(*)::int AS events_count,
                     MAX(ts) AS latest_ts
                 FROM observability.chat_log_events
                 WHERE stage = 'embedding'
                   AND ts >= (now() - make_interval(days => %s))
-                GROUP BY source_kind
-                ORDER BY events_count DESC, source_kind ASC
+                GROUP BY source_kind, status, dimensions
+                ORDER BY events_count DESC, source_kind ASC, status ASC, dimensions ASC
                 ''',
                 (window_days,),
             )
             rows = cur.fetchall()
 
-    total = sum(_to_int(row[1]) for row in rows)
+    total = sum(_to_int(row[3]) for row in rows)
     latest_ts = None
     for row in rows:
-        candidate = _utc_iso(row[2])
+        candidate = _utc_iso(row[4])
         if candidate and (latest_ts is None or candidate > latest_ts):
             latest_ts = candidate
+
+    by_source_kind: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    dimensions_counts: dict[str, int] = {}
+    for row in rows:
+        source_kind = str(row[0] or 'unknown')
+        status = str(row[1] or 'unknown')
+        dimensions = _to_int(row[2])
+        count = _to_int(row[3])
+        by_source_kind[source_kind] = by_source_kind.get(source_kind, 0) + count
+        status_counts[status] = status_counts.get(status, 0) + count
+        dimension_key = str(dimensions) if dimensions > 0 else 'unknown'
+        dimensions_counts[dimension_key] = dimensions_counts.get(dimension_key, 0) + count
 
     return {
         'settings_source_kind': 'calculated_aggregate',
@@ -162,10 +182,10 @@ def _read_embeddings_summary(
             'window_days': window_days,
             'total_events': total,
             'latest_ts': latest_ts,
-            'by_source_kind': {
-                str(row[0] or 'unknown'): _to_int(row[1])
-                for row in rows
-            },
+            'by_source_kind': dict(sorted(by_source_kind.items())),
+            'status_counts': dict(sorted(status_counts.items())),
+            'dimensions_counts': dict(sorted(dimensions_counts.items())),
+            'error_events': _to_int(status_counts.get('error')),
         },
     }
 
@@ -401,6 +421,29 @@ def _event_summary_from_payload(stage: str, payload: Mapping[str, Any]) -> dict[
             'reason_code': str(data.get('reason_code') or ''),
             'error_code': str(data.get('error_code') or ''),
             'error_class': str(data.get('error_class') or ''),
+        }
+    if stage == 'memory_chain_snapshot':
+        retrieval = _safe_mapping(data.get('retrieval'))
+        basket = _safe_mapping(data.get('basket'))
+        arbiter = _safe_mapping(data.get('arbiter'))
+        injection = _safe_mapping(data.get('injection'))
+        return {
+            'schema_version': str(data.get('schema_version') or ''),
+            'mode': str(data.get('mode') or ''),
+            'retrieval_status': str(retrieval.get('status') or ''),
+            'retrieval_reason_code': str(retrieval.get('reason_code') or ''),
+            'retrieved_count': _to_int(retrieval.get('retrieved_count')),
+            'basket_status': str(basket.get('status') or ''),
+            'basket_candidates_count': _to_int(basket.get('basket_candidates_count')),
+            'deduped_retrieved_count': _to_int(basket.get('deduped_retrieved_count')),
+            'not_basketed_count': _to_int(basket.get('not_basketed_count')),
+            'arbiter_status': str(arbiter.get('status') or ''),
+            'kept_count': _to_int(arbiter.get('kept_count')),
+            'rejected_count': _to_int(arbiter.get('rejected_count')),
+            'injection_class': str(injection.get('injection_class') or ''),
+            'injected_candidate_count': _to_int(injection.get('injected_candidate_count')),
+            'context_hints_count': _to_int(injection.get('context_hints_count')),
+            'truncated': bool(data.get('truncated')),
         }
     if stage == 'summaries':
         return {

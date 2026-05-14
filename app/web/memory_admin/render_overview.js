@@ -259,6 +259,7 @@
     const embeddings = dashboard?.embeddings || {};
     const embeddingActivity = embeddings.recent_activity || {};
     const embeddingSettings = embeddings.settings || {};
+    const embeddingHealth = embeddings.health || {};
     replaceCards(elements.retrievalCards, [
       buildCard({
         title: "Retrieval configure",
@@ -295,12 +296,28 @@
         ],
       }),
       buildCard({
+        title: "Sante embeddings",
+        body: "Couverture durable et signaux recents, sans dump vectoriel.",
+        source: embeddingHealth.source_kind || "calculated_aggregate",
+        chips: [
+          `count=${toNumber(embeddingHealth.count)}`,
+          `dim=${toNumber(embeddingHealth.dimension)}`,
+          `coverage=${embeddingHealth.coverage_pct == null ? "n/a" : `${compactValue(embeddingHealth.coverage_pct)}%`}`,
+          `errors=${toNumber(embeddingHealth.errors)}`,
+          `mismatch=${toNumber(embeddingHealth.mismatch_events)}`,
+          `drift=${toText(embeddingHealth.drift_status) || "unknown"}`,
+          `latest=${toText(embeddingHealth.latest_update_ts) || "n/a"}`,
+        ],
+      }),
+      buildCard({
         title: "Embeddings recents",
         body: "Ventilation recente des appels embeddings par source_kind.",
         source: embeddings.activity_source_kind,
-        chips: Object.entries(embeddingActivity.by_source_kind || {}).map(
-          ([key, count]) => `${key}=${count}`
-        ),
+        chips: [
+          `events=${toNumber(embeddingActivity.total_events)}`,
+          `errors=${toNumber(embeddingActivity.error_events)}`,
+          ...Object.entries(embeddingActivity.by_source_kind || {}).map(([key, count]) => `${key}=${count}`),
+        ],
       }),
     ]);
   };
@@ -388,6 +405,9 @@
           `trace_turns=${toNumber(activity.trace_memory_injected_turns)}`,
           `summary_turns=${toNumber(activity.summary_context_injected_turns)}`,
           `hint_turns=${toNumber(activity.context_hints_injected_turns)}`,
+          `trace_avg=${toNumber(activity.avg_trace_memory_injected_count)}`,
+          `summary_avg=${toNumber(activity.avg_summary_context_injected_count)}`,
+          `hints_avg=${toNumber(activity.avg_context_hints_injected_count)}`,
         ],
       }),
       buildCard({
@@ -421,6 +441,7 @@
     const fragment = document.createDocumentFragment();
     items.forEach((item, index) => {
       const stages = item.stages || {};
+      const snapshot = stages.memory_chain_snapshot?.payload || {};
       const card = document.createElement("section");
       card.className = "admin-readonly-panel";
 
@@ -443,35 +464,17 @@
       const retrieval = stages.memory_retrieve?.payload || {};
       const arbitration = stages.arbiter?.payload || {};
       const prompt = stages.prompt_prepared?.payload || {};
-      meta.appendChild(createChip(`retrieved=${toNumber(retrieval.top_k_returned)}`));
-      meta.appendChild(createChip(`basket=${toNumber(stages.hermeneutic_node_insertion?.payload?.basket_candidates_count)}`));
-      meta.appendChild(createChip(`kept=${toNumber(arbitration.kept_candidates)}`));
-      meta.appendChild(createChip(`trace=${toNumber(prompt.trace_memory_injected_count || prompt.memory_traces_injected_count)}`));
-      meta.appendChild(createChip(`summary=${toNumber(prompt.summary_context_injected_count || prompt.memory_context_summary_count)}`));
-      meta.appendChild(createChip(`hints=${toNumber(prompt.context_hints_injected_count)}`));
+      meta.appendChild(createChip(`retrieved=${toNumber(snapshot.retrieved_count || retrieval.top_k_returned)}`));
+      meta.appendChild(createChip(`basket=${toNumber(snapshot.basket_candidates_count || stages.hermeneutic_node_insertion?.payload?.basket_candidates_count)}`));
+      meta.appendChild(createChip(`kept=${toNumber(snapshot.kept_count || arbitration.kept_candidates)}`));
+      meta.appendChild(createChip(`rejected=${toNumber(snapshot.rejected_count || arbitration.rejected_candidates)}`));
+      meta.appendChild(createChip(`injected=${toNumber(snapshot.injected_candidate_count || prompt.trace_memory_injected_count || prompt.memory_traces_injected_count)}`));
+      meta.appendChild(createChip(`hints=${toNumber(snapshot.context_hints_count || prompt.context_hints_injected_count)}`));
+      if (snapshot.schema_version) meta.appendChild(createChip("snapshot=present", { status: "ok" }));
+      if (snapshot.truncated) meta.appendChild(createChip("snapshot=truncated", { status: "degraded" }));
       if (toText(prompt.injection_class)) meta.appendChild(createChip(`lane=${toText(prompt.injection_class)}`));
       card.appendChild(meta);
 
-      const grid = document.createElement("div");
-      grid.className = "admin-readonly-grid";
-      renderReadonlyEntries(grid, [
-        ["retrieval", {
-          label: "Retrieval",
-          value: compactValue(retrieval),
-          source: "historical_logs",
-        }],
-        ["arbiter", {
-          label: "Arbitre",
-          value: compactValue(arbitration),
-          source: "historical_logs",
-        }],
-        ["prompt", {
-          label: "Injection prompt",
-          value: compactValue(prompt),
-          source: "historical_logs",
-        }],
-      ]);
-      card.appendChild(grid);
       fragment.appendChild(card);
     });
     elements.recentTurns.replaceChildren(fragment);

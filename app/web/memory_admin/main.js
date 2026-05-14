@@ -50,15 +50,26 @@
 
   const loadTurnInspection = async () => {
     if (!state.conversationId || !state.turnId) {
-      turns.renderTurnInspection(elements.turnStages, []);
+      turns.renderTurnInspection(elements.turnStages, { events: [], pipelineItems: [] });
       return;
     }
-    const payload = await api.fetchTurnLogs({
-      conversationId: state.conversationId,
-      turnId: state.turnId,
-      limit: 120,
+    const [pipelinePayload, eventsPayload] = await Promise.all([
+      api.fetchTurnPipeline({
+        conversationId: state.conversationId,
+        turnId: state.turnId,
+        limit: 1,
+      }),
+      api.fetchTurnLogs({
+        conversationId: state.conversationId,
+        turnId: state.turnId,
+        limit: 120,
+      }),
+    ]);
+    turns.renderTurnInspection(elements.turnStages, {
+      events: eventsPayload.items,
+      pipelineItems: pipelinePayload.items,
+      pipelineSource: pipelinePayload.source,
     });
-    turns.renderTurnInspection(elements.turnStages, payload.items);
   };
 
   const loadArbiterDecisions = async () => {

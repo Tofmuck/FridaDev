@@ -56,6 +56,17 @@
     );
   };
 
+  const fetchTurnPipeline = ({ conversationId = "", turnId = "", limit = 1 } = {}) => {
+    return readAdminJson(
+      `/api/admin/logs/chat/turns${buildQuery({
+        conversation_id: conversationId,
+        turn_id: turnId,
+        limit,
+      })}`,
+      "Echec lecture pipeline compact du tour.",
+    );
+  };
+
   const fetchArbiterDecisions = ({ conversationId = "", limit = 25 } = {}) => {
     return readAdminJson(
       `/api/admin/hermeneutics/arbiter-decisions${buildQuery({
@@ -70,6 +81,7 @@
     fetchDashboard,
     fetchLogMetadata,
     fetchTurnLogs,
+    fetchTurnPipeline,
     fetchArbiterDecisions,
   });
 })();

@@ -379,6 +379,152 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(activity["normal_empty_events"], 2)
         self.assertEqual(activity["retrieve_error_events"], 1)
 
+    def test_embeddings_summary_compacts_status_dimensions_and_errors(self) -> None:
+        rows = [
+            ('query', 'ok', 384, 3, datetime(2026, 5, 14, 8, 0, tzinfo=timezone.utc)),
+            ('summary', 'ok', 384, 2, datetime(2026, 5, 14, 8, 1, tzinfo=timezone.utc)),
+            ('query', 'error', 0, 1, datetime(2026, 5, 14, 8, 2, tzinfo=timezone.utc)),
+            ('identity_conflict_scan', 'ok', 768, 1, datetime(2026, 5, 14, 8, 3, tzinfo=timezone.utc)),
+        ]
+        observed = {"query": ""}
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, _params):
+                observed["query"] = str(query)
+
+            def fetchall(self):
+                return list(rows)
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_embeddings_summary(
+            conn_factory=lambda: FakeConn(),
+            window_days=7,
+        )
+        activity = payload["recent_activity"]
+
+        self.assertEqual(activity["total_events"], 7)
+        self.assertEqual(activity["by_source_kind"]["query"], 4)
+        self.assertEqual(activity["status_counts"], {"error": 1, "ok": 6})
+        self.assertEqual(activity["dimensions_counts"], {"384": 5, "768": 1, "unknown": 1})
+        self.assertEqual(activity["error_events"], 1)
+        self.assertIn("payload_json->>'dimensions'", observed["query"])
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("content", serialized)
+        self.assertNotIn("prompt", serialized)
+
+    def test_embedding_health_summary_uses_counts_dimensions_and_mismatch_only(self) -> None:
+        payload = admin_memory_service._embedding_health_summary(
+            durable_state={
+                "traces": {
+                    "total": 4,
+                    "with_embedding": 3,
+                    "latest_ts": "2026-05-14T08:00:00Z",
+                },
+                "summaries": {
+                    "total": 2,
+                    "with_embedding": 1,
+                    "latest_ts": "2026-05-14T08:01:00Z",
+                },
+            },
+            embeddings={
+                "settings": {"dimensions": 384},
+                "recent_activity": {
+                    "total_events": 7,
+                    "latest_ts": "2026-05-14T08:02:00Z",
+                    "error_events": 1,
+                    "dimensions_counts": {"384": 5, "768": 1, "unknown": 1},
+                },
+            },
+        )
+
+        self.assertEqual(payload["count"], 4)
+        self.assertEqual(payload["dimension"], 384)
+        self.assertEqual(payload["coverage_pct"], 66.67)
+        self.assertEqual(payload["errors"], 1)
+        self.assertEqual(payload["latest_update_ts"], "2026-05-14T08:02:00Z")
+        self.assertEqual(payload["mismatch_events"], 1)
+        self.assertEqual(payload["drift_status"], "mismatch")
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        for forbidden in ("content", "prompt", "memory_trace", "summary_text"):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_read_recent_turns_projects_memory_chain_snapshot_without_candidates_raw_content(self) -> None:
+        rows = [
+            (
+                'conv-memory',
+                'turn-memory',
+                datetime(2026, 5, 14, 8, 0, tzinfo=timezone.utc),
+                'memory_chain_snapshot',
+                'ok',
+                {
+                    'schema_version': 'v1',
+                    'retrieval': {'status': 'ok', 'retrieved_count': 4},
+                    'basket': {'status': 'ok', 'basket_candidates_count': 3, 'deduped_retrieved_count': 1},
+                    'arbiter': {'status': 'ok', 'kept_count': 2, 'rejected_count': 1},
+                    'injection': {'injection_class': 'trace_memory', 'injected_candidate_count': 2},
+                    'retrieved_candidates': [{'content': 'RAW MEMORY MUST NOT LEAK'}],
+                    'basket_candidates': [{'reason': 'RAW REASON MUST NOT LEAK'}],
+                    'truncated': True,
+                },
+            ),
+        ]
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params):
+                return None
+
+            def fetchall(self):
+                return list(rows)
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_service._read_recent_turns(
+            conn_factory=lambda: FakeConn(),
+            turn_limit=4,
+        )
+        snapshot = payload["items"][0]["stages"]["memory_chain_snapshot"]["payload"]
+
+        self.assertEqual(snapshot["retrieved_count"], 4)
+        self.assertEqual(snapshot["basket_candidates_count"], 3)
+        self.assertEqual(snapshot["kept_count"], 2)
+        self.assertEqual(snapshot["rejected_count"], 1)
+        self.assertEqual(snapshot["injected_candidate_count"], 2)
+        self.assertTrue(snapshot["truncated"])
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn("RAW MEMORY MUST NOT LEAK", serialized)
+        self.assertNotIn("RAW REASON MUST NOT LEAK", serialized)
+        self.assertNotIn('"retrieved_candidates":', serialized)
+        self.assertNotIn('"basket_candidates":', serialized)
+
     def test_durable_state_exposes_full_rejection_reason_code_counts_without_raw_reasons(self) -> None:
         raw_duplicate = "same private trace repeated twice"
         raw_reasons = [
@@ -713,8 +859,16 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             "_read_durable_state",
             return_value={
                 "source_kind": "durable_persistence",
-                "traces": {"total": 12},
-                "summaries": {"total": 0},
+                "traces": {
+                    "total": 12,
+                    "with_embedding": 10,
+                    "latest_ts": "2026-05-14T08:00:00Z",
+                },
+                "summaries": {
+                    "total": 2,
+                    "with_embedding": 1,
+                    "latest_ts": "2026-05-14T08:01:00Z",
+                },
                 "arbiter_decisions": {"total": 8, "kept_count": 2, "rejected_count": 6},
             },
         ), mock.patch.object(
@@ -731,7 +885,12 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             return_value={
                 "settings_source_kind": "calculated_aggregate",
                 "activity_source_kind": "historical_logs",
-                "recent_activity": {"total_events": 9},
+                "recent_activity": {
+                    "total_events": 9,
+                    "error_events": 1,
+                    "latest_ts": "2026-05-14T08:02:00Z",
+                    "dimensions_counts": {"384": 8, "768": 1},
+                },
             },
         ), mock.patch.object(
             admin_memory_service,
@@ -778,6 +937,10 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(payload["surface"]["route"], "/memory-admin")
         self.assertEqual(payload["retrieval"]["config"]["top_k"], 5)
         self.assertEqual(payload["embeddings"]["settings"]["endpoint_host"], "embed.example")
+        self.assertEqual(payload["embeddings"]["health"]["count"], 11)
+        self.assertEqual(payload["embeddings"]["health"]["dimension"], 384)
+        self.assertEqual(payload["embeddings"]["health"]["errors"], 1)
+        self.assertEqual(payload["embeddings"]["health"]["mismatch_events"], 1)
         self.assertEqual(payload["arbiter"]["settings"]["reranker_status"], "no_go_for_now")
         self.assertEqual(payload["durable_state"]["source_kind"], "durable_persistence")
         self.assertEqual(payload["recent_turns"]["source_kind"], "historical_logs")

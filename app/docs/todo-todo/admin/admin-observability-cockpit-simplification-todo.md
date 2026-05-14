@@ -331,29 +331,29 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Ajouter `memory_chain_snapshot` a l'inspection par tour.
-- [ ] Afficher une sante embeddings compacte: count, dimension, couverture, erreurs, latest update, drift ou mismatch si disponible.
-- [ ] Masquer par defaut les stages absents et sections vides.
-- [ ] Deplacer les details debug en accordion.
-- [ ] Reduire les panneaux longs sans perdre les counters utiles.
-- [ ] Distinguer clairement `retrieved`, `basket`, `kept`, `rejected`, `injected`.
-- [ ] Conserver les provenances `durable_persistence`, `calculated_aggregate`, `runtime_process_local`, `historical_logs`.
+- [x] Ajouter `memory_chain_snapshot` a l'inspection par tour.
+- [x] Afficher une sante embeddings compacte: count, dimension, couverture, erreurs, latest update, drift ou mismatch si disponible.
+- [x] Masquer par defaut les stages absents et sections vides.
+- [x] Deplacer les details debug en accordion.
+- [x] Reduire les panneaux longs sans perdre les counters utiles.
+- [x] Distinguer clairement `retrieved`, `basket`, `kept`, `rejected`, `injected`.
+- [x] Conserver les provenances `durable_persistence`, `calculated_aggregate`, `runtime_process_local`, `historical_logs`.
 
 Tests attendus:
 
-- [ ] Test renderer avec stage absent.
-- [ ] Test renderer avec `memory_chain_snapshot`.
-- [ ] Test API ou aggregation embeddings health si des champs backend sont ajoutes.
-- [ ] Test content-free sur les nouveaux champs.
+- [x] Test renderer avec stage absent.
+- [x] Test renderer avec `memory_chain_snapshot`.
+- [x] Test API ou aggregation embeddings health si des champs backend sont ajoutes.
+- [x] Test content-free sur les nouveaux champs.
 
 Preuves runtime attendues:
 
-- lecture compacte d'un tour Memory/RAG avec chaine visible;
-- preuve que les embeddings sont lisibles en indicateurs de sante sans dumps.
+- [x] lecture compacte d'un tour Memory/RAG avec chaine visible;
+- [x] preuve que les embeddings sont lisibles en indicateurs de sante sans dumps.
 
 Condition de cloture:
 
-- [ ] Memory Admin explique un tour RAG sans scroller dans des murs de payloads ni exposer le contenu des traces.
+- [x] Memory Admin explique un tour RAG sans scroller dans des murs de payloads ni exposer le contenu des traces.
 
 ## Lot 5 - Alleger Hermeneutic / Identity
 

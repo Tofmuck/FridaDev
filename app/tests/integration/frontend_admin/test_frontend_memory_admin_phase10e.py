@@ -62,7 +62,7 @@ class FrontendMemoryAdminPhase10eTests(unittest.TestCase):
         combined = f"{api_source}\n{overview_source}\n{turns_source}\n{main_source}"
         found_endpoints = set(
             re.findall(
-                r"/api/admin/(?:memory/dashboard|logs/chat(?:/metadata)?|hermeneutics/arbiter-decisions)",
+                r"/api/admin/(?:memory/dashboard|logs/chat(?:/metadata|/turns)?|hermeneutics/arbiter-decisions)",
                 combined,
             )
         )
@@ -72,6 +72,7 @@ class FrontendMemoryAdminPhase10eTests(unittest.TestCase):
                 "/api/admin/memory/dashboard",
                 "/api/admin/logs/chat",
                 "/api/admin/logs/chat/metadata",
+                "/api/admin/logs/chat/turns",
                 "/api/admin/hermeneutics/arbiter-decisions",
             },
         )
@@ -108,6 +109,23 @@ class FrontendMemoryAdminPhase10eTests(unittest.TestCase):
         self.assertIn("mixed_lane_turns", overview_source)
         self.assertIn("trace_memory_injected_count", overview_source)
         self.assertIn("summary_context_injected_count", overview_source)
+
+    def test_embeddings_health_and_turn_chain_are_compact(self) -> None:
+        overview_source = (APP_DIR / "web" / "memory_admin" / "render_overview.js").read_text(
+            encoding="utf-8"
+        )
+        turns_source = (APP_DIR / "web" / "memory_admin" / "render_turns.js").read_text(encoding="utf-8")
+        main_source = (APP_DIR / "web" / "memory_admin" / "main.js").read_text(encoding="utf-8")
+
+        self.assertIn("Sante embeddings", overview_source)
+        self.assertIn("coverage_pct", overview_source)
+        self.assertIn("mismatch_events", overview_source)
+        self.assertIn("fetchTurnPipeline", main_source)
+        self.assertIn("memory_chain_snapshot", turns_source)
+        self.assertIn("retrieved_candidates", turns_source)
+        self.assertIn("basket_candidates", turns_source)
+        self.assertIn("admin-disclosure", turns_source)
+        self.assertNotIn("Non observe pour ce tour.", turns_source)
 
     def test_duplicate_trace_overview_uses_compact_projection_only(self) -> None:
         overview_source = (APP_DIR / "web" / "memory_admin" / "render_overview.js").read_text(

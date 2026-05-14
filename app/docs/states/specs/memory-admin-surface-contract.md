@@ -15,6 +15,7 @@ La surface est read-only pour ce lot. Elle reemploie ensuite des lectures deja e
 
 - `GET /api/admin/logs/chat/metadata`
 - `GET /api/admin/logs/chat`
+- `GET /api/admin/logs/chat/turns`
 - `GET /api/admin/hermeneutics/arbiter-decisions`
   - quand elle est chargee par Memory Admin ou Hermeneutic Admin, la reponse par defaut est content-minimized: elle expose les decisions arbiter sous forme de role, scores, verdict, timestamps, `reason_code`, longueurs et hash courts, sans `candidate_content` ni `reason` bruts;
 
@@ -67,6 +68,8 @@ La surface doit rendre lisibles, au minimum :
   - la reponse par defaut ne sert pas de `content_excerpt`, extrait de trace, extrait de summary ou texte de souvenir brut;
 - retrieval / RAG
 - embeddings
+  - la sante embeddings est affichee comme indicateurs compacts: `count`, dimension configuree, couverture durable, erreurs recentes, derniere mise a jour, mismatch/drift si les evenements recents permettent de le calculer;
+  - aucun vecteur, trace brute, summary brut ou payload long n'est affiche par defaut;
 - panier pre-arbitre
 - arbitre
   - les agregats de rejet doivent etre exposes sous forme de `reason_code` stable, par exemple `rejection_reason_code_counts` / `top_rejection_reason_code_counts`, jamais comme texte libre de raison;
@@ -87,6 +90,10 @@ Pour l inspection read-only par tour, la surface couvre les stages memory / RAG 
   - les erreurs exposees restent redacted: code stable, classe d'erreur sanitisee, aucun DSN/token/traceback
   - doit exposer la semantique top-k sans ambiguite: `top_k_requested` correspond a la demande sur la lane traces, `summary_candidates_count` compte la lane summaries additive, et `top_k_returned` compte le total retourne au chemin pre-arbitre
   - `top_k_returned > top_k_requested` est donc possible et normal quand `summary_candidates_count > 0`; la surface admin ne doit pas le presenter comme une sur-recuperation de traces
+- `memory_chain_snapshot`
+  - source preferee pour expliquer la chaine `retrieved -> basket -> kept/rejected -> injected`
+  - expose uniquement schema/status/counts, score buckets, reason codes et hashes courts de candidats quand le detail debug est explicitement ouvert
+  - les stages absents ne doivent pas etre rendus comme panneaux vides par defaut
 - `summaries`
 - `arbiter`
 - `hermeneutic_node_insertion`
@@ -125,6 +132,7 @@ Il peut reemployer :
 - `arbiter.get_runtime_metrics()`
 - `admin_logs.summarize_hermeneutic_mode_observation()`
 - `observability.chat_log_events`
+- `GET /api/admin/logs/chat/turns` pour la ligne cockpit compacte par tour
 - les runtime settings deja exposes cote code
 
 ## Non-goals explicites de ce lot

@@ -68,6 +68,65 @@ def _embedding_settings_summary(runtime_settings_module: Any) -> dict[str, Any]:
     }
 
 
+def _latest_ts(*values: Any) -> str | None:
+    timestamps = [str(value).strip() for value in values if str(value or '').strip()]
+    return max(timestamps) if timestamps else None
+
+
+def _embedding_health_summary(
+    *,
+    durable_state: Mapping[str, Any],
+    embeddings: Mapping[str, Any],
+) -> dict[str, Any]:
+    traces = _safe_mapping(_safe_mapping(durable_state).get('traces'))
+    summaries = _safe_mapping(_safe_mapping(durable_state).get('summaries'))
+    settings = _safe_mapping(_safe_mapping(embeddings).get('settings'))
+    activity = _safe_mapping(_safe_mapping(embeddings).get('recent_activity'))
+    dimensions_counts = _safe_mapping(activity.get('dimensions_counts'))
+    configured_dimension = _to_int(settings.get('dimensions'))
+    traces_total = _to_int(traces.get('total'))
+    summaries_total = _to_int(summaries.get('total'))
+    traces_with_embedding = _to_int(traces.get('with_embedding'))
+    summaries_with_embedding = _to_int(summaries.get('with_embedding'))
+    total_items = traces_total + summaries_total
+    embedded_items = traces_with_embedding + summaries_with_embedding
+    mismatch_events = 0
+    observed_dimensions: list[str] = []
+    for raw_dimension, raw_count in dimensions_counts.items():
+        dimension = _to_int(raw_dimension)
+        count = _to_int(raw_count)
+        if dimension > 0:
+            observed_dimensions.append(str(dimension))
+        if configured_dimension > 0 and dimension > 0 and dimension != configured_dimension:
+            mismatch_events += count
+    coverage_pct = round((embedded_items / total_items) * 100.0, 2) if total_items else None
+    if mismatch_events > 0:
+        drift_status = 'mismatch'
+    elif observed_dimensions:
+        drift_status = 'ok'
+    else:
+        drift_status = 'unknown'
+    return {
+        'source_kind': 'calculated_aggregate',
+        'count': embedded_items,
+        'dimension': configured_dimension,
+        'coverage_pct': coverage_pct,
+        'errors': _to_int(activity.get('error_events')),
+        'latest_update_ts': _latest_ts(
+            traces.get('latest_ts'),
+            summaries.get('latest_ts'),
+            activity.get('latest_ts'),
+        ),
+        'mismatch_events': mismatch_events,
+        'drift_status': drift_status,
+        'durable_items_total': total_items,
+        'traces_with_embedding': traces_with_embedding,
+        'summaries_with_embedding': summaries_with_embedding,
+        'recent_events': _to_int(activity.get('total_events')),
+        'observed_dimensions': sorted(observed_dimensions),
+    }
+
+
 def _arbiter_settings_summary(runtime_settings_module: Any, config_module: Any) -> dict[str, Any]:
     view = runtime_settings_module.get_arbiter_model_settings()
     payload = _safe_mapping(view.payload)
@@ -216,6 +275,10 @@ def dashboard_response(
     }
 
     embeddings['settings'] = _embedding_settings_summary(runtime_settings_module)
+    embeddings['health'] = _embedding_health_summary(
+        durable_state=durable_state,
+        embeddings=embeddings,
+    )
 
     arbiter = {
         'settings_source_kind': 'calculated_aggregate',
