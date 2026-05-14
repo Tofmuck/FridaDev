@@ -734,6 +734,171 @@ test('logs page applies filters and exports scoped markdown in browser', async (
   });
 });
 
+function memoryAdminMockScript() {
+  return `
+    (() => {
+      const state = { calls: [] };
+      window.__fridaBrowserState = state;
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+        state.calls.push({ method, path: url.pathname, search: url.search });
+
+        if (url.pathname === "/api/admin/memory/dashboard" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            surface: { name: "Memory Admin", route: "/memory-admin", reranker_decision: "no_go_for_now" },
+            overview: { mode: "enforced_all", summary: "surface memory" },
+            scope: { kept_elsewhere: [] },
+            sources_legend: [
+              { key: "historical_logs", label: "Historique logs", description: "events" },
+            ],
+            durable_state: {
+              source_kind: "durable_persistence",
+              traces: { total: 1, with_embedding: 1, with_summary_id: 0, conversations: 1, by_role: { user: 1 } },
+              summaries: { total: 0, with_embedding: 0, conversations: 0 },
+              arbiter_decisions: { total: 0, kept_count: 0, rejected_count: 0, fallback_count: 0 },
+            },
+            retrieval: {
+              config_source_kind: "calculated_aggregate",
+              activity_source_kind: "historical_logs",
+              config: { top_k: 5, basket_limit: 8, summary_lane_live: false },
+              recent_activity: { turns_observed: 1, avg_dense_candidates: 1, avg_lexical_candidates: 0, avg_top_k_returned: 0 },
+            },
+            embeddings: {
+              settings_source_kind: "calculated_aggregate",
+              activity_source_kind: "historical_logs",
+              settings: { model: "embed/test", endpoint_host: "embed.test", dimensions: 384, token_configured: true },
+              recent_activity: { total_events: 1, error_events: 0, by_source_kind: { query: 1 } },
+              health: { source_kind: "calculated_aggregate", count: 1, dimension: 384, coverage_pct: 100, errors: 0, mismatch_events: 0, drift_status: "ok" },
+            },
+            pre_arbiter_basket: {
+              contract_source_kind: "calculated_aggregate",
+              recent_activity_source_kind: "historical_logs",
+              contract: { basket_limit: 8, dedup_reason_codes: [] },
+              recent_activity: { turns_observed: 1, avg_raw_candidates: 3, avg_basket_candidates: 2, avg_kept: 1 },
+            },
+            arbiter: {
+              settings_source_kind: "calculated_aggregate",
+              runtime_source_kind: "runtime_process_local",
+              durable_source_kind: "durable_persistence",
+              admin_logs_source_kind: "historical_logs",
+              settings: { model: "arbiter/test", timeout_s: 10 },
+              runtime_metrics: {},
+              latency_ms: {},
+              mode_observation: {},
+              persisted_summary: { total: 0, kept_count: 0, rejected_count: 0, fallback_count: 0 },
+            },
+            injection: {
+              source_kind: "historical_logs",
+              recent_activity: {
+                events_count: 1,
+                injected_turns: 1,
+                trace_memory_injected_turns: 1,
+                summary_context_injected_turns: 0,
+                context_hints_injected_turns: 0,
+                latest_injected_candidate_ids: [],
+              },
+            },
+            recent_turns: {
+              source_kind: "historical_logs",
+              items: [{
+                conversation_id: "conv-zero",
+                turn_id: "turn-zero",
+                latest_ts: "2026-05-14T10:00:00Z",
+                stages: {
+                  memory_chain_snapshot: {
+                    status: "ok",
+                    payload: {
+                      schema_version: "v1",
+                      retrieved_count: 0,
+                      basket_candidates_count: 0,
+                      kept_count: 0,
+                      rejected_count: 0,
+                      injected_candidate_count: 0,
+                      context_hints_count: 0,
+                    },
+                  },
+                  prompt_prepared: {
+                    status: "ok",
+                    payload: {
+                      trace_memory_injected_count: 3,
+                      memory_traces_injected_count: 3,
+                      context_hints_injected_count: 2,
+                      injection_class: "trace_memory_only",
+                    },
+                  },
+                },
+              }],
+            },
+            read_errors: [],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat/metadata" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            selected_conversation_id: "conv-zero",
+            conversations: [{ conversation_id: "conv-zero", events_count: 2 }],
+            turns: [{ turn_id: "turn-zero", events_count: 2 }],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat/turns" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            items: [{
+              conversation_id: "conv-zero",
+              turn_id: "turn-zero",
+              classification: "complete",
+              score: 100,
+              rag: { source_kind: "memory_chain_snapshot", retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0, context_hints: 0 },
+              source: { memory_chain_snapshot_present: true, events_truncated: false },
+            }],
+            source: { events_truncated: false },
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            items: [
+              { stage: "memory_chain_snapshot", status: "ok", payload: { retrieval: { retrieved_count: 0 }, injection: { injected_candidate_count: 0 } } },
+              { stage: "prompt_prepared", status: "ok", payload: { memory_prompt_injection: { trace_memory_injected_count: 3 } } },
+            ],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/hermeneutics/arbiter-decisions" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error("Unexpected fetch " + method + " " + url.pathname + url.search);
+      };
+    })();
+  `;
+}
+
+test('memory admin recent turns keep explicit zero snapshot counts over fallbacks', async () => {
+  await openBrowserPage({ pathSuffix: '/memory-admin.html', mockScript: memoryAdminMockScript() }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#memoryAdminStatusBanner')?.textContent.includes('Memory Admin charge'));
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'retrieved=0');
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'basket=0');
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'kept=0');
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'rejected=0');
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'injected=0');
+    await assertTextContains(page.locator('#memoryAdminRecentTurns'), 'hints=0');
+
+    const recentText = await page.locator('#memoryAdminRecentTurns').textContent();
+    assert.equal(String(recentText || '').includes('injected=3'), false);
+    assert.equal(String(recentText || '').includes('hints=2'), false);
+  });
+});
+
 async function assertTextContains(locator, expectedText) {
   const text = await locator.textContent();
   assert.match(String(text || ''), new RegExp(escapeRegExp(expectedText)));
