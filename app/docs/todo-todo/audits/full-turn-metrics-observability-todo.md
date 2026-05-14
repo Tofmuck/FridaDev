@@ -4,7 +4,7 @@ Statut: ouvert
 Source: audit industriel d'un tour complet FridaDev du 2026-05-14
 Classement: app/docs/todo-todo/audits/
 Portee: preparation de metriques et agregats operateur pour un futur dashboard industriel du tour complet
-Hors-scope: refonte generale de l'observabilite, nouveaux logs dupliques, backfill massif, exposition de contenu brut, redesign admin global
+Hors-scope: refonte generale de l'observabilite, observabilite frontend/admin UI, nouveaux logs dupliques, backfill massif, exposition de contenu brut, redesign admin global
 
 ## 1. Intention
 
@@ -53,7 +53,28 @@ Ce fichier ne doit pas les rouvrir.
 - Les graphes futurs doivent etre derives d'une semantique claire, pas de heuristiques UI fragiles.
 - Les lots doivent rester fermables separement; aucun lot ne doit exiger de redesign complet du dashboard.
 
-## 4. Principes privacy et auditabilite
+## 4. Hors-scope frontend/admin UI
+
+Ce TODO prepare les metriques backend/logs qu'une UI pourra consommer plus tard. Il ne prouve pas que l'UI les rend correctement.
+
+L'observabilite frontend et admin UI est hors-scope de ce fichier et devra faire l'objet d'un audit ou chantier dedie.
+
+Exemples hors-scope:
+
+- erreurs JavaScript navigateur;
+- console errors;
+- appels API frontend echoues;
+- etats loading, empty ou error;
+- boutons ou actions admin casses;
+- incoherences entre payload backend et rendu UI;
+- regressions responsive;
+- tests Playwright, screenshots ou tests visuels;
+- telemetrie UI content-free eventuelle;
+- verification fonctionnelle des surfaces `/log`, `/admin`, `/memory-admin`, `/hermeneutic-admin` et `/identity`.
+
+Le Lot 5 peut cadrer quelles metriques backend seraient utiles a un dashboard futur, mais il ne valide pas encore la qualite du rendu frontend.
+
+## 5. Principes privacy et auditabilite
 
 - Autorise: counts, booleens, durees, statuts, `reason_code`, `error_class`, longueurs, hash courts, caller/provider, lanes compactes.
 - Interdit: contenu de message, prompt, identity, memory trace, summary, web query, result snippet, canonical input, DSN, token, cle ou traceback brut.
@@ -61,7 +82,7 @@ Ce fichier ne doit pas les rouvrir.
 - Les logs historiques peuvent rester tels quels; pas de backfill massif dans ce chantier.
 - Les valeurs legacy doivent etre marquees comme telles si elles sont deduites.
 
-## 5. Ordre de correction recommande
+## 6. Ordre de correction recommande
 
 1. Clarifier `persist_response`.
 2. Segmenter les metriques `llm_call`.
@@ -282,7 +303,7 @@ Condition de cloture:
 
 - [ ] Les courbes proposees reposent uniquement sur signaux clarifies par Lots 1-4.
 
-## 6. Condition de non-prolongation
+## 7. Condition de non-prolongation
 
 Le chantier se ferme quand:
 
@@ -298,9 +319,10 @@ Ne pas prolonger ce TODO pour:
 - creer de nouveaux prompts ou providers;
 - nettoyer tout l'historique;
 - redesign complet des surfaces admin;
+- absorber l'audit frontend/admin UI dedie;
 - ajouter des metriques produit subjectives.
 
-## 7. Matrice besoins -> lots
+## 8. Matrice besoins -> lots
 
 | Besoin / risque | Lot |
 | --- | --- |
@@ -309,12 +331,14 @@ Ne pas prolonger ce TODO pour:
 | Ecritures derivees difficiles a relier a la sauvegarde assistant canonique | Lot 3 |
 | Dashboard impossible a fiabiliser sans score/checklist par tour | Lot 4 |
 | Courbes industrielles a cadrer sans inventer une deuxieme observabilite | Lot 5 |
+| Risque de confondre metriques backend et observabilite frontend/admin UI | Hors-scope dedie |
 | Risque privacy sur contenus bruts dans metriques ou tooltips | Tous les lots |
 
-## 8. Notes de prudence
+## 9. Notes de prudence
 
 - [ ] Avant chaque lot, verifier si un event existant suffit.
 - [ ] Avant toute nouvelle UI, verifier si `/log`, `/memory-admin` ou `/hermeneutic-admin` peut porter la lecture sans duplication.
 - [ ] Toute aggregation doit etre content-free par defaut.
 - [ ] Les logs historiques ne doivent pas etre reecrits sans decision separee.
 - [ ] Un graphe joli mais base sur une semantique ambigue doit rester bloque.
+- [ ] Ne pas traiter les bugs de rendu frontend/admin UI dans ce TODO.
