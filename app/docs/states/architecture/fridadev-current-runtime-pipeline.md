@@ -103,7 +103,11 @@ EN: `done` stores a full canonical assistant message only when atomic catalog/me
 FR: seules les fins `done` canonisees et verifiees peuvent alimenter les traces memoire derivees; les ecritures identitaires derivees suivent la meme barriere.
 EN: only verified canonical `done` turns are allowed to feed derived memory traces; derived identity writes use the same barrier.
 
-5. Les surfaces operateur ne sont pas des pipelines paralleles.
+5. La barriere post-save est commune a JSON et streaming.
+FR: sur le chemin JSON nominal, la sauvegarde assistant finale precede `AssistantText`, les traces, les ecritures identitaires et les reactivations. Sur le chemin streaming nominal, la sauvegarde assistant finale precede aussi ces derivations et le terminal `done(updated_at)`. L'ordre relatif entre traces et identite peut differer apres cette barriere; il ne doit pas etre interprete comme une difference de canonisation.
+EN: on the nominal JSON path, the final assistant save precedes `AssistantText`, traces, identity writes, and reactivations. On the nominal streaming path, the final assistant save also precedes these derivations and the `done(updated_at)` terminal. The relative order between traces and identity can differ after that barrier; it must not be interpreted as a canonicalization difference.
+
+6. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/log`, `/hermeneutic-admin`, `/identity` et `/memory-admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.
 EN: `/log`, `/hermeneutic-admin`, `/identity`, and `/memory-admin` inspect runtime state and derivatives; they do not replace the main pipeline.
 

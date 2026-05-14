@@ -52,6 +52,7 @@ class ChatLlmFlowTests(unittest.TestCase):
             'secret_calls': 0,
             'provider_log_calls': [],
             'sanitize_calls': [],
+            'sequence': [],
         }
         conversation = {
             'id': 'conv-sync',
@@ -91,15 +92,26 @@ class ChatLlmFlowTests(unittest.TestCase):
             RuntimeSettingsSecretRequiredError=RuntimeError,
             RuntimeSettingsSecretResolutionError=ValueError,
         )
+
+        def fake_save_new_traces(_conversation):
+            observed['sequence'].append('save_new_traces')
+
+        def fake_reactivate_identities(_identity_ids):
+            observed['sequence'].append('reactivate_identities')
+
+        def fake_save_conversation(_conversation, **kwargs):
+            observed['sequence'].append('save_conversation')
+            observed['save_calls'].append(dict(kwargs))
+
         memory_store_module = SimpleNamespace(
-            save_new_traces=lambda _conversation: None,
-            reactivate_identities=lambda _identity_ids: None,
+            save_new_traces=fake_save_new_traces,
+            reactivate_identities=fake_reactivate_identities,
         )
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
                 {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
-            save_conversation=lambda _conversation, **kwargs: observed['save_calls'].append(dict(kwargs)),
+            save_conversation=fake_save_conversation,
         )
         llm_module = SimpleNamespace(
             or_headers=lambda *, caller: observed.update({'headers_called_with': caller}) or {'Authorization': 'Bearer token'},
@@ -138,7 +150,13 @@ class ChatLlmFlowTests(unittest.TestCase):
             exceptions=SimpleNamespace(RequestException=_RequestException),
         )
         token_utils_module = SimpleNamespace(estimate_tokens=lambda _messages, _model: 7)
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        def fake_log_event(event, **kwargs):
+            if event == 'AssistantText':
+                observed['sequence'].append('AssistantText')
+            events.append((event, kwargs))
+
+        admin_logs_module = SimpleNamespace(log_event=fake_log_event)
         config_module = SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42)
         logger = SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None)
 
@@ -150,8 +168,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             top_p=1.0,
             max_tokens=256,
             stream_req=False,
-            current_mode='shadow',
-            identity_ids=[],
+            current_mode='enforced_all',
+            identity_ids=['identity-1'],
             web_input=None,
             runtime_settings_module=runtime_settings_module,
             memory_store_module=memory_store_module,
@@ -164,8 +182,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             logger=logger,
             arbiter_module=SimpleNamespace(),
             now_iso_func=lambda: '2026-03-26T00:10:00Z',
-            record_identity_entries_for_mode=lambda *_args, **_kwargs: observed.update({'identity_callback_called': True}),
-            mode_enforces_identity=lambda _mode: False,
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: (
+                observed['sequence'].append('identity_write'),
+                observed.update({'identity_callback_called': True}),
+            ),
+            mode_enforces_identity=lambda _mode: True,
             conversation_headers_func=lambda _conversation, updated_at: {
                 'X-Conversation-Id': 'conv-sync',
                 'X-Conversation-Created-At': '2026-03-26T00:00:00Z',
@@ -192,6 +213,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(observed['sanitize_calls'], [])
         self.assertTrue(observed['identity_callback_called'])
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:10:00Z')
+        self.assertEqual(
+            observed['sequence'],
+            ['save_conversation', 'AssistantText', 'save_new_traces', 'identity_write', 'reactivate_identities'],
+        )
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['model'], 'openrouter/runtime-main-model')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_caller'], 'llm')
         self.assertEqual(_event_payloads(events, 'llm_payload')[0]['provider_title'], 'FridaDev/llm')
@@ -804,7 +829,7 @@ class ChatLlmFlowTests(unittest.TestCase):
 
         memory_store_module = SimpleNamespace(
             save_new_traces=fake_save_new_traces,
-            reactivate_identities=lambda _identity_ids: None,
+            reactivate_identities=lambda _identity_ids: observed['sequence'].append('reactivate_identities'),
         )
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
@@ -835,8 +860,8 @@ class ChatLlmFlowTests(unittest.TestCase):
             top_p=1.0,
             max_tokens=256,
             stream_req=True,
-            current_mode='shadow',
-            identity_ids=[],
+            current_mode='enforced_all',
+            identity_ids=['identity-1'],
             web_input=None,
             assistant_output_policy=assistant_output_contract.AssistantOutputPolicy(),
             runtime_settings_module=runtime_settings_module,
@@ -845,13 +870,19 @@ class ChatLlmFlowTests(unittest.TestCase):
             llm_module=llm_module,
             requests_module=requests_module,
             token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 3),
-            admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+            admin_logs_module=SimpleNamespace(
+                log_event=lambda event, **_kwargs: (
+                    observed['sequence'].append('AssistantText')
+                    if event == 'AssistantText'
+                    else None
+                )
+            ),
             config_module=SimpleNamespace(OR_BASE='https://openrouter.example', TIMEOUT_S=42),
             logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
             arbiter_module=SimpleNamespace(),
             now_iso_func=lambda: '2026-03-26T00:11:00Z',
-            record_identity_entries_for_mode=lambda *_args, **_kwargs: None,
-            mode_enforces_identity=lambda _mode: False,
+            record_identity_entries_for_mode=lambda *_args, **_kwargs: observed['sequence'].append('identity_write'),
+            mode_enforces_identity=lambda _mode: True,
             conversation_headers_func=lambda _conversation, updated_at: {'X-Conversation-Updated-At': updated_at},
         )
 
@@ -864,7 +895,10 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
         self.assertNotIn('meta', conversation['messages'][-1])
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
-        self.assertEqual(observed['sequence'], ['save_conversation', 'save_new_traces'])
+        self.assertEqual(
+            observed['sequence'],
+            ['save_conversation', 'AssistantText', 'identity_write', 'reactivate_identities', 'save_new_traces'],
+        )
         self.assertEqual(observed['save_new_traces_calls'][-1][-1]['content'], streamed)
 
     def test_run_llm_exchange_stream_persistence_failure_emits_terminal_without_updated_at(self) -> None:

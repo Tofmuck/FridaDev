@@ -254,6 +254,9 @@ Minimum event-specific details:
     - `unknown`: compatibility fallback for legacy or unclassified saves
   - goal: count final assistant saves without confusing them with user-turn preservation, summary saves or interrupted markers
   - `persist_response` describes the canonical conversation save only; derived writes such as memory traces or identity writes remain observed by their own stages/events
+  - for `persist_phase=assistant_final`, derived memory traces, identity writes and identity reactivation must execute only after a successful canonical assistant save (`conversation_saved=true`)
+  - JSON and streaming may keep different relative ordering between derived writes after that barrier; metrics must rely on the post-save barrier, not on a global order among trace and identity derivations
+  - for `persist_phase=assistant_interrupted` or failed assistant persistence, final assistant-derived traces and identity writes must not be produced for the interrupted/unsaved assistant content
   - forbidden: raw conversation, raw messages, prompt excerpts
 
 - `turn_end`

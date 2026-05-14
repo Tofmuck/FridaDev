@@ -196,24 +196,24 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Cartographier l'ordre effectif JSON et streaming autour de save assistant, traces, identity writes et summaries.
-- [ ] Choisir: alignement runtime minimal ou documentation/test explicite de la divergence.
-- [ ] Si champ ajoute, garder une preuve compacte de type `after_assistant_save=true` ou `post_save_phase`.
-- [ ] Ne pas dupliquer les events existants si `persist_phase` du Lot 1 suffit.
+- [x] Cartographier l'ordre effectif JSON et streaming autour de save assistant, traces, identity writes et summaries.
+- [x] Choisir: alignement runtime minimal ou documentation/test explicite de la divergence.
+- [x] Confirmer qu'aucun champ ajoute n'est necessaire; si un champ est ajoute plus tard, garder une preuve compacte de type `after_assistant_save=true` ou `post_save_phase`.
+- [x] Ne pas dupliquer les events existants si `persist_phase` du Lot 1 suffit.
 
 Tests attendus:
 
-- [ ] Test JSON: ecritures derivees apres sauvegarde assistant canonique, ou divergence explicite.
-- [ ] Test streaming: meme preuve ou divergence documentee.
-- [ ] Test qu'aucun contenu brut n'est ajoute aux logs de phase.
+- [x] Test JSON: ecritures derivees apres sauvegarde assistant canonique, ou divergence explicite.
+- [x] Test streaming: meme preuve ou divergence documentee.
+- [x] Test qu'aucun contenu brut n'est ajoute aux logs de phase.
 
 Preuves runtime attendues:
 
-- [ ] Timeline compacte d'un tour montrant l'ordre des stages concernes.
+- [x] Timeline compacte d'un tour montrant l'ordre des stages concernes.
 
 Condition de cloture:
 
-- [ ] Les metriques futures savent si une trace/identity write appartient a une reponse assistant effectivement sauvegardee.
+- [x] Les metriques futures savent si une trace/identity write appartient a une reponse assistant effectivement sauvegardee.
 
 ## Lot 4 - Score de completude d'observabilite par tour
 
@@ -309,7 +309,7 @@ Le chantier se ferme quand:
 
 - [x] `persist_response` est non ambigu pour les metriques de persistence.
 - [x] Les metriques LLM sont segmentees par `provider_caller`.
-- [ ] La barriere post-save JSON/streaming est testee ou documentee explicitement.
+- [x] La barriere post-save JSON/streaming est testee ou documentee explicitement.
 - [ ] Un score/checklist de completude par tour existe ou est specifiable sans logs nouveaux.
 - [ ] Le dashboard/courbes futur est cadre avec des signaux fiables, sans implementation prematuree.
 
