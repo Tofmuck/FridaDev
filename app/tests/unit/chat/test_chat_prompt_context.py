@@ -401,9 +401,14 @@ class ChatPromptContextTests(unittest.TestCase):
         event, payload = observed_logs[0]
         self.assertEqual(event, 'web_search')
         self.assertEqual(payload['conversation_id'], 'conv-ctx')
-        self.assertEqual(payload['query'], 'query test')
-        self.assertEqual(payload['original'], 'Bonjour')
+        self.assertTrue(payload['query_present'])
+        self.assertEqual(payload['query_chars'], len('query test'))
+        self.assertRegex(payload['query_sha256_12'], r'^[0-9a-f]{12}$')
+        self.assertEqual(payload['original_user_message_chars'], len('Bonjour'))
+        self.assertRegex(payload['original_user_message_sha256_12'], r'^[0-9a-f]{12}$')
         self.assertEqual(payload['results'], 3)
+        self.assertNotIn('query', payload)
+        self.assertNotIn('original', payload)
         self.assertNotIn('ticketmaster', payload)
 
     def test_inject_web_context_skips_when_no_context(self) -> None:

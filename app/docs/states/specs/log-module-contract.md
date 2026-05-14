@@ -71,7 +71,8 @@ Initial values:
 
 Mapping guidance (MVP):
 - `prompt_prepared` uses `chat_system_augmented`
-- `web_search` can use `chat_web_reformulation` when reformulation is called
+- `web_reformulation_prompt_prepared` uses `chat_web_reformulation`
+- `web_search` can use `chat_web_reformulation` for the compact result of the web branch
 - `summaries` can use `chat_summary_system` when summary generation is executed
 
 ## 6) MVP event list and minimum payload
@@ -84,6 +85,7 @@ The MVP event list is:
 - `identities_read`
 - `identity_write`
 - `web_search`
+- `web_reformulation_prompt_prepared`
 - `context_build`
 - `stimmung_prompt_prepared`
 - `primary_node`
@@ -163,8 +165,15 @@ Minimum event-specific details:
 
 - `web_search`
   - dedicated event (not only a boolean in `turn_start`)
-  - `enabled`, `query_preview`, `results_count`, `context_injected`, `truncated`
+  - `enabled`, `query_present`, `query_chars`, `query_sha256_12`, `results_count`, `context_injected`, `truncated`
+  - `query_preview` can remain as a backward-compatible key but must not carry raw query text in default logs
   - if skipped: `status=skipped` + `reason_code`
+
+- `web_reformulation_prompt_prepared`
+  - content-free proof of the secondary provider payload prepared by the web reformulation path before the provider call
+  - must be distinguishable from the main LLM payload and from `stimmung_prompt_prepared` / `validation_prompt_prepared`
+  - allowed fields: `payload_kind`, `provider_caller=web_reformulation`, secondary/main booleans, model/provider title, message counts, role counts, system/current-user presence, char counts, short hashes, sampling/timeouts
+  - forbidden: raw prompt, raw messages, raw content, raw original user message, raw query, raw web context, search results, snippets or crawled material
 
 - `context_build`
   - `estimated_context_tokens`, `token_limit`, `truncated`

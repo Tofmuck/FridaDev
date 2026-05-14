@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping
 
 from core import assistant_output_contract
@@ -21,6 +22,15 @@ _FINAL_OUTPUT_REGIME_INSTRUCTIONS = {
     'meta': "Tu peux expliciter le cadre, la limite ou la clarification de facon reflexive si c'est vraiment necessaire",
     'simple': 'Reste dans une reprise locale, sobre, dialogique et non meta',
 }
+
+
+def _sha256_12(value: Any) -> str:
+    text = str(value or '')
+    if not text:
+        return ''
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
 _EXPLICIT_IDENTITY_REVELATION_PREFIXES = (
     'je suis ',
     'moi c est ',
@@ -293,11 +303,16 @@ def inject_web_context(
             }
             break
 
+    query_text = str(web_context_payload.get('query') or '')
+    original_text = str(web_context_payload.get('original_user_message') or user_msg or '')
     admin_logs_module.log_event(
         'web_search',
         conversation_id=conversation_id,
-        query=web_context_payload.get('query'),
-        original=web_context_payload.get('original_user_message') or user_msg,
+        query_present=bool(query_text.strip()),
+        query_chars=len(query_text),
+        query_sha256_12=_sha256_12(query_text),
+        original_user_message_chars=len(original_text),
+        original_user_message_sha256_12=_sha256_12(original_text),
         results=web_context_payload.get('results_count'),
     )
     return web_context_payload

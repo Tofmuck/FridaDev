@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 
@@ -99,21 +100,101 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             self.assertEqual(payload.get('prompt_kind'), 'chat_web_reformulation')
             self.assertIn('enabled', payload)
             self.assertIn('query_preview', payload)
+            self.assertEqual(payload.get('query_preview'), '')
+            self.assertIn('query_present', payload)
+            self.assertIn('query_chars', payload)
+            self.assertIn('query_sha256_12', payload)
             self.assertIn('results_count', payload)
             self.assertIn('context_injected', payload)
             self.assertIn('truncated', payload)
-            self.assertLessEqual(len(str(payload.get('query_preview') or '')), 120)
             self.assertNotIn('context', payload)
             self.assertNotIn('results', payload)
 
         skipped_events = [event for event in web_search_events if event['status'] == 'skipped']
         self.assertTrue(skipped_events)
         self.assertTrue(all(event['payload_json'].get('reason_code') == 'no_data' for event in skipped_events))
-        truncated_event = next(
-            event for event in web_search_events
-            if event['payload_json'].get('query_preview') == 'query truncated'
-        )
+        truncated_event = next(event for event in web_search_events if event['payload_json'].get('truncated'))
         self.assertTrue(truncated_event['payload_json']['truncated'])
+        self.assertEqual(truncated_event['payload_json']['query_chars'], len('query truncated'))
+
+    def test_web_reformulation_prompt_prepared_is_content_free(self) -> None:
+        observed: list[dict[str, Any]] = []
+        original_insert = log_store.insert_chat_log_event
+        original_runtime_main_model_name = web_search._runtime_main_model_name
+        original_prompt_getter = web_search.prompt_loader.get_web_reformulation_prompt
+
+        def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
+            observed.append(event)
+            return True
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict[str, Any]:
+                return {'choices': [{'message': {'content': 'query compact'}}]}
+
+        forwarded: dict[str, Any] = {}
+
+        def fake_post(url: str, json: dict[str, Any], headers: dict[str, Any], timeout: int) -> FakeResponse:
+            forwarded.update({'url': url, 'json': json, 'headers': headers, 'timeout': timeout})
+            return FakeResponse()
+
+        def fake_or_headers(*, caller: str = 'llm') -> dict[str, str]:
+            return {
+                'Content-Type': 'application/json',
+                'X-Frida-Caller': caller,
+                'X-Title': 'FridaDev/WebReformulation',
+            }
+
+        fake_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers=fake_or_headers,
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+            resolve_provider_title=lambda caller: 'FridaDev/WebReformulation' if caller == 'web_reformulation' else '',
+        )
+
+        log_store.insert_chat_log_event = fake_insert
+        web_search._runtime_main_model_name = lambda: 'openai/gpt-5.4-mini'
+        web_search.prompt_loader.get_web_reformulation_prompt = lambda: 'WEB SYSTEM {today}'
+        token = chat_turn_logger.begin_turn(
+            conversation_id='conv-web-reformulation-prepared',
+            user_msg='message original secret',
+            web_search_enabled=True,
+        )
+        try:
+            query = web_search.reformulate(
+                'message original secret',
+                requests_module=SimpleNamespace(post=fake_post),
+                llm_module=fake_llm_module,
+            )
+            chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            log_store.insert_chat_log_event = original_insert
+            web_search._runtime_main_model_name = original_runtime_main_model_name
+            web_search.prompt_loader.get_web_reformulation_prompt = original_prompt_getter
+
+        self.assertEqual(query, 'query compact')
+        self.assertEqual(forwarded['headers']['X-Frida-Caller'], 'web_reformulation')
+        event = next(item for item in observed if item['stage'] == 'web_reformulation_prompt_prepared')
+        payload = event['payload_json']
+        self.assertEqual(event['status'], 'ok')
+        self.assertEqual(payload['payload_kind'], 'secondary_web_reformulation_provider')
+        self.assertEqual(payload['provider_caller'], 'web_reformulation')
+        self.assertTrue(payload['secondary_provider_payload'])
+        self.assertFalse(payload['main_llm_payload'])
+        self.assertEqual(payload['messages_count'], 2)
+        self.assertEqual(payload['message_role_counts'], {'system': 1, 'user': 1})
+        self.assertTrue(payload['system_prompt_present'])
+        self.assertTrue(payload['current_user_present'])
+        self.assertEqual(payload['current_user_chars'], len('message original secret'))
+        self.assertRegex(payload['current_user_sha256_12'], r'^[0-9a-f]{12}$')
+        self.assertEqual(payload['sampling']['timeout_s'], 10)
+        for forbidden_key in ('original', 'query', 'prompt', 'messages', 'content', 'user_message'):
+            self.assertNotIn(forbidden_key, payload)
+        self.assertNotIn('message original secret', str(payload))
+        self.assertNotIn('query compact', str(payload))
 
     def test_web_search_build_context_payload_exposes_structured_sources(self) -> None:
         observed: list[dict[str, Any]] = []
@@ -410,7 +491,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         self.assertEqual(payload.get('results_count'), 0)
         self.assertFalse(payload.get('context_injected'))
         self.assertIn('error_class', payload)
-        self.assertEqual(payload.get('query_preview'), 'message source')
+        self.assertEqual(payload.get('query_preview'), '')
+        self.assertEqual(payload.get('query_chars'), len('message source'))
+        self.assertRegex(payload.get('query_sha256_12'), r'^[0-9a-f]{12}$')
         self.assertNotIn('context', payload)
         self.assertNotIn('results', payload)
         logger_error_event = next(event for event in observed if event['stage'] == 'error' and event['status'] == 'error')

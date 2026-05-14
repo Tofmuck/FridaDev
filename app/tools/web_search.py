@@ -2,6 +2,7 @@
 import logging
 import re
 import inspect
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
@@ -25,6 +26,17 @@ _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
+
+
+def _sha256_12(value: Any) -> str:
+    text = str(value or '')
+    if not text:
+        return ''
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
+def _safe_len(value: Any) -> int:
+    return len(str(value or ''))
 
 
 def _runtime_main_model_name() -> str:
@@ -568,6 +580,55 @@ def _call_reformulate(
     return reformulate_func(user_msg)
 
 
+def _emit_web_reformulation_prompt_prepared(
+    *,
+    model: str,
+    system_prompt: str,
+    user_msg: str,
+    max_tokens: int,
+    temperature: float,
+    timeout_s: int,
+    llm_module: Any,
+) -> None:
+    resolve_title = getattr(llm_module, 'resolve_provider_title', None)
+    provider_title = ''
+    if callable(resolve_title):
+        provider_title = str(resolve_title('web_reformulation') or '')
+    payload = {
+        'schema_version': 'v1',
+        'payload_kind': 'secondary_web_reformulation_provider',
+        'provider_caller': 'web_reformulation',
+        'provider_title': provider_title,
+        'secondary_provider_payload': True,
+        'main_llm_payload': False,
+        'system_prompt_present': bool(system_prompt),
+        'current_user_present': bool(user_msg),
+        'messages_count': 2,
+        'message_role_counts': {
+            'system': 1,
+            'user': 1,
+        },
+        'system_prompt_chars': _safe_len(system_prompt),
+        'current_user_chars': _safe_len(user_msg),
+        'input_chars_total': _safe_len(system_prompt) + _safe_len(user_msg),
+        'system_prompt_sha256_12': _sha256_12(system_prompt),
+        'current_user_sha256_12': _sha256_12(user_msg),
+        'sampling': {
+            'temperature': float(temperature),
+            'max_tokens': int(max_tokens),
+            'timeout_s': int(timeout_s),
+        },
+        'reason_code': '',
+    }
+    chat_turn_logger.emit(
+        'web_reformulation_prompt_prepared',
+        status='ok',
+        model=str(model or '') or None,
+        prompt_kind='chat_web_reformulation',
+        payload=payload,
+    )
+
+
 def reformulate(
     user_msg: str,
     *,
@@ -581,8 +642,12 @@ def reformulate(
 
         today = datetime.now(timezone.utc).strftime("%d %B %Y")
         system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
+        model = _runtime_main_model_name()
+        max_tokens = 40
+        temperature = 0.2
+        timeout_s = 10
         payload = {
-            "model": _runtime_main_model_name(),
+            "model": model,
             "messages": [
                 {
                     "role": "system",
@@ -590,19 +655,34 @@ def reformulate(
                 },
                 {"role": "user", "content": user_msg},
             ],
-            "max_tokens": 40,
-            "temperature": 0.2,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
         }
+        _emit_web_reformulation_prompt_prepared(
+            model=model,
+            system_prompt=system_prompt,
+            user_msg=user_msg,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout_s=timeout_s,
+            llm_module=llm_module,
+        )
         r = requests_module.post(
             llm_module.or_chat_completions_url(),
             json=payload,
             headers=llm_module.or_headers(caller='web_reformulation'),
-            timeout=10,
+            timeout=timeout_s,
         )
         r.raise_for_status()
         response_payload = llm_module.read_openrouter_response_payload(r)
         query = llm_module.extract_openrouter_text(response_payload).strip().strip('"').strip("'")
-        logger.info("reformulate original=%s query=%s", user_msg[:60], query)
+        logger.info(
+            "reformulate original_chars=%s original_sha256_12=%s query_chars=%s query_sha256_12=%s",
+            _safe_len(user_msg),
+            _sha256_12(user_msg),
+            _safe_len(query),
+            _sha256_12(query),
+        )
         return query or user_msg
     except Exception as e:
         logger.warning("reformulate_error err=%s", e)
@@ -674,6 +754,7 @@ def _emit_web_search_runtime_event(
     context_chars: int | None = None,
     source_material_summary: list[dict[str, Any]] | None = None,
 ) -> None:
+    query_text = str(query_preview or '')
     if truncated is None:
         truncated = any(bool(source.get('truncated')) for source in (sources or []))
         if not truncated and context_block:
@@ -688,7 +769,10 @@ def _emit_web_search_runtime_event(
         context_chars = len(str(context_block or ''))
     payload = {
         'enabled': bool(enabled),
-        'query_preview': str(query_preview)[:120],
+        'query_preview': '',
+        'query_present': bool(query_text.strip()),
+        'query_chars': len(query_text),
+        'query_sha256_12': _sha256_12(query_text),
         'results_count': int(results_count),
         'context_injected': bool(context_block),
         'truncated': bool(truncated),
