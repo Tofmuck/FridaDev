@@ -109,6 +109,16 @@ class FrontendMemoryAdminPhase10eTests(unittest.TestCase):
         self.assertIn("trace_memory_injected_count", overview_source)
         self.assertIn("summary_context_injected_count", overview_source)
 
+    def test_duplicate_trace_overview_uses_compact_projection_only(self) -> None:
+        overview_source = (APP_DIR / "web" / "memory_admin" / "render_overview.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("content_chars", overview_source)
+        self.assertIn("content_sha256_12", overview_source)
+        self.assertIn("duplicate_trace_content", overview_source)
+        self.assertNotIn("content_excerpt", overview_source)
+
     def test_memory_admin_navigation_link_is_present_on_required_surfaces(self) -> None:
         index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
         admin_source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")

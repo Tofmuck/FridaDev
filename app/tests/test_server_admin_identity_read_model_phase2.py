@@ -325,6 +325,40 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['subjects']['llm']['conflicts']['storage_kind'], 'identity_conflicts')
         self.assertEqual(data['subjects']['llm']['conflicts']['classification'], 'legacy_diagnostic_only')
         self.assertEqual(data['subjects']['llm']['conflicts']['runtime_authority'], 'historical_only')
+        forbidden_legacy_keys = {
+            'content',
+            'content_norm',
+            'last_reason',
+            'override_reason',
+            'reason',
+            'content_a',
+            'content_b',
+        }
+        llm_fragment = data['subjects']['llm']['legacy_fragments']['items'][0]
+        llm_evidence = data['subjects']['llm']['evidence']['items'][0]
+        llm_conflict = data['subjects']['llm']['conflicts']['items'][0]
+        self.assertTrue(data['subjects']['llm']['legacy_fragments']['content_minimized'])
+        self.assertTrue(data['subjects']['llm']['evidence']['content_minimized'])
+        self.assertTrue(data['subjects']['llm']['conflicts']['content_minimized'])
+        self.assertTrue(forbidden_legacy_keys.isdisjoint(llm_fragment.keys()))
+        self.assertTrue(forbidden_legacy_keys.isdisjoint(llm_evidence.keys()))
+        self.assertTrue(forbidden_legacy_keys.isdisjoint(llm_conflict.keys()))
+        self.assertEqual(llm_fragment['content_chars'], len('llm legacy fragment'))
+        self.assertEqual(len(llm_fragment['content_sha256_12']), 12)
+        self.assertEqual(llm_evidence['content_chars'], len('llm evidence entry'))
+        self.assertEqual(len(llm_evidence['content_sha256_12']), 12)
+        self.assertEqual(llm_conflict['content_a_chars'], len('llm conflict a'))
+        self.assertEqual(llm_conflict['content_b_chars'], len('llm conflict b'))
+        serialized_legacy = str(
+            [
+                data['subjects']['llm']['legacy_fragments'],
+                data['subjects']['llm']['evidence'],
+                data['subjects']['llm']['conflicts'],
+            ]
+        )
+        self.assertNotIn('llm legacy fragment', serialized_legacy)
+        self.assertNotIn('llm evidence entry', serialized_legacy)
+        self.assertNotIn('llm conflict a', serialized_legacy)
         self.assertEqual(data['subjects']['user']['mutable']['content'], 'User mutable canonique')
 
     def test_identity_read_model_static_layer_distinguishes_raw_storage_from_runtime_trimmed_content(self) -> None:

@@ -146,6 +146,8 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertNotIn("prompt=", render_source)
         self.assertNotIn("item?.content", render_source)
         self.assertIn("Repères runtime et compilation active", identity_render_source)
+        self.assertIn("LEGACY_RAW_TEXT_KEYS", identity_render_source)
+        self.assertIn("omitKeys: LEGACY_RAW_TEXT_KEYS", identity_render_source)
         self.assertIn("pilotage_systeme=distinct", identity_render_source)
         self.assertIn("Regime actif readonly", identity_governance_source)
         self.assertIn("scoring, promotion et suspension", identity_governance_source)

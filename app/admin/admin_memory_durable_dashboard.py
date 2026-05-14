@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -21,11 +22,24 @@ def _utc_iso(value: Any) -> str | None:
     return text or None
 
 
-def _compact_excerpt(text: Any, *, max_chars: int = 140) -> str:
-    raw = ' '.join(str(text or '').split())
-    if len(raw) <= max_chars:
-        return raw
-    return raw[: max_chars - 3].rstrip() + '...'
+def _sha256_12(text: Any) -> str | None:
+    raw = str(text or '')
+    if not raw:
+        return None
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]
+
+
+def _compact_duplicate_trace(row: Any) -> dict[str, Any]:
+    normalized_content = str(row[1] or '')
+    return {
+        'role': str(row[0] or ''),
+        'occurrences': _to_int(row[2]),
+        'content_chars': len(normalized_content),
+        'content_sha256_12': _sha256_12(normalized_content),
+        'status': 'duplicate',
+        'reason_code': 'duplicate_trace_content',
+        'source_kind': 'durable_persistence',
+    }
 
 
 def _read_durable_state(
@@ -118,11 +132,7 @@ def _read_durable_state(
             },
             'latest_ts': _utc_iso(traces_row[7]),
             'duplicate_examples': [
-                {
-                    'role': str(row[0] or ''),
-                    'occurrences': _to_int(row[2]),
-                    'content_excerpt': _compact_excerpt(row[1]),
-                }
+                _compact_duplicate_trace(row)
                 for row in duplicate_rows
             ],
         },

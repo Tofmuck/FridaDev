@@ -63,6 +63,8 @@ Repartition retenue :
 La surface doit rendre lisibles, au minimum :
 
 - etat memoire durable
+  - les doublons notables de traces sont exposes uniquement sous forme compacte: role, occurrences, longueur, hash court, statut et `reason_code`;
+  - la reponse par defaut ne sert pas de `content_excerpt`, extrait de trace, extrait de summary ou texte de souvenir brut;
 - retrieval / RAG
 - embeddings
 - panier pre-arbitre

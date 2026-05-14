@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Callable
 
 _ALLOWED_SUBJECTS = {'llm', 'user'}
@@ -30,6 +31,25 @@ def _serialize_ts(value: Any) -> str | None:
     if hasattr(value, 'isoformat'):
         return str(value.isoformat())
     return str(value)
+
+
+def _sha256_12(text: Any) -> str | None:
+    raw = str(text or '')
+    if not raw:
+        return None
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]
+
+
+def _text_stats(text: Any, *, prefix: str) -> dict[str, Any]:
+    raw = str(text or '')
+    return {
+        f'{prefix}_chars': len(raw),
+        f'{prefix}_sha256_12': _sha256_12(raw),
+    }
+
+
+def _free_text_reason_marker(text: Any, *, marker: str) -> str:
+    return marker if str(text or '').strip() else ''
 
 
 def list_identity_fragments(
@@ -96,7 +116,7 @@ def list_identity_fragments(
                 {
                     'identity_id': str(row[0]),
                     'subject': str(row[1] or ''),
-                    'content': str(row[2] or ''),
+                    **_text_stats(row[2], prefix='content'),
                     'weight': float(row[3] or 0.0),
                     'created_ts': _serialize_ts(row[4]),
                     'last_seen_ts': _serialize_ts(row[5]),
@@ -108,11 +128,13 @@ def list_identity_fragments(
                     'evidence_kind': str(row[11] or 'weak'),
                     'confidence': float(row[12] or 0.0),
                     'status': str(row[13] or 'accepted'),
-                    'content_norm': str(row[14] or ''),
-                    'last_reason': str(row[15] or ''),
+                    **_text_stats(row[14], prefix='content_norm'),
+                    'last_reason_code': _free_text_reason_marker(row[15], marker='text_reason_present'),
+                    **_text_stats(row[15], prefix='last_reason'),
                     'conversation_id': str(row[16] or ''),
                     'override_state': str(row[17] or 'none'),
-                    'override_reason': str(row[18] or ''),
+                    'override_note_code': _free_text_reason_marker(row[18], marker='override_note_present'),
+                    **_text_stats(row[18], prefix='override_note'),
                     'override_actor': str(row[19] or ''),
                     'override_ts': _serialize_ts(row[20]),
                 }
@@ -183,8 +205,8 @@ def list_identity_evidence(
                     'evidence_id': str(row[0]),
                     'conversation_id': str(row[1] or ''),
                     'subject': str(row[2] or ''),
-                    'content': str(row[3] or ''),
-                    'content_norm': str(row[4] or ''),
+                    **_text_stats(row[3], prefix='content'),
+                    **_text_stats(row[4], prefix='content_norm'),
                     'stability': str(row[5] or 'unknown'),
                     'utterance_mode': str(row[6] or 'unknown'),
                     'recurrence': str(row[7] or 'unknown'),
@@ -192,7 +214,8 @@ def list_identity_evidence(
                     'evidence_kind': str(row[9] or 'weak'),
                     'confidence': float(row[10] or 0.0),
                     'status': str(row[11] or 'accepted'),
-                    'reason': str(row[12] or ''),
+                    'reason_code': _free_text_reason_marker(row[12], marker='text_reason_present'),
+                    **_text_stats(row[12], prefix='reason'),
                     'source_trace_id': str(row[13]) if row[13] is not None else None,
                     'created_ts': _serialize_ts(row[14]),
                 }
@@ -269,19 +292,20 @@ def list_identity_conflicts(
                 {
                     'conflict_id': str(row[0]),
                     'confidence_conflict': float(row[1] or 0.0),
-                    'reason': str(row[2] or ''),
+                    'reason_code': _free_text_reason_marker(row[2], marker='text_reason_present'),
+                    **_text_stats(row[2], prefix='reason'),
                     'resolved_state': str(row[3] or 'open'),
                     'created_ts': _serialize_ts(row[4]),
                     'resolved_ts': _serialize_ts(row[5]),
                     'identity_id_a': str(row[6]),
                     'subject_a': str(row[7] or ''),
-                    'content_a': str(row[8] or ''),
+                    **_text_stats(row[8], prefix='content_a'),
                     'status_a': str(row[9] or 'accepted'),
                     'source_trace_id_a': str(row[10]) if row[10] is not None else None,
                     'override_state_a': str(row[11] or 'none'),
                     'identity_id_b': str(row[12]),
                     'subject_b': str(row[13] or ''),
-                    'content_b': str(row[14] or ''),
+                    **_text_stats(row[14], prefix='content_b'),
                     'status_b': str(row[15] or 'accepted'),
                     'source_trace_id_b': str(row[16]) if row[16] is not None else None,
                     'override_state_b': str(row[17] or 'none'),

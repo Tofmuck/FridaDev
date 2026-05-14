@@ -16,6 +16,15 @@
     { key: "evidence", label: "Evidences legacy diagnostiques" },
     { key: "conflicts", label: "Conflits legacy diagnostiques" },
   ];
+  const LEGACY_RAW_TEXT_KEYS = [
+    "content",
+    "content_norm",
+    "last_reason",
+    "override_reason",
+    "reason",
+    "content_a",
+    "content_b",
+  ];
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -375,7 +384,10 @@
 
       const itemGrid = document.createElement("div");
       itemGrid.className = "admin-readonly-grid";
-      renderReadonlyEntries(itemGrid, mappingToEntries(item, "identity_read_model"));
+      renderReadonlyEntries(
+        itemGrid,
+        mappingToEntries(item, "identity_read_model", LEGACY_RAW_TEXT_KEYS),
+      );
       itemPanel.appendChild(itemGrid);
       layerGroup.appendChild(itemPanel);
     });

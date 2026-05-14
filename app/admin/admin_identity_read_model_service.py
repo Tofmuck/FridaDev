@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping, Tuple
 
 import config
@@ -46,6 +47,139 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
     return {}
+
+
+def _sha256_12(text: Any) -> str | None:
+    raw = str(text or '')
+    if not raw:
+        return None
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:12]
+
+
+def _text_stats(text: Any, *, prefix: str) -> dict[str, Any]:
+    raw = str(text or '')
+    return {
+        f'{prefix}_chars': len(raw),
+        f'{prefix}_sha256_12': _sha256_12(raw),
+    }
+
+
+def _free_text_reason_marker(text: Any, *, marker: str) -> str:
+    return marker if _optional_text(text) else ''
+
+
+LEGACY_RAW_TEXT_KEYS = {
+    'content',
+    'content_norm',
+    'last_reason',
+    'override_reason',
+    'reason',
+    'content_a',
+    'content_b',
+}
+
+
+def _without_legacy_raw_text(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {str(key): value for key, value in payload.items() if str(key) not in LEGACY_RAW_TEXT_KEYS}
+
+
+def _ensure_text_projection(
+    target: dict[str, Any],
+    source: Mapping[str, Any],
+    *,
+    raw_key: str,
+    prefix: str,
+) -> None:
+    if raw_key in source:
+        target.update(_text_stats(source.get(raw_key), prefix=prefix))
+        return
+    target.setdefault(f'{prefix}_chars', 0)
+    target.setdefault(f'{prefix}_sha256_12', None)
+
+
+def _ensure_reason_projection(
+    target: dict[str, Any],
+    source: Mapping[str, Any],
+    *,
+    raw_key: str,
+    code_key: str,
+    stats_prefix: str,
+    marker: str = 'text_reason_present',
+) -> None:
+    if raw_key in source:
+        target.setdefault(code_key, _free_text_reason_marker(source.get(raw_key), marker=marker))
+        target.update(_text_stats(source.get(raw_key), prefix=stats_prefix))
+        return
+    target.setdefault(code_key, '')
+    target.setdefault(f'{stats_prefix}_chars', 0)
+    target.setdefault(f'{stats_prefix}_sha256_12', None)
+
+
+def _compact_legacy_fragment_item(item: Any) -> dict[str, Any]:
+    payload = _mapping(item)
+    compact = _without_legacy_raw_text(payload)
+    _ensure_text_projection(compact, payload, raw_key='content', prefix='content')
+    _ensure_text_projection(compact, payload, raw_key='content_norm', prefix='content_norm')
+    _ensure_reason_projection(
+        compact,
+        payload,
+        raw_key='last_reason',
+        code_key='last_reason_code',
+        stats_prefix='last_reason',
+    )
+    _ensure_reason_projection(
+        compact,
+        payload,
+        raw_key='override_reason',
+        code_key='override_note_code',
+        stats_prefix='override_note',
+        marker='override_note_present',
+    )
+    compact['content_minimized'] = True
+    return compact
+
+
+def _compact_legacy_evidence_item(item: Any) -> dict[str, Any]:
+    payload = _mapping(item)
+    compact = _without_legacy_raw_text(payload)
+    _ensure_text_projection(compact, payload, raw_key='content', prefix='content')
+    _ensure_text_projection(compact, payload, raw_key='content_norm', prefix='content_norm')
+    _ensure_reason_projection(
+        compact,
+        payload,
+        raw_key='reason',
+        code_key='reason_code',
+        stats_prefix='reason',
+    )
+    compact['content_minimized'] = True
+    return compact
+
+
+def _compact_legacy_conflict_item(item: Any) -> dict[str, Any]:
+    payload = _mapping(item)
+    compact = _without_legacy_raw_text(payload)
+    _ensure_reason_projection(
+        compact,
+        payload,
+        raw_key='reason',
+        code_key='reason_code',
+        stats_prefix='reason',
+    )
+    _ensure_text_projection(compact, payload, raw_key='content_a', prefix='content_a')
+    _ensure_text_projection(compact, payload, raw_key='content_b', prefix='content_b')
+    compact['identity_pair_count'] = 2
+    compact['content_minimized'] = True
+    return compact
+
+
+def _compact_legacy_items(storage_kind: str, items: list[Any]) -> list[dict[str, Any]]:
+    if storage_kind == 'identities':
+        return [_compact_legacy_fragment_item(item) for item in items]
+    if storage_kind == 'identity_evidence':
+        return [_compact_legacy_evidence_item(item) for item in items]
+    if storage_kind == 'identity_conflicts':
+        return [_compact_legacy_conflict_item(item) for item in items]
+    return [_without_legacy_raw_text(_mapping(item)) for item in items]
 
 
 def _compact_promotions(values: Any) -> list[dict[str, Any]]:
@@ -401,12 +535,14 @@ def _build_mutable_layer(
 
 
 def _build_collection_layer(*, storage_kind: str, snapshot: Mapping[str, Any]) -> dict[str, Any]:
-    items = list(snapshot.get('items') or [])
+    items = _compact_legacy_items(storage_kind, list(snapshot.get('items') or []))
     total_count = int(snapshot.get('total_count') or len(items))
     return {
         'storage_kind': storage_kind,
         'classification': LEGACY_IDENTITY_PIPELINE_STATUS,
         'runtime_authority': 'historical_only',
+        'projection_version': 'identity_legacy_content_minimized_v1',
+        'content_minimized': True,
         'stored': total_count > 0,
         'loaded_for_runtime': False,
         'actively_injected': False,

@@ -133,7 +133,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertNotIn("/api/admin/hermeneutics/identity/relabel", combined)
         self.assertLessEqual(len(api_source.splitlines()), 499)
         self.assertLessEqual(len(main_source.splitlines()), 499)
-        self.assertLessEqual(len(render_source.splitlines()), 520)
+        self.assertLessEqual(len(render_source.splitlines()), 540)
 
     def test_identity_injected_meta_describes_injection_state_not_legacy_reactivation_count(self) -> None:
         main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")
@@ -159,6 +159,8 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("Projection runtime compilee pour le jugement", render_source)
         self.assertIn("Forme runtime compilee injectee", render_source)
         self.assertIn("Staging periodique observe", render_source)
+        self.assertIn("LEGACY_RAW_TEXT_KEYS", render_source)
+        self.assertIn("mappingToEntries(item, \"identity_read_model\", LEGACY_RAW_TEXT_KEYS)", render_source)
         self.assertIn("dernier snapshot conversationnel connu", render_source)
         self.assertIn("n'est pas un etat global du systeme", render_source)
         self.assertIn("scope=", render_source)

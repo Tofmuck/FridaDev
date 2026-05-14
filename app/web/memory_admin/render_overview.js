@@ -230,7 +230,15 @@
       ["duplicate_examples", {
         label: "Doublons notables",
         value: duplicateExamples.length
-          ? duplicateExamples.map((item) => `${item.role}:${item.occurrences} ${item.content_excerpt}`).join(" | ")
+          ? duplicateExamples
+            .map((item) => [
+              `${toText(item.role) || "unknown"}:${toNumber(item.occurrences)}`,
+              `chars=${toNumber(item.content_chars)}`,
+              `sha=${toText(item.content_sha256_12) || "n/a"}`,
+              `status=${toText(item.status) || "duplicate"}`,
+              `reason=${toText(item.reason_code) || "duplicate_trace_content"}`,
+            ].join(" "))
+            .join(" | ")
           : "Aucun doublon notable remonte",
         source: durable.source_kind || "durable_persistence",
       }],

@@ -182,28 +182,28 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Remplacer `content_excerpt` dans les doublons Memory Admin par une projection compacte: role, occurrences, longueur, hash court, source, statut eventuel.
-- [ ] Verifier que `/api/admin/memory/dashboard` ne sert plus d'extrait de trace dans les vues chargees par defaut.
-- [ ] Remplacer les champs legacy identity bruts par longueurs, hashes courts, statuts, reason codes et counts.
-- [ ] Distinguer explicitement `legacy_diagnostic` / `evidence_only` des couches canoniques editables.
-- [ ] Garder les surfaces d'edition `static` / `mutable` intactes si elles ont besoin de contenu.
-- [ ] Renforcer les renderers frontend par projections allowlistees lorsque la source est une couche legacy.
+- [x] Remplacer `content_excerpt` dans les doublons Memory Admin par une projection compacte: role, occurrences, longueur, hash court, source, statut eventuel.
+- [x] Verifier que `/api/admin/memory/dashboard` ne sert plus d'extrait de trace dans les vues chargees par defaut.
+- [x] Remplacer les champs legacy identity bruts par longueurs, hashes courts, statuts, reason codes et counts.
+- [x] Distinguer explicitement `legacy_diagnostic` / `evidence_only` des couches canoniques editables.
+- [x] Garder les surfaces d'edition `static` / `mutable` intactes si elles ont besoin de contenu.
+- [x] Renforcer les renderers frontend par projections allowlistees lorsque la source est une couche legacy.
 
 Tests attendus:
 
-- [ ] Test API Memory Admin: absence de `content_excerpt` ou equivalent brut dans la reponse par defaut.
-- [ ] Test API Identity read-model: absence de `content`, `content_norm`, raisons libres et conflits bruts dans les couches legacy par defaut.
-- [ ] Test de presence des substituts compacts: longueur, hash court, statut, reason code, count.
-- [ ] Test frontend cible si les champs rendus changent.
+- [x] Test API Memory Admin: absence de `content_excerpt` ou equivalent brut dans la reponse par defaut.
+- [x] Test API Identity read-model: absence de `content`, `content_norm`, raisons libres et conflits bruts dans les couches legacy par defaut.
+- [x] Test de presence des substituts compacts: longueur, hash court, statut, reason code, count.
+- [x] Test frontend cible si les champs rendus changent.
 
 Preuves runtime attendues:
 
-- lecture compacte des cles retournees, sans imprimer de valeurs brutes;
-- preuve que les vues restent exploitables avec seulement counts, statuts, longueurs et hashes courts.
+- [x] lecture compacte des cles retournees, sans imprimer de valeurs brutes;
+- [x] preuve que les vues restent exploitables avec seulement counts, statuts, longueurs et hashes courts.
 
 Condition de cloture:
 
-- [ ] Le cockpit peut consommer Memory Admin et Identity legacy sans risque d'afficher du contenu brut par defaut.
+- [x] Le cockpit peut consommer Memory Admin et Identity legacy sans risque d'afficher du contenu brut par defaut.
 
 ## Lot 2 - Read-model pipeline par tour
 

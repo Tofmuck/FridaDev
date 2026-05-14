@@ -7,6 +7,15 @@
   }
 
   const toText = (value) => String(value == null ? "" : value).trim();
+  const LEGACY_RAW_TEXT_KEYS = [
+    "content",
+    "content_norm",
+    "last_reason",
+    "override_reason",
+    "reason",
+    "content_a",
+    "content_b",
+  ];
 
   const createChip = (text) => {
     const chip = document.createElement("span");
@@ -85,7 +94,10 @@
 
       const grid = document.createElement("div");
       grid.className = "admin-readonly-grid";
-      renderReadonlyEntries(grid, mappingToDetailEntries(item, options.source || "identity_read_model"));
+      renderReadonlyEntries(
+        grid,
+        mappingToDetailEntries(item, options.source || "identity_read_model", options.omitKeys || []),
+      );
       group.appendChild(grid);
       target.appendChild(group);
     });
@@ -383,6 +395,7 @@
         emptyMessage: layerSpec.emptyMessage,
         source: "identity_read_model",
         identifyTitle: layerSpec.identifyTitle,
+        omitKeys: LEGACY_RAW_TEXT_KEYS,
       });
       layerGroup.appendChild(itemsHost);
     }

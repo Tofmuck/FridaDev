@@ -20,6 +20,16 @@ if str(APP_DIR) not in sys.path:
 
 from memory import memory_identity_read_model
 
+_FORBIDDEN_LEGACY_TEXT_KEYS = {
+    'content',
+    'content_norm',
+    'last_reason',
+    'override_reason',
+    'reason',
+    'content_a',
+    'content_b',
+}
+
 
 class _NoopLogger:
     def error(self, *_args: Any, **_kwargs: Any) -> None:
@@ -101,8 +111,15 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
 
         self.assertEqual(snapshot['total_count'], 3)
         self.assertEqual(snapshot['limit'], 5)
-        self.assertEqual(snapshot['items'][0]['identity_id'], 'frag-1')
-        self.assertEqual(snapshot['items'][0]['content'], 'Fragment legacy')
+        item = snapshot['items'][0]
+        self.assertEqual(item['identity_id'], 'frag-1')
+        self.assertEqual(item['content_chars'], len('Fragment legacy'))
+        self.assertEqual(len(item['content_sha256_12']), 12)
+        self.assertEqual(item['content_norm_chars'], len('fragment legacy'))
+        self.assertEqual(len(item['content_norm_sha256_12']), 12)
+        self.assertEqual(item['last_reason_code'], 'text_reason_present')
+        self.assertEqual(item['last_reason_chars'], len('reason'))
+        self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
     def test_list_identity_evidence_returns_compact_snapshot(self) -> None:
         rows = [
@@ -133,8 +150,14 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
 
         self.assertEqual(snapshot['total_count'], 4)
         self.assertEqual(snapshot['limit'], 7)
-        self.assertEqual(snapshot['items'][0]['evidence_id'], 'ev-1')
-        self.assertEqual(snapshot['items'][0]['content'], 'Evidence text')
+        item = snapshot['items'][0]
+        self.assertEqual(item['evidence_id'], 'ev-1')
+        self.assertEqual(item['content_chars'], len('Evidence text'))
+        self.assertEqual(len(item['content_sha256_12']), 12)
+        self.assertEqual(item['content_norm_chars'], len('evidence text'))
+        self.assertEqual(item['reason_code'], 'text_reason_present')
+        self.assertEqual(item['reason_chars'], len('reason'))
+        self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
     def test_list_identity_conflicts_returns_flattened_pairs(self) -> None:
         rows = [
@@ -168,9 +191,16 @@ class IdentityReadModelPhase2Tests(unittest.TestCase):
 
         self.assertEqual(snapshot['total_count'], 2)
         self.assertEqual(snapshot['limit'], 9)
-        self.assertEqual(snapshot['items'][0]['conflict_id'], 'conf-1')
-        self.assertEqual(snapshot['items'][0]['identity_id_a'], 'frag-a')
-        self.assertEqual(snapshot['items'][0]['content_b'], 'Version B')
+        item = snapshot['items'][0]
+        self.assertEqual(item['conflict_id'], 'conf-1')
+        self.assertEqual(item['identity_id_a'], 'frag-a')
+        self.assertEqual(item['reason_code'], 'text_reason_present')
+        self.assertEqual(item['reason_chars'], len('contradiction'))
+        self.assertEqual(item['content_a_chars'], len('Version A'))
+        self.assertEqual(len(item['content_a_sha256_12']), 12)
+        self.assertEqual(item['content_b_chars'], len('Version B'))
+        self.assertEqual(len(item['content_b_sha256_12']), 12)
+        self.assertTrue(_FORBIDDEN_LEGACY_TEXT_KEYS.isdisjoint(item.keys()))
 
 
 if __name__ == '__main__':

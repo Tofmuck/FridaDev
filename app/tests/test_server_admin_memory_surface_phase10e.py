@@ -380,6 +380,7 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(activity["retrieve_error_events"], 1)
 
     def test_durable_state_exposes_full_rejection_reason_code_counts_without_raw_reasons(self) -> None:
+        raw_duplicate = "same private trace repeated twice"
         raw_reasons = [
             f"sensitive freeform reason {index} because user pasted private context"
             for index in range(7)
@@ -412,7 +413,7 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             def fetchall(self):
                 self.fetchall_calls += 1
                 if self.fetchall_calls == 1:
-                    return []
+                    return [("user", raw_duplicate, 2)]
                 rows = [(reason, 1) for reason in raw_reasons]
                 rows.append(('fallback:parse_or_runtime_error', 1))
                 if 'LIMIT 5' in self.current_query:
@@ -430,8 +431,16 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
                 return FakeCursor()
 
         payload = admin_memory_service._read_durable_state(conn_factory=lambda: FakeConn())
+        duplicate = payload["traces"]["duplicate_examples"][0]
         decisions = payload["arbiter_decisions"]
 
+        self.assertEqual(duplicate["role"], "user")
+        self.assertEqual(duplicate["occurrences"], 2)
+        self.assertEqual(duplicate["content_chars"], len(raw_duplicate))
+        self.assertEqual(len(duplicate["content_sha256_12"]), 12)
+        self.assertEqual(duplicate["status"], "duplicate")
+        self.assertEqual(duplicate["reason_code"], "duplicate_trace_content")
+        self.assertNotIn("content_excerpt", duplicate)
         self.assertEqual(
             decisions["top_rejection_reason_code_counts"],
             {
@@ -440,8 +449,10 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
             },
         )
         self.assertNotIn("top_rejection_reasons", decisions)
+        payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(raw_duplicate, payload_json)
         for raw_reason in raw_reasons:
-            self.assertNotIn(raw_reason, str(decisions))
+            self.assertNotIn(raw_reason, payload_json)
 
     def test_arbiter_preview_is_content_minimized_by_default(self) -> None:
         raw_content = "RAW CANDIDATE CONTENT should not be served by default"
