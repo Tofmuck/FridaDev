@@ -119,14 +119,34 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
             {'ok': False, 'error': 'status invalide'},
         )
 
-    def test_arbiter_decisions_trims_conversation_id(self) -> None:
+    def test_arbiter_decisions_trims_conversation_id_and_returns_compact_items(self) -> None:
         observed = {'limit': None, 'conversation_id': None}
         original_get_decisions = self.server.memory_store.get_arbiter_decisions
+        raw_content = 'RAW CANDIDATE CONTENT should not be served'
+        raw_reason = 'RAW REASON should not be served'
 
         def fake_get_arbiter_decisions(limit: int, conversation_id=None):
             observed['limit'] = limit
             observed['conversation_id'] = conversation_id
-            return [{'decision_id': 'd1'}]
+            return [
+                {
+                    'id': 'd1',
+                    'conversation_id': 'conv-42',
+                    'candidate_id': 'cand-1',
+                    'candidate_role': 'assistant',
+                    'candidate_content': raw_content,
+                    'candidate_ts': '2026-05-14T08:00:00Z',
+                    'candidate_score': 0.73,
+                    'keep': False,
+                    'semantic_relevance': 0.31,
+                    'contextual_gain': 0.22,
+                    'redundant_with_recent': True,
+                    'reason': raw_reason,
+                    'model': 'arbiter/test',
+                    'decision_source': 'llm',
+                    'created_ts': '2026-05-14T08:01:00Z',
+                }
+            ]
 
         self.server.memory_store.get_arbiter_decisions = fake_get_arbiter_decisions
         try:
@@ -142,6 +162,27 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(observed['limit'], 5)
         self.assertEqual(observed['conversation_id'], 'conv-42')
         self.assertEqual(data['count'], 1)
+        item = data['items'][0]
+        self.assertEqual(item['id'], 'd1')
+        self.assertEqual(item['candidate_id'], 'cand-1')
+        self.assertEqual(item['candidate_role'], 'assistant')
+        self.assertEqual(item['candidate_score'], 0.73)
+        self.assertFalse(item['keep'])
+        self.assertEqual(item['semantic_relevance'], 0.31)
+        self.assertEqual(item['contextual_gain'], 0.22)
+        self.assertTrue(item['redundant_with_recent'])
+        self.assertEqual(item['reason_code'], 'model_reason')
+        self.assertEqual(item['reason_chars'], len(raw_reason))
+        self.assertTrue(item['reason_sha256_12'])
+        self.assertEqual(item['candidate_content_chars'], len(raw_content))
+        self.assertTrue(item['candidate_content_sha256_12'])
+        self.assertEqual(item['candidate_ts'], '2026-05-14T08:00:00Z')
+        self.assertEqual(item['model'], 'arbiter/test')
+        self.assertEqual(item['decision_source'], 'llm')
+        self.assertNotIn('candidate_content', item)
+        self.assertNotIn('reason', item)
+        self.assertNotIn(raw_content, str(data))
+        self.assertNotIn(raw_reason, str(data))
 
     def test_identity_force_accept_is_disabled_as_legacy_control(self) -> None:
         observed = {'override_called': False, 'log_called': False}

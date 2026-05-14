@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Tuple
 
 from admin import admin_stage_latency_summary
+from admin.admin_memory_arbiter_preview import compact_arbiter_decision_items
+
 
 def identity_candidates_response(
     args: Mapping[str, Any],
@@ -64,7 +66,8 @@ def arbiter_decisions_response(
 
     conversation_id = str(args.get('conversation_id', '') or '').strip() or None
     decisions = memory_store_module.get_arbiter_decisions(limit=limit, conversation_id=conversation_id)
-    return {'ok': True, 'items': decisions, 'count': len(decisions)}, 200
+    compact_decisions = compact_arbiter_decision_items(decisions)
+    return {'ok': True, 'items': compact_decisions, 'count': len(compact_decisions)}, 200
 
 
 def _legacy_identity_control_disabled_response(control: str) -> Tuple[Dict[str, Any], int]:

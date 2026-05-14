@@ -16,6 +16,7 @@ La surface est read-only pour ce lot. Elle reemploie ensuite des lectures deja e
 - `GET /api/admin/logs/chat/metadata`
 - `GET /api/admin/logs/chat`
 - `GET /api/admin/hermeneutics/arbiter-decisions`
+  - quand elle est chargee par Memory Admin ou Hermeneutic Admin, la reponse par defaut est content-minimized: elle expose les decisions arbiter sous forme de role, scores, verdict, timestamps, `reason_code`, longueurs et hash courts, sans `candidate_content` ni `reason` bruts;
 
 ## Contrat frontend retenu
 
@@ -71,7 +72,8 @@ La surface doit rendre lisibles, au minimum :
 - lectures recentes utiles par tour
 - decisions arbitre persistees
   - l'apercu par defaut de `/api/admin/memory/dashboard` expose uniquement une projection compacte: role, scores, verdict, timestamps, `reason_code`, longueurs et hash courts;
-  - `candidate_content` et `reason` bruts peuvent exister dans la table durable ou une surface de detail explicitement separee, mais ne doivent pas etre servis dans l'apercu dashboard par defaut;
+  - la route read-only `/api/admin/hermeneutics/arbiter-decisions`, chargee automatiquement par Memory Admin, suit la meme projection compacte par defaut;
+  - `candidate_content` et `reason` bruts peuvent exister dans la table durable ou une surface de detail explicitement separee, mais ne doivent pas etre servis dans les reponses admin chargees par defaut;
 
 Pour l inspection read-only par tour, la surface couvre les stages memory / RAG suivants quand ils existent dans les logs :
 

@@ -201,6 +201,7 @@ Cases de correction:
 - [x] Supprimer `candidate_content` et `reason` bruts de la reponse par defaut.
 - [x] Ne pas ajouter de route de detail brut dans ce lot; si un detail brut devient necessaire plus tard, le placer derriere une route/action explicite et documentee, hors vue de synthese.
 - [x] Mettre a jour le contrat admin si la reponse API change.
+- [x] Correctif cible: appliquer aussi la projection compacte a `/api/admin/hermeneutics/arbiter-decisions`, chargee automatiquement par Memory Admin.
 
 Tests attendus:
 - test API dashboard: absence de `candidate_content` et `reason` bruts dans l'apercu par defaut;
