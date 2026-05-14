@@ -1,10 +1,12 @@
 # Hermeneutic node observability remediation - TODO
 
-Statut: ouvert
+Statut: clos, archive
 Source: audit Noeud hermeneutique du 2026-05-14 sur `f9775a8`
-Classement: `app/docs/todo-todo/audits/`
+Classement: `app/docs/todo-done/audits/`
 Portee: observabilite, surfaces admin, payloads provider, fallbacks et activation runtime du `node_state` du noeud hermeneutique
 Hors-scope: refonte du noeud hermeneutique, changement des prompts, changement des seuils ou providers, reouverture des chantiers Identity et Memory/RAG, exposition de contenu brut, refactor general du chat flow
+
+Note de cloture 2026-05-14: les sept lots sont livres, les corrections ciblees post-lots ont ete integrees, les docs actives refletent les stages et contrats runtime, et ce TODO est archive dans `app/docs/todo-done/audits/`.
 
 ## 1. Intention
 
@@ -25,22 +27,22 @@ Ce chantier vise uniquement:
 
 ## 2. Source de verite
 
-- [ ] Traiter ce fichier comme la source de travail active des remediations issues de l'audit Noeud hermeneutique du 2026-05-14.
-- [ ] Garder les specs `app/docs/states/specs/hermeneutic-node-*.md` comme contrats vivants a mettre a jour seulement quand un champ expose, un comportement runtime ou une preuve operateur change.
-- [ ] Garder `app/docs/states/specs/log-module-contract.md` comme contrat des events logs tant qu'il n'est pas explicitement mis a jour.
-- [ ] Garder les archives `app/docs/todo-done/notes/hermeneutical-add-todo.md`, `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md` et `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md` comme sources historiques, sans les rouvrir comme travaux actifs.
-- [ ] Relire l'etat courant du code avant chaque lot, notamment les fichiers listes dans le lot, pour eviter de corriger un finding deja devenu stale.
-- [ ] Ne jamais utiliser un contenu brut de conversation, prompt, trace, summary, identite, candidat, token, DSN ou secret comme preuve de cloture.
+- [x] Traiter ce fichier comme la source de travail active des remediations issues de l'audit Noeud hermeneutique du 2026-05-14.
+- [x] Garder les specs `app/docs/states/specs/hermeneutic-node-*.md` comme contrats vivants a mettre a jour seulement quand un champ expose, un comportement runtime ou une preuve operateur change.
+- [x] Garder `app/docs/states/specs/log-module-contract.md` comme contrat des events logs tant qu'il n'est pas explicitement mis a jour.
+- [x] Garder les archives `app/docs/todo-done/notes/hermeneutical-add-todo.md`, `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md` et `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md` comme sources historiques, sans les rouvrir comme travaux actifs.
+- [x] Relire l'etat courant du code avant chaque lot, notamment les fichiers listes dans le lot, pour eviter de corriger un finding deja devenu stale.
+- [x] Ne jamais utiliser un contenu brut de conversation, prompt, trace, summary, identite, candidat, token, DSN ou secret comme preuve de cloture.
 
 ## 3. Principes de cloture
 
-- [ ] Chaque lot doit etre ferme par un patch petit, reversible et teste.
-- [ ] Chaque preuve runtime doit rester compacte: presence, counts, longueurs, statuts, timestamps, noms de stage, reason codes, error classes et hash courts.
-- [ ] Les lots d'observabilite ne doivent pas modifier les decisions du noeud hermeneutique.
-- [ ] Aucun lot ne doit modifier la composition du prompt principal sauf si le lot vise explicitement l'observation de ce qui est deja injecte.
-- [ ] Aucun lot ne doit exposer de contenu brut dans les logs compacts, les read-models admin, le frontend admin ou les preuves de retour.
-- [ ] Les tests ajoutes doivent echouer avec le finding initial, pas seulement verifier une forme triviale.
-- [ ] Le lot `node_state` doit prouver deux tours successifs en runtime de test: lecture d'un etat initial, passage a `build_primary_node`, persistence d'un nouvel etat, puis relecture au tour suivant.
+- [x] Chaque lot doit etre ferme par un patch petit, reversible et teste.
+- [x] Chaque preuve runtime doit rester compacte: presence, counts, longueurs, statuts, timestamps, noms de stage, reason codes, error classes et hash courts.
+- [x] Les lots d'observabilite ne doivent pas modifier les decisions du noeud hermeneutique.
+- [x] Aucun lot ne doit modifier la composition du prompt principal sauf si le lot vise explicitement l'observation de ce qui est deja injecte.
+- [x] Aucun lot ne doit exposer de contenu brut dans les logs compacts, les read-models admin, le frontend admin ou les preuves de retour.
+- [x] Les tests ajoutes doivent echouer avec le finding initial, pas seulement verifier une forme triviale.
+- [x] Le lot `node_state` doit prouver deux tours successifs en runtime de test: lecture d'un etat initial, passage a `build_primary_node`, persistence d'un nouvel etat, puis relecture au tour suivant.
 
 ## 4. Ordre de correction recommande
 
@@ -362,18 +364,18 @@ Fichiers probablement touches:
 - ce TODO
 
 Hors-scope:
-- [ ] Ne pas reecrire les specs doctrinales sans changement runtime livre.
-- [ ] Ne pas archiver ce TODO avant que tous les lots soient coches et prouves.
-- [ ] Ne pas creer un Lot 8 de confort ou de refactor.
-- [ ] Ne pas deplacer les archives historiques.
+- [x] Ne pas reecrire les specs doctrinales sans changement runtime livre.
+- [x] Ne pas archiver ce TODO avant que tous les lots soient coches et prouves.
+- [x] Ne pas creer un Lot 8 de confort ou de refactor.
+- [x] Ne pas deplacer les archives historiques.
 
 Cases de correction:
-- [ ] Aligner la liste des stages logs actifs avec les events livres par les lots 2 a 5.
-- [ ] Corriger les references de tests obsoletes ou chemins stale.
-- [ ] Documenter la persistence runtime effective du `node_state` apres le Lot 6.
-- [ ] Verifier les references croisees dans `app/docs/README.md` si elles changent.
-- [ ] Cocher les conditions de non-prolongation une fois les sept lots fermes.
-- [ ] Ajouter une note de cloture et deplacer le fichier vers `app/docs/todo-done/audits/` dans un patch d'archivage separe.
+- [x] Aligner la liste des stages logs actifs avec les events livres par les lots 2 a 5.
+- [x] Corriger les references de tests obsoletes ou chemins stale.
+- [x] Documenter la persistence runtime effective du `node_state` apres le Lot 6.
+- [x] Verifier les references croisees dans `app/docs/README.md` si elles changent.
+- [x] Cocher les conditions de non-prolongation une fois les sept lots fermes.
+- [x] Ajouter une note de cloture et deplacer le fichier vers `app/docs/todo-done/audits/`.
 
 Tests attendus:
 - `git diff --check`;
@@ -386,16 +388,16 @@ Preuves runtime attendues:
 - les preuves des lots 1 a 6 doivent etre referencees par leurs commits/tests de cloture.
 
 Condition de cloture:
-- [ ] Les docs actives de logs/admin/node_state refletent le runtime livre, et le TODO est pret a etre archive.
+- [x] Les docs actives de logs/admin/node_state refletent le runtime livre, et le TODO est archive.
 
 ## Condition de non-prolongation
 
-- [ ] Les deux P1 sont couverts par preuves content-free.
-- [ ] Les quatre P2 sont couverts par patchs testes, dont l'activation runtime obligatoire du `node_state`.
-- [ ] Le P3 documentaire est ferme sans rouvrir la doctrine hermeneutique.
-- [ ] Aucune correction n'a introduit d'exposition brute dans les logs, admin surfaces ou preuves de cloture.
-- [ ] Aucun seuil, prompt, provider ou scoring n'a ete change hors decision explicite documentee.
-- [ ] Le chantier se ferme apres les sept lots: pas de Lot 8, pas de refactor general du noeud hermeneutique.
+- [x] Les deux P1 sont couverts par preuves content-free.
+- [x] Les quatre P2 sont couverts par patchs testes, dont l'activation runtime obligatoire du `node_state`.
+- [x] Le P3 documentaire est ferme sans rouvrir la doctrine hermeneutique.
+- [x] Aucune correction n'a introduit d'exposition brute dans les logs, admin surfaces ou preuves de cloture.
+- [x] Aucun seuil, prompt, provider ou scoring n'a ete change hors decision explicite documentee.
+- [x] Le chantier se ferme apres les sept lots: pas de Lot 8, pas de refactor general du noeud hermeneutique.
 
 ## Matrice findings -> lots
 
@@ -411,8 +413,8 @@ Condition de cloture:
 
 ## Notes de prudence
 
-- [ ] Le `node_state` persistant est une memoire technique du noeud hermeneutique par conversation; il ne remplace ni Identity, ni Memory/RAG, ni les guards du tour courant.
-- [ ] Les payloads provider secondaires doivent etre observables par empreintes compactes, jamais par dumps de prompts ou messages.
-- [ ] Les surfaces admin doivent rester utiles pour operer, mais content-minimized par defaut.
-- [ ] Les erreurs/fallbacks doivent etre lisibles par `reason_code` et `error_class`, sans stack trace longue ni contenu runtime brut.
-- [ ] Les docs ne doivent etre corrigees qu'apres verification du runtime courant, pour eviter de documenter une intention au lieu d'un comportement livre.
+- [x] Le `node_state` persistant est une memoire technique du noeud hermeneutique par conversation; il ne remplace ni Identity, ni Memory/RAG, ni les guards du tour courant.
+- [x] Les payloads provider secondaires doivent etre observables par empreintes compactes, jamais par dumps de prompts ou messages.
+- [x] Les surfaces admin doivent rester utiles pour operer, mais content-minimized par defaut.
+- [x] Les erreurs/fallbacks doivent etre lisibles par `reason_code` et `error_class`, sans stack trace longue ni contenu runtime brut.
+- [x] Les docs ne doivent etre corrigees qu'apres verification du runtime courant, pour eviter de documenter une intention au lieu d'un comportement livre.

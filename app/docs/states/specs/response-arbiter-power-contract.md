@@ -45,7 +45,8 @@ Cette spec est ancree notamment dans:
 - `app/observability/chat_turn_logger.py`
 - `app/observability/hermeneutic_node_logger.py`
 - `app/tests/unit/logs/test_chat_turn_logger_phase2.py`
-- `app/tests/test_server_phase14.py`
+- `app/tests/test_server_chat_hermeneutic_insertion_contract.py`
+- `app/tests/test_server_chat_compact_observability_contract.py`
 
 L'archive operatoire du chantier vit dans `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`.
 Cette spec reste la source de verite normative durable du lot 1.
@@ -256,7 +257,7 @@ Il reutilise d'abord:
 
 - `chat_turn_logger` comme seam canonique de logs de tour;
 - `hermeneutic_node_logger` comme seam compact de pipeline;
-- `test_chat_turn_logger_phase2.py` et `test_server_phase14.py` comme seams de preuve existants.
+- `test_chat_turn_logger_phase2.py`, `test_server_chat_hermeneutic_insertion_contract.py` et `test_server_chat_compact_observability_contract.py` comme seams de preuve existants.
 
 Le minimum obligatoire pour ouvrir les lots 2+ est un contrat compact, testable, proche de l'existant.
 
@@ -327,7 +328,7 @@ Le lot 6 ferme operatoirement le chantier avec:
 - des preuves explicites qu'un arbitre peut suivre ou casser l'amont;
 - des preuves explicites qu'un garde-fou dur interdit `answer` sans imposer `meta` ni voler le choix `clarify` vs `suspend`;
 - des preuves explicites que `[JUGEMENT HERMENEUTIQUE]` projette bien le verdict final arbitral;
-- des preuves d'observabilite compacte ancrees dans `test_validation_agent.py` pour les proprietes nettes et `test_server_phase14.py` pour les parcours bout-en-bout et les logs;
+- des preuves d'observabilite compacte ancrees dans `test_validation_agent.py` pour les proprietes nettes, `test_server_chat_hermeneutic_insertion_contract.py` pour la projection bout-en-bout et `test_server_chat_compact_observability_contract.py` pour les logs;
 - aucune nouvelle surface admin ni nouvelle filiere de logs.
 
 ## 12. Ce Que Le Lot 1 Fige Et Ce Qu'il Laisse Ouvert

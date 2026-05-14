@@ -13,6 +13,13 @@ Note runtime 2026-04-19:
 - le lot 5 runtime evalue des garde-fous durs rares dans un module voisin, interdit `answer` quand ils s'appliquent, mais laisse a l'arbitre le choix entre `clarify` et `suspend`.
 - le lot 6 verrouille un corpus stable de cas `answer / clarify / suspend`, plus les preuves de suivi vs override et de projection finale, sans nouvelle surface d'observabilite.
 
+Note runtime 2026-05-14:
+
+- `validation_prompt_prepared` journalise maintenant l'exposition provider secondaire du `validation_agent` sous forme content-free avant l'appel provider;
+- `validation_agent` reste la source souveraine de la sortie finale retenue pour le prompt principal;
+- le `node_state` persistant est mis a jour depuis cette sortie finale validee, et non depuis le verdict primaire pre-validation;
+- les preuves bout-en-bout sont portees par les contrats thematiques `app/tests/test_server_chat_hermeneutic_insertion_contract.py`, `app/tests/test_server_chat_compact_observability_contract.py`, `app/tests/test_server_chat_synthetic_logs_contract.py` et `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py`.
+
 ## 1. Purpose
 
 Cette spec ouvre la premiere pause normative du Lot 9.
@@ -286,7 +293,8 @@ Regle forte:
 Preuves de fermeture lot 6:
 
 - `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py` porte le corpus stable `answer / clarify / suspend`, les cas de suivi vs override et les garde-fous durs;
-- `app/tests/test_server_phase14.py` verifie en bout-en-bout les logs compacts, les overrides lisibles, les garde-fous visibles et la coherence entre verdict final et `[JUGEMENT HERMENEUTIQUE]`;
+- `app/tests/test_server_chat_hermeneutic_insertion_contract.py`, `app/tests/test_server_chat_compact_observability_contract.py` et `app/tests/test_server_chat_synthetic_logs_contract.py` verifient les parcours bout-en-bout, les logs compacts, les overrides lisibles, les garde-fous visibles et la coherence entre verdict final et `[JUGEMENT HERMENEUTIQUE]`;
+- `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py` verifie les empreintes compactes `validation_prompt_prepared`, `hermeneutic_prompt_injection` et les champs content-free associes;
 - aucune nouvelle filiere de logs n'est ouverte: `chat_turn_logger` et `hermeneutic_node_logger` restent les seams canoniques.
 
 ## 11. Non-goals

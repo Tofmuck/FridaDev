@@ -81,7 +81,7 @@ Frontiere minimale:
 
 ## 4. Nature Exacte De `node_state`
 
-`node_state` est un etat persistant de pilotage primaire du noeud.
+`node_state` est un etat persistant de pilotage hermeneutique du noeud.
 
 Il est:
 
@@ -95,6 +95,7 @@ Il sert a:
 - fournir une continuite minimale d'un tour au suivant
 - porter une inertie doctrinale simple et reversible
 - eviter que la forme de sortie reparte de zero quand rien n'impose de rupture
+- rester lu avant le noeud primaire, puis reecrit depuis le verdict final valide par le `validation_agent`
 
 Il ne sert pas a:
 

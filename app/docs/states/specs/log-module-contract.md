@@ -87,6 +87,9 @@ The MVP event list is:
 - `context_build`
 - `stimmung_prompt_prepared`
 - `primary_node`
+- `hermeneutic_node_insertion`
+- `validation_prompt_prepared`
+- `validation_agent`
 - `prompt_prepared`
 - `llm_call`
 - `arbiter`
@@ -178,6 +181,22 @@ Minimum event-specific details:
   - when `fail_open=true`, allowed cause fields are `fallback_used`, `fallback_source=primary_node`, `node_stage=primary_node`, stable `reason_code` and compact `error_class`
   - when runtime `node_state` persistence is attempted, allowed compact fields are `node_state_read_present`, `node_state_read_valid`, `node_state_read_reason_code`, `node_state_write_attempted`, `node_state_write_succeeded`, `node_state_write_changed`, `node_state_write_reason_code`, `node_state_schema_version`, and `node_state_sha256_12`
   - forbidden: exception message, stack trace, prompt, messages, identity, memory, traces, summaries, canonical input dumps
+
+- `hermeneutic_node_insertion`
+  - compact proof of the final hermeneutic block insertion path
+  - allowed fields: insertion presence, final posture/regime labels, source, fallback flags, compact reason code, block length and short hash when available
+  - forbidden: raw `[JUGEMENT HERMENEUTIQUE]` block, raw validation rationale, prompt excerpts, canonical input dumps
+
+- `validation_prompt_prepared`
+  - content-free proof of the secondary provider payload prepared by `validation_agent`
+  - must be distinguishable from the main LLM payload and from `stimmung_prompt_prepared`
+  - allowed fields: `payload_kind`, `provider_caller=validation_agent`, secondary/main booleans, model, message counts, input-family presence flags, compact source-kind counts, char counts, sampling/timeouts when present
+  - forbidden: raw prompt, raw messages, raw validation dialogue, raw canonical inputs, raw memory traces/summaries, raw identity content
+
+- `validation_agent`
+  - compact proof of the validation verdict retained by the runtime
+  - allowed fields: final posture/regime labels, hard-guard codes, upstream follow/override flags, compact reason codes, fallback/fail-open flags, compact error classes
+  - forbidden: raw arbiter rationale, raw validation dialogue, prompt excerpts, canonical input dumps
 
 - `prompt_prepared`
   - `prompt_kind`, `messages_count`, `estimated_prompt_tokens`, `memory_items_used`

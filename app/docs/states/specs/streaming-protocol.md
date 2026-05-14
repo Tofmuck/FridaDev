@@ -351,7 +351,8 @@ Code source-of-truth relu:
 Tests de contrat relus:
 - `app/tests/unit/chat/test_chat_stream_control.py`
 - `app/tests/unit/chat/test_chat_llm_flow.py`
-- `app/tests/test_server_phase14.py`
+- `app/tests/test_server_chat_route_transport_contract.py`
+- `app/tests/test_server_chat_web_runtime_contract.py`
 - `app/tests/test_server_logs_phase3.py`
 - `app/tests/test_server_phase13.py`
 - `app/tests/integration/frontend_chat/test_frontend_chat_contract.py`

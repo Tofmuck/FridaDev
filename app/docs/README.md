@@ -84,6 +84,14 @@ Lire d'abord:
 - `states/specs/memory-rag-pre-arbiter-basket-contract.md`
 - `states/specs/memory-rag-summaries-lane-contract.md`
 
+Noeud hermeneutique runtime:
+- `states/specs/log-module-contract.md`
+- `states/specs/response-arbiter-power-contract.md`
+- `states/specs/hermeneutic-node-validation-agent-contract.md`
+- `states/specs/hermeneutic-node-stimmung-input-contract.md`
+- `states/specs/hermeneutic-node-primary-verdict-contract.md`
+- `states/specs/hermeneutic-node-state-persistence-contract.md`
+
 Baselines et evaluations:
 - `states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - `states/baselines/memory-rag-6A-evaluation-2026-04-10.md`
