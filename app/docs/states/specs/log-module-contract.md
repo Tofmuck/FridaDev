@@ -117,7 +117,8 @@ Minimum event-specific details:
   - goal: explain why a turn emitted several conflict-related embeddings without raw identity dumps
 
 - `memory_retrieve`
-  - `top_k_requested`, `top_k_returned`
+  - `top_k_requested`, `top_k_returned`, `dense_candidates_count`, `lexical_candidates_count`, `summary_candidates_count`
+  - `top_k_requested` is the trace-lane request; `top_k_returned` is the total returned to the pre-arbiter path, so it can exceed `top_k_requested` when `summary_candidates_count > 0`
   - if `status=error`: stable `error_code`, sanitized `error_class`, and `reason_code=retrieve_error`
   - a normal empty retrieval stays `status=ok` with `top_k_returned=0`; downstream no-memory branches may use `reason_code=no_data`
 

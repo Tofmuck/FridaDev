@@ -11,25 +11,31 @@ Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-car
 Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`
 Spec liee: `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
 
+Mise a jour Lot 6 observabilite, 2026-05-14:
+- les sections sur `summaries=0` documentent le verdict historique du 2026-04-10, pas l'etat OVH courant;
+- runtime OVH relu en read-only le 2026-05-14: `summaries.total=2`, `summaries.embedding_not_null=2`, dimensions `384`;
+- le retrieval pre-arbitre peut maintenant retourner des candidats `summary` live via `summary_candidates_count`;
+- `top_k_requested` reste la demande sur la lane traces, et `top_k_returned` peut depasser cette valeur lorsque la lane summaries ajoute des candidats.
+
 ## 1. Objet
 
 Cette spec ferme la Phase 4 du chantier `memory-rag-relevance`.
 
-Apres implementation du lot `8C`, elle reste la reference normative du contrat minimal de la lane `summaries`; la baseline `8C` archive le verdict runtime et rappelle que le live OVH reste neutre tant que `summaries=0`.
+Apres implementation du lot `8C`, elle reste la reference normative du contrat minimal de la lane `summaries`; la baseline `8C` archive le verdict runtime du 2026-04-10, quand le live OVH restait neutre tant que `summaries=0`.
 
 Elle fixe, sans patch runtime:
-- la cause retenue de `summaries=0` sur le runtime OVH observe;
-- le statut de readiness de la voie `summaries`;
-- la strategie de preparation recommandee avant implementation;
+- la cause historique retenue de `summaries=0` sur le runtime OVH observe le 2026-04-10;
+- le statut de readiness de la voie `summaries`, avec mise a jour runtime datee quand des summaries existent;
+- la strategie de preparation historique avant implementation, conservee comme cadre d'evaluation;
 - le schema minimal d'un candidat `summary`;
 - le mode de retrieval `summary` a comparer a la lane `traces`;
 - la politique de fusion `traces + summaries`;
 - la politique d'antidoublon `trace / summary`;
 - la mesure de gain reel attendue;
-- les preuves minimales requises avant toute implementation du lot C.
+- les preuves minimales initialement requises avant implementation du lot C, conservees comme criteres d'evaluation.
 
 Elle ne fait pas:
-- l'implementation de la lane `summaries`;
+- un nouveau patch d'implementation de la lane `summaries`;
 - la generation live de nouveaux resumes;
 - un patch des seuils de summarization;
 - un redesign du panier Phase 3;
@@ -44,7 +50,7 @@ Il faut maintenant figer:
 - un verdict de readiness;
 - un schema minimal;
 - une doctrine normative de coexistence `trace / summary`;
-- une methode de comparaison avant implementation;
+- une methode de comparaison avant et apres implementation;
 - une liste de preuves minimales.
 
 Le bon emplacement est donc `states/specs/`, pas `states/architecture/`.
@@ -68,7 +74,7 @@ Preuves runtime relues pour cette phase:
 - lecture read-only des admin logs retenus pour `summary_generated`, `summarize_trigger`, `summarize_done`, `summary_db_save_failed`;
 - lecture read-only de `observability.chat_log_events` pour verifier l'absence de stage `summary*`.
 
-Constats factuels confirms:
+Constats factuels confirms au 2026-04-10:
 - `summaries.total = 0` et `summaries.embedded = 0`;
 - `traces.with_summary_id = 0 / 224`;
 - `conversation_messages.summarized = 0 / 280`;
@@ -80,9 +86,17 @@ Constats factuels confirms:
 - aucun event `summary_generated`, `summarize_trigger`, `summarize_done` ou `summary_db_save_failed` n'apparait dans les admin logs retenus;
 - aucun stage `summary*` n'apparait dans `observability.chat_log_events`.
 
+Constats factuels relus au 2026-05-14 pour le Lot 6 observabilite:
+- `summaries.total = 2`;
+- `summaries.embedding_not_null = 2`;
+- dimensions embeddings summaries: `384`;
+- `traces.total = 463`, `traces.embedding_not_null = 463`, `traces.summary_id_not_null = 117`;
+- des events `memory_retrieve` portent `summary_candidates_count > 0`;
+- un exemple compact montre `top_k_requested=5`, `top_k_returned=7`, `summary_candidates_count=2`.
+
 ## 4. Verdict Phase 4
 
-Decision de cloture:
+Decision de cloture historique du 2026-04-10:
 - la voie `summaries` est **specifiee mais bloquee live** sur le runtime OVH observe;
 - elle n'est pas prete a etre evaluee live, car aucune donnee `summary` n'existe encore en base;
 - la cause retenue de `summaries=0` est **l'absence de generation live declenchee**, elle-meme expliquee principalement par un volume conversationnel insuffisant au regard du seuil courant de `35000` tokens;
@@ -91,7 +105,14 @@ Decision de cloture:
 
 Ce verdict est fonde sur des preuves read-only, pas sur une intuition.
 
+Statut runtime courant au 2026-05-14:
+- la voie `summaries` n'est plus bloquee par absence de donnees;
+- elle est live et additive dans le retrieval pre-arbitre quand `summaries.embedding IS NOT NULL`;
+- son utilite qualitative reste a evaluer par les preuves de couverture et de non-duplication definies plus bas.
+
 ## 5. Cause retenue de `summaries=0`
+
+Cette section conserve la cause historique observee au 2026-04-10. Elle ne doit pas etre lue comme l'etat courant si une preuve runtime plus recente indique des summaries persistants et embeddes.
 
 ### 5.1 Ce que fait le code
 
@@ -103,7 +124,7 @@ Le runtime peut generer un resume seulement si:
 
 ### 5.2 Ce qui est observe live
 
-Sur OVH:
+Sur OVH au 2026-04-10:
 - aucun resume n'est present en base;
 - aucun message n'est marque `summarized_by`;
 - aucune trace n'est liee a un `summary_id`;
@@ -151,7 +172,7 @@ Cette phase ne reouvre ni la Phase 2 ni la Phase 3.
 Elle fixe seulement:
 - le contrat minimal de la lane `summaries`;
 - sa doctrine de coexistence avec `traces`;
-- et les prerequis de preuve du futur lot C.
+- et les prerequis de preuve du lot C, conserves comme criteres de validation et d'evaluation.
 
 ## 8. Schema minimal d'un candidat `summary`
 
@@ -224,6 +245,8 @@ Decision retenue pour la comparaison minimale:
 - faire un retrieval vectoriel direct sur `summaries.embedding`;
 - comparer une lane `summaries_top3` a la strategie `traces` figee en Phase 2;
 - merger ensuite les deux lanes sous le contrat Phase 3, sans depasser le panier cible de `8` slots.
+- observabilite attendue: `summary_candidates_count` compte les candidats summaries ajoutes, tandis que `top_k_requested` reste la demande sur les traces.
+- consequence operateur: `top_k_returned` peut depasser `top_k_requested` quand la lane `summaries` ajoute des candidats dans le budget pre-arbitre.
 
 Pourquoi `top3`:
 - un resume represente potentiellement plusieurs traces;
@@ -309,9 +332,9 @@ Signaux d'echec:
 - une meme idee est injectee deux fois;
 - des traces precises utiles sont remplacees par des resumes trop vagues.
 
-## 13. Preuves minimales avant implementation du lot C
+## 13. Preuves minimales de validation du lot C
 
-Le lot C NE DOIT PAS commencer sans les preuves minimales suivantes.
+Ces preuves etaient les prerequis minimaux avant le lot C; apres implementation, elles restent les criteres de validation et d'evaluation de la lane `summaries`.
 
 ### 13.1 Fixtures minimales
 
@@ -359,14 +382,12 @@ Cette spec ne fige pas:
 
 ## 15. Decision de cloture Phase 4
 
-La Phase 4 est fermee avec le statut suivant:
+La Phase 4 est fermee historiquement avec le statut suivant:
 - la voie `summaries` est **bloquee live** sur OVH au 2026-04-10;
 - sa preparation est **choisie et ordonnee**: `fixtures -> replay hors live`;
 - son schema minimal est ecrit;
 - sa doctrine de fusion `traces + summaries` est ecrite;
 - sa politique d'antidoublon `trace / summary` est ecrite;
-- ses preuves minimales avant implementation sont ecrites.
+- ses preuves minimales de validation sont ecrites.
 
-Le futur lot C pourra donc:
-- implementer la lane sur une base specifiee;
-- ou conclure a son ajournement si les preuves hors live ne montrent aucun gain.
+Le lot `8C` a ensuite implemente la lane sur une base specifiee. Au 2026-05-14, le live OVH contient des summaries avec embeddings; les travaux restants portent donc sur l'evaluation de gain, la lisibilite des compteurs et la non-duplication, pas sur l'existence de la lane.

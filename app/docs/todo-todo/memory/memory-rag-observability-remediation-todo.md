@@ -269,16 +269,16 @@ Fichiers probablement touches:
 - `app/docs/states/specs/memory-admin-surface-contract.md` si les champs admin sont clarifies
 
 Hors-scope:
-- [ ] Ne pas changer le code retrieval.
-- [ ] Ne pas changer `top_k`, la limite summaries ou le panier pre-arbitre.
-- [ ] Ne pas faire passer une baseline runtime ponctuelle pour une garantie permanente.
-- [ ] Ne pas reouvrir les roadmaps archivees.
+- [x] Ne pas changer le code retrieval.
+- [x] Ne pas changer `top_k`, la limite summaries ou le panier pre-arbitre.
+- [x] Ne pas faire passer une baseline runtime ponctuelle pour une garantie permanente.
+- [x] Ne pas reouvrir les roadmaps archivees.
 
 Cases de correction:
-- [ ] Remplacer les mentions actives `summaries=0` / lane neutre live par un statut date et verifiable.
-- [ ] Documenter que la lane summaries peut etre additive dans le chemin pre-arbitre.
-- [ ] Clarifier la difference entre `top_k_requested`, candidats traces, candidats summaries et `top_k_returned`.
-- [ ] Ajouter une preuve runtime compacte datee sans contenu brut.
+- [x] Remplacer les mentions actives `summaries=0` / lane neutre live par un statut date et verifiable.
+- [x] Documenter que la lane summaries peut etre additive dans le chemin pre-arbitre.
+- [x] Clarifier la difference entre `top_k_requested`, candidats traces, candidats summaries et `top_k_returned`.
+- [x] Ajouter une preuve runtime compacte datee sans contenu brut.
 
 Tests attendus:
 - docs-only: `git diff --check`, grep des anciennes formulations, coherence des references.
@@ -289,7 +289,7 @@ Preuves runtime attendues:
 - probe retrieval compact montrant trace candidates + summary candidates.
 
 Condition de cloture:
-- [ ] Les docs actives ne contredisent plus le runtime observe sur summaries et top-k.
+- [x] Les docs actives ne contredisent plus le runtime observe sur summaries et top-k.
 
 ## Condition de non-prolongation
 

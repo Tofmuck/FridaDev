@@ -7,6 +7,11 @@ Roadmap liee: `app/docs/todo-done/refactors/memory-rag-relevance-todo.md`
 Baseline liee: `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 
+Mise a jour Lot 6 observabilite, 2026-05-14:
+- les mentions `summaries=0` et `pas de lane summaries live` ci-dessous decrivent la decision Phase 2 au 2026-04-10;
+- elles ne decrivent plus l'etat OVH courant: des summaries avec embeddings existent, et la lane `summaries` peut alimenter le chemin pre-arbitre comme lane additive bornee;
+- la decision Phase 2 reste utile historiquement pour comprendre l'ordre des lots, mais la cartographie active doit etre lue pour l'etat runtime courant.
+
 ## 1. Objet
 
 Cette note ferme la Phase 2 du chantier `memory-rag-relevance`.
@@ -21,7 +26,7 @@ Elle tranche, sans patch runtime:
 Elle ne fait pas:
 - le design du panier pre-arbitre cible;
 - le design complet de la deduplication;
-- l'ouverture de la voie `summaries` live;
+- un changement runtime sur la voie `summaries` live;
 - la decision reranker;
 - un prototype de V2.
 
@@ -48,10 +53,10 @@ Probes relus:
 - `OVH migration Authelia Caddy Docker`
 - `contexte circonstanciel recent ce soir fatigue`
 
-Contraintes factuelles toujours actives:
-- le retrieval live interroge `traces` seulement;
+Contraintes factuelles relues pendant la Phase 2:
+- au 2026-04-10, le retrieval live interrogeait `traces` seulement; au 2026-05-14, le chemin pre-arbitre peut ajouter une lane `summaries`;
 - `MEMORY_TOP_K=5` aujourd'hui;
-- `summaries=0` en live;
+- au 2026-04-10, `summaries=0` en live; ce point est desormais historique;
 - la baseline Phase 0 montre un probleme de composition avant un probleme de profondeur;
 - la cartographie Phase 1 montre que l'arbitre voit encore un payload plat et ne doit pas etre retouche dans le lot suivant.
 
@@ -61,7 +66,7 @@ Contraintes factuelles toujours actives:
 - Il ne doit pas changer le schema du panier arbitre, les seuils arbitre ni le prompt final.
 - Il doit pouvoir etre evalue via le corpus de probes Phase 0, sans reranker.
 - Il doit traiter le biais de composition observe en Phase 0 sans pretendre regler deja toute la dedup Phase 3.
-- Il ne doit pas faire semblant que la voie `summaries` est exploitable alors qu'elle est vide en live.
+- Au 2026-04-10, il ne devait pas faire semblant que la voie `summaries` etait exploitable alors qu'elle etait vide en live; au 2026-05-14, cette contrainte devient une exigence de preuve qualitative, pas une absence de lane.
 
 ## 4. Lanes candidates etudiees
 
@@ -175,7 +180,7 @@ Verdict:
 - utile seulement comme heuristique secondaire de merge;
 - non recommandee comme lane principale autonome du premier lot.
 
-### 4.5 Lane `summaries` future
+### 4.5 Lane `summaries`
 
 Objectif:
 - offrir plus tard une voie de souvenirs plus condenses et plus durables.
@@ -185,20 +190,19 @@ Souvenirs vises:
 - memoire de plus long terme.
 
 Risque principal:
-- voie fictive en live tant que `summaries=0`;
-- impossibilite d'evaluer correctement son apport sur OVH aujourd'hui.
+- au 2026-04-10, voie fictive en live tant que `summaries=0`;
+- au 2026-05-14, voie live mais encore a evaluer qualitativement: son existence ne prouve pas a elle seule un gain utile.
 
 Signal attendu pour dire qu'elle aide:
 - gain de couverture utile sur probes deja difficiles, sans injection double.
 
 Preuves relues:
-- `summaries=0`;
-- `summary_id` absent dans les probes live;
-- `parent_summary` nul en pratique sur le runtime observe.
+- au 2026-04-10: `summaries=0`, `summary_id` absent dans les probes live, `parent_summary` nul en pratique sur le runtime observe;
+- au 2026-05-14: `summaries.total=2`, `summaries.embedding_not_null=2`, `traces.summary_id_not_null=117`.
 
 Verdict:
-- lane explicitement future;
-- bloquee live pour le premier lot.
+- lane implementee et additive dans le chemin pre-arbitre quand des summaries avec embedding existent;
+- le gain reste a mesurer via couverture utile, bruit et absence de double injection.
 
 ## 5. Comparaison des options plausibles
 
@@ -363,7 +367,7 @@ Decision retenue:
   - lane `user` reservee;
   - lane `assistant` capee;
   - diversite conversationnelle legere comme heuristique secondaire;
-  - pas de lane `summaries` live;
+  - pas de lane `summaries` live dans ce lot Phase 2 historique;
   - pas de reformulation de query;
   - pas de reranker.
 

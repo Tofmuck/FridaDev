@@ -83,6 +83,8 @@ Pour l inspection read-only par tour, la surface couvre les stages memory / RAG 
 - `memory_retrieve`
   - doit distinguer `status=ok, top_k_returned=0` comme absence normale et `status=error` / `reason_code=retrieve_error` comme erreur technique
   - les erreurs exposees restent redacted: code stable, classe d'erreur sanitisee, aucun DSN/token/traceback
+  - doit exposer la semantique top-k sans ambiguite: `top_k_requested` correspond a la demande sur la lane traces, `summary_candidates_count` compte la lane summaries additive, et `top_k_returned` compte le total retourne au chemin pre-arbitre
+  - `top_k_returned > top_k_requested` est donc possible et normal quand `summary_candidates_count > 0`; la surface admin ne doit pas le presenter comme une sur-recuperation de traces
 - `summaries`
 - `arbiter`
 - `hermeneutic_node_insertion`

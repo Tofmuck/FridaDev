@@ -8,6 +8,12 @@ Baselines liees:
 - `app/docs/states/baselines/memory-rag-relevance-baseline-2026-04-10.md`
 - `app/docs/states/baselines/memory-rag-7B-evaluation-2026-04-10.md`
 
+Mise a jour Lot 6 observabilite, 2026-05-14:
+- les constats `summaries=0` ci-dessous restent l'historique du 2026-04-10, pas l'etat OVH courant;
+- runtime OVH relu en read-only le 2026-05-14: `summaries.total=2`, `summaries.embedding_not_null=2`, dimensions `384`, `traces.total=463`, `traces.embedding_not_null=463`, `traces.summary_id_not_null=117`;
+- un event compact `memory_retrieve` recent montre `top_k_requested=5`, `top_k_returned=7`, `summary_candidates_count=2`;
+- la lane `summaries` est donc live et additive dans le chemin pre-arbitre quand des resumes avec embedding existent.
+
 ## 1. Objet
 
 Cette note documente l'etat runtime courant du chantier `memory-rag-relevance` apres les lots `6A`, `7B` et `8C`.
@@ -22,7 +28,7 @@ Elle documente:
 
 Elle ne fait pas:
 - de redesign complet de l'arbitre;
-- d'ouverture de la voie `summaries` live;
+- de changement runtime sur la voie `summaries` live;
 - de design de la future surface finale d'observabilite memoire/RAG.
 
 ## 2. Methode et preuves relues
@@ -50,8 +56,9 @@ Constats runtime directement verifies:
 - `memory_arbitration.decisions[*]` expose maintenant `candidate_id`, `retrieved_candidate_id`, `legacy_candidate_id`, `legacy_candidate_index`, `source_candidate_ids`, `source_kind`, `source_lane`, `keep`, `semantic_relevance`, `contextual_gain`, `redundant_with_recent`, `reason`, `decision_source`, `model`;
 - `arbiter_decisions` persiste maintenant le `candidate_id` stable du representant quand il existe, avec `candidate_content`, `candidate_role`, `candidate_ts`, `candidate_score`, plus verdict et scores;
 - `prompt_prepared` persiste maintenant un resume de l'injection memoire effective dans le prompt, y compris `injected_candidate_ids`, et un statut redacted `memory_retrieval`;
-- `summaries=0` sur le runtime actif, donc la nouvelle lane `summaries` reste neutre live au `2026-04-10`;
-- `parent_summary` reste actuellement nul en pratique sur OVH et le bloc `[Contexte du souvenir ...]` n'apparait pas live hors fixtures/replay.
+- au `2026-04-10`, `summaries=0` sur le runtime relu; ce point est desormais historique;
+- au `2026-05-14`, des summaries existent en base et portent des embeddings, donc la lane `summaries` n'est plus neutre live;
+- `parent_summary` peut etre resolu pour les traces liees a un `summary_id`; son injection effective reste a lire via `prompt_prepared.memory_prompt_injection.summary_context_*`.
 
 ## 3. Glossaire minimal pour lever les ambiguities
 
@@ -92,7 +99,8 @@ Ce que fait le retrieval:
   - lane FTS `to_tsvector('simple', ...)`;
   - voie exacte `pg_trgm` sur contenu normalise, triee par distance `<->` quand elle s'active;
 - quand la surface interne pre-arbitre est demandee, peut ajouter une lane vectorielle `summaries` bornee a `top3` interne si des resumes existent;
-- garde `top_k` comme cap final public.
+- garde `top_k` comme cap final de la lane publique `traces`;
+- dans la surface interne pre-arbitre, `top_k_requested` designe le top-k trace demande, tandis que `top_k_returned` compte le total apres ajout eventuel de la lane `summaries`; il peut donc depasser `top_k_requested`.
 
 Forme de sortie publique reelle:
 - `conversation_id`
@@ -125,7 +133,8 @@ Ce que la surface publique ne contient pas encore:
 
 Observabilite associee:
 - stage persiste `memory_retrieve` dans `observability.chat_log_events`;
-- payload normal: `top_k_requested`, `top_k_returned`, compteurs de lanes;
+- payload normal: `top_k_requested`, `top_k_returned`, `dense_candidates_count`, `lexical_candidates_count`, `summary_candidates_count`;
+- lecture operateur: `top_k_requested` = demande sur les traces; `top_k_returned` = traces retenues + summaries additives; `summary_candidates_count > 0` explique un `top_k_returned > top_k_requested`;
 - payload erreur: `reason_code=retrieve_error`, `error_code` stable, `error_class` sanitisee.
 
 Contrat d'erreur:
@@ -150,9 +159,10 @@ Forme de sortie:
 - plus `parent_summary`.
 
 Point factuel important:
-- au `2026-04-10`, `summaries=0` sur OVH;
-- donc la lane `summaries` existe desormais en code mais reste vide live;
-- `parent_summary` existe dans le contrat mais vaut `None` en pratique sur le runtime actif.
+- au `2026-04-10`, `summaries=0` sur OVH; ce constat appartient a la baseline historique;
+- au `2026-05-14`, `summaries.total=2`, `summaries.embedding_not_null=2` et `traces.summary_id_not_null=117`;
+- la lane `summaries` existe en code et n'est plus vide live;
+- `parent_summary` existe dans le contrat et peut etre resolu pour les traces associees a un summary.
 
 ### 4.4 Construction de `memory_retrieved`
 
@@ -583,7 +593,7 @@ Stages pertinents verifies:
 - `prompt_prepared` (`2948` rows lues)
 
 Ce que chaque stage montre aujourd'hui:
-- `memory_retrieve`: seulement `top_k_requested` / `top_k_returned`
+- `memory_retrieve`: `top_k_requested`, `top_k_returned`, `dense_candidates_count`, `lexical_candidates_count`, `summary_candidates_count`
 - `arbiter`: counts, `mode`, `model`, `decision_source`, `fallback_used`, `fallback_decisions`, `rejection_reason_code_counts`
 - `memory_chain_snapshot`: snapshot content-free par tour de la chaine `retrieved -> basket/dedup -> arbiter keep/drop -> injected`, avec IDs/hashes, counts, score buckets, `reason_code` stable, longueur/hash court de raison et classe d'injection
 - `hermeneutic_node_insertion`: resume compact de `memory_retrieved` et `memory_arbitration`
@@ -674,7 +684,7 @@ Manques explicitement confirmes a la fin de cette phase:
 - faux positifs par categorie attaches a une observabilite durable par turn;
 - provenance de lane ou `source_lane` pour chaque candidat;
 - duplication avant arbitre comme objet observable natif;
-- couverture `traces` vs `summaries` puisque la voie `summaries` n'est pas live;
+- evaluation qualitative de couverture `traces` vs `summaries` sur corpus stable, maintenant que la voie `summaries` existe live;
 - snapshot persiste complet du retrieval brut par tour, avec ses candidats et leurs cles stables;
 - lien durable direct entre item injecte dans le prompt final et ligne SQL `arbiter_decisions`.
 

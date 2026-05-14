@@ -12,6 +12,11 @@ References liees:
 - `app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md`
 - `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 
+Mise a jour Lot 6 observabilite, 2026-05-14:
+- les mentions `summaries=0` ci-dessous sont le contexte du `no-go` reranker au 2026-04-11;
+- elles ne decrivent plus l'etat OVH courant: au 2026-05-14, des summaries avec embeddings existent et peuvent alimenter la lane additive pre-arbitre;
+- la decision `reranker = no-go for now` reste inchangee, car elle ne depend pas de l'absence permanente de summaries mais du niveau de preuve disponible sur la necessite d'un reranking supplementaire.
+
 ## 1. Objet
 
 Fermer proprement la Phase `9D` du chantier `memory-rag-relevance` par une decision explicite `go / no-go` sur un reranker, sans ouvrir d'implementation runtime supplementaire.
@@ -40,7 +45,7 @@ Les prerequis amont de la question reranker sont juges suffisamment fermes:
 
 - `6A` a deja apporte un recall hybride defendable, avec un vrai gain surtout lexical / exact-term / nom propre / URL, sans ouvrir de reranker.
 - `7B` a deja apporte un panier pre-arbitre borne, plus lisible, moins redondant et relie par IDs stables jusqu'a l'injection.
-- `8C` a deja apporte une voie `summaries` propre sur fixtures/replay, sans double injection, tout en restant explicitement neutre en live tant que `summaries=0`.
+- `8C` a deja apporte une voie `summaries` propre sur fixtures/replay, sans double injection; au 2026-04-11, elle restait neutre en live tant que `summaries=0`.
 
 Autrement dit:
 - le systeme n'est plus dans un etat ou le reranker servirait a compenser un rappel brut ou un panier encore mal pose;
@@ -50,7 +55,7 @@ Autrement dit:
 
 Les limites restantes sont reelles et doivent rester dites comme telles:
 
-- le live OVH reste sans `summaries`, donc la nouvelle lane `summaries` est encore neutre en production;
+- au 2026-04-11, le live OVH restait sans `summaries`, donc la nouvelle lane `summaries` etait encore neutre en production; au 2026-05-14, ce point est historique et ne doit plus etre lu comme l'etat courant;
 - plusieurs probes restent faibles ou neutres, notamment sur preferences durables, identite durable et certains cas d'assistant generique;
 - un bruit assistant residuel existe encore sur certains cas;
 - le corpus live reste petit et ne prouve pas encore une couverture forte des preferences durables;

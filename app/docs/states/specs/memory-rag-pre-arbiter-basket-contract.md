@@ -10,6 +10,11 @@ Baselines liees:
 Cartographie liee: `app/docs/states/architecture/memory-rag-current-pipeline-cartography.md`
 Design lie: `app/docs/states/architecture/memory-rag-candidate-generation-design.md`
 
+Mise a jour Lot 6 observabilite, 2026-05-14:
+- les mentions `summaries=0` ci-dessous sont des constats historiques du 2026-04-10;
+- le runtime OVH courant contient des summaries avec embedding et le panier pre-arbitre peut recevoir des candidats `source_kind=summary`, `source_lane=summaries`;
+- `top_k_requested` reste la demande de retrieval trace, tandis que la lane summaries est additive dans le budget de panier cible.
+
 ## 1. Objet
 
 Cette spec ferme la Phase 3 du chantier `memory-rag-relevance`.
@@ -69,7 +74,8 @@ Constats factuels confirms:
 - `prompt_prepared` persiste maintenant les `injected_candidate_ids` en plus des compteurs d'injection memoire;
 - `hermeneutic_node_insertion` ne persiste aujourd'hui qu'un resume de counts, pas la liste des IDs;
 - des collisions reelles existent deja en base (`Je suis Christophe Muck` x6, URL Mediapart x6, `Qui suis-je ?` x5, `Qui suis-je pour toi maintenant ?` x4, etc.);
-- `summaries=0` en live, mais `summary_id` et `parent_summary` existent deja dans le contrat des traces.
+- au 2026-04-10, `summaries=0` en live, mais `summary_id` et `parent_summary` existaient deja dans le contrat des traces;
+- au 2026-05-14, des summaries avec embedding existent live et peuvent entrer dans le panier pre-arbitre.
 
 ## 4. Probleme que la spec doit resoudre
 
@@ -374,7 +380,7 @@ Donc:
 Raison:
 - la cartographie Phase 1 montre que l'arbitre n'en a pas besoin aujourd'hui pour fonctionner;
 - la Phase 3 doit structurer le panier sans ouvrir un redesign complet de l'arbitre;
-- `summaries=0` en live, donc il serait premature de remodeler le prompt arbitre autour d'un objet encore absent.
+- au 2026-04-10, `summaries=0` en live rendait premature un remodelage autour d'un objet absent; au 2026-05-14, l'objet existe live mais le contrat reste volontairement stable: `parent_summary` demeure hors payload arbitre, sauf lot separe.
 
 ## 11. Regle cible de dedup
 
