@@ -82,6 +82,18 @@ class FrontendMemoryAdminPhase10eTests(unittest.TestCase):
         self.assertLessEqual(len(turns_source.splitlines()), 499)
         self.assertLessEqual(len(main_source.splitlines()), 499)
 
+    def test_arbiter_preview_renders_compact_fields_without_raw_content_or_reason(self) -> None:
+        turns_source = (APP_DIR / "web" / "memory_admin" / "render_turns.js").read_text(encoding="utf-8")
+
+        self.assertIn("candidate_content_chars", turns_source)
+        self.assertIn("candidate_content_sha256_12", turns_source)
+        self.assertIn("reason_code", turns_source)
+        self.assertIn("reason_sha256_12", turns_source)
+        self.assertIsNone(re.search(r"item\?\.candidate_content(?!_)", turns_source))
+        self.assertIsNone(re.search(r"item\?\.reason(?!_code|_chars|_sha256_12)", turns_source))
+        self.assertNotIn("Contenu candidat", turns_source)
+        self.assertNotIn("Raison", turns_source)
+
     def test_memory_admin_navigation_link_is_present_on_required_surfaces(self) -> None:
         index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
         admin_source = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")

@@ -70,6 +70,8 @@ La surface doit rendre lisibles, au minimum :
 - injection memoire
 - lectures recentes utiles par tour
 - decisions arbitre persistees
+  - l'apercu par defaut de `/api/admin/memory/dashboard` expose uniquement une projection compacte: role, scores, verdict, timestamps, `reason_code`, longueurs et hash courts;
+  - `candidate_content` et `reason` bruts peuvent exister dans la table durable ou une surface de detail explicitement separee, mais ne doivent pas etre servis dans l'apercu dashboard par defaut;
 
 Pour l inspection read-only par tour, la surface couvre les stages memory / RAG suivants quand ils existent dans les logs :
 

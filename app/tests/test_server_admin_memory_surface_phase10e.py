@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -434,6 +435,60 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertNotIn("top_rejection_reasons", decisions)
         for raw_reason in raw_reasons:
             self.assertNotIn(raw_reason, str(decisions))
+
+    def test_arbiter_preview_is_content_minimized_by_default(self) -> None:
+        raw_content = "RAW CANDIDATE CONTENT should not be served by default"
+        raw_reason = "RAW FREEFORM REASON should not be served by default"
+
+        memory_store_module = SimpleNamespace(
+            get_arbiter_decisions=lambda limit: [
+                {
+                    "id": "decision-1",
+                    "conversation_id": "conv-redacted",
+                    "candidate_id": "cand-redacted",
+                    "candidate_role": "assistant",
+                    "candidate_content": raw_content,
+                    "candidate_ts": "2026-05-13T09:00:00Z",
+                    "candidate_score": 0.42,
+                    "keep": False,
+                    "semantic_relevance": 0.33,
+                    "contextual_gain": 0.12,
+                    "redundant_with_recent": True,
+                    "reason": raw_reason,
+                    "model": "openrouter/arbiter-test",
+                    "decision_source": "llm",
+                    "created_ts": "2026-05-13T09:01:00Z",
+                }
+            ],
+        )
+
+        payload = admin_memory_service._read_arbiter_persisted_preview(
+            memory_store_module=memory_store_module,
+            limit=1,
+        )
+        item = payload["items"][0]
+
+        self.assertEqual(payload["source_kind"], "durable_persistence")
+        self.assertEqual(item["candidate_role"], "assistant")
+        self.assertEqual(item["candidate_score"], 0.42)
+        self.assertFalse(item["keep"])
+        self.assertEqual(item["semantic_relevance"], 0.33)
+        self.assertEqual(item["contextual_gain"], 0.12)
+        self.assertTrue(item["redundant_with_recent"])
+        self.assertEqual(item["reason_code"], "model_reason")
+        self.assertEqual(item["reason_chars"], len(raw_reason))
+        self.assertTrue(item["reason_sha256_12"])
+        self.assertEqual(item["candidate_content_chars"], len(raw_content))
+        self.assertTrue(item["candidate_content_sha256_12"])
+        self.assertEqual(item["candidate_ts"], "2026-05-13T09:00:00Z")
+        self.assertEqual(item["model"], "openrouter/arbiter-test")
+        self.assertEqual(item["decision_source"], "llm")
+        self.assertNotIn("candidate_content", item)
+        self.assertNotIn("reason", item)
+
+        payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn(raw_content, payload_json)
+        self.assertNotIn(raw_reason, payload_json)
 
     def test_stage_latencies_use_shared_summary_helper(self) -> None:
         admin_logs_module = SimpleNamespace(read_logs=lambda limit=5000: [{'event': 'stage_latency'}])

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from typing import Any, Callable
 
-from observability.memory_arbiter_reason_codes import compact_reason_code_counts_from_mapping
+from observability.memory_arbiter_reason_codes import (
+    compact_arbiter_reason_observability,
+    compact_reason_code_counts_from_mapping,
+)
 
 
 def _to_int(value: Any, fallback: int = 0) -> int:
@@ -25,6 +29,41 @@ def _compact_excerpt(text: Any, *, max_chars: int = 140) -> str:
     if len(raw) <= max_chars:
         return raw
     return raw[: max_chars - 3].rstrip() + '...'
+
+
+def _text(value: Any) -> str:
+    return str(value or '').strip()
+
+
+def _sha256_12(value: Any) -> str:
+    text = _text(value)
+    if not text:
+        return ''
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
+def _compact_arbiter_preview_item(item: Any) -> dict[str, Any]:
+    payload = item if isinstance(item, dict) else {}
+    candidate_content = _text(payload.get('candidate_content'))
+    reason = _text(payload.get('reason'))
+    return {
+        'id': _text(payload.get('id')),
+        'conversation_id': _text(payload.get('conversation_id')),
+        'candidate_id': _text(payload.get('candidate_id')),
+        'candidate_role': payload.get('candidate_role'),
+        'candidate_ts': payload.get('candidate_ts'),
+        'candidate_score': payload.get('candidate_score'),
+        'candidate_content_chars': len(candidate_content),
+        'candidate_content_sha256_12': _sha256_12(candidate_content),
+        'keep': bool(payload.get('keep')),
+        'semantic_relevance': payload.get('semantic_relevance'),
+        'contextual_gain': payload.get('contextual_gain'),
+        'redundant_with_recent': bool(payload.get('redundant_with_recent')),
+        **compact_arbiter_reason_observability(reason),
+        'model': payload.get('model'),
+        'decision_source': payload.get('decision_source'),
+        'created_ts': payload.get('created_ts'),
+    }
 
 
 def _read_durable_state(
@@ -153,8 +192,9 @@ def _read_arbiter_persisted_preview(
     limit: int,
 ) -> dict[str, Any]:
     items = memory_store_module.get_arbiter_decisions(limit=limit)
+    compact_items = [_compact_arbiter_preview_item(item) for item in items]
     return {
         'source_kind': 'durable_persistence',
-        'items': items,
-        'count': len(items),
+        'items': compact_items,
+        'count': len(compact_items),
     }

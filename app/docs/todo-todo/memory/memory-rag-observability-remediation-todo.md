@@ -191,16 +191,16 @@ Fichiers probablement touches:
 - tests admin Memory / frontend admin
 
 Hors-scope:
-- [ ] Ne pas supprimer les traces ou decisions durables existantes.
-- [ ] Ne pas casser une eventuelle surface de detail explicitement protegee.
-- [ ] Ne pas afficher de contenus bruts dans les preuves de test.
-- [ ] Ne pas changer les droits admin OVH.
+- [x] Ne pas supprimer les traces ou decisions durables existantes.
+- [x] Ne pas casser une eventuelle surface de detail explicitement protegee.
+- [x] Ne pas afficher de contenus bruts dans les preuves de test.
+- [x] Ne pas changer les droits admin OVH.
 
 Cases de correction:
-- [ ] Remplacer l'apercu par defaut par des champs compacts: role, score, keep, reason_code, chars, hash court, timestamps.
-- [ ] Supprimer `candidate_content` et `reason` bruts de la reponse par defaut.
-- [ ] Si un detail brut reste necessaire, le placer derriere une route/action explicite et documentee, hors vue de synthese.
-- [ ] Mettre a jour le contrat admin si la reponse API change.
+- [x] Remplacer l'apercu par defaut par des champs compacts: role, score, keep, reason_code, chars, hash court, timestamps.
+- [x] Supprimer `candidate_content` et `reason` bruts de la reponse par defaut.
+- [x] Ne pas ajouter de route de detail brut dans ce lot; si un detail brut devient necessaire plus tard, le placer derriere une route/action explicite et documentee, hors vue de synthese.
+- [x] Mettre a jour le contrat admin si la reponse API change.
 
 Tests attendus:
 - test API dashboard: absence de `candidate_content` et `reason` bruts dans l'apercu par defaut;
@@ -212,7 +212,7 @@ Preuves runtime attendues:
 - preuve que la synthese reste exploitable sans contenu brut.
 
 Condition de cloture:
-- [ ] L'admin Memory par defaut donne une preuve arbiter exploitable sans exposer de contenu candidat brut.
+- [x] L'admin Memory par defaut donne une preuve arbiter exploitable sans exposer de contenu candidat brut.
 
 ## Lot 5 - Separer les metriques d'injection par lane
 

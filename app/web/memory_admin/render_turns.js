@@ -222,14 +222,44 @@
           value: overview.toText(item?.conversation_id) || "n/a",
           source: "durable_persistence",
         }],
-        ["candidate_content", {
-          label: "Contenu candidat",
-          value: overview.compactValue(item?.candidate_content, 320) || "",
+        ["candidate_role", {
+          label: "Role candidat",
+          value: overview.toText(item?.candidate_role) || "n/a",
           source: "durable_persistence",
         }],
-        ["reason", {
-          label: "Raison",
-          value: overview.compactValue(item?.reason, 320) || "",
+        ["candidate_score", {
+          label: "Score candidat",
+          value: overview.compactValue(item?.candidate_score) || "0",
+          source: "durable_persistence",
+        }],
+        ["candidate_content_chars", {
+          label: "Taille contenu candidat",
+          value: overview.compactValue(item?.candidate_content_chars) || "0",
+          source: "durable_persistence",
+        }],
+        ["candidate_content_sha256_12", {
+          label: "Hash contenu candidat",
+          value: overview.toText(item?.candidate_content_sha256_12) || "n/a",
+          source: "durable_persistence",
+        }],
+        ["reason_code", {
+          label: "Code raison",
+          value: overview.toText(item?.reason_code) || "n/a",
+          source: "durable_persistence",
+        }],
+        ["reason_chars", {
+          label: "Taille raison",
+          value: overview.compactValue(item?.reason_chars) || "0",
+          source: "durable_persistence",
+        }],
+        ["reason_sha256_12", {
+          label: "Hash raison",
+          value: overview.toText(item?.reason_sha256_12) || "n/a",
+          source: "durable_persistence",
+        }],
+        ["redundant_with_recent", {
+          label: "Redondant recent",
+          value: item?.redundant_with_recent ? "oui" : "non",
           source: "durable_persistence",
         }],
         ["model", {
