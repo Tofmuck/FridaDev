@@ -9,7 +9,7 @@ while implementation blocks live in dedicated pipeline-first modules.
 import logging
 import re
 import time
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from urllib.parse import urlparse
 
 import psycopg
@@ -22,6 +22,7 @@ from identity import identity_governance
 from observability import chat_turn_logger
 from observability import log_store
 from memory import memory_arbiter_audit
+from memory import hermeneutic_node_state
 from memory import hermeneutics_policy as policy
 from memory import memory_context_read
 from memory import memory_identity_dynamics
@@ -64,6 +65,8 @@ __all__ = [
     'get_hermeneutic_kpis',
     'get_arbiter_decisions',
     'record_arbiter_decisions',
+    'read_hermeneutic_node_state',
+    'write_hermeneutic_node_state',
     'set_identity_override',
     'relabel_identity',
     'record_identity_evidence',
@@ -457,6 +460,26 @@ def clear_identity_staging_buffer(
         status=status,
         reason=reason,
         auto_canonization_suspended=auto_canonization_suspended,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def read_hermeneutic_node_state(conversation_id: str) -> dict[str, Any]:
+    return hermeneutic_node_state.read_node_state(
+        conversation_id,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
+def write_hermeneutic_node_state(
+    conversation_id: str,
+    state: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return hermeneutic_node_state.write_node_state(
+        conversation_id,
+        state,
         conn_factory=_conn,
         logger=logger,
     )

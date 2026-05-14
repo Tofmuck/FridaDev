@@ -214,6 +214,167 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertNotIn('posture_answer', repr(hermeneutic_injection))
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_persists_and_rehydrates_node_state_across_two_turns(self) -> None:
+        observed_events: list[dict] = []
+        primary_calls: list[dict] = []
+        conversation = {
+            'id': 'conv-node-state-persistence-phase14',
+            'created_at': '2026-03-26T00:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': 'ok node state'}}]}
+
+        def fake_requests_post(*_args, **_kwargs):
+            return FakeResponse()
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=fake_requests_post,
+        )
+        original_primary_node = self.server.chat_service.primary_node.build_primary_node
+        original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+        original_build_prompt_messages = self.server.conv_store.build_prompt_messages
+        original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+        def fake_primary_node(**kwargs):
+            primary_calls.append(dict(kwargs))
+            call_index = len(primary_calls)
+            return {
+                'primary_verdict': {
+                    'schema_version': 'v1',
+                    'epistemic_regime': 'incertain',
+                    'proof_regime': 'source_explicite_requise',
+                    'uncertainty_posture': 'prudente',
+                    'judgment_posture': 'answer',
+                    'discursive_regime': 'simple',
+                    'resituation_level': 'none',
+                    'time_reference_mode': 'atemporal',
+                    'source_priority': [],
+                    'source_conflicts': [],
+                    'upstream_advisory': {
+                        'schema_version': 'v1',
+                        'recommended_judgment_posture': 'answer',
+                        'proposed_output_regime': 'simple',
+                        'active_signal_families': [],
+                        'active_signal_families_count': 0,
+                        'constraint_present': False,
+                    },
+                    'pipeline_directives_provisional': ['posture_answer'],
+                    'audit': {
+                        'fail_open': False,
+                        'state_used': bool(kwargs.get('existing_node_state')),
+                        'degraded_fields': [],
+                    },
+                },
+                'node_state': {
+                    'schema_version': 'v1',
+                    'conversation_id': kwargs['conversation_id'],
+                    'updated_at': f'2026-04-02T12:0{call_index}:00Z',
+                    'last_judgment_posture': 'answer',
+                    'last_answer_output_regime': {
+                        'discursive_regime': 'simple',
+                        'resituation_level': 'none',
+                        'time_reference_mode': 'atemporal',
+                    },
+                },
+            }
+
+        self.server.chat_service.primary_node.build_primary_node = fake_primary_node
+        self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+            self.server.chat_service.validation_agent.ValidationAgentResult(
+                validated_output={
+                    'schema_version': 'v1',
+                    'validation_decision': 'confirm',
+                    'final_judgment_posture': 'answer',
+                    'final_output_regime': 'simple',
+                    'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'arbiter_followed_upstream': True,
+                    'advisory_recommendations_followed': [
+                        'upstream_recommendation_posture',
+                        'upstream_output_regime_proposed',
+                    ],
+                    'advisory_recommendations_overridden': [],
+                    'applied_hard_guards': [],
+                    'arbiter_reason': 'primary confirmed',
+                },
+                status='ok',
+                model='openai/gpt-5.4-mini',
+                decision_source='primary',
+                reason_code=None,
+            )
+        )
+        self.server.conv_store.build_prompt_messages = (
+            lambda conversation_arg, *_args, **_kwargs: [
+                {'role': 'system', 'content': conversation_arg['messages'][0]['content']},
+                {'role': 'user', 'content': 'Bonjour'},
+            ]
+        )
+
+        def fake_insert(event, **_kwargs):
+            observed_events.append(event)
+            return True
+
+        self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        try:
+            first_response = self.client.post('/api/chat', json={'message': 'Bonjour'})
+            second_response = self.client.post('/api/chat', json={'message': 'Encore'})
+        finally:
+            self.server.chat_service.primary_node.build_primary_node = original_primary_node
+            self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+            self.server.conv_store.build_prompt_messages = original_build_prompt_messages
+            self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            restore()
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(len(primary_calls), 2)
+        self.assertIsNone(primary_calls[0].get('existing_node_state'))
+        self.assertEqual(
+            primary_calls[1].get('existing_node_state'),
+            {
+                'schema_version': 'v1',
+                'conversation_id': 'conv-node-state-persistence-phase14',
+                'updated_at': '2026-04-02T12:01:00Z',
+                'last_judgment_posture': 'answer',
+                'last_answer_output_regime': {
+                    'discursive_regime': 'simple',
+                    'resituation_level': 'none',
+                    'time_reference_mode': 'atemporal',
+                },
+            },
+        )
+        self.assertEqual(
+            [item['reason_code'] for item in observed_state['node_state_reads']],
+            ['not_found', 'ok'],
+        )
+        self.assertEqual(len(observed_state['node_state_writes']), 2)
+        self.assertTrue(all(item['written'] for item in observed_state['node_state_writes']))
+
+        primary_events = [item for item in observed_events if item.get('stage') == 'primary_node']
+        self.assertEqual(len(primary_events), 2)
+        first_payload = primary_events[0]['payload_json']
+        second_payload = primary_events[1]['payload_json']
+        self.assertFalse(first_payload['node_state_read_present'])
+        self.assertEqual(first_payload['node_state_read_reason_code'], 'not_found')
+        self.assertTrue(first_payload['node_state_write_attempted'])
+        self.assertTrue(first_payload['node_state_write_changed'])
+        self.assertTrue(second_payload['node_state_read_present'])
+        self.assertTrue(second_payload['node_state_read_valid'])
+        self.assertEqual(second_payload['node_state_read_reason_code'], 'ok')
+        self.assertTrue(second_payload['state_used'])
+        self.assertEqual(second_payload['node_state_schema_version'], 'v1')
+        self.assertRegex(second_payload['node_state_sha256_12'], r'^[0-9a-f]{12}$')
+        serialized = repr(primary_events)
+        self.assertNotIn('Bonjour', serialized)
+        self.assertNotIn('Encore', serialized)
+        self.assertNotIn('BACKEND SYSTEM PROMPT', serialized)
+
     def test_api_chat_injects_suspend_block_when_validation_agent_fail_opens(self) -> None:
         conversation = {
             'id': 'conv-validation-fail-open-phase14',

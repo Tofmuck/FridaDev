@@ -46,6 +46,75 @@ def _mapping(value: Any) -> dict[str, Any]:
     return {}
 
 
+def _read_hermeneutic_node_state(
+    *,
+    memory_store_module: Any,
+    conversation_id: str,
+) -> dict[str, Any]:
+    reader = getattr(memory_store_module, 'read_hermeneutic_node_state', None)
+    if not callable(reader):
+        return {
+            'state': None,
+            'present': False,
+            'valid': False,
+            'reason_code': 'reader_unavailable',
+            'schema_version': '',
+            'state_sha256_12': '',
+        }
+    try:
+        result = reader(conversation_id)
+    except Exception as exc:
+        return {
+            'state': None,
+            'present': False,
+            'valid': False,
+            'reason_code': 'read_error',
+            'schema_version': '',
+            'state_sha256_12': '',
+            'error_class': exc.__class__.__name__,
+        }
+    return _mapping(result)
+
+
+def _existing_node_state_from_read(read_result: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    payload = _mapping(read_result)
+    if not bool(payload.get('valid', False)):
+        return None
+    state = _mapping(payload.get('state'))
+    return state or None
+
+
+def _write_hermeneutic_node_state(
+    *,
+    memory_store_module: Any,
+    conversation_id: str,
+    node_state_payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    writer = getattr(memory_store_module, 'write_hermeneutic_node_state', None)
+    if not callable(writer):
+        return {
+            'attempted': False,
+            'written': False,
+            'changed': False,
+            'reason_code': 'writer_unavailable',
+            'schema_version': '',
+            'state_sha256_12': '',
+        }
+    try:
+        result = writer(conversation_id, node_state_payload)
+    except Exception as exc:
+        return {
+            'attempted': True,
+            'written': False,
+            'changed': False,
+            'reason_code': 'write_error',
+            'schema_version': '',
+            'state_sha256_12': '',
+            'error_class': exc.__class__.__name__,
+        }
+    return _mapping(result)
+
+
 def _record_identity_entries_for_mode(
     conversation_id: str,
     recent_turns: list[dict[str, Any]],
@@ -100,7 +169,8 @@ def _run_hermeneutic_node_insertion_point(
     user_turn_signals: Mapping[str, Any] | None = None,
     stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
-    requests_module: Any,
+    memory_store_module: Any = None,
+    requests_module: Any = None,
 ) -> dict[str, Any]:
     """Bounded runtime seam for primary verdict and validated downstream wiring."""
     hermeneutic_node_logger.emit_hermeneutic_node_insertion(
@@ -117,6 +187,12 @@ def _run_hermeneutic_node_insertion_point(
         stimmung_input=stimmung_input,
         web_input=web_input,
     )
+    conversation_id = str(conversation.get('id') or '')
+    node_state_read = _read_hermeneutic_node_state(
+        memory_store_module=memory_store_module,
+        conversation_id=conversation_id,
+    )
+    existing_node_state = _existing_node_state_from_read(node_state_read)
     primary_payload = primary_node.build_primary_node(
         conversation_id=conversation.get('id'),
         updated_at=now_iso,
@@ -131,9 +207,20 @@ def _run_hermeneutic_node_insertion_point(
         user_turn_signals=user_turn_signals,
         stimmung_input=stimmung_input,
         web_input=web_input,
+        existing_node_state=existing_node_state,
+    )
+    node_state_write = _write_hermeneutic_node_state(
+        memory_store_module=memory_store_module,
+        conversation_id=conversation_id,
+        node_state_payload=_mapping(primary_payload).get('node_state'),
+    )
+    node_state_persistence = hermeneutic_node_logger.build_node_state_persistence_payload(
+        read_result=node_state_read,
+        write_result=node_state_write,
     )
     hermeneutic_node_logger.emit_primary_node(
         primary_payload=primary_payload,
+        node_state_persistence=node_state_persistence,
     )
     validation_dialogue_context = _resolve_validation_dialogue_context(
         conversation=conversation,
@@ -315,6 +402,7 @@ def chat_response(
         user_turn_signals=user_turn_signals_payload,
         stimmung_input=stimmung_payload,
         web_input=web_payload,
+        memory_store_module=memory_store_module,
         requests_module=requests_module,
     )
     hermeneutic_node_runtime_payload = _mapping(hermeneutic_node_runtime)

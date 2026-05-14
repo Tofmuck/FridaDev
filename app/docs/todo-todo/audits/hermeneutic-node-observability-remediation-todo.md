@@ -308,21 +308,21 @@ Fichiers probablement touches:
 - tests DB/memory store a creer si persistence ajoutee
 
 Hors-scope:
-- [ ] Ne pas changer la doctrine de calcul du `node_state`.
-- [ ] Ne pas stocker de prompt, message, trace, summary, identite ou canonical input brut dans l'etat persiste.
-- [ ] Ne pas utiliser le `node_state` comme source souveraine contre les guards du tour courant.
-- [ ] Ne pas modifier le provider, les prompts, les seuils ou les decisions hors passage effectif de l'etat existant.
-- [ ] Ne pas backfiller une production historique dans ce lot.
+- [x] Ne pas changer la doctrine de calcul du `node_state`.
+- [x] Ne pas stocker de prompt, message, trace, summary, identite ou canonical input brut dans l'etat persiste.
+- [x] Ne pas utiliser le `node_state` comme source souveraine contre les guards du tour courant.
+- [x] Ne pas modifier le provider, les prompts, les seuils ou les decisions hors passage effectif de l'etat existant.
+- [x] Ne pas backfiller une production historique dans ce lot.
 
 Cases de correction:
-- [ ] Definir le stockage durable minimal du `node_state` par `conversation_id`, avec schema/version, timestamps et champs deja valides par `validate_node_state()`.
-- [ ] Ajouter une initialisation/migration idempotente si une table ou colonne nouvelle est necessaire.
-- [ ] Lire le `node_state` courant avant l'appel a `build_primary_node()`.
-- [ ] Passer explicitement `existing_node_state=...` a `build_primary_node()`.
-- [ ] Mettre a jour le `node_state` apres jugement hermeneutique selon la sortie runtime retenue.
-- [ ] Observer compactement la lecture/ecriture: `state_read_present`, `state_read_valid`, `state_write_attempted`, `state_write_changed`, `state_schema_version`, hash court et reason code.
-- [ ] Gerer les etats invalides en fail-open compact: ignorer l'etat invalide, logger `invalid_node_state`, continuer le tour.
-- [ ] Mettre a jour la spec de persistence si le contrat runtime est modifie.
+- [x] Definir le stockage durable minimal du `node_state` par `conversation_id`, avec schema/version, timestamps et champs deja valides par `validate_node_state()`.
+- [x] Ajouter une initialisation/migration idempotente si une table ou colonne nouvelle est necessaire.
+- [x] Lire le `node_state` courant avant l'appel a `build_primary_node()`.
+- [x] Passer explicitement `existing_node_state=...` a `build_primary_node()`.
+- [x] Mettre a jour le `node_state` apres jugement hermeneutique selon la sortie runtime retenue.
+- [x] Observer compactement la lecture/ecriture: `state_read_present`, `state_read_valid`, `state_write_attempted`, `state_write_changed`, `state_schema_version`, hash court et reason code.
+- [x] Gerer les etats invalides en fail-open compact: ignorer l'etat invalide, logger `invalid_node_state`, continuer le tour.
+- [x] Mettre a jour la spec de persistence si le contrat runtime est modifie.
 
 Tests attendus:
 - test unitaire persistence: set/get par conversation sans contenu brut;
@@ -338,7 +338,7 @@ Preuves runtime attendues:
 - preuve que le payload principal ne contient pas de dump du `node_state` au-dela des effets normaux du jugement hermeneutique.
 
 Condition de cloture:
-- [ ] Le runtime chat persiste, relit, passe et met a jour le `node_state` par conversation, avec preuve compacte et test de deux tours successifs.
+- [x] Le runtime chat persiste, relit, passe et met a jour le `node_state` par conversation, avec preuve compacte et test de deux tours successifs.
 
 ## Lot 7 - Docs stale et cloture
 

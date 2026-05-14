@@ -176,6 +176,7 @@ Minimum event-specific details:
   - compact proof of the primary hermeneutic verdict status
   - allowed fields: upstream posture/regime labels, signal-family codes, conflict counts, `fail_open`, `state_used`, degraded-field counts
   - when `fail_open=true`, allowed cause fields are `fallback_used`, `fallback_source=primary_node`, `node_stage=primary_node`, stable `reason_code` and compact `error_class`
+  - when runtime `node_state` persistence is attempted, allowed compact fields are `node_state_read_present`, `node_state_read_valid`, `node_state_read_reason_code`, `node_state_write_attempted`, `node_state_write_succeeded`, `node_state_write_changed`, `node_state_write_reason_code`, `node_state_schema_version`, and `node_state_sha256_12`
   - forbidden: exception message, stack trace, prompt, messages, identity, memory, traces, summaries, canonical input dumps
 
 - `prompt_prepared`

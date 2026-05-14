@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import copy
+import hashlib
+import json
 from typing import Any
 
 from admin import runtime_settings
@@ -20,7 +23,13 @@ def patch_server_chat_pipeline(
     """Patch the shared baseline /api/chat seam and return observations plus restore."""
 
     originals = []
-    observed = {'save_calls': [], 'save_new_traces_calls': []}
+    observed = {
+        'save_calls': [],
+        'save_new_traces_calls': [],
+        'node_state_reads': [],
+        'node_state_writes': [],
+    }
+    node_state_store: dict[str, dict[str, Any]] = {}
 
     def patch_attr(obj, name, value):
         originals.append((obj, name, getattr(obj, name)))
@@ -130,6 +139,56 @@ def patch_server_chat_pipeline(
         },
     )
     patch_attr(server_module.memory_store, 'get_recent_context_hints', lambda **_kwargs: [])
+
+    def _state_hash(payload: dict[str, Any] | None) -> str:
+        if not payload:
+            return ''
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+        return hashlib.sha256(serialized.encode('utf-8')).hexdigest()[:12]
+
+    def fake_read_node_state(conversation_id: str):
+        state = copy.deepcopy(node_state_store.get(str(conversation_id or '')))
+        result = {
+            'state': state,
+            'present': bool(state),
+            'valid': True,
+            'reason_code': 'ok' if state else 'not_found',
+            'schema_version': str(state.get('schema_version') or '') if state else '',
+            'state_sha256_12': _state_hash(state),
+        }
+        observed['node_state_reads'].append(dict(result, state=None))
+        return result
+
+    def fake_write_node_state(conversation_id: str, state: dict[str, Any] | None):
+        conv_id = str(conversation_id or '')
+        if not state:
+            result = {
+                'attempted': True,
+                'written': False,
+                'changed': False,
+                'reason_code': 'invalid_node_state',
+                'schema_version': '',
+                'state_sha256_12': '',
+            }
+            observed['node_state_writes'].append(dict(result))
+            return result
+        next_state = copy.deepcopy(dict(state or {}))
+        old_state = copy.deepcopy(node_state_store.get(conv_id))
+        node_state_store[conv_id] = next_state
+        changed = old_state != next_state
+        result = {
+            'attempted': True,
+            'written': True,
+            'changed': changed,
+            'reason_code': 'written' if changed else 'unchanged',
+            'schema_version': str(next_state.get('schema_version') or ''),
+            'state_sha256_12': _state_hash(next_state),
+        }
+        observed['node_state_writes'].append(dict(result))
+        return result
+
+    patch_attr(server_module.memory_store, 'read_hermeneutic_node_state', fake_read_node_state)
+    patch_attr(server_module.memory_store, 'write_hermeneutic_node_state', fake_write_node_state)
     patch_attr(server_module.admin_logs, 'log_event', lambda *args, **kwargs: None)
     patch_attr(server_module.llm, 'or_headers', lambda **_kwargs: {})
 

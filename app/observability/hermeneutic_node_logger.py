@@ -211,6 +211,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 def build_primary_node_payload(
     *,
     primary_payload: Mapping[str, Any] | None,
+    node_state_persistence: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     primary_verdict = _mapping(_mapping(primary_payload).get("primary_verdict"))
     upstream_advisory = _mapping(primary_verdict.get("upstream_advisory"))
@@ -254,19 +255,64 @@ def build_primary_node_payload(
                 "error_class": _text(audit.get("error_class")) or "unknown_error",
             }
         )
+    state_persistence = _mapping(node_state_persistence)
+    if state_persistence:
+        payload.update(
+            {
+                "node_state_read_present": bool(state_persistence.get("node_state_read_present", False)),
+                "node_state_read_valid": bool(state_persistence.get("node_state_read_valid", False)),
+                "node_state_read_reason_code": _text(state_persistence.get("node_state_read_reason_code")),
+                "node_state_write_attempted": bool(
+                    state_persistence.get("node_state_write_attempted", False)
+                ),
+                "node_state_write_succeeded": bool(
+                    state_persistence.get("node_state_write_succeeded", False)
+                ),
+                "node_state_write_changed": bool(state_persistence.get("node_state_write_changed", False)),
+                "node_state_write_reason_code": _text(state_persistence.get("node_state_write_reason_code")),
+                "node_state_schema_version": _text(state_persistence.get("node_state_schema_version")),
+                "node_state_sha256_12": _text(state_persistence.get("node_state_sha256_12")),
+            }
+        )
     return payload
 
 
 def emit_primary_node(
     *,
     primary_payload: Mapping[str, Any] | None,
+    node_state_persistence: Mapping[str, Any] | None = None,
 ) -> bool:
-    payload = build_primary_node_payload(primary_payload=primary_payload)
+    payload = build_primary_node_payload(
+        primary_payload=primary_payload,
+        node_state_persistence=node_state_persistence,
+    )
     return chat_turn_logger.emit(
         "primary_node",
         status="error" if payload["fail_open"] else "ok",
         payload=payload,
     )
+
+
+def build_node_state_persistence_payload(
+    *,
+    read_result: Mapping[str, Any] | None,
+    write_result: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    read_payload = _mapping(read_result)
+    write_payload = _mapping(write_result)
+    schema_version = _text(write_payload.get("schema_version") or read_payload.get("schema_version"))
+    state_hash = _text(write_payload.get("state_sha256_12") or read_payload.get("state_sha256_12"))
+    return {
+        "node_state_read_present": bool(read_payload.get("present", False)),
+        "node_state_read_valid": bool(read_payload.get("valid", False)),
+        "node_state_read_reason_code": _text(read_payload.get("reason_code")) or "not_attempted",
+        "node_state_write_attempted": bool(write_payload.get("attempted", False)),
+        "node_state_write_succeeded": bool(write_payload.get("written", False)),
+        "node_state_write_changed": bool(write_payload.get("changed", False)),
+        "node_state_write_reason_code": _text(write_payload.get("reason_code")) or "not_attempted",
+        "node_state_schema_version": schema_version,
+        "node_state_sha256_12": state_hash,
+    }
 
 
 def build_validation_agent_payload(

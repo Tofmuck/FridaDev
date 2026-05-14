@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from memory import hermeneutic_node_state
 from memory import memory_lexical_sql
 
 
@@ -333,6 +334,7 @@ def init_db(
                     ON identity_mutable_audit (created_ts DESC);
                     '''
                 )
+                hermeneutic_node_state.ensure_table(cur)
                 cur.execute(
                     '''
                     CREATE INDEX IF NOT EXISTS identities_subject_weight_idx

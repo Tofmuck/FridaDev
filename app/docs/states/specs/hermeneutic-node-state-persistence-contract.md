@@ -1,11 +1,16 @@
 # Hermeneutic Node State Persistence Contract
 
-Statut: draft normatif ouvert
-Portee: deuxieme pause normative du Lot 8 pour `state_persistence`
+Statut: contrat runtime actif
+Portee: persistance runtime compacte du `node_state` hermeneutique
+
+Note runtime 2026-05-14:
+
+- le `node_state` est persiste en PostgreSQL dans `hermeneutic_node_states`;
+- le runtime chat relit cet etat par `conversation_id` avant `build_primary_node(existing_node_state=...)`;
+- le runtime chat reecrit l'etat valide produit par le noeud apres chaque jugement;
+- l'observabilite reste compacte et ne journalise pas le contenu brut de l'etat.
 
 ## 1. Purpose
-
-Cette spec ouvre le second sous-pas normatif du Lot 8.
 
 Elle tranche:
 
@@ -15,9 +20,9 @@ Elle tranche:
 - ses regles minimales d'inertie
 - son articulation avec `output_regime`
 - sa compatibilite explicite avec la politique DB-only du repo
+- son activation runtime dans le chat
 
-Elle ne code rien.
-Elle ne ferme ni le payload unique complet du noeud, ni le fail-open primaire, ni l'auditabilite complete par tour.
+Elle ne ferme ni le payload unique complet du noeud, ni l'auditabilite complete par tour.
 
 ## 2. Repo Grounding
 
@@ -42,15 +47,13 @@ Notamment:
 - `app/docs/states/baselines/database-schema-baseline.md`
 - `app/observability/hermeneutic_node_logger.py`
 
-La cible code de cette pause normative est:
+Les cibles code sont:
 
 - `app/core/hermeneutic_node/runtime/node_state.py`
-
-Cette spec ne decide pas encore:
-
-- la table SQL finale
-- le schema physique final
-- les migrations
+- `app/memory/hermeneutic_node_state.py`
+- `app/memory/memory_store_infra.py`
+- `app/core/chat_service.py`
+- `app/observability/hermeneutic_node_logger.py`
 
 ## 3. Doctrine / Runtime / Observability Boundary
 
@@ -216,25 +219,46 @@ Ne doivent pas etre persistes dans `node_state`:
 
 ## 10. DB-only Compatibility
 
-La cible de persistance de `node_state` est compatible avec la politique DB-only du repo.
+La persistance de `node_state` est compatible avec la politique DB-only du repo.
 
-Regles minimales:
+Regles:
 
-- pas de fichier de state comme source de verite
-- `node_state` doit etre pense comme state durable metier
-- la source de verite durable cible reste PostgreSQL locale
+- pas de fichier de state comme source de verite;
+- `node_state` est un state durable technique par conversation;
+- la source de verite durable est PostgreSQL locale;
+- le bootstrap est idempotent via `CREATE TABLE IF NOT EXISTS` et `CREATE INDEX IF NOT EXISTS`;
+- la table ne contient pas de prompt, message, trace, summary, identite, canonical input ou contenu conversationnel brut.
 
-Cette spec ne fixe pas encore:
+Table runtime:
 
-- la table SQL finale
-- les colonnes finales
-- les indexes
-- la migration physique
+- `hermeneutic_node_states`
 
-Constat de baseline:
+Colonnes:
 
-- la baseline DB courante ne montre pas encore de table dediee a `node_state`
-- cette spec n'implique donc aucune modification physique immediate
+- `conversation_id TEXT PRIMARY KEY`
+- `schema_version TEXT NOT NULL DEFAULT 'v1'`
+- `state_updated_at TIMESTAMPTZ NOT NULL`
+- `last_judgment_posture TEXT NOT NULL`
+- `last_answer_output_regime_json JSONB`
+- `state_sha256_12 TEXT NOT NULL`
+- `created_ts TIMESTAMPTZ DEFAULT now()`
+- `updated_ts TIMESTAMPTZ DEFAULT now()`
+
+Contraintes:
+
+- `schema_version = 'v1'`
+- `last_judgment_posture IN ('answer', 'clarify', 'suspend')`
+
+Index:
+
+- `hermeneutic_node_states_updated_ts_idx ON hermeneutic_node_states (updated_ts DESC)`
+
+Semantique:
+
+- une ligne represente l'etat courant d'une conversation;
+- un nouvel etat remplace l'etat courant de la meme conversation;
+- l'historique complet des etats n'est pas conserve dans cette table;
+- l'audit par tour reste porte par `observability.chat_log_events`.
 
 ## 11. Link With Existing Observability
 
@@ -249,15 +273,20 @@ Regles minimales:
 - l'observabilite ne devient pas la source metier de `node_state`
 - `node_state` n'est pas le lieu du detail evenementiel par tour
 - l'audit fin par tour reste distinct du state persistant
+- l'event `primary_node` expose seulement une empreinte compacte de lecture/ecriture:
+  - presence/validite de la lecture
+  - reason code compact
+  - tentative/succes/changement de l'ecriture
+  - schema version
+  - hash court de l'etat valide
 
 ## 12. Non-goals
 
-Cette pause normative ne fixe pas encore:
+Cette spec ne fixe pas:
 
 - le payload unique complet du noeud
-- le fail-open primaire complet
 - les champs complets d'auditabilite
 - une table de snapshots hermeneutiques complets
-- la table SQL finale de `node_state`
-- les migrations SQL
-- le wiring runtime de persistance
+- une table d'historique complet du `node_state`
+- un backfill des conversations historiques
+- une source d'injection active distincte du jugement hermeneutique courant
