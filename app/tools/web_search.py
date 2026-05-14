@@ -702,7 +702,12 @@ def search(query: str, max_results: int | None = None) -> list[dict[str, str]]:
         return [{"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
                 for r in results]
     except Exception as e:
-        logger.warning("search_error query=%s err=%s", query, e)
+        logger.warning(
+            "search_error query_chars=%s query_sha256_12=%s error_class=%s reason_code=searxng_request_failed",
+            _safe_len(query),
+            _sha256_12(query),
+            type(e).__name__,
+        )
         return []
 
 

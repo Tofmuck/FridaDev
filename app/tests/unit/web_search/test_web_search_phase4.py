@@ -162,6 +162,31 @@ class WebSearchPhase4MainModelTests(unittest.TestCase):
         self.assertEqual(observed['headers']['X-Frida-Caller'], 'web_reformulation')
         self.assertEqual(observed['headers']['X-Title'], 'FridaDev/WebReformulation')
 
+    def test_search_error_log_does_not_expose_raw_query(self) -> None:
+        original_get = web_search.requests.get
+        raw_query = 'requete privee sensible'
+
+        def fail_get(*_args, **_kwargs):
+            raise RuntimeError('searxng down')
+
+        web_search.requests.get = fail_get
+        try:
+            with self.assertLogs('frida.web_search', level='WARNING') as captured:
+                results = web_search.search(raw_query)
+        finally:
+            web_search.requests.get = original_get
+
+        self.assertEqual(results, [])
+        joined = '\n'.join(captured.output)
+        self.assertIn('search_error', joined)
+        self.assertIn(f'query_chars={len(raw_query)}', joined)
+        self.assertRegex(joined, r'query_sha256_12=[0-9a-f]{12}')
+        self.assertIn('error_class=RuntimeError', joined)
+        self.assertIn('reason_code=searxng_request_failed', joined)
+        self.assertNotIn(raw_query, joined)
+        self.assertNotIn('query=', joined)
+        self.assertNotIn('err=', joined)
+
     def test_build_context_keeps_context_query_and_result_count_contract(self) -> None:
         original_reformulate = web_search.reformulate
         original_search = web_search.search
