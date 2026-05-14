@@ -1,8 +1,9 @@
 # Admin observability cockpit simplification - TODO
 
-Statut: ouvert, actif
+Statut: clos, archive le 2026-05-14
 Source: audit read-only frontend/admin observabilite du 2026-05-14
-Classement: `app/docs/todo-todo/admin/`
+Classement initial: `app/docs/todo-todo/admin/`
+Classement archive: `app/docs/todo-done/admin/`
 Portee: simplification des surfaces admin/frontend d'observabilite et consolidation cockpit operateur
 Hors-scope: patch runtime dans ce commit, nouveau dashboard immediat, migration DB, backfill, redesign graphique global, modification plateforme OVH, exposition de secrets ou contenu brut
 
@@ -29,7 +30,8 @@ Objectif produit:
 
 ## 2. Emplacement retenu
 
-Emplacement choisi: `app/docs/todo-todo/admin/admin-observability-cockpit-simplification-todo.md`.
+Emplacement initial: `app/docs/todo-todo/admin/admin-observability-cockpit-simplification-todo.md`.
+Emplacement archive: `app/docs/todo-done/admin/admin-observability-cockpit-simplification-todo.md`.
 
 Raison:
 
@@ -287,9 +289,11 @@ Cases de correction:
 - [x] Afficher les statuts RAG, Identity, Hermeneutic et Web par conversation/tour.
 - [x] Ajouter une table de tours recents avec tri/filtre minimal.
 - [x] Garder la timeline brute repliee ou secondaire, avec acces debug explicite.
-- [ ] Remplacer les filtres stage statiques si possible par une liste derivee ou documenter leur limite.
+- [x] Remplacer les filtres stage statiques si possible par une liste derivee ou documenter leur limite.
 
 Note: le filtre `stage` reste statique dans ce lot pour eviter d'ajouter une lecture metadata supplementaire; a reprendre seulement si un endpoint de stages derives est ajoute sans parser la timeline brute cote frontend.
+
+Cloture: la limite du filtre `stage` est documentee et non bloquante pour ce chantier; la derivation dynamique eventuelle releve d'un lot separe.
 
 Tests attendus:
 
@@ -502,4 +506,24 @@ Pas de rebuild runtime pour ce commit docs-only.
 - [x] Hermeneutic/Identity distinguent cockpit, diagnostic et edition.
 - [x] Les courbes ajoutees sont limitees aux signaux fiables.
 - [x] Les specs vivantes sont mises a jour seulement si un contrat runtime ou operateur change.
-- [ ] Le chantier est archive dans `app/docs/todo-done/` avec preuves compactes.
+- [x] Le chantier est archive dans `app/docs/todo-done/` avec preuves compactes.
+
+## 11. Note de cloture - 2026-05-14
+
+Chantier clos et archive apres livraison des lots 1 a 6:
+
+- content-free Memory Admin et Identity legacy durci;
+- read-model pipeline compact par tour expose;
+- `/log` enrichi avec cockpit compact, table de tours et mini-visualisations bornees;
+- Memory Admin simplifie avec lecture RAG par tour et sante embeddings compacte;
+- Hermeneutic / Identity allegees avec separation cockpit, diagnostic et edition;
+- courbes limitees aux metriques fiables de fenetre recente documentees dans `app/docs/states/specs/log-module-contract.md`.
+
+Preuves de cloture:
+
+- toutes les cases des lots 1 a 6 sont fermees;
+- les criteres de cloture du chantier complet sont fermes;
+- aucune migration, backfill, nouveau stockage, nouveau dashboard separe ou redesign global n'a ete introduit;
+- le filtre `stage` dynamique reste volontairement hors du chantier, sa limite etant documentee.
+
+Archive cible: `app/docs/todo-done/admin/admin-observability-cockpit-simplification-todo.md`.
