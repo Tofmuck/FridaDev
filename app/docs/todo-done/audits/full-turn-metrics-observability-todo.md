@@ -1,8 +1,8 @@
 # Full turn metrics observability - TODO
 
-Statut: ouvert
+Statut: clos, archive
 Source: audit industriel d'un tour complet FridaDev du 2026-05-14
-Classement: app/docs/todo-todo/audits/
+Classement: app/docs/todo-done/audits/
 Portee: preparation de metriques et agregats operateur pour un futur dashboard industriel du tour complet
 Hors-scope: refonte generale de l'observabilite, observabilite frontend/admin UI, nouveaux logs dupliques, backfill massif, exposition de contenu brut, redesign admin global
 
@@ -91,6 +91,8 @@ Le Lot 5 peut cadrer quelles metriques backend seraient utiles a un dashboard fu
 5. Ouvrir seulement ensuite le lot dashboard/courbes.
 
 Cet ordre evite de construire des courbes sur des signaux ambigus.
+
+Note de cloture 2026-05-14: les cinq lots ont ete livres, testes et documentes. Le chantier est archive; toute suite frontend/admin UI ou dashboard visuel doit etre ouverte dans un chantier dedie.
 
 ## Lot 1 - Clarifier persist_response
 
@@ -336,9 +338,9 @@ Ne pas prolonger ce TODO pour:
 
 ## 9. Notes de prudence
 
-- [ ] Avant chaque lot, verifier si un event existant suffit.
-- [ ] Avant toute nouvelle UI, verifier si `/log`, `/memory-admin` ou `/hermeneutic-admin` peut porter la lecture sans duplication.
-- [ ] Toute aggregation doit etre content-free par defaut.
-- [ ] Les logs historiques ne doivent pas etre reecrits sans decision separee.
-- [ ] Un graphe joli mais base sur une semantique ambigue doit rester bloque.
-- [ ] Ne pas traiter les bugs de rendu frontend/admin UI dans ce TODO.
+- [x] Avant chaque lot, verifier si un event existant suffit.
+- [x] Avant toute nouvelle UI, verifier si `/log`, `/memory-admin` ou `/hermeneutic-admin` peut porter la lecture sans duplication.
+- [x] Toute aggregation doit etre content-free par defaut.
+- [x] Les logs historiques ne doivent pas etre reecrits sans decision separee.
+- [x] Un graphe joli mais base sur une semantique ambigue doit rester bloque.
+- [x] Ne pas traiter les bugs de rendu frontend/admin UI dans ce TODO.
