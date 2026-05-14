@@ -11,6 +11,7 @@ import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
 from observability.full_turn_metrics_snapshot import build_full_turn_metrics_snapshot
+from observability.turn_pipeline_read_model import build_turn_pipeline_item
 from observability.turn_observability_checklist import build_turn_observability_checklist
 
 logger = logging.getLogger('frida.log_store')
@@ -568,6 +569,167 @@ def read_turn_observability_checklist(
         'events_truncated': _to_int(events_result.get('total')) > _to_int(events_result.get('count')),
     }
     return checklist
+
+
+def read_chat_turn_pipeline(
+    *,
+    conversation_id: str | None = None,
+    turn_id: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    ts_from: str | None = None,
+    ts_to: str | None = None,
+    conn_factory: Callable[[], Any] = _conn,
+    logger_instance: Any = logger,
+) -> dict[str, Any]:
+    """Read compact content-free cockpit rows grouped by chat turn."""
+    limit_i = max(1, min(int(limit), 100))
+    offset_i = max(0, int(offset))
+    conversation_id_s = str(conversation_id or '').strip() or None
+    turn_id_s = str(turn_id or '').strip() or None
+    ts_from_s = _validate_iso8601_filter(ts_from, field_name='ts_from')
+    ts_to_s = _validate_iso8601_filter(ts_to, field_name='ts_to')
+
+    where_clauses: list[str] = []
+    where_params: list[Any] = []
+    if conversation_id_s:
+        where_clauses.append('conversation_id = %s')
+        where_params.append(conversation_id_s)
+    if turn_id_s:
+        where_clauses.append('turn_id = %s')
+        where_params.append(turn_id_s)
+    if ts_from_s:
+        where_clauses.append('ts >= %s::timestamptz')
+        where_params.append(ts_from_s)
+    if ts_to_s:
+        where_clauses.append('ts <= %s::timestamptz')
+        where_params.append(ts_to_s)
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+
+    turn_groups: list[dict[str, Any]] = []
+    total = 0
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    SELECT COUNT(*)::int
+                    FROM (
+                        SELECT conversation_id, turn_id
+                        FROM observability.chat_log_events
+                        {where_sql}
+                        GROUP BY conversation_id, turn_id
+                    ) AS grouped_turns
+                    ''',
+                    tuple(where_params),
+                )
+                total = int((cur.fetchone() or [0])[0] or 0)
+
+                cur.execute(
+                    f'''
+                    SELECT
+                        conversation_id,
+                        turn_id,
+                        MIN(ts) AS first_ts,
+                        MAX(ts) AS latest_ts,
+                        COUNT(*)::int AS events_count
+                    FROM observability.chat_log_events
+                    {where_sql}
+                    GROUP BY conversation_id, turn_id
+                    ORDER BY MAX(ts) DESC, conversation_id DESC, turn_id DESC
+                    LIMIT %s OFFSET %s
+                    ''',
+                    tuple(where_params + [limit_i, offset_i]),
+                )
+                for row in cur.fetchall():
+                    first_ts = row[2]
+                    latest_ts = row[3]
+                    turn_groups.append(
+                        {
+                            'conversation_id': str(row[0] or ''),
+                            'turn_id': str(row[1] or ''),
+                            'first_ts': _utc_iso(first_ts),
+                            'latest_ts': _utc_iso(latest_ts),
+                            'events_count': int(row[4] or 0),
+                        }
+                    )
+    except Exception as exc:
+        logger_instance.error('chat_turn_pipeline_read_failed err=%s', exc)
+        return {
+            'kind': 'chat_turn_pipeline_read_model',
+            'schema_version': '1',
+            'items': [],
+            'count': 0,
+            'total': 0,
+            'limit': limit_i,
+            'offset': offset_i,
+            'next_offset': None,
+            'filters': {
+                'conversation_id': conversation_id_s,
+                'turn_id': turn_id_s,
+                'ts_from': ts_from_s,
+                'ts_to': ts_to_s,
+            },
+            'source': {
+                'source_kind': 'chat_log_events',
+                'turns_truncated': False,
+                'read_error': True,
+            },
+            'redaction': {
+                'raw_event_payloads_included': False,
+            },
+        }
+
+    items: list[dict[str, Any]] = []
+    for group in turn_groups:
+        events_result = read_chat_log_events(
+            limit=500,
+            conversation_id=group['conversation_id'],
+            turn_id=group['turn_id'],
+            ts_from=ts_from_s,
+            ts_to=ts_to_s,
+            conn_factory=conn_factory,
+            logger_instance=logger_instance,
+        )
+        item = build_turn_pipeline_item(
+            events_result.get('items') or [],
+            events_total=_to_int(events_result.get('total')),
+            events_truncated=_to_int(events_result.get('total')) > _to_int(events_result.get('count')),
+        )
+        if not item.get('first_ts'):
+            item['first_ts'] = group['first_ts']
+        if not item.get('latest_ts'):
+            item['latest_ts'] = group['latest_ts']
+        items.append(item)
+
+    next_offset = offset_i + len(items)
+    if next_offset >= total:
+        next_offset = None
+
+    return {
+        'kind': 'chat_turn_pipeline_read_model',
+        'schema_version': '1',
+        'items': items,
+        'count': len(items),
+        'total': total,
+        'limit': limit_i,
+        'offset': offset_i,
+        'next_offset': next_offset,
+        'filters': {
+            'conversation_id': conversation_id_s,
+            'turn_id': turn_id_s,
+            'ts_from': ts_from_s,
+            'ts_to': ts_to_s,
+        },
+        'source': {
+            'source_kind': 'chat_log_events',
+            'turns_truncated': total > len(items) + offset_i,
+            'per_turn_event_limit': 500,
+        },
+        'redaction': {
+            'raw_event_payloads_included': False,
+        },
+    }
 
 
 def read_full_turn_metrics_snapshot(

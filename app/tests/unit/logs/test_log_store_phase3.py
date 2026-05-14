@@ -377,6 +377,122 @@ class LogStorePhase3Tests(unittest.TestCase):
         for forbidden_key in ('payload', 'prompt', 'messages', 'content', 'query', 'context_block'):
             self.assertNotIn(forbidden_key, self._collect_keys(metrics))
 
+    def test_build_turn_pipeline_item_complete_turn_uses_memory_chain_snapshot_content_free(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=True)
+        events.insert(
+            1,
+            self._event(
+                'web_search',
+                payload={
+                    'enabled': True,
+                    'query': 'RAW QUERY MUST NOT LEAK',
+                    'query_present': True,
+                    'query_chars': 18,
+                    'query_sha256_12': 'c' * 12,
+                    'results_count': 2,
+                    'context_injected': True,
+                    'injected_chars': 77,
+                    'read_state': 'page_read',
+                    'context_block': 'RAW WEB CONTEXT MUST NOT LEAK',
+                },
+                event_id='evt-web-search',
+            ),
+        )
+        events.insert(
+            2,
+            self._event(
+                'memory_chain_snapshot',
+                payload={
+                    'retrieval': {'status': 'ok', 'reason_code': 'observed', 'retrieved_count': 4},
+                    'basket': {'status': 'ok', 'basket_candidates_count': 3, 'deduped_retrieved_count': 1},
+                    'arbiter': {'status': 'ok', 'kept_count': 2, 'rejected_count': 1},
+                    'injection': {'injected_candidate_count': 2, 'context_hints_count': 1},
+                    'retrieved_candidates': [{'content': 'RAW MEMORY MUST NOT LEAK'}],
+                    'basket_candidates': [{'reason': 'RAW ARBITER REASON MUST NOT LEAK'}],
+                    'truncated': False,
+                },
+                event_id='evt-memory-chain-snapshot',
+            ),
+        )
+
+        item = log_store.build_turn_pipeline_item(
+            events,
+            events_total=len(events),
+            events_truncated=False,
+        )
+
+        self.assertEqual(item['kind'], 'chat_turn_pipeline_item')
+        self.assertEqual(item['classification'], 'complete')
+        self.assertEqual(item['persistence']['status'], 'saved')
+        self.assertTrue(item['providers']['main']['present'])
+        self.assertEqual(item['providers']['main']['provider_caller'], 'llm')
+        self.assertTrue(item['providers']['secondary']['stimmung']['prepared_present'])
+        self.assertEqual(item['rag']['source_kind'], 'memory_chain_snapshot')
+        self.assertEqual(item['rag']['retrieved'], 4)
+        self.assertEqual(item['rag']['basket'], 3)
+        self.assertEqual(item['rag']['kept'], 2)
+        self.assertEqual(item['rag']['injected'], 2)
+        self.assertEqual(item['identity']['status'], 'present')
+        self.assertEqual(item['identity']['chars'], 12)
+        self.assertEqual(item['hermeneutic']['status'], 'present')
+        self.assertTrue(item['hermeneutic']['node_state']['read_valid'])
+        self.assertTrue(item['web']['requested'])
+        self.assertTrue(item['web']['injected'])
+        self.assertEqual(item['web']['query_sha256_12'], 'c' * 12)
+        self.assertFalse(item['flags']['raw_event_payloads_included'])
+        self.assertFalse(item['source']['events_truncated'])
+
+        serialized = json.dumps(item, sort_keys=True)
+        for forbidden_value in (
+            'RAW QUERY MUST NOT LEAK',
+            'RAW WEB CONTEXT MUST NOT LEAK',
+            'RAW MEMORY MUST NOT LEAK',
+            'RAW ARBITER REASON MUST NOT LEAK',
+            'RAW PROMPT MUST NOT LEAK',
+            'RAW MESSAGE MUST NOT LEAK',
+        ):
+            self.assertNotIn(forbidden_value, serialized)
+        for forbidden_key in ('payload', 'prompt', 'messages', 'content', 'query', 'context_block', 'memory'):
+            self.assertNotIn(forbidden_key, self._collect_keys(item))
+
+    def test_build_turn_pipeline_item_degraded_and_legacy_without_memory_snapshot(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=False)
+        prompt_event = next(event for event in events if event['stage'] == 'prompt_prepared')
+        prompt_event['payload']['identity_prompt_injection'] = {
+            'injected': False,
+            'identity_block_present': False,
+            'identity_block_chars': 0,
+            'identity_block_sha256_12': None,
+        }
+
+        degraded = log_store.build_turn_pipeline_item(events)
+
+        self.assertEqual(degraded['classification'], 'degraded')
+        self.assertEqual(degraded['identity']['status'], 'absent')
+        self.assertEqual(degraded['rag']['source_kind'], 'prompt_prepared_legacy_fallback')
+        self.assertEqual(degraded['rag']['legacy_reason_code'], 'missing_memory_chain_snapshot')
+        self.assertEqual(degraded['checklist']['degraded_or_missing_items'][0]['reason_code'], 'identity_block_absent')
+
+        legacy = log_store.build_turn_pipeline_item(
+            [
+                self._event('turn_start', payload={'web_search_enabled': False}),
+                self._event('llm_call', payload={'response_chars': 5}),
+                self._event('turn_end', payload={'final_status': 'ok'}),
+            ],
+            events_total=3,
+            events_truncated=False,
+        )
+
+        self.assertEqual(legacy['classification'], 'legacy_incomplete')
+        self.assertEqual(legacy['providers']['main']['status'], 'missing')
+        self.assertEqual(legacy['providers']['main']['reason_code'], 'missing_main_llm_call')
+        self.assertEqual(legacy['flags']['legacy_reason_code'], 'legacy_incomplete')
+        self.assertEqual(legacy['rag']['legacy_reason_code'], 'missing_memory_chain_snapshot')
+
+        for forbidden_key in ('payload', 'prompt', 'messages', 'content', 'query', 'context_block', 'memory'):
+            self.assertNotIn(forbidden_key, self._collect_keys(degraded))
+            self.assertNotIn(forbidden_key, self._collect_keys(legacy))
+
     def test_read_full_turn_metrics_snapshot_uses_same_event_window_for_llm_metrics(self) -> None:
         observed: dict[str, Any] = {'queries': []}
 
@@ -453,6 +569,103 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(
             observed['queries'][1][1],
             ('2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z', 2),
+        )
+
+    def test_read_chat_turn_pipeline_groups_turns_and_projects_compact_rows(self) -> None:
+        observed: dict[str, Any] = {'queries': [], 'event_reads': []}
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self._step = 0
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                observed['queries'].append((query, params))
+                self._step += 1
+
+            def fetchone(self) -> tuple[int]:
+                return (2,)
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return [
+                    (
+                        'conv-pipeline',
+                        'turn-1',
+                        datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+                        datetime(2026, 5, 14, 12, 1, tzinfo=timezone.utc),
+                        11,
+                    )
+                ]
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        original_read_events = log_store.read_chat_log_events
+
+        def fake_read_chat_log_events(**kwargs):
+            observed['event_reads'].append(kwargs)
+            return {
+                'items': self._complete_turn_events(web_search_enabled=False),
+                'count': 11,
+                'total': 11,
+                'limit': 500,
+                'offset': 0,
+                'next_offset': None,
+                'filters': {},
+            }
+
+        log_store.read_chat_log_events = fake_read_chat_log_events
+        try:
+            result = log_store.read_chat_turn_pipeline(
+                conversation_id='conv-pipeline',
+                limit=1,
+                offset=0,
+                ts_from='2026-05-14T00:00:00Z',
+                ts_to='2026-05-15T00:00:00Z',
+                conn_factory=lambda: FakeConn(),
+                logger_instance=_NoopLogger(),
+            )
+        finally:
+            log_store.read_chat_log_events = original_read_events
+
+        self.assertEqual(result['kind'], 'chat_turn_pipeline_read_model')
+        self.assertEqual(result['count'], 1)
+        self.assertEqual(result['total'], 2)
+        self.assertEqual(result['next_offset'], 1)
+        self.assertEqual(result['filters']['conversation_id'], 'conv-pipeline')
+        self.assertTrue(result['source']['turns_truncated'])
+        self.assertFalse(result['redaction']['raw_event_payloads_included'])
+        self.assertEqual(result['items'][0]['classification'], 'complete')
+        self.assertEqual(result['items'][0]['persistence']['status'], 'saved')
+        self.assertEqual(observed['event_reads'][0]['limit'], 500)
+        self.assertEqual(observed['event_reads'][0]['conversation_id'], 'conv-pipeline')
+        self.assertEqual(observed['event_reads'][0]['turn_id'], 'turn-1')
+        self.assertEqual(observed['event_reads'][0]['ts_from'], '2026-05-14T00:00:00Z')
+        self.assertEqual(observed['event_reads'][0]['ts_to'], '2026-05-15T00:00:00Z')
+
+        joined_queries = '\n'.join(str(query) for query, _params in observed['queries'])
+        self.assertIn('GROUP BY conversation_id, turn_id', joined_queries)
+        self.assertIn('ORDER BY MAX(ts) DESC', joined_queries)
+        self.assertIn('LIMIT %s OFFSET %s', joined_queries)
+        self.assertEqual(
+            observed['queries'][0][1],
+            ('conv-pipeline', '2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z'),
+        )
+        self.assertEqual(
+            observed['queries'][1][1],
+            ('conv-pipeline', '2026-05-14T00:00:00Z', '2026-05-15T00:00:00Z', 1, 0),
         )
 
     def test_build_turn_observability_checklist_complete_turn_without_web(self) -> None:

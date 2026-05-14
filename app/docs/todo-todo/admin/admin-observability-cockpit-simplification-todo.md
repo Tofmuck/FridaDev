@@ -235,19 +235,19 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Definir le JSON minimal d'un tour: statut global, conversation_id, turn_id, checklist, provider principal, providers secondaires, persistence assistant finale, RAG, Identity, Hermeneutic, Web, latences, erreurs/fallbacks.
-- [ ] Reutiliser `read_turn_observability_checklist()` plutot que recalculer en frontend.
-- [ ] Reutiliser `full_turn_metrics_snapshot` pour les agregats globaux.
-- [ ] Reutiliser `memory_chain_snapshot` pour la chaine `retrieved -> basket -> kept -> injected`.
-- [ ] Marquer explicitement `complete`, `degraded`, `partial`, `legacy_incomplete` ou vocabulaire local deja stabilise.
-- [ ] Exposer les truncations et limites de lecture.
+- [x] Definir le JSON minimal d'un tour: statut global, conversation_id, turn_id, checklist, provider principal, providers secondaires, persistence assistant finale, RAG, Identity, Hermeneutic, Web, latences, erreurs/fallbacks.
+- [x] Reutiliser `read_turn_observability_checklist()` plutot que recalculer en frontend.
+- [x] Reutiliser `full_turn_metrics_snapshot` pour les agregats globaux.
+- [x] Reutiliser `memory_chain_snapshot` pour la chaine `retrieved -> basket -> kept -> injected`.
+- [x] Marquer explicitement `complete`, `degraded`, `partial`, `legacy_incomplete` ou vocabulaire local deja stabilise.
+- [x] Exposer les truncations et limites de lecture.
 
 Tests attendus:
 
-- [ ] Test read-model sur tour complet.
-- [ ] Test tour degrade ou legacy avec raison compacte.
-- [ ] Test content-free: pas de prompt, message, memory, identity ou web query brute.
-- [ ] Test sans `memory_chain_snapshot` pour compatibilite legacy.
+- [x] Test read-model sur tour complet.
+- [x] Test tour degrade ou legacy avec raison compacte.
+- [x] Test content-free: pas de prompt, message, memory, identity ou web query brute.
+- [x] Test sans `memory_chain_snapshot` pour compatibilite legacy.
 
 Preuves runtime attendues:
 
@@ -255,7 +255,7 @@ Preuves runtime attendues:
 
 Condition de cloture:
 
-- [ ] Un frontend peut afficher une ligne cockpit par tour sans relire ni interpreter toute la timeline brute.
+- [x] Un frontend peut afficher une ligne cockpit par tour sans relire ni interpreter toute la timeline brute.
 
 ## Lot 3 - Enrichir /log
 

@@ -150,6 +150,80 @@ class ServerAdminChatLogsContractTests(unittest.TestCase):
         self.assertEqual(response_ok.status_code, 200)
         self.assertTrue(response_ok.get_json()['ok'])
 
+    def test_admin_chat_log_turns_route_returns_pipeline_payload(self) -> None:
+        observed = {'kwargs': None}
+        original_read_turns = self.server.log_store.read_chat_turn_pipeline
+
+        def fake_read_chat_turn_pipeline(**kwargs):
+            observed['kwargs'] = kwargs
+            return {
+                'kind': 'chat_turn_pipeline_read_model',
+                'schema_version': '1',
+                'items': [
+                    {
+                        'kind': 'chat_turn_pipeline_item',
+                        'schema_version': '1',
+                        'conversation_id': 'conv-1',
+                        'turn_id': 'turn-1',
+                        'classification': 'complete',
+                        'score': 100,
+                        'persistence': {'status': 'saved'},
+                        'providers': {'main': {'provider_caller': 'llm', 'status': 'ok'}},
+                        'rag': {'source_kind': 'memory_chain_snapshot', 'retrieved': 2, 'injected': 1},
+                        'identity': {'status': 'present', 'chars': 12, 'sha256_12': 'a' * 12},
+                        'hermeneutic': {'status': 'present'},
+                        'web': {'requested': False, 'status': 'not_applicable'},
+                        'flags': {'raw_event_payloads_included': False, 'events_truncated': False},
+                    }
+                ],
+                'count': 1,
+                'total': 3,
+                'limit': 1,
+                'offset': 0,
+                'next_offset': 1,
+                'filters': {
+                    'conversation_id': 'conv-1',
+                    'turn_id': None,
+                    'ts_from': '2026-05-14T00:00:00Z',
+                    'ts_to': '2026-05-15T00:00:00Z',
+                },
+                'source': {'source_kind': 'chat_log_events', 'turns_truncated': True},
+                'redaction': {'raw_event_payloads_included': False},
+            }
+
+        self.server.log_store.read_chat_turn_pipeline = fake_read_chat_turn_pipeline
+        try:
+            response = self.client.get(
+                '/api/admin/logs/chat/turns'
+                '?limit=1&offset=0&conversation_id=conv-1'
+                '&ts_from=2026-05-14T00:00:00Z&ts_to=2026-05-15T00:00:00Z'
+            )
+        finally:
+            self.server.log_store.read_chat_turn_pipeline = original_read_turns
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['kind'], 'chat_turn_pipeline_read_model')
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['total'], 3)
+        self.assertEqual(data['next_offset'], 1)
+        self.assertEqual(data['items'][0]['classification'], 'complete')
+        self.assertEqual(data['items'][0]['persistence']['status'], 'saved')
+        self.assertFalse(data['items'][0]['flags']['raw_event_payloads_included'])
+        self.assertEqual(observed['kwargs']['limit'], 1)
+        self.assertEqual(observed['kwargs']['offset'], 0)
+        self.assertEqual(observed['kwargs']['conversation_id'], 'conv-1')
+        self.assertIsNone(observed['kwargs']['turn_id'])
+        self.assertEqual(observed['kwargs']['ts_from'], '2026-05-14T00:00:00Z')
+        self.assertEqual(observed['kwargs']['ts_to'], '2026-05-15T00:00:00Z')
+
+    def test_admin_chat_log_turns_route_rejects_invalid_pagination(self) -> None:
+        response = self.client.get('/api/admin/logs/chat/turns?limit=bad&offset=0')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'invalid pagination parameters'})
+
     def test_admin_chat_logs_metrics_route_returns_compact_snapshot(self) -> None:
         observed = {'kwargs': None}
         original_read_metrics = self.server.log_store.read_full_turn_metrics_snapshot

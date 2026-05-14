@@ -316,6 +316,48 @@ Forbidden output fields:
 - raw event payload copies;
 - prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, tokens, exception messages or stack traces.
 
+### `chat_turn_pipeline_read_model`
+
+Goal:
+- expose one compact operator row per `(conversation_id, turn_id)`;
+- let `/log` or another admin surface render a cockpit table without parsing the raw timeline in the browser;
+- consolidate existing event proofs rather than introduce a new storage layer or runtime event.
+
+Source:
+- existing `observability.chat_log_events`;
+- `turn_observability_checklist` classification and score;
+- `memory_chain_snapshot` when present, with a prompt fingerprint fallback for legacy turns;
+- existing stage payload fingerprints for `prompt_prepared`, `llm_call`, `persist_response`, `primary_node`, `web_search` and secondary providers.
+
+Current admin surface:
+- `GET /api/admin/logs/chat/turns`;
+- optional filters: `conversation_id`, `turn_id`, `ts_from`, `ts_to`;
+- pagination: `limit` and `offset`;
+- the read uses a bounded per-turn event window and must set explicit truncation flags when a turn exceeds that window.
+
+Minimum item groups:
+- identity of the row: `conversation_id`, `turn_id`, `first_ts`, `latest_ts`;
+- global state: checklist `classification`, score and compact missing/degraded items;
+- persistence: final assistant save present/saved/interrupted/missing;
+- provider lanes:
+  - main provider is only `llm_call.provider_caller=llm`;
+  - secondary providers stay separated: `stimmung_agent`, `validation_agent`, `web_reformulation`;
+  - legacy or missing provider callers are counted as `unknown`, never merged with the main lane;
+- RAG: `retrieved -> basket -> kept -> injected`, sourced from `memory_chain_snapshot` when available;
+- Identity: block presence, chars, short hash and selected-id count only;
+- Hermeneutic: block presence, chars, short hash and compact `primary_node.node_state_*` read/write status;
+- Web: requested/not requested, success/skipped/error, result count, injected flag/chars, query length/hash only;
+- errors/fallbacks: counts by stage/status/reason code;
+- source flags: `events_truncated`, `source_kind`, `legacy_reason_code` and `raw_event_payloads_included=false`.
+
+Allowed output fields:
+- counts, booleans, timestamps, durations, classifications, scores, stage names, provider callers, model/provider labels, compact status/reason/error codes, lengths, hashes, truncation flags and source metadata.
+
+Forbidden output fields:
+- raw event payload copies;
+- prompt, messages, content, raw identity text, memory trace/summary text, web query/result snippets, canonical input dumps, DSN, tokens, exception messages or stack traces;
+- any new dashboard-specific browser/UI telemetry.
+
 ### `full_turn_metrics_snapshot`
 
 Goal:

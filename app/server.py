@@ -893,6 +893,34 @@ def api_admin_chat_logs_metadata():
     )
 
 
+@app.get('/api/admin/logs/chat/turns')
+def api_admin_chat_log_turns():
+    raw_limit = request.args.get('limit', '50')
+    raw_offset = request.args.get('offset', '0')
+    try:
+        limit = int(raw_limit)
+        offset = int(raw_offset)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'invalid pagination parameters'}), 400
+
+    if limit <= 0 or offset < 0:
+        return jsonify({'ok': False, 'error': 'invalid pagination parameters'}), 400
+
+    try:
+        turns = log_store.read_chat_turn_pipeline(
+            limit=limit,
+            offset=offset,
+            conversation_id=request.args.get('conversation_id'),
+            turn_id=request.args.get('turn_id'),
+            ts_from=request.args.get('ts_from'),
+            ts_to=request.args.get('ts_to'),
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+    return jsonify({'ok': True, **turns})
+
+
 @app.get('/api/admin/logs/chat/metrics')
 def api_admin_chat_logs_metrics():
     raw_event_limit = request.args.get('event_limit', '2000')
