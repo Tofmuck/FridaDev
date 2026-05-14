@@ -16,7 +16,56 @@
   ];
 
   const STAGE_LABELS = Object.freeze(Object.fromEntries(STAGE_ORDER.map((stage) => [stage, stage])));
-  const FORBIDDEN_STAGE_PAYLOAD_KEYS = new Set(["prompt", "messages", "content", "user_message", "recent_window"]);
+  const FORBIDDEN_STAGE_PAYLOAD_KEYS = new Set([
+    "prompt",
+    "messages",
+    "content",
+    "user_message",
+    "recent_window",
+    "context_block",
+    "canonical_inputs",
+    "query",
+    "results",
+    "snippets",
+    "secret",
+    "token",
+    "api_key",
+    "dsn",
+    "password",
+    "authorization",
+    "headers",
+    "traceback",
+    "stack",
+    "exception",
+    "error",
+  ]);
+  const SAFE_STAGE_TEXT_KEYS = new Set([
+    "actor",
+    "canonical_basis",
+    "classification",
+    "discursive_regime",
+    "error_class",
+    "error_code",
+    "fallback_source",
+    "final_status",
+    "injection_class",
+    "judgment_posture",
+    "model",
+    "node_stage",
+    "payload_kind",
+    "persist_phase",
+    "provider",
+    "provider_caller",
+    "reason_code",
+    "read_state",
+    "role",
+    "schema_version",
+    "source",
+    "source_kind",
+    "status",
+    "technical_name",
+    "validation_error",
+  ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
 
@@ -50,14 +99,72 @@
     return compactJson(value, 1200);
   };
 
+  const isForbiddenStagePayloadKey = (key) => {
+    const normalized = toText(key).toLowerCase();
+    if (!normalized) return false;
+    if (SAFE_STAGE_TEXT_KEYS.has(normalized)) return false;
+    if (/_?(chars|count|counts|present|included|injected|enabled|configured|succeeded|attempted|valid|sha256_12)$/.test(normalized)) {
+      return false;
+    }
+    if (FORBIDDEN_STAGE_PAYLOAD_KEYS.has(normalized)) return true;
+    return /(^|_)(prompt|messages?|content|query|snippet|secret|token|password|dsn|authorization|traceback|stack|exception|canonical_inputs?)($|_)/.test(normalized);
+  };
+
+  const isSafeStageTextKey = (key) => {
+    const normalized = toText(key).toLowerCase();
+    return SAFE_STAGE_TEXT_KEYS.has(normalized)
+      || normalized.endsWith("_id")
+      || normalized.endsWith("_kind")
+      || normalized.endsWith("_code")
+      || normalized.endsWith("_class")
+      || normalized.endsWith("_status")
+      || normalized.endsWith("_sha256_12")
+      || normalized.endsWith("_ts");
+  };
+
+  const stageTextSummary = (value) => {
+    const text = toText(value);
+    return {
+      text_present: Boolean(text),
+      text_chars: text.length,
+    };
+  };
+
   const sanitizeStagePayload = (value) => {
-    if (Array.isArray(value)) return value.map((item) => sanitizeStagePayload(item));
-    if (!value || typeof value !== "object") return value;
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => !FORBIDDEN_STAGE_PAYLOAD_KEYS.has(key))
-        .map(([key, item]) => [key, sanitizeStagePayload(item)]),
-    );
+    const redaction = { count: 0 };
+    const sanitize = (item, key = "") => {
+      if (isForbiddenStagePayloadKey(key)) {
+        redaction.count += 1;
+        return undefined;
+      }
+      if (Array.isArray(item)) {
+        return item
+          .map((entry) => sanitize(entry, key))
+          .filter((entry) => entry !== undefined);
+      }
+      if (!item || typeof item !== "object") {
+        if (typeof item === "string" && !isSafeStageTextKey(key)) {
+          return stageTextSummary(item);
+        }
+        return item;
+      }
+      return Object.fromEntries(
+        Object.entries(item)
+          .map(([childKey, childValue]) => [childKey, sanitize(childValue, childKey)])
+          .filter(([, childValue]) => childValue !== undefined),
+      );
+    };
+    const sanitized = sanitize(value);
+    if (sanitized && typeof sanitized === "object" && !Array.isArray(sanitized) && redaction.count) {
+      return {
+        ...sanitized,
+        redaction: {
+          content_free: true,
+          redacted_fields_count: redaction.count,
+        },
+      };
+    }
+    return sanitized;
   };
 
   const buildModeObservationBody = (dashboard) => {
@@ -305,8 +412,13 @@
       return;
     }
 
+    let renderedStageCount = 0;
     STAGE_ORDER.forEach((stage) => {
       const stageItems = safeItems.filter((item) => toText(item?.stage) === stage);
+      if (!stageItems.length) {
+        return;
+      }
+      renderedStageCount += 1;
 
       const group = document.createElement("section");
       group.className = "admin-readonly-group";
@@ -320,33 +432,20 @@
       const meta = document.createElement("div");
       meta.className = "admin-card-meta";
       meta.appendChild(createChip(`events=${stageItems.length}`));
-      if (!stageItems.length) {
-        meta.appendChild(createChip("not_observed"));
-      } else {
-        const latest = stageItems[0];
-        const status = toText(latest?.status).toLowerCase();
-        meta.appendChild(createChip(status || "unknown", { status }));
-        const ts = toText(latest?.ts);
-        if (ts) meta.appendChild(createChip(ts));
-      }
+      const latest = stageItems[0];
+      const status = toText(latest?.status).toLowerCase();
+      meta.appendChild(createChip(status || "unknown", { status }));
+      const ts = toText(latest?.ts);
+      if (ts) meta.appendChild(createChip(ts));
       group.appendChild(head);
       group.appendChild(meta);
 
-      if (!stageItems.length) {
-        const empty = document.createElement("p");
-        empty.className = "admin-readonly-empty";
-        empty.textContent = "Aucun event pour ce stage sur le tour selectionne.";
-        group.appendChild(empty);
-        target.appendChild(group);
-        return;
-      }
-
       stageItems.forEach((item, index) => {
-        const panel = document.createElement("article");
-        panel.className = "admin-readonly-panel";
+        const panel = document.createElement("details");
+        panel.className = "admin-readonly-panel admin-disclosure";
 
-        const panelHead = document.createElement("div");
-        panelHead.className = "admin-readonly-head";
+        const panelHead = document.createElement("summary");
+        panelHead.className = "admin-disclosure-summary";
         const labelWrap = document.createElement("div");
         const kicker = document.createElement("p");
         kicker.className = "admin-kicker";
@@ -359,20 +458,26 @@
         panelHead.appendChild(createChip(toText(item?.status) || "unknown", { status: toText(item?.status).toLowerCase() }));
         panel.appendChild(panelHead);
 
+        const body = document.createElement("div");
+        body.className = "admin-disclosure-body";
         const panelMeta = document.createElement("div");
         panelMeta.className = "admin-card-meta";
         if (toText(item?.ts)) panelMeta.appendChild(createChip(toText(item.ts)));
         if (item?.duration_ms != null) panelMeta.appendChild(createChip(`duration=${item.duration_ms}ms`));
-        panel.appendChild(panelMeta);
+        body.appendChild(panelMeta);
 
         const payloadHost = document.createElement("div");
         renderStagePayload(payloadHost, stage, item?.payload);
-        panel.appendChild(payloadHost);
+        body.appendChild(payloadHost);
+        panel.appendChild(body);
         group.appendChild(panel);
       });
 
       target.appendChild(group);
     });
+    if (!renderedStageCount) {
+      renderEmpty(target, "Aucun stage critique observe sur ce tour.");
+    }
   };
 
   const renderReadonlyCollection = (target, items, options = {}) => {

@@ -381,29 +381,29 @@ Hors-scope:
 
 Cases de correction:
 
-- [ ] Replier les details runtime longs par defaut.
-- [ ] Eviter `refreshAll()` trop large lors d'une simple selection de tour.
-- [ ] Ne pas recharger identity, governance, candidates ou corrections a chaque changement de tour si ces blocs ne dependent pas du tour selectionne.
-- [ ] Renforcer la garde frontend content-free pour les payloads de stage.
-- [ ] Clarifier les zones: cockpit, diagnostic, edition.
-- [ ] Garder `/identity` comme pilotage compact et `/hermeneutic-admin` comme diagnostic detaille.
-- [ ] Eviter les sections vides visibles par defaut.
+- [x] Replier les details runtime longs par defaut.
+- [x] Eviter `refreshAll()` trop large lors d'une simple selection de tour.
+- [x] Ne pas recharger identity, governance, candidates ou corrections a chaque changement de tour si ces blocs ne dependent pas du tour selectionne.
+- [x] Renforcer la garde frontend content-free pour les payloads de stage.
+- [x] Clarifier les zones: cockpit, diagnostic, edition.
+- [x] Garder `/identity` comme pilotage compact et `/hermeneutic-admin` comme diagnostic detaille.
+- [x] Eviter les sections vides visibles par defaut.
 
 Tests attendus:
 
-- [ ] Test ou preuve JS que changement de tour ne recharge que les donnees necessaires.
-- [ ] Test renderer de payload stage avec cles sensibles ou inconnues.
-- [ ] Test empty/debug accordion.
-- [ ] Test non-regression des formulaires d'edition canonique identity.
+- [x] Test ou preuve JS que changement de tour ne recharge que les donnees necessaires.
+- [x] Test renderer de payload stage avec cles sensibles ou inconnues.
+- [x] Test empty/debug accordion.
+- [x] Test non-regression des formulaires d'edition canonique identity.
 
 Preuves runtime attendues:
 
-- appels reseau ou logs frontend compacts montrant un rechargement cible;
-- aucune valeur identity brute dans les preuves.
+- [x] appels reseau ou logs frontend compacts montrant un rechargement cible;
+- [x] aucune valeur identity brute dans les preuves.
 
 Condition de cloture:
 
-- [ ] Hermeneutic/Identity restent puissants pour diagnostiquer, mais ne noient plus le cockpit dans des details runtime permanents.
+- [x] Hermeneutic/Identity restent puissants pour diagnostiquer, mais ne noient plus le cockpit dans des details runtime permanents.
 
 ## Lot 6 - Courbes utiles uniquement apres stabilisation
 

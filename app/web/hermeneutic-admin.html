@@ -68,7 +68,7 @@
     <section class="admin-section-block" aria-labelledby="hermeneutic-dashboard-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Vue d'ensemble</p>
+          <p class="admin-kicker">Vue d'ensemble / cockpit</p>
           <h2 id="hermeneutic-dashboard-title">Synthese runtime</h2>
         </div>
       </div>
@@ -79,22 +79,24 @@
 
       <div id="hermeneuticOverviewCards" class="admin-section-grid"></div>
 
-      <section class="admin-readonly-panel" aria-labelledby="hermeneutic-runtime-metrics-title">
-        <div class="admin-readonly-head">
+      <details class="admin-readonly-panel admin-disclosure" aria-labelledby="hermeneutic-runtime-metrics-title">
+        <summary class="admin-disclosure-summary">
           <div>
-            <p class="admin-kicker">Lecture seule</p>
+            <p class="admin-kicker">Diagnostic replie</p>
             <h3 id="hermeneutic-runtime-metrics-title">Runtime metrics</h3>
           </div>
           <span class="admin-readonly-badge">API existante</span>
+        </summary>
+        <div class="admin-disclosure-body">
+          <div id="hermeneuticRuntimeMetrics" class="admin-readonly-grid"></div>
         </div>
-        <div id="hermeneuticRuntimeMetrics" class="admin-readonly-grid"></div>
-      </section>
+      </details>
     </section>
 
     <section class="admin-section-block" aria-labelledby="hermeneutic-turn-inspection-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Inspection par tour</p>
+          <p class="admin-kicker">Diagnostic par tour</p>
           <h2 id="hermeneutic-turn-inspection-title">Pipeline hermeneutique</h2>
         </div>
       </div>
@@ -132,7 +134,7 @@
     <section class="admin-section-block" aria-labelledby="hermeneutic-arbiter-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Lecture seule</p>
+          <p class="admin-kicker">Diagnostic conversation</p>
           <h2 id="hermeneutic-arbiter-title">Decisions arbitre</h2>
         </div>
       </div>
@@ -148,7 +150,7 @@
     <section class="admin-section-block" aria-labelledby="hermeneutic-identity-read-model-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Lecture + edition mutable + statique</p>
+          <p class="admin-kicker">Lecture + edition mutable + statique / edition canonique</p>
           <h2 id="hermeneutic-identity-read-model-title">Vue unifiee identity</h2>
         </div>
       </div>
@@ -178,36 +180,48 @@
         <a href="/identity">Identity</a> n'en garde qu'un rappel compact pour le pilotage immediat.
       </p>
 
-      <div id="hermeneuticIdentityRuntimeMeta" class="admin-inline-meta"></div>
-      <div class="admin-readonly-stack">
-        <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-structured-title">
-          <div class="admin-readonly-head">
-            <div>
-              <p class="admin-kicker">Lecture seule</p>
-              <h3 id="hermeneutic-identity-structured-title">Projection structuree compilee pour le jugement</h3>
-            </div>
-            <span class="admin-readonly-badge">Compile</span>
+      <details id="hermeneuticIdentityRuntimeDisclosure" class="admin-readonly-panel admin-disclosure">
+        <summary class="admin-disclosure-summary">
+          <div>
+            <p class="admin-kicker">Diagnostic replie par defaut</p>
+            <h3>Ouvrir les representations runtime compilees</h3>
           </div>
-          <div id="hermeneuticIdentityStructuredRepresentation"></div>
-        </section>
+          <span class="admin-readonly-badge">Detail</span>
+        </summary>
 
-        <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-injected-title">
-          <div class="admin-readonly-head">
-            <div>
-              <p class="admin-kicker">Lecture seule</p>
-              <h3 id="hermeneutic-identity-injected-title">Forme runtime compilee injectee au modele</h3>
-            </div>
-            <span class="admin-readonly-badge">Compile</span>
+        <div class="admin-disclosure-body">
+          <div id="hermeneuticIdentityRuntimeMeta" class="admin-inline-meta"></div>
+          <div class="admin-readonly-stack">
+            <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-structured-title">
+              <div class="admin-readonly-head">
+                <div>
+                  <p class="admin-kicker">Lecture seule</p>
+                  <h3 id="hermeneutic-identity-structured-title">Projection structuree compilee pour le jugement</h3>
+                </div>
+                <span class="admin-readonly-badge">Compile</span>
+              </div>
+              <div id="hermeneuticIdentityStructuredRepresentation"></div>
+            </section>
+
+            <section class="admin-readonly-panel" aria-labelledby="hermeneutic-identity-injected-title">
+              <div class="admin-readonly-head">
+                <div>
+                  <p class="admin-kicker">Lecture seule</p>
+                  <h3 id="hermeneutic-identity-injected-title">Forme runtime compilee injectee au modele</h3>
+                </div>
+                <span class="admin-readonly-badge">Compile</span>
+              </div>
+              <div id="hermeneuticIdentityInjectedRepresentation"></div>
+            </section>
           </div>
-          <div id="hermeneuticIdentityInjectedRepresentation"></div>
-        </section>
-      </div>
+        </div>
+      </details>
     </section>
 
     <section class="admin-section-block" aria-labelledby="hermeneutic-identity-governance-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Caps, seuils, budgets</p>
+          <p class="admin-kicker">Diagnostic / edition bornee</p>
           <h2 id="hermeneutic-identity-governance-title">Gouvernance identity</h2>
         </div>
       </div>
@@ -224,7 +238,7 @@
     <section class="admin-section-block" aria-labelledby="hermeneutic-identities-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Legacy / evidence-only</p>
+          <p class="admin-kicker">Diagnostic legacy / evidence-only</p>
           <h2 id="hermeneutic-identities-title">Fragments legacy d'identite</h2>
         </div>
       </div>

@@ -99,6 +99,21 @@
     syncMeta({ mode: dashboard.mode, dashboard });
   };
 
+  const loadSelectedTurnLogs = async () => {
+    syncMeta();
+    if (!state.conversationId || !state.turnId) {
+      render.renderTurnInspection(elements.turnStages, []);
+      return;
+    }
+
+    const logs = await api.fetchTurnLogs({
+      conversationId: state.conversationId,
+      turnId: state.turnId,
+      limit: 200,
+    });
+    render.renderTurnInspection(elements.turnStages, logs.items);
+  };
+
   const loadInspection = async ({ keepTurn = true } = {}) => {
     const rootMetadata = await api.fetchLogMetadata();
     const nextConversationId = chooseConversationId(rootMetadata.conversations);
@@ -127,17 +142,7 @@
     );
     syncMeta();
 
-    if (!state.conversationId || !state.turnId) {
-      render.renderTurnInspection(elements.turnStages, []);
-      return;
-    }
-
-    const logs = await api.fetchTurnLogs({
-      conversationId: state.conversationId,
-      turnId: state.turnId,
-      limit: 200,
-    });
-    render.renderTurnInspection(elements.turnStages, logs.items);
+    await loadSelectedTurnLogs();
   };
 
   const loadArbiterDecisions = async () => {
@@ -427,6 +432,24 @@
     }
   };
 
+  const refreshInspectionOnly = async ({ keepTurn = true, includeArbiter = false } = {}) => {
+    render.setStatusBanner(elements.statusBanner, "Actualisation du diagnostic de tour...", "");
+    try {
+      await loadInspection({ keepTurn });
+      if (includeArbiter) {
+        await loadArbiterDecisions();
+      }
+      render.setStatusBanner(elements.statusBanner, "Diagnostic de tour ok.", "ok");
+    } catch (error) {
+      syncMeta();
+      render.setStatusBanner(
+        elements.statusBanner,
+        `Diagnostic de tour indisponible: ${error?.message || error}`,
+        "error",
+      );
+    }
+  };
+
   elements.refresh.addEventListener("click", () => {
     void refreshAll();
   });
@@ -434,12 +457,21 @@
   elements.conversationId.addEventListener("change", async () => {
     state.conversationId = toText(elements.conversationId.value);
     state.turnId = "";
-    await refreshAll({ keepTurn: false });
+    await refreshInspectionOnly({ keepTurn: false, includeArbiter: true });
   });
 
   elements.turnId.addEventListener("change", () => {
     state.turnId = toText(elements.turnId.value);
-    void refreshAll();
+    void loadSelectedTurnLogs()
+      .then(() => render.setStatusBanner(elements.statusBanner, "Diagnostic de tour ok.", "ok"))
+      .catch((error) => {
+        syncMeta();
+        render.setStatusBanner(
+          elements.statusBanner,
+          `Diagnostic de tour indisponible: ${error?.message || error}`,
+          "error",
+        );
+      });
   });
 
   elements.identitySubject.addEventListener("change", () => {

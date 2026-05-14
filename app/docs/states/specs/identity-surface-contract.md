@@ -190,6 +190,8 @@ La page `/hermeneutic-admin` porte, elle, le detail complet:
 - de la projection structuree compilee pour le jugement;
 - de la forme runtime compilee injectee au modele.
 
+Depuis le Lot 5 admin observability cockpit du 2026-05-14, ce detail diagnostique doit rester explicitement accessible mais replie par defaut sur `/hermeneutic-admin`. La selection d'un tour hermeneutique ne doit pas recharger les blocs identity, governance, candidates ou corrections quand seuls les events du tour changent. Les payloads de stage rendus par le frontend doivent rester content-free: les cles sensibles ou champs texte inconnus sont omis ou compactes en compteurs, tandis que les editeurs canoniques statique/mutable conservent leur contenu explicite dans les formulaires prevus.
+
 ## Langage operateur
 
 Les titres principaux de la page doivent rester en francais clair.

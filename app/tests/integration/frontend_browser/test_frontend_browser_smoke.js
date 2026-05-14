@@ -899,6 +899,291 @@ test('memory admin recent turns keep explicit zero snapshot counts over fallback
   });
 });
 
+function hermeneuticAdminMockScript() {
+  return `
+    (() => {
+      const state = { calls: [] };
+      window.__fridaBrowserState = state;
+
+      const identityReadModel = {
+        ok: true,
+        read_model_version: "v2",
+        active_runtime: {
+          active_identity_source: "identity_mutables",
+          active_prompt_contract: "static + mutable narrative",
+          identity_input_schema_version: "v2",
+          legacy_identity_pipeline_status: "legacy_diagnostic_only",
+          used_identity_ids_count: 0,
+          identity_runtime_regime: {
+            mutable_budget: { target_chars: 3000, max_chars: 3300 },
+            staging_target_pairs: 15,
+            staging_not_injected: true,
+          },
+        },
+        identity_staging: {
+          present: false,
+          actively_injected: false,
+          buffer_pairs_count: 0,
+          buffer_target_pairs: 15,
+          current_buffer: { status: "empty", reason_code: "below_threshold" },
+          last_completed_agent: { present: false },
+          latest_agent_activity: { present: false, promotion_count: 0, open_tension_count: 0 },
+        },
+        subjects: {
+          llm: {
+            static: {
+              storage_kind: "resource_path",
+              stored: true,
+              loaded_for_runtime: true,
+              actively_injected: true,
+              content: "llm canon",
+              resource_field: "llm_identity_path",
+              resolution_kind: "absolute",
+              editable_via: "/api/admin/identity/static",
+            },
+            mutable: {
+              storage_kind: "identity_mutables",
+              stored: true,
+              loaded_for_runtime: true,
+              actively_injected: true,
+              content: "llm mutable",
+              updated_by: "identity_periodic_agent",
+              update_reason: "periodic_agent",
+            },
+            legacy_fragments: { total_count: 0, items: [] },
+            evidence: { total_count: 0, items: [] },
+            conflicts: { total_count: 0, items: [] },
+          },
+          user: {
+            static: {
+              storage_kind: "resource_path",
+              stored: true,
+              loaded_for_runtime: true,
+              actively_injected: true,
+              content: "user canon",
+              resource_field: "user_identity_path",
+              resolution_kind: "absolute",
+              editable_via: "/api/admin/identity/static",
+            },
+            mutable: {
+              storage_kind: "identity_mutables",
+              stored: false,
+              loaded_for_runtime: false,
+              actively_injected: false,
+              content: "",
+            },
+            legacy_fragments: { total_count: 0, items: [] },
+            evidence: { total_count: 0, items: [] },
+            conflicts: { total_count: 0, items: [] },
+          },
+        },
+      };
+
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+        state.calls.push({ method, path: url.pathname, search: url.search });
+
+        if (url.pathname === "/api/admin/hermeneutics/dashboard" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            mode: "enforced_all",
+            mode_observation: { current_mode_observed: true, observed_since: "2026-05-14T10:00:00Z" },
+            counters: { parse_error_count: 0 },
+            rates: { fallback_rate: 0 },
+            latency_ms: { primary_node: { p50_ms: 11, p95_ms: 19 } },
+            alerts: [],
+            runtime_metrics: { arbiter_call_count: 1 },
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat/metadata" && method === "GET") {
+          const conversationId = url.searchParams.get("conversation_id") || "";
+          return new Response(JSON.stringify({
+            ok: true,
+            selected_conversation_id: conversationId,
+            conversations: [{ conversation_id: "conv-herm", events_count: 4 }],
+            turns: conversationId
+              ? [
+                  { turn_id: "turn-1", events_count: 1 },
+                  { turn_id: "turn-2", events_count: 1 },
+                ]
+              : [],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/logs/chat" && method === "GET") {
+          const turnId = url.searchParams.get("turn_id") || "";
+          const payload = turnId === "turn-2"
+            ? { reason_code: "ok", provider_caller: "llm", response_chars: 12 }
+            : {
+                reason_code: "ok",
+                provider_caller: "llm",
+                prompt: "RAW_PROMPT_SHOULD_NOT_RENDER",
+                messages: ["RAW_MESSAGE_SHOULD_NOT_RENDER"],
+                content: "RAW_CONTENT_SHOULD_NOT_RENDER",
+                query: "RAW_QUERY_SHOULD_NOT_RENDER",
+                context_block: "RAW_CONTEXT_SHOULD_NOT_RENDER",
+                canonical_inputs: { content: "RAW_CANONICAL_SHOULD_NOT_RENDER" },
+                operator_note: "RAW_UNKNOWN_STAGE_TEXT_SHOULD_NOT_RENDER",
+                response_chars: 24,
+              };
+          return new Response(JSON.stringify({
+            ok: true,
+            items: [{
+              event_id: "evt-" + turnId,
+              conversation_id: "conv-herm",
+              turn_id: turnId,
+              stage: "primary_node",
+              status: "ok",
+              ts: "2026-05-14T10:00:00Z",
+              duration_ms: 12,
+              payload,
+            }],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/hermeneutics/arbiter-decisions" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/admin/identity/read-model" && method === "GET") {
+          return new Response(JSON.stringify(identityReadModel), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/admin/identity/runtime-representations" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            representations_version: "v2",
+            active_prompt_contract: "static + mutable narrative",
+            identity_input_schema_version: "v2",
+            same_identity_basis: true,
+            identity_staging: identityReadModel.identity_staging,
+            structured_identity: {
+              technical_name: "identity_input",
+              role: "hermeneutic_judgment",
+              present: true,
+              schema_version: "v2",
+              data: { schema_version: "v2" },
+            },
+            injected_identity_text: {
+              technical_name: "identity_block",
+              role: "final_model_system_prompt",
+              present: true,
+              content: "compiled identity",
+            },
+            used_identity_ids_count: 0,
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/identity/governance" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            governance_version: "v1",
+            editable_count: 0,
+            readonly_count: 0,
+            doctrine_locked_count: 0,
+            legacy_inactive_count: 0,
+            active_runtime_count: 0,
+            active_subpipeline_count: 0,
+            regime_section_count: 0,
+            items: [],
+            regime_sections: [],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/admin/hermeneutics/identity-candidates" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [], legacy_only: true, evidence_only: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/admin/hermeneutics/corrections-export" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error("Unexpected fetch " + method + " " + url.pathname + url.search);
+      };
+    })();
+  `;
+}
+
+test('hermeneutic admin keeps turn selection targeted and stage payloads content-free', async () => {
+  await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript: hermeneuticAdminMockScript() }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#hermeneuticAdminStatusBanner')?.textContent.includes('Lecture hermeneutique ok'));
+
+    assert.equal(await page.locator('#hermeneuticIdentityRuntimeDisclosure').evaluate((node) => node.open), false);
+    assert.ok(await page.locator('#hermeneuticTurnStages details.admin-disclosure').count() >= 1);
+
+    const firstTurnText = String(await page.locator('#hermeneuticTurnStages').textContent() || '');
+    for (const forbidden of [
+      'RAW_PROMPT_SHOULD_NOT_RENDER',
+      'RAW_MESSAGE_SHOULD_NOT_RENDER',
+      'RAW_CONTENT_SHOULD_NOT_RENDER',
+      'RAW_QUERY_SHOULD_NOT_RENDER',
+      'RAW_CONTEXT_SHOULD_NOT_RENDER',
+      'RAW_CANONICAL_SHOULD_NOT_RENDER',
+      'RAW_UNKNOWN_STAGE_TEXT_SHOULD_NOT_RENDER',
+    ]) {
+      assert.equal(firstTurnText.includes(forbidden), false, `${forbidden} should stay out of rendered stage diagnostics`);
+    }
+    assert.ok(await page.locator('#hermeneuticTurnStages [data-key="redaction"]').count() >= 1);
+    assert.ok(await page.locator('#hermeneuticTurnStages [data-key="operator_note"]').count() >= 1);
+    assert.equal(firstTurnText.includes('stimmung_agent'), false, 'absent critical stages should not render empty panels');
+
+    const initialCounts = await page.evaluate(() => {
+      const calls = window.__fridaBrowserState.calls;
+      const count = (path) => calls.filter((call) => call.method === 'GET' && call.path === path).length;
+      return {
+        readModel: count('/api/admin/identity/read-model'),
+        runtime: count('/api/admin/identity/runtime-representations'),
+        governance: count('/api/admin/identity/governance'),
+        candidates: count('/api/admin/hermeneutics/identity-candidates'),
+        corrections: count('/api/admin/hermeneutics/corrections-export'),
+        turnLogs: count('/api/admin/logs/chat'),
+      };
+    });
+
+    await page.selectOption('#hermeneuticTurnId', 'turn-2');
+    await page.waitForFunction(() =>
+      document.querySelector('#hermeneuticAdminTurnMeta')?.textContent.includes('turn-2'));
+
+    const afterCounts = await page.evaluate(() => {
+      const calls = window.__fridaBrowserState.calls;
+      const count = (path) => calls.filter((call) => call.method === 'GET' && call.path === path).length;
+      return {
+        readModel: count('/api/admin/identity/read-model'),
+        runtime: count('/api/admin/identity/runtime-representations'),
+        governance: count('/api/admin/identity/governance'),
+        candidates: count('/api/admin/hermeneutics/identity-candidates'),
+        corrections: count('/api/admin/hermeneutics/corrections-export'),
+        turnLogs: count('/api/admin/logs/chat'),
+      };
+    });
+
+    assert.equal(afterCounts.readModel, initialCounts.readModel);
+    assert.equal(afterCounts.runtime, initialCounts.runtime);
+    assert.equal(afterCounts.governance, initialCounts.governance);
+    assert.equal(afterCounts.candidates, initialCounts.candidates);
+    assert.equal(afterCounts.corrections, initialCounts.corrections);
+    assert.equal(afterCounts.turnLogs, initialCounts.turnLogs + 1);
+
+    assert.ok(await page.locator('#hermeneuticIdentityStaticEditors textarea[name="content"]').count() >= 2);
+    assert.ok(await page.locator('#hermeneuticIdentityMutableEditors textarea[name="content"]').count() >= 2);
+  });
+});
+
 async function assertTextContains(locator, expectedText) {
   const text = await locator.textContent();
   assert.match(String(text || ''), new RegExp(escapeRegExp(expectedText)));
