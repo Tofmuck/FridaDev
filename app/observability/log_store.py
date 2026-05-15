@@ -10,6 +10,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from core import runtime_db_bootstrap
+from observability import dashboard_analytics
 from observability.full_turn_metrics_snapshot import build_full_turn_metrics_snapshot
 from observability.turn_pipeline_read_model import build_turn_pipeline_item
 from observability.turn_observability_checklist import build_turn_observability_checklist
@@ -213,6 +214,7 @@ def init_log_storage(
                     ON observability.chat_log_events (status, ts DESC);
                     '''
                 )
+                dashboard_analytics.execute_dashboard_analytics_schema(cur)
             conn.commit()
         logger_instance.info('log_storage_init ok')
     except Exception as exc:

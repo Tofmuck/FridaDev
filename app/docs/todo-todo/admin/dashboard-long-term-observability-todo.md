@@ -289,27 +289,34 @@ Condition de cloture:
 
 Objectif: creer le socle analytique qui rend les fenetres 24 h / 7 j / 30 j / 90 jours fiables.
 
+Implementation livree:
+
+- module: `app/observability/dashboard_analytics.py`;
+- tables: `observability.dashboard_turn_facts`, `observability.dashboard_conversation_summaries`, `observability.dashboard_metric_buckets`, `observability.dashboard_materialization_status`;
+- materialiseur: `materialize_dashboard_analytics_window()`;
+- pas de frontend, pas d'endpoint dashboard, pas de backfill massif automatique.
+
 Cases:
 
-- [ ] Definir les facts par tour.
-- [ ] Definir les syntheses conversation.
-- [ ] Definir les buckets horaires / journaliers.
-- [ ] Definir la retention cible 90 jours.
-- [ ] Definir la granularite recente vs ancienne.
-- [ ] Definir le statut de materialisation: dernier event traite, retard, erreur, version de calcul.
-- [ ] Garder le lien vers les logs sources.
-- [ ] Ne pas stocker de contenu brut dans les agregats.
+- [x] Definir les facts par tour.
+- [x] Definir les syntheses conversation.
+- [x] Definir les buckets horaires / journaliers.
+- [x] Definir la retention cible 90 jours.
+- [x] Definir la granularite recente vs ancienne.
+- [x] Definir le statut de materialisation: dernier event traite, retard, erreur, version de calcul.
+- [x] Garder le lien vers les logs sources.
+- [x] Ne pas stocker de contenu brut dans les agregats.
 
 Tests / preuves attendues:
 
-- [ ] Tests de materialisation idempotente.
-- [ ] Tests de fenetre temporelle.
-- [ ] Tests de troncature / retard de materialisation.
-- [ ] Tests content-free stricts.
+- [x] Tests de materialisation idempotente.
+- [x] Tests de fenetre temporelle.
+- [x] Tests de troncature / retard de materialisation.
+- [x] Tests content-free stricts.
 
 Condition de cloture:
 
-- [ ] Les courbes 30 / 90 jours ne dependent plus d'un `event_limit` court.
+- [x] Les courbes 30 / 90 jours ne dependent plus d'un `event_limit` court.
 
 ### Lot 3 - Architecture modulaire des modules observables
 

@@ -306,7 +306,29 @@ Regles de lecture:
 
 ## 6. Faits et agregats a definir
 
-Ce contrat ne fixe pas le schema SQL final. Il fixe les familles de faits necessaires.
+Ce contrat fixe les familles de faits necessaires. Le Lot 2 livre un premier schema analytique persistant v1, encore sans frontend ni endpoints dashboard.
+
+Implementation v1:
+
+- module: `app/observability/dashboard_analytics.py`;
+- bootstrap DB: `log_store.init_log_storage()` cree aussi les tables analytiques;
+- materialiseur: `materialize_dashboard_analytics_window()`;
+- version de calcul: `dashboard_analytics_v1`;
+- retention cible: 90 jours;
+- granularite recente: buckets horaires pour les 30 derniers jours;
+- granularite ancienne: buckets journaliers jusqu'a 90 jours;
+- aucune dependance a `event_limit`;
+- aucun backfill massif automatique;
+- aucun contenu brut stocke dans les facts, syntheses ou buckets.
+
+Tables persistantes v1:
+
+- `observability.dashboard_turn_facts`;
+- `observability.dashboard_conversation_summaries`;
+- `observability.dashboard_metric_buckets`;
+- `observability.dashboard_materialization_status`.
+
+Ces tables sont un socle analytique, pas une nouvelle source de contenu complet. Elles gardent des liens vers les logs sources et des references content-free, mais le besoin "comprendre vraiment ce que le modele a recu" reste rattache aux futurs manifestes et artefacts gates.
 
 ### Faits par tour
 
@@ -331,6 +353,14 @@ Chaque fait par tour devra porter au minimum:
 - liens vers events sources;
 - version de calcul.
 
+Le Lot 2 persiste ces facts dans `dashboard_turn_facts` avec:
+
+- cle `(conversation_id, turn_id)`;
+- `source_event_ids`, `source_first_event_id`, `source_latest_event_id`;
+- JSON compacts par module: persistence, providers, RAG, identity, hermeneutic, web, node_state, latencies, errors, stage_counts;
+- `content_availability_json` indiquant explicitement que le contenu complet et le manifeste de prompt ne sont pas encore materialises;
+- `raw_event_payloads_included = false` impose par contrainte SQL.
+
 Pour la comprehension fidele, il devra aussi pouvoir porter ou referencer:
 
 - manifeste de composition du prompt;
@@ -353,6 +383,16 @@ Chaque synthese conversation devra porter:
 - usage web;
 - tendance recente;
 - source et version de calcul.
+
+Le Lot 2 persiste ces syntheses dans `dashboard_conversation_summaries`.
+
+Le label conversation reste content-free:
+
+- titre explicite si un futur fait fiable et autorise existe;
+- sinon date / heure lisible;
+- jamais uniquement un identifiant opaque dans les futures vues.
+
+En v1, le label est un fallback date / heure afin de ne pas inventer un titre depuis du contenu utilisateur.
 
 ### Buckets horaires / journaliers
 
@@ -379,6 +419,22 @@ Chaque bucket devra porter:
 - version de calcul;
 - statut de materialisation.
 
+Le Lot 2 persiste les buckets dans `dashboard_metric_buckets`.
+
+Modules bucketises v1:
+
+- pipeline;
+- persistence;
+- memory;
+- web;
+- providers;
+- identity;
+- hermeneutic;
+- node_state;
+- errors.
+
+Les courbes futures 24 h / 7 j / 30 j / 90 jours doivent lire ces buckets ou des agregats equivalents, pas recalculer une fenetre longue depuis `event_limit=2000`.
+
 ### Statut de materialisation
 
 Le dashboard doit exposer ou pouvoir exposer:
@@ -390,6 +446,21 @@ Le dashboard doit exposer ou pouvoir exposer:
 - version du calcul;
 - fenetre couverte;
 - indication de backfill absent ou incomplet.
+
+Le Lot 2 persiste ce statut dans `dashboard_materialization_status`:
+
+- `last_event_id`;
+- `last_event_ts`;
+- `lag_seconds`;
+- `turns_materialized_count`;
+- `conversations_materialized_count`;
+- `buckets_materialized_count`;
+- `source_events_truncated = false`;
+- `event_limit_dependency = false`;
+- code, hash court et longueur d'erreur, sans message brut;
+- `backfill_status` pour distinguer la fenetre de retention materialisee d'une fenetre custom.
+
+La presence du materialiseur ne declenche pas de backfill historique massif. Un backfill reste une action operateur explicite.
 
 ## 7. Modules observables
 

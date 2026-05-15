@@ -72,6 +72,11 @@ class LogStorePhase1Tests(unittest.TestCase):
         self.assertIn('chat_log_events_conversation_ts_idx', joined)
         self.assertIn('chat_log_events_conversation_turn_ts_idx', joined)
         self.assertIn('chat_log_events_status_ts_idx', joined)
+        self.assertIn('CREATE TABLE IF NOT EXISTS observability.dashboard_turn_facts', joined)
+        self.assertIn('CREATE TABLE IF NOT EXISTS observability.dashboard_conversation_summaries', joined)
+        self.assertIn('CREATE TABLE IF NOT EXISTS observability.dashboard_metric_buckets', joined)
+        self.assertIn('CREATE TABLE IF NOT EXISTS observability.dashboard_materialization_status', joined)
+        self.assertIn('dashboard_turn_facts_latest_ts_idx', joined)
         self.assertNotIn('REFERENCES', joined.upper())
         self.assertTrue(observed['committed'])
 
