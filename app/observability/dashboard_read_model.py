@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Sequence
+from urllib.parse import quote
 
 from observability import dashboard_analytics
 
@@ -821,9 +822,236 @@ def _translated_inspection(fact: Mapping[str, Any]) -> list[dict[str, Any]]:
                     else None
                 ),
                 'raw_content_available': False,
+                'proof_level': 'compact_summary',
+                'content_status_fr': (
+                    'Le contenu complet n est pas charge dans cette inspection; '
+                    'seuls les faits compacts materialises sont utilises.'
+                ),
             }
         )
     return modules
+
+
+def _classification_fr(value: Any) -> str:
+    labels = {
+        'complete': 'reussi',
+        'degraded': 'degrade',
+        'partial': 'partiel',
+        'legacy_incomplete': 'historique incomplet',
+    }
+    return labels.get(str(value or '').strip().lower(), 'a verifier')
+
+
+def _status_fr(value: Any) -> str:
+    labels = {
+        'ok': 'reussi',
+        'success': 'reussi',
+        'saved': 'sauvegarde',
+        'complete': 'complet',
+        'degraded': 'degrade',
+        'partial': 'partiel',
+        'legacy_incomplete': 'historique incomplet',
+        'error': 'en erreur',
+        'failed': 'en erreur',
+        'skipped': 'ignore',
+        'not_applicable': 'non utilise',
+        'missing': 'non observe',
+        'unknown': 'a verifier',
+    }
+    return labels.get(str(value or '').strip().lower(), 'a verifier')
+
+
+def _yes_no(value: Any) -> str:
+    return 'oui' if bool(value) else 'non'
+
+
+def _reason_codes_fr(errors: Mapping[str, Any]) -> str:
+    reason_counts = _mapping(errors.get('reason_code_counts'))
+    if not reason_counts:
+        return 'aucun code compact'
+    parts = [
+        f'{reason}: {_to_int(count)}'
+        for reason, count in sorted(reason_counts.items(), key=lambda item: str(item[0]))
+    ]
+    return ', '.join(parts)
+
+
+def _debug_links(fact: Mapping[str, Any]) -> list[dict[str, str]]:
+    conversation_id = quote(str(fact.get('conversation_id') or ''), safe='')
+    turn_id = quote(str(fact.get('turn_id') or ''), safe='')
+    query = f'conversation_id={conversation_id}&turn_id={turn_id}'
+    return [
+        {'label_fr': 'Logs techniques', 'href': f'/log?{query}'},
+        {'label_fr': 'Memory Admin', 'href': '/memory-admin'},
+        {'label_fr': 'Hermeneutic Admin', 'href': '/hermeneutic-admin'},
+        {'label_fr': 'Identity', 'href': '/identity'},
+    ]
+
+
+def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
+    rag = _mapping(fact.get('rag'))
+    providers = _mapping(fact.get('providers'))
+    main_provider = _mapping(providers.get('main'))
+    secondary = _mapping(providers.get('secondary'))
+    identity = _mapping(fact.get('identity'))
+    hermeneutic = _mapping(fact.get('hermeneutic'))
+    web = _mapping(fact.get('web'))
+    node_state = _mapping(fact.get('node_state'))
+    persistence = _mapping(fact.get('persistence'))
+    errors = _mapping(fact.get('errors'))
+    flags = _mapping(fact.get('flags'))
+    content_availability = _mapping(fact.get('content_availability'))
+    classification = str(fact.get('classification') or 'legacy_incomplete')
+    source_event_count = _to_int(fact.get('source_event_count'))
+
+    context_parts: list[str] = []
+    if identity.get('block_present'):
+        context_parts.append(f"un bloc identite ({_to_int(identity.get('chars'))} caracteres observes)")
+    else:
+        context_parts.append('pas de bloc identite observe')
+    if _to_int(rag.get('injected')) > 0:
+        context_parts.append(f"{_to_int(rag.get('injected'))} element(s) memoire injecte(s)")
+    else:
+        context_parts.append('aucun element memoire injecte observe')
+    if hermeneutic.get('block_present'):
+        context_parts.append('un jugement hermeneutique observe')
+    else:
+        context_parts.append('pas de jugement hermeneutique observe')
+    if web.get('injected'):
+        context_parts.append('un contexte web injecte')
+    else:
+        context_parts.append('pas de contexte web injecte observe')
+
+    embeddings_requested = _to_int(
+        rag.get('embeddings_requested')
+        or rag.get('embedding_requested_count')
+        or rag.get('embeddings_requested_count')
+    )
+    embeddings_succeeded = _to_int(
+        rag.get('embeddings_succeeded')
+        or rag.get('embedding_success_count')
+        or rag.get('embeddings_success_count')
+    )
+    if embeddings_requested or embeddings_succeeded:
+        embeddings_line = f'{embeddings_requested} embeddings demandes, {embeddings_succeeded} reussis.'
+    else:
+        embeddings_line = (
+            'Aucun compteur embeddings n est disponible dans cette synthese; '
+            'aucun vecteur ni bloc massif n est affiche.'
+        )
+
+    proof_lines = [
+        (
+            'Le tour est materialise depuis '
+            f'{source_event_count} etape(s) compacte(s); le texte exact recu par Frida n est pas affiche ici.'
+        ),
+        (
+            'Le contexte modele exact n est pas reconstructible depuis ces seuls faits compacts '
+            'quand seuls presence, counts, longueurs ou hashes sont disponibles.'
+        ),
+        (
+            'Le contenu complet reste reserve au lot suivant et n est ni precharge ni expose par cette inspection.'
+        ),
+    ]
+    if content_availability:
+        prompt_manifest_available = bool(content_availability.get('prompt_manifest_available'))
+        proof_lines.append(
+            'Manifeste de prompt disponible: '
+            f'{_yes_no(prompt_manifest_available)}.'
+        )
+    if bool(flags.get('events_truncated')):
+        proof_lines.append('La trace source du tour est signalee comme tronquee.')
+
+    sections = [
+        {
+            'key': 'received',
+            'label_fr': 'Ce que Frida a recu',
+            'items': [
+                'Une demande utilisateur est representee par ce tour.',
+                'La lecture reste traduite et sans contenu brut: le texte exact de la demande n est pas affiche.',
+            ],
+        },
+        {
+            'key': 'pipeline',
+            'label_fr': 'Parcours du tour',
+            'items': [
+                f"Etat du tour: {_classification_fr(classification)}.",
+                f"Score de completude: {_to_int(fact.get('score'))}.",
+                f"Etapes compactes observees: {source_event_count}.",
+                f"Reponse finale sauvegardee: {_yes_no(persistence.get('assistant_final_saved'))}.",
+                f"Reponse interrompue: {_yes_no(persistence.get('assistant_interrupted'))}.",
+            ],
+        },
+        {
+            'key': 'model_context',
+            'label_fr': 'Ce que le modele a recu, en lecture traduite',
+            'items': [
+                'Composition compacte observee: ' + '; '.join(context_parts) + '.',
+                f"Modele principal observe: {_yes_no(main_provider.get('present'))}; etat: {_status_fr(main_provider.get('status'))}.",
+                f"Modeles secondaires consultes: {_to_int(sum(_to_int(_mapping(item).get('llm_call_events_count')) for item in secondary.values()))}.",
+            ],
+        },
+        {
+            'key': 'modules',
+            'label_fr': 'Modules',
+            'items': [
+                (
+                    f"Memoire: {_to_int(rag.get('retrieved'))} trouve(s), "
+                    f"{_to_int(rag.get('basket'))} candidat(s), {_to_int(rag.get('kept'))} garde(s), "
+                    f"{_to_int(rag.get('rejected'))} rejete(s), {_to_int(rag.get('injected'))} injecte(s)."
+                ),
+                f"Identite: bloc present {_yes_no(identity.get('block_present'))}, etat {_status_fr(identity.get('status'))}.",
+                f"Hermeneutique: jugement present {_yes_no(hermeneutic.get('block_present'))}, fallback {_yes_no(hermeneutic.get('fallback'))}.",
+                (
+                    f"Node state: relu {_yes_no(node_state.get('read_present'))}, "
+                    f"lecture valide {_yes_no(node_state.get('read_valid'))}, "
+                    f"ecriture tentee {_yes_no(node_state.get('write_attempted'))}, "
+                    f"ecriture reussie {_yes_no(node_state.get('write_succeeded'))}."
+                ),
+                (
+                    f"Web: demande {_yes_no(web.get('requested'))}, reussi {_yes_no(web.get('success'))}, "
+                    f"injecte {_yes_no(web.get('injected'))}, resultats comptes {_to_int(web.get('results_count'))}."
+                ),
+                f"Persistence: etat {_status_fr(persistence.get('status'))}.",
+            ],
+        },
+        {
+            'key': 'problems',
+            'label_fr': 'Problemes et degradations',
+            'items': [
+                f"Erreurs compactes: {_to_int(errors.get('error_count'))}.",
+                f"Skips compacts: {_to_int(errors.get('skipped_count'))}.",
+                f"Fallbacks compacts: {_to_int(errors.get('fallback_count'))}.",
+                f"Codes raison: {_reason_codes_fr(errors)}.",
+            ],
+        },
+        {
+            'key': 'massive_data',
+            'label_fr': 'Donnees massives resumees',
+            'items': [
+                embeddings_line,
+                'Les grands blocs, vecteurs, contenus complets des modeles, textes memoire, identite et web ne sont pas dumps dans cette inspection.',
+            ],
+        },
+        {
+            'key': 'proof_limits',
+            'label_fr': 'Preuves et limites',
+            'items': proof_lines,
+        },
+    ]
+    return {
+        'kind': 'dashboard_turn_story',
+        'title_fr': 'Inspection traduite du tour',
+        'summary_fr': (
+            f"Tour {_classification_fr(classification)} avec {_to_int(errors.get('error_count'))} erreur(s) "
+            f"et {_to_int(errors.get('fallback_count'))} fallback(s) compacts."
+        ),
+        'sections': sections,
+        'debug_links': _debug_links(fact),
+        'proof_level': 'translated_compact_inspection',
+        'content_status_fr': 'Contenu complet non charge; ouverture volontaire reservee au lot suivant.',
+        'redaction': {'raw_content_included': False},
+    }
 
 
 def read_dashboard_turn_inspection(
@@ -883,6 +1111,7 @@ def read_dashboard_turn_inspection(
         'window': window,
         'item': fact,
         'modules': _translated_inspection(fact),
+        'story': _turn_story(fact),
         'source': _source_status(window, status),
         'redaction': {'raw_content_included': False},
     }

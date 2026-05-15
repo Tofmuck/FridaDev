@@ -166,12 +166,49 @@
                 <th scope="col">Web</th>
                 <th scope="col">Problemes</th>
                 <th scope="col">Derniere activite</th>
+                <th scope="col">Inspection</th>
               </tr>
             </thead>
             <tbody id="dashboardConversationsBody"></tbody>
           </table>
         </div>
       </section>
+    </section>
+
+    <section id="dashboardDrilldown" class="admin-section-block dashboard-drilldown" aria-labelledby="dashboard-drilldown-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Inspection traduite</p>
+          <h2 id="dashboard-drilldown-title">Conversation et tours</h2>
+        </div>
+        <span id="dashboardDrilldownStatus" class="admin-chip">Aucune selection</span>
+      </div>
+
+      <div id="dashboardDrilldownEmpty" class="dashboard-empty">
+        Selectionnez une conversation pour voir ses tours recents, puis ouvrez un tour pour lire son recit traduit.
+      </div>
+
+      <div id="dashboardDrilldownBody" class="dashboard-drilldown-grid" hidden>
+        <section class="dashboard-turns-panel" aria-labelledby="dashboard-turns-title">
+          <div class="dashboard-signal-head">
+            <h3 id="dashboard-turns-title">Tours de la conversation</h3>
+            <span id="dashboardTurnsCount" class="admin-chip">0 tour</span>
+          </div>
+          <p id="dashboardSelectedConversation" class="dashboard-muted"></p>
+          <div id="dashboardTurnsList" class="dashboard-turn-list"></div>
+        </section>
+
+        <section class="dashboard-inspection-panel" aria-labelledby="dashboard-inspection-title">
+          <div class="dashboard-signal-head">
+            <h3 id="dashboard-inspection-title">Recit du tour</h3>
+            <span id="dashboardInspectionStatus" class="admin-chip">Aucun tour</span>
+          </div>
+          <div id="dashboardInspectionEmpty" class="dashboard-empty">
+            Selectionnez un tour pour lire ce qui est prouve, resume ou non reconstructible.
+          </div>
+          <div id="dashboardInspectionBody" hidden></div>
+        </section>
+      </div>
     </section>
   </main>
 

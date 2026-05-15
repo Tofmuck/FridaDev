@@ -1164,6 +1164,9 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="dashboardPulseCards"',
         'id="dashboardTrendCards"',
         'id="dashboardConversationsTable"',
+        'id="dashboardDrilldown"',
+        'id="dashboardTurnsList"',
+        'id="dashboardInspectionBody"',
         'data-window="24h"',
         'data-window="7d"',
         'data-window="30d"',
@@ -1184,6 +1187,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "metric_buckets",
         "dashboard_metric_buckets.providers",
         "agregats persistants",
+        "dashboardDrilldown",
+        "dashboardInspectionBody",
     ]
     for marker in dashboard_js_markers:
         if marker not in dashboard_main_js:
@@ -1203,6 +1208,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     expected_dashboard_endpoints = {
         "/api/admin/dashboard/overview",
         "/api/admin/dashboard/conversations",
+        "/api/admin/dashboard/turns",
     }
     found_dashboard_endpoints = set(
         re.findall(r"/api/admin/dashboard/(?:overview|conversations|turns|inspection)", dashboard_main_js)

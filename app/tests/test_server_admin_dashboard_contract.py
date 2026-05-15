@@ -157,6 +157,17 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
                 'turn_id': turn_id,
                 'window': {'key': args.get('window')},
                 'item': {'conversation_id': args.get('conversation_id'), 'turn_id': turn_id, 'classification': 'complete'},
+                'story': {
+                    'kind': 'dashboard_turn_story',
+                    'title_fr': 'Inspection traduite du tour',
+                    'summary_fr': 'Tour reussi avec une lecture traduite.',
+                    'sections': [
+                        {'key': 'received', 'label_fr': 'Ce que Frida a recu', 'items': ['Lecture traduite sans contenu brut.']},
+                    ],
+                    'proof_level': 'translated_compact_inspection',
+                    'content_status_fr': 'Contenu complet non charge; ouverture volontaire reservee au lot suivant.',
+                    'redaction': {'raw_content_included': False},
+                },
                 'modules': [{'module_key': 'memory', 'label_fr': 'Memoire utilisee', 'summary_fr': 'La memoire a trouve 2 elements.', 'raw_content_available': False}],
                 'source': {'limits': {'event_limit_dependency': False}},
                 'redaction': {'raw_content_included': False},
@@ -171,6 +182,8 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertTrue(data['ok'])
+        self.assertEqual(data['story']['kind'], 'dashboard_turn_story')
+        self.assertIn('Ce que Frida a recu', data['story']['sections'][0]['label_fr'])
         self.assertEqual(data['modules'][0]['label_fr'], 'Memoire utilisee')
         self.assertFalse(data['modules'][0]['raw_content_available'])
         self.assertEqual(observed['turn_id'], 'turn-1')

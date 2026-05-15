@@ -959,6 +959,135 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
           redaction: { raw_content_included: false },
         };
       };
+      const turnsPayload = (conversationId, windowKey) => ({
+        ok: true,
+        kind: "dashboard_conversation_turns",
+        conversation_id: conversationId,
+        window: { key: windowKey },
+        items: [
+          {
+            conversation_id: conversationId,
+            turn_id: "turn-browser-1",
+            first_ts: "2026-05-15T11:50:00+00:00",
+            latest_ts: "2026-05-15T11:55:00+00:00",
+            classification: "degraded",
+            score: 72,
+            source_event_count: 8,
+            rag: { retrieved: 8, basket: 5, kept: 3, rejected: 2, injected: 2 },
+            web: { requested: true, success: true, injected: true, results_count: 4 },
+            errors: { error_count: 0, skipped_count: 0, fallback_count: 1 },
+          },
+          {
+            conversation_id: conversationId,
+            turn_id: "turn-browser-2",
+            first_ts: "2026-05-15T10:50:00+00:00",
+            latest_ts: "2026-05-15T10:55:00+00:00",
+            classification: "complete",
+            score: 100,
+            source_event_count: 7,
+            rag: { retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0 },
+            web: { requested: false, success: false, injected: false, results_count: 0 },
+            errors: { error_count: 0, skipped_count: 0, fallback_count: 0 },
+          },
+        ],
+        count: 2,
+        total: 2,
+        limit: 20,
+        offset: 0,
+        next_offset: null,
+        source: { limits: { event_limit_dependency: false } },
+        redaction: { raw_content_included: false },
+      });
+      const inspectionPayload = (conversationId, turnId, windowKey) => ({
+        ok: true,
+        kind: "dashboard_turn_inspection",
+        conversation_id: conversationId,
+        turn_id: turnId,
+        window: { key: windowKey },
+        item: {
+          conversation_id: conversationId,
+          turn_id: turnId,
+          classification: "degraded",
+          score: 72,
+          source_event_count: 8,
+          redaction: { raw_content_included: false },
+        },
+        story: {
+          kind: "dashboard_turn_story",
+          title_fr: "Inspection traduite du tour",
+          summary_fr: "Tour degrade avec 0 erreur(s) et 1 fallback(s) compacts.",
+          proof_level: "translated_compact_inspection",
+          content_status_fr: "Contenu complet non charge; ouverture volontaire reservee au lot suivant.",
+          sections: [
+            {
+              key: "received",
+              label_fr: "Ce que Frida a recu",
+              items: [
+                "Une demande utilisateur est representee par ce tour.",
+                "La lecture reste traduite et sans contenu brut: le texte exact de la demande n est pas affiche.",
+              ],
+            },
+            {
+              key: "model_context",
+              label_fr: "Ce que le modele a recu, en lecture traduite",
+              items: [
+                "Composition compacte observee: un bloc identite; 2 elements memoire injectes; un jugement hermeneutique observe; un contexte web injecte.",
+                "Le contexte modele exact n est pas reconstructible depuis ces seuls faits compacts quand seuls presence, counts, longueurs ou hashes sont disponibles.",
+              ],
+            },
+            {
+              key: "modules",
+              label_fr: "Modules",
+              items: [
+                "Memoire: 8 trouve(s), 5 candidat(s), 3 garde(s), 2 rejete(s), 2 injecte(s).",
+                "Web: demande oui, reussi oui, injecte oui, resultats comptes 4.",
+                "Persistence: etat sauvegarde.",
+              ],
+            },
+            {
+              key: "massive_data",
+              label_fr: "Donnees massives resumees",
+              items: [
+                "25 embeddings demandes, 25 reussis.",
+                "Les grands blocs, vecteurs, contenus complets des modeles, textes memoire, identite et web ne sont pas dumps dans cette inspection.",
+              ],
+            },
+            {
+              key: "proof_limits",
+              label_fr: "Preuves et limites",
+              items: [
+                "Le contenu complet reste reserve au lot suivant et n est ni precharge ni expose par cette inspection.",
+                "Manifeste de prompt disponible: non.",
+              ],
+            },
+          ],
+          debug_links: [
+            { label_fr: "Logs techniques", href: "/log?conversation_id=" + conversationId + "&turn_id=" + turnId },
+            { label_fr: "Memory Admin", href: "/memory-admin" },
+          ],
+          redaction: { raw_content_included: false },
+        },
+        modules: [
+          {
+            module_key: "memory",
+            label_fr: "Memoire utilisee",
+            summary_fr: "La memoire a trouve 8 elements, en a garde 3, et en a injecte 2.",
+            degradation_fr: null,
+            raw_content_available: false,
+            content_status_fr: "Le contenu complet n est pas charge dans cette inspection; seuls les faits compacts materialises sont utilises.",
+          },
+          {
+            module_key: "providers",
+            label_fr: "Modeles consultes",
+            summary_fr: "Le modele principal a ete consulte et son appel est reussi.",
+            degradation_fr: "Un modele secondaire a signale une erreur.",
+            raw_content_available: false,
+            content_status_fr: "Le contenu complet reste indisponible dans cette vue.",
+          },
+        ],
+        source: { limits: { event_limit_dependency: false } },
+        redaction: { raw_content_included: false },
+      });
       window.fetch = async (input, init = {}) => {
         const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
         const method = String(init.method || "GET").toUpperCase();
@@ -972,6 +1101,21 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
         }
         if (url.pathname === "/api/admin/dashboard/conversations" && method === "GET") {
           return new Response(JSON.stringify(conversationsPayload(windowKey)), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        const turnsMatch = url.pathname.match(/^\\/api\\/admin\\/dashboard\\/conversations\\/([^/]+)\\/turns$/);
+        if (turnsMatch && method === "GET") {
+          return new Response(JSON.stringify(turnsPayload(decodeURIComponent(turnsMatch[1]), windowKey)), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        const inspectionMatch = url.pathname.match(/^\\/api\\/admin\\/dashboard\\/turns\\/([^/]+)\\/inspection$/);
+        if (inspectionMatch && method === "GET") {
+          const conversationId = url.searchParams.get("conversation_id") || "conv-browser-1";
+          return new Response(JSON.stringify(inspectionPayload(conversationId, decodeURIComponent(inspectionMatch[1]), windowKey)), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -1012,6 +1156,25 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     assert.equal(visibleText.includes('provider_caller'), false);
     assert.equal(visibleText.includes('event_limit'), false);
 
+    await page.click('#dashboardConversationsBody [data-conversation-id="conv-browser-1"]');
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardTurnsList')?.textContent.includes('memoire injectee 2'));
+    await assertTextContains(page.locator('#dashboardDrilldownStatus'), 'Conversation ouverte');
+    await assertTextContains(page.locator('#dashboardSelectedConversation'), 'Thread navigateur');
+    await assertTextContains(page.locator('#dashboardTurnsList'), 'Tour du');
+    await assertTextContains(page.locator('#dashboardTurnsList'), 'memoire injectee 2');
+
+    await page.click('#dashboardTurnsList [data-turn-id="turn-browser-1"]');
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardInspectionBody')?.textContent.includes('Contenu complet non charge'));
+    await assertTextContains(page.locator('#dashboardInspectionStatus'), 'Tour ouvert');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Ce que Frida a recu');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Memoire: 8 trouve(s)');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), '25 embeddings demandes, 25 reussis');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'pas reconstructible');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Contenu complet non charge');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Lecture par module');
+
     await page.click('[data-window="30d"]');
     await page.waitForFunction(() =>
       document.querySelector('#dashboardSourceChip')?.textContent.includes('Donnees partielles'));
@@ -1021,6 +1184,8 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     const calls = await page.evaluate(() => window.__fridaBrowserState.calls);
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=24h')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations' && call.search.includes('window=24h')));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations/conv-browser-1/turns' && call.search.includes('window=24h')));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/inspection' && call.search.includes('conversation_id=conv-browser-1')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=30d')));
     assert.equal(calls.some((call) => call.path.startsWith('/api/admin/logs')), false);
 

@@ -655,6 +655,19 @@ Le premier ecran produit du dashboard utilise les endpoints dashboard analytique
 - les p50/p95 visibles au premier ecran restent des valeurs par bucket; ils ne doivent pas etre recomposes ou presentes comme p50/p95 de toute la fenetre;
 - le premier ecran ne charge pas le contenu complet et ne commence pas le drill-down conversation / tour, reserves aux lots suivants.
 
+### Convention frontend/read-model Lot 7
+
+L'inspection traduite conversation / tour est livree par les read-models dashboard, pas par une reconstruction navigateur depuis `/log`:
+
+- ouverture conversation: `/api/admin/dashboard/conversations/<conversation_id>/turns`;
+- ouverture tour: `/api/admin/dashboard/turns/<turn_id>/inspection`;
+- le frontend affiche le recit `story` fourni par le read-model et les resumes `modules`;
+- la lecture principale reste en francais produit: ce que Frida a recu, ce que le modele a recu en lecture traduite, modules, problemes, donnees massives resumees, preuves et limites;
+- le recit doit expliquer explicitement ce qui est prouve, ce qui est resume, et ce qui n'est pas reconstructible avec les seuls faits compacts;
+- les donnees massives restent des syntheses de compteurs, par exemple embeddings demandes / reussis, elements memoire trouves / gardes / injectes;
+- les liens vers `/log`, Memory Admin, Hermeneutic Admin et Identity sont des sorties de debug secondaires, jamais la lecture principale;
+- le contenu complet reste non charge et non precharge au Lot 7; l'action volontaire `Afficher le contenu complet` reste reservee au Lot 8.
+
 ## 10. Interdits
 
 Sont interdits:

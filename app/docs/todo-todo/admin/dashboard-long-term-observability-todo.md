@@ -470,24 +470,24 @@ Objectif: rendre exhaustive l'inspection sans imposer les payloads techniques.
 
 Cases:
 
-- [ ] Ajouter drill-down conversation -> tour -> inspection.
-- [ ] Expliquer ce que chaque module a fait en francais clair.
-- [ ] Expliquer ce que le modele a recu sous forme traduite et content-free par defaut.
-- [ ] Expliquer ce qui a ete cherche, garde, injecte, persiste, degrade ou echoue.
-- [ ] Resumer les donnees massives sans dump, par exemple `25 embeddings demandes, 25 reussis`.
-- [ ] Afficher les causes probables par module avant de renvoyer vers `/log`.
-- [ ] Ajouter les liens de debug vers `/log`, Memory Admin, Hermeneutic Admin ou Identity quand utile.
+- [x] Ajouter drill-down conversation -> tour -> inspection.
+- [x] Expliquer ce que chaque module a fait en francais clair.
+- [x] Expliquer ce que le modele a recu sous forme traduite et content-free par defaut.
+- [x] Expliquer ce qui a ete cherche, garde, injecte, persiste, degrade ou echoue.
+- [x] Resumer les donnees massives sans dump, par exemple `25 embeddings demandes, 25 reussis`.
+- [x] Afficher les causes probables par module avant de renvoyer vers `/log`.
+- [x] Ajouter les liens de debug vers `/log`, Memory Admin, Hermeneutic Admin ou Identity quand utile.
 
 Tests / preuves attendues:
 
-- [ ] Tests de recit de tour complet.
-- [ ] Tests tour degrade.
-- [ ] Tests module absent / not applicable.
-- [ ] Tests absence de contenu brut.
+- [x] Tests de recit de tour complet.
+- [x] Tests tour degrade.
+- [x] Tests module absent / not applicable.
+- [x] Tests absence de contenu brut.
 
 Condition de cloture:
 
-- [ ] L'operateur peut comprendre un tour sans lire une pluie de payloads techniques.
+- [x] L'operateur peut comprendre un tour sans lire une pluie de payloads techniques.
 
 ### Lot 8 - Acces volontaire au contenu complet
 

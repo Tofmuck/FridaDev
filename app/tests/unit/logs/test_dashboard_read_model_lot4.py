@@ -437,14 +437,130 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
 
         self.assertEqual(payload['kind'], 'dashboard_turn_inspection')
         self.assertEqual(payload['conversation_id'], 'conv-1')
+        story = payload['story']
+        self.assertEqual(story['kind'], 'dashboard_turn_story')
+        self.assertIn('Inspection traduite', story['title_fr'])
+        story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
+        self.assertIn('Ce que Frida a recu', story_text)
+        self.assertIn('Memoire: 4 trouve(s)', story_text)
+        self.assertIn('Le contexte modele exact n est pas reconstructible', story_text)
+        self.assertIn('Contenu complet non charge', story_text)
         summaries = [module['summary_fr'] for module in payload['modules']]
         self.assertIn('La memoire a trouve 4 elements, en a garde 2, et en a injecte 1.', summaries)
         encoded_summaries = ' '.join(summaries)
         self.assertNotIn('complete', encoded_summaries)
         self.assertNotIn(' not_applicable', encoded_summaries)
         self.assertNotIn(' ok', encoded_summaries)
+        for module in payload['modules']:
+            self.assertEqual(module['proof_level'], 'compact_summary')
+            self.assertFalse(module['raw_content_available'])
         self.assertFalse(payload['redaction']['raw_content_included'])
         self.assertFalse(payload['source']['limits']['event_limit_dependency'])
+        self._assert_content_free(payload)
+
+    def test_turn_inspection_explains_degraded_absent_modules_without_raw_content(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 5, 14, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 0, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            8,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            60,
+            1,
+            1,
+            9,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        fact_row = (
+            'conv-2',
+            'turn-2',
+            datetime(2026, 5, 15, 11, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 11, 1, tzinfo=timezone.utc),
+            'degraded',
+            42,
+            3,
+            'evt-first',
+            'evt-latest',
+            {'status': 'missing', 'assistant_final_saved': False, 'assistant_interrupted': True},
+            {'main': {'present': False, 'status': 'missing'}, 'secondary': {}},
+            {'retrieved': 0, 'basket': 0, 'kept': 0, 'rejected': 0, 'injected': 0, 'source_kind': 'legacy'},
+            {'block_present': False, 'status': 'missing'},
+            {'block_present': False, 'status': 'missing', 'fallback': True},
+            {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            {'read_present': False, 'read_valid': False, 'write_attempted': False, 'write_succeeded': False},
+            {},
+            {'error_count': 1, 'skipped_count': 2, 'fallback_count': 1, 'reason_code_counts': {'provider_missing': 1}},
+            {'turn_start': 1},
+            {'events_truncated': True},
+            {'content_comprehension_status': 'compact_only', 'prompt_manifest_available': False},
+            'dashboard_analytics_v1',
+            datetime(2026, 5, 15, 11, 2, tzinfo=timezone.utc),
+        )
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                else:
+                    self.rows = [fact_row]
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_turn_inspection(
+            'turn-2',
+            {'conversation_id': 'conv-2', 'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        story_text = json.dumps(payload['story'], ensure_ascii=False, sort_keys=True)
+        self.assertIn('Tour degrade', payload['story']['summary_fr'])
+        self.assertIn('pas de bloc identite observe', story_text)
+        self.assertIn('aucun element memoire injecte observe', story_text)
+        self.assertIn('La trace source du tour est signalee comme tronquee', story_text)
+        self.assertIn('Manifeste de prompt disponible: non', story_text)
+        self.assertIn('Aucun compteur embeddings n est disponible', story_text)
+        self.assertIn('provider_missing: 1', story_text)
+        self.assertNotIn('RAW PROMPT MUST NOT LEAK', story_text)
+        self.assertNotIn('Afficher le contenu complet', story_text)
         self._assert_content_free(payload)
 
 
