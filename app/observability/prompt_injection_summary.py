@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Mapping, Sequence
 
 from core import conversations_prompt_window
@@ -15,6 +16,13 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
     return {}
+
+
+def _sha256_12(value: Any) -> str | None:
+    text = str(value or '').strip()
+    if not text:
+        return None
+    return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
 
 
 def empty_memory_prompt_injection_summary() -> dict[str, Any]:
@@ -33,6 +41,11 @@ def empty_memory_prompt_injection_summary() -> dict[str, Any]:
         'injected_candidate_ids': [],
         'memory_context_injected': False,
         'memory_context_summary_count': 0,
+        'injected_traces_with_summary_id_count': 0,
+        'injected_traces_with_parent_summary_count': 0,
+        'parent_summaries_resolved_count': 0,
+        'parent_summaries_injected_count': 0,
+        'parent_summaries_injected': [],
         'context_hints_injected': False,
         'context_hints_injected_count': 0,
     }
@@ -49,6 +62,46 @@ def _unique_parent_summary_count(memory_traces: Sequence[Any]) -> int:
         seen_ids.add(summary_id)
         count += 1
     return count
+
+
+def _parent_summary_proofs(memory_traces: Sequence[Any]) -> dict[str, Any]:
+    traces_with_summary_id = 0
+    traces_with_parent_summary = 0
+    by_summary_id: dict[str, dict[str, Any]] = {}
+    for trace in memory_traces:
+        trace_payload = _mapping(trace)
+        parent_summary = _mapping(trace_payload.get('parent_summary'))
+        summary_id = str(trace_payload.get('summary_id') or parent_summary.get('id') or '').strip()
+        if summary_id:
+            traces_with_summary_id += 1
+        if not parent_summary:
+            continue
+        parent_id = str(parent_summary.get('id') or summary_id).strip()
+        if not parent_id:
+            continue
+        traces_with_parent_summary += 1
+        item = by_summary_id.setdefault(
+            parent_id,
+            {
+                'summary_id': parent_id,
+                'summary_id_sha256_12': _sha256_12(parent_id),
+                'start_ts': str(parent_summary.get('start_ts') or '').strip() or None,
+                'end_ts': str(parent_summary.get('end_ts') or '').strip() or None,
+                'linked_trace_count': 0,
+            },
+        )
+        item['linked_trace_count'] = int(item.get('linked_trace_count') or 0) + 1
+        if not item.get('start_ts') and parent_summary.get('start_ts'):
+            item['start_ts'] = str(parent_summary.get('start_ts') or '').strip() or None
+        if not item.get('end_ts') and parent_summary.get('end_ts'):
+            item['end_ts'] = str(parent_summary.get('end_ts') or '').strip() or None
+    parent_summaries = sorted(by_summary_id.values(), key=lambda item: str(item.get('summary_id') or ''))
+    return {
+        'injected_traces_with_summary_id_count': traces_with_summary_id,
+        'injected_traces_with_parent_summary_count': traces_with_parent_summary,
+        'parent_summaries_resolved_count': len(parent_summaries),
+        'parent_summaries_injected': parent_summaries,
+    }
 
 
 def _active_summary_count(prompt_messages: Sequence[Any]) -> int:
@@ -121,6 +174,7 @@ def build_memory_prompt_injection_summary(
     hints_seq = _sequence(context_hints)
     prompt_seq = _sequence(prompt_messages)
     active_summary_count = _active_summary_count(prompt_seq)
+    parent_summary_proofs = _parent_summary_proofs(traces_seq)
 
     for message in prompt_seq:
         payload = _mapping(message)
@@ -146,6 +200,16 @@ def build_memory_prompt_injection_summary(
         summary['memory_context_summary_count']
     )
     summary['summary_context_injected'] = bool(summary['summary_context_injected_count'])
+    summary['injected_traces_with_summary_id_count'] = int(
+        parent_summary_proofs['injected_traces_with_summary_id_count']
+    )
+    summary['injected_traces_with_parent_summary_count'] = int(
+        parent_summary_proofs['injected_traces_with_parent_summary_count']
+    )
+    summary['parent_summaries_resolved_count'] = int(parent_summary_proofs['parent_summaries_resolved_count'])
+    if summary['memory_context_injected']:
+        summary['parent_summaries_injected'] = list(parent_summary_proofs['parent_summaries_injected'])
+        summary['parent_summaries_injected_count'] = len(summary['parent_summaries_injected'])
 
     lanes = []
     if summary['trace_memory_injected']:

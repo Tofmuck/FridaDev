@@ -25,6 +25,12 @@ Note corrective post-cloture du 2026-05-15:
 - les horizons 7 j / 30 j / 90 j restent honnetement marques partiels tant qu'un backfill ou scheduler longue periode explicite ne les couvre pas;
 - aucun contenu brut n'est stocke dans les agregats par ce correctif.
 
+Note corrective post-cloture summaries du 2026-05-15:
+
+- le dashboard expose maintenant une health globale content-free de la table `summaries`;
+- l'inspection traduite distingue le resume actif de conversation des parent summaries injectes avec les traces memoire;
+- la preuve visible reste compacte: counts, `summary_id`/hash court, fenetre `start_ts -> end_ts`, aucun texte brut de summary.
+
 ## 1. Intention
 
 Ce TODO ouvre le chantier actif du futur dashboard long terme FridaDev.

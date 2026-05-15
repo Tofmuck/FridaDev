@@ -907,6 +907,25 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
             latest_bucket_p95_ms: partial ? null : 910,
             redaction: { raw_content_included: false },
           },
+          summaries_health: partial ? {
+            kind: "dashboard_summary_health",
+            status: "ok",
+            summaries_total: 0,
+            summaries_with_text: 0,
+            summaries_with_embedding: 0,
+            traces_total: 0,
+            traces_with_summary_id: 0,
+            redaction: { raw_content_included: false },
+          } : {
+            kind: "dashboard_summary_health",
+            status: "ok",
+            summaries_total: 2,
+            summaries_with_text: 2,
+            summaries_with_embedding: 2,
+            traces_total: 465,
+            traces_with_summary_id: 117,
+            redaction: { raw_content_included: false },
+          },
           source: {
             status: partial ? "partially_materialized" : "ok",
             coverage: {
@@ -1044,6 +1063,7 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
               label_fr: "Modules",
               items: [
                 "Memoire: 8 trouve(s), 5 candidat(s), 3 garde(s), 2 rejete(s), 2 injecte(s).",
+                "1 trace(s) memoire injectee(s) etaient liee(s) a un summary_id; 1 resume(s) parent(s) correspondant(s) ont ete injecte(s) avec ces traces. Fenetres: parenthash12: 2026-05-01T00:00:00+00:00 -> 2026-05-02T00:00:00+00:00, 1 trace(s) liee(s).",
                 "Web: demande oui, reussi oui, injecte oui, resultats comptes 4.",
                 "Persistence: etat sauvegarde.",
               ],
@@ -1214,6 +1234,8 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     assert.equal(await page.locator('#dashboardTrendCards svg.dashboard-sparkline').count(), 4);
     await assertTextContains(page.locator('#dashboardClassificationBars'), 'Tours reussis');
     await assertTextContains(page.locator('#dashboardMemoryBars'), 'Injectes');
+    await assertTextContains(page.locator('#dashboardSummariesBars'), 'Avec texte');
+    await assertTextContains(page.locator('#dashboardSummariesBars'), 'Traces liees');
     await assertTextContains(page.locator('#dashboardWebBars'), 'Injectee');
     await assertTextContains(page.locator('#dashboardConversationsTable'), 'Thread navigateur');
     await assertTextContains(page.locator('#dashboardConversationsTable'), 'Conversation du');
@@ -1238,6 +1260,7 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardInspectionStatus'), 'Tour ouvert');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'Ce que Frida a recu');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'Memoire: 8 trouve(s)');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'resume(s) parent(s)');
     await assertTextContains(page.locator('#dashboardInspectionBody'), '25 embeddings demandes, 25 reussis');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'pas reconstructible');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'Contenu complet non charge');

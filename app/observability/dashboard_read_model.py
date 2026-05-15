@@ -389,6 +389,60 @@ def _read_metric_buckets(cur: Any, window: Mapping[str, Any]) -> list[dict[str, 
     return [_bucket_row(row) for row in cur.fetchall()]
 
 
+def _empty_summary_health(*, status: str = 'degraded', reason_code: str = 'summary_health_unavailable') -> dict[str, Any]:
+    return {
+        'kind': 'dashboard_summary_health',
+        'status': status,
+        'reason_code': reason_code,
+        'source_kind': 'durable_persistence',
+        'summaries_total': 0,
+        'summaries_with_text': 0,
+        'summaries_with_embedding': 0,
+        'traces_total': 0,
+        'traces_with_summary_id': 0,
+        'latest_summary_end_ts': None,
+        'redaction': {'raw_content_included': False},
+    }
+
+
+def _read_summary_health(cur: Any) -> dict[str, Any]:
+    try:
+        cur.execute(
+            '''
+            SELECT
+                'dashboard_summary_health' AS kind,
+                (SELECT COUNT(*)::int FROM summaries) AS summaries_total,
+                (
+                    SELECT COUNT(*)::int
+                    FROM summaries
+                    WHERE NULLIF(btrim(content), '') IS NOT NULL
+                ) AS summaries_with_text,
+                (SELECT COUNT(*)::int FROM summaries WHERE embedding IS NOT NULL) AS summaries_with_embedding,
+                (SELECT COUNT(*)::int FROM traces) AS traces_total,
+                (SELECT COUNT(*)::int FROM traces WHERE summary_id IS NOT NULL) AS traces_with_summary_id,
+                (SELECT MAX(end_ts) FROM summaries) AS latest_summary_end_ts
+            '''
+        )
+        row = cur.fetchone()
+    except Exception:
+        return _empty_summary_health()
+    if not row or str(row[0] or '') != 'dashboard_summary_health':
+        return _empty_summary_health(reason_code='summary_health_row_missing')
+    return {
+        'kind': 'dashboard_summary_health',
+        'status': 'ok',
+        'reason_code': 'summary_health_read',
+        'source_kind': 'durable_persistence',
+        'summaries_total': _to_int(row[1]),
+        'summaries_with_text': _to_int(row[2]),
+        'summaries_with_embedding': _to_int(row[3]),
+        'traces_total': _to_int(row[4]),
+        'traces_with_summary_id': _to_int(row[5]),
+        'latest_summary_end_ts': _iso(row[6]),
+        'redaction': {'raw_content_included': False},
+    }
+
+
 def _merge_metric_value(target: dict[str, Any], key: str, value: Any) -> None:
     if key.startswith('_') or key.endswith(_NON_ADDITIVE_METRIC_SUFFIXES):
         return
@@ -507,6 +561,7 @@ def read_dashboard_overview(
             with conn.cursor() as cur:
                 status = _read_materialization_status(cur)
                 buckets = _read_metric_buckets(cur, window)
+                summary_health = _read_summary_health(cur)
     except Exception as exc:
         logger_instance.error('dashboard_overview_read_failed err=%s', exc)
         return {
@@ -526,6 +581,7 @@ def read_dashboard_overview(
             'module_totals': {},
             'metric_buckets': [],
             'latency': _provider_latency_summary([]),
+            'summaries_health': _empty_summary_health(),
             'source': _source_status(window, None, degraded_reason=exc.__class__.__name__),
             'redaction': {'raw_content_included': False},
         }
@@ -539,6 +595,7 @@ def read_dashboard_overview(
         'module_totals': module_totals,
         'metric_buckets': buckets,
         'latency': _provider_latency_summary(buckets),
+        'summaries_health': summary_health,
         'source': _source_status(window, status),
         'redaction': {'raw_content_included': False},
     }
@@ -995,6 +1052,42 @@ def _reason_codes_fr(errors: Mapping[str, Any]) -> str:
     return ', '.join(parts)
 
 
+def _summary_parent_line(rag: Mapping[str, Any]) -> str:
+    traces_with_summary_id = _to_int(rag.get('injected_traces_with_summary_id_count'))
+    parent_injected_count = _to_int(rag.get('parent_summaries_injected_count'))
+    parent_summaries = [
+        _mapping(item)
+        for item in (rag.get('parent_summaries_injected') or [])
+        if isinstance(item, Mapping)
+    ]
+    if traces_with_summary_id <= 0 and parent_injected_count <= 0:
+        return (
+            'Aucune trace memoire injectee avec summary_id parent n est prouvee dans ces faits compacts.'
+        )
+    if parent_injected_count <= 0:
+        return (
+            f'{traces_with_summary_id} trace(s) memoire injectee(s) portent un summary_id, '
+            'mais aucun resume parent injecte correspondant n est prouve dans ces faits compacts.'
+        )
+
+    windows: list[str] = []
+    for item in parent_summaries[:3]:
+        proof = str(item.get('summary_id_sha256_12') or item.get('summary_id') or 'id non materialise')
+        start_ts = _iso(item.get('start_ts')) or str(item.get('start_ts') or '').strip() or 'debut inconnu'
+        end_ts = _iso(item.get('end_ts')) or str(item.get('end_ts') or '').strip() or 'fin inconnue'
+        linked = _to_int(item.get('linked_trace_count'))
+        windows.append(f'{proof}: {start_ts} -> {end_ts}, {linked} trace(s) liee(s)')
+    suffix = ''
+    if len(parent_summaries) > 3:
+        suffix = f'; {len(parent_summaries) - 3} resume(s) parent(s) supplementaire(s) non detaille(s)'
+    detail = '; '.join(windows) if windows else 'fenetres non materialisees'
+    return (
+        f'{traces_with_summary_id} trace(s) memoire injectee(s) etaient liee(s) a un summary_id; '
+        f'{parent_injected_count} resume(s) parent(s) correspondant(s) ont ete injecte(s) avec ces traces. '
+        f'Fenetres: {detail}{suffix}.'
+    )
+
+
 def _first_present_int(mapping: Mapping[str, Any], *keys: str) -> tuple[int, bool]:
     for key in keys:
         if key in mapping:
@@ -1054,6 +1147,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     else:
         context_parts.append('etat du resume de conversation non materialise')
         summary_line = 'Etat du resume de conversation non materialise dans ces faits compacts.'
+    parent_summary_line = _summary_parent_line(rag)
     if hermeneutic.get('block_present'):
         context_parts.append('un jugement hermeneutique observe')
     else:
@@ -1145,6 +1239,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"{_to_int(rag.get('rejected'))} rejete(s), {_to_int(rag.get('injected'))} injecte(s)."
                 ),
                 summary_line,
+                parent_summary_line,
                 f"Identite: bloc present {_yes_no(identity.get('block_present'))}, etat {_status_fr(identity.get('status'))}.",
                 f"Hermeneutique: jugement present {_yes_no(hermeneutic.get('block_present'))}, fallback {_yes_no(hermeneutic.get('fallback'))}.",
                 (

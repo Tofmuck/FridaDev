@@ -28,6 +28,8 @@
     classificationBars: document.getElementById("dashboardClassificationBars"),
     memoryTotal: document.getElementById("dashboardMemoryTotal"),
     memoryBars: document.getElementById("dashboardMemoryBars"),
+    summariesTotal: document.getElementById("dashboardSummariesTotal"),
+    summariesBars: document.getElementById("dashboardSummariesBars"),
     webTotal: document.getElementById("dashboardWebTotal"),
     webBars: document.getElementById("dashboardWebBars"),
     latencyChip: document.getElementById("dashboardLatencyChip"),
@@ -505,6 +507,31 @@
     });
   };
 
+  const renderSummaryHealth = (overview) => {
+    const health = mapping(overview.summaries_health);
+    const summariesTotal = toInt(health.summaries_total);
+    const withText = toInt(health.summaries_with_text);
+    const withEmbedding = toInt(health.summaries_with_embedding);
+    const tracesTotal = toInt(health.traces_total);
+    const tracesLinked = toInt(health.traces_with_summary_id);
+    if (elements.summariesTotal) {
+      elements.summariesTotal.textContent = formatCount(summariesTotal, "resume");
+    }
+    clearNode(elements.summariesBars);
+    if (!summariesTotal && !tracesLinked) {
+      const empty = document.createElement("p");
+      empty.className = "dashboard-empty-inline";
+      empty.textContent = "Aucun resume persiste observe.";
+      elements.summariesBars?.appendChild(empty);
+      return;
+    }
+    elements.summariesBars?.append(
+      barRow({ label: "Avec texte", value: withText, total: Math.max(1, summariesTotal), stateValue: "good" }),
+      barRow({ label: "Avec embedding", value: withEmbedding, total: Math.max(1, summariesTotal), stateValue: "good" }),
+      barRow({ label: "Traces liees", value: tracesLinked, total: Math.max(1, tracesTotal) }),
+    );
+  };
+
   const renderSignals = (overview) => {
     const pulse = mapping(overview.pulse);
     const modules = mapping(overview.module_totals);
@@ -535,6 +562,7 @@
       ],
       "Aucun signal memoire observe.",
     );
+    renderSummaryHealth(overview);
 
     elements.webTotal.textContent = formatCount(web.requested_turns, "demande");
     renderBars(
@@ -1047,6 +1075,7 @@
     );
     renderBars(elements.classificationBars, [], "Aucun tour observe dans cette periode.");
     renderBars(elements.memoryBars, [], "Aucun signal memoire observe.");
+    renderSummaryHealth({});
     renderBars(elements.webBars, [], "Aucune recherche web observee.");
     elements.latencyCards.replaceChildren(
       metricCard({ label: "Moyenne fenetre", value: "Non mesure", note: "Aucun appel principal." }),

@@ -455,11 +455,42 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                 'summary_context_injected_count': 2,
                 'memory_context_injected': True,
                 'memory_context_summary_count': 1,
+                'injected_candidate_ids': ['trace-parent-1'],
                 'injection_lanes': ['trace_memory', 'summary_context'],
             }
         )
         events.insert(
             4,
+            self._event(
+                'hermeneutic_node_insertion',
+                payload={
+                    'inputs': {
+                        'memory_retrieved': {
+                            'traces': [
+                                {
+                                    'candidate_id': 'trace-parent-1',
+                                    'source_kind': 'trace',
+                                    'summary_id': 'summary-parent-1',
+                                    'content': 'RAW MEMORY MUST NOT LEAK',
+                                    'parent_summary': {
+                                        'id': 'summary-parent-1',
+                                        'start_ts': '2026-05-01T00:00:00+00:00',
+                                        'end_ts': '2026-05-02T00:00:00+00:00',
+                                        'content': 'RAW PARENT SUMMARY MUST NOT LEAK',
+                                    },
+                                }
+                            ],
+                        },
+                        'memory_arbitration': {
+                            'injected_candidate_ids': ['trace-parent-1'],
+                        },
+                    },
+                },
+                event_id='turn-dashboard:0004a:hermeneutic_node_insertion',
+            ),
+        )
+        events.insert(
+            5,
             self._event(
                 'summaries',
                 payload={
@@ -486,8 +517,17 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertTrue(rag['summary_context_injected'])
         self.assertEqual(rag['summary_context_injected_count'], 2)
         self.assertEqual(rag['memory_context_summary_count'], 1)
+        self.assertEqual(rag['injected_traces_with_summary_id_count'], 1)
+        self.assertEqual(rag['injected_traces_with_parent_summary_count'], 1)
+        self.assertEqual(rag['parent_summaries_resolved_count'], 1)
+        self.assertEqual(rag['parent_summaries_injected_count'], 1)
+        self.assertEqual(rag['parent_summaries_injected'][0]['summary_id'], 'summary-parent-1')
+        self.assertEqual(rag['parent_summaries_injected'][0]['start_ts'], '2026-05-01T00:00:00+00:00')
+        self.assertEqual(rag['parent_summaries_injected'][0]['end_ts'], '2026-05-02T00:00:00+00:00')
+        self.assertEqual(rag['parent_summaries_injected'][0]['linked_trace_count'], 1)
         serialized = json.dumps(fact, sort_keys=True)
         self.assertNotIn('RAW SUMMARY MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW PARENT SUMMARY MUST NOT LEAK', serialized)
         self.assertNotIn('content', self._collect_keys(fact))
 
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:

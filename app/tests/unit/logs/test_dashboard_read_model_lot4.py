@@ -185,6 +185,95 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self._assert_content_free(partial)
         self._assert_content_free(long_partial)
 
+    def test_overview_exposes_summary_health_without_raw_content(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            4,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            60,
+            2,
+            1,
+            4,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        summary_health_row = (
+            'dashboard_summary_health',
+            2,
+            2,
+            2,
+            465,
+            117,
+            datetime(2026, 5, 15, 9, 0, tzinfo=timezone.utc),
+        )
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                elif 'dashboard_summary_health' in query:
+                    self.rows = [summary_health_row]
+                else:
+                    self.rows = []
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_overview(
+            {'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        health = payload['summaries_health']
+        self.assertEqual(health['kind'], 'dashboard_summary_health')
+        self.assertEqual(health['status'], 'ok')
+        self.assertEqual(health['summaries_total'], 2)
+        self.assertEqual(health['summaries_with_text'], 2)
+        self.assertEqual(health['summaries_with_embedding'], 2)
+        self.assertEqual(health['traces_total'], 465)
+        self.assertEqual(health['traces_with_summary_id'], 117)
+        self.assertFalse(health['redaction']['raw_content_included'])
+        self._assert_content_free(payload)
+
     def test_source_status_reports_absent_materialization(self) -> None:
         class FakeCursor:
             def __init__(self) -> None:
@@ -389,6 +478,19 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'conversation_summary_active_present': True,
                 'conversation_summary_in_prompt': True,
                 'conversation_summary_count': 1,
+                'injected_traces_with_summary_id_count': 1,
+                'injected_traces_with_parent_summary_count': 1,
+                'parent_summaries_resolved_count': 1,
+                'parent_summaries_injected_count': 1,
+                'parent_summaries_injected': [
+                    {
+                        'summary_id': 'summary-parent-1',
+                        'summary_id_sha256_12': 'parenthash12',
+                        'start_ts': '2026-05-01T00:00:00+00:00',
+                        'end_ts': '2026-05-02T00:00:00+00:00',
+                        'linked_trace_count': 1,
+                    }
+                ],
                 'embeddings_requested_count': 2,
                 'embeddings_success_count': 2,
                 'embeddings_error_count': 0,
@@ -456,6 +558,9 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertIn('Memoire: 4 trouve(s)', story_text)
         self.assertIn('Resume de conversation present et injecte', story_text)
         self.assertIn('un resume actif de conversation injecte', story_text)
+        self.assertIn('trace(s) memoire injectee(s) etaient liee(s) a un summary_id', story_text)
+        self.assertIn('resume(s) parent(s) correspondant(s) ont ete injecte(s)', story_text)
+        self.assertIn('2026-05-01T00:00:00+00:00 -> 2026-05-02T00:00:00+00:00', story_text)
         self.assertIn('2 embeddings demandes, 2 reussis', story_text)
         self.assertIn('Le contexte modele exact n est pas reconstructible', story_text)
         self.assertIn('Contenu complet non charge', story_text)
@@ -578,6 +683,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
 
         self.assertIn('0 embeddings demandes, 0 reussis', story_text)
         self.assertIn('Aucun resume de conversation actif sur ce tour', story_text)
+        self.assertIn('Aucune trace memoire injectee avec summary_id parent', story_text)
         self.assertNotIn('Aucun compteur embeddings n est disponible', story_text)
         self._assert_content_free(payload)
 
