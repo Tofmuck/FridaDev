@@ -424,6 +424,53 @@ def _aggregate_module_metrics(buckets: Sequence[Mapping[str, Any]]) -> dict[str,
     return dict(sorted(modules.items()))
 
 
+def _provider_latency_summary(buckets: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    total_ms = 0
+    count = 0
+    bucket_p95_values: list[int] = []
+    bucket_count = 0
+    latest_bucket_avg_ms: int | None = None
+    latest_bucket_p95_ms: int | None = None
+
+    for bucket in sorted(buckets, key=lambda item: str(item.get('bucket_start') or '')):
+        if str(bucket.get('module_key') or '') != 'providers':
+            continue
+        metrics = _mapping(bucket.get('metrics'))
+        duration_total = _to_int(metrics.get('main_duration_ms_total'))
+        duration_count = _to_int(metrics.get('main_duration_ms_count'))
+        if duration_count > 0:
+            total_ms += duration_total
+            count += duration_count
+            bucket_count += 1
+            latest_bucket_avg_ms = int(round(duration_total / duration_count))
+        p95 = metrics.get('main_duration_ms_p95')
+        if p95 is not None:
+            p95_int = _to_int(p95)
+            bucket_p95_values.append(p95_int)
+            latest_bucket_p95_ms = p95_int
+
+    return {
+        'kind': 'dashboard_provider_latency_summary',
+        'label_fr': 'Latence modele principal',
+        'source_kind': 'dashboard_metric_buckets.providers',
+        'source_metrics': {
+            'average': ('main_duration_ms_total', 'main_duration_ms_count'),
+            'bucket_p95': 'main_duration_ms_p95',
+        },
+        'semantics_fr': (
+            'La moyenne de fenetre est calculee depuis total/count des buckets providers. '
+            'Les p50/p95 restent des valeurs par bucket; ils ne sont pas recomposes en p50/p95 de fenetre.'
+        ),
+        'main_duration_ms_avg': int(round(total_ms / count)) if count else None,
+        'main_duration_ms_count': count,
+        'bucket_count': bucket_count,
+        'bucket_p95_ms_max': max(bucket_p95_values) if bucket_p95_values else None,
+        'latest_bucket_avg_ms': latest_bucket_avg_ms,
+        'latest_bucket_p95_ms': latest_bucket_p95_ms,
+        'redaction': {'raw_content_included': False},
+    }
+
+
 def _pulse_from_modules(modules: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
     pipeline = _mapping(_mapping(modules.get('pipeline')).get('metrics'))
     memory = _mapping(_mapping(modules.get('memory')).get('metrics'))
@@ -474,6 +521,7 @@ def read_dashboard_overview(
             'module_catalog': module_catalog,
             'module_totals': {},
             'metric_buckets': [],
+            'latency': _provider_latency_summary([]),
             'source': _source_status(window, None, degraded_reason=exc.__class__.__name__),
             'redaction': {'raw_content_included': False},
         }
@@ -486,6 +534,7 @@ def read_dashboard_overview(
         'module_catalog': module_catalog,
         'module_totals': module_totals,
         'metric_buckets': buckets,
+        'latency': _provider_latency_summary(buckets),
         'source': _source_status(window, status),
         'redaction': {'raw_content_included': False},
     }

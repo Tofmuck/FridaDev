@@ -262,7 +262,12 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'providers',
                 1,
                 2,
-                {'main_duration_ms_total': 100, 'main_duration_ms_count': 1, 'main_duration_ms_p50': 100},
+                {
+                    'main_duration_ms_total': 100,
+                    'main_duration_ms_count': 1,
+                    'main_duration_ms_p50': 100,
+                    'main_duration_ms_p95': 100,
+                },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 11, 0, tzinfo=timezone.utc),
             ),
@@ -273,7 +278,12 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'providers',
                 1,
                 2,
-                {'main_duration_ms_total': 300, 'main_duration_ms_count': 1, 'main_duration_ms_p50': 300},
+                {
+                    'main_duration_ms_total': 300,
+                    'main_duration_ms_count': 1,
+                    'main_duration_ms_p50': 300,
+                    'main_duration_ms_p95': 300,
+                },
                 'dashboard_analytics_v1',
                 datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
             ),
@@ -322,6 +332,14 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertEqual(provider_metrics['main_duration_ms_total'], 400)
         self.assertEqual(provider_metrics['main_duration_ms_count'], 2)
         self.assertNotIn('main_duration_ms_p50', provider_metrics)
+        self.assertNotIn('main_duration_ms_p95', provider_metrics)
+        latency = payload['latency']
+        self.assertEqual(latency['source_kind'], 'dashboard_metric_buckets.providers')
+        self.assertEqual(latency['main_duration_ms_avg'], 200)
+        self.assertEqual(latency['main_duration_ms_count'], 2)
+        self.assertEqual(latency['bucket_p95_ms_max'], 300)
+        self.assertEqual(latency['latest_bucket_avg_ms'], 300)
+        self.assertIn('total/count', latency['semantics_fr'])
         self._assert_content_free(payload)
 
     def test_turn_inspection_is_translated_and_content_free(self) -> None:

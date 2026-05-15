@@ -38,6 +38,7 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertIn("Frida maintenant", source)
         self.assertIn("A surveiller", source)
         self.assertIn('id="dashboardPulseCards"', source)
+        self.assertIn('id="dashboardTrendCards"', source)
         self.assertIn('id="dashboardClassificationBars"', source)
         self.assertIn('id="dashboardMemoryBars"', source)
         self.assertIn('id="dashboardWebBars"', source)
@@ -54,14 +55,19 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertIn("/api/admin/dashboard/overview", source)
         self.assertIn("/api/admin/dashboard/conversations", source)
         self.assertIn("source.coverage", source)
+        self.assertIn("metric_buckets", source)
         self.assertIn("agregats persistants", source)
         self.assertIn("Tours reussis", source)
         self.assertIn("Reponses degradees", source)
         self.assertIn("Problemes rencontres", source)
+        self.assertIn("Latence moyenne", source)
+        self.assertIn("dashboard_metric_buckets.providers", source)
         self.assertNotIn("/api/admin/logs", source)
         self.assertNotIn("event_limit", source)
         self.assertNotIn("Afficher le contenu complet", source)
         self.assertNotIn("prompt principal", source)
+        self.assertNotIn("Latence p95", source)
+        self.assertNotIn("providers.main_duration_ms_p95", source)
 
     def test_dashboard_navigation_is_present_on_chat_and_admin_surfaces(self) -> None:
         paths = [

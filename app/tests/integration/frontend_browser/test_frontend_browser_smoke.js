@@ -830,11 +830,79 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
             pipeline: { turn_count: 8, metrics: { classification_counts: { complete: 5, degraded: 2, partial: 1 } } },
             memory: { metrics: { retrieved_total: 11, kept_total: 7, injected_total: 6 } },
             web: { metrics: { requested_turns: 3, success_turns: 2, injected_turns: 2, error_turns: 1 } },
-            providers: { metrics: { main_duration_ms_p50: 340, main_duration_ms_p95: 910 } },
+            providers: { metrics: { main_duration_ms_total: 1250, main_duration_ms_count: 4 } },
             errors: { metrics: { error_count: 1, fallback_count: 1 } },
             persistence: { metrics: { assistant_final_saved_count: 7 } },
           },
-          metric_buckets: [],
+          metric_buckets: partial ? [] : [
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T09:00:00+00:00",
+              bucket_end: "2026-05-15T10:00:00+00:00",
+              module_key: "pipeline",
+              metrics: { classification_counts: { complete: 2, degraded: 1, partial: 0, legacy_incomplete: 0 } },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T10:00:00+00:00",
+              bucket_end: "2026-05-15T11:00:00+00:00",
+              module_key: "pipeline",
+              metrics: { classification_counts: { complete: 3, degraded: 1, partial: 1, legacy_incomplete: 0 } },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T09:00:00+00:00",
+              bucket_end: "2026-05-15T10:00:00+00:00",
+              module_key: "memory",
+              metrics: { injected_total: 2 },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T10:00:00+00:00",
+              bucket_end: "2026-05-15T11:00:00+00:00",
+              module_key: "memory",
+              metrics: { injected_total: 4 },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T09:00:00+00:00",
+              bucket_end: "2026-05-15T10:00:00+00:00",
+              module_key: "web",
+              metrics: { injected_turns: 1 },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T10:00:00+00:00",
+              bucket_end: "2026-05-15T11:00:00+00:00",
+              module_key: "web",
+              metrics: { injected_turns: 1 },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T09:00:00+00:00",
+              bucket_end: "2026-05-15T10:00:00+00:00",
+              module_key: "providers",
+              metrics: { main_duration_ms_total: 340, main_duration_ms_count: 1, main_duration_ms_p95: 340 },
+            },
+            {
+              granularity: "hour",
+              bucket_start: "2026-05-15T10:00:00+00:00",
+              bucket_end: "2026-05-15T11:00:00+00:00",
+              module_key: "providers",
+              metrics: { main_duration_ms_total: 910, main_duration_ms_count: 3, main_duration_ms_p95: 910 },
+            },
+          ],
+          latency: {
+            kind: "dashboard_provider_latency_summary",
+            source_kind: "dashboard_metric_buckets.providers",
+            semantics_fr: "Moyenne de fenetre calculee depuis total/count des buckets providers.",
+            main_duration_ms_avg: partial ? null : 313,
+            main_duration_ms_count: partial ? 0 : 4,
+            bucket_p95_ms_max: partial ? null : 910,
+            latest_bucket_avg_ms: partial ? null : 303,
+            latest_bucket_p95_ms: partial ? null : 910,
+            redaction: { raw_content_included: false },
+          },
           source: {
             status: partial ? "partially_materialized" : "ok",
             coverage: {
@@ -925,6 +993,13 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardPulseCards'), 'Tours reussis');
     await assertTextContains(page.locator('#dashboardPulseCards'), 'Reponses degradees');
     await assertTextContains(page.locator('#dashboardPulseCards'), 'Problemes rencontres');
+    await assertTextContains(page.locator('#dashboardPulseCards'), 'Latence moyenne');
+    await assertTextContains(page.locator('#dashboardPulseCards'), '313 ms');
+    await assertTextContains(page.locator('#dashboardTrendCards'), 'Reponses a surveiller');
+    await assertTextContains(page.locator('#dashboardTrendCards'), 'Memoire injectee');
+    await assertTextContains(page.locator('#dashboardTrendCards'), 'Web utile');
+    await assertTextContains(page.locator('#dashboardTrendCards'), 'Latence moyenne');
+    assert.equal(await page.locator('#dashboardTrendCards svg.dashboard-sparkline').count(), 4);
     await assertTextContains(page.locator('#dashboardClassificationBars'), 'Tours reussis');
     await assertTextContains(page.locator('#dashboardMemoryBars'), 'Injectes');
     await assertTextContains(page.locator('#dashboardWebBars'), 'Injectee');
@@ -941,6 +1016,7 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await page.waitForFunction(() =>
       document.querySelector('#dashboardSourceChip')?.textContent.includes('Donnees partielles'));
     await assertTextContains(page.locator('#dashboardConversationsEmpty'), 'Aucune conversation observee');
+    await assertTextContains(page.locator('#dashboardTrendCards'), 'Aucune donnee materialisee');
 
     const calls = await page.evaluate(() => window.__fridaBrowserState.calls);
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=24h')));

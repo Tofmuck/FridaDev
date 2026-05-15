@@ -649,7 +649,10 @@ Le premier ecran produit du dashboard utilise les endpoints dashboard analytique
 - une reponse HTTP 200 n'est pas suffisante pour dire qu'une periode longue est fiable: l'UI doit distinguer periode complete, partielle, absente ou en erreur;
 - les libelles de premier niveau restent en francais produit: `Tours reussis`, `Reponses degradees`, `Problemes rencontres`, `Memoire utilisee`, `Recherche web utile`, `Latences utiles`;
 - la table conversations utilise le titre ou `display_label` quand il existe, sinon une date / heure lisible; l'identifiant opaque ne peut pas devenir le libelle principal;
-- les visualisations du premier ecran restent des barres ou compteurs compacts avec alternative tabulaire pour les counts importants;
+- les visualisations du premier ecran consomment `metric_buckets` persistants pour les tendances temporelles, avec alternative tabulaire pour les counts importants;
+- les courbes temporelles retenues au Lot 6 sont limitees aux reponses a surveiller, a la memoire injectee, au web utile et a la latence modele principal;
+- la latence de fenetre affichee est une moyenne exacte `main_duration_ms_total / main_duration_ms_count` issue des buckets providers;
+- les p50/p95 visibles au premier ecran restent des valeurs par bucket; ils ne doivent pas etre recomposes ou presentes comme p50/p95 de toute la fenetre;
 - le premier ecran ne charge pas le contenu complet et ne commence pas le drill-down conversation / tour, reserves aux lots suivants.
 
 ## 10. Interdits

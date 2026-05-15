@@ -22,6 +22,7 @@
     coverageDetails: document.getElementById("dashboardCoverageDetails"),
     windowChip: document.getElementById("dashboardWindowChip"),
     pulseCards: document.getElementById("dashboardPulseCards"),
+    trendCards: document.getElementById("dashboardTrendCards"),
     turnsTotal: document.getElementById("dashboardTurnsTotal"),
     classificationBars: document.getElementById("dashboardClassificationBars"),
     memoryTotal: document.getElementById("dashboardMemoryTotal"),
@@ -101,6 +102,22 @@
       hour: "2-digit",
       minute: "2-digit",
     }).format(date);
+  };
+
+  const formatBucketLabel = (value) => {
+    const text = toText(value);
+    if (!text) return "periode inconnue";
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) return "periode inconnue";
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+    }).format(date);
+  };
+
+  const formatTrendCount = (value, singular, plural = `${singular}s`) => {
+    return formatCount(value, singular, plural);
   };
 
   const isoFromDatetimeLocal = (value) => {
@@ -201,16 +218,180 @@
     return card;
   };
 
+  const overviewBuckets = (overview, moduleKey) => {
+    const buckets = Array.isArray(overview.metric_buckets) ? overview.metric_buckets : [];
+    return buckets
+      .filter((bucket) => toText(bucket.module_key) === moduleKey)
+      .sort((left, right) => toText(left.bucket_start).localeCompare(toText(right.bucket_start)));
+  };
+
+  const latencySummary = (overview) => {
+    const latency = mapping(overview.latency);
+    if (latency.main_duration_ms_avg != null || latency.main_duration_ms_count != null) {
+      return latency;
+    }
+    let total = 0;
+    let count = 0;
+    overviewBuckets(overview, "providers").forEach((bucket) => {
+      const metrics = mapping(bucket.metrics);
+      total += toInt(metrics.main_duration_ms_total);
+      count += toInt(metrics.main_duration_ms_count);
+    });
+    return {
+      source_kind: "dashboard_metric_buckets.providers",
+      main_duration_ms_avg: count ? Math.round(total / count) : null,
+      main_duration_ms_count: count,
+      semantics_fr: "Moyenne calculee depuis total/count des buckets providers.",
+    };
+  };
+
+  const seriesFromBuckets = (overview, moduleKey, valueFn) => {
+    return overviewBuckets(overview, moduleKey)
+      .map((bucket) => {
+        const metrics = mapping(bucket.metrics);
+        return {
+          label: formatBucketLabel(bucket.bucket_start),
+          value: Math.max(0, toInt(valueFn(metrics, bucket))),
+        };
+      })
+      .filter((point) => Number.isFinite(point.value));
+  };
+
+  const sparkline = (series, title) => {
+    if (!series.length) {
+      const empty = document.createElement("p");
+      empty.className = "dashboard-empty-inline";
+      empty.textContent = "Aucune donnee materialisee pour cette courbe.";
+      return empty;
+    }
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "dashboard-sparkline");
+    svg.setAttribute("viewBox", "0 0 100 36");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", title);
+
+    const values = series.map((point) => point.value);
+    const max = Math.max(...values, 1);
+    const points = values.map((value, index) => {
+      const x = series.length === 1 ? 50 : (index / (series.length - 1)) * 100;
+      const y = 32 - (value / max) * 28;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    });
+
+    const baseline = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    baseline.setAttribute("x1", "0");
+    baseline.setAttribute("x2", "100");
+    baseline.setAttribute("y1", "32");
+    baseline.setAttribute("y2", "32");
+    baseline.setAttribute("class", "dashboard-sparkline-baseline");
+    svg.appendChild(baseline);
+
+    const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    polyline.setAttribute("points", points.join(" "));
+    polyline.setAttribute("class", "dashboard-sparkline-line");
+    svg.appendChild(polyline);
+    return svg;
+  };
+
+  const trendSummary = (items) => {
+    const dl = document.createElement("dl");
+    dl.className = "dashboard-trend-summary";
+    items.forEach(({ label, value }) => {
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+      dl.append(dt, dd);
+    });
+    return dl;
+  };
+
+  const trendCard = ({ title, note, series, summary }) => {
+    const card = document.createElement("article");
+    card.className = "dashboard-trend-card";
+    const heading = document.createElement("div");
+    heading.className = "dashboard-trend-head";
+    const titleNode = document.createElement("h4");
+    titleNode.textContent = title;
+    const noteNode = document.createElement("p");
+    noteNode.textContent = note;
+    heading.append(titleNode, noteNode);
+    card.append(heading, sparkline(series, title), trendSummary(summary));
+    return card;
+  };
+
+  const renderTrends = (overview) => {
+    clearNode(elements.trendCards);
+    const pipelineSeries = seriesFromBuckets(overview, "pipeline", (metrics) => {
+      const counts = mapping(metrics.classification_counts);
+      return toInt(counts.degraded) + toInt(counts.partial) + toInt(counts.legacy_incomplete);
+    });
+    const memorySeries = seriesFromBuckets(overview, "memory", (metrics) => metrics.injected_total);
+    const webSeries = seriesFromBuckets(overview, "web", (metrics) => metrics.injected_turns);
+    const latencySeries = seriesFromBuckets(overview, "providers", (metrics) => {
+      const count = toInt(metrics.main_duration_ms_count);
+      return count ? Math.round(toInt(metrics.main_duration_ms_total) / count) : 0;
+    });
+    const latency = latencySummary(overview);
+
+    const sumValues = (series) => series.reduce((acc, point) => acc + toInt(point.value), 0);
+    const maxValue = (series) => (series.length ? Math.max(...series.map((point) => toInt(point.value))) : 0);
+    const latestValue = (series) => (series.length ? toInt(series.at(-1).value) : 0);
+
+    elements.trendCards.append(
+      trendCard({
+        title: "Reponses a surveiller",
+        note: "Tours degrades, partiels ou historiques incomplets.",
+        series: pipelineSeries,
+        summary: [
+          { label: "Total", value: formatTrendCount(sumValues(pipelineSeries), "tour") },
+          { label: "Dernier point", value: formatTrendCount(latestValue(pipelineSeries), "tour") },
+          { label: "Pic", value: formatTrendCount(maxValue(pipelineSeries), "tour") },
+        ],
+      }),
+      trendCard({
+        title: "Memoire injectee",
+        note: "Elements memoire injectes par periode materialisee.",
+        series: memorySeries,
+        summary: [
+          { label: "Total", value: formatTrendCount(sumValues(memorySeries), "element") },
+          { label: "Dernier point", value: formatTrendCount(latestValue(memorySeries), "element") },
+          { label: "Pic", value: formatTrendCount(maxValue(memorySeries), "element") },
+        ],
+      }),
+      trendCard({
+        title: "Web utile",
+        note: "Tours avec contenu web injecte.",
+        series: webSeries,
+        summary: [
+          { label: "Total", value: formatTrendCount(sumValues(webSeries), "tour") },
+          { label: "Dernier point", value: formatTrendCount(latestValue(webSeries), "tour") },
+          { label: "Pic", value: formatTrendCount(maxValue(webSeries), "tour") },
+        ],
+      }),
+      trendCard({
+        title: "Latence moyenne",
+        note: "Moyenne par periode, depuis les buckets providers.",
+        series: latencySeries,
+        summary: [
+          { label: "Fenetre", value: formatMs(latency.main_duration_ms_avg) },
+          { label: "Appels", value: formatTrendCount(latency.main_duration_ms_count, "appel") },
+          { label: "Pic moyenne", value: formatMs(maxValue(latencySeries)) },
+        ],
+      }),
+    );
+  };
+
   const renderMetricCards = (overview) => {
     const pulse = mapping(overview.pulse);
     const modules = mapping(overview.module_totals);
-    const providers = mapping(mapping(modules.providers).metrics);
     const web = mapping(mapping(modules.web).metrics);
     const classification = mapping(pulse.classification_counts);
     const successful = toInt(classification.complete);
     const degraded = toInt(classification.degraded) + toInt(classification.partial);
     const problems = toInt(pulse.problems_count);
-    const p95 = providers.main_duration_ms_p95;
+    const latency = latencySummary(overview);
     const webUseful = toInt(web.injected_turns ?? pulse.web_injected_turns);
 
     elements.pulseCards.replaceChildren(
@@ -233,9 +414,9 @@
         stateValue: problems ? "warn" : "good",
       }),
       metricCard({
-        label: "Latence p95",
-        value: formatMs(p95),
-        note: "Modele principal, quand mesure.",
+        label: "Latence moyenne",
+        value: formatMs(latency.main_duration_ms_avg),
+        note: `${formatCount(latency.main_duration_ms_count, "appel")} mesure depuis les buckets.`,
       }),
       metricCard({
         label: "Memoire utilisee",
@@ -291,7 +472,7 @@
     const classification = mapping(pulse.classification_counts);
     const memory = mapping(mapping(modules.memory).metrics);
     const web = mapping(mapping(modules.web).metrics);
-    const providers = mapping(mapping(modules.providers).metrics);
+    const latency = latencySummary(overview);
 
     elements.turnsTotal.textContent = formatCount(pulse.turns_observed, "tour");
     renderBars(
@@ -328,12 +509,18 @@
       "Aucune recherche web observee.",
     );
 
-    const p50 = providers.main_duration_ms_p50;
-    const p95 = providers.main_duration_ms_p95;
-    elements.latencyChip.textContent = p95 ? `p95 ${formatMs(p95)}` : "Non mesure";
+    elements.latencyChip.textContent = latency.main_duration_ms_avg ? `moy. ${formatMs(latency.main_duration_ms_avg)}` : "Non mesure";
     elements.latencyCards.replaceChildren(
-      metricCard({ label: "p50", value: formatMs(p50), note: "Milieu des appels principaux." }),
-      metricCard({ label: "p95", value: formatMs(p95), note: "Appels principaux les plus lents." }),
+      metricCard({
+        label: "Moyenne fenetre",
+        value: formatMs(latency.main_duration_ms_avg),
+        note: "Total/count des buckets providers.",
+      }),
+      metricCard({
+        label: "Pic p95 bucket",
+        value: formatMs(latency.bucket_p95_ms_max),
+        note: "Maximum des p95 par periode, pas p95 global.",
+      }),
     );
   };
 
@@ -442,7 +629,7 @@
       metricCard({ label: "Tours reussis", value: "0", note: "Aucune activite observee." }),
       metricCard({ label: "Reponses degradees", value: "0", note: "Aucune activite observee." }),
       metricCard({ label: "Problemes rencontres", value: "0", note: "Aucune activite observee." }),
-      metricCard({ label: "Latence p95", value: "Non mesure", note: "Aucun appel mesure." }),
+      metricCard({ label: "Latence moyenne", value: "Non mesure", note: "Aucun appel mesure." }),
       metricCard({ label: "Memoire utilisee", value: "0", note: "Aucun signal memoire." }),
       metricCard({ label: "Recherche web utile", value: "0", note: "Aucun signal web." }),
     );
@@ -450,8 +637,21 @@
     renderBars(elements.memoryBars, [], "Aucun signal memoire observe.");
     renderBars(elements.webBars, [], "Aucune recherche web observee.");
     elements.latencyCards.replaceChildren(
-      metricCard({ label: "p50", value: "Non mesure", note: "Aucun appel principal." }),
-      metricCard({ label: "p95", value: "Non mesure", note: "Aucun appel principal." }),
+      metricCard({ label: "Moyenne fenetre", value: "Non mesure", note: "Aucun appel principal." }),
+      metricCard({ label: "Pic p95 bucket", value: "Non mesure", note: "Aucun appel principal." }),
+    );
+    clearNode(elements.trendCards);
+    elements.trendCards.append(
+      trendCard({
+        title: "Reponses a surveiller",
+        note: "Tours degrades, partiels ou historiques incomplets.",
+        series: [],
+        summary: [
+          { label: "Total", value: "0 tour" },
+          { label: "Dernier point", value: "0 tour" },
+          { label: "Pic", value: "0 tour" },
+        ],
+      }),
     );
   };
 
@@ -460,6 +660,7 @@
     state.lastConversations = conversations;
     renderSource(overview);
     renderMetricCards(overview);
+    renderTrends(overview);
     renderSignals(overview);
     renderConversations(conversations);
   };

@@ -1162,6 +1162,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="dashboardPrimaryWindows"',
         'id="dashboardStatusBanner"',
         'id="dashboardPulseCards"',
+        'id="dashboardTrendCards"',
         'id="dashboardConversationsTable"',
         'data-window="24h"',
         'data-window="7d"',
@@ -1176,9 +1177,12 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Tours reussis",
         "Reponses degradees",
         "Problemes rencontres",
+        "Latence moyenne",
         "Memoire utilisee",
         "Recherche web utile",
         "source.coverage",
+        "metric_buckets",
+        "dashboard_metric_buckets.providers",
         "agregats persistants",
     ]
     for marker in dashboard_js_markers:

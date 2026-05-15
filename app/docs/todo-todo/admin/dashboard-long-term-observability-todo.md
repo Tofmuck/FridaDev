@@ -437,6 +437,8 @@ Implementation livree:
 - bandeau de couverture de materialisation base sur `source.coverage`;
 - pouls global en libelles humains: tours reussis, reponses degradees, problemes rencontres, latences utiles, memoire utilisee, recherche web utile;
 - table comparative des conversations avec titre / `display_label` ou date lisible, jamais identifiant opaque comme libelle principal;
+- courbes temporelles compactes alimentees par `metric_buckets`: reponses a surveiller, memoire injectee, web utile, latence moyenne;
+- latence de fenetre fiable: moyenne exacte `main_duration_ms_total / main_duration_ms_count` depuis les buckets providers, avec p95 seulement comme pic par bucket;
 - barres compactes et counts tabulaires, sans courbe decorative ni parsing `/log`;
 - pas de drill-down, pas de contenu complet, pas de reimplementation navigateur des read-models.
 
