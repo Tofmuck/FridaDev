@@ -907,6 +907,13 @@ def _reason_codes_fr(errors: Mapping[str, Any]) -> str:
     return ', '.join(parts)
 
 
+def _first_present_int(mapping: Mapping[str, Any], *keys: str) -> tuple[int, bool]:
+    for key in keys:
+        if key in mapping:
+            return _to_int(mapping.get(key)), True
+    return 0, False
+
+
 def _debug_links(fact: Mapping[str, Any]) -> list[dict[str, str]]:
     conversation_id = quote(str(fact.get('conversation_id') or ''), safe='')
     turn_id = quote(str(fact.get('turn_id') or ''), safe='')
@@ -953,17 +960,19 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     else:
         context_parts.append('pas de contexte web injecte observe')
 
-    embeddings_requested = _to_int(
-        rag.get('embeddings_requested')
-        or rag.get('embedding_requested_count')
-        or rag.get('embeddings_requested_count')
+    embeddings_requested, embeddings_requested_present = _first_present_int(
+        rag,
+        'embeddings_requested',
+        'embedding_requested_count',
+        'embeddings_requested_count',
     )
-    embeddings_succeeded = _to_int(
-        rag.get('embeddings_succeeded')
-        or rag.get('embedding_success_count')
-        or rag.get('embeddings_success_count')
+    embeddings_succeeded, embeddings_succeeded_present = _first_present_int(
+        rag,
+        'embeddings_succeeded',
+        'embedding_success_count',
+        'embeddings_success_count',
     )
-    if embeddings_requested or embeddings_succeeded:
+    if embeddings_requested_present or embeddings_succeeded_present:
         embeddings_line = f'{embeddings_requested} embeddings demandes, {embeddings_succeeded} reussis.'
     else:
         embeddings_line = (

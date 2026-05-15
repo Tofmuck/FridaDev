@@ -466,6 +466,108 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertFalse(payload['source']['limits']['event_limit_dependency'])
         self._assert_content_free(payload)
 
+    def test_turn_inspection_distinguishes_zero_embedding_counts_from_missing_counters(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 5, 14, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 0, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            8,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            60,
+            1,
+            1,
+            9,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        fact_row = (
+            'conv-zero-embeddings',
+            'turn-zero-embeddings',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+            'complete',
+            100,
+            8,
+            'evt-first',
+            'evt-latest',
+            {'status': 'saved', 'assistant_final_saved': True},
+            {'main': {'present': True, 'status': 'ok'}},
+            {
+                'retrieved': 0,
+                'kept': 0,
+                'injected': 0,
+                'embeddings_requested_count': 0,
+                'embeddings_success_count': 0,
+                'embeddings_error_count': 0,
+            },
+            {'block_present': False, 'status': 'missing'},
+            {'block_present': False, 'status': 'missing'},
+            {'requested': False, 'status': 'not_applicable'},
+            {'read_present': False, 'write_attempted': False},
+            {},
+            {'error_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            {'turn_start': 1},
+            {'events_truncated': False},
+            {'content_comprehension_status': 'compact_only'},
+            'dashboard_analytics_v1',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                self.rows = [status_row] if 'dashboard_materialization_status' in query else [fact_row]
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_turn_inspection(
+            'turn-zero-embeddings',
+            {'conversation_id': 'conv-zero-embeddings', 'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+        story_text = json.dumps(payload['story'], ensure_ascii=False, sort_keys=True)
+
+        self.assertIn('0 embeddings demandes, 0 reussis', story_text)
+        self.assertNotIn('Aucun compteur embeddings n est disponible', story_text)
+        self._assert_content_free(payload)
+
     def test_turn_inspection_explains_degraded_absent_modules_without_raw_content(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         status_row = (
