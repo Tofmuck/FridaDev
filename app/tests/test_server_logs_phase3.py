@@ -918,6 +918,64 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
+    def test_api_chat_schedules_recent_dashboard_materialization_after_turn_end(self) -> None:
+        observed_events: list[dict[str, object]] = []
+        observed_refreshes: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+        original_chat_response = self.server.chat_service.chat_response
+        original_schedule = (
+            self.server.dashboard_materialization_runtime
+            .schedule_recent_dashboard_analytics_materialization
+        )
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed_events.append(event)
+            return True
+
+        def fake_chat_response(*_args: object, **_kwargs: object) -> dict[str, object]:
+            return {
+                'kind': 'json',
+                'payload': {'ok': True, 'response': 'reponse compacte'},
+                'status': 200,
+                'headers': {},
+            }
+
+        def fake_schedule(**kwargs: object) -> dict[str, object]:
+            observed_refreshes.append(kwargs)
+            return {'scheduled': True, 'async': True, 'raw_content_included': False}
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        self.server.chat_service.chat_response = fake_chat_response
+        (
+            self.server.dashboard_materialization_runtime
+            .schedule_recent_dashboard_analytics_materialization
+        ) = fake_schedule
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={
+                    'message': 'bonjour',
+                    'conversation_id': 'conv-dashboard-refresh',
+                },
+            )
+        finally:
+            self.server.log_store.insert_chat_log_event = original_insert
+            self.server.chat_service.chat_response = original_chat_response
+            (
+                self.server.dashboard_materialization_runtime
+                .schedule_recent_dashboard_analytics_materialization
+            ) = original_schedule
+
+        self.assertEqual(response.status_code, 200)
+        turn_end_events = [
+            event for event in observed_events
+            if event.get('stage') == 'turn_end'
+        ]
+        self.assertEqual(len(turn_end_events), 1)
+        self.assertEqual(len(observed_refreshes), 1)
+        self.assertEqual(observed_refreshes[0]['reason'], 'chat_turn_end')
+        self.assertTrue(observed_refreshes[0].get('run_async', True))
+
     def test_api_chat_stream_counts_utf8_chars_when_multibyte_is_split_across_byte_chunks(self) -> None:
         observed: list[dict[str, object]] = []
         original_insert = self.server.log_store.insert_chat_log_event

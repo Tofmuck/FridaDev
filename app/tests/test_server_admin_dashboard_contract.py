@@ -45,8 +45,12 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
             self.assertNotIn(needle, encoded)
 
     def test_dashboard_overview_route_returns_windowed_payload(self) -> None:
-        observed = {'args': None}
+        observed = {'args': None, 'refresh_reason': None}
         original = self.server.dashboard_read_model.read_dashboard_overview
+        original_ensure = (
+            self.server.dashboard_materialization_runtime
+            .ensure_recent_dashboard_analytics_fresh
+        )
 
         def fake_read_dashboard_overview(args, **_kwargs):
             observed['args'] = args
@@ -61,11 +65,23 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
                 'redaction': {'raw_content_included': False},
             }
 
+        def fake_ensure(**kwargs):
+            observed['refresh_reason'] = kwargs.get('reason')
+            return {'ok': True, 'refreshed': False, 'raw_content_included': False}
+
         self.server.dashboard_read_model.read_dashboard_overview = fake_read_dashboard_overview
+        (
+            self.server.dashboard_materialization_runtime
+            .ensure_recent_dashboard_analytics_fresh
+        ) = fake_ensure
         try:
             response = self.client.get('/api/admin/dashboard/overview?window=24h')
         finally:
             self.server.dashboard_read_model.read_dashboard_overview = original
+            (
+                self.server.dashboard_materialization_runtime
+                .ensure_recent_dashboard_analytics_fresh
+            ) = original_ensure
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -74,6 +90,7 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertEqual(data['pulse']['turns_observed'], 2)
         self.assertFalse(data['source']['limits']['event_limit_dependency'])
         self.assertEqual(observed['args'].get('window'), '24h')
+        self.assertEqual(observed['refresh_reason'], 'dashboard_overview_read')
         self._assert_content_free(data)
 
     def test_dashboard_conversations_route_returns_comparison_payload(self) -> None:

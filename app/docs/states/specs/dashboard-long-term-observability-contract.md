@@ -313,6 +313,7 @@ Implementation v1:
 - facade publique: `app/observability/dashboard_analytics.py`;
 - projection pure: `app/observability/dashboard_analytics_projection.py`;
 - stockage / materialisation: `app/observability/dashboard_analytics_storage.py`;
+- garde-fou runtime recent: `app/observability/dashboard_materialization_runtime.py`;
 - bootstrap DB: `log_store.init_log_storage()` cree aussi les tables analytiques;
 - materialiseur: `materialize_dashboard_analytics_window()`;
 - version de calcul: `dashboard_analytics_v1`;
@@ -340,6 +341,15 @@ Doctrine de materialisation v1:
 - les `dashboard_metric_buckets` ne sont jamais remplaces par les seuls facts d'une sous-fenetre: les buckets affectes sont regenerees depuis tous les facts persistants du bucket complet;
 - une materialisation 24 h ou intrajournaliere ne doit donc pas faire regresser des syntheses ou buckets deja materialises sur une fenetre plus large;
 - si aucune materialisation large n'existe encore, la petite fenetre produit seulement le meilleur etat connu depuis les facts persistants disponibles, sans pretendre couvrir l'horizon long complet.
+
+Doctrine de fraicheur runtime v1:
+
+- chaque fin de tour chat planifie une rematerialisation recente bornee sur 24 h;
+- les lectures admin dashboard declenchent un rattrapage synchrone borne si des `chat_log_events` existent apres la derniere fenetre materialisee;
+- ce rattrapage reste fonde sur `chat_log_events` persistants et `dashboard_turn_facts`, jamais sur `event_limit`;
+- le rattrapage recent rend la fenetre 24 h vivante apres activite reelle;
+- il ne pretend pas couvrir automatiquement 7 j / 30 j / 90 j: ces horizons restent `partial` ou `absent` tant qu'une materialisation longue ou un scheduler explicite ne les couvre pas;
+- aucun contenu brut n'est ajoute aux facts, syntheses, buckets ou statuts par ce mecanisme.
 
 ### Faits par tour
 
@@ -472,6 +482,8 @@ Le Lot 2 persiste ce statut dans `dashboard_materialization_status`:
 - `backfill_status` pour distinguer la fenetre de retention materialisee d'une fenetre custom.
 
 La presence du materialiseur ne declenche pas de backfill historique massif. Un backfill reste une action operateur explicite.
+
+Depuis le correctif de fraicheur runtime du 2026-05-15, la presence du materialiseur implique aussi un rattrapage recent automatique borne. Ce rattrapage ne remplace pas un scheduler longue periode: il garantit que le dashboard ne reste pas indefiniment stale apres de nouveaux tours, et que l'UI continue d'indiquer honnetement les couvertures longues partielles.
 
 ## 7. API admin dashboard v1
 

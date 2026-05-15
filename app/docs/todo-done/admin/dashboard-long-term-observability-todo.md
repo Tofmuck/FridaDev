@@ -16,6 +16,15 @@ Les recouvrements restants entre `/dashboard`, `/log`, Memory Admin, Hermeneutic
 
 Aucun lot actif ne justifie de garder ce TODO ouvert. Les futurs nettoyages de doublons devront etre ouverts comme chantiers separes seulement s'ils deviennent reellement utiles.
 
+Note corrective post-cloture du 2026-05-15:
+
+- un defaut P1 a ete confirme apres cloture: les agregats persistants du dashboard ne se rematerialisaient pas automatiquement apres de nouveaux tours;
+- correctif livre dans `app/observability/dashboard_materialization_runtime.py` et `app/server.py`;
+- chaque fin de tour planifie une materialisation recente bornee sur 24 h;
+- les lectures dashboard declenchent aussi un rattrapage borne si des events sources existent apres la derniere fenetre materialisee;
+- les horizons 7 j / 30 j / 90 j restent honnetement marques partiels tant qu'un backfill ou scheduler longue periode explicite ne les couvre pas;
+- aucun contenu brut n'est stocke dans les agregats par ce correctif.
+
 ## 1. Intention
 
 Ce TODO ouvre le chantier actif du futur dashboard long terme FridaDev.

@@ -7,6 +7,7 @@ import logging
 import re
 import socket
 import time
+from datetime import datetime
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ from observability import log_store
 from observability import log_markdown_export
 from observability import prompt_injection_summary
 from observability import dashboard_read_model
+from observability import dashboard_materialization_runtime
 
 
 def _sha256_file(path: Path) -> str:
@@ -67,6 +69,25 @@ def _runtime_fingerprint() -> dict[str, str]:
         'conv_dir': str(conv_dir),
         'logs_path': str(logs_path),
     }
+
+
+def _finish_chat_turn_and_refresh_dashboard(turn_token: Any, *, final_status: str) -> None:
+    chat_turn_logger.end_turn(turn_token, final_status=final_status)
+    dashboard_materialization_runtime.schedule_recent_dashboard_analytics_materialization(
+        conn_factory=log_store._conn,
+        logger_instance=log_store.logger,
+        reason='chat_turn_end',
+    )
+
+
+def _ensure_dashboard_recent_for_admin_read(reason: str) -> datetime | None:
+    freshness = dashboard_materialization_runtime.ensure_recent_dashboard_analytics_fresh(
+        conn_factory=log_store._conn,
+        logger_instance=log_store.logger,
+        reason=reason,
+    )
+    read_now = freshness.get('read_now') if isinstance(freshness, dict) else None
+    return read_now if isinstance(read_now, datetime) else None
 
 
 app = Flask(__name__, static_folder="web", static_url_path="")
@@ -656,7 +677,7 @@ def api_chat():
             error_class=exc.__class__.__name__,
             message_short=str(exc),
         )
-        chat_turn_logger.end_turn(turn_token, final_status='error')
+        _finish_chat_turn_and_refresh_dashboard(turn_token, final_status='error')
         raise
 
     if result['kind'] == 'stream':
@@ -779,7 +800,7 @@ def api_chat():
                 )
                 chat_turn_logger.set_state('llm_stream_call_meta', None)
                 chat_turn_logger.set_state('llm_provider_response_meta', None)
-                chat_turn_logger.end_turn(turn_token, final_status=final_status)
+                _finish_chat_turn_and_refresh_dashboard(turn_token, final_status=final_status)
 
         response = Response(
             stream_with_context(_stream_with_turn_finalize()),
@@ -803,7 +824,7 @@ def api_chat():
     response.status_code = status_code
     for key, value in result['headers'].items():
         response.headers[key] = value
-    chat_turn_logger.end_turn(turn_token, final_status=final_status)
+    _finish_chat_turn_and_refresh_dashboard(turn_token, final_status=final_status)
     return response
 
 
@@ -947,10 +968,12 @@ def api_admin_chat_logs_metrics():
 @app.get('/api/admin/dashboard/overview')
 def api_admin_dashboard_overview():
     try:
+        dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_overview_read')
         payload = dashboard_read_model.read_dashboard_overview(
             request.args,
             conn_factory=log_store._conn,
             logger_instance=log_store.logger,
+            now=dashboard_now,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -960,10 +983,12 @@ def api_admin_dashboard_overview():
 @app.get('/api/admin/dashboard/conversations')
 def api_admin_dashboard_conversations():
     try:
+        dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_conversations_read')
         payload = dashboard_read_model.read_dashboard_conversations(
             request.args,
             conn_factory=log_store._conn,
             logger_instance=log_store.logger,
+            now=dashboard_now,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -973,11 +998,13 @@ def api_admin_dashboard_conversations():
 @app.get('/api/admin/dashboard/conversations/<conversation_id>/turns')
 def api_admin_dashboard_conversation_turns(conversation_id: str):
     try:
+        dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_conversation_turns_read')
         payload = dashboard_read_model.read_dashboard_conversation_turns(
             conversation_id,
             request.args,
             conn_factory=log_store._conn,
             logger_instance=log_store.logger,
+            now=dashboard_now,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -987,11 +1014,13 @@ def api_admin_dashboard_conversation_turns(conversation_id: str):
 @app.get('/api/admin/dashboard/turns/<turn_id>/inspection')
 def api_admin_dashboard_turn_inspection(turn_id: str):
     try:
+        dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_turn_inspection_read')
         payload = dashboard_read_model.read_dashboard_turn_inspection(
             turn_id,
             request.args,
             conn_factory=log_store._conn,
             logger_instance=log_store.logger,
+            now=dashboard_now,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
@@ -1014,12 +1043,14 @@ def api_admin_dashboard_turn_content(turn_id: str):
         return True
 
     try:
+        dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_turn_content_read')
         payload = dashboard_read_model.read_dashboard_turn_content(
             turn_id,
             request.args,
             conn_factory=log_store._conn,
             logger_instance=log_store.logger,
             audit_fn=_audit_dashboard_content_gate,
+            now=dashboard_now,
         )
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
