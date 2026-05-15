@@ -671,7 +671,47 @@ L'inspection traduite conversation / tour est livree par les read-models dashboa
 - le lien `/log` doit hydrater les filtres `conversation_id` et `turn_id` depuis la query string afin d'ouvrir une vue technique réellement scopee;
 - le contenu complet reste non charge et non precharge au Lot 7; l'action volontaire `Afficher le contenu complet` reste reservee au Lot 8.
 
-## 10. Interdits
+## 10. Convention Lot 8 - contenu complet volontaire
+
+Le Lot 8 implemente le content gate sans changer la promesse content-free par defaut:
+
+- l'inspection traduite `/api/admin/dashboard/turns/<turn_id>/inspection` reste sans contenu brut;
+- elle expose seulement un resume de gate et l'action `Afficher le contenu complet`;
+- le frontend ne charge aucun contenu complet avant le clic explicite;
+- le clic appelle `/api/admin/dashboard/turns/<turn_id>/content` avec `conversation_id` et la fenetre courante;
+- la reponse du gate peut contenir du contenu exact uniquement si un evenement source du tour contient deja ce contenu;
+- si seuls des counts, tailles, statuts ou hashes existent, le gate retourne `fingerprint_only`;
+- si aucune preuve source ne permet la reconstruction, le gate retourne `not_reconstructible`;
+- si un contenu ressemble a un secret, token, DSN, `.env`, cle privee ou credential, le gate retourne `blocked_sensitive` sans le contenu;
+- l'ouverture est auditee par un evenement admin compact `dashboard_content_gate` quand l'ecriture est disponible;
+- l'evenement d'audit ne contient jamais le contenu ouvert.
+- l'audit ne doit pas etre ecrit dans `chat_log_events`, pour ne pas deplacer artificiellement un ancien tour dans les fenetres analytiques recentes;
+
+Le Lot 8 ne cree pas encore de stockage long terme d'artefacts bruts. Il exploite uniquement les evenements sources deja presents pour le tour. La consequence produit est volontairement explicite: le bouton peut ouvrir un contenu exact, un extrait partiel, une empreinte, ou une explication "non reconstructible"; il ne doit jamais inventer le prompt exact ni maquiller une absence de preuve.
+
+Classes de statut du gate:
+
+| Statut | Sens operateur | Contenu brut dans la reponse gate |
+| --- | --- | --- |
+| `exact_available` | Un evenement source contient le contenu exact demande. | Oui, apres clic explicite seulement, sauf blocage secret. |
+| `partial_available` | Seul un extrait ou une representation partielle existe. | Oui, mais etiquete partiel. |
+| `fingerprint_only` | Seules tailles, counts, statuts ou empreintes existent. | Non. |
+| `not_reconstructible` | Les preuves actuelles ne permettent pas de reconstruire ce contenu. | Non. |
+| `blocked_sensitive` | Un contenu existe mais ressemble a un secret ou credential. | Non. |
+
+Sources separees dans le gate Lot 8:
+
+- message recu par Frida;
+- payload du modele principal;
+- payloads des providers secondaires;
+- contenu memoire injecte;
+- contenu identite injecte;
+- contenu web injecte;
+- contenu hermeneutique.
+
+Cette separation prepare les futurs modules documents et images, mais ne les implemente pas encore.
+
+## 11. Interdits
 
 Sont interdits:
 
@@ -687,7 +727,7 @@ Sont interdits:
 - l'inclusion de contenu brut dans les agregats;
 - l'affaiblissement du content gate pour accelerer le frontend.
 
-## 11. Duplication et recouvrement
+## 12. Duplication et recouvrement
 
 Doctrine retenue:
 
@@ -702,7 +742,7 @@ Definitions:
 - recouvrement transitoire: une information existe a la fois dans `/log`, une surface domaine et le dashboard pendant la stabilisation;
 - nettoyage progressif: replier, renommer ou deplacer une lecture seulement quand le dashboard a prouve une lecture plus claire sans perte diagnostic.
 
-## 12. Matrice produit fondatrice
+## 13. Matrice produit fondatrice
 
 | Question produit | Reponse par defaut | Reponse sur action explicite |
 | --- | --- | --- |
@@ -711,7 +751,7 @@ Definitions:
 | Que peut-on prouver aujourd'hui ? | Presence de stages, statuts, counts, tailles, hashes, provider lanes, persistence finale, RAG compact, web compact, node_state compact. | Les contenus metier deja exposes par des surfaces explicites d'edition ou de detail peuvent etre ouverts selon leurs propres gardes; le prompt modele exact n'est pas garanti reconstructible depuis les logs actuels. |
 | Que faudra-t-il persister demain ? | Facts par tour, syntheses conversation, buckets horaires/journaliers, materialisation, manifests de prompt, resumes humains par bloc, references d'artefacts. | Artefacts gates pour prompt principal, payload modele principal, providers secondaires, memoire, identity, web, documents, images et autres modules futurs. |
 
-## 13. Acceptance criteria du Lot 1
+## 14. Acceptance criteria du Lot 1
 
 Le Lot 1 est ferme quand:
 

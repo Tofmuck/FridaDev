@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import quote
+import uuid
 
 from observability import dashboard_analytics
+from observability import dashboard_content_gate
 
 RETENTION_DAYS = dashboard_analytics.RETENTION_DAYS
 RECENT_GRANULARITY_DAYS = dashboard_analytics.RECENT_GRANULARITY_DAYS
@@ -13,6 +15,7 @@ CALCULATION_VERSION = dashboard_analytics.CALCULATION_VERSION
 _DEFAULT_CONVERSATION_LIMIT = 50
 _DEFAULT_TURN_LIMIT = 100
 _MAX_LIMIT = 200
+_MAX_CONTENT_GATE_EVENTS = 500
 _NON_ADDITIVE_METRIC_SUFFIXES = ('_avg', '_p50', '_p95', '_median', '_rate')
 
 
@@ -832,6 +835,91 @@ def _translated_inspection(fact: Mapping[str, Any]) -> list[dict[str, Any]]:
     return modules
 
 
+def _read_turn_events_for_content_gate(
+    cur: Any,
+    *,
+    conversation_id: str,
+    turn_id: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    cur.execute(
+        '''
+        SELECT
+            event_id,
+            conversation_id,
+            turn_id,
+            ts,
+            stage,
+            status,
+            duration_ms,
+            payload_json
+        FROM observability.chat_log_events
+        WHERE conversation_id = %s
+          AND turn_id = %s
+        ORDER BY ts ASC, event_id ASC
+        LIMIT %s
+        ''',
+        (conversation_id, turn_id, _MAX_CONTENT_GATE_EVENTS + 1),
+    )
+    rows = cur.fetchall()
+    events_truncated = len(rows) > _MAX_CONTENT_GATE_EVENTS
+    events: list[dict[str, Any]] = []
+    for row in rows[:_MAX_CONTENT_GATE_EVENTS]:
+        payload_json = row[7]
+        if not isinstance(payload_json, Mapping):
+            payload_json = {}
+        events.append(
+            {
+                'event_id': str(row[0] or ''),
+                'conversation_id': str(row[1] or ''),
+                'turn_id': str(row[2] or ''),
+                'ts': _iso(row[3]),
+                'stage': str(row[4] or ''),
+                'status': str(row[5] or ''),
+                'duration_ms': int(row[6]) if row[6] is not None else None,
+                'payload': dict(payload_json),
+            }
+        )
+    return events, events_truncated
+
+
+def _audit_content_gate_open(
+    *,
+    fact: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    audit_fn: Callable[..., bool] | None,
+    logger_instance: Any,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    if audit_fn is None:
+        return {
+            'attempted': False,
+            'stored': False,
+            'reason_code': 'audit_fn_missing',
+            'raw_content_included': False,
+        }
+    event = {
+        'event_id': f"{fact.get('turn_id')}:dashboard_content_gate:{uuid.uuid4().hex[:12]}",
+        'conversation_id': str(fact.get('conversation_id') or ''),
+        'turn_id': str(fact.get('turn_id') or ''),
+        'ts': (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat(),
+        'stage': 'dashboard_content_gate',
+        'status': 'ok',
+        'duration_ms': None,
+        'payload_json': dashboard_content_gate.audit_payload_for_content_gate(payload),
+    }
+    try:
+        stored = bool(audit_fn(event))
+    except Exception as exc:
+        logger_instance.error('dashboard_content_gate_audit_failed err=%s', exc)
+        stored = False
+    return {
+        'attempted': True,
+        'stored': stored,
+        'stage': 'dashboard_content_gate',
+        'raw_content_included': False,
+    }
+
+
 def _classification_fr(value: Any) -> str:
     labels = {
         'complete': 'reussi',
@@ -990,7 +1078,8 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
             'quand seuls presence, counts, longueurs ou hashes sont disponibles.'
         ),
         (
-            'Le contenu complet reste reserve au lot suivant et n est ni precharge ni expose par cette inspection.'
+            'Le contenu complet n est pas precharge ici; il peut etre demande volontairement '
+            'avec l action Afficher le contenu complet.'
         ),
     ]
     if content_availability:
@@ -1089,7 +1178,10 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         'sections': sections,
         'debug_links': _debug_links(fact),
         'proof_level': 'translated_compact_inspection',
-        'content_status_fr': 'Contenu complet non charge; ouverture volontaire reservee au lot suivant.',
+        'content_status_fr': (
+            'Contenu complet non charge; utilisez Afficher le contenu complet pour verifier ce qui est '
+            'disponible, partiel, seulement prouve par empreinte, ou non reconstructible.'
+        ),
         'redaction': {'raw_content_included': False},
     }
 
@@ -1152,6 +1244,93 @@ def read_dashboard_turn_inspection(
         'item': fact,
         'modules': _translated_inspection(fact),
         'story': _turn_story(fact),
+        'content_gate': dashboard_content_gate.content_gate_summary(fact),
         'source': _source_status(window, status),
         'redaction': {'raw_content_included': False},
     }
+
+
+def read_dashboard_turn_content(
+    turn_id: str,
+    params: Mapping[str, Any] | None = None,
+    *,
+    conn_factory: Callable[[], Any],
+    logger_instance: Any,
+    audit_fn: Callable[..., bool] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    turn_id_s = str(turn_id or '').strip()
+    if not turn_id_s:
+        raise ValueError('turn_id is required')
+    conversation_id_s = _params_get(params, 'conversation_id') or None
+    window = resolve_dashboard_window(params, now=now)
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                status = _read_materialization_status(cur)
+                where = ['turn_id = %s', 'latest_ts >= %s::timestamptz', 'latest_ts < %s::timestamptz']
+                query_params: list[Any] = [turn_id_s, window['start'], window['end']]
+                if conversation_id_s:
+                    where.insert(0, 'conversation_id = %s')
+                    query_params.insert(0, conversation_id_s)
+                cur.execute(
+                    _turn_fact_select_sql()
+                    + f'''
+                    WHERE {' AND '.join(where)}
+                    ORDER BY latest_ts DESC, conversation_id ASC
+                    LIMIT 2
+                    ''',
+                    tuple(query_params),
+                )
+                rows = cur.fetchall()
+                if not rows:
+                    raise LookupError('dashboard turn not found')
+                if not conversation_id_s and len(rows) > 1:
+                    raise ValueError('conversation_id is required when turn_id is ambiguous')
+                fact = _turn_fact_row(rows[0])
+                events, events_truncated = _read_turn_events_for_content_gate(
+                    cur,
+                    conversation_id=str(fact.get('conversation_id') or ''),
+                    turn_id=str(fact.get('turn_id') or ''),
+                )
+    except LookupError:
+        raise
+    except ValueError:
+        raise
+    except Exception as exc:
+        logger_instance.error('dashboard_turn_content_gate_read_failed err=%s', exc)
+        return {
+            'kind': 'dashboard_turn_content_gate',
+            'turn_id': turn_id_s,
+            'conversation_id': conversation_id_s,
+            'window': window,
+            'availability': {
+                'status': 'not_reconstructible',
+                'status_fr': 'non reconstructible',
+                'status_counts': {},
+                'loaded_after_explicit_action': True,
+                'preloaded': False,
+                'events_truncated': False,
+                'warning_fr': 'Lecture degradee: impossible de lire les evenements sources.',
+            },
+            'items': [],
+            'source': _source_status(window, None, degraded_reason=exc.__class__.__name__),
+            'audit': {'attempted': False, 'stored': False, 'reason_code': 'read_failed', 'raw_content_included': False},
+            'redaction': {'raw_content_included': False, 'secret_blocked_count': 0},
+        }
+
+    payload = dashboard_content_gate.build_content_gate_payload(
+        fact=fact,
+        events=events,
+        events_truncated=events_truncated,
+    )
+    payload['window'] = window
+    payload['source'] = _source_status(window, status)
+    payload['audit'] = _audit_content_gate_open(
+        fact=fact,
+        payload=payload,
+        audit_fn=audit_fn,
+        logger_instance=logger_instance,
+        now=now,
+    )
+    return payload

@@ -1189,13 +1189,14 @@ def _check_ui_assets() -> Dict[str, Any]:
         "agregats persistants",
         "dashboardDrilldown",
         "dashboardInspectionBody",
+        "Afficher le contenu complet",
+        "/content?",
     ]
     for marker in dashboard_js_markers:
         if marker not in dashboard_main_js:
             raise RuntimeError(f"marker dashboard/main.js manquant: {marker}")
     dashboard_forbidden_markers = [
         "/api/admin/logs",
-        "Afficher le contenu complet",
         "prompt principal",
         "payload modele principal",
         "Lot 5",

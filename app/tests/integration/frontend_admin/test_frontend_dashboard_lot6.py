@@ -51,7 +51,7 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertNotIn("Lot 5", source)
         self.assertNotIn("content-free", source)
         self.assertNotIn("Frontieres", source)
-        self.assertNotIn("Afficher le contenu complet", source)
+        self.assertNotIn("RAW PROMPT MUST NOT LEAK", source)
 
     def test_dashboard_javascript_uses_dashboard_aggregates_not_log_payloads(self) -> None:
         source = (APP_DIR / "web" / "dashboard" / "main.js").read_text(encoding="utf-8")
@@ -69,9 +69,12 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertIn("Problemes rencontres", source)
         self.assertIn("Latence moyenne", source)
         self.assertIn("dashboard_metric_buckets.providers", source)
+        self.assertIn("/api/admin/dashboard/turns/", source)
+        self.assertIn("/content?", source)
+        self.assertIn("Afficher le contenu complet", source)
+        self.assertIn("dashboard-content-gate", source)
         self.assertNotIn("/api/admin/logs", source)
         self.assertNotIn("event_limit", source)
-        self.assertNotIn("Afficher le contenu complet", source)
         self.assertNotIn("prompt principal", source)
         self.assertNotIn("Latence p95", source)
         self.assertNotIn("providers.main_duration_ms_p95", source)

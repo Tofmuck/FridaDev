@@ -230,6 +230,14 @@
     return readJson(response, "Lecture du tour impossible.");
   };
 
+  const fetchTurnContent = async ({ conversationId, turnId }) => {
+    const query = buildQuery();
+    query.set("conversation_id", conversationId);
+    const url = `/api/admin/dashboard/turns/${encodeURIComponent(turnId)}/content?${query.toString()}`;
+    const response = await adminApi.fetchAdmin(url);
+    return readJson(response, "Ouverture du contenu complet impossible.");
+  };
+
   const clearNode = (node) => {
     if (node) node.replaceChildren();
   };
@@ -766,6 +774,142 @@
     container.appendChild(list);
   };
 
+  const contentStatusLabel = (status) => {
+    const labels = {
+      exact_available: "Contenu exact disponible",
+      partial_available: "Contenu partiel disponible",
+      fingerprint_only: "Empreinte seule disponible",
+      not_reconstructible: "Non reconstructible",
+      blocked_sensitive: "Bloque par garde secret",
+    };
+    return labels[toText(status)] || "A verifier";
+  };
+
+  const renderContentEvidence = (container, evidence) => {
+    const entries = Object.entries(mapping(evidence));
+    if (!entries.length) return;
+    const list = document.createElement("dl");
+    list.className = "dashboard-content-evidence";
+    entries.slice(0, 8).forEach(([key, value]) => {
+      const dt = document.createElement("dt");
+      dt.textContent = key;
+      const dd = document.createElement("dd");
+      dd.textContent = typeof value === "object" ? JSON.stringify(value) : toText(value);
+      list.append(dt, dd);
+    });
+    container.appendChild(list);
+  };
+
+  const renderContentGatePayload = (target, payload) => {
+    clearNode(target);
+    const availability = mapping(payload.availability);
+    const summary = document.createElement("p");
+    summary.className = "dashboard-inspection-summary";
+    summary.textContent = `${contentStatusLabel(availability.status)}. ${
+      toText(availability.warning_fr) || "Contenu charge uniquement apres action explicite."
+    }`;
+    target.appendChild(summary);
+
+    if (mapping(payload.audit).attempted) {
+      const audit = document.createElement("p");
+      audit.className = "dashboard-muted";
+      audit.textContent = mapping(payload.audit).stored
+        ? "Action auditee par un evenement compact, sans contenu brut."
+        : "Audit compact tente; stockage non confirme.";
+      target.appendChild(audit);
+    }
+
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "dashboard-empty-inline";
+      empty.textContent = "Aucune source de contenu complet n est disponible pour ce tour.";
+      target.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "dashboard-content-items";
+    items.forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "dashboard-content-item";
+      card.dataset.status = toText(item.status);
+      const heading = document.createElement("h6");
+      heading.textContent = toText(item.label_fr) || "Source";
+      const status = document.createElement("span");
+      status.className = "admin-chip";
+      status.textContent = toText(item.status_fr) || contentStatusLabel(item.status);
+      const explanation = document.createElement("p");
+      explanation.textContent = toText(item.explanation_fr) || "Disponibilite a verifier.";
+      card.append(heading, status, explanation);
+
+      if (item.content_text) {
+        const details = document.createElement("details");
+        details.className = "dashboard-content-details";
+        const summaryNode = document.createElement("summary");
+        summaryNode.textContent = "Ouvrir ce contenu";
+        const pre = document.createElement("pre");
+        pre.textContent = toText(item.content_text);
+        details.append(summaryNode, pre);
+        card.appendChild(details);
+      } else {
+        renderContentEvidence(card, mapping(item.source).evidence);
+      }
+
+      const meta = document.createElement("p");
+      meta.className = "dashboard-muted";
+      const chars = item.content_chars == null ? "taille non disponible" : `${toInt(item.content_chars)} caracteres`;
+      const hash = toText(item.content_sha256_12);
+      meta.textContent = hash ? `${chars}; hash ${hash}.` : chars;
+      card.appendChild(meta);
+      list.appendChild(card);
+    });
+    target.appendChild(list);
+  };
+
+  const renderContentGate = (payload, container) => {
+    const gate = mapping(payload.content_gate);
+    if (gate.action_available !== true) return;
+
+    const block = document.createElement("article");
+    block.className = "dashboard-story-section dashboard-content-gate";
+    const heading = document.createElement("h5");
+    heading.textContent = "Contenu complet volontaire";
+    const warning = document.createElement("p");
+    warning.className = "dashboard-warning-text";
+    warning.textContent =
+      toText(gate.warning_fr) ||
+      "Action volontaire: peut afficher du contenu brut si un artefact exact existe. Aucun contenu n est precharge.";
+    const button = document.createElement("button");
+    button.className = "admin-btn admin-btn-secondary dashboard-content-action";
+    button.type = "button";
+    button.textContent = toText(gate.action_label_fr) || "Afficher le contenu complet";
+    const body = document.createElement("div");
+    body.className = "dashboard-content-body";
+    body.hidden = true;
+
+    button.addEventListener("click", async () => {
+      const item = mapping(payload.item);
+      const conversationId = toText(payload.conversation_id) || toText(item.conversation_id);
+      const turnId = toText(payload.turn_id) || toText(item.turn_id);
+      if (!conversationId || !turnId) return;
+      button.disabled = true;
+      body.hidden = false;
+      body.textContent = "Ouverture volontaire en cours...";
+      try {
+        const contentPayload = await fetchTurnContent({ conversationId, turnId });
+        renderContentGatePayload(body, contentPayload);
+      } catch (error) {
+        body.textContent = error instanceof Error ? error.message : "Contenu complet indisponible.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    block.append(heading, warning, button, body);
+    container.appendChild(block);
+  };
+
   const renderStory = (payload) => {
     clearNode(elements.inspectionBody);
     const story = mapping(payload.story);
@@ -841,6 +985,8 @@
       });
       elements.inspectionBody.appendChild(nav);
     }
+
+    renderContentGate(payload, elements.inspectionBody);
 
     elements.inspectionStatus.textContent = "Tour ouvert";
     elements.inspectionEmpty.hidden = true;

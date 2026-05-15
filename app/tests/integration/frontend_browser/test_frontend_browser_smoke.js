@@ -1021,7 +1021,7 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
           title_fr: "Inspection traduite du tour",
           summary_fr: "Tour degrade avec 0 erreur(s) et 1 fallback(s) compacts.",
           proof_level: "translated_compact_inspection",
-          content_status_fr: "Contenu complet non charge; ouverture volontaire reservee au lot suivant.",
+          content_status_fr: "Contenu complet non charge; utilisez Afficher le contenu complet pour verifier ce qui est disponible.",
           sections: [
             {
               key: "received",
@@ -1060,7 +1060,7 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
               key: "proof_limits",
               label_fr: "Preuves et limites",
               items: [
-                "Le contenu complet reste reserve au lot suivant et n est ni precharge ni expose par cette inspection.",
+                "Le contenu complet n est pas precharge ici; il peut etre demande volontairement avec l action Afficher le contenu complet.",
                 "Manifeste de prompt disponible: non.",
               ],
             },
@@ -1089,8 +1089,64 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
             content_status_fr: "Le contenu complet reste indisponible dans cette vue.",
           },
         ],
+        content_gate: {
+          kind: "dashboard_content_gate_summary",
+          action_available: true,
+          action_label_fr: "Afficher le contenu complet",
+          default_state: "not_loaded",
+          warning_fr: "Action volontaire: peut afficher du contenu brut si un artefact exact existe. Aucun contenu complet n est charge avant ce clic.",
+          redaction: { raw_content_included: false },
+        },
         source: { limits: { event_limit_dependency: false } },
         redaction: { raw_content_included: false },
+      });
+      const contentPayload = (conversationId, turnId, windowKey) => ({
+        ok: true,
+        kind: "dashboard_turn_content_gate",
+        conversation_id: conversationId,
+        turn_id: turnId,
+        window: { key: windowKey },
+        availability: {
+          status: "partial_available",
+          status_fr: "contenu partiel disponible",
+          loaded_after_explicit_action: true,
+          preloaded: false,
+          status_counts: { exact_available: 1, fingerprint_only: 1, not_reconstructible: 1 },
+          warning_fr: "Contenu charge uniquement apres action explicite.",
+        },
+        items: [
+          {
+            key: "main_model_payload",
+            label_fr: "Payload du modele principal",
+            status: "exact_available",
+            status_fr: "contenu exact disponible",
+            content_text: "CONTENU COMPLET TEST APRES CLIC",
+            content_chars: 31,
+            content_sha256_12: "abcdef123456",
+            explanation_fr: "Contenu exact retrouve dans un evenement source existant.",
+            source: { evidence: { message_count: 1, model: "model/test" } },
+          },
+          {
+            key: "memory_content",
+            label_fr: "Contenu memoire injecte",
+            status: "fingerprint_only",
+            status_fr: "empreinte seule disponible",
+            content_text: null,
+            explanation_fr: "Les logs sources prouvent des counts, mais pas le contenu exact.",
+            source: { evidence: { retrieved_count: 8, injected_candidate_count: 2 } },
+          },
+          {
+            key: "web_content",
+            label_fr: "Contenu web injecte",
+            status: "not_reconstructible",
+            status_fr: "non reconstructible",
+            content_text: null,
+            explanation_fr: "Aucun evenement source disponible ne contient ce contenu.",
+            source: null,
+          },
+        ],
+        audit: { attempted: true, stored: true, raw_content_included: false },
+        redaction: { raw_content_included: true, secret_blocked_count: 0 },
       });
       window.fetch = async (input, init = {}) => {
         const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
@@ -1120,6 +1176,14 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
         if (inspectionMatch && method === "GET") {
           const conversationId = url.searchParams.get("conversation_id") || "conv-browser-1";
           return new Response(JSON.stringify(inspectionPayload(conversationId, decodeURIComponent(inspectionMatch[1]), windowKey)), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        const contentMatch = url.pathname.match(/^\\/api\\/admin\\/dashboard\\/turns\\/([^/]+)\\/content$/);
+        if (contentMatch && method === "GET") {
+          const conversationId = url.searchParams.get("conversation_id") || "conv-browser-1";
+          return new Response(JSON.stringify(contentPayload(conversationId, decodeURIComponent(contentMatch[1]), windowKey)), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -1178,6 +1242,17 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'pas reconstructible');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'Contenu complet non charge');
     await assertTextContains(page.locator('#dashboardInspectionBody'), 'Lecture par module');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Afficher le contenu complet');
+    assert.equal((await page.locator('#dashboardInspectionBody').textContent()).includes('CONTENU COMPLET TEST APRES CLIC'), false);
+    let calls = await page.evaluate(() => window.__fridaBrowserState.calls);
+    assert.equal(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/content'), false);
+
+    await page.click('.dashboard-content-action');
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardInspectionBody')?.textContent.includes('CONTENU COMPLET TEST APRES CLIC'));
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'empreinte seule disponible');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'non reconstructible');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Action auditee');
 
     await page.click('[data-window="30d"]');
     await page.waitForFunction(() =>
@@ -1185,11 +1260,12 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardConversationsEmpty'), 'Aucune conversation observee');
     await assertTextContains(page.locator('#dashboardTrendCards'), 'Aucune donnee materialisee');
 
-    const calls = await page.evaluate(() => window.__fridaBrowserState.calls);
+    calls = await page.evaluate(() => window.__fridaBrowserState.calls);
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=24h')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations' && call.search.includes('window=24h')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations/conv-browser-1/turns' && call.search.includes('window=24h')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/inspection' && call.search.includes('conversation_id=conv-browser-1')));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/content' && call.search.includes('conversation_id=conv-browser-1')));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=30d')));
     assert.equal(calls.some((call) => call.path.startsWith('/api/admin/logs')), false);
 

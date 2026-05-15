@@ -501,26 +501,26 @@ Objectif: rendre possible le contenu complet confirme par le produit, sans casse
 
 Cases:
 
-- [ ] Ajouter l'action explicite `Afficher le contenu complet`.
-- [ ] Ne jamais afficher le brut par defaut.
-- [ ] Ne pas precharger le contenu complet dans le DOM si ce n'est pas necessaire.
-- [ ] Ajouter une garde frontend claire.
-- [ ] Ajouter une garde backend claire.
-- [ ] Auditer l'action si possible.
-- [ ] Afficher une indication de sensibilite avant ouverture.
-- [ ] Separer contenu de conversation, prompt, identity, memory, web et autres sources.
-- [ ] Definir ce qui est reconstructible aujourd'hui et ce qui exige un stockage futur explicite.
+- [x] Ajouter l'action explicite `Afficher le contenu complet`.
+- [x] Ne jamais afficher le brut par defaut.
+- [x] Ne pas precharger le contenu complet dans le DOM si ce n'est pas necessaire.
+- [x] Ajouter une garde frontend claire.
+- [x] Ajouter une garde backend claire.
+- [x] Auditer l'action si possible.
+- [x] Afficher une indication de sensibilite avant ouverture.
+- [x] Separer contenu de conversation, prompt, identity, memory, web et autres sources.
+- [x] Definir ce qui est reconstructible aujourd'hui et ce qui exige un stockage futur explicite.
 
 Tests / preuves attendues:
 
-- [ ] Tests que le contenu complet est absent du payload par defaut.
-- [ ] Tests action volontaire.
-- [ ] Tests acces refuse / non disponible.
-- [ ] Tests audit compact sans contenu.
+- [x] Tests que le contenu complet est absent du payload par defaut.
+- [x] Tests action volontaire.
+- [x] Tests acces refuse / non disponible.
+- [x] Tests audit compact sans contenu.
 
 Condition de cloture:
 
-- [ ] Le contenu complet est accessible quand il est explicitement demande, mais ne peut pas apparaitre accidentellement dans la lecture cockpit.
+- [x] Le contenu complet est accessible quand il est explicitement demande, mais ne peut pas apparaitre accidentellement dans la lecture cockpit.
 
 ### Lot 9 - Nettoyage progressif et harmonisation
 

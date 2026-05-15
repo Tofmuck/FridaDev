@@ -1000,6 +1000,34 @@ def api_admin_dashboard_turn_inspection(turn_id: str):
     return jsonify({'ok': True, **payload})
 
 
+@app.get('/api/admin/dashboard/turns/<turn_id>/content')
+def api_admin_dashboard_turn_content(turn_id: str):
+    def _audit_dashboard_content_gate(event: dict[str, Any]) -> bool:
+        payload = event.get('payload_json') if isinstance(event.get('payload_json'), dict) else {}
+        admin_logs.log_event(
+            'dashboard_content_gate',
+            conversation_id=event.get('conversation_id'),
+            turn_id=event.get('turn_id'),
+            audit_event_id=event.get('event_id'),
+            **payload,
+        )
+        return True
+
+    try:
+        payload = dashboard_read_model.read_dashboard_turn_content(
+            turn_id,
+            request.args,
+            conn_factory=log_store._conn,
+            logger_instance=log_store.logger,
+            audit_fn=_audit_dashboard_content_gate,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 404
+    return jsonify({'ok': True, **payload})
+
+
 @app.delete('/api/admin/logs/chat')
 def api_admin_chat_logs_delete():
     try:

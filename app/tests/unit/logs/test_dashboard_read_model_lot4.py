@@ -453,6 +453,8 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertIn('2 embeddings demandes, 2 reussis', story_text)
         self.assertIn('Le contexte modele exact n est pas reconstructible', story_text)
         self.assertIn('Contenu complet non charge', story_text)
+        self.assertIn('content_gate', payload)
+        self.assertEqual(payload['content_gate']['action_label_fr'], 'Afficher le contenu complet')
         summaries = [module['summary_fr'] for module in payload['modules']]
         self.assertIn('La memoire a trouve 4 elements, en a garde 2, et en a injecte 1.', summaries)
         encoded_summaries = ' '.join(summaries)
@@ -678,8 +680,171 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertNotIn('provider_missing', story_text)
         self.assertNotIn('unknown_backend_reason', story_text)
         self.assertNotIn('RAW PROMPT MUST NOT LEAK', story_text)
-        self.assertNotIn('Afficher le contenu complet', story_text)
+        self.assertIn('Afficher le contenu complet', story_text)
         self._assert_content_free(payload)
+
+    def test_turn_content_gate_loads_only_after_explicit_call_and_audits(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 5, 14, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 0, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            8,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            60,
+            1,
+            1,
+            9,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        fact_row = (
+            'conv-gate',
+            'turn-gate',
+            datetime(2026, 5, 15, 11, 58, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+            'complete',
+            100,
+            4,
+            'evt-1',
+            'evt-4',
+            {'status': 'saved', 'assistant_final_saved': True},
+            {'main': {'present': True, 'status': 'ok'}},
+            {'retrieved': 2, 'kept': 1, 'injected': 1},
+            {'block_present': True, 'status': 'ok'},
+            {'block_present': True, 'status': 'ok'},
+            {'requested': True, 'success': True, 'injected': True},
+            {'read_present': True},
+            {},
+            {'error_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            {'llm_payload': 1, 'turn_start': 1},
+            {'events_truncated': False},
+            {'content_comprehension_status': 'compact_only', 'prompt_manifest_available': False},
+            'dashboard_analytics_v1',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        event_rows = [
+            (
+                'evt-1',
+                'conv-gate',
+                'turn-gate',
+                datetime(2026, 5, 15, 11, 58, tzinfo=timezone.utc),
+                'turn_start',
+                'ok',
+                None,
+                {'user_msg_chars': 12, 'user_msg_sha256_12': 'userhash1234'},
+            ),
+            (
+                'evt-2',
+                'conv-gate',
+                'turn-gate',
+                datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+                'llm_payload',
+                'ok',
+                None,
+                {
+                    'provider_caller': 'llm',
+                    'model': 'model/test',
+                    'message_count': 1,
+                    'messages': [{'role': 'system', 'content': 'Exact main prompt for gate test'}],
+                },
+            ),
+            (
+                'evt-3',
+                'conv-gate',
+                'turn-gate',
+                datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+                'identity_prompt_prepared',
+                'ok',
+                None,
+                {'identity_block': 'token=SHOULD_NOT_LEAK'},
+            ),
+            (
+                'evt-4',
+                'conv-gate',
+                'turn-gate',
+                datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+                'memory_chain_snapshot',
+                'ok',
+                None,
+                {'retrieved_count': 2, 'kept_count': 1, 'injected_candidate_count': 1},
+            ),
+        ]
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                elif 'observability.chat_log_events' in query:
+                    self.rows = event_rows
+                else:
+                    self.rows = [fact_row]
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        audit_events: list[dict[str, Any]] = []
+
+        def fake_audit(event: dict[str, Any]) -> bool:
+            audit_events.append(event)
+            return True
+
+        payload = dashboard_read_model.read_dashboard_turn_content(
+            'turn-gate',
+            {'conversation_id': 'conv-gate', 'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            audit_fn=fake_audit,
+            now=now,
+        )
+
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        self.assertEqual(payload['kind'], 'dashboard_turn_content_gate')
+        self.assertEqual(payload['availability']['status'], 'partial_available')
+        self.assertTrue(payload['availability']['loaded_after_explicit_action'])
+        self.assertFalse(payload['availability']['preloaded'])
+        self.assertTrue(payload['audit']['stored'])
+        self.assertEqual(audit_events[0]['stage'], 'dashboard_content_gate')
+        self.assertFalse(audit_events[0]['payload_json']['raw_content_included'])
+        self.assertIn('Exact main prompt for gate test', encoded)
+        self.assertIn('empreinte seule disponible', encoded)
+        self.assertIn('bloque par garde secret', encoded)
+        self.assertNotIn('SHOULD_NOT_LEAK', encoded)
+        self.assertNotIn('token=SHOULD_NOT_LEAK', encoded)
 
 
 if __name__ == '__main__':

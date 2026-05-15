@@ -190,6 +190,58 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertEqual(observed['args'].get('conversation_id'), 'conv-1')
         self._assert_content_free(data)
 
+    def test_dashboard_turn_content_route_is_explicit_and_audited(self) -> None:
+        observed = {'turn_id': None, 'args': None, 'audit_fn': None}
+        original = self.server.dashboard_read_model.read_dashboard_turn_content
+
+        def fake_read_dashboard_turn_content(turn_id, args, **kwargs):
+            observed['turn_id'] = turn_id
+            observed['args'] = args
+            observed['audit_fn'] = kwargs.get('audit_fn')
+            return {
+                'kind': 'dashboard_turn_content_gate',
+                'conversation_id': args.get('conversation_id'),
+                'turn_id': turn_id,
+                'window': {'key': args.get('window')},
+                'availability': {
+                    'status': 'fingerprint_only',
+                    'status_fr': 'empreinte seule disponible',
+                    'loaded_after_explicit_action': True,
+                    'preloaded': False,
+                    'status_counts': {'fingerprint_only': 1},
+                },
+                'items': [
+                    {
+                        'key': 'main_model_payload',
+                        'label_fr': 'Payload du modele principal',
+                        'status': 'fingerprint_only',
+                        'status_fr': 'empreinte seule disponible',
+                        'content_text': None,
+                        'explanation_fr': 'Seules les empreintes existent.',
+                    }
+                ],
+                'audit': {'attempted': True, 'stored': True, 'raw_content_included': False},
+                'redaction': {'raw_content_included': False, 'secret_blocked_count': 0},
+            }
+
+        self.server.dashboard_read_model.read_dashboard_turn_content = fake_read_dashboard_turn_content
+        try:
+            response = self.client.get('/api/admin/dashboard/turns/turn-1/content?conversation_id=conv-1&window=24h')
+        finally:
+            self.server.dashboard_read_model.read_dashboard_turn_content = original
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['kind'], 'dashboard_turn_content_gate')
+        self.assertTrue(data['availability']['loaded_after_explicit_action'])
+        self.assertFalse(data['availability']['preloaded'])
+        self.assertEqual(data['items'][0]['status'], 'fingerprint_only')
+        self.assertEqual(observed['turn_id'], 'turn-1')
+        self.assertEqual(observed['args'].get('conversation_id'), 'conv-1')
+        self.assertIsNotNone(observed['audit_fn'])
+        self._assert_content_free(data)
+
     def test_dashboard_routes_map_read_model_errors(self) -> None:
         original = self.server.dashboard_read_model.read_dashboard_overview
         self.server.dashboard_read_model.read_dashboard_overview = (
@@ -212,6 +264,19 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
             response = self.client.get('/api/admin/dashboard/turns/missing/inspection?conversation_id=conv-1')
         finally:
             self.server.dashboard_read_model.read_dashboard_turn_inspection = original
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json(), {'ok': False, 'error': 'dashboard turn not found'})
+
+    def test_dashboard_turn_content_route_maps_not_found(self) -> None:
+        original = self.server.dashboard_read_model.read_dashboard_turn_content
+        self.server.dashboard_read_model.read_dashboard_turn_content = (
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(LookupError('dashboard turn not found'))
+        )
+        try:
+            response = self.client.get('/api/admin/dashboard/turns/missing/content?conversation_id=conv-1')
+        finally:
+            self.server.dashboard_read_model.read_dashboard_turn_content = original
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json(), {'ok': False, 'error': 'dashboard turn not found'})
