@@ -1,0 +1,548 @@
+# Dashboard long terme observabilite - TODO
+
+Statut: actif
+Source: audit / cadrage read-only du futur dashboard long terme FridaDev du 2026-05-15
+Classement: `app/docs/todo-todo/admin/`
+Portee: dashboard produit/admin/frontend long terme, metriques persistantes, inspection traduite, architecture modulaire observable
+Hors-scope du commit de creation: patch runtime, frontend, route, migration DB, backfill, rebuild, nettoyage immediat des surfaces existantes, redesign global
+
+## 1. Intention
+
+Ce TODO ouvre le chantier actif du futur dashboard long terme FridaDev.
+
+Le besoin n'est pas d'ajouter une cinquieme surface opaque ni de refaire l'observabilite existante. FridaDev possede deja des logs compacts, des read-models, des snapshots et des surfaces admin riches:
+
+- `/log`;
+- Memory Admin;
+- Hermeneutic Admin;
+- Identity;
+- `observability.chat_log_events`;
+- `full_turn_metrics_snapshot`;
+- `turn_observability_checklist`;
+- `turn_pipeline_read_model`;
+- `memory_chain_snapshot`;
+- read-models Memory, Identity et Hermeneutic.
+
+Le besoin est de construire une lecture long terme, lisible par un non-technicien, capable de montrer en un ecran:
+
+- le pouls global du systeme;
+- la lecture comparative des conversations;
+- les courbes fiables sur de vraies fenetres temporelles;
+- l'inspection exhaustive mais traduite d'une conversation et d'un tour;
+- l'acces volontaire au contenu complet quand il est explicitement demande.
+
+## 2. Emplacement retenu
+
+Emplacement: `app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md`.
+
+Raison:
+
+- le chantier n'est plus une remediation d'audit;
+- il ouvre une vraie surface produit/admin/frontend;
+- il touche la lecture operateur, les routes admin futures, la persistence analytique et la coherence visuelle;
+- `app/docs/todo-todo/audits/` serait moins juste, car le but n'est pas seulement de fermer des findings mais de cadrer puis construire un nouveau produit admin.
+
+## 3. Direction d'architecture retenue
+
+La source de verite du dashboard doit etre une combinaison explicite:
+
+- logs compacts existants = verite evenementielle detaillee;
+- agregats persistants = verite analytique longue periode;
+- read-models modulaires = lecture humaine et inspection traduite;
+- `/log` = outil de debug technique, pas dashboard long terme;
+- le futur dashboard = couche de lecture et de decision, construite au-dessus de l'observabilite existante sans la reimplementer aveuglement.
+
+Le dashboard ne doit pas recalculer 30 ou 90 jours de courbes a partir d'un `event_limit` court. Les lectures actuelles de `/api/admin/logs/chat/metrics` restent utiles comme semantique et preuve recente, mais ne suffisent pas comme socle industriel longue periode lorsque `source.events_truncated=true`.
+
+## 4. Duplication, recouvrement et nettoyage
+
+Ne pas transformer la non-duplication en dogme rigide.
+
+Regle:
+
+- eviter la duplication confuse: deux surfaces qui racontent la meme chose avec des nombres ou mots differents sans source claire;
+- accepter le recouvrement transitoire lorsqu'il permet de construire proprement le dashboard sans casser `/log`, Memory Admin, Hermeneutic Admin ou Identity;
+- nettoyer progressivement les surfaces devenues redondantes une fois le dashboard stabilise et prouve.
+
+On ne cherche pas zero recouvrement immediat; on cherche une observabilite de mieux en mieux maitrisee, avec nettoyage progressif des duplications inutiles au fil du chantier.
+
+## 5. Page dediee et structure frontend cible
+
+Hypothese de structure a verifier au debut du lot d'implementation:
+
+- `app/web/dashboard.html`;
+- `app/web/dashboard/`;
+- route statique dediee `/dashboard`;
+- endpoints admin sous `/api/admin/dashboard/...`.
+
+Cette structure suit le rangement actuel:
+
+- `app/web/log.html` + `app/web/log/`;
+- `app/web/memory-admin.html` + `app/web/memory_admin/`;
+- `app/web/hermeneutic-admin.html` + `app/web/hermeneutic_admin/`;
+- `app/web/identity.html` + `app/web/identity/`.
+
+Chaque lot doit relire l'etat courant avant patch, car le depot peut evoluer avant l'ouverture du code.
+
+## 6. Premiere vue cible
+
+L'ecran d'ouverture doit mettre a egalite:
+
+- le pouls global du systeme;
+- la lecture comparative des conversations.
+
+Il ne faut pas imposer un mode "global d'abord, conversations ensuite". Les deux lectures doivent etre visibles sans choix prealable.
+
+Les conversations doivent etre identifiees par:
+
+- leur titre si disponible;
+- sinon une date / heure lisible;
+- jamais uniquement par un identifiant opaque.
+
+## 7. Fenetres temporelles et retention
+
+Fenetres visibles d'abord:
+
+- 24 h;
+- 7 j;
+- 30 j.
+
+Options secondaires:
+
+- aujourd'hui;
+- hier;
+- 90 jours;
+- personnalisee.
+
+Cible initiale:
+
+- profondeur 90 jours;
+- granularite plus fine sur le recent si utile;
+- granularite plus compacte sur l'ancien;
+- pas de retention sans limite a ce stade;
+- pas de backfill massif sans decision separee.
+
+## 8. Langage humain obligatoire
+
+Le dashboard doit parler francais simple.
+
+Exemples de vocabulaire principal:
+
+- Tours reussis;
+- Reponses degradees;
+- Memoire utilisee;
+- Recherche web utile;
+- Problemes rencontres;
+- Contenu complet;
+- Conversation active;
+- Dernier probleme visible.
+
+Les termes techniques peuvent rester accessibles dans les details, mais ne doivent pas structurer la lecture principale:
+
+- `legacy_incomplete`;
+- `provider_caller`;
+- `fallback_fail_open`;
+- `memory_chain_snapshot`;
+- `node_state`;
+- noms de stages bruts.
+
+## 9. Content-free par defaut et contenu complet volontaire
+
+Par defaut, le dashboard reste content-free:
+
+- counts;
+- statuts;
+- booleens;
+- durees;
+- timestamps;
+- dimensions;
+- rates;
+- reason codes;
+- error codes;
+- noms de modules;
+- hashes courts;
+- longueurs;
+- references techniques non sensibles.
+
+Interdit par defaut:
+
+- contenu brut de conversation;
+- prompt;
+- messages;
+- memory trace brute;
+- summary brute;
+- identity brute;
+- query web brute;
+- result snippet;
+- canonical input dump;
+- DSN;
+- token;
+- cle;
+- traceback brut.
+
+Le besoin d'acces au contenu complet est confirme.
+
+Il doit etre traite comme un lot explicite:
+
+- action volontaire de type `Afficher le contenu complet`;
+- aucun brut charge ou affiche par defaut;
+- separation claire entre lecture humaine et contenu complet;
+- garde frontend et backend;
+- idealement audit de l'action;
+- indication claire du niveau de sensibilite;
+- pas d'elargissement implicite aux vues cockpit.
+
+## 10. Architecture modulaire cible
+
+Le dashboard doit accueillir des modules actuels et futurs.
+
+Chaque module observable doit pouvoir declarer:
+
+- metriques globales;
+- resume conversation;
+- resume tour;
+- detail humain;
+- etats succes / degrade / erreur;
+- contenu complet optionnel;
+- regles content-free;
+- version de calcul;
+- sources evenementielles ou tables d'agregats;
+- points d'extension.
+
+Modules initiaux:
+
+- pipeline;
+- memory;
+- identity;
+- hermeneutic;
+- providers;
+- web;
+- node_state.
+
+Modules futurs a prevoir explicitement:
+
+- documents;
+- images;
+- autres outils ou agents.
+
+## 11. Coherence visuelle frontend
+
+La coherence visuelle n'est pas une note annexe: c'est un axe du chantier.
+
+Reference principale:
+
+- le chat Frida;
+- sa topbar;
+- ses boutons de navigation;
+- son langage sobre, compact et deja reconnaissable.
+
+Le dashboard doit rester coherent avec:
+
+- `/log`;
+- Memory Admin;
+- Hermeneutic Admin;
+- Identity;
+- `/admin`;
+- les boutons de navigation du chat.
+
+Objectif:
+
+- unite visuelle propre;
+- pas de redesign sauvage;
+- pas de rupture avec l'esthetique Frida;
+- densite utile;
+- boutons et navigation harmonises progressivement;
+- composants partages lorsque cela reduit vraiment la divergence.
+
+## 12. Lots recommandes
+
+### Lot 1 - Contrat dashboard
+
+Objectif: cadrer le contrat avant toute implementation.
+
+Cases:
+
+- [ ] Definir les faits par tour, les agregats, le vocabulaire francais et les modules observables.
+- [ ] Definir le content gate et la politique `Afficher le contenu complet`.
+- [ ] Definir les niveaux de lecture: cockpit, conversation, tour, inspection, contenu complet.
+- [ ] Definir les champs strictement content-free autorises par defaut.
+- [ ] Definir les champs interdits par defaut.
+- [ ] Documenter la difference entre logs compacts, agregats persistants et read-models humains.
+- [ ] Documenter que `/log` reste l'outil de debug technique.
+
+Tests / preuves attendues:
+
+- [ ] Spec ou doc relue contre `log-module-contract.md`.
+- [ ] Matrice sources -> champs -> vues.
+- [ ] Preuve que chaque champ sensible est soit interdit par defaut, soit rattache au content gate.
+
+Condition de cloture:
+
+- [ ] Aucun lot backend/frontend ne peut demarrer sans contrat de donnees, vocabulaire et content gate valides.
+
+### Lot 2 - Faits persistants et agregats longue periode
+
+Objectif: creer le socle analytique qui rend les fenetres 24 h / 7 j / 30 j / 90 jours fiables.
+
+Cases:
+
+- [ ] Definir les facts par tour.
+- [ ] Definir les syntheses conversation.
+- [ ] Definir les buckets horaires / journaliers.
+- [ ] Definir la retention cible 90 jours.
+- [ ] Definir la granularite recente vs ancienne.
+- [ ] Definir le statut de materialisation: dernier event traite, retard, erreur, version de calcul.
+- [ ] Garder le lien vers les logs sources.
+- [ ] Ne pas stocker de contenu brut dans les agregats.
+
+Tests / preuves attendues:
+
+- [ ] Tests de materialisation idempotente.
+- [ ] Tests de fenetre temporelle.
+- [ ] Tests de troncature / retard de materialisation.
+- [ ] Tests content-free stricts.
+
+Condition de cloture:
+
+- [ ] Les courbes 30 / 90 jours ne dependent plus d'un `event_limit` court.
+
+### Lot 3 - Architecture modulaire des modules observables
+
+Objectif: eviter un dashboard fige autour du pipeline actuel.
+
+Cases:
+
+- [ ] Definir une interface ou convention de module observable.
+- [ ] Couvrir pipeline, memory, identity, hermeneutic, providers, web et node_state.
+- [ ] Prevoir documents et images comme modules futurs.
+- [ ] Definir pour chaque module: metriques globales, resume conversation, resume tour, detail humain, etats, contenu complet optionnel, regles content-free, version.
+- [ ] Definir comment un module explique une degradation en francais.
+- [ ] Definir comment un module expose ses sources et limites.
+
+Tests / preuves attendues:
+
+- [ ] Fixtures compactes multi-modules.
+- [ ] Tests d'ajout d'un module factice sans modifier toute la page.
+- [ ] Tests de libelles humains sans contenu brut.
+
+Condition de cloture:
+
+- [ ] Ajouter demain un module documents ou images ne doit pas exiger de refaire l'architecture dashboard.
+
+### Lot 4 - Endpoints dashboard
+
+Objectif: exposer une API admin sobre et stable pour le futur frontend.
+
+Endpoints cibles a confirmer:
+
+- `/api/admin/dashboard/overview`;
+- `/api/admin/dashboard/conversations`;
+- `/api/admin/dashboard/conversations/<conversation_id>/turns`;
+- `/api/admin/dashboard/turns/<turn_id>/inspection`;
+- endpoints contenu complet explicite si le content gate est pret.
+
+Cases:
+
+- [ ] Exposer l'overview fenetree.
+- [ ] Exposer la liste comparative des conversations.
+- [ ] Exposer les tours d'une conversation.
+- [ ] Exposer l'inspection traduite d'un tour.
+- [ ] Exposer les statuts de source: fenetre, retention, materialisation, truncation, version.
+- [ ] Refuser tout contenu brut hors endpoint explicitement gate.
+- [ ] Garder `app/server.py` en orchestration seulement.
+
+Tests / preuves attendues:
+
+- [ ] Tests API des fenetres.
+- [ ] Tests schemas content-free.
+- [ ] Tests empty/degraded state.
+- [ ] Tests admin access existants non regresses.
+
+Condition de cloture:
+
+- [ ] Le frontend peut construire le dashboard sans parser `/log` ni reimplementer les read-models dans le navigateur.
+
+### Lot 5 - Squelette page dediee et coherence visuelle
+
+Objectif: creer la surface dediee sans encore empiler les widgets.
+
+Cases:
+
+- [ ] Creer `app/web/dashboard.html`.
+- [ ] Creer `app/web/dashboard/`.
+- [ ] Ajouter la route statique `/dashboard`.
+- [ ] Ajouter ou preparer la navigation depuis le chat et les surfaces admin.
+- [ ] Reprendre le chat comme reference visuelle principale.
+- [ ] Reprendre les boutons/navigation du chat comme modele.
+- [ ] Harmoniser progressivement les liens entre `/log`, Memory Admin, Hermeneutic Admin, Identity et dashboard.
+- [ ] Ne pas introduire un style visuel separe.
+
+Tests / preuves attendues:
+
+- [ ] Checks HTML/JS.
+- [ ] Test frontend admin minimal.
+- [ ] Verification que la page charge sans contenu brut.
+- [ ] Verification responsive sobre si navigateur disponible.
+
+Condition de cloture:
+
+- [ ] La page existe, se place naturellement dans Frida, et ne ressemble pas a un dashboard externe colle au produit.
+
+### Lot 6 - Premier ecran
+
+Objectif: rendre visible des l'ouverture le pouls global et les conversations.
+
+Cases:
+
+- [ ] Afficher les fenetres 24 h, 7 j, 30 j.
+- [ ] Ajouter les options aujourd'hui, hier, 90 jours et personnalisee.
+- [ ] Afficher le pouls global: tours reussis, reponses degradees, problemes, latences, memoire, web.
+- [ ] Afficher la table comparative des conversations.
+- [ ] Nommer les conversations par titre si disponible, sinon date / heure lisible.
+- [ ] Eviter les identifiants opaques comme libelle principal.
+- [ ] Ajouter seulement les courbes vraiment utiles.
+- [ ] Garder une alternative tabulaire pour les counts importants.
+
+Tests / preuves attendues:
+
+- [ ] Tests empty state.
+- [ ] Tests degraded/materialisation late state.
+- [ ] Tests libelles humains.
+- [ ] Tests que les fenetres longues utilisent les agregats persistants.
+
+Condition de cloture:
+
+- [ ] Un non-technicien peut comprendre en un ecran si Frida va bien et quelles conversations meritent attention.
+
+### Lot 7 - Inspection traduite conversation / tour
+
+Objectif: rendre exhaustive l'inspection sans imposer les payloads techniques.
+
+Cases:
+
+- [ ] Ajouter drill-down conversation -> tour -> inspection.
+- [ ] Expliquer ce que chaque module a fait en francais clair.
+- [ ] Expliquer ce que le modele a recu sous forme traduite et content-free par defaut.
+- [ ] Expliquer ce qui a ete cherche, garde, injecte, persiste, degrade ou echoue.
+- [ ] Resumer les donnees massives sans dump, par exemple `25 embeddings demandes, 25 reussis`.
+- [ ] Afficher les causes probables par module avant de renvoyer vers `/log`.
+- [ ] Ajouter les liens de debug vers `/log`, Memory Admin, Hermeneutic Admin ou Identity quand utile.
+
+Tests / preuves attendues:
+
+- [ ] Tests de recit de tour complet.
+- [ ] Tests tour degrade.
+- [ ] Tests module absent / not applicable.
+- [ ] Tests absence de contenu brut.
+
+Condition de cloture:
+
+- [ ] L'operateur peut comprendre un tour sans lire une pluie de payloads techniques.
+
+### Lot 8 - Acces volontaire au contenu complet
+
+Objectif: rendre possible le contenu complet confirme par le produit, sans casser le content-free par defaut.
+
+Cases:
+
+- [ ] Ajouter l'action explicite `Afficher le contenu complet`.
+- [ ] Ne jamais afficher le brut par defaut.
+- [ ] Ne pas precharger le contenu complet dans le DOM si ce n'est pas necessaire.
+- [ ] Ajouter une garde frontend claire.
+- [ ] Ajouter une garde backend claire.
+- [ ] Auditer l'action si possible.
+- [ ] Afficher une indication de sensibilite avant ouverture.
+- [ ] Separer contenu de conversation, prompt, identity, memory, web et autres sources.
+- [ ] Definir ce qui est reconstructible aujourd'hui et ce qui exige un stockage futur explicite.
+
+Tests / preuves attendues:
+
+- [ ] Tests que le contenu complet est absent du payload par defaut.
+- [ ] Tests action volontaire.
+- [ ] Tests acces refuse / non disponible.
+- [ ] Tests audit compact sans contenu.
+
+Condition de cloture:
+
+- [ ] Le contenu complet est accessible quand il est explicitement demande, mais ne peut pas apparaitre accidentellement dans la lecture cockpit.
+
+### Lot 9 - Nettoyage progressif et harmonisation
+
+Objectif: reduire les recouvrements devenus inutiles apres stabilisation du dashboard.
+
+Cases:
+
+- [ ] Cartographier les recouvrements entre dashboard, `/log`, Memory Admin, Hermeneutic Admin et Identity.
+- [ ] Distinguer recouvrement transitoire utile et duplication confuse.
+- [ ] Deplacer les lectures devenues centrales vers le dashboard si cela clarifie le produit.
+- [ ] Garder `/log` comme debug technique.
+- [ ] Garder Memory Admin, Hermeneutic Admin et Identity comme surfaces domaine ou edition.
+- [ ] Harmoniser les boutons, la navigation, les titres et les etats empty/error.
+- [ ] Supprimer ou replier seulement ce qui est prouve redondant.
+
+Tests / preuves attendues:
+
+- [ ] Tests de navigation.
+- [ ] Tests non-regression des surfaces existantes.
+- [ ] Preuve que les suppressions/replis ne retirent pas de capacite diagnostic.
+
+Condition de cloture:
+
+- [ ] L'observabilite est plus maitrisee qu'avant: moins de duplication confuse, recouvrements utiles assumes, surfaces domaine preservees.
+
+## 13. Hors-scope global
+
+- Pas de patch runtime dans le commit de creation de ce TODO.
+- Pas de nouveau frontend dans le commit de creation.
+- Pas de route dans le commit de creation.
+- Pas de migration DB dans le commit de creation.
+- Pas de backfill dans le commit de creation.
+- Pas de rebuild Docker pour ce commit docs-only.
+- Pas de suppression immediate de `/log`, Memory Admin, Hermeneutic Admin ou Identity.
+- Pas de redesign graphique global.
+- Pas de modification plateforme OVH.
+- Pas de secrets ni contenu brut.
+- Pas d'arbitrage final d'implementation sans relecture de l'etat courant au debut du lot concerne.
+
+## 14. Condition de non-prolongation
+
+Le chantier doit s'arreter ou etre recadre quand:
+
+- le contrat dashboard est valide;
+- les facts persistants et agregats couvrent les fenetres 24 h / 7 j / 30 j / 90 jours sans `event_limit` trompeur;
+- la page dediee expose le pouls global et les conversations a egalite;
+- l'inspection conversation / tour est traduite et content-free par defaut;
+- l'action `Afficher le contenu complet` existe sous garde explicite;
+- les modules observables sont extensibles a documents et images;
+- `/log` reste le debug technique;
+- les surfaces domaine restent utiles et les duplications confuses sont nettoyees progressivement.
+
+Ne pas prolonger ce TODO pour:
+
+- creer une plateforme BI generique;
+- stocker l'historique sans limite;
+- refondre toute l'UI Frida;
+- changer la doctrine Memory, Identity ou Hermeneutic;
+- modifier les providers ou prompts;
+- absorber des chantiers documentaire / images qui doivent avoir leurs propres lots d'integration observable;
+- contourner les garde-fous content-free.
+
+## 15. Checks docs-only de creation
+
+Pour le commit de creation de ce fichier:
+
+```bash
+git status --short
+git diff --check
+test -f app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "Lot 1" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "Afficher le contenu complet" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "90 jours" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "recouvrement transitoire" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "documents" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "images" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+grep -n "Condition de non-prolongation" app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md
+git diff --cached --check
+```
+
+Pas de rebuild runtime pour ce commit docs-only.
