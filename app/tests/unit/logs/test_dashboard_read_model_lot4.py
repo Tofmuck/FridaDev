@@ -381,7 +381,14 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             'evt-latest',
             {'status': 'saved', 'assistant_final_saved': True},
             {'main': {'present': True, 'status': 'ok'}},
-            {'retrieved': 4, 'kept': 2, 'injected': 1},
+            {
+                'retrieved': 4,
+                'kept': 2,
+                'injected': 1,
+                'embeddings_requested_count': 2,
+                'embeddings_success_count': 2,
+                'embeddings_error_count': 0,
+            },
             {'block_present': True, 'status': 'ok'},
             {'block_present': True, 'status': 'ok'},
             {'requested': False, 'status': 'not_applicable'},
@@ -443,6 +450,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
         self.assertIn('Ce que Frida a recu', story_text)
         self.assertIn('Memoire: 4 trouve(s)', story_text)
+        self.assertIn('2 embeddings demandes, 2 reussis', story_text)
         self.assertIn('Le contexte modele exact n est pas reconstructible', story_text)
         self.assertIn('Contenu complet non charge', story_text)
         summaries = [module['summary_fr'] for module in payload['modules']]
@@ -503,7 +511,12 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
             {'read_present': False, 'read_valid': False, 'write_attempted': False, 'write_succeeded': False},
             {},
-            {'error_count': 1, 'skipped_count': 2, 'fallback_count': 1, 'reason_code_counts': {'provider_missing': 1}},
+            {
+                'error_count': 1,
+                'skipped_count': 2,
+                'fallback_count': 1,
+                'reason_code_counts': {'provider_missing': 1, 'unknown_backend_reason': 2},
+            },
             {'turn_start': 1},
             {'events_truncated': True},
             {'content_comprehension_status': 'compact_only', 'prompt_manifest_available': False},
@@ -558,7 +571,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertIn('La trace source du tour est signalee comme tronquee', story_text)
         self.assertIn('Manifeste de prompt disponible: non', story_text)
         self.assertIn('Aucun compteur embeddings n est disponible', story_text)
-        self.assertIn('provider_missing: 1', story_text)
+        self.assertIn('modele attendu non observe: 1', story_text)
+        self.assertIn('2 cause(s) technique(s) compacte(s) non traduite(s)', story_text)
+        self.assertNotIn('provider_missing', story_text)
+        self.assertNotIn('unknown_backend_reason', story_text)
         self.assertNotIn('RAW PROMPT MUST NOT LEAK', story_text)
         self.assertNotIn('Afficher le contenu complet', story_text)
         self._assert_content_free(payload)

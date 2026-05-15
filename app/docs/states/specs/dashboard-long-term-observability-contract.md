@@ -664,8 +664,11 @@ L'inspection traduite conversation / tour est livree par les read-models dashboa
 - le frontend affiche le recit `story` fourni par le read-model et les resumes `modules`;
 - la lecture principale reste en francais produit: ce que Frida a recu, ce que le modele a recu en lecture traduite, modules, problemes, donnees massives resumees, preuves et limites;
 - le recit doit expliquer explicitement ce qui est prouve, ce qui est resume, et ce qui n'est pas reconstructible avec les seuls faits compacts;
-- les donnees massives restent des syntheses de compteurs, par exemple embeddings demandes / reussis, elements memoire trouves / gardes / injectes;
+- les reason codes bruts ne structurent pas la lecture principale: ils sont traduits quand une traduction stable existe, sinon regroupes comme causes techniques compactes disponibles dans les logs techniques;
+- les donnees massives restent des syntheses de compteurs: embeddings demandes / reussis depuis les events `embedding` materialises dans le fact, elements memoire trouves / gardes / injectes depuis `memory_chain_snapshot` ou fallback compact;
+- si un compteur attendu n'est pas materialise pour un tour, le recit doit l'indiquer franchement au lieu de reprendre l'exemple comme une promesse tenue;
 - les liens vers `/log`, Memory Admin, Hermeneutic Admin et Identity sont des sorties de debug secondaires, jamais la lecture principale;
+- le lien `/log` doit hydrater les filtres `conversation_id` et `turn_id` depuis la query string afin d'ouvrir une vue technique réellement scopee;
 - le contenu complet reste non charge et non precharge au Lot 7; l'action volontaire `Afficher le contenu complet` reste reservee au Lot 8.
 
 ## 10. Interdits

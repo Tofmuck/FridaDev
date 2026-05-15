@@ -478,6 +478,12 @@ Cases:
 - [x] Afficher les causes probables par module avant de renvoyer vers `/log`.
 - [x] Ajouter les liens de debug vers `/log`, Memory Admin, Hermeneutic Admin ou Identity quand utile.
 
+Notes de correction avant cloture:
+
+- les causes compactes sont traduites en francais dans la lecture principale; les reason codes non traduits restent reserves aux logs techniques;
+- le lien `/log` hydrate `conversation_id` et `turn_id` depuis la query string;
+- les compteurs embeddings du recit viennent des events `embedding` materialises dans le fact; si aucun compteur n'existe pour un tour, le recit l'indique explicitement.
+
 Tests / preuves attendues:
 
 - [x] Tests de recit de tour complet.

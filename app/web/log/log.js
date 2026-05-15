@@ -199,6 +199,27 @@
     return query.toString();
   };
 
+  const readInitialFiltersFromLocation = () => {
+    const params = new URLSearchParams(window.location.search || "");
+    return {
+      conversation_id: toText(params.get("conversation_id")),
+      turn_id: toText(params.get("turn_id")),
+      stage: toText(params.get("stage")),
+      status: toText(params.get("status")).toLowerCase(),
+      limit: toBoundedInt(params.get("limit"), 100, 1, 500),
+      offset: toBoundedInt(params.get("offset"), 0, 0, 1000000),
+    };
+  };
+
+  const applyInitialFiltersFromLocation = () => {
+    const filters = readInitialFiltersFromLocation();
+    if (filters.stage) elements.stage.value = filters.stage;
+    if (filters.status) elements.status.value = filters.status;
+    elements.limit.value = String(filters.limit);
+    elements.offset.value = String(filters.offset);
+    return filters;
+  };
+
   const replaceSelectOptions = (selectElement, options, selectedValue) => {
     const normalizedSelected = toText(selectedValue);
     selectElement.innerHTML = "";
@@ -811,11 +832,13 @@
     elements.nextPage.disabled = state.nextOffset == null;
   };
 
-  const loadMetadata = async ({ conversationId, preserveTurnSelection = false } = {}) => {
+  const loadMetadata = async ({ conversationId, turnId, preserveTurnSelection = false } = {}) => {
     const requestedConversationId = toText(
       conversationId == null ? elements.conversationId.value : conversationId
     );
-    const requestedTurnId = preserveTurnSelection ? toText(elements.turnId.value) : "";
+    const requestedTurnId = turnId != null
+      ? toText(turnId)
+      : (preserveTurnSelection ? toText(elements.turnId.value) : "");
     const query = buildMetadataQuery(requestedConversationId);
     const suffix = query ? `?${query}` : "";
 
@@ -1100,7 +1123,12 @@
   updateMeta();
   syncScopeButtons();
   void (async () => {
-    await loadMetadata({ conversationId: "", preserveTurnSelection: false });
+    const initialFilters = applyInitialFiltersFromLocation();
+    await loadMetadata({
+      conversationId: initialFilters.conversation_id,
+      turnId: initialFilters.turn_id,
+      preserveTurnSelection: true,
+    });
     await Promise.all([loadCockpit(), loadLogs()]);
   })();
 })();

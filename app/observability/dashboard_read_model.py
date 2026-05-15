@@ -865,14 +865,45 @@ def _yes_no(value: Any) -> str:
     return 'oui' if bool(value) else 'non'
 
 
+_REASON_CODE_LABELS = {
+    'assistant_final_not_saved': 'reponse finale non sauvegardee',
+    'assistant_final_saved': 'reponse finale sauvegardee',
+    'assistant_interrupted': 'reponse interrompue',
+    'identity_block_absent': 'bloc identite absent',
+    'memory_chain_snapshot_missing': 'chaine memoire non observee',
+    'missing_assistant_final_persist': 'sauvegarde finale non observee',
+    'missing_main_llm_call': 'appel du modele principal non observe',
+    'missing_memory_chain_snapshot': 'chaine memoire non observee',
+    'missing_secondary_provider_prepared': 'preparation d un modele secondaire non observee',
+    'no_data': 'donnee absente',
+    'not_applicable': 'module non utilise',
+    'provider_missing': 'modele attendu non observe',
+    'retrieve_error': 'recherche memoire en erreur',
+    'runtime_error': 'erreur runtime',
+    'timeout': 'delai depasse',
+    'validation_error': 'validation en erreur',
+    'validation_fail_open': 'validation ouverte par securite',
+}
+
+
 def _reason_codes_fr(errors: Mapping[str, Any]) -> str:
     reason_counts = _mapping(errors.get('reason_code_counts'))
     if not reason_counts:
-        return 'aucun code compact'
-    parts = [
-        f'{reason}: {_to_int(count)}'
-        for reason, count in sorted(reason_counts.items(), key=lambda item: str(item[0]))
-    ]
+        return 'aucune cause compacte observee'
+    parts: list[str] = []
+    unknown_total = 0
+    for reason, count in sorted(reason_counts.items(), key=lambda item: str(item[0])):
+        amount = _to_int(count)
+        label = _REASON_CODE_LABELS.get(str(reason or '').strip())
+        if label:
+            parts.append(f'{label}: {amount}')
+        else:
+            unknown_total += amount
+    if unknown_total:
+        parts.append(
+            f'{unknown_total} cause(s) technique(s) compacte(s) non traduite(s); '
+            'detail disponible dans les logs techniques'
+        )
     return ', '.join(parts)
 
 
@@ -1022,7 +1053,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                 f"Erreurs compactes: {_to_int(errors.get('error_count'))}.",
                 f"Skips compacts: {_to_int(errors.get('skipped_count'))}.",
                 f"Fallbacks compacts: {_to_int(errors.get('fallback_count'))}.",
-                f"Codes raison: {_reason_codes_fr(errors)}.",
+                f"Causes compactes: {_reason_codes_fr(errors)}.",
             ],
         },
         {

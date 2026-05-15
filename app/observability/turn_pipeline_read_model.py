@@ -282,7 +282,47 @@ def _memory_lane_count(memory_payload: Mapping[str, Any], new_key: str, legacy_k
     return _to_int(memory_payload.get(legacy_key))
 
 
+def _embedding_counts(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    embedding_events = _events_for_stage(events, 'embedding')
+    status_counts: dict[str, int] = {}
+    source_kind_counts: dict[str, int] = {}
+    dimension_counts: dict[str, int] = {}
+    latest_ts: str | None = None
+
+    for event in embedding_events:
+        payload = _payload(event)
+        status = _status(event) or 'unknown'
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+        source_kind = _text(payload.get('source_kind')) or 'unknown'
+        source_kind_counts[source_kind] = source_kind_counts.get(source_kind, 0) + 1
+
+        dimensions = _to_int(payload.get('dimensions'))
+        dimension_key = str(dimensions) if dimensions > 0 else 'unknown'
+        dimension_counts[dimension_key] = dimension_counts.get(dimension_key, 0) + 1
+
+        latest_ts = _event_ts(event) or latest_ts
+
+    success_count = status_counts.get('ok', 0) + status_counts.get('success', 0)
+    error_count = sum(
+        count
+        for status, count in status_counts.items()
+        if status not in {'ok', 'success'}
+    )
+    return {
+        'embeddings_source_kind': 'chat_log_events.embedding',
+        'embeddings_requested_count': len(embedding_events),
+        'embeddings_success_count': success_count,
+        'embeddings_error_count': error_count,
+        'embeddings_status_counts': dict(sorted(status_counts.items())),
+        'embeddings_source_kind_counts': dict(sorted(source_kind_counts.items())),
+        'embeddings_dimension_counts': dict(sorted(dimension_counts.items())),
+        'embeddings_latest_ts': latest_ts,
+    }
+
+
 def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[str, Any]) -> dict[str, Any]:
+    embedding_counts = _embedding_counts(events)
     snapshot_event = _latest_stage_event(events, 'memory_chain_snapshot')
     snapshot_payload = _payload(snapshot_event or {})
     if snapshot_payload:
@@ -308,6 +348,7 @@ def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[st
             'truncated': bool(snapshot_payload.get('truncated')),
             'legacy_reason_code': None,
             'latest_ts': _event_ts(snapshot_event or {}),
+            **embedding_counts,
         }
 
     retrieval = _mapping(prompt_payload.get('memory_retrieval'))
@@ -331,6 +372,7 @@ def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[st
         'truncated': False,
         'legacy_reason_code': 'missing_memory_chain_snapshot',
         'latest_ts': _event_ts(_latest_stage_event(events, 'prompt_prepared') or {}),
+        **embedding_counts,
     }
 
 

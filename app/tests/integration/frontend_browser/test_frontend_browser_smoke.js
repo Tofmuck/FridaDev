@@ -719,13 +719,17 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
   `;
 }
 
-test('logs page applies filters and exports scoped markdown in browser', async () => {
-  await openBrowserPage({ pathSuffix: '/log.html', mockScript: logsMockScript() }, async (page) => {
-    await page.waitForFunction(() =>
-      Boolean(document.querySelector('#logConversationId option[value="conv-1"]')));
-    await page.selectOption('#logConversationId', 'conv-1');
+test('logs page applies filters from query string and exports scoped markdown in browser', async () => {
+  await openBrowserPage({
+    pathSuffix: '/log.html?conversation_id=conv-1&turn_id=turn-1',
+    mockScript: logsMockScript(),
+  }, async (page) => {
     await page.waitForFunction(() => !document.querySelector('#logTurnId')?.disabled);
-    await page.selectOption('#logTurnId', 'turn-1');
+    await page.waitForFunction(() =>
+      document.querySelector('#logConversationId')?.value === 'conv-1'
+      && document.querySelector('#logTurnId')?.value === 'turn-1');
+    await page.waitForFunction(() =>
+      document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
     await page.selectOption('#logStage', 'llm_call');
     await page.selectOption('#logStatus', 'ok');
     await page.click('#logFiltersForm button[type="submit"]');

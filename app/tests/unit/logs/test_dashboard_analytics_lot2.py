@@ -402,6 +402,50 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         for forbidden_key in ('payload', 'payload_json', 'prompt', 'messages', 'content', 'query', 'context_block'):
             self.assertNotIn(forbidden_key, self._collect_keys(first))
 
+    def test_turn_fact_materializes_embedding_counts_content_free(self) -> None:
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'embedding',
+                payload={
+                    'source_kind': 'query',
+                    'mode': 'remote',
+                    'provider': 'embed-provider',
+                    'dimensions': 1536,
+                    'text': 'RAW EMBEDDING TEXT MUST NOT LEAK',
+                    'vector': [0.1, 0.2],
+                },
+                event_id='turn-dashboard:0009:embedding-query',
+            ),
+            self._event(
+                'embedding',
+                status='error',
+                payload={
+                    'source_kind': 'trace_user',
+                    'mode': 'remote',
+                    'provider': 'embed-provider',
+                    'dimensions': 1536,
+                    'error_message': 'RAW EMBEDDING ERROR MUST NOT LEAK',
+                },
+                event_id='turn-dashboard:0010:embedding-trace',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        rag = fact['rag']
+
+        self.assertEqual(rag['embeddings_source_kind'], 'chat_log_events.embedding')
+        self.assertEqual(rag['embeddings_requested_count'], 2)
+        self.assertEqual(rag['embeddings_success_count'], 1)
+        self.assertEqual(rag['embeddings_error_count'], 1)
+        self.assertEqual(rag['embeddings_status_counts'], {'error': 1, 'ok': 1})
+        self.assertEqual(rag['embeddings_dimension_counts'], {'1536': 2})
+        self.assertEqual(rag['embeddings_source_kind_counts'], {'query': 1, 'trace_user': 1})
+        serialized = json.dumps(fact, sort_keys=True)
+        self.assertNotIn('RAW EMBEDDING TEXT MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW EMBEDDING ERROR MUST NOT LEAK', serialized)
+        self.assertNotIn('vector', self._collect_keys(fact))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')
