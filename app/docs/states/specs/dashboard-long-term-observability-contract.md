@@ -492,15 +492,44 @@ Chaque module observable doit declarer conceptuellement:
 - liens vers events sources;
 - liens vers artefacts gates.
 
-Modules initiaux:
+Convention v1 livree au Lot 3:
+
+- module: `app/observability/dashboard_observable_modules.py`;
+- facade publique: exports depuis `app/observability/dashboard_analytics.py`;
+- catalogue content-free: `build_dashboard_module_catalog()`;
+- cles bucketisables: `observable_module_keys()`;
+- explication humaine des degradations: `explain_module_degradation()`;
+- contrat de module: `ObservableModule`;
+- version de contrat: `dashboard_observable_modules_v1`.
+
+Chaque `ObservableModule` declare:
+
+- `module_key`: cle stable;
+- `label_fr`: libelle francais court pour les vues operateur;
+- `description_fr`: role humain du module;
+- `global_metrics`: metriques globales exposees par cle stable et libelle francais;
+- `conversation_summary`: champs de synthese conversation;
+- `turn_summary`: champs de synthese tour;
+- `human_detail`: points de detail traduits;
+- `states`: etats communs `success`, `degraded`, `error`, `skipped`, `not_applicable`;
+- `content_free_rules`: regles de non-affichage de brut;
+- `sources`: sources evenementielles, facts ou artefacts attendus;
+- `limits`: limites explicites de preuve et reconstruction;
+- `degradation_reasons`: reason codes compacts traduits en francais;
+- `gated_content`: classes de contenus complets eventuellement ouvrables plus tard;
+- `calculation_version`: version du calcul ou du contrat.
+
+Modules initiaux actuels:
 
 - pipeline;
+- persistence;
 - memory;
+- web;
+- providers;
 - identity;
 - hermeneutic;
-- providers;
-- web;
 - node_state.
+- errors.
 
 Modules futurs branchables:
 
@@ -511,6 +540,14 @@ Regle d'extension:
 
 - ajouter `documents` ou `images` ne doit pas exiger de refaire le dashboard;
 - un nouveau module doit pouvoir declarer ses metriques, son resume humain et ses contenus gates selon le meme contrat.
+- les buckets analytiques lisent les cles depuis le registre des modules observables, au lieu de porter une liste de modules hard-codee dans la projection;
+- un module futur sans metriques specialisees peut deja produire un bucket content-free avec `turn_count` et `event_count`, puis enrichir ses metriques dans un lot dedie.
+
+Regle de degradation:
+
+- la lecture principale affiche une explication francaise courte;
+- le reason code compact peut rester disponible dans le detail technique;
+- si un reason code n'est pas encore traduit, la vue doit dire que la cause exacte demande le detail technique, sans afficher le code brut comme explication principale.
 
 ## 8. Vocabulaire humain
 

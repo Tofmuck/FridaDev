@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Sequence
 
+from observability.dashboard_observable_modules import observable_module_keys
 from observability.dashboard_analytics_projection import (
     CALCULATION_VERSION,
     RECENT_GRANULARITY_DAYS,
@@ -22,17 +23,7 @@ from observability.dashboard_analytics_projection import (
     build_dashboard_metric_buckets,
 )
 
-_MODULE_KEYS = (
-    'pipeline',
-    'persistence',
-    'memory',
-    'web',
-    'providers',
-    'identity',
-    'hermeneutic',
-    'node_state',
-    'errors',
-)
+_MODULE_KEYS = tuple(observable_module_keys())
 
 
 def _json_mapping(value: Any) -> dict[str, Any]:

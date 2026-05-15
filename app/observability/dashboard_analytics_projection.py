@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping, Sequence
 
+from observability.dashboard_observable_modules import ObservableModule, observable_module_keys
 from observability.turn_pipeline_read_model import build_turn_pipeline_item
 
 
@@ -513,21 +514,12 @@ def build_dashboard_metric_buckets(
     *,
     now: datetime | None = None,
     recent_granularity_days: int = RECENT_GRANULARITY_DAYS,
+    extra_modules: Sequence[ObservableModule] = (),
 ) -> list[dict[str, Any]]:
     now_dt = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     recent_start = now_dt - timedelta(days=max(1, int(recent_granularity_days)))
     buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
-    modules = (
-        'pipeline',
-        'persistence',
-        'memory',
-        'web',
-        'providers',
-        'identity',
-        'hermeneutic',
-        'node_state',
-        'errors',
-    )
+    modules = observable_module_keys(extra_modules=extra_modules)
     for fact in turn_facts:
         latest = _latest_ts(fact)
         if latest is None:

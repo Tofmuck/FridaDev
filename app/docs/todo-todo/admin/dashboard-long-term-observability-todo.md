@@ -325,24 +325,34 @@ Condition de cloture:
 
 Objectif: eviter un dashboard fige autour du pipeline actuel.
 
+Implementation livree:
+
+- module de convention: `app/observability/dashboard_observable_modules.py`;
+- facade publique via `app/observability/dashboard_analytics.py`;
+- catalogue content-free: `build_dashboard_module_catalog()`;
+- registre extensible: `observable_modules()` / `observable_module_keys()`;
+- explication humaine des degradations: `explain_module_degradation()`;
+- buckets Lot 2 branches sur le registre au lieu d'une liste hard-codee;
+- modules futurs `documents` et `images` declares dans le contrat, sans materialisation runtime.
+
 Cases:
 
-- [ ] Definir une interface ou convention de module observable.
-- [ ] Couvrir pipeline, memory, identity, hermeneutic, providers, web et node_state.
-- [ ] Prevoir documents et images comme modules futurs.
-- [ ] Definir pour chaque module: metriques globales, resume conversation, resume tour, detail humain, etats, contenu complet optionnel, regles content-free, version.
-- [ ] Definir comment un module explique une degradation en francais.
-- [ ] Definir comment un module expose ses sources et limites.
+- [x] Definir une interface ou convention de module observable.
+- [x] Couvrir pipeline, memory, identity, hermeneutic, providers, web et node_state.
+- [x] Prevoir documents et images comme modules futurs.
+- [x] Definir pour chaque module: metriques globales, resume conversation, resume tour, detail humain, etats, contenu complet optionnel, regles content-free, version.
+- [x] Definir comment un module explique une degradation en francais.
+- [x] Definir comment un module expose ses sources et limites.
 
 Tests / preuves attendues:
 
-- [ ] Fixtures compactes multi-modules.
-- [ ] Tests d'ajout d'un module factice sans modifier toute la page.
-- [ ] Tests de libelles humains sans contenu brut.
+- [x] Fixtures compactes multi-modules.
+- [x] Tests d'ajout d'un module factice sans modifier toute la page.
+- [x] Tests de libelles humains sans contenu brut.
 
 Condition de cloture:
 
-- [ ] Ajouter demain un module documents ou images ne doit pas exiger de refaire l'architecture dashboard.
+- [x] Ajouter demain un module documents ou images ne doit pas exiger de refaire l'architecture dashboard.
 
 ### Lot 4 - Endpoints dashboard
 
