@@ -334,6 +334,8 @@ Implementation livree:
 - explication humaine des degradations: `explain_module_degradation()`;
 - buckets Lot 2 branches sur le registre au lieu d'une liste hard-codee;
 - reduction de metriques portee par les modules via `bucket_metrics_reducer` / `bucket_metrics_finalizer`, sans dispatch central par `module_key`;
+- resume humain de tour porte par les modules via `turn_summary_renderer`, sans dispatch central par `module_key`;
+- cause compacte de degradation portee par les modules via `turn_degradation_reason_resolver`, sans dispatch central par `module_key`;
 - modules futurs `documents` et `images` declares dans le contrat, sans materialisation runtime.
 
 Cases:
@@ -366,6 +368,7 @@ Implementation livree:
 - source: tables analytiques persistantes `observability.dashboard_*`;
 - catalogue modules expose dans l'overview via `build_dashboard_module_catalog()`;
 - fenetres supportees: `24h`, `7d`, `30d`, `90d`, `today`, `yesterday`, `ts_from` / `ts_to`;
+- couverture explicite de la fenetre demandee vs fenetre materialisee, avec statut non-ok si la fenetre longue n'est pas entierement couverte;
 - pas d'endpoint contenu complet dans ce lot, car le content gate n'est pas encore implemente;
 - pas de parsing `/log`, pas de dependance `event_limit=2000`.
 

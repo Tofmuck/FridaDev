@@ -93,6 +93,140 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertFalse(payload['redaction']['raw_content_included'])
         self._assert_content_free(payload)
 
+    def test_source_status_is_ok_only_when_requested_window_is_covered(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        status_row = (
+            'dashboard_long_term_observability',
+            'dashboard_analytics_v1',
+            'ok',
+            datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+            90,
+            30,
+            'day',
+            4,
+            False,
+            False,
+            'evt-latest',
+            datetime(2026, 5, 15, 11, 59, tzinfo=timezone.utc),
+            60,
+            2,
+            1,
+            4,
+            0,
+            None,
+            0,
+            None,
+            'custom_window_materialized',
+            datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, _params: tuple[Any, ...] | None = None) -> None:
+                if 'dashboard_materialization_status' in query:
+                    self.rows = [status_row]
+                else:
+                    self.rows = []
+
+            def fetchone(self):
+                return self.rows[0] if self.rows else None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        covered = dashboard_read_model.read_dashboard_overview(
+            {'window': '24h'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+        partial = dashboard_read_model.read_dashboard_overview(
+            {'window': '30d'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+        long_partial = dashboard_read_model.read_dashboard_overview(
+            {'window': '90d'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        self.assertEqual(covered['source']['status'], 'ok')
+        self.assertEqual(covered['source']['coverage']['status'], 'complete')
+        self.assertTrue(covered['source']['coverage']['complete'])
+        self.assertEqual(partial['source']['status'], 'partially_materialized')
+        self.assertEqual(partial['source']['coverage']['status'], 'partial')
+        self.assertFalse(partial['source']['coverage']['complete'])
+        self.assertEqual(long_partial['source']['status'], 'partially_materialized')
+        self.assertEqual(long_partial['source']['coverage']['status'], 'partial')
+        self.assertFalse(long_partial['source']['coverage']['complete'])
+        self._assert_content_free(covered)
+        self._assert_content_free(partial)
+        self._assert_content_free(long_partial)
+
+    def test_source_status_reports_absent_materialization(self) -> None:
+        class FakeCursor:
+            def __init__(self) -> None:
+                self.rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, _query: str, _params: tuple[Any, ...] | None = None) -> None:
+                self.rows = []
+
+            def fetchone(self):
+                return None
+
+            def fetchall(self):
+                return self.rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+        payload = dashboard_read_model.read_dashboard_overview(
+            {'window': '90d'},
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(payload['source']['status'], 'not_materialized')
+        self.assertEqual(payload['source']['coverage']['status'], 'absent')
+        self.assertFalse(payload['source']['coverage']['complete'])
+        self._assert_content_free(payload)
+
     def test_overview_does_not_sum_non_additive_bucket_metrics(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         status_row = (
@@ -287,6 +421,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertEqual(payload['conversation_id'], 'conv-1')
         summaries = [module['summary_fr'] for module in payload['modules']]
         self.assertIn('La memoire a trouve 4 elements, en a garde 2, et en a injecte 1.', summaries)
+        encoded_summaries = ' '.join(summaries)
+        self.assertNotIn('complete', encoded_summaries)
+        self.assertNotIn(' not_applicable', encoded_summaries)
+        self.assertNotIn(' ok', encoded_summaries)
         self.assertFalse(payload['redaction']['raw_content_included'])
         self.assertFalse(payload['source']['limits']['event_limit_dependency'])
         self._assert_content_free(payload)

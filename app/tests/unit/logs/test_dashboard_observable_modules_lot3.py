@@ -32,6 +32,17 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             metrics['fake_used_count'] = int(metrics.get('fake_used_count') or 0) + int(fake.get('used_count') or 0)
             metrics['fake_requested_turns'] = int(metrics.get('fake_requested_turns') or 0) + (1 if fake.get('requested') else 0)
 
+        def render_fake_summary(fact: dict[str, Any]) -> str:
+            fake = fact.get('fake_documents')
+            used_count = int(fake.get('used_count') or 0) if isinstance(fake, dict) else 0
+            return f"Les documents factices ont servi {used_count} element(s) compact(s)."
+
+        def resolve_fake_reason(fact: dict[str, Any]) -> str | None:
+            fake = fact.get('fake_documents')
+            if isinstance(fake, dict) and int(fake.get('used_count') or 0) == 0:
+                return 'fake_missing'
+            return None
+
         return ObservableModule(
             module_key='fake_documents',
             label_fr='Documents factices',
@@ -54,6 +65,8 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             gated_content=('Document factice complet',),
             future=True,
             bucket_metrics_reducer=reduce_fake_metrics,
+            turn_summary_renderer=render_fake_summary,
+            turn_degradation_reason_resolver=resolve_fake_reason,
         )
 
     def _turn_fact(self) -> dict[str, Any]:
@@ -196,6 +209,29 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(fake_buckets[0]['event_count'], 3)
         self.assertEqual(fake_buckets[0]['metrics']['fake_used_count'], 2)
         self.assertEqual(fake_buckets[0]['metrics']['fake_requested_turns'], 1)
+
+    def test_fake_module_owns_specialized_human_summary(self) -> None:
+        fake = self._fake_module()
+        summary = dashboard_analytics.summarize_module_turn(
+            'fake_documents',
+            self._turn_fact(),
+            extra_modules=(fake,),
+        )
+
+        self.assertEqual(summary, 'Les documents factices ont servi 2 element(s) compact(s).')
+        self.assertNotIn('fake_documents', summary)
+        self.assertNotIn('complete', summary)
+        self.assertNotIn('ok', summary)
+
+    def test_fake_module_owns_specialized_degradation_reason(self) -> None:
+        fake = self._fake_module()
+        reason = dashboard_analytics.resolve_module_turn_degradation_reason(
+            'fake_documents',
+            {'fake_documents': {'used_count': 0}},
+            extra_modules=(fake,),
+        )
+
+        self.assertEqual(reason, 'fake_missing')
 
     def test_current_module_metrics_are_not_regressed_by_module_hooks(self) -> None:
         buckets = dashboard_analytics.build_dashboard_metric_buckets(

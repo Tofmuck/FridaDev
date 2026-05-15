@@ -10,6 +10,8 @@ from observability.dashboard_observable_modules import (
     get_observable_module,
     observable_module_keys,
     observable_modules,
+    resolve_module_turn_degradation_reason,
+    summarize_module_turn,
 )
 from observability.dashboard_analytics_projection import (
     CALCULATION_VERSION,
@@ -52,4 +54,6 @@ __all__ = [
     'observable_module_keys',
     'observable_modules',
     'persist_dashboard_analytics',
+    'resolve_module_turn_degradation_reason',
+    'summarize_module_turn',
 ]

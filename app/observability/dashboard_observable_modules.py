@@ -26,6 +26,8 @@ _STATE_LABELS_FR = {
 
 BucketMetricsReducer = Callable[[dict[str, Any], Mapping[str, Any]], None]
 BucketMetricsFinalizer = Callable[[dict[str, Any]], None]
+TurnSummaryRenderer = Callable[[Mapping[str, Any]], str]
+TurnDegradationReasonResolver = Callable[[Mapping[str, Any]], str | None]
 
 
 def _to_int(value: Any) -> int:
@@ -46,6 +48,37 @@ def _mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
     return {}
+
+
+def _status_label(value: Any) -> str:
+    normalized = str(value or '').strip().lower()
+    labels = {
+        'ok': 'reussi',
+        'success': 'reussi',
+        'saved': 'sauvegarde',
+        'complete': 'complet',
+        'degraded': 'degrade',
+        'partial': 'partiel',
+        'legacy_incomplete': 'historique incomplet',
+        'error': 'en erreur',
+        'failed': 'en erreur',
+        'skipped': 'ignore',
+        'not_applicable': 'non utilise',
+        'missing': 'non observe',
+        'unknown': 'a verifier',
+    }
+    return labels.get(normalized, 'a verifier')
+
+
+def _classification_label(value: Any) -> str:
+    normalized = str(value or '').strip().lower()
+    labels = {
+        'complete': 'complet',
+        'degraded': 'degrade',
+        'partial': 'partiel',
+        'legacy_incomplete': 'issu d un historique incomplet',
+    }
+    return labels.get(normalized, 'a verifier')
 
 
 def _inc(mapping: dict[str, int], key: Any, amount: int = 1) -> None:
@@ -187,6 +220,77 @@ def _reduce_error_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> N
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
 
 
+def _summarize_pipeline_turn(fact: Mapping[str, Any]) -> str:
+    return (
+        f"Le tour est {_classification_label(fact.get('classification'))}, "
+        f"avec un score de {_to_int(fact.get('score'))}."
+    )
+
+
+def _summarize_persistence_turn(fact: Mapping[str, Any]) -> str:
+    persistence = _mapping(fact.get('persistence'))
+    if persistence.get('assistant_final_saved'):
+        return 'La reponse finale assistant est sauvegardee.'
+    return 'La sauvegarde finale assistant n est pas confirmee.'
+
+
+def _summarize_memory_turn(fact: Mapping[str, Any]) -> str:
+    rag = _mapping(fact.get('rag'))
+    return (
+        'La memoire a trouve '
+        f"{_to_int(rag.get('retrieved'))} elements, en a garde {_to_int(rag.get('kept'))}, "
+        f"et en a injecte {_to_int(rag.get('injected'))}."
+    )
+
+
+def _summarize_web_turn(fact: Mapping[str, Any]) -> str:
+    web = _mapping(fact.get('web'))
+    if web.get('requested'):
+        return f"La recherche web a ete demandee et son resultat est {_status_label(web.get('status'))}."
+    return 'La recherche web n a pas ete demandee pour ce tour.'
+
+
+def _summarize_providers_turn(fact: Mapping[str, Any]) -> str:
+    main = _mapping(_mapping(fact.get('providers')).get('main'))
+    if main.get('present'):
+        return f"Le modele principal a ete consulte et son appel est {_status_label(main.get('status'))}."
+    return 'L appel au modele principal n est pas observe.'
+
+
+def _summarize_identity_turn(fact: Mapping[str, Any]) -> str:
+    identity = _mapping(fact.get('identity'))
+    if identity.get('block_present'):
+        return 'Le modele principal a recu un bloc identite.'
+    return 'Aucun bloc identite n est observe dans les donnees compactes.'
+
+
+def _summarize_hermeneutic_turn(fact: Mapping[str, Any]) -> str:
+    hermeneutic = _mapping(fact.get('hermeneutic'))
+    if hermeneutic.get('block_present'):
+        return 'Le jugement hermeneutique est present dans les donnees compactes.'
+    return 'Le jugement hermeneutique n est pas observe dans les donnees compactes.'
+
+
+def _summarize_node_state_turn(fact: Mapping[str, Any]) -> str:
+    node_state = _mapping(fact.get('node_state'))
+    if node_state.get('read_present') or node_state.get('write_attempted'):
+        return 'L etat du noeud a ete relu ou mis a jour pendant le tour.'
+    return 'Aucune lecture ou ecriture du node_state n est observee.'
+
+
+def _summarize_errors_turn(fact: Mapping[str, Any]) -> str:
+    errors = _mapping(fact.get('errors'))
+    problems = _to_int(errors.get('error_count')) + _to_int(errors.get('fallback_count'))
+    if problems:
+        return f"{problems} probleme(s) compact(s) sont visibles sur ce tour."
+    return 'Aucun probleme compact n est visible sur ce tour.'
+
+
+def _resolve_errors_reason(fact: Mapping[str, Any]) -> str | None:
+    reason_counts = _mapping(_mapping(fact.get('errors')).get('reason_code_counts'))
+    return next(iter(reason_counts.keys()), None)
+
+
 @dataclass(frozen=True)
 class ObservableModule:
     module_key: str
@@ -206,6 +310,8 @@ class ObservableModule:
     future: bool = False
     bucket_metrics_reducer: BucketMetricsReducer | None = None
     bucket_metrics_finalizer: BucketMetricsFinalizer | None = None
+    turn_summary_renderer: TurnSummaryRenderer | None = None
+    turn_degradation_reason_resolver: TurnDegradationReasonResolver | None = None
 
 
 def _fields(*items: tuple[str, str]) -> tuple[tuple[str, str], ...]:
@@ -232,6 +338,8 @@ def _module(
     future: bool = False,
     bucket_metrics_reducer: BucketMetricsReducer | None = None,
     bucket_metrics_finalizer: BucketMetricsFinalizer | None = None,
+    turn_summary_renderer: TurnSummaryRenderer | None = None,
+    turn_degradation_reason_resolver: TurnDegradationReasonResolver | None = None,
 ) -> ObservableModule:
     return ObservableModule(
         module_key=module_key,
@@ -257,6 +365,8 @@ def _module(
         future=future,
         bucket_metrics_reducer=bucket_metrics_reducer,
         bucket_metrics_finalizer=bucket_metrics_finalizer,
+        turn_summary_renderer=turn_summary_renderer,
+        turn_degradation_reason_resolver=turn_degradation_reason_resolver,
     )
 
 
@@ -292,6 +402,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         bucket_metrics_reducer=_reduce_pipeline_metrics,
         bucket_metrics_finalizer=_finalize_pipeline_metrics,
+        turn_summary_renderer=_summarize_pipeline_turn,
     ),
     _module(
         module_key='persistence',
@@ -322,6 +433,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Reponse assistant complete',),
         bucket_metrics_reducer=_reduce_persistence_metrics,
+        turn_summary_renderer=_summarize_persistence_turn,
     ),
     _module(
         module_key='memory',
@@ -356,6 +468,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Souvenirs exacts', 'Bloc memoire injecte', 'Trace memoire complete'),
         bucket_metrics_reducer=_reduce_memory_metrics,
+        turn_summary_renderer=_summarize_memory_turn,
     ),
     _module(
         module_key='web',
@@ -391,6 +504,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Requete web exacte', 'Resultats web complets', 'Contexte web injecte'),
         bucket_metrics_reducer=_reduce_web_metrics,
+        turn_summary_renderer=_summarize_web_turn,
     ),
     _module(
         module_key='providers',
@@ -425,6 +539,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         gated_content=('Payload modele principal', 'Payloads providers secondaires', 'Reponses providers completes'),
         bucket_metrics_reducer=_reduce_provider_metrics,
         bucket_metrics_finalizer=_finalize_provider_metrics,
+        turn_summary_renderer=_summarize_providers_turn,
     ),
     _module(
         module_key='identity',
@@ -454,6 +569,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Bloc identite injecte', 'Identity complete liee au tour'),
         bucket_metrics_reducer=_reduce_identity_metrics,
+        turn_summary_renderer=_summarize_identity_turn,
     ),
     _module(
         module_key='hermeneutic',
@@ -483,6 +599,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Jugement hermeneutique complet', 'Replies runtime hermeneutiques'),
         bucket_metrics_reducer=_reduce_hermeneutic_metrics,
+        turn_summary_renderer=_summarize_hermeneutic_turn,
     ),
     _module(
         module_key='node_state',
@@ -515,6 +632,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         ),
         gated_content=('Detail complet futur du node_state'),
         bucket_metrics_reducer=_reduce_node_state_metrics,
+        turn_summary_renderer=_summarize_node_state_turn,
     ),
     _module(
         module_key='errors',
@@ -546,6 +664,8 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('fallback_used', 'Un fallback a ete utilise pour continuer le tour.'),
         ),
         bucket_metrics_reducer=_reduce_error_metrics,
+        turn_summary_renderer=_summarize_errors_turn,
+        turn_degradation_reason_resolver=_resolve_errors_reason,
     ),
 )
 
@@ -643,6 +763,8 @@ def _module_to_public_dict(module: ObservableModule) -> dict[str, object]:
             'reducer_declared': module.bucket_metrics_reducer is not None,
             'finalizer_declared': module.bucket_metrics_finalizer is not None,
         },
+        'turn_summary_renderer_declared': module.turn_summary_renderer is not None,
+        'turn_degradation_reason_resolver_declared': module.turn_degradation_reason_resolver is not None,
         'future': bool(module.future),
     }
 
@@ -717,6 +839,40 @@ def explain_module_degradation(
         return reasons[normalized_reason]
     state_label = _STATE_LABELS_FR.get(str(state or '').strip(), 'Etat a verifier')
     return f"{module.label_fr}: {state_label}. La cause exacte doit etre ouverte dans le detail technique."
+
+
+def summarize_module_turn(
+    module_key: str,
+    fact: Mapping[str, Any],
+    *,
+    include_future: bool = False,
+    extra_modules: Sequence[ObservableModule] = (),
+) -> str:
+    module = get_observable_module(
+        module_key,
+        include_future=include_future,
+        extra_modules=extra_modules,
+    )
+    if module.turn_summary_renderer:
+        return module.turn_summary_renderer(fact)
+    return f"{module.label_fr}: module declare, sans resume specialise pour ce tour."
+
+
+def resolve_module_turn_degradation_reason(
+    module_key: str,
+    fact: Mapping[str, Any],
+    *,
+    include_future: bool = False,
+    extra_modules: Sequence[ObservableModule] = (),
+) -> str | None:
+    module = get_observable_module(
+        module_key,
+        include_future=include_future,
+        extra_modules=extra_modules,
+    )
+    if module.turn_degradation_reason_resolver:
+        return module.turn_degradation_reason_resolver(fact)
+    return None
 
 
 def build_dashboard_module_catalog(

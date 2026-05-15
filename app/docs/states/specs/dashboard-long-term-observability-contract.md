@@ -503,6 +503,8 @@ Contrat:
 
 - les endpoints exposent des labels francais, counts, statuts, timestamps, reason codes, versions et references compactes;
 - les endpoints exposent toujours le statut de source: fenetre, retention, materialisation, troncature, dependance event_limit, version de calcul;
+- les endpoints exposent toujours la couverture de fenetre: fenetre demandee, fenetre materialisee, couverture `complete` / `partial` / `absent`;
+- `source.status=ok` est autorise seulement si la materialisation couvre toute la fenetre demandee, sans troncature ni dependance `event_limit`;
 - les endpoints ne lisent pas `/api/admin/logs/chat` et ne dependent pas de `event_limit=2000`;
 - les endpoints n'exposent aucun prompt, message, query web, payload provider, contenu memoire, identity brute, summary brute, token, DSN ou traceback brut;
 - l'inspection de tour est traduite module par module et reste content-free;
@@ -537,6 +539,8 @@ Convention v1 livree au Lot 3:
 - contrat de module: `ObservableModule`;
 - reduction de metriques par module: `bucket_metrics_reducer`;
 - finalisation optionnelle de metriques par module: `bucket_metrics_finalizer`;
+- resume humain de tour par module: `turn_summary_renderer`;
+- extraction optionnelle de cause compacte par module: `turn_degradation_reason_resolver`;
 - version de contrat: `dashboard_observable_modules_v1`.
 
 Chaque `ObservableModule` declare:
@@ -557,6 +561,8 @@ Chaque `ObservableModule` declare:
 - `calculation_version`: version du calcul ou du contrat.
 - `bucket_metrics_reducer`: hook optionnel qui reduit les facts du module en metriques de bucket;
 - `bucket_metrics_finalizer`: hook optionnel qui finalise les metriques derivees, par exemple p50 / p95.
+- `turn_summary_renderer`: hook optionnel qui produit le resume humain content-free d un tour.
+- `turn_degradation_reason_resolver`: hook optionnel qui extrait le reason code compact d un tour pour le traduire ensuite.
 
 Modules initiaux actuels:
 
@@ -581,8 +587,11 @@ Regle d'extension:
 - un nouveau module doit pouvoir declarer ses metriques, son resume humain et ses contenus gates selon le meme contrat.
 - les buckets analytiques lisent les cles depuis le registre des modules observables, au lieu de porter une liste de modules hard-codee dans la projection;
 - la projection de buckets appelle le reducer declare par le module, sans chaine centrale `if module_key == ...`;
+- l'inspection de tour appelle le resume humain declare par le module, sans chaine centrale `if module_key == ...`;
+- l'inspection de tour appelle aussi l'extracteur de cause declare par le module, sans dispatch central par module;
 - un module futur sans metriques specialisees peut deja produire un bucket content-free avec `turn_count` et `event_count`;
 - un module futur avec metriques specialisees ajoute son reducer dans sa declaration de module, sans modifier la projection centrale.
+- un module futur avec resume humain specialise ajoute son renderer dans sa declaration de module, sans modifier le read-model dashboard.
 
 Regle de degradation:
 

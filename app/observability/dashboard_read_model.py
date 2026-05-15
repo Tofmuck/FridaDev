@@ -51,6 +51,15 @@ def _parse_ts(value: Any, *, field_name: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _parse_optional_ts(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        return _parse_ts(value, field_name='timestamp')
+    except ValueError:
+        return None
+
+
 def _now_utc(now: datetime | None = None) -> datetime:
     return (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
 
@@ -160,6 +169,78 @@ def _json_mapping(value: Any) -> dict[str, Any]:
     return {}
 
 
+def _window_coverage(
+    window: Mapping[str, Any],
+    materialization: Mapping[str, Any],
+) -> dict[str, Any]:
+    requested_start = _parse_optional_ts(window.get('start'))
+    requested_end = _parse_optional_ts(window.get('end'))
+    materialized_start = _parse_optional_ts(materialization.get('window_start'))
+    materialized_end = _parse_optional_ts(materialization.get('window_end'))
+    coverage = {
+        'status': 'absent',
+        'complete': False,
+        'reason_code': 'materialization_window_missing',
+        'requested_window_start': _iso(requested_start),
+        'requested_window_end': _iso(requested_end),
+        'materialized_window_start': _iso(materialized_start),
+        'materialized_window_end': _iso(materialized_end),
+        'overlap_start': None,
+        'overlap_end': None,
+    }
+    if not requested_start or not requested_end or not materialized_start or not materialized_end:
+        return coverage
+
+    if materialized_start <= requested_start and materialized_end >= requested_end:
+        coverage.update(
+            {
+                'status': 'complete',
+                'complete': True,
+                'reason_code': 'materialization_covers_requested_window',
+                'overlap_start': _iso(requested_start),
+                'overlap_end': _iso(requested_end),
+            }
+        )
+        return coverage
+
+    overlap_start = max(requested_start, materialized_start)
+    overlap_end = min(requested_end, materialized_end)
+    if overlap_start < overlap_end:
+        coverage.update(
+            {
+                'status': 'partial',
+                'reason_code': 'materialization_partially_covers_requested_window',
+                'overlap_start': _iso(overlap_start),
+                'overlap_end': _iso(overlap_end),
+            }
+        )
+        return coverage
+
+    coverage['reason_code'] = 'materialization_does_not_cover_requested_window'
+    return coverage
+
+
+def _operator_source_status(
+    materialization: Mapping[str, Any],
+    coverage: Mapping[str, Any],
+    *,
+    degraded_reason: str | None,
+) -> str:
+    if degraded_reason:
+        return 'degraded'
+    coverage_status = str(coverage.get('status') or 'absent')
+    if coverage_status == 'absent':
+        return 'not_materialized'
+    if coverage_status == 'partial':
+        return 'partially_materialized'
+    materialization_status = str(materialization.get('status') or 'empty')
+    if materialization_status != 'ok':
+        return materialization_status
+    if bool(materialization.get('source_events_truncated')) or bool(materialization.get('event_limit_dependency')):
+        return 'degraded'
+    return 'ok'
+
+
 def _source_status(
     window: Mapping[str, Any],
     status: Mapping[str, Any] | None,
@@ -167,11 +248,17 @@ def _source_status(
     degraded_reason: str | None = None,
 ) -> dict[str, Any]:
     materialization = dict(status or {})
+    coverage = _window_coverage(window, materialization)
     return {
         'kind': 'dashboard_source_status',
-        'status': 'degraded' if degraded_reason else str(materialization.get('status') or 'empty'),
+        'status': _operator_source_status(
+            materialization,
+            coverage,
+            degraded_reason=degraded_reason,
+        ),
         'degraded_reason': degraded_reason,
         'window': dict(window),
+        'coverage': coverage,
         'materialization': {
             'materializer_key': materialization.get('materializer_key') or 'dashboard_long_term_observability',
             'status': materialization.get('status') or 'empty',
@@ -664,67 +751,18 @@ def read_dashboard_conversation_turns(
     }
 
 
-def _module_sentence(module_key: str, fact: Mapping[str, Any]) -> str:
-    if module_key == 'pipeline':
-        return f"Le tour est classe {fact.get('classification') or 'inconnu'} avec un score de {fact.get('score') or 0}."
-    if module_key == 'persistence':
-        persistence = _mapping(fact.get('persistence'))
-        if persistence.get('assistant_final_saved'):
-            return 'La reponse finale assistant est sauvegardee.'
-        return 'La sauvegarde finale assistant n est pas confirmee.'
-    if module_key == 'memory':
-        rag = _mapping(fact.get('rag'))
-        return (
-            'La memoire a trouve '
-            f"{_to_int(rag.get('retrieved'))} elements, en a garde {_to_int(rag.get('kept'))}, "
-            f"et en a injecte {_to_int(rag.get('injected'))}."
-        )
-    if module_key == 'web':
-        web = _mapping(fact.get('web'))
-        if web.get('requested'):
-            return f"La recherche web a ete demandee avec le statut {web.get('status') or 'inconnu'}."
-        return 'La recherche web n a pas ete demandee pour ce tour.'
-    if module_key == 'providers':
-        main = _mapping(_mapping(fact.get('providers')).get('main'))
-        if main.get('present'):
-            return f"Le modele principal a ete consulte avec le statut {main.get('status') or 'inconnu'}."
-        return 'L appel au modele principal n est pas observe.'
-    if module_key == 'identity':
-        identity = _mapping(fact.get('identity'))
-        if identity.get('block_present'):
-            return 'Le modele principal a recu un bloc identite.'
-        return 'Aucun bloc identite n est observe dans les donnees compactes.'
-    if module_key == 'hermeneutic':
-        hermeneutic = _mapping(fact.get('hermeneutic'))
-        if hermeneutic.get('block_present'):
-            return 'Le jugement hermeneutique est present dans les donnees compactes.'
-        return 'Le jugement hermeneutique n est pas observe dans les donnees compactes.'
-    if module_key == 'node_state':
-        node_state = _mapping(fact.get('node_state'))
-        if node_state.get('read_present') or node_state.get('write_attempted'):
-            return 'L etat du noeud a ete relu ou mis a jour pendant le tour.'
-        return 'Aucune lecture ou ecriture du node_state n est observee.'
-    if module_key == 'errors':
-        errors = _mapping(fact.get('errors'))
-        problems = _to_int(errors.get('error_count')) + _to_int(errors.get('fallback_count'))
-        if problems:
-            return f"{problems} probleme(s) compact(s) sont visibles sur ce tour."
-        return 'Aucun probleme compact n est visible sur ce tour.'
-    return 'Module observable declare, sans detail specialise pour ce tour.'
-
-
 def _translated_inspection(fact: Mapping[str, Any]) -> list[dict[str, Any]]:
     modules = []
     for module in dashboard_analytics.observable_modules():
-        reason_code = None
-        if module.module_key == 'errors':
-            reason_counts = _mapping(_mapping(fact.get('errors')).get('reason_code_counts'))
-            reason_code = next(iter(reason_counts.keys()), None)
+        reason_code = dashboard_analytics.resolve_module_turn_degradation_reason(
+            module.module_key,
+            fact,
+        )
         modules.append(
             {
                 'module_key': module.module_key,
                 'label_fr': module.label_fr,
-                'summary_fr': _module_sentence(module.module_key, fact),
+                'summary_fr': dashboard_analytics.summarize_module_turn(module.module_key, fact),
                 'degradation_fr': (
                     dashboard_analytics.explain_module_degradation(
                         module.module_key,
