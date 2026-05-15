@@ -1495,6 +1495,7 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     return {
         "root_status": root.status_code,
         "admin_status": admin.status_code,
+        "dashboard_status": dashboard.status_code,
         "log_status": log.status_code,
         "hermeneutic_admin_status": hermeneutic_admin.status_code,
         "identity_status": identity_page.status_code,

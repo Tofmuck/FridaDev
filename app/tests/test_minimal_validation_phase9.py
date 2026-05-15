@@ -264,7 +264,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
                 return _FakeResponse(200, text="Admin de configuration")
-            if url.endswith("/dashboard"):
+            if url == "http://frida.test/dashboard":
                 return _FakeResponse(200, text="Dashboard long terme")
             if url.endswith("/log"):
                 return _FakeResponse(200, text="Logs applicatifs")
@@ -341,6 +341,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
 
         self.assertEqual(details["root_status"], 200)
         self.assertEqual(details["admin_status"], 200)
+        self.assertEqual(details["dashboard_status"], 200)
         self.assertEqual(details["log_status"], 200)
         self.assertEqual(details["hermeneutic_admin_status"], 200)
         self.assertEqual(details["identity_status"], 200)
@@ -355,6 +356,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertEqual(details["identity_runtime_representations_status"], 200)
         self.assertEqual(details["memory_dashboard_status"], 200)
         self.assertIn(("GET", "http://frida.test/admin"), calls)
+        self.assertIn(("GET", "http://frida.test/dashboard"), calls)
         self.assertIn(("GET", "http://frida.test/log"), calls)
         self.assertIn(("GET", "http://frida.test/hermeneutic-admin"), calls)
         self.assertIn(("GET", "http://frida.test/identity"), calls)
@@ -383,6 +385,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
                 return _FakeResponse(200, text="Admin de configuration")
+            if url == "http://frida.test/dashboard":
+                return _FakeResponse(200, text="Dashboard long terme")
             if url.endswith("/log"):
                 return _FakeResponse(200, text="Logs applicatifs")
             if url.endswith("/hermeneutic-admin"):
