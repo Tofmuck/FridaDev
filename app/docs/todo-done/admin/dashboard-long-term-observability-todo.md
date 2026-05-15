@@ -1,11 +1,20 @@
 # Dashboard long terme observabilite - TODO
 
-Statut: actif
+Statut: clos, archive le 2026-05-15
 Source: audit / cadrage read-only du futur dashboard long terme FridaDev du 2026-05-15
-Classement: `app/docs/todo-todo/admin/`
+Classement initial: `app/docs/todo-todo/admin/`
+Classement archive: `app/docs/todo-done/admin/`
 Portee: dashboard produit/admin/frontend long terme, metriques persistantes, inspection traduite, architecture modulaire observable
 Hors-scope du commit de creation: patch runtime, frontend, route, migration DB, backfill, rebuild, nettoyage immediat des surfaces existantes, redesign global
 Spec fondatrice: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+
+## 0. Note de cloture
+
+Chantier clos le 2026-05-15 apres livraison et validation des Lots 1 a 9.
+
+Les recouvrements restants entre `/dashboard`, `/log`, Memory Admin, Hermeneutic Admin et Identity sont documentes comme recouvrements utiles assumes: le dashboard porte la lecture globale, `/log` reste le debug technique, et les surfaces domaine conservent leurs diagnostics ou editions specialisees.
+
+Aucun lot actif ne justifie de garder ce TODO ouvert. Les futurs nettoyages de doublons devront etre ouverts comme chantiers separes seulement s'ils deviennent reellement utiles.
 
 ## 1. Intention
 
@@ -34,7 +43,8 @@ Le besoin est de construire une lecture long terme, lisible par un non-technicie
 
 ## 2. Emplacement retenu
 
-Emplacement: `app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md`.
+Emplacement initial: `app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md`.
+Emplacement archive: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`.
 
 Raison:
 

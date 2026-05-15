@@ -1,7 +1,7 @@
 # Dashboard Long Term Observability Contract
 
 Statut: spec vivante
-Source: Lot 1 du chantier `app/docs/todo-todo/admin/dashboard-long-term-observability-todo.md`
+Source: Lot 1 du chantier archive `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
 Date: 2026-05-15
 Portee: contrat fondateur du futur dashboard long terme FridaDev
 Hors-scope: implementation backend/frontend, schema SQL final, migration, backfill, endpoints, stockage de contenu, rebuild
