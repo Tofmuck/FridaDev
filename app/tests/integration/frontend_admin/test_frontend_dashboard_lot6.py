@@ -99,6 +99,45 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertIn('id="btnDashboard"', index_source)
         self.assertIn('class="icon-link"', index_source)
 
+    def test_admin_surfaces_have_harmonized_navigation_and_roles(self) -> None:
+        expected_links = [
+            'href="/"',
+            'href="/dashboard"',
+            'href="/log"',
+            'href="/memory-admin"',
+            'href="/hermeneutic-admin"',
+            'href="/identity"',
+            'href="/admin"',
+        ]
+        surfaces = {
+            "dashboard.html": ("global-dashboard", "/dashboard"),
+            "log.html": ("technical-debug", "/log"),
+            "memory-admin.html": ("memory-domain", "/memory-admin"),
+            "hermeneutic-admin.html": ("hermeneutic-domain", "/hermeneutic-admin"),
+            "identity.html": ("identity-editor", "/identity"),
+            "admin.html": ("runtime-settings", "/admin"),
+        }
+
+        for filename, (role, current_href) in surfaces.items():
+            with self.subTest(filename=filename):
+                source = (APP_DIR / "web" / filename).read_text(encoding="utf-8")
+                self.assertIn(f'data-surface-role="{role}"', source)
+                self.assertIn(f'href="{current_href}" aria-current="page"', source)
+                positions = [source.index(marker) for marker in expected_links]
+                self.assertEqual(positions, sorted(positions))
+
+        dashboard_source = (APP_DIR / "web" / "dashboard.html").read_text(encoding="utf-8")
+        log_source = (APP_DIR / "web" / "log.html").read_text(encoding="utf-8")
+        memory_source = (APP_DIR / "web" / "memory-admin.html").read_text(encoding="utf-8")
+        hermeneutic_source = (APP_DIR / "web" / "hermeneutic-admin.html").read_text(encoding="utf-8")
+        identity_source = (APP_DIR / "web" / "identity.html").read_text(encoding="utf-8")
+
+        self.assertIn("Lecture globale: pouls, conversations et inspection traduite", dashboard_source)
+        self.assertIn("surface de debug technique", log_source)
+        self.assertIn("Memory Admin garde le diagnostic memoire/RAG", memory_source)
+        self.assertIn("Hermeneutic admin garde le diagnostic domaine", hermeneutic_source)
+        self.assertIn("Identity reste la surface canonique d'edition", identity_source)
+
 
 if __name__ == "__main__":
     unittest.main()

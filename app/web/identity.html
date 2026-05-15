@@ -10,7 +10,7 @@
   <link href="admin.css" rel="stylesheet" />
 </head>
 <body class="admin-page">
-  <main class="admin-shell">
+  <main class="admin-shell" data-surface-role="identity-editor">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -23,10 +23,11 @@
       <div class="admin-actions">
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/dashboard">Dashboard</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-primary admin-btn-link" href="/identity" aria-current="page">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <button id="identityRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
       </div>
     </header>
@@ -35,7 +36,7 @@
       <div class="admin-copy">
         <p class="admin-lead">
           Cette page montre d'abord les 4 blocs canoniques editables, puis les lectures runtime et historiques qui en
-          derivent. Le pilotage systeme reste distinct de ces contenus.
+          derivent. Le dashboard indique si l'identite a ete utilisee; Identity reste la surface canonique d'edition.
         </p>
       </div>
 

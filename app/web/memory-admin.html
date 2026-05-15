@@ -10,7 +10,7 @@
   <link href="admin.css" rel="stylesheet" />
 </head>
 <body class="admin-page">
-  <main class="admin-shell">
+  <main class="admin-shell" data-surface-role="memory-domain">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -23,11 +23,11 @@
       <div class="admin-actions">
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/dashboard">Dashboard</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-primary admin-btn-link" href="/memory-admin" aria-current="page">Memory Admin</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <button id="memoryAdminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
       </div>
     </header>
@@ -41,6 +41,7 @@
         <p class="admin-sublead">
           La page recadre les provenances sans recreer une admin parallele: persistance durable,
           agregats calcules, runtime process-local et historiques logs restent identifies clairement.
+          Le dashboard garde la lecture globale; Memory Admin garde le diagnostic memoire/RAG.
         </p>
       </div>
 

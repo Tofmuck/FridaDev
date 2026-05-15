@@ -742,6 +742,17 @@ Definitions:
 - recouvrement transitoire: une information existe a la fois dans `/log`, une surface domaine et le dashboard pendant la stabilisation;
 - nettoyage progressif: replier, renommer ou deplacer une lecture seulement quand le dashboard a prouve une lecture plus claire sans perte diagnostic.
 
+Convention de roles stabilisee au Lot 9:
+
+- `/dashboard` est la lecture operateur globale: pouls longue periode, tendances, comparaison des conversations, inspection traduite et contenu complet uniquement sur action explicite;
+- `/log` reste le debug technique: timeline, filtres, export, suppression scopee, read-models recents et preuves brutes compactes;
+- Memory Admin reste la surface domaine memoire/RAG: durable persistence, retrieval, embeddings, memory_chain_snapshot, panier, arbitre et inspection RAG;
+- Hermeneutic Admin reste la surface domaine hermeneutique: pipeline hermeneutique, node_state, identity runtime detaillee, decisions arbitre et corrections;
+- Identity reste la surface canonique d'edition et de pilotage identitaire: blocs editables, runtime compile utile, gouvernance et diagnostics historiques replies;
+- Admin reste la surface de configuration runtime et secrets masques;
+- les recouvrements de diagnostic sont acceptes quand ils portent une provenance domaine que le dashboard ne doit pas absorber;
+- la navigation admin garde un ordre commun: Chat, Dashboard, Logs applicatifs, Memory Admin, Hermeneutic admin, Identity, Admin.
+
 ## 13. Matrice produit fondatrice
 
 | Question produit | Reponse par defaut | Reponse sur action explicite |

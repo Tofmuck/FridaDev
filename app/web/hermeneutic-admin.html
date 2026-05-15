@@ -10,7 +10,7 @@
   <link href="admin.css" rel="stylesheet" />
 </head>
 <body class="admin-page">
-  <main class="admin-shell">
+  <main class="admin-shell" data-surface-role="hermeneutic-domain">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -23,10 +23,11 @@
       <div class="admin-actions">
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/dashboard">Dashboard</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <a class="admin-btn admin-btn-primary admin-btn-link" href="/hermeneutic-admin" aria-current="page">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <button id="hermeneuticAdminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
       </div>
     </header>
@@ -35,11 +36,12 @@
       <div class="admin-copy">
         <p class="admin-lead">
           Surface detaillee, majoritairement read-only, pour inspecter le pipeline hermeneutique tour par tour
-          sans recreer une observability parallele.
+          sans recreer une observabilite parallele.
         </p>
         <p class="admin-sublead">
           La page reemploie les APIs admin et logs deja presentes: vue d'ensemble, inspection par tour,
-          decisions arbitre, identites candidates et corrections recentes.
+          decisions arbitre, identites candidates et corrections recentes. Le dashboard raconte le tour;
+          Hermeneutic admin garde le diagnostic domaine.
         </p>
       </div>
 

@@ -528,23 +528,29 @@ Objectif: reduire les recouvrements devenus inutiles apres stabilisation du dash
 
 Cases:
 
-- [ ] Cartographier les recouvrements entre dashboard, `/log`, Memory Admin, Hermeneutic Admin et Identity.
-- [ ] Distinguer recouvrement transitoire utile et duplication confuse.
-- [ ] Deplacer les lectures devenues centrales vers le dashboard si cela clarifie le produit.
-- [ ] Garder `/log` comme debug technique.
-- [ ] Garder Memory Admin, Hermeneutic Admin et Identity comme surfaces domaine ou edition.
-- [ ] Harmoniser les boutons, la navigation, les titres et les etats empty/error.
-- [ ] Supprimer ou replier seulement ce qui est prouve redondant.
+- [x] Cartographier les recouvrements entre dashboard, `/log`, Memory Admin, Hermeneutic Admin et Identity.
+- [x] Distinguer recouvrement transitoire utile et duplication confuse.
+- [x] Deplacer les lectures devenues centrales vers le dashboard si cela clarifie le produit.
+- [x] Garder `/log` comme debug technique.
+- [x] Garder Memory Admin, Hermeneutic Admin et Identity comme surfaces domaine ou edition.
+- [x] Harmoniser les boutons, la navigation, les titres et les etats empty/error.
+- [x] Supprimer ou replier seulement ce qui est prouve redondant.
+
+Decision Lot 9:
+
+- duplication confuse corrigee: navigation admin desordonnee, absence de role explicite par surface, `/log` encore nomme comme cockpit operateur;
+- recouvrement utile conserve: syntheses recentes de `/log`, inspections Memory/RAG, diagnostics hermeneutiques et edition Identity restent disponibles car ils portent des preuves domaine non remplacees par le dashboard;
+- aucun bloc n'a ete supprime ou replie dans ce lot, car aucun retrait supplementaire n'etait prouve sans perte diagnostic.
 
 Tests / preuves attendues:
 
-- [ ] Tests de navigation.
-- [ ] Tests non-regression des surfaces existantes.
-- [ ] Preuve que les suppressions/replis ne retirent pas de capacite diagnostic.
+- [x] Tests de navigation.
+- [x] Tests non-regression des surfaces existantes.
+- [x] Preuve que les suppressions/replis ne retirent pas de capacite diagnostic.
 
 Condition de cloture:
 
-- [ ] L'observabilite est plus maitrisee qu'avant: moins de duplication confuse, recouvrements utiles assumes, surfaces domaine preservees.
+- [x] L'observabilite est plus maitrisee qu'avant: moins de duplication confuse, recouvrements utiles assumes, surfaces domaine preservees.
 
 ## 13. Hors-scope global
 

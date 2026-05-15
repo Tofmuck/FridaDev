@@ -10,7 +10,7 @@
   <link href="admin.css" rel="stylesheet" />
 </head>
 <body class="admin-page">
-  <main class="admin-shell">
+  <main class="admin-shell" data-surface-role="technical-debug">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -23,10 +23,11 @@
       <div class="admin-actions">
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/dashboard">Dashboard</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-primary admin-btn-link" href="/log" aria-current="page">Logs applicatifs</a>
         <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
         <button id="logRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
       </div>
     </header>
@@ -36,14 +37,19 @@
     <section class="admin-section-block" aria-labelledby="logs-cockpit-title">
       <div class="admin-section-head">
         <div>
-          <p class="admin-kicker">Cockpit</p>
-          <h2 id="logs-cockpit-title">Synthese des tours</h2>
+          <p class="admin-kicker">Debug technique</p>
+          <h2 id="logs-cockpit-title">Synthese technique recente</h2>
         </div>
         <div class="admin-inline-meta">
           <span id="logCockpitSourceChip" class="admin-chip">metrics</span>
           <span id="logCockpitWindowChip" class="admin-chip">fenetre recente</span>
         </div>
       </div>
+
+      <p class="admin-section-note admin-section-note-left">
+        `/log` reste la surface de debug technique: timeline, filtres, export et suppression scopee.
+        Les courbes longues, la comparaison des conversations et la lecture operateur vivent dans le dashboard.
+      </p>
 
       <div id="logCockpitCards" class="admin-section-grid"></div>
     </section>
@@ -56,7 +62,7 @@
         </div>
         <div class="admin-inline-meta">
           <span id="logTurnCountChip" class="admin-chip">0 tour</span>
-          <span id="logTurnSourceChip" class="admin-chip">read-model</span>
+          <span id="logTurnSourceChip" class="admin-chip">read-model technique</span>
         </div>
       </div>
 

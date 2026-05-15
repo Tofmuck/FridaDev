@@ -11,7 +11,7 @@
   <link href="dashboard/styles.css" rel="stylesheet" />
 </head>
 <body class="admin-page dashboard-page">
-  <main class="admin-shell dashboard-shell" data-dashboard-screen="overview">
+  <main class="admin-shell dashboard-shell" data-dashboard-screen="overview" data-surface-role="global-dashboard">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -36,6 +36,10 @@
       <div>
         <p class="admin-kicker">Periode</p>
         <h2 id="dashboard-window-title" class="dashboard-title">Vue d'ensemble</h2>
+        <p class="dashboard-muted">
+          Lecture globale: pouls, conversations et inspection traduite. Les logs techniques et surfaces domaine
+          restent accessibles pour le debug.
+        </p>
       </div>
 
       <form id="dashboardWindowForm" class="dashboard-window-form">
