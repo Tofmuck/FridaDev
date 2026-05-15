@@ -359,34 +359,43 @@ Condition de cloture:
 
 Objectif: exposer une API admin sobre et stable pour le futur frontend.
 
-Endpoints cibles a confirmer:
+Implementation livree:
+
+- read-model dedie: `app/observability/dashboard_read_model.py`;
+- routes HTTP minces: `app/server.py`;
+- source: tables analytiques persistantes `observability.dashboard_*`;
+- catalogue modules expose dans l'overview via `build_dashboard_module_catalog()`;
+- fenetres supportees: `24h`, `7d`, `30d`, `90d`, `today`, `yesterday`, `ts_from` / `ts_to`;
+- pas d'endpoint contenu complet dans ce lot, car le content gate n'est pas encore implemente;
+- pas de parsing `/log`, pas de dependance `event_limit=2000`.
+
+Endpoints livres:
 
 - `/api/admin/dashboard/overview`;
 - `/api/admin/dashboard/conversations`;
 - `/api/admin/dashboard/conversations/<conversation_id>/turns`;
-- `/api/admin/dashboard/turns/<turn_id>/inspection`;
-- endpoints contenu complet explicite si le content gate est pret.
+- `/api/admin/dashboard/turns/<turn_id>/inspection`.
 
 Cases:
 
-- [ ] Exposer l'overview fenetree.
-- [ ] Exposer la liste comparative des conversations.
-- [ ] Exposer les tours d'une conversation.
-- [ ] Exposer l'inspection traduite d'un tour.
-- [ ] Exposer les statuts de source: fenetre, retention, materialisation, truncation, version.
-- [ ] Refuser tout contenu brut hors endpoint explicitement gate.
-- [ ] Garder `app/server.py` en orchestration seulement.
+- [x] Exposer l'overview fenetree.
+- [x] Exposer la liste comparative des conversations.
+- [x] Exposer les tours d'une conversation.
+- [x] Exposer l'inspection traduite d'un tour.
+- [x] Exposer les statuts de source: fenetre, retention, materialisation, truncation, version.
+- [x] Refuser tout contenu brut hors endpoint explicitement gate.
+- [x] Garder `app/server.py` en orchestration seulement.
 
 Tests / preuves attendues:
 
-- [ ] Tests API des fenetres.
-- [ ] Tests schemas content-free.
-- [ ] Tests empty/degraded state.
-- [ ] Tests admin access existants non regresses.
+- [x] Tests API des fenetres.
+- [x] Tests schemas content-free.
+- [x] Tests empty/degraded state.
+- [x] Tests admin access existants non regresses.
 
 Condition de cloture:
 
-- [ ] Le frontend peut construire le dashboard sans parser `/log` ni reimplementer les read-models dans le navigateur.
+- [x] Le frontend peut construire le dashboard sans parser `/log` ni reimplementer les read-models dans le navigateur.
 
 ### Lot 5 - Squelette page dediee et coherence visuelle
 

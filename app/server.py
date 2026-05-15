@@ -46,6 +46,7 @@ from observability import identity_observability
 from observability import log_store
 from observability import log_markdown_export
 from observability import prompt_injection_summary
+from observability import dashboard_read_model
 
 
 def _sha256_file(path: Path) -> str:
@@ -941,6 +942,62 @@ def api_admin_chat_logs_metrics():
         return jsonify({'ok': False, 'error': str(exc)}), 400
 
     return jsonify({'ok': True, **metrics})
+
+
+@app.get('/api/admin/dashboard/overview')
+def api_admin_dashboard_overview():
+    try:
+        payload = dashboard_read_model.read_dashboard_overview(
+            request.args,
+            conn_factory=log_store._conn,
+            logger_instance=log_store.logger,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    return jsonify({'ok': True, **payload})
+
+
+@app.get('/api/admin/dashboard/conversations')
+def api_admin_dashboard_conversations():
+    try:
+        payload = dashboard_read_model.read_dashboard_conversations(
+            request.args,
+            conn_factory=log_store._conn,
+            logger_instance=log_store.logger,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    return jsonify({'ok': True, **payload})
+
+
+@app.get('/api/admin/dashboard/conversations/<conversation_id>/turns')
+def api_admin_dashboard_conversation_turns(conversation_id: str):
+    try:
+        payload = dashboard_read_model.read_dashboard_conversation_turns(
+            conversation_id,
+            request.args,
+            conn_factory=log_store._conn,
+            logger_instance=log_store.logger,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    return jsonify({'ok': True, **payload})
+
+
+@app.get('/api/admin/dashboard/turns/<turn_id>/inspection')
+def api_admin_dashboard_turn_inspection(turn_id: str):
+    try:
+        payload = dashboard_read_model.read_dashboard_turn_inspection(
+            turn_id,
+            request.args,
+            conn_factory=log_store._conn,
+            logger_instance=log_store.logger,
+        )
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except LookupError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 404
+    return jsonify({'ok': True, **payload})
 
 
 @app.delete('/api/admin/logs/chat')

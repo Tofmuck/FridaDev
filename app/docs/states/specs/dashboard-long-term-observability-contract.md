@@ -473,7 +473,42 @@ Le Lot 2 persiste ce statut dans `dashboard_materialization_status`:
 
 La presence du materialiseur ne declenche pas de backfill historique massif. Un backfill reste une action operateur explicite.
 
-## 7. Modules observables
+## 7. API admin dashboard v1
+
+Le Lot 4 expose une API admin dediee au futur dashboard, sans demander au navigateur de parser `/log`.
+
+Implementation v1:
+
+- module de lecture: `app/observability/dashboard_read_model.py`;
+- routes HTTP minces dans `app/server.py`;
+- source principale: tables analytiques persistantes `observability.dashboard_*`;
+- catalogue modules: `build_dashboard_module_catalog()`;
+- pas d'endpoint contenu complet dans ce lot.
+
+Endpoints v1:
+
+- `GET /api/admin/dashboard/overview`;
+- `GET /api/admin/dashboard/conversations`;
+- `GET /api/admin/dashboard/conversations/<conversation_id>/turns`;
+- `GET /api/admin/dashboard/turns/<turn_id>/inspection`.
+
+Parametres communs:
+
+- `window=24h|7d|30d|90d|today|yesterday`;
+- ou fenetre custom avec `ts_from` et `ts_to`;
+- `limit` / `offset` sur les listes;
+- `conversation_id` obligatoire en query pour une inspection de tour si le `turn_id` est ambigu.
+
+Contrat:
+
+- les endpoints exposent des labels francais, counts, statuts, timestamps, reason codes, versions et references compactes;
+- les endpoints exposent toujours le statut de source: fenetre, retention, materialisation, troncature, dependance event_limit, version de calcul;
+- les endpoints ne lisent pas `/api/admin/logs/chat` et ne dependent pas de `event_limit=2000`;
+- les endpoints n'exposent aucun prompt, message, query web, payload provider, contenu memoire, identity brute, summary brute, token, DSN ou traceback brut;
+- l'inspection de tour est traduite module par module et reste content-free;
+- si les tables analytiques sont indisponibles, les read-models renvoient un etat degrade compact plutot qu'un faux resultat complet.
+
+## 8. Modules observables
 
 Chaque module observable doit declarer conceptuellement:
 
@@ -555,7 +590,7 @@ Regle de degradation:
 - le reason code compact peut rester disponible dans le detail technique;
 - si un reason code n'est pas encore traduit, la vue doit dire que la cause exacte demande le detail technique, sans afficher le code brut comme explication principale.
 
-## 8. Vocabulaire humain
+## 9. Vocabulaire humain
 
 Le langage de premier niveau est un langage produit en francais.
 
@@ -579,7 +614,7 @@ Regles:
 - les reason codes doivent etre traduits ou accompagnes d'une explication courte;
 - le dashboard doit expliquer avant d'alerter.
 
-## 9. Interdits
+## 10. Interdits
 
 Sont interdits:
 
@@ -595,7 +630,7 @@ Sont interdits:
 - l'inclusion de contenu brut dans les agregats;
 - l'affaiblissement du content gate pour accelerer le frontend.
 
-## 10. Duplication et recouvrement
+## 11. Duplication et recouvrement
 
 Doctrine retenue:
 
@@ -610,7 +645,7 @@ Definitions:
 - recouvrement transitoire: une information existe a la fois dans `/log`, une surface domaine et le dashboard pendant la stabilisation;
 - nettoyage progressif: replier, renommer ou deplacer une lecture seulement quand le dashboard a prouve une lecture plus claire sans perte diagnostic.
 
-## 11. Matrice produit fondatrice
+## 12. Matrice produit fondatrice
 
 | Question produit | Reponse par defaut | Reponse sur action explicite |
 | --- | --- | --- |
@@ -619,7 +654,7 @@ Definitions:
 | Que peut-on prouver aujourd'hui ? | Presence de stages, statuts, counts, tailles, hashes, provider lanes, persistence finale, RAG compact, web compact, node_state compact. | Les contenus metier deja exposes par des surfaces explicites d'edition ou de detail peuvent etre ouverts selon leurs propres gardes; le prompt modele exact n'est pas garanti reconstructible depuis les logs actuels. |
 | Que faudra-t-il persister demain ? | Facts par tour, syntheses conversation, buckets horaires/journaliers, materialisation, manifests de prompt, resumes humains par bloc, references d'artefacts. | Artefacts gates pour prompt principal, payload modele principal, providers secondaires, memoire, identity, web, documents, images et autres modules futurs. |
 
-## 12. Acceptance criteria du Lot 1
+## 13. Acceptance criteria du Lot 1
 
 Le Lot 1 est ferme quand:
 
