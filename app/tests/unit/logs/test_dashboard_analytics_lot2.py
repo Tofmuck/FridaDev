@@ -186,6 +186,170 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             return keys
         return set()
 
+    def _fact_to_persisted_row(self, fact: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            fact.get('conversation_id'),
+            fact.get('turn_id'),
+            datetime.fromisoformat(str(fact.get('first_ts'))),
+            datetime.fromisoformat(str(fact.get('latest_ts'))),
+            fact.get('classification'),
+            fact.get('score'),
+            fact.get('source_event_ids') or [],
+            fact.get('source_event_count'),
+            fact.get('source_first_event_id'),
+            fact.get('source_latest_event_id'),
+            fact.get('persistence') or {},
+            fact.get('providers') or {},
+            fact.get('rag') or {},
+            fact.get('identity') or {},
+            fact.get('hermeneutic') or {},
+            fact.get('web') or {},
+            fact.get('node_state') or {},
+            fact.get('latencies') or {},
+            fact.get('errors') or {},
+            fact.get('stage_counts') or {},
+            fact.get('flags') or {},
+            fact.get('content_availability') or {},
+            fact.get('calculation_version'),
+        )
+
+    def _fact_from_insert_params(self, params: tuple[Any, ...]) -> dict[str, Any]:
+        return {
+            'kind': 'dashboard_turn_fact',
+            'schema_version': '1',
+            'calculation_version': params[22],
+            'conversation_id': params[0],
+            'turn_id': params[1],
+            'first_ts': params[2],
+            'latest_ts': params[3],
+            'classification': params[4],
+            'score': params[5],
+            'source_event_ids': json.loads(params[6]),
+            'source_event_count': params[7],
+            'source_first_event_id': params[8],
+            'source_latest_event_id': params[9],
+            'persistence': json.loads(params[10]),
+            'providers': json.loads(params[11]),
+            'rag': json.loads(params[12]),
+            'identity': json.loads(params[13]),
+            'hermeneutic': json.loads(params[14]),
+            'web': json.loads(params[15]),
+            'node_state': json.loads(params[16]),
+            'latencies': json.loads(params[17]),
+            'errors': json.loads(params[18]),
+            'stage_counts': json.loads(params[19]),
+            'flags': json.loads(params[20]),
+            'content_availability': json.loads(params[21]),
+            'redaction': {'raw_content_stored': False, 'raw_event_payloads_included': False},
+        }
+
+    def _latest_ts(self, fact: dict[str, Any]) -> datetime:
+        return datetime.fromisoformat(str(fact['latest_ts']))
+
+    def _window_state_fake_conn(
+        self,
+        *,
+        state: dict[tuple[str, str], dict[str, Any]],
+        observed: dict[str, Any],
+        event_rows: list[tuple[Any, ...]] | None = None,
+    ):
+        test = self
+
+        class FakeCursor:
+            def __init__(self) -> None:
+                self._rows: list[tuple[Any, ...]] = []
+
+            def __enter__(self) -> 'FakeCursor':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...] | None = None) -> None:
+                observed.setdefault('queries', []).append(query)
+                observed.setdefault('params', []).append(params)
+                compact_query = ' '.join(query.split())
+
+                if 'FROM observability.chat_log_events AS events' in query:
+                    self._rows = list(event_rows or [])
+                    return
+
+                if compact_query.startswith('SELECT DISTINCT conversation_id FROM observability.dashboard_turn_facts'):
+                    start = datetime.fromisoformat(str(params[0]))
+                    end = datetime.fromisoformat(str(params[1]))
+                    self._rows = sorted(
+                        {
+                            (fact['conversation_id'],)
+                            for fact in state.values()
+                            if start <= test._latest_ts(fact) < end
+                        }
+                    )
+                    return
+
+                if compact_query.startswith('DELETE FROM observability.dashboard_turn_facts'):
+                    start = datetime.fromisoformat(str(params[0]))
+                    end = datetime.fromisoformat(str(params[1]))
+                    for key, fact in list(state.items()):
+                        if start <= test._latest_ts(fact) < end:
+                            del state[key]
+                    self._rows = []
+                    return
+
+                if compact_query.startswith('INSERT INTO observability.dashboard_turn_facts'):
+                    fact = test._fact_from_insert_params(params or ())
+                    state[(str(fact['conversation_id']), str(fact['turn_id']))] = fact
+                    self._rows = []
+                    return
+
+                if 'FROM observability.dashboard_turn_facts' in query and 'conversation_id = ANY' in query:
+                    ids = set(params[0] or [])
+                    self._rows = [
+                        test._fact_to_persisted_row(fact)
+                        for fact in sorted(state.values(), key=lambda item: str(item['latest_ts']))
+                        if fact['conversation_id'] in ids
+                    ]
+                    return
+
+                if 'FROM observability.dashboard_turn_facts' in query and 'latest_ts >=' in query:
+                    start = datetime.fromisoformat(str(params[0]))
+                    end = datetime.fromisoformat(str(params[1]))
+                    self._rows = [
+                        test._fact_to_persisted_row(fact)
+                        for fact in sorted(state.values(), key=lambda item: str(item['latest_ts']))
+                        if start <= test._latest_ts(fact) < end
+                    ]
+                    return
+
+                if compact_query.startswith('INSERT INTO observability.dashboard_conversation_summaries'):
+                    observed.setdefault('summary_params', []).append(params)
+                    self._rows = []
+                    return
+
+                if compact_query.startswith('INSERT INTO observability.dashboard_metric_buckets'):
+                    observed.setdefault('bucket_params', []).append(params)
+                    self._rows = []
+                    return
+
+                self._rows = []
+
+            def fetchall(self) -> list[tuple[Any, ...]]:
+                return self._rows
+
+        class FakeConn:
+            def __enter__(self) -> 'FakeConn':
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+            def commit(self) -> None:
+                observed['commits'] = int(observed.get('commits') or 0) + 1
+
+        return FakeConn
+
     def test_build_dashboard_analytics_is_idempotent_and_content_free(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         events = [
@@ -268,6 +432,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
     def test_materialize_dashboard_analytics_window_reads_without_event_limit_and_upserts(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        state: dict[tuple[str, str], dict[str, Any]] = {}
         rows = [
             (
                 event['event_id'],
@@ -282,32 +447,11 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             for event in self._complete_turn()
         ]
 
-        class FakeCursor:
-            def __enter__(self) -> 'FakeCursor':
-                return self
-
-            def __exit__(self, exc_type, exc, tb) -> bool:
-                return False
-
-            def execute(self, query: str, params: tuple[Any, ...] | None = None) -> None:
-                observed['queries'].append(query)
-                observed['params'].append(params)
-
-            def fetchall(self) -> list[tuple[Any, ...]]:
-                return rows
-
-        class FakeConn:
-            def __enter__(self) -> 'FakeConn':
-                return self
-
-            def __exit__(self, exc_type, exc, tb) -> bool:
-                return False
-
-            def cursor(self) -> FakeCursor:
-                return FakeCursor()
-
-            def commit(self) -> None:
-                observed['commits'] += 1
+        FakeConn = self._window_state_fake_conn(
+            state=state,
+            observed=observed,
+            event_rows=rows,
+        )
 
         analytics = dashboard_analytics.materialize_dashboard_analytics_window(
             ts_from='2026-05-14T00:00:00Z',
@@ -321,6 +465,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertTrue(analytics['persist']['ok'])
         joined = '\n'.join(observed['queries'])
         read_query = observed['queries'][0]
+        self.assertIn('WITH touched_turns AS', read_query)
         self.assertIn('FROM observability.chat_log_events', read_query)
         self.assertNotIn('LIMIT', read_query.upper())
         self.assertIn('ON CONFLICT (conversation_id, turn_id) DO UPDATE', joined)
@@ -331,6 +476,146 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             observed['params'][0],
             ('2026-05-14T00:00:00+00:00', '2026-05-15T00:00:00+00:00'),
         )
+
+    def test_materialize_window_keeps_complete_touched_turn_events(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        state: dict[tuple[str, str], dict[str, Any]] = {}
+        partial_boundary_events = [
+            self._event(
+                'turn_start',
+                turn_id='turn-boundary',
+                ts='2026-05-14T11:59:50+00:00',
+                payload={'web_search_enabled': False},
+                event_id='turn-boundary:0001:turn_start',
+            ),
+            self._event(
+                'llm_call',
+                turn_id='turn-boundary',
+                ts='2026-05-14T12:00:05+00:00',
+                payload={'provider_caller': 'llm', 'response_chars': 5},
+                event_id='turn-boundary:0002:llm_call',
+            ),
+            self._event(
+                'turn_end',
+                turn_id='turn-boundary',
+                ts='2026-05-14T12:00:20+00:00',
+                payload={'final_status': 'ok'},
+                event_id='turn-boundary:0003:turn_end',
+            ),
+        ]
+        rows = [
+            (
+                event['event_id'],
+                event['conversation_id'],
+                event['turn_id'],
+                datetime.fromisoformat(str(event['ts'])),
+                event['stage'],
+                event['status'],
+                event['duration_ms'],
+                event['payload_json'],
+            )
+            for event in partial_boundary_events
+        ]
+        FakeConn = self._window_state_fake_conn(
+            state=state,
+            observed=observed,
+            event_rows=rows,
+        )
+
+        analytics = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T12:00:10Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(analytics['turn_facts'][0]['source_event_count'], 3)
+        self.assertEqual(state[('conv-dashboard', 'turn-boundary')]['source_event_count'], 3)
+        self.assertIn('WITH touched_turns AS', observed['queries'][0])
+
+    def test_small_window_rebuilds_conversation_summary_from_persisted_wide_facts(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        wide_events = [
+            *self._complete_turn(turn_id='turn-early', base_ts='2026-05-14T10:00:00+00:00'),
+            *self._complete_turn(turn_id='turn-late', base_ts='2026-05-14T12:00:00+00:00'),
+        ]
+        wide = dashboard_analytics.build_dashboard_analytics(wide_events, now=now)
+        small = dashboard_analytics.build_dashboard_analytics(
+            self._complete_turn(turn_id='turn-late', base_ts='2026-05-14T12:00:00+00:00'),
+            now=now,
+            window_start=datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+            window_end=datetime(2026, 5, 14, 13, 0, tzinfo=timezone.utc),
+        )
+        state = {
+            (fact['conversation_id'], fact['turn_id']): dict(fact)
+            for fact in wide['turn_facts']
+        }
+        observed: dict[str, Any] = {}
+        FakeConn = self._window_state_fake_conn(state=state, observed=observed)
+
+        result = dashboard_analytics.persist_dashboard_analytics(
+            small,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['conversation_summaries_written'], 1)
+        summary_params = observed['summary_params'][-1]
+        self.assertEqual(summary_params[0], 'conv-dashboard')
+        self.assertEqual(summary_params[5], 2)
+        self.assertEqual(sum(json.loads(summary_params[8]).values()), 2)
+        self.assertEqual(len(state), 2)
+        self.assertNotIn('RAW PROMPT MUST NOT LEAK', json.dumps(observed, sort_keys=True))
+
+    def test_subday_window_rebuilds_daily_bucket_from_persisted_day_facts(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        wide_events = [
+            *self._complete_turn(turn_id='turn-early', base_ts='2026-05-14T10:00:00+00:00'),
+            *self._complete_turn(turn_id='turn-late', base_ts='2026-05-14T12:00:00+00:00'),
+        ]
+        wide = dashboard_analytics.build_dashboard_analytics(wide_events, now=now)
+        small = dashboard_analytics.build_dashboard_analytics(
+            self._complete_turn(turn_id='turn-late', base_ts='2026-05-14T12:00:00+00:00'),
+            now=now,
+            window_start=datetime(2026, 5, 14, 12, 0, tzinfo=timezone.utc),
+            window_end=datetime(2026, 5, 14, 13, 0, tzinfo=timezone.utc),
+        )
+        state = {
+            (fact['conversation_id'], fact['turn_id']): dict(fact)
+            for fact in wide['turn_facts']
+        }
+        observed: dict[str, Any] = {}
+        FakeConn = self._window_state_fake_conn(state=state, observed=observed)
+
+        result = dashboard_analytics.persist_dashboard_analytics(
+            small,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertTrue(result['ok'])
+        day_pipeline_buckets = [
+            params for params in observed['bucket_params']
+            if params[0] == 'day'
+            and str(params[1]).startswith('2026-05-14T00:00:00')
+            and params[3] == 'pipeline'
+        ]
+        hour_pipeline_buckets = [
+            params for params in observed['bucket_params']
+            if params[0] == 'hour'
+            and str(params[1]).startswith('2026-05-14T12:00:00')
+            and params[3] == 'pipeline'
+        ]
+        self.assertEqual(day_pipeline_buckets[-1][4], 2)
+        self.assertEqual(
+            sum(json.loads(day_pipeline_buckets[-1][6])['classification_counts'].values()),
+            2,
+        )
+        self.assertEqual(hour_pipeline_buckets[-1][4], 1)
+        self.assertNotIn('RAW MEMORY MUST NOT LEAK', json.dumps(observed, sort_keys=True))
 
     def test_execute_dashboard_analytics_schema_creates_persistent_tables(self) -> None:
         observed: list[str] = []

@@ -291,9 +291,12 @@ Objectif: creer le socle analytique qui rend les fenetres 24 h / 7 j / 30 j / 90
 
 Implementation livree:
 
-- module: `app/observability/dashboard_analytics.py`;
+- facade: `app/observability/dashboard_analytics.py`;
+- projection pure: `app/observability/dashboard_analytics_projection.py`;
+- stockage / materialisation: `app/observability/dashboard_analytics_storage.py`;
 - tables: `observability.dashboard_turn_facts`, `observability.dashboard_conversation_summaries`, `observability.dashboard_metric_buckets`, `observability.dashboard_materialization_status`;
 - materialiseur: `materialize_dashboard_analytics_window()`;
+- doctrine corrective: une petite fenetre met a jour les facts touches, puis regenere summaries/buckets depuis les facts persistants afin de ne pas fausser les agregats longs;
 - pas de frontend, pas d'endpoint dashboard, pas de backfill massif automatique.
 
 Cases:

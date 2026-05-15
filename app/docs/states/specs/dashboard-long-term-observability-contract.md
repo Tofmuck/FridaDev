@@ -310,7 +310,9 @@ Ce contrat fixe les familles de faits necessaires. Le Lot 2 livre un premier sch
 
 Implementation v1:
 
-- module: `app/observability/dashboard_analytics.py`;
+- facade publique: `app/observability/dashboard_analytics.py`;
+- projection pure: `app/observability/dashboard_analytics_projection.py`;
+- stockage / materialisation: `app/observability/dashboard_analytics_storage.py`;
 - bootstrap DB: `log_store.init_log_storage()` cree aussi les tables analytiques;
 - materialiseur: `materialize_dashboard_analytics_window()`;
 - version de calcul: `dashboard_analytics_v1`;
@@ -329,6 +331,15 @@ Tables persistantes v1:
 - `observability.dashboard_materialization_status`.
 
 Ces tables sont un socle analytique, pas une nouvelle source de contenu complet. Elles gardent des liens vers les logs sources et des references content-free, mais le besoin "comprendre vraiment ce que le modele a recu" reste rattache aux futurs manifestes et artefacts gates.
+
+Doctrine de materialisation v1:
+
+- une fenetre de materialisation selectionne les tours touches, puis relit tous les events de ces tours afin de ne pas remplacer un fact complet par un fact tronque;
+- les `dashboard_turn_facts` peuvent etre mis a jour pour une fenetre arbitraire;
+- les `dashboard_conversation_summaries` ne sont jamais reconstruites depuis la seule petite fenetre courante: elles sont regenerees depuis les facts deja persistants des conversations touchees;
+- les `dashboard_metric_buckets` ne sont jamais remplaces par les seuls facts d'une sous-fenetre: les buckets affectes sont regenerees depuis tous les facts persistants du bucket complet;
+- une materialisation 24 h ou intrajournaliere ne doit donc pas faire regresser des syntheses ou buckets deja materialises sur une fenetre plus large;
+- si aucune materialisation large n'existe encore, la petite fenetre produit seulement le meilleur etat connu depuis les facts persistants disponibles, sans pretendre couvrir l'horizon long complet.
 
 ### Faits par tour
 
