@@ -5,6 +5,7 @@ Source: audit / cadrage read-only du futur dashboard long terme FridaDev du 2026
 Classement: `app/docs/todo-todo/admin/`
 Portee: dashboard produit/admin/frontend long terme, metriques persistantes, inspection traduite, architecture modulaire observable
 Hors-scope du commit de creation: patch runtime, frontend, route, migration DB, backfill, rebuild, nettoyage immediat des surfaces existantes, redesign global
+Spec fondatrice: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 
 ## 1. Intention
 
@@ -260,25 +261,29 @@ Objectif:
 
 Objectif: cadrer le contrat avant toute implementation.
 
+Spec livree:
+
+- `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+
 Cases:
 
-- [ ] Definir les faits par tour, les agregats, le vocabulaire francais et les modules observables.
-- [ ] Definir le content gate et la politique `Afficher le contenu complet`.
-- [ ] Definir les niveaux de lecture: cockpit, conversation, tour, inspection, contenu complet.
-- [ ] Definir les champs strictement content-free autorises par defaut.
-- [ ] Definir les champs interdits par defaut.
-- [ ] Documenter la difference entre logs compacts, agregats persistants et read-models humains.
-- [ ] Documenter que `/log` reste l'outil de debug technique.
+- [x] Definir les faits par tour, les agregats, le vocabulaire francais et les modules observables.
+- [x] Definir le content gate et la politique `Afficher le contenu complet`.
+- [x] Definir les niveaux de lecture: cockpit, conversation, tour, inspection, contenu complet.
+- [x] Definir les champs strictement content-free autorises par defaut.
+- [x] Definir les champs interdits par defaut.
+- [x] Documenter la difference entre logs compacts, agregats persistants et read-models humains.
+- [x] Documenter que `/log` reste l'outil de debug technique.
 
 Tests / preuves attendues:
 
-- [ ] Spec ou doc relue contre `log-module-contract.md`.
-- [ ] Matrice sources -> champs -> vues.
-- [ ] Preuve que chaque champ sensible est soit interdit par defaut, soit rattache au content gate.
+- [x] Spec ou doc relue contre `log-module-contract.md`.
+- [x] Matrice sources -> champs -> vues.
+- [x] Preuve que chaque champ sensible est soit interdit par defaut, soit rattache au content gate.
 
 Condition de cloture:
 
-- [ ] Aucun lot backend/frontend ne peut demarrer sans contrat de donnees, vocabulaire et content gate valides.
+- [x] Aucun lot backend/frontend ne peut demarrer sans contrat de donnees, vocabulaire et content gate valides.
 
 ### Lot 2 - Faits persistants et agregats longue periode
 

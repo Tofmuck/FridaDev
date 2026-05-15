@@ -119,6 +119,7 @@ Rappel: les secrets, `.env`, DSN complets et tokens runtime ne doivent pas etre 
 ### Admin / surfaces
 
 Lire d'abord:
+- `states/specs/dashboard-long-term-observability-contract.md`
 - `states/specs/memory-admin-surface-contract.md`
 - `todo-done/refactors/admin-todo.md`
 - `todo-done/refactors/log-module-todo.md`
