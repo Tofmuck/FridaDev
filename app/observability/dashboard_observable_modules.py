@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
 MODULE_CONTRACT_VERSION = 'dashboard_observable_modules_v1'
@@ -24,6 +24,168 @@ _STATE_LABELS_FR = {
     'not_applicable': 'Non concerne',
 }
 
+BucketMetricsReducer = Callable[[dict[str, Any], Mapping[str, Any]], None]
+BucketMetricsFinalizer = Callable[[dict[str, Any]], None]
+
+
+def _to_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _to_float(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    return {}
+
+
+def _inc(mapping: dict[str, int], key: Any, amount: int = 1) -> None:
+    normalized = str(key or 'unknown').strip() or 'unknown'
+    mapping[normalized] = int(mapping.get(normalized, 0)) + int(amount)
+
+
+def _add_metric_count(metrics: dict[str, Any], key: str, amount: int = 1) -> None:
+    metrics[key] = _to_int(metrics.get(key)) + int(amount)
+
+
+def _add_metric_label(metrics: dict[str, Any], group_key: str, label: Any, amount: int = 1) -> None:
+    group = metrics.setdefault(group_key, {})
+    if isinstance(group, dict):
+        _inc(group, label, amount)
+
+
+def _percentile(values: Sequence[int], percentile: float) -> int | None:
+    safe = sorted(int(value) for value in values if value is not None)
+    if not safe:
+        return None
+    if len(safe) == 1:
+        return safe[0]
+    position = (len(safe) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(safe) - 1)
+    weight = position - lower
+    return int(round(safe[lower] * (1 - weight) + safe[upper] * weight))
+
+
+def _reduce_pipeline_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    _add_metric_label(metrics, 'classification_counts', fact.get('classification'))
+    _add_metric_count(metrics, 'score_total', _to_int(fact.get('score')))
+    _add_metric_count(metrics, 'score_count')
+    flags = _mapping(fact.get('flags'))
+    if bool(flags.get('events_truncated')):
+        _add_metric_count(metrics, 'events_truncated_turns')
+
+
+def _finalize_pipeline_metrics(metrics: dict[str, Any]) -> None:
+    score_count = _to_int(metrics.get('score_count'))
+    if score_count:
+        metrics['score_avg'] = round(_to_float(metrics.get('score_total')) / float(score_count), 3)
+
+
+def _reduce_persistence_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    persistence = _mapping(fact.get('persistence'))
+    _add_metric_label(metrics, 'status_counts', persistence.get('status'))
+    _add_metric_count(metrics, 'assistant_final_present_count', 1 if persistence.get('assistant_final_present') else 0)
+    _add_metric_count(metrics, 'assistant_final_saved_count', 1 if persistence.get('assistant_final_saved') else 0)
+    _add_metric_count(metrics, 'assistant_interrupted_count', 1 if persistence.get('assistant_interrupted') else 0)
+
+
+def _reduce_memory_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    rag = _mapping(fact.get('rag'))
+    _add_metric_label(metrics, 'source_kind_counts', rag.get('source_kind'))
+    _add_metric_count(metrics, 'retrieved_total', _to_int(rag.get('retrieved')))
+    _add_metric_count(metrics, 'basket_total', _to_int(rag.get('basket')))
+    _add_metric_count(metrics, 'kept_total', _to_int(rag.get('kept')))
+    _add_metric_count(metrics, 'rejected_total', _to_int(rag.get('rejected')))
+    _add_metric_count(metrics, 'injected_total', _to_int(rag.get('injected')))
+    _add_metric_count(metrics, 'context_hints_total', _to_int(rag.get('context_hints')))
+    _add_metric_count(metrics, 'snapshot_present_turns', 1 if rag.get('source_kind') == 'memory_chain_snapshot' else 0)
+    _add_metric_count(metrics, 'legacy_fallback_turns', 1 if rag.get('legacy_reason_code') else 0)
+
+
+def _reduce_web_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    web = _mapping(fact.get('web'))
+    _add_metric_label(metrics, 'status_counts', web.get('status'))
+    _add_metric_count(metrics, 'requested_turns', 1 if web.get('requested') else 0)
+    _add_metric_count(metrics, 'success_turns', 1 if web.get('success') else 0)
+    _add_metric_count(metrics, 'skipped_turns', 1 if web.get('skipped') else 0)
+    _add_metric_count(metrics, 'error_turns', 1 if web.get('error') else 0)
+    _add_metric_count(metrics, 'injected_turns', 1 if web.get('injected') else 0)
+    _add_metric_count(metrics, 'results_total', _to_int(web.get('results_count')))
+    _add_metric_count(metrics, 'injected_chars_total', _to_int(web.get('injected_chars')))
+
+
+def _reduce_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    providers = _mapping(fact.get('providers'))
+    main = _mapping(providers.get('main'))
+    secondary = _mapping(providers.get('secondary'))
+    _add_metric_count(metrics, 'main_call_present_count', 1 if bool(main.get('present')) else 0)
+    _add_metric_label(metrics, 'main_status_counts', main.get('status'))
+    _add_metric_count(metrics, 'main_response_chars_total', _to_int(main.get('response_chars')))
+    duration = main.get('duration_ms')
+    if duration is not None:
+        values = metrics.setdefault('_main_duration_ms_values', [])
+        if isinstance(values, list):
+            values.append(_to_int(duration))
+        _add_metric_count(metrics, 'main_duration_ms_total', _to_int(duration))
+        _add_metric_count(metrics, 'main_duration_ms_count')
+    secondary_call_count = 0
+    for item in secondary.values():
+        summary = _mapping(item)
+        secondary_call_count += _to_int(summary.get('llm_call_events_count'))
+        _add_metric_label(metrics, 'secondary_status_counts', summary.get('status'))
+    _add_metric_count(metrics, 'secondary_llm_call_count', secondary_call_count)
+
+
+def _finalize_provider_metrics(metrics: dict[str, Any]) -> None:
+    duration_values = metrics.pop('_main_duration_ms_values', None)
+    if isinstance(duration_values, list):
+        metrics['main_duration_ms_p50'] = _percentile(duration_values, 0.50)
+        metrics['main_duration_ms_p95'] = _percentile(duration_values, 0.95)
+
+
+def _reduce_identity_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    identity = _mapping(fact.get('identity'))
+    _add_metric_label(metrics, 'status_counts', identity.get('status'))
+    _add_metric_count(metrics, 'block_present_turns', 1 if identity.get('block_present') else 0)
+    _add_metric_count(metrics, 'chars_total', _to_int(identity.get('chars')))
+
+
+def _reduce_hermeneutic_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    hermeneutic = _mapping(fact.get('hermeneutic'))
+    _add_metric_label(metrics, 'status_counts', hermeneutic.get('status'))
+    _add_metric_count(metrics, 'block_present_turns', 1 if hermeneutic.get('block_present') else 0)
+    _add_metric_count(metrics, 'fallback_turns', 1 if hermeneutic.get('fallback') else 0)
+
+
+def _reduce_node_state_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    node_state = _mapping(fact.get('node_state'))
+    _add_metric_count(metrics, 'read_present_count', 1 if node_state.get('read_present') else 0)
+    _add_metric_count(metrics, 'read_valid_count', 1 if node_state.get('read_valid') else 0)
+    _add_metric_count(metrics, 'write_attempted_count', 1 if node_state.get('write_attempted') else 0)
+    _add_metric_count(metrics, 'write_succeeded_count', 1 if node_state.get('write_succeeded') else 0)
+    _add_metric_count(metrics, 'write_changed_count', 1 if node_state.get('write_changed') else 0)
+    _add_metric_count(metrics, 'fail_open_count', 1 if node_state.get('fail_open') else 0)
+
+
+def _reduce_error_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    errors = _mapping(fact.get('errors'))
+    _add_metric_count(metrics, 'error_count', _to_int(errors.get('error_count')))
+    _add_metric_count(metrics, 'skipped_count', _to_int(errors.get('skipped_count')))
+    _add_metric_count(metrics, 'fallback_count', _to_int(errors.get('fallback_count')))
+    reason_counts = _mapping(errors.get('reason_code_counts'))
+    for reason, count in reason_counts.items():
+        _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+
 
 @dataclass(frozen=True)
 class ObservableModule:
@@ -42,6 +204,8 @@ class ObservableModule:
     degradation_reasons: tuple[tuple[str, str], ...] = ()
     gated_content: tuple[str, ...] = ()
     future: bool = False
+    bucket_metrics_reducer: BucketMetricsReducer | None = None
+    bucket_metrics_finalizer: BucketMetricsFinalizer | None = None
 
 
 def _fields(*items: tuple[str, str]) -> tuple[tuple[str, str], ...]:
@@ -66,6 +230,8 @@ def _module(
     degradation_reasons: tuple[tuple[str, str], ...],
     gated_content: tuple[str, ...] = (),
     future: bool = False,
+    bucket_metrics_reducer: BucketMetricsReducer | None = None,
+    bucket_metrics_finalizer: BucketMetricsFinalizer | None = None,
 ) -> ObservableModule:
     return ObservableModule(
         module_key=module_key,
@@ -89,6 +255,8 @@ def _module(
         degradation_reasons=degradation_reasons,
         gated_content=gated_content,
         future=future,
+        bucket_metrics_reducer=bucket_metrics_reducer,
+        bucket_metrics_finalizer=bucket_metrics_finalizer,
     )
 
 
@@ -122,6 +290,8 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('legacy_incomplete', 'Le tour vient d une trace ancienne ou incomplete.'),
             ('events_truncated', 'La trace du tour a ete tronquee avant inspection complete.'),
         ),
+        bucket_metrics_reducer=_reduce_pipeline_metrics,
+        bucket_metrics_finalizer=_finalize_pipeline_metrics,
     ),
     _module(
         module_key='persistence',
@@ -151,6 +321,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('assistant_interrupted', 'La reponse semble interrompue avant sauvegarde finale.'),
         ),
         gated_content=('Reponse assistant complete',),
+        bucket_metrics_reducer=_reduce_persistence_metrics,
     ),
     _module(
         module_key='memory',
@@ -184,6 +355,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('legacy_memory_fallback', 'La memoire est lue depuis un ancien signal moins precis.'),
         ),
         gated_content=('Souvenirs exacts', 'Bloc memoire injecte', 'Trace memoire complete'),
+        bucket_metrics_reducer=_reduce_memory_metrics,
     ),
     _module(
         module_key='web',
@@ -218,6 +390,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('web_not_injected', 'La recherche web n a pas produit de contenu injecte.'),
         ),
         gated_content=('Requete web exacte', 'Resultats web complets', 'Contexte web injecte'),
+        bucket_metrics_reducer=_reduce_web_metrics,
     ),
     _module(
         module_key='providers',
@@ -250,6 +423,8 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('main_call_missing', 'L appel au modele principal n est pas observe.'),
         ),
         gated_content=('Payload modele principal', 'Payloads providers secondaires', 'Reponses providers completes'),
+        bucket_metrics_reducer=_reduce_provider_metrics,
+        bucket_metrics_finalizer=_finalize_provider_metrics,
     ),
     _module(
         module_key='identity',
@@ -278,6 +453,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('identity_legacy_signal', 'Le signal identite vient d une trace ancienne ou partielle.'),
         ),
         gated_content=('Bloc identite injecte', 'Identity complete liee au tour'),
+        bucket_metrics_reducer=_reduce_identity_metrics,
     ),
     _module(
         module_key='hermeneutic',
@@ -306,6 +482,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('hermeneutic_block_missing', 'Le jugement hermeneutique n est pas observe dans le contexte.'),
         ),
         gated_content=('Jugement hermeneutique complet', 'Replies runtime hermeneutiques'),
+        bucket_metrics_reducer=_reduce_hermeneutic_metrics,
     ),
     _module(
         module_key='node_state',
@@ -337,6 +514,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('node_state_write_failed', 'La mise a jour de l etat du noeud a echoue.'),
         ),
         gated_content=('Detail complet futur du node_state'),
+        bucket_metrics_reducer=_reduce_node_state_metrics,
     ),
     _module(
         module_key='errors',
@@ -367,6 +545,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('stage_error', 'Une etape du tour a signale une erreur.'),
             ('fallback_used', 'Un fallback a ete utilise pour continuer le tour.'),
         ),
+        bucket_metrics_reducer=_reduce_error_metrics,
     ),
 )
 
@@ -460,6 +639,10 @@ def _module_to_public_dict(module: ObservableModule) -> dict[str, object]:
         'limits': list(module.limits),
         'degradation_reasons': _reason_dict(module),
         'gated_content': list(module.gated_content),
+        'bucket_metrics': {
+            'reducer_declared': module.bucket_metrics_reducer is not None,
+            'finalizer_declared': module.bucket_metrics_finalizer is not None,
+        },
         'future': bool(module.future),
     }
 

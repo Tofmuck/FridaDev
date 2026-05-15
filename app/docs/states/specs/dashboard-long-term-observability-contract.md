@@ -500,6 +500,8 @@ Convention v1 livree au Lot 3:
 - cles bucketisables: `observable_module_keys()`;
 - explication humaine des degradations: `explain_module_degradation()`;
 - contrat de module: `ObservableModule`;
+- reduction de metriques par module: `bucket_metrics_reducer`;
+- finalisation optionnelle de metriques par module: `bucket_metrics_finalizer`;
 - version de contrat: `dashboard_observable_modules_v1`.
 
 Chaque `ObservableModule` declare:
@@ -518,6 +520,8 @@ Chaque `ObservableModule` declare:
 - `degradation_reasons`: reason codes compacts traduits en francais;
 - `gated_content`: classes de contenus complets eventuellement ouvrables plus tard;
 - `calculation_version`: version du calcul ou du contrat.
+- `bucket_metrics_reducer`: hook optionnel qui reduit les facts du module en metriques de bucket;
+- `bucket_metrics_finalizer`: hook optionnel qui finalise les metriques derivees, par exemple p50 / p95.
 
 Modules initiaux actuels:
 
@@ -528,7 +532,7 @@ Modules initiaux actuels:
 - providers;
 - identity;
 - hermeneutic;
-- node_state.
+- node_state;
 - errors.
 
 Modules futurs branchables:
@@ -541,7 +545,9 @@ Regle d'extension:
 - ajouter `documents` ou `images` ne doit pas exiger de refaire le dashboard;
 - un nouveau module doit pouvoir declarer ses metriques, son resume humain et ses contenus gates selon le meme contrat.
 - les buckets analytiques lisent les cles depuis le registre des modules observables, au lieu de porter une liste de modules hard-codee dans la projection;
-- un module futur sans metriques specialisees peut deja produire un bucket content-free avec `turn_count` et `event_count`, puis enrichir ses metriques dans un lot dedie.
+- la projection de buckets appelle le reducer declare par le module, sans chaine centrale `if module_key == ...`;
+- un module futur sans metriques specialisees peut deja produire un bucket content-free avec `turn_count` et `event_count`;
+- un module futur avec metriques specialisees ajoute son reducer dans sa declaration de module, sans modifier la projection centrale.
 
 Regle de degradation:
 

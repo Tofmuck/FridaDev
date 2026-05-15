@@ -25,6 +25,13 @@ from observability.dashboard_observable_modules import ObservableModule
 
 class DashboardObservableModulesLot3Tests(unittest.TestCase):
     def _fake_module(self) -> ObservableModule:
+        def reduce_fake_metrics(metrics: dict[str, Any], fact: dict[str, Any]) -> None:
+            fake = fact.get('fake_documents')
+            if not isinstance(fake, dict):
+                return
+            metrics['fake_used_count'] = int(metrics.get('fake_used_count') or 0) + int(fake.get('used_count') or 0)
+            metrics['fake_requested_turns'] = int(metrics.get('fake_requested_turns') or 0) + (1 if fake.get('requested') else 0)
+
         return ObservableModule(
             module_key='fake_documents',
             label_fr='Documents factices',
@@ -46,6 +53,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             ),
             gated_content=('Document factice complet',),
             future=True,
+            bucket_metrics_reducer=reduce_fake_metrics,
         )
 
     def _turn_fact(self) -> dict[str, Any]:
@@ -111,6 +119,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'fallback_count': 0,
                 'reason_code_counts': {},
             },
+            'fake_documents': {'requested': True, 'used_count': 2},
             'flags': {'events_truncated': False},
             'redaction': {
                 'raw_content_stored': False,
@@ -167,7 +176,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertNotIn('unknown_backend_reason', fallback)
         self.assertNotIn('provider_caller', fallback)
 
-    def test_fake_module_extends_catalog_and_buckets_without_projection_change(self) -> None:
+    def test_fake_module_owns_specialized_metrics_without_projection_change(self) -> None:
         fake = self._fake_module()
         catalog = dashboard_analytics.build_dashboard_module_catalog(extra_modules=(fake,))
         self.assertIn('fake_documents', catalog['module_keys'])
@@ -185,7 +194,32 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(len(fake_buckets), 1)
         self.assertEqual(fake_buckets[0]['turn_count'], 1)
         self.assertEqual(fake_buckets[0]['event_count'], 3)
-        self.assertEqual(fake_buckets[0]['metrics'], {})
+        self.assertEqual(fake_buckets[0]['metrics']['fake_used_count'], 2)
+        self.assertEqual(fake_buckets[0]['metrics']['fake_requested_turns'], 1)
+
+    def test_current_module_metrics_are_not_regressed_by_module_hooks(self) -> None:
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            [self._turn_fact()],
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        by_key = {
+            bucket['module_key']: bucket
+            for bucket in buckets
+            if bucket.get('granularity') == 'hour'
+        }
+
+        self.assertEqual(by_key['pipeline']['metrics']['score_avg'], 100.0)
+        self.assertEqual(by_key['pipeline']['metrics']['classification_counts']['complete'], 1)
+        self.assertEqual(by_key['memory']['metrics']['retrieved_total'], 4)
+        self.assertEqual(by_key['memory']['metrics']['injected_total'], 2)
+        self.assertEqual(by_key['web']['metrics']['requested_turns'], 1)
+        self.assertEqual(by_key['web']['metrics']['injected_turns'], 1)
+        self.assertEqual(by_key['providers']['metrics']['main_call_present_count'], 1)
+        self.assertEqual(by_key['providers']['metrics']['main_duration_ms_p50'], 120)
+        self.assertEqual(by_key['identity']['metrics']['block_present_turns'], 1)
+        self.assertEqual(by_key['hermeneutic']['metrics']['block_present_turns'], 1)
+        self.assertEqual(by_key['node_state']['metrics']['write_succeeded_count'], 1)
+        self.assertEqual(by_key['errors']['metrics']['error_count'], 0)
 
     def test_catalog_public_labels_do_not_include_runtime_content(self) -> None:
         raw_values = (

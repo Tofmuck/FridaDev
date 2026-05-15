@@ -333,6 +333,7 @@ Implementation livree:
 - registre extensible: `observable_modules()` / `observable_module_keys()`;
 - explication humaine des degradations: `explain_module_degradation()`;
 - buckets Lot 2 branches sur le registre au lieu d'une liste hard-codee;
+- reduction de metriques portee par les modules via `bucket_metrics_reducer` / `bucket_metrics_finalizer`, sans dispatch central par `module_key`;
 - modules futurs `documents` et `images` declares dans le contrat, sans materialisation runtime.
 
 Cases:

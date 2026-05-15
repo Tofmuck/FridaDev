@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
-from observability.dashboard_observable_modules import ObservableModule, observable_module_keys
+from observability.dashboard_observable_modules import ObservableModule, observable_modules
 from observability.turn_pipeline_read_model import build_turn_pipeline_item
 
 
@@ -21,13 +21,6 @@ def _to_int(value: Any) -> int:
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
-
-
-def _to_float(value: Any) -> float:
-    try:
-        return float(value or 0)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _text(value: Any) -> str | None:
@@ -136,19 +129,6 @@ def _bucket_end(start: datetime, granularity: str) -> datetime:
     if granularity == 'hour':
         return start + timedelta(hours=1)
     return start + timedelta(days=1)
-
-
-def _percentile(values: Sequence[int], percentile: float) -> int | None:
-    safe = sorted(int(value) for value in values if value is not None)
-    if not safe:
-        return None
-    if len(safe) == 1:
-        return safe[0]
-    position = (len(safe) - 1) * percentile
-    lower = int(position)
-    upper = min(lower + 1, len(safe) - 1)
-    weight = position - lower
-    return int(round(safe[lower] * (1 - weight) + safe[upper] * weight))
 
 
 def _event_to_read_model_item(event: Mapping[str, Any]) -> dict[str, Any]:
@@ -373,40 +353,11 @@ def _bucket_for(
     return buckets[key]
 
 
-def _add_metric_count(metrics: dict[str, Any], key: str, amount: int = 1) -> None:
-    metrics[key] = _to_int(metrics.get(key)) + int(amount)
-
-
-def _add_metric_label(metrics: dict[str, Any], group_key: str, label: Any, amount: int = 1) -> None:
-    group = metrics.setdefault(group_key, {})
-    if isinstance(group, dict):
-        _inc(group, label, amount)
-
-
-def _add_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
-    providers = _mapping(fact.get('providers'))
-    main = _mapping(providers.get('main'))
-    secondary = _mapping(providers.get('secondary'))
-    _add_metric_count(metrics, 'main_call_present_count', 1 if bool(main.get('present')) else 0)
-    _add_metric_label(metrics, 'main_status_counts', main.get('status'))
-    _add_metric_count(metrics, 'main_response_chars_total', _to_int(main.get('response_chars')))
-    duration = main.get('duration_ms')
-    if duration is not None:
-        values = metrics.setdefault('_main_duration_ms_values', [])
-        if isinstance(values, list):
-            values.append(_to_int(duration))
-        _add_metric_count(metrics, 'main_duration_ms_total', _to_int(duration))
-        _add_metric_count(metrics, 'main_duration_ms_count')
-    secondary_call_count = 0
-    for item in secondary.values():
-        summary = _mapping(item)
-        secondary_call_count += _to_int(summary.get('llm_call_events_count'))
-        _add_metric_label(metrics, 'secondary_status_counts', summary.get('status'))
-    _add_metric_count(metrics, 'secondary_llm_call_count', secondary_call_count)
-
-
-def _add_bucket_fact(bucket: dict[str, Any], fact: Mapping[str, Any]) -> None:
-    module_key = str(bucket.get('module_key') or '')
+def _add_bucket_fact(
+    bucket: dict[str, Any],
+    fact: Mapping[str, Any],
+    module: ObservableModule,
+) -> None:
     metrics = bucket.setdefault('metrics', {})
     if not isinstance(metrics, dict):
         metrics = {}
@@ -415,97 +366,16 @@ def _add_bucket_fact(bucket: dict[str, Any], fact: Mapping[str, Any]) -> None:
     bucket['turn_count'] = _to_int(bucket.get('turn_count')) + 1
     bucket['event_count'] = _to_int(bucket.get('event_count')) + _to_int(fact.get('source_event_count'))
 
-    if module_key == 'pipeline':
-        _add_metric_label(metrics, 'classification_counts', fact.get('classification'))
-        _add_metric_count(metrics, 'score_total', _to_int(fact.get('score')))
-        _add_metric_count(metrics, 'score_count')
-        flags = _mapping(fact.get('flags'))
-        if bool(flags.get('events_truncated')):
-            _add_metric_count(metrics, 'events_truncated_turns')
-        return
-
-    if module_key == 'persistence':
-        persistence = _mapping(fact.get('persistence'))
-        _add_metric_label(metrics, 'status_counts', persistence.get('status'))
-        _add_metric_count(metrics, 'assistant_final_present_count', 1 if persistence.get('assistant_final_present') else 0)
-        _add_metric_count(metrics, 'assistant_final_saved_count', 1 if persistence.get('assistant_final_saved') else 0)
-        _add_metric_count(metrics, 'assistant_interrupted_count', 1 if persistence.get('assistant_interrupted') else 0)
-        return
-
-    if module_key == 'memory':
-        rag = _mapping(fact.get('rag'))
-        _add_metric_label(metrics, 'source_kind_counts', rag.get('source_kind'))
-        _add_metric_count(metrics, 'retrieved_total', _to_int(rag.get('retrieved')))
-        _add_metric_count(metrics, 'basket_total', _to_int(rag.get('basket')))
-        _add_metric_count(metrics, 'kept_total', _to_int(rag.get('kept')))
-        _add_metric_count(metrics, 'rejected_total', _to_int(rag.get('rejected')))
-        _add_metric_count(metrics, 'injected_total', _to_int(rag.get('injected')))
-        _add_metric_count(metrics, 'context_hints_total', _to_int(rag.get('context_hints')))
-        _add_metric_count(metrics, 'snapshot_present_turns', 1 if rag.get('source_kind') == 'memory_chain_snapshot' else 0)
-        _add_metric_count(metrics, 'legacy_fallback_turns', 1 if rag.get('legacy_reason_code') else 0)
-        return
-
-    if module_key == 'web':
-        web = _mapping(fact.get('web'))
-        _add_metric_label(metrics, 'status_counts', web.get('status'))
-        _add_metric_count(metrics, 'requested_turns', 1 if web.get('requested') else 0)
-        _add_metric_count(metrics, 'success_turns', 1 if web.get('success') else 0)
-        _add_metric_count(metrics, 'skipped_turns', 1 if web.get('skipped') else 0)
-        _add_metric_count(metrics, 'error_turns', 1 if web.get('error') else 0)
-        _add_metric_count(metrics, 'injected_turns', 1 if web.get('injected') else 0)
-        _add_metric_count(metrics, 'results_total', _to_int(web.get('results_count')))
-        _add_metric_count(metrics, 'injected_chars_total', _to_int(web.get('injected_chars')))
-        return
-
-    if module_key == 'providers':
-        _add_provider_metrics(metrics, fact)
-        return
-
-    if module_key == 'identity':
-        identity = _mapping(fact.get('identity'))
-        _add_metric_label(metrics, 'status_counts', identity.get('status'))
-        _add_metric_count(metrics, 'block_present_turns', 1 if identity.get('block_present') else 0)
-        _add_metric_count(metrics, 'chars_total', _to_int(identity.get('chars')))
-        return
-
-    if module_key == 'hermeneutic':
-        hermeneutic = _mapping(fact.get('hermeneutic'))
-        _add_metric_label(metrics, 'status_counts', hermeneutic.get('status'))
-        _add_metric_count(metrics, 'block_present_turns', 1 if hermeneutic.get('block_present') else 0)
-        _add_metric_count(metrics, 'fallback_turns', 1 if hermeneutic.get('fallback') else 0)
-        return
-
-    if module_key == 'node_state':
-        node_state = _mapping(fact.get('node_state'))
-        _add_metric_count(metrics, 'read_present_count', 1 if node_state.get('read_present') else 0)
-        _add_metric_count(metrics, 'read_valid_count', 1 if node_state.get('read_valid') else 0)
-        _add_metric_count(metrics, 'write_attempted_count', 1 if node_state.get('write_attempted') else 0)
-        _add_metric_count(metrics, 'write_succeeded_count', 1 if node_state.get('write_succeeded') else 0)
-        _add_metric_count(metrics, 'write_changed_count', 1 if node_state.get('write_changed') else 0)
-        _add_metric_count(metrics, 'fail_open_count', 1 if node_state.get('fail_open') else 0)
-        return
-
-    if module_key == 'errors':
-        errors = _mapping(fact.get('errors'))
-        _add_metric_count(metrics, 'error_count', _to_int(errors.get('error_count')))
-        _add_metric_count(metrics, 'skipped_count', _to_int(errors.get('skipped_count')))
-        _add_metric_count(metrics, 'fallback_count', _to_int(errors.get('fallback_count')))
-        reason_counts = _mapping(errors.get('reason_code_counts'))
-        for reason, count in reason_counts.items():
-            _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+    if module.bucket_metrics_reducer:
+        module.bucket_metrics_reducer(metrics, fact)
 
 
-def _finalize_bucket(bucket: dict[str, Any]) -> dict[str, Any]:
+def _finalize_bucket(bucket: dict[str, Any], module: ObservableModule | None) -> dict[str, Any]:
     metrics = bucket.get('metrics')
     if not isinstance(metrics, dict):
         return bucket
-    score_count = _to_int(metrics.get('score_count'))
-    if score_count:
-        metrics['score_avg'] = round(_to_float(metrics.get('score_total')) / float(score_count), 3)
-    duration_values = metrics.pop('_main_duration_ms_values', None)
-    if isinstance(duration_values, list):
-        metrics['main_duration_ms_p50'] = _percentile(duration_values, 0.50)
-        metrics['main_duration_ms_p95'] = _percentile(duration_values, 0.95)
+    if module and module.bucket_metrics_finalizer:
+        module.bucket_metrics_finalizer(metrics)
     return bucket
 
 
@@ -519,7 +389,8 @@ def build_dashboard_metric_buckets(
     now_dt = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     recent_start = now_dt - timedelta(days=max(1, int(recent_granularity_days)))
     buckets: dict[tuple[str, str, str], dict[str, Any]] = {}
-    modules = observable_module_keys(extra_modules=extra_modules)
+    modules = observable_modules(extra_modules=extra_modules)
+    module_by_key = {module.module_key: module for module in modules}
     for fact in turn_facts:
         latest = _latest_ts(fact)
         if latest is None:
@@ -529,17 +400,20 @@ def build_dashboard_metric_buckets(
             granularities.insert(0, 'hour')
         for granularity in granularities:
             start = _bucket_start(latest, granularity)
-            for module_key in modules:
+            for module in modules:
                 bucket = _bucket_for(
                     buckets,
                     granularity=granularity,
                     bucket_start=start,
-                    module_key=module_key,
+                    module_key=module.module_key,
                 )
-                _add_bucket_fact(bucket, fact)
+                _add_bucket_fact(bucket, fact, module)
 
     return [
-        _finalize_bucket(bucket)
+        _finalize_bucket(
+            bucket,
+            module_by_key.get(str(bucket.get('module_key') or '')),
+        )
         for bucket in sorted(
             buckets.values(),
             key=lambda item: (
