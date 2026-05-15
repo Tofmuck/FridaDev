@@ -21,6 +21,15 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
 
+    def test_dashboard_static_page_route_returns_skeleton(self) -> None:
+        response = self.client.get('/dashboard')
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn('Dashboard long terme', body)
+        self.assertIn('dashboard/main.js', body)
+        self.assertNotIn('/api/admin/dashboard/overview', body)
+
     def _assert_content_free(self, payload: dict) -> None:
         encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         forbidden = (

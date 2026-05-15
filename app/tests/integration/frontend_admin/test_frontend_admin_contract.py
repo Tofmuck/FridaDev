@@ -22,8 +22,10 @@ class AdminPhase7FoundationTests(unittest.TestCase):
     def test_admin_topbar_links_keep_admin_navigation_in_same_window(self) -> None:
         html = (APP_DIR / "web" / "admin.html").read_text(encoding="utf-8")
 
+        self.assertIn('href="/dashboard"', html)
         self.assertIn('href="/log"', html)
         self.assertIn('href="/hermeneutic-admin"', html)
+        self.assertNotIn('href="/dashboard" target="_blank"', html)
         self.assertNotIn('href="/hermeneutic-admin" target="_blank"', html)
         self.assertNotIn('href="/log" target="_blank"', html)
 

@@ -406,25 +406,25 @@ Objectif: creer la surface dediee sans encore empiler les widgets.
 
 Cases:
 
-- [ ] Creer `app/web/dashboard.html`.
-- [ ] Creer `app/web/dashboard/`.
-- [ ] Ajouter la route statique `/dashboard`.
-- [ ] Ajouter ou preparer la navigation depuis le chat et les surfaces admin.
-- [ ] Reprendre le chat comme reference visuelle principale.
-- [ ] Reprendre les boutons/navigation du chat comme modele.
-- [ ] Harmoniser progressivement les liens entre `/log`, Memory Admin, Hermeneutic Admin, Identity et dashboard.
-- [ ] Ne pas introduire un style visuel separe.
+- [x] Creer `app/web/dashboard.html`.
+- [x] Creer `app/web/dashboard/`.
+- [x] Ajouter la route statique `/dashboard`.
+- [x] Ajouter ou preparer la navigation depuis le chat et les surfaces admin.
+- [x] Reprendre le chat comme reference visuelle principale.
+- [x] Reprendre les boutons/navigation du chat comme modele.
+- [x] Harmoniser progressivement les liens entre `/log`, Memory Admin, Hermeneutic Admin, Identity et dashboard.
+- [x] Ne pas introduire un style visuel separe.
 
 Tests / preuves attendues:
 
-- [ ] Checks HTML/JS.
-- [ ] Test frontend admin minimal.
-- [ ] Verification que la page charge sans contenu brut.
-- [ ] Verification responsive sobre si navigateur disponible.
+- [x] Checks HTML/JS.
+- [x] Test frontend admin minimal.
+- [x] Verification que la page charge sans contenu brut.
+- [x] Verification responsive sobre si navigateur disponible.
 
 Condition de cloture:
 
-- [ ] La page existe, se place naturellement dans Frida, et ne ressemble pas a un dashboard externe colle au produit.
+- [x] La page existe, se place naturellement dans Frida, et ne ressemble pas a un dashboard externe colle au produit.
 
 ### Lot 6 - Premier ecran
 

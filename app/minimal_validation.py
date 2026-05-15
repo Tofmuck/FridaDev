@@ -445,6 +445,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     required_files = {
         "index_html": web_dir / "index.html",
         "admin_html": web_dir / "admin.html",
+        "dashboard_html": web_dir / "dashboard.html",
         "log_html": web_dir / "log.html",
         "hermeneutic_admin_html": web_dir / "hermeneutic-admin.html",
         "identity_html": web_dir / "identity.html",
@@ -490,6 +491,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "memory_admin_render_overview_js": web_dir / "memory_admin" / "render_overview.js",
         "memory_admin_render_turns_js": web_dir / "memory_admin" / "render_turns.js",
         "memory_admin_main_js": web_dir / "memory_admin" / "main.js",
+        "dashboard_styles_css": web_dir / "dashboard" / "styles.css",
+        "dashboard_main_js": web_dir / "dashboard" / "main.js",
         "frida_logo_png": web_dir / "fridalogo.png",
     }
     forbidden_files = {
@@ -508,6 +511,7 @@ def _check_ui_assets() -> Dict[str, Any]:
 
     index_html = required_files["index_html"].read_text(encoding="utf-8")
     admin_html = required_files["admin_html"].read_text(encoding="utf-8")
+    dashboard_html = required_files["dashboard_html"].read_text(encoding="utf-8")
     log_html = required_files["log_html"].read_text(encoding="utf-8")
     hermeneutic_admin_html = required_files["hermeneutic_admin_html"].read_text(encoding="utf-8")
     identity_html = required_files["identity_html"].read_text(encoding="utf-8")
@@ -552,6 +556,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     )
     memory_admin_render_turns_js = required_files["memory_admin_render_turns_js"].read_text(encoding="utf-8")
     memory_admin_main_js = required_files["memory_admin_main_js"].read_text(encoding="utf-8")
+    dashboard_main_js = required_files["dashboard_main_js"].read_text(encoding="utf-8")
     admin_front_js = (
         f"{admin_api_js}\n"
         f"{admin_ui_common_js}\n"
@@ -670,6 +675,14 @@ def _check_ui_assets() -> Dict[str, Any]:
         raise RuntimeError(
             "ordre scripts memory admin invalide: "
             f"attendu={memory_admin_script_order}, trouve={memory_admin_script_srcs}"
+        )
+
+    dashboard_script_order = ["dashboard/main.js"]
+    dashboard_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', dashboard_html)
+    if dashboard_script_srcs != dashboard_script_order:
+        raise RuntimeError(
+            "ordre scripts dashboard invalide: "
+            f"attendu={dashboard_script_order}, trouve={dashboard_script_srcs}"
         )
 
     expected_admin_settings_endpoints = {
@@ -900,6 +913,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="/identity"',
         'id="btnMemoryAdmin"',
         'href="/memory-admin"',
+        'id="btnDashboard"',
+        'href="/dashboard"',
     ]
     for marker in index_markers:
         if marker not in index_html:
@@ -917,6 +932,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     admin_markers = [
         "Admin de configuration",
         'href="admin.css"',
+        'href="/dashboard"',
         'href="/identity"',
         'href="/memory-admin"',
         'script src="admin_api.js"',
@@ -1004,6 +1020,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     log_markers = [
         "Logs applicatifs",
         'href="admin.css"',
+        'href="/dashboard"',
         'href="/identity"',
         'href="/admin"',
         'href="/hermeneutic-admin"',
@@ -1017,6 +1034,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     hermeneutic_admin_markers = [
         "Hermeneutic admin",
         'href="admin.css"',
+        'href="/dashboard"',
         'href="/identity"',
         'href="/memory-admin"',
         'script src="admin_api.js"',
@@ -1044,7 +1062,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         'id="hermeneuticIdentityList"',
         'id="hermeneuticCorrectionsList"',
         "Vue d'ensemble",
-        "Inspection par tour",
+        "Diagnostic par tour",
         "Decisions arbitre",
         "Vue unifiee identity",
         "Gouvernance identity",
@@ -1086,6 +1104,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     identity_markers = [
         "Identity",
         'href="admin.css"',
+        'href="/dashboard"',
         'href="/admin"',
         'href="/log"',
         'href="/hermeneutic-admin"',
@@ -1108,6 +1127,7 @@ def _check_ui_assets() -> Dict[str, Any]:
     memory_admin_markers = [
         "Memory Admin",
         'href="admin.css"',
+        'href="/dashboard"',
         'href="/admin"',
         'href="/log"',
         'href="/identity"',
@@ -1128,6 +1148,37 @@ def _check_ui_assets() -> Dict[str, Any]:
     for marker in memory_admin_markers:
         if marker not in memory_admin_html:
             raise RuntimeError(f"marker memory-admin.html manquant: {marker}")
+
+    dashboard_markers = [
+        "Dashboard long terme",
+        'href="admin.css"',
+        'href="dashboard/styles.css"',
+        'href="/dashboard"',
+        'href="/log"',
+        'href="/memory-admin"',
+        'href="/hermeneutic-admin"',
+        'href="/identity"',
+        'data-dashboard-skeleton="lot5"',
+        'id="dashboardStatusBanner"',
+        'id="dashboardGlobalSlot"',
+        'id="dashboardConversationsSlot"',
+        'script src="dashboard/main.js"',
+        "Agregats persistants",
+        "Action explicite",
+    ]
+    for marker in dashboard_markers:
+        if marker not in dashboard_html:
+            raise RuntimeError(f"marker dashboard.html manquant: {marker}")
+    dashboard_forbidden_markers = [
+        "/api/admin/dashboard/overview",
+        "/api/admin/dashboard/conversations",
+        "Afficher le contenu complet",
+        "prompt principal",
+        "payload modele principal",
+    ]
+    for marker in dashboard_forbidden_markers:
+        if marker in dashboard_html or marker in dashboard_main_js:
+            raise RuntimeError(f"marker dashboard Lot 6/gate inattendu: {marker}")
 
     expected_identity_endpoints = {
         "/api/admin/identity/read-model",
@@ -1263,6 +1314,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "identity_endpoints_found": sorted(found_identity_endpoints),
         "memory_admin_script_order": memory_admin_script_order,
         "memory_admin_script_srcs": memory_admin_script_srcs,
+        "dashboard_script_order": dashboard_script_order,
+        "dashboard_script_srcs": dashboard_script_srcs,
         "memory_admin_endpoints_expected": sorted(expected_memory_admin_endpoints),
         "memory_admin_endpoints_found": sorted(found_memory_admin_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,
@@ -1284,6 +1337,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "hermeneutic_admin_markers": hermeneutic_admin_markers,
         "identity_markers": identity_markers,
         "memory_admin_markers": memory_admin_markers,
+        "dashboard_markers": dashboard_markers,
+        "dashboard_forbidden_markers": dashboard_forbidden_markers,
         "admin_html_forbidden_markers": admin_html_forbidden_markers,
         "admin_js_markers": admin_js_markers,
         "admin_js_forbidden_markers": admin_js_forbidden_markers,
@@ -1298,6 +1353,10 @@ def _check_api_smoke(base_url: str) -> Dict[str, Any]:
     admin = _http_json("GET", f"{base_url}/admin")
     if admin.status_code != 200 or "Admin de configuration" not in admin.text:
         raise RuntimeError("admin invalide")
+
+    dashboard = _http_json("GET", f"{base_url}/dashboard")
+    if dashboard.status_code != 200 or "Dashboard long terme" not in dashboard.text:
+        raise RuntimeError("dashboard invalide")
 
     log = _http_json("GET", f"{base_url}/log")
     if log.status_code != 200 or "Logs applicatifs" not in log.text:

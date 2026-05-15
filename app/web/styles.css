@@ -300,6 +300,7 @@ body {
 
 .topbar .title {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--fg-muted);
@@ -311,7 +312,16 @@ body {
 .topbar .right {
   display: flex;
   align-items: center;
+  flex: 0 1 auto;
   gap: 2px;
+  min-width: 0;
+  max-width: min(72vw, 640px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar .right::-webkit-scrollbar {
+  display: none;
 }
 
 .topbar .icon-link,

@@ -1152,6 +1152,11 @@ def log_root():
     return send_from_directory(app.static_folder, "log.html")
 
 
+@app.get("/dashboard")
+def dashboard_root():
+    return send_from_directory(app.static_folder, "dashboard.html")
+
+
 @app.get("/hermeneutic-admin")
 def hermeneutic_admin_root():
     return send_from_directory(app.static_folder, "hermeneutic-admin.html")

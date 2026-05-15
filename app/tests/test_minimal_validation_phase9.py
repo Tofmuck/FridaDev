@@ -150,6 +150,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         details = minimal_validation._check_ui_assets()
 
         self.assertIn("admin_html", details["files"])
+        self.assertIn("dashboard_html", details["files"])
         self.assertIn("log_html", details["files"])
         self.assertIn("hermeneutic_admin_html", details["files"])
         self.assertIn("identity_html", details["files"])
@@ -178,6 +179,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("memory_admin_render_overview_js", details["files"])
         self.assertIn("memory_admin_render_turns_js", details["files"])
         self.assertIn("memory_admin_main_js", details["files"])
+        self.assertIn("dashboard_styles_css", details["files"])
+        self.assertIn("dashboard_main_js", details["files"])
         self.assertEqual(details["admin_script_srcs"], details["admin_script_order"])
         self.assertEqual(
             details["admin_settings_endpoints_found"],
@@ -203,6 +206,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             details["memory_admin_script_srcs"],
             details["memory_admin_script_order"],
         )
+        self.assertEqual(details["dashboard_script_srcs"], details["dashboard_script_order"])
         self.assertEqual(
             details["memory_admin_endpoints_found"],
             details["memory_admin_endpoints_expected"],
@@ -234,8 +238,11 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("adminStimmungAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn("adminValidationAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn('target="_blank"', details["index_hermeneutic_markers"])
+        self.assertIn('href="/dashboard"', details["index_markers"])
         self.assertIn('href="/identity"', details["index_markers"])
         self.assertIn('href="/memory-admin"', details["index_markers"])
+        self.assertIn("Dashboard long terme", details["dashboard_markers"])
+        self.assertIn("/api/admin/dashboard/overview", details["dashboard_forbidden_markers"])
         self.assertIn("Hermeneutic admin", details["hermeneutic_admin_markers"])
         self.assertIn("Logs applicatifs", details["log_markers"])
         self.assertIn("Les 4 blocs a editer en premier", details["identity_markers"])
@@ -257,6 +264,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 return _FakeResponse(200, text="Frida")
             if url.endswith("/admin"):
                 return _FakeResponse(200, text="Admin de configuration")
+            if url.endswith("/dashboard"):
+                return _FakeResponse(200, text="Dashboard long terme")
             if url.endswith("/log"):
                 return _FakeResponse(200, text="Logs applicatifs")
             if url.endswith("/hermeneutic-admin"):

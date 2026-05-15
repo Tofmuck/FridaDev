@@ -799,6 +799,30 @@ test('logs cockpit renders compact empty and truncated metric states', async () 
   });
 });
 
+test('dashboard skeleton loads without data fetch and keeps responsive shell', async () => {
+  await openBrowserPage({
+    pathSuffix: '/dashboard.html',
+    mockScript: `
+      (() => {
+        window.fetch = async () => {
+          throw new Error("dashboard Lot 5 skeleton must stay inert");
+        };
+      })();
+    `,
+  }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardStatusBanner')?.dataset.state === 'ok');
+    await assertTextContains(page.locator('h1'), 'Dashboard long terme');
+    await assertTextContains(page.locator('#dashboardGlobalSlot'), 'Pouls global');
+    await assertTextContains(page.locator('#dashboardConversationsSlot'), 'Conversations');
+    assert.equal(await page.locator('[data-dashboard-skeleton="lot5"]').count(), 1);
+
+    await page.setViewportSize({ width: 390, height: 760 });
+    const shellBox = await page.locator('.admin-shell').boundingBox();
+    assert.ok(shellBox && shellBox.width <= 390, 'dashboard shell should fit mobile viewport');
+  });
+});
+
 function memoryAdminMockScript() {
   return `
     (() => {

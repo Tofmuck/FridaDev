@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Dashboard long terme</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="admin.css" rel="stylesheet" />
+  <link href="dashboard/styles.css" rel="stylesheet" />
+</head>
+<body class="admin-page dashboard-page">
+  <main class="admin-shell dashboard-shell" data-dashboard-skeleton="lot5">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
+        <div>
+          <p class="admin-kicker">Frida</p>
+          <h1>Dashboard long terme</h1>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
+        <a class="admin-btn admin-btn-primary admin-btn-link" href="/dashboard" aria-current="page">Dashboard</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memory Admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
+      </div>
+    </header>
+
+    <section class="admin-hero dashboard-hero" aria-labelledby="dashboard-title">
+      <div class="admin-copy">
+        <p class="admin-kicker">Observabilite produit</p>
+        <h2 id="dashboard-title" class="dashboard-title">Une page dediee, au-dessus des surfaces existantes</h2>
+        <p class="admin-lead">
+          Le dashboard long terme sera la lecture operateur de Frida: pouls global, comparaison des conversations,
+          puis inspection traduite sans brut affiche par defaut.
+        </p>
+      </div>
+
+      <div class="admin-meta">
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Source analytique</span>
+          <strong>Agregats persistants</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Debug technique</span>
+          <strong>/log</strong>
+        </article>
+        <article class="admin-meta-card">
+          <span class="admin-meta-label">Contenu complet</span>
+          <strong>Action explicite</strong>
+        </article>
+      </div>
+    </section>
+
+    <p id="dashboardStatusBanner" class="admin-status" role="status" aria-live="polite">
+      Initialisation du squelette dashboard...
+    </p>
+
+    <nav class="dashboard-nav-strip" aria-label="Surfaces d'observabilite Frida">
+      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs</a>
+      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memoire</a>
+      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutique</a>
+      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
+    </nav>
+
+    <section class="admin-section-block" aria-labelledby="dashboard-skeleton-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Lot 5</p>
+          <h2 id="dashboard-skeleton-title">Structure prete</h2>
+        </div>
+        <div class="admin-inline-meta">
+          <span class="admin-chip" data-status="present">page dediee</span>
+          <span class="admin-chip" data-status="present">content-free</span>
+        </div>
+      </div>
+
+      <div class="dashboard-slot-grid" aria-label="Emplacements du futur premier ecran">
+        <article id="dashboardGlobalSlot" class="admin-card dashboard-slot">
+          <div class="admin-card-head">
+            <h3>Pouls global</h3>
+            <span class="admin-chip">Lot 6</span>
+          </div>
+          <p>Emplacement reserve a la lecture 24 h, 7 j et 30 j.</p>
+        </article>
+
+        <article id="dashboardConversationsSlot" class="admin-card dashboard-slot">
+          <div class="admin-card-head">
+            <h3>Conversations</h3>
+            <span class="admin-chip">Lot 6</span>
+          </div>
+          <p>Emplacement reserve a la comparaison lisible des conversations.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="admin-section-block" aria-labelledby="dashboard-boundaries-title">
+      <div class="admin-section-head">
+        <div>
+          <p class="admin-kicker">Frontieres</p>
+          <h2 id="dashboard-boundaries-title">Surfaces conservees</h2>
+        </div>
+      </div>
+
+      <div class="admin-section-grid">
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Lecture humaine</h3>
+          </div>
+          <p>Cette page portera les vues longue periode et les resumes traduits.</p>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h3>Diagnostic existant</h3>
+          </div>
+          <p>/log, Memory Admin, Hermeneutic Admin et Identity restent les surfaces de detail.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="dashboard/main.js"></script>
+</body>
+</html>

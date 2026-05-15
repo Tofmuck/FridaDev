@@ -50,6 +50,8 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
     def test_index_exposes_log_entry_next_to_admin(self) -> None:
         html = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
 
+        self.assertIn('id="btnDashboard"', html)
+        self.assertIn('href="/dashboard"', html)
         self.assertIn('id="btnLogs"', html)
         self.assertIn('href="/log"', html)
         self.assertIn('id="btnSettings"', html)
@@ -61,6 +63,7 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
 
         self.assertIn('class="admin-page"', source)
         self.assertIn('href="admin.css"', source)
+        self.assertIn('href="/dashboard"', source)
         self.assertIn('href="/admin"', source)
         self.assertIn('href="/hermeneutic-admin"', source)
         self.assertNotIn('href="/hermeneutic-admin" target="_blank"', source)

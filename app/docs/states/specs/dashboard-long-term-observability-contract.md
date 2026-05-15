@@ -623,6 +623,20 @@ Regles:
 - les reason codes doivent etre traduits ou accompagnes d'une explication courte;
 - le dashboard doit expliquer avant d'alerter.
 
+### Convention frontend Lot 5
+
+Le squelette dedie du dashboard est fixe ainsi:
+
+- route statique: `/dashboard`;
+- page: `app/web/dashboard.html`;
+- assets locaux bornes: `app/web/dashboard/`;
+- styles: reutilisation de `admin.css`, avec seulement des styles locaux de placement dans `app/web/dashboard/styles.css`;
+- script minimal: `app/web/dashboard/main.js`;
+- navigation chat: `btnDashboard` suit le meme modele de petit bouton que les acces observabilite existants;
+- navigation admin: `/admin`, `/log`, Memory Admin, Hermeneutic Admin et Identity exposent un lien Dashboard;
+- le squelette Lot 5 est inerte: aucun appel API dashboard, aucune table, aucune courbe et aucun contenu complet charge par defaut;
+- les emplacements `Pouls global` et `Conversations` restent reserves au Lot 6.
+
 ## 10. Interdits
 
 Sont interdits:

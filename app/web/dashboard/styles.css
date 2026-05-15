@@ -1,0 +1,39 @@
+.dashboard-shell {
+  padding-bottom: 40px;
+}
+
+.dashboard-title {
+  margin: 0 0 12px;
+  max-width: 42rem;
+  font-size: 30px;
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.dashboard-nav-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dashboard-slot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dashboard-slot {
+  min-height: 138px;
+}
+
+.dashboard-slot p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 860px) {
+  .dashboard-slot-grid {
+    grid-template-columns: 1fr;
+  }
+}
