@@ -430,27 +430,37 @@ Condition de cloture:
 
 Objectif: rendre visible des l'ouverture le pouls global et les conversations.
 
+Implementation livree:
+
+- premier ecran branche sur `/api/admin/dashboard/overview` et `/api/admin/dashboard/conversations`;
+- fenetres principales `24h`, `7d`, `30d` et options secondaires `today`, `yesterday`, `90d`, personnalisee;
+- bandeau de couverture de materialisation base sur `source.coverage`;
+- pouls global en libelles humains: tours reussis, reponses degradees, problemes rencontres, latences utiles, memoire utilisee, recherche web utile;
+- table comparative des conversations avec titre / `display_label` ou date lisible, jamais identifiant opaque comme libelle principal;
+- barres compactes et counts tabulaires, sans courbe decorative ni parsing `/log`;
+- pas de drill-down, pas de contenu complet, pas de reimplementation navigateur des read-models.
+
 Cases:
 
-- [ ] Afficher les fenetres 24 h, 7 j, 30 j.
-- [ ] Ajouter les options aujourd'hui, hier, 90 jours et personnalisee.
-- [ ] Afficher le pouls global: tours reussis, reponses degradees, problemes, latences, memoire, web.
-- [ ] Afficher la table comparative des conversations.
-- [ ] Nommer les conversations par titre si disponible, sinon date / heure lisible.
-- [ ] Eviter les identifiants opaques comme libelle principal.
-- [ ] Ajouter seulement les courbes vraiment utiles.
-- [ ] Garder une alternative tabulaire pour les counts importants.
+- [x] Afficher les fenetres 24 h, 7 j, 30 j.
+- [x] Ajouter les options aujourd'hui, hier, 90 jours et personnalisee.
+- [x] Afficher le pouls global: tours reussis, reponses degradees, problemes, latences, memoire, web.
+- [x] Afficher la table comparative des conversations.
+- [x] Nommer les conversations par titre si disponible, sinon date / heure lisible.
+- [x] Eviter les identifiants opaques comme libelle principal.
+- [x] Ajouter seulement les courbes vraiment utiles.
+- [x] Garder une alternative tabulaire pour les counts importants.
 
 Tests / preuves attendues:
 
-- [ ] Tests empty state.
-- [ ] Tests degraded/materialisation late state.
-- [ ] Tests libelles humains.
-- [ ] Tests que les fenetres longues utilisent les agregats persistants.
+- [x] Tests empty state.
+- [x] Tests degraded/materialisation late state.
+- [x] Tests libelles humains.
+- [x] Tests que les fenetres longues utilisent les agregats persistants.
 
 Condition de cloture:
 
-- [ ] Un non-technicien peut comprendre en un ecran si Frida va bien et quelles conversations meritent attention.
+- [x] Un non-technicien peut comprendre en un ecran si Frida va bien et quelles conversations meritent attention.
 
 ### Lot 7 - Inspection traduite conversation / tour
 

@@ -677,7 +677,7 @@ def _check_ui_assets() -> Dict[str, Any]:
             f"attendu={memory_admin_script_order}, trouve={memory_admin_script_srcs}"
         )
 
-    dashboard_script_order = ["dashboard/main.js"]
+    dashboard_script_order = ["admin_api.js", "dashboard/main.js"]
     dashboard_script_srcs = re.findall(r'<script\s+src="([^"]+)"></script>', dashboard_html)
     if dashboard_script_srcs != dashboard_script_order:
         raise RuntimeError(
@@ -1158,27 +1158,58 @@ def _check_ui_assets() -> Dict[str, Any]:
         'href="/memory-admin"',
         'href="/hermeneutic-admin"',
         'href="/identity"',
-        'data-dashboard-skeleton="lot5"',
+        'data-dashboard-screen="overview"',
+        'id="dashboardPrimaryWindows"',
         'id="dashboardStatusBanner"',
-        'id="dashboardGlobalSlot"',
-        'id="dashboardConversationsSlot"',
+        'id="dashboardPulseCards"',
+        'id="dashboardConversationsTable"',
+        'data-window="24h"',
+        'data-window="7d"',
+        'data-window="30d"',
+        'script src="admin_api.js"',
         'script src="dashboard/main.js"',
-        "Agregats persistants",
-        "Action explicite",
     ]
     for marker in dashboard_markers:
         if marker not in dashboard_html:
             raise RuntimeError(f"marker dashboard.html manquant: {marker}")
+    dashboard_js_markers = [
+        "Tours reussis",
+        "Reponses degradees",
+        "Problemes rencontres",
+        "Memoire utilisee",
+        "Recherche web utile",
+        "source.coverage",
+        "agregats persistants",
+    ]
+    for marker in dashboard_js_markers:
+        if marker not in dashboard_main_js:
+            raise RuntimeError(f"marker dashboard/main.js manquant: {marker}")
     dashboard_forbidden_markers = [
-        "/api/admin/dashboard/overview",
-        "/api/admin/dashboard/conversations",
+        "/api/admin/logs",
         "Afficher le contenu complet",
         "prompt principal",
         "payload modele principal",
+        "Lot 5",
+        "content-free",
+        "Frontieres",
     ]
     for marker in dashboard_forbidden_markers:
         if marker in dashboard_html or marker in dashboard_main_js:
             raise RuntimeError(f"marker dashboard Lot 6/gate inattendu: {marker}")
+    expected_dashboard_endpoints = {
+        "/api/admin/dashboard/overview",
+        "/api/admin/dashboard/conversations",
+    }
+    found_dashboard_endpoints = set(
+        re.findall(r"/api/admin/dashboard/(?:overview|conversations|turns|inspection)", dashboard_main_js)
+    )
+    if found_dashboard_endpoints != expected_dashboard_endpoints:
+        missing = sorted(expected_dashboard_endpoints - found_dashboard_endpoints)
+        extra = sorted(found_dashboard_endpoints - expected_dashboard_endpoints)
+        raise RuntimeError(
+            "endpoints dashboard frontend invalides: "
+            f"missing={missing}, extra={extra}"
+        )
 
     expected_identity_endpoints = {
         "/api/admin/identity/read-model",
@@ -1316,6 +1347,8 @@ def _check_ui_assets() -> Dict[str, Any]:
         "memory_admin_script_srcs": memory_admin_script_srcs,
         "dashboard_script_order": dashboard_script_order,
         "dashboard_script_srcs": dashboard_script_srcs,
+        "dashboard_endpoints_expected": sorted(expected_dashboard_endpoints),
+        "dashboard_endpoints_found": sorted(found_dashboard_endpoints),
         "memory_admin_endpoints_expected": sorted(expected_memory_admin_endpoints),
         "memory_admin_endpoints_found": sorted(found_memory_admin_endpoints),
         "admin_dom_hook_ids_checked": dom_hook_ids,

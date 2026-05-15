@@ -637,6 +637,21 @@ Le squelette dedie du dashboard est fixe ainsi:
 - le squelette Lot 5 est inerte: aucun appel API dashboard, aucune table, aucune courbe et aucun contenu complet charge par defaut;
 - les emplacements `Pouls global` et `Conversations` restent reserves au Lot 6.
 
+### Convention frontend Lot 6
+
+Le premier ecran produit du dashboard utilise les endpoints dashboard analytiques, pas les endpoints `/log`:
+
+- source pouls global: `/api/admin/dashboard/overview`;
+- source conversations: `/api/admin/dashboard/conversations`;
+- fenetres principales visibles: `24h`, `7d`, `30d`;
+- fenetres secondaires: `today`, `yesterday`, `90d`, et plage personnalisee par `ts_from` / `ts_to`;
+- la couverture de materialisation vient de `source.coverage` et doit rester visible;
+- une reponse HTTP 200 n'est pas suffisante pour dire qu'une periode longue est fiable: l'UI doit distinguer periode complete, partielle, absente ou en erreur;
+- les libelles de premier niveau restent en francais produit: `Tours reussis`, `Reponses degradees`, `Problemes rencontres`, `Memoire utilisee`, `Recherche web utile`, `Latences utiles`;
+- la table conversations utilise le titre ou `display_label` quand il existe, sinon une date / heure lisible; l'identifiant opaque ne peut pas devenir le libelle principal;
+- les visualisations du premier ecran restent des barres ou compteurs compacts avec alternative tabulaire pour les counts importants;
+- le premier ecran ne charge pas le contenu complet et ne commence pas le drill-down conversation / tour, reserves aux lots suivants.
+
 ## 10. Interdits
 
 Sont interdits:

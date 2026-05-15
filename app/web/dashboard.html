@@ -11,7 +11,7 @@
   <link href="dashboard/styles.css" rel="stylesheet" />
 </head>
 <body class="admin-page dashboard-page">
-  <main class="admin-shell dashboard-shell" data-dashboard-skeleton="lot5">
+  <main class="admin-shell dashboard-shell" data-dashboard-screen="overview">
     <header class="admin-topbar">
       <div class="admin-brand">
         <img src="./fridalogo.png" alt="Frida" width="30" height="30" />
@@ -32,100 +32,142 @@
       </div>
     </header>
 
-    <section class="admin-hero dashboard-hero" aria-labelledby="dashboard-title">
-      <div class="admin-copy">
-        <p class="admin-kicker">Observabilite produit</p>
-        <h2 id="dashboard-title" class="dashboard-title">Une page dediee, au-dessus des surfaces existantes</h2>
-        <p class="admin-lead">
-          Le dashboard long terme sera la lecture operateur de Frida: pouls global, comparaison des conversations,
-          puis inspection traduite sans brut affiche par defaut.
-        </p>
+    <section class="dashboard-control-panel" aria-labelledby="dashboard-window-title">
+      <div>
+        <p class="admin-kicker">Periode</p>
+        <h2 id="dashboard-window-title" class="dashboard-title">Vue d'ensemble</h2>
       </div>
 
-      <div class="admin-meta">
-        <article class="admin-meta-card">
-          <span class="admin-meta-label">Source analytique</span>
-          <strong>Agregats persistants</strong>
-        </article>
-        <article class="admin-meta-card">
-          <span class="admin-meta-label">Debug technique</span>
-          <strong>/log</strong>
-        </article>
-        <article class="admin-meta-card">
-          <span class="admin-meta-label">Contenu complet</span>
-          <strong>Action explicite</strong>
-        </article>
-      </div>
+      <form id="dashboardWindowForm" class="dashboard-window-form">
+        <div id="dashboardPrimaryWindows" class="dashboard-window-buttons" role="group" aria-label="Periodes principales">
+          <button class="admin-btn admin-btn-primary" type="button" data-window="24h">24 h</button>
+          <button class="admin-btn admin-btn-secondary" type="button" data-window="7d">7 j</button>
+          <button class="admin-btn admin-btn-secondary" type="button" data-window="30d">30 j</button>
+        </div>
+
+        <label class="dashboard-secondary-window" for="dashboardSecondaryWindow">
+          <span>Autres periodes</span>
+          <select id="dashboardSecondaryWindow">
+            <option value="">Choisir</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="yesterday">Hier</option>
+            <option value="90d">90 jours</option>
+            <option value="custom">Personnalisee</option>
+          </select>
+        </label>
+
+        <div id="dashboardCustomRange" class="dashboard-custom-range" hidden>
+          <label for="dashboardCustomFrom">
+            <span>Debut</span>
+            <input id="dashboardCustomFrom" type="datetime-local" />
+          </label>
+          <label for="dashboardCustomTo">
+            <span>Fin</span>
+            <input id="dashboardCustomTo" type="datetime-local" />
+          </label>
+        </div>
+
+        <button id="dashboardRefresh" class="admin-btn admin-btn-secondary" type="submit">Actualiser</button>
+      </form>
     </section>
 
     <p id="dashboardStatusBanner" class="admin-status" role="status" aria-live="polite">
-      Initialisation du squelette dashboard...
+      Chargement du dashboard...
     </p>
 
-    <nav class="dashboard-nav-strip" aria-label="Surfaces d'observabilite Frida">
-      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs</a>
-      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/memory-admin">Memoire</a>
-      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutique</a>
-      <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
-    </nav>
-
-    <section class="admin-section-block" aria-labelledby="dashboard-skeleton-title">
-      <div class="admin-section-head">
-        <div>
-          <p class="admin-kicker">Lot 5</p>
-          <h2 id="dashboard-skeleton-title">Structure prete</h2>
-        </div>
-        <div class="admin-inline-meta">
-          <span class="admin-chip" data-status="present">page dediee</span>
-          <span class="admin-chip" data-status="present">content-free</span>
-        </div>
+    <section class="dashboard-source-panel" aria-labelledby="dashboard-source-title">
+      <div>
+        <p class="admin-kicker">Couverture</p>
+        <h2 id="dashboard-source-title">Fiabilite de la periode</h2>
       </div>
-
-      <div class="dashboard-slot-grid" aria-label="Emplacements du futur premier ecran">
-        <article id="dashboardGlobalSlot" class="admin-card dashboard-slot">
-          <div class="admin-card-head">
-            <h3>Pouls global</h3>
-            <span class="admin-chip">Lot 6</span>
-          </div>
-          <p>Emplacement reserve a la lecture 24 h, 7 j et 30 j.</p>
-        </article>
-
-        <article id="dashboardConversationsSlot" class="admin-card dashboard-slot">
-          <div class="admin-card-head">
-            <h3>Conversations</h3>
-            <span class="admin-chip">Lot 6</span>
-          </div>
-          <p>Emplacement reserve a la comparaison lisible des conversations.</p>
-        </article>
+      <div class="dashboard-source-body">
+        <span id="dashboardSourceChip" class="admin-chip">Lecture en cours</span>
+        <p id="dashboardCoverageText">Verification des agregats persistants...</p>
+        <p id="dashboardCoverageDetails" class="dashboard-muted"></p>
       </div>
     </section>
 
-    <section class="admin-section-block" aria-labelledby="dashboard-boundaries-title">
-      <div class="admin-section-head">
-        <div>
-          <p class="admin-kicker">Frontieres</p>
-          <h2 id="dashboard-boundaries-title">Surfaces conservees</h2>
+    <section class="dashboard-overview-grid" aria-label="Premier ecran dashboard">
+      <section class="admin-section-block dashboard-main-panel" aria-labelledby="dashboard-pulse-title">
+        <div class="admin-section-head">
+          <div>
+            <p class="admin-kicker">Pouls global</p>
+            <h2 id="dashboard-pulse-title">Frida maintenant</h2>
+          </div>
+          <span id="dashboardWindowChip" class="admin-chip">24 h</span>
         </div>
-      </div>
 
-      <div class="admin-section-grid">
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h3>Lecture humaine</h3>
-          </div>
-          <p>Cette page portera les vues longue periode et les resumes traduits.</p>
-        </article>
+        <div id="dashboardPulseCards" class="dashboard-metric-grid"></div>
 
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h3>Diagnostic existant</h3>
+        <div class="dashboard-signal-grid">
+          <article class="dashboard-signal-card">
+            <div class="dashboard-signal-head">
+              <h3>Etat des tours</h3>
+              <span id="dashboardTurnsTotal" class="admin-chip">0 tour</span>
+            </div>
+            <div id="dashboardClassificationBars" class="dashboard-bars"></div>
+          </article>
+
+          <article class="dashboard-signal-card">
+            <div class="dashboard-signal-head">
+              <h3>Memoire utilisee</h3>
+              <span id="dashboardMemoryTotal" class="admin-chip">0 element</span>
+            </div>
+            <div id="dashboardMemoryBars" class="dashboard-bars"></div>
+          </article>
+
+          <article class="dashboard-signal-card">
+            <div class="dashboard-signal-head">
+              <h3>Recherche web utile</h3>
+              <span id="dashboardWebTotal" class="admin-chip">0 demande</span>
+            </div>
+            <div id="dashboardWebBars" class="dashboard-bars"></div>
+          </article>
+
+          <article class="dashboard-signal-card">
+            <div class="dashboard-signal-head">
+              <h3>Latences utiles</h3>
+              <span id="dashboardLatencyChip" class="admin-chip">Non mesure</span>
+            </div>
+            <div id="dashboardLatencyCards" class="dashboard-latency-grid"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-section-block dashboard-main-panel" aria-labelledby="dashboard-conversations-title">
+        <div class="admin-section-head">
+          <div>
+            <p class="admin-kicker">Conversations</p>
+            <h2 id="dashboard-conversations-title">A surveiller</h2>
           </div>
-          <p>/log, Memory Admin, Hermeneutic Admin et Identity restent les surfaces de detail.</p>
-        </article>
-      </div>
+          <span id="dashboardConversationCount" class="admin-chip">0 conversation</span>
+        </div>
+
+        <div id="dashboardConversationsEmpty" class="dashboard-empty" hidden>
+          Aucune conversation observee sur cette periode.
+        </div>
+
+        <div class="dashboard-table-wrap">
+          <table id="dashboardConversationsTable" class="dashboard-table">
+            <thead>
+              <tr>
+                <th scope="col">Conversation</th>
+                <th scope="col">Etat</th>
+                <th scope="col">Tours</th>
+                <th scope="col">Memoire</th>
+                <th scope="col">Web</th>
+                <th scope="col">Problemes</th>
+                <th scope="col">Derniere activite</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardConversationsBody"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </main>
 
+  <script src="admin_api.js"></script>
   <script src="dashboard/main.js"></script>
 </body>
 </html>

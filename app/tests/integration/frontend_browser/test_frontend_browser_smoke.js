@@ -799,23 +799,154 @@ test('logs cockpit renders compact empty and truncated metric states', async () 
   });
 });
 
-test('dashboard skeleton loads without data fetch and keeps responsive shell', async () => {
+function dashboardMockScript({ mode = 'nominal' } = {}) {
+  return `
+    (() => {
+      const state = { calls: [] };
+      window.__fridaBrowserState = state;
+      const overviewPayload = (windowKey) => {
+        const partial = ${JSON.stringify(mode)} === "partial" || windowKey === "30d";
+        return {
+          ok: true,
+          kind: "dashboard_overview",
+          window: {
+            key: windowKey,
+            label_fr: windowKey === "30d" ? "30 j" : "24 h",
+            start: "2026-05-14T12:00:00+00:00",
+            end: "2026-05-15T12:00:00+00:00",
+            granularity: "hour",
+          },
+          pulse: {
+            label_fr: "Pouls global",
+            turns_observed: partial ? 0 : 8,
+            classification_counts: partial ? {} : { complete: 5, degraded: 2, partial: 1, legacy_incomplete: 0 },
+            responses_saved: partial ? 0 : 7,
+            memory_injected_total: partial ? 0 : 6,
+            web_requested_turns: partial ? 0 : 3,
+            web_injected_turns: partial ? 0 : 2,
+            problems_count: partial ? 0 : 2,
+          },
+          module_totals: partial ? {} : {
+            pipeline: { turn_count: 8, metrics: { classification_counts: { complete: 5, degraded: 2, partial: 1 } } },
+            memory: { metrics: { retrieved_total: 11, kept_total: 7, injected_total: 6 } },
+            web: { metrics: { requested_turns: 3, success_turns: 2, injected_turns: 2, error_turns: 1 } },
+            providers: { metrics: { main_duration_ms_p50: 340, main_duration_ms_p95: 910 } },
+            errors: { metrics: { error_count: 1, fallback_count: 1 } },
+            persistence: { metrics: { assistant_final_saved_count: 7 } },
+          },
+          metric_buckets: [],
+          source: {
+            status: partial ? "partially_materialized" : "ok",
+            coverage: {
+              status: partial ? "partial" : "complete",
+              complete: !partial,
+              materialized_window_start: "2026-05-15T00:00:00+00:00",
+              materialized_window_end: "2026-05-15T12:00:00+00:00",
+            },
+            limits: { event_limit_dependency: false, source_events_truncated: false, raw_content_included: false },
+          },
+          redaction: { raw_content_included: false },
+        };
+      };
+      const conversationsPayload = (windowKey) => {
+        const partial = ${JSON.stringify(mode)} === "partial" || windowKey === "30d";
+        return {
+          ok: true,
+          kind: "dashboard_conversations",
+          window: { key: windowKey },
+          items: partial ? [] : [
+            {
+              conversation_id: "conv-browser-1",
+              display_label: "Thread navigateur",
+              display_label_source: "title",
+              latest_ts: "2026-05-15T11:55:00+00:00",
+              turns_count: 5,
+              classification_counts: { complete: 4, degraded: 1 },
+              memory_used_turns: 4,
+              web_requested_turns: 2,
+              web_injected_turns: 1,
+              error_count: 0,
+              fallback_count: 1,
+            },
+            {
+              conversation_id: "conv-browser-2",
+              display_label: "",
+              display_label_source: "fallback",
+              latest_ts: "2026-05-15T10:10:00+00:00",
+              turns_count: 3,
+              classification_counts: { complete: 1, partial: 1 },
+              memory_used_turns: 1,
+              web_requested_turns: 1,
+              web_injected_turns: 1,
+              error_count: 1,
+              fallback_count: 0,
+            },
+          ],
+          count: partial ? 0 : 2,
+          total: partial ? 0 : 2,
+          limit: 12,
+          offset: 0,
+          next_offset: null,
+          source: { limits: { event_limit_dependency: false } },
+          redaction: { raw_content_included: false },
+        };
+      };
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+        state.calls.push({ method, path: url.pathname, search: url.search });
+        const windowKey = url.searchParams.get("window") || "custom";
+        if (url.pathname === "/api/admin/dashboard/overview" && method === "GET") {
+          return new Response(JSON.stringify(overviewPayload(windowKey)), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (url.pathname === "/api/admin/dashboard/conversations" && method === "GET") {
+          return new Response(JSON.stringify(conversationsPayload(windowKey)), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        throw new Error("unexpected dashboard request " + method + " " + url.pathname);
+      };
+    })();
+  `;
+}
+
+test('dashboard overview renders pulse and conversations from aggregate endpoints', async () => {
   await openBrowserPage({
     pathSuffix: '/dashboard.html',
-    mockScript: `
-      (() => {
-        window.fetch = async () => {
-          throw new Error("dashboard Lot 5 skeleton must stay inert");
-        };
-      })();
-    `,
+    mockScript: dashboardMockScript(),
   }, async (page) => {
     await page.waitForFunction(() =>
       document.querySelector('#dashboardStatusBanner')?.dataset.state === 'ok');
     await assertTextContains(page.locator('h1'), 'Dashboard long terme');
-    await assertTextContains(page.locator('#dashboardGlobalSlot'), 'Pouls global');
-    await assertTextContains(page.locator('#dashboardConversationsSlot'), 'Conversations');
-    assert.equal(await page.locator('[data-dashboard-skeleton="lot5"]').count(), 1);
+    await assertTextContains(page.locator('#dashboardPulseCards'), 'Tours reussis');
+    await assertTextContains(page.locator('#dashboardPulseCards'), 'Reponses degradees');
+    await assertTextContains(page.locator('#dashboardPulseCards'), 'Problemes rencontres');
+    await assertTextContains(page.locator('#dashboardClassificationBars'), 'Tours reussis');
+    await assertTextContains(page.locator('#dashboardMemoryBars'), 'Injectes');
+    await assertTextContains(page.locator('#dashboardWebBars'), 'Injectee');
+    await assertTextContains(page.locator('#dashboardConversationsTable'), 'Thread navigateur');
+    await assertTextContains(page.locator('#dashboardConversationsTable'), 'Conversation du');
+    await assertTextContains(page.locator('#dashboardSourceChip'), 'Periode complete');
+
+    const visibleText = await page.locator('main').textContent();
+    assert.equal(visibleText.includes('legacy_incomplete'), false);
+    assert.equal(visibleText.includes('provider_caller'), false);
+    assert.equal(visibleText.includes('event_limit'), false);
+
+    await page.click('[data-window="30d"]');
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardSourceChip')?.textContent.includes('Donnees partielles'));
+    await assertTextContains(page.locator('#dashboardConversationsEmpty'), 'Aucune conversation observee');
+
+    const calls = await page.evaluate(() => window.__fridaBrowserState.calls);
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=24h')));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations' && call.search.includes('window=24h')));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=30d')));
+    assert.equal(calls.some((call) => call.path.startsWith('/api/admin/logs')), false);
 
     await page.setViewportSize({ width: 390, height: 760 });
     const shellBox = await page.locator('.admin-shell').boundingBox();

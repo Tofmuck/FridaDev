@@ -211,6 +211,10 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             details["memory_admin_endpoints_found"],
             details["memory_admin_endpoints_expected"],
         )
+        self.assertEqual(
+            details["dashboard_endpoints_found"],
+            details["dashboard_endpoints_expected"],
+        )
         self.assertIn("adminMainModelSave", details["admin_dom_hook_ids_checked"])
         self.assertIn("adminEmbeddingSecretCard", details["admin_dom_hook_ids_checked"])
         self.assertIn("adminDatabaseSecretCard", details["admin_dom_hook_ids_checked"])
@@ -242,7 +246,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn('href="/identity"', details["index_markers"])
         self.assertIn('href="/memory-admin"', details["index_markers"])
         self.assertIn("Dashboard long terme", details["dashboard_markers"])
-        self.assertIn("/api/admin/dashboard/overview", details["dashboard_forbidden_markers"])
+        self.assertIn("/api/admin/logs", details["dashboard_forbidden_markers"])
         self.assertIn("Hermeneutic admin", details["hermeneutic_admin_markers"])
         self.assertIn("Logs applicatifs", details["log_markers"])
         self.assertIn("Les 4 blocs a editer en premier", details["identity_markers"])
