@@ -41,8 +41,14 @@ CONTENT_ITEM_SPECS: tuple[dict[str, Any], ...] = (
     {
         'key': 'secondary_provider_payloads',
         'label_fr': 'Payloads des providers secondaires',
+        'stage_prefixes': ('llm_call',),
         'stage_suffixes': ('_prompt_prepared',),
-        'payload_filters': ({'secondary_provider_payload': True},),
+        'payload_filters': (
+            {'secondary_provider_payload': True},
+            {'provider_caller': 'stimmung_agent'},
+            {'provider_caller': 'validation_agent'},
+            {'provider_caller': 'web_reformulation'},
+        ),
         'exact_paths': (
             ('messages',),
             ('prompt',),
@@ -194,15 +200,20 @@ def _stage_matches(event: Mapping[str, Any], spec: Mapping[str, Any]) -> bool:
     contains = tuple(str(item) for item in _sequence(spec.get('stage_contains')))
     filters = _sequence(spec.get('payload_filters'))
 
+    stage_matched = False
     if prefixes and any(stage == prefix or stage.startswith(prefix) for prefix in prefixes):
-        return True
+        stage_matched = True
     if suffixes and any(stage.endswith(suffix) for suffix in suffixes):
-        return True
+        stage_matched = True
     if contains and any(part in stage for part in contains):
-        return True
+        stage_matched = True
+
+    if not filters:
+        return stage_matched
+
     for expected in filters:
         expected_mapping = _mapping(expected)
-        if expected_mapping and all(payload.get(key) == value for key, value in expected_mapping.items()):
+        if expected_mapping and stage_matched and all(payload.get(key) == value for key, value in expected_mapping.items()):
             return True
     return False
 
