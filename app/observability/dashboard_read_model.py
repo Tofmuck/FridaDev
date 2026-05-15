@@ -1055,12 +1055,19 @@ def _reason_codes_fr(errors: Mapping[str, Any]) -> str:
 def _summary_parent_line(rag: Mapping[str, Any]) -> str:
     traces_with_summary_id = _to_int(rag.get('injected_traces_with_summary_id_count'))
     parent_injected_count = _to_int(rag.get('parent_summaries_injected_count'))
+    legacy_parent_count = _to_int(rag.get('memory_context_summary_count'))
     parent_summaries = [
         _mapping(item)
         for item in (rag.get('parent_summaries_injected') or [])
         if isinstance(item, Mapping)
     ]
     if traces_with_summary_id <= 0 and parent_injected_count <= 0:
+        if legacy_parent_count > 0:
+            return (
+                f'{legacy_parent_count} resume(s) parent(s) ont accompagne la memoire injectee, '
+                'mais le lien trace -> summary_id -> fenetre du resume parent n est pas materialise '
+                'dans ces faits compacts.'
+            )
         return (
             'Aucune trace memoire injectee avec summary_id parent n est prouvee dans ces faits compacts.'
         )

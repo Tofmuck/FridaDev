@@ -687,6 +687,44 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertNotIn('Aucun compteur embeddings n est disponible', story_text)
         self._assert_content_free(payload)
 
+    def test_turn_story_does_not_invent_parent_summary_window_when_only_count_exists(self) -> None:
+        fact = {
+            'conversation_id': 'conv-summary-count-only',
+            'turn_id': 'turn-summary-count-only',
+            'classification': 'complete',
+            'score': 100,
+            'source_event_count': 7,
+            'persistence': {'status': 'saved', 'assistant_final_saved': True},
+            'providers': {'main': {'present': True, 'status': 'ok'}, 'secondary': {}},
+            'rag': {
+                'retrieved': 1,
+                'basket': 1,
+                'kept': 1,
+                'rejected': 0,
+                'injected': 1,
+                'conversation_summary_event_present': True,
+                'conversation_summary_active_present': True,
+                'conversation_summary_in_prompt': True,
+                'conversation_summary_count': 1,
+                'memory_context_summary_count': 1,
+            },
+            'identity': {'block_present': False, 'status': 'missing'},
+            'hermeneutic': {'block_present': False, 'status': 'missing'},
+            'web': {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            'node_state': {},
+            'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            'flags': {'events_truncated': False},
+            'content_availability': {'content_comprehension_status': 'compact_only'},
+        }
+
+        story = dashboard_read_model._turn_story(fact)
+        story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
+
+        self.assertIn('1 resume(s) parent(s) ont accompagne la memoire injectee', story_text)
+        self.assertIn('lien trace -> summary_id -> fenetre', story_text)
+        self.assertNotIn('Fenetres:', story_text)
+        self._assert_content_free(story)
+
     def test_turn_inspection_explains_degraded_absent_modules_without_raw_content(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         status_row = (
