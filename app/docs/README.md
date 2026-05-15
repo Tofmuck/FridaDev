@@ -61,6 +61,14 @@ Archives utiles:
 - `todo-done/product/frida-response-streaming-todo.md`
 - `todo-done/notes/chat-enunciation-gap-validation-todo.md`
 
+### Documents actifs de conversation
+
+Lire d'abord:
+- `todo-todo/product/active-conversation-documents-audit-plan.md`
+- `todo-todo/product/active-conversation-documents-todo.md`
+
+But: cadrer le chantier produit permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
+
 ### Identity / doctrine
 
 Lire d'abord:

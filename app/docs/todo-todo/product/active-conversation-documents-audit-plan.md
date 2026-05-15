@@ -31,7 +31,7 @@ La meilleure architecture cible pour ces documents actifs de conversation dans l
 - exclut entierement le document du tour si l'injection entiere ne rentre pas;
 - transmet au modele un signal structure compact quand un document actif n'a pas ete injecte;
 - expose par defaut seulement des metadonnees content-free aux logs, read-models et dashboard;
-- reserve le contenu complet a une action explicite ulterieure, alignee avec le gate `Afficher le contenu complet`.
+- ne promet pas l'ouverture du texte complet du document dans le dashboard; une telle capacite demanderait une decision produit separee.
 
 Cette architecture cree une capacite produit de lecture ponctuelle dans la conversation sans construire prematurement un systeme documentaire persistant.
 
@@ -129,11 +129,11 @@ Le dashboard long terme possede deja:
 - agregats longue periode;
 - modules observables;
 - inspection traduite;
-- gate `Afficher le contenu complet`.
+- gate `Afficher le contenu complet` pour les contenus deja decides par le chantier dashboard.
 
 Le catalogue contient deja un module futur `documents`, mais il est declaratif: aucun event documentaire runtime n'est encore materialise.
 
-La cible documentaire doit donc ajouter plus tard des events et facts content-free, sans recopier le contenu dans l'inspection ordinaire.
+La cible documentaire doit donc ajouter plus tard des events et facts content-free, sans recopier le contenu dans l'inspection ordinaire et sans deduire automatiquement un acces au texte complet du document depuis le gate existant.
 
 ### Dependances de parsing
 
@@ -193,7 +193,7 @@ Garde-fou cible:
 - events content-free par defaut;
 - noms, types, tailles, chars, token_estimate, status, injected, reason_code;
 - hashes courts ou refs internes si utile;
-- contenu complet uniquement derriere action explicite.
+- pas de texte complet du document dans le dashboard par defaut, ni dans l'inspection documentaire ordinaire.
 
 ## 5. Architecture cible recommandee
 
@@ -343,6 +343,8 @@ Par defaut, les logs et read-models doivent montrer:
 - document_id ou hash court;
 - source `active_conversation_documents`.
 
+L'inspection exhaustive documentaire ne doit pas derouler le fichier: elle doit prouver quel fichier nomme etait actif, s'il a ete injecte, et sinon pourquoi.
+
 Ils ne doivent pas montrer:
 
 - texte complet du document;
@@ -358,7 +360,7 @@ Le dashboard pourra raconter un tour ainsi:
 - "Le document `annexe.pdf` etait actif mais trop gros pour ce tour; il n'a pas ete envoye."
 - "Le document `scan.pdf` n'a pas ete exploite: OCR hors scope."
 
-Le contenu complet du document, si encore disponible, devra passer par `Afficher le contenu complet`, jamais par l'inspection ordinaire.
+Le texte complet du document n'est pas une promesse de ce chantier. Si le produit decide un jour de permettre son ouverture depuis le dashboard, ce sera une decision separee avec garde-fous dedies, pas une consequence automatique du gate existant.
 
 ### 5.8 Extension future
 
@@ -369,7 +371,7 @@ Preparer:
 - module observable `documents`;
 - noms d'events stables;
 - metadonnees content-free;
-- gate compatible contenu complet;
+- references content-free compatibles avec une decision produit future, sans ouverture automatique du texte complet;
 - separation claire entre document actif et futur document persistant.
 
 Ne pas preparer:
@@ -416,7 +418,7 @@ Rejetee. Elle pourra venir plus tard, avec ses propres decisions de retention, r
 - Vie des fichiers: la retention apres desactivation, suppression conversation ou restart doit etre explicite.
 - Redemarrage serveur: si l'etat actif est seulement en memoire process, la promesse multi-tour est fragile.
 - Multiples documents actifs: il faudra une politique d'ordre et de budget stable.
-- Contenu complet gate: le dashboard pourra ouvrir le contenu uniquement si l'artefact existe encore et si l'action est explicite.
+- Derive de perimetre: le gate `Afficher le contenu complet` existe deja pour le dashboard, mais il ne doit pas devenir automatiquement un acces au texte complet des documents actifs.
 
 ## 8. Observabilite attendue par scenario
 
@@ -435,7 +437,7 @@ Defaut visible:
 
 Contenu complet:
 
-- accessible seulement par gate explicite si conserve.
+- non promis dans le dashboard par ce chantier; l'inspection exhaustive reste limitee aux metadonnees et au statut d'injection.
 
 ### Document actif trop gros
 
@@ -487,5 +489,5 @@ Les lots de code devront prouver au minimum:
 - summary non declenche par le poids documentaire;
 - Memory/RAG/Identity non alimentes;
 - logs/read-models/dashboard content-free;
-- contenu complet absent de l'inspection ordinaire;
-- action `Afficher le contenu complet` seulement si gate explicitement appele.
+- texte complet du document absent de l'inspection ordinaire;
+- aucune promesse d'ouverture du texte complet du document sans decision produit separee.

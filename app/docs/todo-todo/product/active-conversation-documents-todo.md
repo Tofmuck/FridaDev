@@ -39,7 +39,8 @@ Regle centrale: un document actif est envoye entier au modele quand il rentre da
 - Exclusion explicite du seuil de resume de conversation.
 - Lane documentaire bornee dans le prompt principal.
 - Observabilite content-free par defaut.
-- Contenu complet uniquement par action explicite compatible `Afficher le contenu complet`.
+- Pas de promesse actuelle d'ouverture du texte complet du document dans le dashboard.
+- Toute ouverture future du texte complet du document exige une decision produit separee; elle n'est pas une consequence automatique du gate dashboard existant.
 - Pas d'AnythingLLM ni OpenWebUI comme intermediaire principal de cette capacite.
 
 ## 3. Hors-scope du chantier
@@ -71,7 +72,7 @@ Le chantier pourra etre clos seulement si:
 - Memory/RAG/Identity/Summary ne sont pas contamines;
 - le seuil de resume n'integre pas les documents actifs;
 - les logs/read-models/dashboard montrent les metadonnees utiles sans contenu brut par defaut;
-- le contenu complet, si disponible, passe par une action explicite;
+- l'inspection dashboard montre metadonnees et statut d'injection, pas le texte complet du document;
 - les tests prouvent les cas nominaux, trop gros, parsing error, retrait et non-contamination.
 
 ## 5. Condition de non-prolongation
@@ -92,7 +93,7 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
 - [ ] Definir la lane prompt structuree et ses balises stables.
 - [ ] Definir les reason codes initiaux: `document_too_large_for_turn`, `document_parse_error`, `document_type_unsupported`, `document_runtime_unavailable`, `manual_remove`.
-- [ ] Definir la doctrine content-free et le lien futur avec `Afficher le contenu complet`.
+- [ ] Definir la doctrine content-free et interdire de transformer automatiquement le gate dashboard existant en acces au texte complet du document.
 
 ### Lot 2 - Etat actif serveur non memoire
 
@@ -149,8 +150,8 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Exposer par defaut seulement nom, type, bytes, chars, token_estimate, active, injected, reason_code, hashes courts ou refs.
 - [ ] Ajouter le module observable `documents` reel sans dupliquer Memory/RAG.
 - [ ] Enrichir l'inspection traduite du dashboard: document actif, injecte, non injecte car trop gros, erreur parsing, retrait manuel.
-- [ ] Garder le contenu complet hors inspection ordinaire.
-- [ ] Aligner l'acces volontaire futur avec le gate `Afficher le contenu complet` sans prechargement.
+- [ ] Limiter l'inspection exhaustive documentaire aux metadonnees, statuts d'injection et raisons compactes.
+- [ ] Documenter que tout acces futur au texte complet du document releve d'une decision produit separee.
 - [ ] Tester content-free strict et absence de contenu brut dans logs/read-models/dashboard.
 
 ### Lot 8 - Tests integration et preuves operateur
@@ -192,5 +193,5 @@ Les lots devront adapter les suites exactes au code courant, mais viser:
 - La persistence courte d'etat actif ne doit pas etre appelee memoire.
 - Les dependances de parsing ne sont pas encore presentes dans `app/requirements.txt`.
 - Les budgets tokens doivent etre alignes avec le provider reel et les settings runtime.
-- Le contenu complet ne doit jamais etre precharge dans le DOM ou dans l'inspection ordinaire.
+- Le texte complet du document n'est pas promis par le dashboard; ne pas le precharger ni l'exposer sans decision produit separee.
 - Les recouvrements futurs avec le module dashboard `documents` doivent etre explicites, pas confus.
