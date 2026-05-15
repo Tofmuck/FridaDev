@@ -323,6 +323,35 @@ def _embedding_counts(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[str, Any]) -> dict[str, Any]:
     embedding_counts = _embedding_counts(events)
+    summaries_event = _latest_stage_event(events, 'summaries')
+    summaries_payload = _payload(summaries_event or {})
+    memory_payload = _mapping(prompt_payload.get('memory_prompt_injection'))
+    summary_context_count = _memory_lane_count(
+        memory_payload,
+        'summary_context_injected_count',
+        'memory_context_summary_count',
+    )
+    memory_context_summary_count = _to_int(memory_payload.get('memory_context_summary_count'))
+    active_summary_present = bool(summaries_payload.get('active_summary_present'))
+    active_summary_in_prompt = bool(summaries_payload.get('in_prompt'))
+    active_summary_count = (
+        _to_int(summaries_payload.get('summary_count_used'))
+        if summaries_event
+        else max(0, summary_context_count - memory_context_summary_count)
+    )
+    summary_fields = {
+        'conversation_summary_source_kind': 'summaries_event' if summaries_event else 'prompt_prepared_memory_prompt_injection',
+        'conversation_summary_event_present': bool(summaries_event),
+        'conversation_summary_status': _status(summaries_event or {}) if summaries_event else 'unknown',
+        'conversation_summary_active_present': active_summary_present,
+        'conversation_summary_in_prompt': active_summary_in_prompt,
+        'conversation_summary_count': active_summary_count,
+        'summary_context_injected': bool(memory_payload.get('summary_context_injected')) or summary_context_count > 0,
+        'summary_context_injected_count': summary_context_count,
+        'memory_context_summary_count': memory_context_summary_count,
+        'summary_generation_observed': bool(summaries_payload.get('summary_generation_observed')),
+        'summary_reason_code': _reason_code(summaries_payload),
+    }
     snapshot_event = _latest_stage_event(events, 'memory_chain_snapshot')
     snapshot_payload = _payload(snapshot_event or {})
     if snapshot_payload:
@@ -348,16 +377,15 @@ def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[st
             'truncated': bool(snapshot_payload.get('truncated')),
             'legacy_reason_code': None,
             'latest_ts': _event_ts(snapshot_event or {}),
+            **summary_fields,
             **embedding_counts,
         }
 
     retrieval = _mapping(prompt_payload.get('memory_retrieval'))
-    memory_payload = _mapping(prompt_payload.get('memory_prompt_injection'))
     injected_ids = _sequence(memory_payload.get('injected_candidate_ids'))
     trace_count = _memory_lane_count(memory_payload, 'trace_memory_injected_count', 'memory_traces_injected_count')
-    summary_count = _memory_lane_count(memory_payload, 'summary_context_injected_count', 'memory_context_summary_count')
     hints_count = _to_int(memory_payload.get('context_hints_injected_count'))
-    injected_count = len(injected_ids) if injected_ids else trace_count + summary_count
+    injected_count = len(injected_ids) if injected_ids else trace_count + summary_context_count
     return {
         'source_kind': 'prompt_prepared_legacy_fallback',
         'status': _text(retrieval.get('status')) or ('ok' if memory_payload else 'missing'),
@@ -372,6 +400,7 @@ def _rag_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[st
         'truncated': False,
         'legacy_reason_code': 'missing_memory_chain_snapshot',
         'latest_ts': _event_ts(_latest_stage_event(events, 'prompt_prepared') or {}),
+        **summary_fields,
         **embedding_counts,
     }
 

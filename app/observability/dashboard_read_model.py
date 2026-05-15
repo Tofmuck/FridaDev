@@ -1039,6 +1039,21 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append(f"{_to_int(rag.get('injected'))} element(s) memoire injecte(s)")
     else:
         context_parts.append('aucun element memoire injecte observe')
+    summary_active = bool(rag.get('conversation_summary_active_present'))
+    summary_in_prompt = bool(rag.get('conversation_summary_in_prompt'))
+    summary_count = _to_int(rag.get('conversation_summary_count'))
+    if summary_active and summary_in_prompt:
+        context_parts.append('un resume actif de conversation injecte')
+        summary_line = f'Resume de conversation present et injecte ({summary_count or 1} resume observe).'
+    elif summary_active:
+        context_parts.append('un resume actif de conversation non injecte')
+        summary_line = 'Resume de conversation actif observe, mais non injecte dans le prompt principal.'
+    elif rag.get('conversation_summary_event_present') is True:
+        context_parts.append('aucun resume actif de conversation observe')
+        summary_line = 'Aucun resume de conversation actif sur ce tour.'
+    else:
+        context_parts.append('etat du resume de conversation non materialise')
+        summary_line = 'Etat du resume de conversation non materialise dans ces faits compacts.'
     if hermeneutic.get('block_present'):
         context_parts.append('un jugement hermeneutique observe')
     else:
@@ -1129,6 +1144,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"{_to_int(rag.get('basket'))} candidat(s), {_to_int(rag.get('kept'))} garde(s), "
                     f"{_to_int(rag.get('rejected'))} rejete(s), {_to_int(rag.get('injected'))} injecte(s)."
                 ),
+                summary_line,
                 f"Identite: bloc present {_yes_no(identity.get('block_present'))}, etat {_status_fr(identity.get('status'))}.",
                 f"Hermeneutique: jugement present {_yes_no(hermeneutic.get('block_present'))}, fallback {_yes_no(hermeneutic.get('fallback'))}.",
                 (

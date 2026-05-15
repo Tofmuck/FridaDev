@@ -446,6 +446,50 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('RAW EMBEDDING ERROR MUST NOT LEAK', serialized)
         self.assertNotIn('vector', self._collect_keys(fact))
 
+    def test_turn_fact_materializes_active_summary_prompt_usage_content_free(self) -> None:
+        events = self._complete_turn()
+        prompt_event = next(event for event in events if event['stage'] == 'prompt_prepared')
+        prompt_event['payload_json']['memory_prompt_injection'].update(
+            {
+                'summary_context_injected': True,
+                'summary_context_injected_count': 2,
+                'memory_context_injected': True,
+                'memory_context_summary_count': 1,
+                'injection_lanes': ['trace_memory', 'summary_context'],
+            }
+        )
+        events.insert(
+            4,
+            self._event(
+                'summaries',
+                payload={
+                    'active_summary_present': True,
+                    'summary_count_used': 1,
+                    'summary_usage': 'prompt_injection',
+                    'in_prompt': True,
+                    'summary_generation_observed': False,
+                    'content': 'RAW SUMMARY MUST NOT LEAK',
+                },
+                event_id='turn-dashboard:0004b:summaries',
+            ),
+        )
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        rag = fact['rag']
+
+        self.assertEqual(rag['conversation_summary_source_kind'], 'summaries_event')
+        self.assertTrue(rag['conversation_summary_event_present'])
+        self.assertEqual(rag['conversation_summary_status'], 'ok')
+        self.assertTrue(rag['conversation_summary_active_present'])
+        self.assertTrue(rag['conversation_summary_in_prompt'])
+        self.assertEqual(rag['conversation_summary_count'], 1)
+        self.assertTrue(rag['summary_context_injected'])
+        self.assertEqual(rag['summary_context_injected_count'], 2)
+        self.assertEqual(rag['memory_context_summary_count'], 1)
+        serialized = json.dumps(fact, sort_keys=True)
+        self.assertNotIn('RAW SUMMARY MUST NOT LEAK', serialized)
+        self.assertNotIn('content', self._collect_keys(fact))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')

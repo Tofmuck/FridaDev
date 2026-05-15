@@ -385,6 +385,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'retrieved': 4,
                 'kept': 2,
                 'injected': 1,
+                'conversation_summary_event_present': True,
+                'conversation_summary_active_present': True,
+                'conversation_summary_in_prompt': True,
+                'conversation_summary_count': 1,
                 'embeddings_requested_count': 2,
                 'embeddings_success_count': 2,
                 'embeddings_error_count': 0,
@@ -450,6 +454,8 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
         self.assertIn('Ce que Frida a recu', story_text)
         self.assertIn('Memoire: 4 trouve(s)', story_text)
+        self.assertIn('Resume de conversation present et injecte', story_text)
+        self.assertIn('un resume actif de conversation injecte', story_text)
         self.assertIn('2 embeddings demandes, 2 reussis', story_text)
         self.assertIn('Le contexte modele exact n est pas reconstructible', story_text)
         self.assertIn('Contenu complet non charge', story_text)
@@ -511,6 +517,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                 'retrieved': 0,
                 'kept': 0,
                 'injected': 0,
+                'conversation_summary_event_present': True,
+                'conversation_summary_active_present': False,
+                'conversation_summary_in_prompt': False,
+                'conversation_summary_count': 0,
                 'embeddings_requested_count': 0,
                 'embeddings_success_count': 0,
                 'embeddings_error_count': 0,
@@ -567,6 +577,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         story_text = json.dumps(payload['story'], ensure_ascii=False, sort_keys=True)
 
         self.assertIn('0 embeddings demandes, 0 reussis', story_text)
+        self.assertIn('Aucun resume de conversation actif sur ce tour', story_text)
         self.assertNotIn('Aucun compteur embeddings n est disponible', story_text)
         self._assert_content_free(payload)
 
