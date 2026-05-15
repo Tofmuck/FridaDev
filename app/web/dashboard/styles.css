@@ -355,6 +355,11 @@
   font-size: 12px;
 }
 
+.dashboard-conversation-open {
+  width: fit-content;
+  margin-top: 8px;
+}
+
 .dashboard-drilldown {
   margin-top: 16px;
 }

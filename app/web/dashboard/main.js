@@ -646,20 +646,18 @@
       const note = document.createElement("span");
       note.className = "dashboard-muted";
       note.textContent = toText(item.latest_ts) ? `Derniere activite ${formatDateTime(item.latest_ts)}` : "Activite datee indisponible";
-      labelTd.append(label, note);
+      const inspectButton = document.createElement("button");
+      inspectButton.className = "admin-btn admin-btn-secondary dashboard-small-action dashboard-conversation-open";
+      inspectButton.type = "button";
+      inspectButton.dataset.conversationId = toText(item.conversation_id);
+      inspectButton.textContent = "Ouvrir";
+      labelTd.append(label, note, inspectButton);
 
       const stateInfo = conversationState(item);
       const stateTd = cell("");
       stateTd.appendChild(statusBadge(stateInfo.label, stateInfo.status));
 
       const problems = toInt(item.error_count) + toInt(item.fallback_count);
-      const inspectTd = cell("");
-      const inspectButton = document.createElement("button");
-      inspectButton.className = "admin-btn admin-btn-secondary dashboard-small-action";
-      inspectButton.type = "button";
-      inspectButton.dataset.conversationId = toText(item.conversation_id);
-      inspectButton.textContent = "Ouvrir";
-      inspectTd.appendChild(inspectButton);
       row.append(
         labelTd,
         stateTd,
@@ -668,7 +666,6 @@
         cell(`${toInt(item.web_injected_turns)} / ${toInt(item.web_requested_turns)}`, "dashboard-number-cell"),
         cell(String(problems), "dashboard-number-cell"),
         cell(formatDateTime(item.latest_ts)),
-        inspectTd,
       );
       fragment.appendChild(row);
     });
