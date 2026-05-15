@@ -272,7 +272,39 @@ Limite:
 - jamais expose dans les vues cockpit;
 - acces explicite et garde.
 
-## 5. Faits et agregats a definir
+## 5. Matrice sources -> champs -> vues -> gate eventuel
+
+Cette matrice rend explicite la frontiere entre:
+
+- les sources disponibles ou a creer;
+- les champs exposables par defaut;
+- les vues qui peuvent les consommer;
+- les contenus qui exigent l'action `Afficher le contenu complet`.
+
+| Source | Champs exposables par defaut | Vues consommatrices | Gate `Afficher le contenu complet` |
+| --- | --- | --- | --- |
+| `observability.chat_log_events` | `conversation_id`, `turn_id`, timestamps, stage, status, duration, provider caller, model name, counts, reason codes, hashes, longueurs, truncation flags, event id. | `/log`, dashboard overview, inspection technique liee a un tour, materialisation future. | Tout prompt, message, payload brut, query web, contenu memoire, identity brute, resultat web ou texte libre absent des logs compacts actuels mais reference par artefact futur. |
+| `turn_pipeline_read_model` | classification, score/checklist compact, persistence assistant finale, provider principal, providers secondaires, RAG compact, identity status, hermeneutic status, web status, node_state status, errors/fallbacks, source_kind, events_truncated. | Dashboard premier ecran, table conversations/tours, `/log` compact, inspection traduite de tour. | Aucun contenu brut dans les champs actuels; seuls des liens futurs vers artefacts de prompt/payload/blocs peuvent ouvrir le gate. |
+| `full_turn_metrics_snapshot` | statuts, timings, provider lanes, counts, persistence finale, erreurs/skips/fallbacks, version de calcul si disponible. | Courbes recentes/long terme apres materialisation, synthese tour, comparaison conversations. | Aucun contenu complet; les champs analytiques restent content-free. |
+| `turn_observability_checklist` | checklist, score de completude, checks presents/absents, reason codes compacts, statut legacy/incomplet. | Classification cockpit, explication courte d'un tour, tests de materialisation. | Aucun contenu complet; si un check pointe vers un bloc textuel, seul l'artefact gate futur peut l'ouvrir. |
+| `memory_chain_snapshot` | retrieved, basket, kept, rejected, injected, context hints, source/status, candidate ids hashes, timings, errors compacts. | Module memory du dashboard, Memory Admin, inspection traduite RAG, courbes funnel memoire. | Contenu exact des souvenirs, traces, summaries, bloc memoire injecte et transformations vers le prompt. |
+| Read-models Memory Admin | embeddings count, dimensions, couverture, erreurs, latest update, provenance, health compact, counts durables/historiques. | Memory Admin, module memory du dashboard, diagnostic compact embeddings. | Extraits de trace, summaries, textes de souvenirs, payloads de retrieval ou arbitration. |
+| Identity observability / read-models diagnostic | bloc present, `chars`, `sha256_12`, statut, subject, reason_code, counts de conflits, longueurs et hashes de raisons libres. | Module identity du dashboard, Identity pilotage compact, Hermeneutic Admin diagnostic. | Contenu identity exact injecte, raisons libres brutes, conflits bruts; l'edition canonique explicite reste une surface separee, pas une vue cockpit. |
+| Hermeneutic node observability | mode, regime, directives_count, node_state read/write status, fail-open/fallback, `chars`, `sha256_12`, timings, errors compacts. | Module hermeneutic du dashboard, Hermeneutic Admin diagnostic, inspection traduite de tour. | Jugement hermeneutique textuel exact, runtime replies longues, payloads de stage, bloc injecte complet. |
+| Web/search observability | requested/skipped/success/error, injected, counts, timings, reason_code, provider/status compact. | Module web du dashboard, `/log`, inspection traduite de tour, courbes web utile. | Query brute, resultats web bruts, extraits injectes, payloads de reformulation. |
+| Provider observability | provider_caller, provider principal/secondaire, model, status, duration, response_chars, prepared event present/absent, error code compact. | Module providers du dashboard, table tours, latences p50/p95 par provider. | Payload complet envoye au provider, reponse complete, prompts secondaires et contenus produits par agents secondaires. |
+| Agregats persistants futurs | buckets horaires/journaliers, counts, rates, p50/p95, materialization status, calculation_version, source window, lag. | Courbes 24 h / 7 j / 30 j / 90 jours, pouls global, comparaison conversations. | Aucun contenu complet; les agregats ne doivent jamais contenir de brut. |
+| Artefacts gates futurs | disponibilite, type de contenu, classe de sensibilite, source event id, taille, hash, retention, audit id d'ouverture. | Bouton `Afficher le contenu complet`, inspection volontaire conversation/tour/module. | Le contenu lui-meme: prompt principal, payload modele principal, payloads providers secondaires, memoire, identity, web, documents, images et modules futurs. |
+
+Regles de lecture:
+
+- une vue cockpit ne consomme que les champs exposables par defaut;
+- une vue d'inspection traduite peut consommer des resumes humains et references d'artefacts, mais pas precharger le contenu complet;
+- une vue debug technique peut afficher des ids, stages et reason codes, mais pas de contenu brut hors gate;
+- un champ libre, une query, un prompt, un message, une identity brute ou un contenu memoire ne devient jamais exposable par defaut parce qu'il est utile au diagnostic;
+- si une source ne porte que `chars` et `hash`, la vue doit dire que le contenu exact n'est pas reconstructible depuis cette source.
+
+## 6. Faits et agregats a definir
 
 Ce contrat ne fixe pas le schema SQL final. Il fixe les familles de faits necessaires.
 
@@ -359,7 +391,7 @@ Le dashboard doit exposer ou pouvoir exposer:
 - fenetre couverte;
 - indication de backfill absent ou incomplet.
 
-## 6. Modules observables
+## 7. Modules observables
 
 Chaque module observable doit declarer conceptuellement:
 
@@ -398,7 +430,7 @@ Regle d'extension:
 - ajouter `documents` ou `images` ne doit pas exiger de refaire le dashboard;
 - un nouveau module doit pouvoir declarer ses metriques, son resume humain et ses contenus gates selon le meme contrat.
 
-## 7. Vocabulaire humain
+## 8. Vocabulaire humain
 
 Le langage de premier niveau est un langage produit en francais.
 
@@ -422,7 +454,7 @@ Regles:
 - les reason codes doivent etre traduits ou accompagnes d'une explication courte;
 - le dashboard doit expliquer avant d'alerter.
 
-## 8. Interdits
+## 9. Interdits
 
 Sont interdits:
 
@@ -438,7 +470,7 @@ Sont interdits:
 - l'inclusion de contenu brut dans les agregats;
 - l'affaiblissement du content gate pour accelerer le frontend.
 
-## 9. Duplication et recouvrement
+## 10. Duplication et recouvrement
 
 Doctrine retenue:
 
@@ -453,7 +485,7 @@ Definitions:
 - recouvrement transitoire: une information existe a la fois dans `/log`, une surface domaine et le dashboard pendant la stabilisation;
 - nettoyage progressif: replier, renommer ou deplacer une lecture seulement quand le dashboard a prouve une lecture plus claire sans perte diagnostic.
 
-## 10. Matrice produit fondatrice
+## 11. Matrice produit fondatrice
 
 | Question produit | Reponse par defaut | Reponse sur action explicite |
 | --- | --- | --- |
@@ -462,7 +494,7 @@ Definitions:
 | Que peut-on prouver aujourd'hui ? | Presence de stages, statuts, counts, tailles, hashes, provider lanes, persistence finale, RAG compact, web compact, node_state compact. | Les contenus metier deja exposes par des surfaces explicites d'edition ou de detail peuvent etre ouverts selon leurs propres gardes; le prompt modele exact n'est pas garanti reconstructible depuis les logs actuels. |
 | Que faudra-t-il persister demain ? | Facts par tour, syntheses conversation, buckets horaires/journaliers, materialisation, manifests de prompt, resumes humains par bloc, references d'artefacts. | Artefacts gates pour prompt principal, payload modele principal, providers secondaires, memoire, identity, web, documents, images et autres modules futurs. |
 
-## 11. Acceptance criteria du Lot 1
+## 12. Acceptance criteria du Lot 1
 
 Le Lot 1 est ferme quand:
 
@@ -472,6 +504,7 @@ Le Lot 1 est ferme quand:
 - la limite hash + longueur est explicite;
 - les couches de verite sont definies;
 - les faits et agregats futurs sont cadres sans schema SQL final;
+- la matrice sources -> champs -> vues -> gate eventuel est explicite;
 - les modules observables sont cadres;
 - le vocabulaire humain est cadre;
 - les interdits sont cadres;
