@@ -23,6 +23,7 @@ from core import assistant_turn_state
 from core import chat_stream_control
 from core import conv_store
 from core import active_conversation_documents
+from core import active_document_upload_service
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
@@ -1198,6 +1199,40 @@ def api_delete_conversation(conversation_id: str):
     payload, status = conversations_service.delete_conversation(
         conversation_id,
         conv_store_module=conv_store,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/conversations/<id>/active-documents* ────────────────────────────────
+
+@app.get('/api/conversations/<conversation_id>/active-documents')
+def api_list_active_conversation_documents(conversation_id: str):
+    payload, status = active_document_upload_service.list_active_documents_response(
+        conversation_id,
+        conv_store_module=conv_store,
+        active_documents_module=active_conversation_documents,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/conversations/<conversation_id>/active-documents')
+def api_upload_active_conversation_document(conversation_id: str):
+    payload, status = active_document_upload_service.upload_active_document_response(
+        conversation_id,
+        request.files,
+        conv_store_module=conv_store,
+        active_documents_module=active_conversation_documents,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/conversations/<conversation_id>/active-documents/<document_id>')
+def api_remove_active_conversation_document(conversation_id: str, document_id: str):
+    payload, status = active_document_upload_service.remove_active_document_response(
+        conversation_id,
+        document_id,
+        conv_store_module=conv_store,
+        active_documents_module=active_conversation_documents,
     )
     return jsonify(payload), status
 

@@ -29,14 +29,14 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn('window.location.href = "/admin";', js_source)
         self.assertNotIn('window.location.href = "admin.html";', js_source)
 
-    def test_hermeneutic_admin_link_opens_in_new_tab_from_chat_surface(self) -> None:
+    def test_hermeneutic_admin_link_uses_global_navigation_from_chat_surface(self) -> None:
         html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
         js_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn('id="btnHermeneuticAdmin"', html_source)
         self.assertIn('href="/hermeneutic-admin"', html_source)
-        self.assertIn('target="_blank"', html_source)
-        self.assertIn('rel="noopener noreferrer"', html_source)
+        self.assertNotIn('target="_blank"', html_source)
+        self.assertNotIn('rel="noopener noreferrer"', html_source)
         self.assertNotIn('window.location.href = "/hermeneutic-admin";', js_source)
         self.assertNotIn('window.open("/hermeneutic-admin"', js_source)
 

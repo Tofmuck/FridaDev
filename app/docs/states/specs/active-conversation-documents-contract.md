@@ -480,7 +480,41 @@ Limite volontaire du Lot 2:
 - aucune observabilite dashboard;
 - aucun branchement Memory/RAG/Identity/Summary.
 
-## 14. Tests requis par les futurs lots
+## 14. Frontend chat et routes produit
+
+Lot 6 livre le flux utilisateur reel cote chat.
+
+Routes produit minimales:
+
+- `GET /api/conversations/<conversation_id>/active-documents`: liste content-free des documents actifs de la conversation;
+- `POST /api/conversations/<conversation_id>/active-documents`: upload d'un fichier, extraction texte complete, activation serveur si le format est supporte;
+- `DELETE /api/conversations/<conversation_id>/active-documents/<document_id>`: retrait manuel explicite, reason `manual_remove`.
+
+Contrat de retour:
+
+- les reponses ordinaires exposent seulement les metadonnees content-free;
+- le texte extrait n'est jamais renvoye a l'UI chat;
+- les erreurs de parsing/type/OCR/vide sont renvoyees comme statuts et reason codes compacts;
+- un upload non activable ne bloque pas la saisie du chat.
+
+Surface chat:
+
+- le controle visible est nomme et pense comme `document actif de conversation`, pas comme bouton generique `Documents`;
+- le drag-and-drop sur la surface chat active les fichiers supportes;
+- le controle pres du composer ouvre le selecteur de fichiers;
+- la liste affiche nom, type/extension, taille, longueur et statut compact;
+- le retrait manuel reste accessible par fichier;
+- l'etat serveur est recharge a chaque ouverture/rechargement de conversation;
+- le contenu brut du document n'est pas affiche dans l'UI ordinaire.
+
+Limite volontaire du Lot 6:
+
+- pas d'observabilite dashboard/logs dediee;
+- pas de module Biblio;
+- pas d'affichage du texte complet;
+- pas de changement Memory/RAG/Identity/Summary.
+
+## 15. Tests requis par les futurs lots
 
 Les futurs lots devront prouver:
 
@@ -499,7 +533,7 @@ Les futurs lots devront prouver:
 - absence de contenu brut dans logs/read-models/dashboard ordinaires;
 - absence d'ouverture automatique du texte complet via le gate dashboard existant.
 
-## 15. Condition de revision
+## 16. Condition de revision
 
 Cette spec devra etre revisee si:
 

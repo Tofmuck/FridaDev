@@ -187,14 +187,16 @@ Note Lot 5 livre `app/tests/unit/core/test_active_document_non_contamination_lot
 
 ### Lot 6 - Frontend chat drag-and-drop et controle actif
 
-- [ ] Ajouter drag-and-drop fichiers sur la surface chat.
-- [ ] Ajouter controle visible pres des controles d'entree.
-- [ ] Afficher les fichiers actifs avec nom, type, taille/statut et action retirer.
-- [ ] Eviter un libelle ou bouton generique `Documents` qui melangerait documents actifs et future Biblio.
-- [ ] Garder l'activation visible sur les tours suivants.
-- [ ] Gerer erreurs de parsing/type/taille sans bloquer la saisie.
-- [ ] Ne pas afficher le contenu du document dans l'UI par defaut.
-- [ ] Tester desktop/mobile et absence de regression chat.
+- [x] Ajouter drag-and-drop fichiers sur la surface chat.
+- [x] Ajouter controle visible pres des controles d'entree.
+- [x] Afficher les fichiers actifs avec nom, type, taille/statut et action retirer.
+- [x] Eviter un libelle ou bouton generique `Documents` qui melangerait documents actifs et future Biblio.
+- [x] Garder l'activation visible sur les tours suivants.
+- [x] Gerer erreurs de parsing/type/taille sans bloquer la saisie.
+- [x] Ne pas afficher le contenu du document dans l'UI par defaut.
+- [x] Tester desktop/mobile et absence de regression chat.
+
+Note Lot 6 livre les routes produit `GET/POST/DELETE /api/conversations/<conversation_id>/active-documents`, le module frontend `app/web/chat_active_documents.js` et son integration dans le chat. Le controle parle de documents actifs de conversation, pas de Biblio; l'UI affiche uniquement metadonnees/statuts, jamais le texte du fichier.
 
 ### Lot 7 - Observabilite, logs, read-models et dashboard
 

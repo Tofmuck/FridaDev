@@ -77,7 +77,24 @@
       <div id="log" class="log"></div>
 
       <form id="ask" class="ask">
+        <div id="activeDocumentsBar" class="active-documents-bar" hidden>
+          <div class="active-documents-label">Documents actifs de conversation</div>
+          <div id="activeDocumentsList" class="active-documents-list"></div>
+          <div id="activeDocumentsStatus" class="active-documents-status" aria-live="polite"></div>
+        </div>
         <textarea id="message" rows="3" placeholder="Écris ton message…"></textarea>
+        <input
+          id="activeDocumentFileInput"
+          class="sr-only"
+          type="file"
+          accept=".pdf,.docx,.odt,.md,.txt,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
+          multiple
+        />
+        <button type="button" id="btnActiveDocument" class="btn-active-document" title="Ajouter un document actif de conversation" aria-label="Ajouter un document actif de conversation">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.44 11.05 12 20.49a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
+          </svg>
+        </button>
         <button type="button" id="btnMic" class="btn-dictation" title="Lancer la dictée" aria-label="Lancer la dictée" aria-pressed="false">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V6a3 3 0 0 0-3-3z"/>
@@ -107,6 +124,7 @@
   <script src="whisper/whisper_dictation.js"></script>
   <script src="chat_streaming.js"></script>
   <script src="chat_threads_sidebar.js"></script>
+  <script src="chat_active_documents.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

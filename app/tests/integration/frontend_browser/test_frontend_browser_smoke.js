@@ -109,6 +109,17 @@ function chatMockScript({ streamMode }) {
   return `
     (() => {
       const encoder = new TextEncoder();
+      const docsStorageKey = "frida-test-active-documents";
+      const readActiveDocs = () => {
+        try {
+          return JSON.parse(window.localStorage.getItem(docsStorageKey) || "[]");
+        } catch {
+          return [];
+        }
+      };
+      const writeActiveDocs = (docs) => {
+        window.localStorage.setItem(docsStorageKey, JSON.stringify(Array.isArray(docs) ? docs : []));
+      };
       const state = {
         streamMode: ${JSON.stringify(streamMode)},
         chatSubmitted: false,
@@ -154,6 +165,62 @@ function chatMockScript({ streamMode }) {
           });
         }
 
+        if (url.pathname === "/api/conversations/conv-browser/active-documents" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, conversation_id: "conv-browser", items: readActiveDocs() }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/conversations/conv-browser/active-documents" && method === "POST") {
+          const file = init.body && typeof init.body.get === "function" ? init.body.get("file") : null;
+          const name = String(file && file.name || "document");
+          if (name.endsWith(".bin")) {
+            return new Response(JSON.stringify({
+              ok: false,
+              reason_code: "document_type_unsupported",
+              document: { filename: name, status: "unsupported", reason_code: "document_type_unsupported" },
+            }), {
+              status: 422,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          const docs = readActiveDocs();
+          const item = {
+            document_id: "doc-browser-" + String(docs.length + 1),
+            conversation_id: "conv-browser",
+            filename: name,
+            media_type: String(file && file.type || "text/plain"),
+            source_extension: name.slice(name.lastIndexOf(".")),
+            byte_size: Number(file && file.size || 0),
+            text_chars: 37,
+            text_sha256_12: "abc123def456",
+            token_estimate: 8,
+            status: "active",
+            active: true,
+            created_at: "2026-05-03T09:01:00Z",
+            deactivated_at: "",
+            last_injected_turn_id: "",
+            last_excluded_reason_code: "",
+            source: "active_conversation_documents",
+          };
+          docs.push(item);
+          writeActiveDocs(docs);
+          return new Response(JSON.stringify({ ok: true, conversation_id: "conv-browser", document: item }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const activeDelete = url.pathname.match(/^\\/api\\/conversations\\/conv-browser\\/active-documents\\/([^/]+)$/);
+        if (activeDelete && method === "DELETE") {
+          writeActiveDocs(readActiveDocs().filter((item) => item.document_id !== decodeURIComponent(activeDelete[1])));
+          return new Response(JSON.stringify({ ok: true, conversation_id: "conv-browser", document_id: decodeURIComponent(activeDelete[1]) }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (url.pathname === "/api/chat" && method === "POST") {
           state.chatSubmitted = true;
           if (state.streamMode !== "error") {
@@ -174,6 +241,63 @@ function chatMockScript({ streamMode }) {
     })();
   `;
 }
+
+test('chat active conversation documents upload, persist across reload and remove without rendering content', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 390, height: 760 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+
+    await page.evaluate(() => {
+      const file = new File(['CONTENU BRUT NE DOIT PAS APPARAITRE'], 'note.txt', { type: 'text/plain' });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      document.querySelector('.chat').dispatchEvent(new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }));
+    });
+
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsList')?.textContent.includes('note.txt'));
+    await assertTextContains(page.locator('#activeDocumentsBar'), 'Documents actifs de conversation');
+    await assertTextContains(page.locator('#activeDocumentsBar'), 'note.txt');
+    const activeText = await page.locator('#activeDocumentsBar').textContent();
+    assert.equal(String(activeText || '').includes('CONTENU BRUT NE DOIT PAS APPARAITRE'), false);
+    const callsBeforeReload = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+    assert.ok(callsBeforeReload.some((call) => call.method === 'POST' && call.path === '/api/conversations/conv-browser/active-documents'));
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsList')?.textContent.includes('note.txt'));
+
+    const box = await page.locator('#ask').boundingBox();
+    assert.ok(box && box.width <= 390, 'composer should fit mobile viewport');
+
+    await page.click('#activeDocumentsList .active-document-remove');
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsStatus')?.textContent.includes('Document actif retiré'));
+    assert.equal((await page.locator('#activeDocumentsList').textContent()).includes('note.txt'), false);
+
+    await page.evaluate(() => {
+      const file = new File(['unsupported'], 'archive.bin', { type: 'application/octet-stream' });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      document.querySelector('.chat').dispatchEvent(new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }));
+    });
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsStatus')?.textContent.includes('Format non pris en charge'));
+
+    const calls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+    assert.ok(calls.some((call) => call.method === 'DELETE' && call.path.includes('/api/conversations/conv-browser/active-documents/')));
+  });
+});
 
 test('chat stream nominal handles done terminal, assistant bubble, timestamp and refresh', async () => {
   await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'done' }) }, async (page) => {

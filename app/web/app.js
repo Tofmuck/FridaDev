@@ -8,6 +8,10 @@
   if (!chatThreadsSidebar) {
     throw new Error("FridaChatThreadsSidebar module missing");
   }
+  const activeConversationDocuments = window.FridaActiveConversationDocuments;
+  if (!activeConversationDocuments) {
+    throw new Error("FridaActiveConversationDocuments module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -33,6 +37,11 @@
   const ask = $("#ask");
   const message = $("#message");
   const btnMic = $("#btnMic");
+  const btnActiveDocument = $("#btnActiveDocument");
+  const activeDocumentFileInput = $("#activeDocumentFileInput");
+  const activeDocumentsBar = $("#activeDocumentsBar");
+  const activeDocumentsList = $("#activeDocumentsList");
+  const activeDocumentsStatus = $("#activeDocumentsStatus");
   const btnWebSearch = $("#btnWebSearch");
   const dictationStatus = $("#dictationStatus");
   const newChatBtn = $("#newChat");
@@ -233,8 +242,42 @@
     appendMessageToThread,
   } = threadsLifecycle;
 
+  const activeDocumentsController = activeConversationDocuments.createActiveDocumentController({
+    chatEl,
+    composerEl: ask,
+    barEl: activeDocumentsBar,
+    listEl: activeDocumentsList,
+    statusEl: activeDocumentsStatus,
+    buttonEl: btnActiveDocument,
+    inputEl: activeDocumentFileInput,
+    fetchFn: fetch,
+    getConversationId: () => {
+      const thread = getThreadById(getCurrentId());
+      return thread ? thread.conversation_id : getCurrentId();
+    },
+    ensureConversation: async () => {
+      if (!getCurrentId()) {
+        await newThread();
+      }
+    },
+    consoleObj: console,
+  });
+
+  const refreshActiveDocuments = (options = {}) => activeDocumentsController.refresh(options);
+
   // ---- Nouveau chat
-  newChatBtn.addEventListener("click", () => { void newThread(); });
+  newChatBtn.addEventListener("click", async () => {
+    await newThread();
+    await refreshActiveDocuments();
+  });
+
+  if (threadsUl) {
+    threadsUl.addEventListener("click", () => {
+      window.setTimeout(() => {
+        void refreshActiveDocuments();
+      }, 0);
+    });
+  }
 
   if (window.FridaWhisperDictation && btnMic && message) {
     dictationController = window.FridaWhisperDictation.createWhisperDictation({
@@ -358,6 +401,7 @@
     } finally {
       chatRequestInFlight = false;
       syncDictationUi();
+      void refreshActiveDocuments();
     }
   });
 
@@ -488,8 +532,10 @@
     const current = getCurrentId();
     if (current) {
       await loadThread(current);
+      await refreshActiveDocuments();
     } else {
       await newThread();
+      await refreshActiveDocuments();
     }
   };
 
