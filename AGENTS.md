@@ -181,7 +181,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/todo-todo/product/Frida-installation-config.md`: roadmap produit/installation active.
 - `app/docs/todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`: archive de la feuille de route de nettoyage/clarification du repo issue de l'audit courant; a relire pour comprendre les lots fermes sans la traiter comme active.
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
-- `app/docs/todo-todo/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`: audit actif du contrat semantique prompt/payload; P1 et P2 corriges, reliquats de hygiene prompt a garder visibles.
+- `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`: audit archive du contrat semantique prompt/payload; P1/P2/P3 corriges, limites volontaires documentees.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
 - `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`: audit global exhaustif date du 2026-05-03, source de verite des findings `AUDIT-20260503-*`.

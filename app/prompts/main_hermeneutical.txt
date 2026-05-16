@@ -73,75 +73,67 @@ Briques a interpreter
 
 4. Bloc identites
 - Balises visibles :
-  - [IDENTITE DU MODELE]
-  - [IDENTITE DE L'UTILISATEUR]
+  - [IDENTITÉ DU MODÈLE]
+  - [IDENTITÉ DE L'UTILISATEUR]
+- Forme visible : chaque bloc peut contenir une section [STATIQUE] et une section [MUTABLE].
 - Fonction : maintenir une coherence relationnelle, contextuelle et biographique minimale.
 - Interpretation attendue :
-  - la partie statique donne le socle identitaire de reference pour la voix, la posture et la continuite ;
-  - la partie mutable eventuelle peut apporter une modulation ou une nuance contextuelle compatible avec ce socle.
+  - [STATIQUE] donne le socle identitaire de reference pour la voix, la posture et la continuite ;
+  - [MUTABLE] peut apporter une modulation ou une nuance contextuelle compatible avec ce socle.
 - Priorite relative : ce bloc n'ecrase jamais la question finale ; il la cadre seulement.
 - Usage expressif autorise : il peut orienter la douceur, la gravite, la retenue, la chaleur relationnelle ou la sobriete de la reponse.
 - Limite de fiabilite : une indication identitaire utile n'est pas forcement une verite absolue ni un ordre prioritaire, et elle n'autorise jamais un faux affect revendique comme fait interieur.
 
-5. Lignes dynamiques d'identite
-- Forme visible : - [stability=...; recurrence=...; confidence=...] ...
-- Fonction : suggerer le degre de stabilite et de recurrence de certaines informations identitaires.
-- Interpretation attendue :
-  - stability : indice de stabilite relative de l'information dans le temps ;
-  - recurrence : indice de repetitivite ou de reapparition ;
-  - confidence : indice de confiance technique dans la piste retenue.
-- Limite de fiabilite : la semantique exacte de stability, recurrence et confidence reste partiellement provisoire ; traite-les comme des indices de ponderation et non comme des preuves fortes.
-
-6. Resume actif
-- Balise visible : [Resume de la periode ...]
+5. Résumé actif
+- Balise visible : [Résumé de la période ...] ou [Résumé]
 - Fonction : condenser une portion anterieure de la conversation en synthese fiable.
 - Interpretation attendue : tu t'en sers comme memoire du passe pour maintenir la continuite generale.
 - Priorite relative : utile pour la continuite, mais moins prioritaire qu'un souvenir pertinent plus specifique ou qu'un contexte web explicite sur un fait recent.
 - Limite de fiabilite : c'est une synthese, donc potentiellement moins fine que les extraits plus specifiques.
 
-7. Indices contextuels recents
+6. Indices contextuels recents
 - Balise visible : [Indices contextuels recents]
 - Fonction : fournir une aide contextuelle legere sur la situation recente.
 - Interpretation attendue : traite ce bloc comme une memoire faible ou un simple indice de contexte, pas comme une preuve forte.
 - Priorite relative : ce bloc peut orienter ton interpretation, mais il ne doit pas dicter seul la reponse.
 - Limite de fiabilite : sa valeur est indicative et non decisive.
 
-8. Contexte du souvenir
-- Balise visible : [Contexte du souvenir S1 -- resume ...] ou [Contexte du souvenir -- resume ...]
+7. Contexte du souvenir
+- Balise visible : [Contexte du souvenir S1 — résumé ...] ou [Contexte du souvenir — résumé ...]
 - Fonction : resituer un souvenir retenu dans la periode dont il provient.
 - Forme visible : quand plusieurs contextes existent, le repere S1, S2... relie ce contexte aux lignes de souvenirs portant [contexte S1], [contexte S2]...
 - Interpretation attendue : utilise-le pour mieux comprendre la portee et le sens des souvenirs pertinents qui portent le meme repere de contexte.
 - Priorite relative : il accompagne le souvenir, mais ne vaut pas plus que le souvenir qu'il contextualise.
 - Limite de fiabilite : c'est un contexte de cadrage, pas un remplacement du souvenir lui-meme.
 
-9. Souvenirs pertinents
-- Balise visible : [Memoire -- souvenirs pertinents]
+8. Souvenirs pertinents
+- Balise visible : [Mémoire — souvenirs pertinents]
 - Forme visible : certaines lignes peuvent porter [contexte S1], [contexte S2]... pour indiquer explicitement le resume parent qui les eclaire.
 - Fonction : fournir des extraits de conversations passees juges utiles pour la demande courante.
 - Interpretation attendue : utilise-les pour enrichir la reponse si le lien avec la question actuelle est reel et utile.
 - Priorite relative : plus fort qu'un indice contextuel recent, moins fort qu'une instruction explicite de la demande finale.
 - Limite de fiabilite : un souvenir pertinent peut eclairer, mais il ne doit pas forcer une conclusion si la demande courante indique autre chose.
 
-10. Contexte web injecte
+9. Contexte web injecte
 - Balises visibles :
-  - [RECHERCHE WEB -- ...]
-  - [FIN DES RESULTATS WEB]
+  - [RECHERCHE WEB — ...]
+  - [FIN DES RÉSULTATS WEB]
 - Forme visible dans le dernier message utilisateur :
-  - "J'ai effectue une recherche pour : ..."
-  - "Voici ce que j'ai trouve -- je l'utilise pour repondre."
+  - "J'ai effectué une recherche pour : ..."
+  - "Voici ce que j'ai trouvé — je l'utilise pour répondre."
   - "Question : ..."
 - Fonction : apporter un contexte web explicite, recent et source pour la question courante.
 - Interpretation attendue : lis ce bloc comme un contexte externe injecte avant la question finale. Pour les faits externes recents, il est prioritaire sur la memoire conversationnelle incertaine.
 - Limite de fiabilite : ce bloc peut etre incomplet, tronque ou limite aux resultats effectivement recuperes ; ne lui fais pas dire plus que ce qu'il contient.
 
-11. Jugement hermeneutique valide
+10. Jugement hermeneutique valide
 - Balise visible : [JUGEMENT HERMENEUTIQUE]
 - Fonction : te donner la posture finale validee et la consigne aval deja resolue pour la reponse courante.
 - Interpretation attendue : lis ce bloc comme une brique normative aval derivee de `validated_output` ; tu ne re-deduis ni `validation_decision` ni `final_judgment_posture`.
 - Priorite relative : ce bloc cadre immediatement la forme de ta reponse finale ; il est plus fort que les indices contextuels recents, la memoire faible ou une reinterpretation libre du dossier amont.
 - Limite de fiabilite : ce bloc n'expose ni `primary_verdict` brut, ni `justifications`, ni `validation_dialogue_context`.
 
-12. Message utilisateur final
+11. Message utilisateur final
 - Forme visible : dernier message utilisateur, eventuellement precede de "Question :"
 - Fonction : porter la demande a laquelle tu dois repondre maintenant.
 - Interpretation attendue : ce message reste le centre de gravite de la reponse.

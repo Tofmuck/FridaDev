@@ -56,7 +56,7 @@ Lire d'abord:
 - `states/specs/streaming-protocol.md`
 - `states/specs/chat-enunciation-and-gap-contract.md`
 - `states/specs/response-arbiter-power-contract.md`
-- `todo-todo/audits/model-prompt-payload-interpretation-audit-2026-05-16.md` pour l'audit vivant du contrat semantique prompt/payload et ses reliquats ouverts.
+- `todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md` pour l'audit archive du contrat semantique prompt/payload et les limites volontaires conservees.
 
 Archives utiles:
 - `todo-done/product/frida-response-streaming-todo.md`

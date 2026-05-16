@@ -1,7 +1,7 @@
 # Audit - Contrat semantique entre payloads modele et prompts - 2026-05-16
 
-Statut: audit transverse actif a garder ouvert
-Classement courant: `app/docs/todo-todo/audits/`
+Statut: audit transverse archive
+Classement courant: `app/docs/todo-done/audits/`
 Portee: modele principal, prompts effectifs, payloads secondaires quand ils portent leur propre contrat d'interpretation
 Hors-scope courant: refonte large de prompt, dashboard, documents actifs de conversation
 
@@ -9,13 +9,14 @@ Note de classement du 2026-05-16:
 - cet audit a commence comme audit transverse dans `states/audits/`;
 - le P1 runtime a ete corrige le 2026-05-16;
 - le P2 `trace memoire -> resume parent` a ete corrige le 2026-05-16;
-- le fichier reste volontairement ouvert dans `todo-todo/audits/` pour garder visibles les reliquats de hygiene prompt/payload, notamment le P3 identity et les futurs alignements de libelles.
+- le mini-lot de cloture du 2026-05-16 a ferme les deux P3 de hygiene prompt/payload;
+- le fichier est archive dans `todo-done/audits/`: il ne reste plus de trou semantique prompt/payload actif identifie, seulement des limites volontaires du systeme.
 
 ## EXECUTIVE SUMMARY
 
 Verdict court: FridaDev possede deja un contrat d'interpretation substantiel pour le modele principal. Le fichier `app/prompts/main_hermeneutical.txt` n'est pas un simple prompt de ton: il declare explicitement les briques runtime attendues, leur priorite relative, leur usage et leurs limites. Le systeme ne se contente donc pas d'envoyer des blocs au modele en esperant qu'il devine leur sens.
 
-Relecture ciblee du 2026-05-16: plusieurs formulations du premier audit etaient trop larges. Le constat solide n'est pas "tout est tronque": il faut distinguer le remplacement explicite par resume actif et l'exclusion budgetaire silencieuse des messages plus anciens. De meme, l'identite `[STATIQUE]` / `[MUTABLE]` est la forme active normale et deja expliquee dans le prompt; seul un reliquat de vocabulaire sur les anciennes lignes dynamiques reste a nettoyer. Le web transporte bien son contexte dans le dernier message utilisateur, mais le contrat prompt couvre cette forme assez clairement: ce n'est pas un finding semantique demontre, seulement une note d'architecture.
+Relecture ciblee du 2026-05-16: plusieurs formulations du premier audit etaient trop larges. Le constat solide n'est pas "tout est tronque": il faut distinguer le remplacement explicite par resume actif et l'exclusion budgetaire silencieuse des messages plus anciens. De meme, l'identite `[STATIQUE]` / `[MUTABLE]` est la forme active normale et deja expliquee dans le prompt. Le web transporte bien son contexte dans le dernier message utilisateur, mais le contrat prompt couvre cette forme assez clairement: ce n'est pas un finding semantique demontre, seulement une note d'architecture.
 
 Les deux points solides qui ont ete traites aujourd'hui sont:
 
@@ -28,11 +29,13 @@ Mise a jour corrective du 2026-05-16:
 - `FRIDA_MAX_TOKENS` / `config.MAX_TOKENS` n'est plus un mecanisme normal de coupe de dialogue recent, mais un soft limit d'observabilite du prompt complet;
 - si le prompt complet depasse ce soft limit, les evenements `token_window` et `context_build` le signalent via `prompt_soft_limit_exceeded` sans retirer de messages dialogiques recents et sans parler de troncature;
 - le finding P2 `trace memoire -> resume parent` est ferme cote prompt: chaque resume parent injecte porte desormais un repere lisible (`S1`, `S2`, ...) et chaque trace liee porte le meme marqueur (`[contexte S1]`, `[contexte S2]`, ...);
+- le P3 identity hygiene est ferme: le prompt ne decrit plus les anciennes lignes dynamiques `stability/recurrence/confidence` comme forme active et explique directement `[STATIQUE]` / `[MUTABLE]`;
+- le P3 libelles est ferme: le contrat statique emploie les balises runtime accentuees (`[Résumé de la période ...]`, `[Contexte du souvenir S1 — résumé ...]`, `[Mémoire — souvenirs pertinents]`, `[FIN DES RÉSULTATS WEB]`, etc.);
 - le risque residuel n'est plus une troncature silencieuse normale, mais l'eventuelle impossibilite physique provider, qui devra rester une garde explicite si elle se manifeste.
 
 Reponse a la question centrale:
 
-Quand Frida recoit quelque chose dans son payload principal, elle sait en general ce que c'est et quoi en faire au niveau bloc. Les deux ambiguites fortes relevees ce soir ont ete fermees: le dialogue recent non resume n'est plus coupe par le budget complet, et le lien entre une trace memoire et son resume parent est lisible dans le prompt. Le danger restant n'est pas l'absence totale de contrat; il est dans les reliquats de hygiene statique, les libelles approximatifs et les limites volontairement non exposees du pipeline.
+Quand Frida recoit quelque chose dans son payload principal, elle sait en general ce que c'est et quoi en faire au niveau bloc. Les ambiguites fortes relevees ce soir ont ete fermees: le dialogue recent non resume n'est plus coupe par le budget complet, le lien entre une trace memoire et son resume parent est lisible dans le prompt, l'identite active est decrite sous sa forme actuelle et les libelles du contrat suivent les balises runtime. Il ne reste pas de trou semantique prompt/payload actif dans cet audit; il reste des limites volontaires du systeme, notamment les contenus remplaces par resume, les candidats non injectes et les arbitrages internes non exposes.
 
 ## VERDICT GLOBAL
 
@@ -52,13 +55,13 @@ Le contrat semantique principal est globalement solide pour:
 - le jugement hermeneutique valide;
 - les gardes de lecture vocale, web, identitaire et sortie texte.
 
-Il reste partiel pour:
+Il reste volontairement limite pour:
 
-- la distinction entre ce que le pipeline a exclu avant prompt et ce que le modele ne voit simplement pas;
-- les reliquats de libelles statiques qui ne suivent pas toujours exactement les balises runtime;
-- la hygiene identity autour des anciennes lignes dynamiques `stability/recurrence/confidence`.
+- les contenus remplaces par resume actif, car le modele voit une synthese et non les messages exacts couverts;
+- les candidats memoire rejetes, les scores internes et les arbitrages amont non exposes au prompt principal;
+- l'eventuelle impossibilite physique provider future, qui devra etre traitee par une garde explicite si elle se manifeste.
 
-Il n'est plus considere partiel pour l'interpretation principale de l'identite `[STATIQUE]` / `[MUTABLE]`: cette coexistence est bien la forme active normale et le prompt l'explique deja. Le reliquat identity est une dette de hygiene du contrat statique, pas un trou semantique majeur.
+Il n'est plus considere partiel pour l'interpretation principale de l'identite `[STATIQUE]` / `[MUTABLE]`: cette coexistence est la forme active normale et le prompt l'explique explicitement.
 
 ### Providers secondaires
 
@@ -105,7 +108,7 @@ Oui. Le meilleur plan est de ne pas corriger mecaniquement les findings initiaux
 | Point relu | Statut apres relecture | Nature retenue | Preuves courtes | Decision |
 | --- | --- | --- | --- | --- |
 | Fenetre recente / historique tronque | Confirme, requalifie, puis corrige runtime le 2026-05-16 | Ancien probleme de composition payload/runtime pour l'exclusion budgetaire; le cutoff par resume reste une substitution explicite distincte | `build_prompt_messages()` applique toujours le cutoff apres resume actif, mais conserve maintenant tous les candidats posterieurs au cutoff et journalise seulement le soft limit (`app/core/conversations_prompt_window.py`) | P1 ferme cote runtime; surveiller seulement les impossibilites provider explicites |
-| Identite active `[STATIQUE]` / `[MUTABLE]` | Requalifie a la baisse | Hygiene de contrat prompt, pas trou semantique principal | `active_identity_projection` compose explicitement `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`); le prompt explique le socle statique et la modulation mutable (`app/prompts/main_hermeneutical.txt:38-40`, `74-84`) | Remplacer le P2 initial par un P3 sur les lignes dynamiques legacy encore decrites |
+| Identite active `[STATIQUE]` / `[MUTABLE]` | Requalifie puis corrige prompt le 2026-05-16 | Hygiene de contrat prompt, pas trou semantique principal | `active_identity_projection` compose explicitement `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`); le prompt explique maintenant directement ces sous-sections et ne decrit plus les anciennes lignes dynamiques comme forme active | P3 ferme |
 | Lien trace memoire -> resume parent | Confirme puis corrige prompt le 2026-05-16 | Ancien probleme semantique de composition du payload prompt | Les parent summaries etaient deduples puis injectes avant les traces sans reference visible; le builder ajoute maintenant des reperes `S1`, `S2` aux contextes et `[contexte S1]`, `[contexte S2]` aux traces liees (`app/core/conversations_prompt_window.py`) | P2 ferme; conserver les tests multi-summaries |
 | Contexte web dans message utilisateur | Invalide comme finding semantique demontre; conserve comme note architecture | Remarque d'architecture | `inject_web_context()` prepend le contexte au dernier message user (`app/core/chat_prompt_context.py:294-303`), mais le bloc porte `[RECHERCHE WEB]`, `[FIN DES RÉSULTATS WEB]`, `Question :`, et le prompt explique cette forme (`app/prompts/main_hermeneutical.txt:123-133`) | Ne pas le traiter comme dette urgente; eventuellement nettoyer la lane plus tard si un lot prompt hygiene existe |
 | NOW | Confirme complet | Pas de finding | `time_input.build_time_reference_block()` injecte `NOW` / `TIMEZONE` et l'interdit de pretendre ne pas avoir le temps (`app/core/hermeneutic_node/inputs/time_input.py:68-86`); le prompt le couvre (`app/prompts/main_hermeneutical.txt:45-60`); tests contractuels existent (`app/tests/unit/chat/test_chat_prompt_context.py:80-110`) | Conserver comme chaine payload -> prompt -> usage complete |
@@ -145,19 +148,19 @@ Le payload principal contient donc:
 | Element recu par le modele principal | Source code / builder | Forme reellement injectee | Prompt ou instruction qui l'explique | Interpretation attendue par le modele | Implicite / ambigu / mal specifie |
 | --- | --- | --- | --- | --- | --- |
 | Cadre de reponse | `prompt_loader.get_main_system_prompt()`, `chat_prompt_context.resolve_backend_prompts()` | Debut du message system: cadre de reponse, texte brut, sobriete, pas de markdown par defaut | `app/prompts/main_system.txt`; renforce par `chat_prompt_context.build_plain_text_guard_block()` | Repondre en texte brut sobre, adapter la structure seulement si utile ou demande | Pas d'ambiguite majeure |
-| Contrat hermeneutique global | `prompt_loader.get_main_hermeneutical_prompt()` puis `build_augmented_system()` | Bloc statique "Contrat d'interpretation du prompt augmente" dans le system | `app/prompts/main_hermeneutical.txt:1-157` | Lire les briques comme des apports secondaires, prioriser la question finale, respecter les limites | Ce contrat reste texte statique; il peut devenir legerement stale si les builders changent |
-| Question utilisateur finale | Conversation courante, puis `build_prompt_messages()` | Dernier message user, ou `context web + Question : + message user` | `main_hermeneutical.txt:142-146` | Centre de gravite de la reponse, dominant sauf contradiction avec system prompt | Le cas web est explique par le contrat; il reste une forme de transport moins propre architecturalement qu'une lane system dediee, sans risque semantique concret demontre |
+| Contrat hermeneutique global | `prompt_loader.get_main_hermeneutical_prompt()` puis `build_augmented_system()` | Bloc statique "Contrat d'interpretation du prompt augmente" dans le system | `app/prompts/main_hermeneutical.txt` | Lire les briques comme des apports secondaires, prioriser la question finale, respecter les limites | Ce contrat reste texte statique; il peut devenir legerement stale si les builders changent |
+| Question utilisateur finale | Conversation courante, puis `build_prompt_messages()` | Dernier message user, ou `context web + Question : + message user` | `main_hermeneutical.txt` | Centre de gravite de la reponse, dominant sauf contradiction avec system prompt | Le cas web est explique par le contrat; il reste une forme de transport moins propre architecturalement qu'une lane system dediee, sans risque semantique concret demontre |
 | Repere temporel | `time_input.build_time_reference_block()`, appele par `chat_prompt_context.build_augmented_system()` | `[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`, phrase humaine | `main_hermeneutical.txt:45-60`; `chat-time-grounding-contract.md` | Utiliser NOW pour les relatifs, ne pas pretendre ne pas avoir de temps de reference | Contrat fort; pas de trou majeur |
 | Labels Delta-T | `conversations_prompt_window.delta_t_label()` et builders de messages | Prefixes tels que `[il y a ...]`, `[aujourd'hui ...]` | `main_hermeneutical.txt:62-66` | Lire comme deltas relatifs conversationnels | Le modele ne voit pas la classe stable, seulement le rendu humain |
 | Marqueurs de silence | `conversations_prompt_window.silence_label()` dans `build_prompt_messages()` | Messages system `[-- silence de X --]` entre messages selectionnes | `main_hermeneutical.txt:68-72` | Reprise sobre si utile, pas de psychologie du silence | Pas de trou majeur |
-| Identite active | `identity.build_identity_block()` -> `active_identity_projection.resolve_active_identity_projection()` | `[IDENTITÉ DU MODÈLE]`, `[IDENTITÉ DE L'UTILISATEUR]`, sous-sections actuelles `[STATIQUE]` / `[MUTABLE]` | `main_hermeneutical.txt:32-43`, `74-84`; specs identity | Garder coherence relationnelle et contextuelle; statique comme socle, mutable comme nuance; ne pas ecraser la demande | La coexistence statique/mutable est bien enseignee; le contrat pourrait seulement lister les sous-balises visibles plus explicitement |
-| Lignes dynamiques d'identite | Chemin interne `_format_identity_line()`, pas la forme principale actuelle du bloc actif | Si un ancien chemin les utilisait: `- [stability=...; recurrence=...; confidence=...] ...` | `main_hermeneutical.txt:86-93` | Traiter comme indices de ponderation, pas preuves fortes | Reliquat legacy/provisoire dans le prompt statique; dette de hygiene P3, pas preuve d'un payload actif mal explique |
-| Resume actif de conversation | `conversations_prompt_window.get_active_summary()` + `make_summary_message()` | Message system `[Résumé de la période ...]` puis contenu du resume | `main_hermeneutical.txt:95-100`; `memory-rag-summaries-lane-contract.md` | Memoire du passe, continuite generale, moins fort qu'un souvenir specifique | Le modele voit le resume et sait que c'est une synthese; il ne voit pas les messages exacts remplaces par ce resume, ce qui est une limite assumee de fidelity, pas la meme chose qu'une troncature silencieuse |
-| Fenetre conversationnelle recente | `conversations_prompt_window.build_prompt_messages()` | Messages user/assistant eligibles posterieurs au cutoff summary, conserves integralement; le budget complet est seulement observe | `main_hermeneutical.txt:62-72`, `142-146`; contrat temporel; `memory-rag-summaries-lane-contract.md` | Lire les messages visibles comme contexte conversationnel recent complet depuis le dernier resume actif | P1 ferme cote runtime le 2026-05-16: les couches non dialogiques ne coupent plus silencieusement ce dialogue recent |
+| Identite active | `identity.build_identity_block()` -> `active_identity_projection.resolve_active_identity_projection()` | `[IDENTITÉ DU MODÈLE]`, `[IDENTITÉ DE L'UTILISATEUR]`, sous-sections actuelles `[STATIQUE]` / `[MUTABLE]` | `main_hermeneutical.txt`; specs identity | Garder coherence relationnelle et contextuelle; `[STATIQUE]` comme socle, `[MUTABLE]` comme nuance; ne pas ecraser la demande | Pas de trou actif |
+| Lignes dynamiques d'identite legacy | Chemin interne `_format_identity_line()`, non branche sur `build_identity_block()` courant | Non injectees dans le payload principal courant | Pas de section dediee dans le prompt courant | Non applicable au payload principal courant | P3 ferme: le contrat n'enseigne plus une forme absente comme si elle etait active |
+| Resume actif de conversation | `conversations_prompt_window.get_active_summary()` + `make_summary_message()` | Message system `[Résumé de la période ...]` ou `[Résumé]`, puis contenu du resume | `main_hermeneutical.txt`; `memory-rag-summaries-lane-contract.md` | Memoire du passe, continuite generale, moins fort qu'un souvenir specifique | Le modele voit le resume et sait que c'est une synthese; il ne voit pas les messages exacts remplaces par ce resume, ce qui est une limite assumee de fidelity, pas la meme chose qu'une troncature silencieuse |
+| Fenetre conversationnelle recente | `conversations_prompt_window.build_prompt_messages()` | Messages user/assistant eligibles posterieurs au cutoff summary, conserves integralement; le budget complet est seulement observe | `main_hermeneutical.txt`; contrat temporel; `memory-rag-summaries-lane-contract.md` | Lire les messages visibles comme contexte conversationnel recent complet depuis le dernier resume actif | P1 ferme cote runtime le 2026-05-16: les couches non dialogiques ne coupent plus silencieusement ce dialogue recent |
 | Indices contextuels recents | `make_context_hints_message()` | `[Indices contextuels recents]`, lignes avec scope et confidence | `main_hermeneutical.txt:102-107` | Indices faibles, non decisifs | Contrat suffisant |
-| Traces memoire injectees | `prepare_memory_context()` puis `make_memory_message()` | `[Mémoire -- souvenirs pertinents]`, lignes avec role, contenu, et eventuellement `[contexte S1]` si un resume parent eclaire la trace | `main_hermeneutical.txt:116-122`; `memory-rag-current-pipeline-cartography.md`; spec summaries lane | Utiliser seulement si lien utile avec demande courante; lire `[contexte S1]` comme le lien explicite vers le bloc `[Contexte du souvenir S1 ...]`; plus fort qu'indice contextuel, moins fort que demande finale | Le modele ne voit pas les scores, decisions arbitre, rejected candidates ni limites du panier; cela est volontaire mais doit rester compris comme limite |
-| Resumes parents de traces memoire | `memory_store.enrich_traces_with_summaries()`, `attach_parent_summary_prompt_refs()`, `make_memory_context_message()` | `[Contexte du souvenir S1 — résumé ...]` avant les traces; les traces liees portent `[contexte S1]` | `main_hermeneutical.txt:109-115`; spec summaries lane | Contexte de cadrage pour mieux comprendre la portee des souvenirs portant le meme repere | P2 ferme: le mapping prompt est visible. Limite restante: le modele ne voit pas les IDs techniques ni les traces rejetees, volontairement |
-| Contexte web | `web_search.build_context_payload()` + `chat_prompt_context.inject_web_context()` | `[RECHERCHE WEB — date]`, sources, URLs, contenu utilise, `[FIN DES RÉSULTATS WEB]`, puis `Question :` dans le dernier message user | `main_hermeneutical.txt:123-133`; `build_web_reading_guard_block()` si `read_state` explicite | Lire comme contexte externe injecte pour la question courante; prioritaire sur memoire pour faits externes recents | Relecture: le risque de confusion avec la parole utilisateur n'est pas demontre, car la forme est explicitement decrite; la remarque restante est architecturale |
+| Traces memoire injectees | `prepare_memory_context()` puis `make_memory_message()` | `[Mémoire — souvenirs pertinents]`, lignes avec role, contenu, et eventuellement `[contexte S1]` si un resume parent eclaire la trace | `main_hermeneutical.txt`; `memory-rag-current-pipeline-cartography.md`; spec summaries lane | Utiliser seulement si lien utile avec demande courante; lire `[contexte S1]` comme le lien explicite vers le bloc `[Contexte du souvenir S1 ...]`; plus fort qu'indice contextuel, moins fort que demande finale | Le modele ne voit pas les scores, decisions arbitre, rejected candidates ni limites du panier; cela est volontaire mais doit rester compris comme limite |
+| Resumes parents de traces memoire | `memory_store.enrich_traces_with_summaries()`, `attach_parent_summary_prompt_refs()`, `make_memory_context_message()` | `[Contexte du souvenir S1 — résumé ...]` avant les traces; les traces liees portent `[contexte S1]` | `main_hermeneutical.txt`; spec summaries lane | Contexte de cadrage pour mieux comprendre la portee des souvenirs portant le meme repere | P2 ferme: le mapping prompt est visible. Limite restante: le modele ne voit pas les IDs techniques ni les traces rejetees, volontairement |
+| Contexte web | `web_search.build_context_payload()` + `chat_prompt_context.inject_web_context()` | `[RECHERCHE WEB — date]`, sources, URLs, contenu utilise, `[FIN DES RÉSULTATS WEB]`, puis `Question :` dans le dernier message user | `main_hermeneutical.txt`; `build_web_reading_guard_block()` si `read_state` explicite | Lire comme contexte externe injecte pour la question courante; prioritaire sur memoire pour faits externes recents | Relecture: le risque de confusion avec la parole utilisateur n'est pas demontre, car la forme est explicitement decrite; la remarque restante est architecturale |
 | Garde de lecture web | `chat_prompt_context.build_web_reading_guard_block()` | `[GARDE DE LECTURE WEB]`, `read_state`, interdits de lecture directe selon cas | `chat_prompt_context.py:212-249`; tests web runtime | Ne pas pretendre lire une page si seulement snippets/fallback ou erreur | S'applique surtout aux URLs explicites; pour recherche simple, le contrat general web porte l'essentiel |
 | Jugement hermeneutique valide | `validation_agent.build_validated_output()` puis `build_hermeneutic_judgment_block()` | `[JUGEMENT HERMENEUTIQUE]`, posture finale, regime, consigne, directives | `main_hermeneutical.txt:135-140`; `hermeneutic-node-validated-output-contract.md` | Consigne aval normative deja resolue; ne pas re-deduire primary verdict ou validation decision | Le detail source_priority/source_conflicts du noeud n'est pas expose au modele principal; seule la projection finale compacte l'est |
 | Node state | `read_hermeneutic_node_state()` dans le noeud primaire | Pas injecte directement dans le prompt principal | `hermeneutic-node-state-persistence-contract.md`; indirectement via jugement final | Le modele principal n'a pas a interpreter le node_state brut | Si un operateur s'attend a le voir dans le prompt principal, il faut corriger l'attente: ce n'est pas une brique visible |
@@ -212,15 +215,15 @@ Requalification: le cutoff par resume n'est pas une "troncature silencieuse" au 
 
 Effet residuel: le modele ne voit toujours pas le texte exact remplace par un resume actif, par definition du resume glissant. Si le prompt complet depasse un jour la capacite physique du provider, cela doit etre gere comme garde explicite, pas comme fenetre normale silencieuse.
 
-### 2. Contrat identity: forme active bien comprise, reliquat dynamique legacy
+### 2. Contrat identity: forme active alignee
 
 Le bloc actif actuel est compose par `active_identity_projection.resolve_active_identity_projection()` en sections `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`, `52-80`).
 
-Le contrat hermeneutique explique deja la coexistence statique/mutable: "le socle statique donne la base" et "le mutable peut seulement la moduler" (`app/prompts/main_hermeneutical.txt:38-40`), puis la section "Bloc identites" redit cette interpretation (`app/prompts/main_hermeneutical.txt:74-84`).
+Le contrat hermeneutique explique la coexistence statique/mutable: "le socle statique donne la base" et "le mutable peut seulement la moduler", puis la section "Bloc identites" nomme explicitement les sous-sections `[STATIQUE]` et `[MUTABLE]`.
 
-Requalification: le finding initial etait trop fort. La forme `[STATIQUE]` / `[MUTABLE]` n'est pas une forme ancienne mal remplacee; c'est la forme active normale. Le vrai reliquat est seulement que le prompt conserve une section sur les lignes dynamiques `stability/recurrence/confidence` (`app/prompts/main_hermeneutical.txt:86-93`), alors que ce n'est pas la forme principale du bloc actif injecte par `identity.build_identity_block()`.
+Requalification: le finding initial etait trop fort. La forme `[STATIQUE]` / `[MUTABLE]` n'est pas une forme ancienne mal remplacee; c'est la forme active normale. Le mini-lot de cloture a retire du prompt la section sur les lignes dynamiques `stability/recurrence/confidence`, qui ne sont pas la forme principale du bloc actif injecte par `identity.build_identity_block()`.
 
-Effet: pas d'impact semantique principal demontre pour le modele. Dette de hygiene P3: clarifier que les lignes dynamiques sont legacy/eventuelles ou les retirer si elles ne sont plus exposees.
+Effet: pas de dette P3 active cote contrat prompt. Si un chemin legacy reinjecte un jour des lignes dynamiques, il devra ajouter son propre contrat ou etre retire.
 
 ### 3. Parent summaries: mapping explicite par trace corrige
 
@@ -355,50 +358,51 @@ Recommandation:
 
 - Ne pas corriger en urgence. Si un futur lot de prompt hygiene existe, une lane system web plus explicite peut etre etudiee, mais elle ne doit pas etre priorisee comme trou d'interpretation prouve.
 
-### P3 - REQUALIFIE - Reliquat identity sur les lignes dynamiques legacy
+### P3 - CONFIRME PUIS CORRIGE - Reliquat identity sur les lignes dynamiques legacy
 
 Preuve:
 
 - La projection active compose `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`).
 - `identity.build_identity_block()` utilise cette projection active (`app/identity/identity.py:323-368`).
-- Le contrat explique statique/mutable dans la discipline generale et dans la section bloc identites (`app/prompts/main_hermeneutical.txt:38-40`, `74-84`).
-- Une section separee conserve toutefois les lignes dynamiques `stability/recurrence/confidence` (`app/prompts/main_hermeneutical.txt:86-93`), qui ne sont pas la forme principale actuelle.
+- Le contrat explique statique/mutable dans la discipline generale et dans la section bloc identites.
+- Avant le mini-lot de cloture, une section separee conservait les lignes dynamiques `stability/recurrence/confidence`, qui ne sont pas la forme principale actuelle.
 
 Impact:
 
-- Pas de trou semantique principal demontre: le modele sait lire statique + mutable.
-- Dette de hygiene: le contrat statique peut laisser croire que les lignes dynamiques sont une forme active courante.
+- Pas de trou semantique principal: le modele sait lire statique + mutable.
+- La dette de hygiene est fermee: le contrat statique ne presente plus les lignes dynamiques legacy comme forme active courante.
 
 Recommandation:
 
-- Aligner la section identity du prompt en declarant explicitement `[STATIQUE]` / `[MUTABLE]` comme forme active, et reclasser les lignes dynamiques comme legacy/eventuelles si elles restent utiles.
+- Conserver la section identity sous sa forme active `[STATIQUE]` / `[MUTABLE]`.
 
-### P3 - Quelques libelles du contrat statique ne sont pas strictement identiques aux balises runtime
+### P3 - CONFIRME PUIS CORRIGE - Quelques libelles du contrat statique n'etaient pas strictement identiques aux balises runtime
 
 Preuve:
 
 - Le builder produit des balises accentuees comme `[Résumé de la période ...]`, `[Contexte du souvenir S1 — résumé ...]` ou `[Contexte du souvenir — résumé ...]` (`app/core/conversations_prompt_window.py`).
-- Le prompt statique utilise parfois une forme ASCII ou approximative (`Resume`, `-- resume`, `RESULTATS`) dans la description.
+- Le contexte web produit `[RECHERCHE WEB — ...]` et `[FIN DES RÉSULTATS WEB]` (`app/tools/web_search.py`).
+- Avant le mini-lot de cloture, le prompt statique utilisait parfois une forme ASCII ou approximative (`Resume`, `-- resume`, `RESULTATS`) dans la description.
 
 Impact:
 
-- Faible pour le modele, car les formes restent humainement equivalentes.
-- Moyen pour la maintenabilite de contrat exact.
+- Faible pour le modele, car les formes etaient humainement equivalentes.
+- Corrige pour la maintenabilite de contrat exact.
 
 Recommandation:
 
-- Aligner les libelles statiques lors d'un futur lot docs/prompt.
+- Conserver les tests de prompt loader sur les balises runtime exactes.
 
 ## RECOMMANDATIONS
 
 1. Ne pas refaire tout le prompt: le contrat principal existe et fait deja beaucoup de travail utile.
 2. Conserver les tests qui ferment la selection budgetaire silencieuse de la fenetre conversationnelle.
 3. Conserver les tests qui ferment le mapping parent summary -> traces via les reperes `S1`, `S2`, ...
-4. Mettre a jour le contrat identity a faible risque: declarer `[STATIQUE]` / `[MUTABLE]` comme forme active et reclasser les lignes dynamiques en legacy/eventuel.
+4. Garder le contrat identity limite a la forme active `[STATIQUE]` / `[MUTABLE]`.
 5. Ne pas ouvrir de correction NOW: la chaine payload -> prompt -> usage attendu est complete.
 6. Ne pas prioriser le web comme finding semantique: garder seulement la possibilite d'une lane system plus propre si un futur lot de prompt hygiene le justifie.
 7. Garder la projection `[JUGEMENT HERMENEUTIQUE]` compacte; ne pas dumper `primary_verdict` dans le prompt principal sans besoin prouve.
-8. Pour les futurs documents actifs de conversation, creer une lane prompt explicitement contractee des le premier lot runtime, au lieu de reproduire l'ambiguite de selection de fenetre.
+8. Pour les futurs documents actifs de conversation, creer une lane prompt explicitement contractee des le premier lot runtime.
 
 ## PREUVES / FICHIERS LUS / COMMANDES
 
