@@ -27,6 +27,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Plan doctrinal identity `static` / `mutable`: `states/policies/identity-new-contract-plan.md`
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
+- Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
 
 ### Archives utiles
 
@@ -35,6 +37,9 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Grande roadmap hermeneutique archivee: `todo-done/notes/hermeneutical-add-todo.md`
 - Bascule vers un arbitre de reponse LLM dominant: `todo-done/refactors/llm-dominant-response-arbiter-todo.md`
 - Fiabilisation archivee du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
+- Roadmap archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-todo.md`
+- Audit-plan archive des documents actifs de conversation: `todo-done/product/active-conversation-documents-audit-plan.md`
+- Roadmap archivee du dashboard long terme: `todo-done/admin/dashboard-long-term-observability-todo.md`
 
 ## Docs a lire d'abord selon le chantier
 
@@ -66,10 +71,10 @@ Archives utiles:
 
 Lire d'abord:
 - `states/specs/active-conversation-documents-contract.md`
-- `todo-todo/product/active-conversation-documents-audit-plan.md`
-- `todo-todo/product/active-conversation-documents-todo.md`
+- `todo-done/product/active-conversation-documents-audit-plan.md`
+- `todo-done/product/active-conversation-documents-todo.md`
 
-But: cadrer le chantier produit permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
+But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
 Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
 
@@ -147,8 +152,9 @@ Lire d'abord:
 
 Surfaces a distinguer:
 - `/admin`: runtime settings et configuration operateur
-- `/log`: timeline brute, filtres, export et suppressions scopees
-- `/memory-admin`: observabilite memoire / RAG
+- `/dashboard`: pouls global, courbes longue periode, conversations et inspection traduite
+- `/log`: timeline brute, filtres, export et suppressions scopees pour debug technique
+- `/memory-admin`: observabilite domaine memoire / RAG
 - `/hermeneutic-admin`: detail pipeline hermeneutique et identity
 - `/identity`: pilotage canonique des couches identitaires
 

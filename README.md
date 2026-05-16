@@ -1,182 +1,142 @@
 # Frida
 
-Current repository state as of Thursday, April 16, 2026.
-Etat courant du repository au jeudi 16 avril 2026.
+Current repository state as of Saturday, May 16, 2026.
+Etat courant du depot au samedi 16 mai 2026.
 
 ## English
 
-Frida is a working AI runtime focused on dialogue, memory, hermeneutic judgment, and operator observability.
-This README describes the current FridaDev repository, runtime pipeline, and operator surfaces first.
+FridaDev is the application repository for Frida: a working AI dialogue runtime with memory, identity, hermeneutic judgment, active conversation documents, and operator observability. This repository is not a generic scaffold; it contains the backend runtime, browser UI, admin surfaces, observability read-models, tests, prompts, and structured documentation for the live OVH instance.
 
 Primary current-state references:
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-- `app/docs/README.md`
 
-Historical milestone documents:
+- Documentation hub: `app/docs/README.md`
+- Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
+- Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+- Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
+- Log module contract: `app/docs/states/specs/log-module-contract.md`
+- Archived prompt/payload semantic audit: `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
+
+Historical milestones:
+
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
 
-### Response Pipeline
+### Runtime Pipeline
+
 Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 
 ```text
-+----------------------------------+
-| User message / optional voice    |
-| /api/chat/transcribe if needed   |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| POST /api/chat                   |
-| message, conversation_id,        |
-| stream, web_search, input_mode   |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| Session / thread resolution      |
-| + persist user turn              |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| Augmented system base            |
-| system prompt + time grounding   |
-| + identity block                 |
-+----------------------------------+
-                |
-        +-------+--------+
-        |                |
-        v                v
-+--------------------+  +----------------------+
-| Memory prep        |  | Hermeneutic branch   |
-| traces, summaries  |  | stimmung_agent       |
-| context hints      |  | primary_node         |
-|                    |  | validation_agent     |
-+--------------------+  +----------------------+
-        |                        |
-        v                        |
-+--------------------+           v
-| Memory arbiter     |  +----------------------+
-| prompt candidates  |  | Final context build  |
-| identity relevance |  | inject [JUGEMENT     |
-|                    |  | HERMENEUTIQUE]       |
-+--------------------+  | + guards + web ctx   |
-        \               +----------------------+
-         \
-          \____________________/
-                   |
-                   v
-        +-------------------------+
-        | Main LLM call           |
-        +-------------------------+
-                   |
-                   v
-        +-------------------------+
-        | Output contract         |
-        | plain text + buffering  |
-        | + stream terminal       |
-        +-------------------------+
-                   |
-                   v
-        +-------------------------+
-        | Done finalization       |
-        | append assistant text   |
-        +-------------------------+
-                   |
-                   v
-        +-------------------------+
-        | Canonical persistence   |
-        | save_conversation       |
-        | verified                |
-        | done or interrupted     |
-        +-------------------------+
-               |            |
-               v            v
-+-----------------------+  +----------------------+
-| Post-save derived     |  | Frontend render /    |
-| AssistantText log     |  | rehydration          |
-| identity writes       |  | bubble + terminal    |
-| possible reactivate   |  | updated_at + errors  |
-| save_new_traces()     |  +----------------------+
-+-----------------------+             |
-               \                      |
-                \_____________________/
-                         |
-                         v
-              +----------------------+
-              | Observability        |
-              | chat_turn_logger     |
-              | /log + node logger   |
-              +----------------------+
+Browser chat
+  |- typed message, optional voice transcription, optional web search
+  |- active conversation documents upload/list/remove
+  v
+POST /api/chat
+  |- session and conversation resolution
+  |- persist user turn
+  |- maybe_summarize() on dialogue-only user/assistant text
+  v
+Prompt preparation
+  |- system and hermeneutic prompts
+  |- NOW / time grounding
+  |- identity block
+  |- active summary and recent dialogue window
+  |- Memory/RAG retrieval, summaries, context hints, arbiter choices
+  |- hermeneutic branch: stimmung_agent -> primary_node -> validation_agent
+  |- guards and optional web context
+  |- active_document lane injected after summary decision, whole or absent
+  v
+Main LLM call
+  |- plain-text output contract
+  |- JSON or text/plain streaming response with terminal control frame
+  v
+Canonical persistence
+  |- full assistant message saved only on verified done
+  |- interrupted marker saved only on verified error marker
+  |- post-save derived writes: AssistantText log, identity writes, memory traces
+  v
+Frontend rehydration and operator observability
+  |- chat thread rehydration
+  |- /dashboard, /log, /memory-admin, /hermeneutic-admin, /identity, /admin
 ```
 
 ### What the system does today
-- The browser chat surface sends either a typed turn or an optional voice transcript into `POST /api/chat`; the server validates `input_mode`, resolves or creates the thread, and persists the user turn before the assistant reply is built.
-- Prompt construction combines the main and hermeneutical system prompts, time grounding, the identity block, retrieved memory traces and summaries, recent context hints, memory arbitration, and the hermeneutic branch `stimmung_agent -> primary_node -> validation_agent` before injecting `[JUGEMENT HERMENEUTIQUE]`.
-- The main LLM call runs under a plain-text output contract. In streaming mode, visible content is emitted with a single terminal control chunk, while buffering depends on whether the turn must stay plain text or may expose structure/code.
-- In the `done` path, Frida appends the full assistant text, verifies `save_conversation(...)`, then emits the `AssistantText` log and runs post-save derived writes: identity entries for the current mode, possible identity reactivation, and `save_new_traces()`. None of those derived writes may precede the verified canonical save. In the `error` path, Frida stores an interrupted marker without canonical partial text.
-- The frontend renders and rehydrates the thread from persisted conversation state, including terminal timestamps and interruption taxonomy, while `chat_turn_logger`, `/log`, and the hermeneutic node logger expose the main observability path.
+
+- The browser chat sends typed turns or optional voice transcripts to `POST /api/chat`; the server validates `input_mode`, resolves or creates the conversation, persists the user turn, and only then builds the assistant response.
+- Conversation summaries are triggered from dialogue-only `user` / `assistant` text. System prompts, identity, memory, web, hermeneutic context, and active documents do not count toward the summary threshold.
+- Prompt construction combines the main prompt, hermeneutic contract, time grounding, identity block, active summary, recent dialogue, Memory/RAG traces with parent summaries, context hints, optional web context, and the validated hermeneutic judgment.
+- Active conversation documents are temporary, conversation-scoped files supplied by the user. Supported textual formats are PDF text, DOCX, ODT, MD, and TXT. They are injected into the model whole when they fit the explicit document admission rule, or excluded whole with a compact reason signal; they are never silently truncated.
+- Active documents are not Memory/RAG, not Identity, not Summary, not Web, and not Biblio. They are not embedded, indexed, summarized, promoted to memory, or reused outside their conversation.
+- The main LLM call runs under a plain-text output contract. Streaming uses visible text chunks plus one terminal control frame.
+- On `done`, Frida saves the complete assistant text, verifies canonical persistence, then emits derived writes. On `error`, it stores an interrupted marker when that marker save is proven; it does not canonicalize partial assistant text.
+- `/dashboard` is the long-term operator dashboard: recent health, materialized metrics, conversation comparison, translated inspection, and content-free summaries.
+- `/log` remains the technical debug timeline. Memory Admin, Hermeneutic Admin, and Identity remain specialized domain or editing surfaces.
+- The future Biblio native / Frida Catalogue workstream is separate: it concerns persistent `library_document` / `catalogue_document` lookup and bounded `passage documentaire` extraction. It is not implemented by the active conversation documents feature.
 
 ### What the repository contains
+
 - Flask backend orchestration in `app/server.py`
-- Core chat flows in `app/core/`
-- Memory and identity pipeline in `app/memory/` and `app/identity/`
-- Admin/runtime settings and hermeneutic services in `app/admin/`
-- Observability modules in `app/observability/`
-- Web UI in `app/web/`
+- Core chat and prompt flows in `app/core/`
+- Active conversation document state, extraction, upload service, and prompt lane in `app/core/`
+- Memory and identity pipelines in `app/memory/` and `app/identity/`
+- Admin/runtime settings and domain admin services in `app/admin/`
+- Observability, dashboard analytics, and read-models in `app/observability/`
+- Browser chat and admin frontend in `app/web/`
 - Tests in `app/tests/`
 - Structured documentation in `app/docs/`
 
+### Operator surfaces
+
+- `/`: chat runtime and active conversation documents controls.
+- `/dashboard`: non-technical overview, long-period metrics, conversations, translated inspection, and content gate status.
+- `/log`: technical event timeline, filters, export, and scoped debugging.
+- `/memory-admin`: Memory/RAG read-model and diagnostics.
+- `/hermeneutic-admin`: hermeneutic pipeline and identity diagnostics.
+- `/identity`: canonical identity control and editing surface.
+- `/admin`: runtime settings and operator configuration.
+
 ### Documentation anchors
-- Canonical current-state repo audit: `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- Global audit dated 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- Archived global audit remediation closure: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Current runtime pipeline one-glance: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-- Historical EN state milestone (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
-- Historical FR state milestone (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
-- Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
-- Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
-- Archived prompt/payload semantic contract audit: `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
-- Response arbiter power contract for lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
-- Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
-- Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- Archived hermeneutic post-stabilization validation TODO: `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`
-- Hermeneutic post-stabilization validation note: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
-- Archived prioritized repo cleanup roadmap: `app/docs/todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
-- Archived operational roadmap for the shift to an LLM-dominant response arbiter under hard guardrails: `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
-- Active doctrinal plan for the new identity contract: `app/docs/states/policies/identity-new-contract-plan.md`
-- Archived operational closure for the new identity contract: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
-- Identity reading rule: keep those two references distinct; the `plan` stays doctrinal and active, the archive preserves the closed operational workstream, and they should not be merged back together.
-- Archived hermeneutic implementation roadmap: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
-- Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
-- Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
+
+- Docs hub: `app/docs/README.md`
+- Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
-- Active conversation documents roadmap: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+- Archived active conversation documents roadmap: `app/docs/todo-done/product/active-conversation-documents-todo.md`
+- Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 - Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
-- Archived chat enunciation prompt-first closure note: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
-- Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
+- Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+- Archived long-term dashboard roadmap: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
+- Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
+- Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Active identity doctrine plan: `app/docs/states/policies/identity-new-contract-plan.md`
+- Archived identity implementation roadmap: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
+- Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
+- Response arbiter power contract: `app/docs/states/specs/response-arbiter-power-contract.md`
+- Global audit dated 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
+- Archived global audit remediation: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
+- Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
 
 ### Versioned vs runtime-local
+
 Versioned:
-- code, prompts, scripts, tests, docs
-- static identity examples and provisioning note under `state/data/identity/`
+
+- code, prompts, scripts, tests, docs;
+- static examples and provisioning notes under `state/data/identity/`.
 
 Not versioned:
-- `app/.env`
-- runtime state under `state/conv` and `state/logs`
-- local operator-provisioned identity files under `state/data/identity/*.txt`
-- local caches, virtualenvs, OS/editor residue
+
+- `app/.env`;
+- runtime state under `state/conv`, `state/logs`, and mounted runtime data;
+- local operator-provisioned identity files under `state/data/identity/*.txt`;
+- caches, virtualenvs, editor files, and machine residue.
 
 Container mapping note:
-- `/app/conv`, `/app/logs`, `/app/data` are container mount targets for those host `state/...` directories.
+
+- `/app/conv`, `/app/logs`, and `/app/data` are container mount targets for host `state/...` directories.
 
 A fresh clone still needs a valid local `.env`, reachable runtime dependencies, and initialized local runtime state under `state/...`.
 
 ### Stack operations
+
 ```bash
 ./stack.sh up
 ./stack.sh ps
@@ -184,6 +144,7 @@ A fresh clone still needs a valid local `.env`, reachable runtime dependencies, 
 ```
 
 ### Essential paths
+
 - `docker-compose.yml`
 - `stack.sh`
 - `app/server.py`
@@ -191,189 +152,150 @@ A fresh clone still needs a valid local `.env`, reachable runtime dependencies, 
 - `app/docs/README.md`
 
 ### Website and contact
+
 - website: [https://frida-ai.fr](https://frida-ai.fr)
 - contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
 
 ### License
+
 This repository is distributed under the **MIT License**. See [LICENSE](LICENSE).
 
 ---
 
 ## Francais
 
-Frida est un runtime IA de travail centre sur le dialogue, la memoire, le jugement hermeneutique et l'observabilite operateur.
-Ce README raconte d'abord le depot FridaDev courant, son pipeline runtime et ses surfaces operateur.
+FridaDev est le depot applicatif de Frida: un runtime IA de dialogue avec memoire, identite, jugement hermeneutique, documents actifs de conversation et observabilite operateur. Ce depot n'est pas un scaffold generique; il contient le backend runtime, l'UI navigateur, les surfaces admin, les read-models d'observabilite, les tests, les prompts et la documentation structuree de l'instance OVH active.
 
 References principales pour l'etat courant:
-- `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-- `app/docs/README.md`
+
+- Hub documentaire: `app/docs/README.md`
+- Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
+- Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
+- Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+- Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
+- Contrat du module logs: `app/docs/states/specs/log-module-contract.md`
+- Audit archive du contrat semantique prompt/payload: `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
 
 Jalons historiques:
+
 - `app/docs/states/project/Frida-State-french-03-04-26.md`
 - `app/docs/states/project/Frida-State-english-03-04-26.md`
 
-### Pipeline de reponse
+### Pipeline runtime
+
 Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 
 ```text
-+----------------------------------+
-| Message utilisateur / voix       |
-| optionnelle si necessaire        |
-| /api/chat/transcribe             |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| POST /api/chat                   |
-| message, conversation_id,        |
-| stream, web_search, input_mode   |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| Resolution session + thread      |
-| + persistance du tour user       |
-+----------------------------------+
-                |
-                v
-+----------------------------------+
-| Base systeme augmentee           |
-| prompt systeme + grounding temps |
-| + bloc identitaire               |
-+----------------------------------+
-                |
-        +-------+--------+
-        |                |
-        v                v
-+--------------------+  +----------------------+
-| Preparation memoire|  | Branche hermeneutique|
-| traces, summaries  |  | stimmung_agent       |
-| context hints      |  | primary_node         |
-|                    |  | validation_agent     |
-+--------------------+  +----------------------+
-        |                        |
-        v                        |
-+--------------------+           v
-| Arbitrage memoire  |  +----------------------+
-| candidats prompt   |  | Construction du      |
-| pertinence identite|  | contexte final       |
-|                    |  | inject [JUGEMENT     |
-+--------------------+  | HERMENEUTIQUE]       |
-        \               | + gardes + web ctx   |
-         \              +----------------------+
-          \____________________/
-                   |
-                   v
-        +-------------------------+
-        | Appel LLM principal     |
-        +-------------------------+
-                   |
-                   v
-        +-------------------------+
-        | Contrat de sortie       |
-        | texte brut + buffering  |
-        | + terminal de stream    |
-        +-------------------------+
-                   |
-                   v
-        +--------------------------+
-        | Finalisation du done     |
-        | append assistant complet |
-        +--------------------------+
-                   |
-                   v
-        +--------------------------+
-        | Persistance canonique    |
-        | save_conversation        |
-        | verifiee                 |
-        | done ou interruption     |
-        +--------------------------+
-               |             |
-               v             v
-+-------------------------+  +----------------------+
-| Derives post-save       |  | Rendu frontend /     |
-| log AssistantText       |  | rehydratation        |
-| ecritures identitaires  |  | bulle + terminal     |
-| reactivation eventuelle |  | updated_at + erreurs |
-| save_new_traces()       |  +----------------------+
-+-------------------------+             |
-               \                        |
-                \_______________________/
-                         |
-                         v
-              +----------------------+
-              | Observabilite        |
-              | chat_turn_logger     |
-              | /log + node logger   |
-              +----------------------+
+Chat navigateur
+  |- message tape, transcription vocale optionnelle, recherche web optionnelle
+  |- upload/list/retrait des documents actifs de conversation
+  v
+POST /api/chat
+  |- resolution session et conversation
+  |- persistance du tour utilisateur
+  |- maybe_summarize() sur le seul dialogue user/assistant
+  v
+Preparation du prompt
+  |- prompts systeme et hermeneutique
+  |- NOW / ancrage temporel
+  |- bloc identite
+  |- resume actif et fenetre de dialogue recente
+  |- traces Memory/RAG avec resumes parents, context hints, arbitrage
+  |- branche hermeneutique: stimmung_agent -> primary_node -> validation_agent
+  |- gardes et contexte web optionnel
+  |- lane active_document injectee apres la decision de resume, entiere ou absente
+  v
+Appel LLM principal
+  |- contrat de sortie texte brut
+  |- reponse JSON ou stream text/plain avec terminal de controle
+  v
+Persistance canonique
+  |- message assistant complet seulement sur done verifie
+  |- marqueur interrompu seulement sur erreur verifiee
+  |- derives post-save: log AssistantText, identite, traces memoire
+  v
+Rehydratation frontend et observabilite operateur
+  |- rehydratation du fil chat
+  |- /dashboard, /log, /memory-admin, /hermeneutic-admin, /identity, /admin
 ```
 
 ### Ce que fait aujourd'hui le systeme
-- La surface chat navigateur envoie soit un tour tape au clavier, soit une transcription vocale optionnelle vers `POST /api/chat`; le serveur valide `input_mode`, resolve ou cree le thread, puis persiste le tour user avant de fabriquer la reponse assistant.
-- La construction du prompt combine le prompt systeme principal, le prompt hermeneutique, le grounding temporel, le bloc identitaire, les traces memoire recuperees et leurs summaries, les context hints, l'arbitrage memoire, puis la branche `stimmung_agent -> primary_node -> validation_agent` avant l'injection du bloc `[JUGEMENT HERMENEUTIQUE]`.
-- L'appel au LLM principal passe sous contrat de sortie texte brut. En mode streaming, Frida emet le contenu visible puis un unique terminal de controle, avec buffering ou non selon que le tour doit rester strictement texte brut ou peut exposer structure/code.
-- Dans le chemin `done`, Frida ajoute le texte assistant complet, verifie `save_conversation(...)`, puis emet le log `AssistantText` et execute les derives post-save: ecritures identitaires du mode courant, reactivation eventuelle d'identites et `save_new_traces()`. Aucune de ces ecritures derivees ne doit preceder la sauvegarde canonique verifiee. Dans le chemin `error`, Frida persiste un marqueur interrompu sans texte partiel canonique.
-- Le frontend rerend et rehydrate le thread a partir de l'etat persiste, y compris `updated_at` terminal et taxonomie des interruptions, tandis que `chat_turn_logger`, `/log` et le node logger hermeneutique exposent l'observabilite principale.
+
+- Le chat navigateur envoie les tours tapes ou les transcriptions vocales optionnelles vers `POST /api/chat`; le serveur valide `input_mode`, resolve ou cree la conversation, persiste le tour utilisateur, puis fabrique la reponse assistant.
+- Les resumes de conversation sont declenches depuis le seul texte dialogique `user` / `assistant`. Les prompts systeme, l'identite, la memoire, le web, le contexte hermeneutique et les documents actifs ne comptent pas dans le seuil de resume.
+- La construction du prompt combine prompt principal, contrat hermeneutique, ancrage temporel, bloc identite, resume actif, dialogue recent, traces Memory/RAG avec resumes parents, context hints, contexte web optionnel et jugement hermeneutique valide.
+- Les documents actifs de conversation sont des fichiers temporaires, fournis par l'utilisateur et scopes a une conversation. Les formats textuels supportes sont PDF textuel, DOCX, ODT, MD et TXT. Ils sont injectes entiers si la regle explicite d'admission documentaire le permet, ou exclus entiers avec un signal compact; ils ne sont jamais tronques silencieusement.
+- Les documents actifs ne sont ni Memory/RAG, ni Identity, ni Summary, ni Web, ni Biblio. Ils ne sont pas embedded, indexes, resumes, promus en memoire ou reutilises hors conversation.
+- L'appel LLM principal suit un contrat de sortie texte brut. Le streaming utilise des chunks texte visibles et un seul terminal de controle.
+- Sur `done`, Frida sauvegarde le texte assistant complet, verifie la persistance canonique, puis emet les ecritures derivees. Sur `error`, Frida sauvegarde un marqueur interrompu lorsque cette sauvegarde est prouvee; elle ne canonise pas de texte assistant partiel.
+- `/dashboard` est le dashboard operateur long terme: sante recente, metriques materialisees, comparaison des conversations, inspection traduite et statut du content gate.
+- `/log` reste la timeline technique de debug. Memory Admin, Hermeneutic Admin et Identity restent des surfaces specialisees de domaine ou d'edition.
+- Le futur chantier Biblio native / Frida Catalogue est separe: il concerne la consultation de `library_document` / `catalogue_document` persistants et l'extraction bornee de `passage documentaire`. Il n'est pas implemente par la fonctionnalite documents actifs.
 
 ### Ce que contient le depot
+
 - Orchestration backend Flask dans `app/server.py`
-- Flux chat centraux dans `app/core/`
-- Pipeline memoire et identite dans `app/memory/` et `app/identity/`
-- Services admin/runtime settings et hermeneutiques dans `app/admin/`
-- Modules d'observabilite dans `app/observability/`
-- UI web dans `app/web/`
+- Flux chat et prompt dans `app/core/`
+- Etat, extraction, service upload et lane prompt des documents actifs dans `app/core/`
+- Pipelines memoire et identite dans `app/memory/` et `app/identity/`
+- Services admin/runtime settings et domaines admin dans `app/admin/`
+- Observabilite, analytics dashboard et read-models dans `app/observability/`
+- Chat navigateur et frontend admin dans `app/web/`
 - Tests dans `app/tests/`
 - Documentation structuree dans `app/docs/`
 
+### Surfaces operateur
+
+- `/`: chat runtime et controles des documents actifs de conversation.
+- `/dashboard`: vue lisible non-technicien, metriques longue periode, conversations, inspection traduite et etat du content gate.
+- `/log`: timeline technique, filtres, exports et debug scope.
+- `/memory-admin`: read-model et diagnostics Memory/RAG.
+- `/hermeneutic-admin`: diagnostics du pipeline hermeneutique et de l'identite.
+- `/identity`: pilotage canonique et edition de l'identite.
+- `/admin`: runtime settings et configuration operateur.
+
 ### Ancres documentaires
-- Audit canonique current-state du repo: `app/docs/todo-done/audits/fridadev_repo_audit.md`
-- Audit global date du 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
-- Archive de cloture de la remediation de l'audit global: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
-- Cartographie one-glance du pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
-- Jalon historique FR (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
-- Jalon historique EN (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
-- Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
-- Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
-- Audit archive du contrat semantique prompt/payload: `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
-- Contrat de pouvoir de l'arbitre de reponse pour le lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
-- Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
-- Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`
-- Archive de validation hermeneutique post-stabilisation: `app/docs/todo-done/validations/hermeneutical-post-stabilization-todo.md`
-- Note de validation hermeneutique post-stabilisation: `app/docs/todo-done/validations/hermeneutical-post-stabilization-validation-2026-05-04.md`
-- Roadmap archivee de nettoyage priorise du repo: `app/docs/todo-done/refactors/fridadev-repo-cleanup-prioritized-todo.md`
-- Archive operatoire du chantier de bascule vers un arbitre de reponse LLM dominant sous garde-fous: `app/docs/todo-done/refactors/llm-dominant-response-arbiter-todo.md`
-- Plan doctrinal actif du nouveau contrat identitaire `static` / `mutable`: `app/docs/states/policies/identity-new-contract-plan.md`
-- Archive operatoire de cloture du nouveau contrat identitaire: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
-- Regle de lecture identity: garder ces deux references distinctes; le `plan` fixe la doctrine cible active, l'archive preserve la trace du chantier operatoire termine, et ils ne doivent pas etre refusionnes.
-- Archive de la grande roadmap hermeneutique: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
-- Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
-- Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
+
+- Hub docs: `app/docs/README.md`
+- Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Contrat documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
-- Roadmap documents actifs de conversation: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
-- Roadmap Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
-- Note archivee de cloture prompt-first voix / identite / gap du chat: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
-- Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
+- Roadmap archivee documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-todo.md`
+- Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
+- Roadmap active Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
+- Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
+- Roadmap archivee dashboard long terme: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
+- Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
+- Doctrine voix / identite / gap temporel: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Plan doctrinal actif identity: `app/docs/states/policies/identity-new-contract-plan.md`
+- Roadmap implementation identity archivee: `app/docs/todo-done/refactors/identity-new-contract-todo.md`
+- Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
+- Contrat de pouvoir de l'arbitre de reponse: `app/docs/states/specs/response-arbiter-power-contract.md`
+- Audit global date du 2026-05-03: `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`
+- Remediation archivee de l'audit global: `app/docs/todo-done/audits/fridadev-global-audit-remediation-todo.md`
+- Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
 
 ### Ce qui est versionne vs local runtime
+
 Versionne:
-- code, prompts, scripts, tests, docs
-- exemples d'identite statique et note de provisionnement sous `state/data/identity/`
+
+- code, prompts, scripts, tests, docs;
+- exemples statiques et notes de provisionnement sous `state/data/identity/`.
 
 Non versionne:
-- `app/.env`
-- etat runtime sous `state/conv` et `state/logs`
-- fichiers d'identite operateur locaux sous `state/data/identity/*.txt`
-- caches locaux, virtualenvs et residus systeme/editeur
+
+- `app/.env`;
+- etat runtime sous `state/conv`, `state/logs` et donnees runtime montees;
+- fichiers d'identite locaux provisionnes par l'operateur sous `state/data/identity/*.txt`;
+- caches, virtualenvs, fichiers editeur et residus machine.
 
 Repere conteneur:
-- `/app/conv`, `/app/logs`, `/app/data` sont les cibles de montage conteneur des repertoires hote `state/...`.
 
-Un clone neuf necessite toujours un `.env` local valide, des dependances runtime joignables et un state local initialise sous `state/...`.
+- `/app/conv`, `/app/logs` et `/app/data` sont les cibles de montage conteneur des repertoires hote `state/...`.
+
+Un clone neuf necessite toujours un `.env` local valide, des dependances runtime joignables et un etat local initialise sous `state/...`.
 
 ### Exploitation de la stack
+
 ```bash
 ./stack.sh up
 ./stack.sh ps
@@ -381,6 +303,7 @@ Un clone neuf necessite toujours un `.env` local valide, des dependances runtime
 ```
 
 ### Chemins essentiels
+
 - `docker-compose.yml`
 - `stack.sh`
 - `app/server.py`
@@ -388,8 +311,10 @@ Un clone neuf necessite toujours un `.env` local valide, des dependances runtime
 - `app/docs/README.md`
 
 ### Site et contact
+
 - site: [https://frida-ai.fr](https://frida-ai.fr)
 - contact: [tofmuck@frida-ai.fr](mailto:tofmuck@frida-ai.fr)
 
 ### Licence
+
 Ce depot est distribue sous licence **MIT**. Voir [LICENSE](LICENSE).

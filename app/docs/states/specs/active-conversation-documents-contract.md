@@ -2,11 +2,11 @@
 
 Statut: spec vivante
 Date: 2026-05-16
-Source active: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
-Audit-plan source: `app/docs/todo-todo/product/active-conversation-documents-audit-plan.md`
+Roadmap archivee: `app/docs/todo-done/product/active-conversation-documents-todo.md`
+Audit-plan source archive: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: contrat produit, prompt, frontieres et observabilite des documents actifs de conversation
-Hors-scope: runtime, endpoint, frontend, parsing, OCR, Biblio native, RAG documentaire, migration, stockage documentaire persistant
+Limites conservees: OCR, Biblio native, RAG documentaire, stockage documentaire persistant, ouverture automatique du texte complet dans le dashboard
 
 ## 1. Verdict de plan
 
@@ -307,9 +307,7 @@ Instruction attendue, a formuler dans le prompt final lors du lot implementation
 - si un document actif est signale comme non injecte, le modele ne doit jamais pretendre l'avoir lu;
 - le modele peut expliquer naturellement que le document n'a pas ete envoye dans ce tour, sans phrase mecanique imposee.
 
-Le contrat d'interpretation doit etre teste plus tard dans le prompt final. La presence du texte documentaire seul ne suffira pas comme preuve.
-
-Lot 4 ferme cette exigence pour le prompt principal: les tests verifient la presence de l'instruction d'interpretation dans le prompt final, pas seulement la presence du texte documentaire.
+La presence du texte documentaire seul ne suffit pas comme preuve. Lot 4 ferme cette exigence pour le prompt principal: les tests verifient la presence de l'instruction d'interpretation dans le prompt final, pas seulement la presence du texte documentaire.
 
 ## 9. Signal document actif non injecte
 
@@ -449,7 +447,7 @@ Persistence retenue:
 Le texte extrait necessaire a la reinjection multi-tour est persiste dans cette table d'etat actif court terme. Il ne doit pas etre expose par les projections ordinaires:
 
 - `list_active_documents()` retourne seulement les metadonnees content-free;
-- `list_active_documents_for_prompt()` est reserve au futur builder de prompt et retourne explicitement `text_content`;
+- `list_active_documents_for_prompt()` est reserve au builder de prompt et retourne explicitement `text_content`;
 - les lots frontend, logs, dashboard et inspection ne doivent pas utiliser le chemin prompt pour afficher le texte.
 
 Contrat d'etat:
@@ -489,7 +487,7 @@ Retention et nettoyage:
 - suppression dure de conversation: cascade DB ou cleanup explicite;
 - purge court terme: les documents desactives peuvent etre supprimes par seuil temporel sans toucher aux documents actifs.
 
-Limite volontaire du Lot 2:
+Limite volontaire du Lot 2 au moment de sa livraison:
 
 - aucun endpoint;
 - aucun parsing de fichier;
@@ -524,16 +522,16 @@ Surface chat:
 - l'etat serveur est recharge a chaque ouverture/rechargement de conversation;
 - le contenu brut du document n'est pas affiche dans l'UI ordinaire.
 
-Limite volontaire du Lot 6:
+Limites conservees apres Lot 6 et Lot 7:
 
-- pas d'observabilite dashboard/logs dediee;
 - pas de module Biblio;
 - pas d'affichage du texte complet;
-- pas de changement Memory/RAG/Identity/Summary.
+- pas de changement Memory/RAG/Identity/Summary;
+- pas de read-model hors-tour dedie pour raconter les echecs d'activation et retraits manuels dans une vue dashboard separee. Ces evenements restent visibles dans les logs admin compacts.
 
-## 15. Tests requis par les futurs lots
+## 15. Preuves de cloture du chantier
 
-Les futurs lots devront prouver:
+Le chantier archive a livre les preuves suivantes:
 
 - formats supportes et absence d'OCR implicite;
 - document injecte entier;
@@ -549,6 +547,10 @@ Les futurs lots devront prouver:
 - distinction `active_document` vs `library_document` / `catalogue_document` / `passage documentaire`;
 - absence de contenu brut dans logs/read-models/dashboard ordinaires;
 - absence d'ouverture automatique du texte complet via le gate dashboard existant.
+
+Roadmap de preuve archivee:
+
+- `app/docs/todo-done/product/active-conversation-documents-todo.md`.
 
 ## 16. Condition de revision
 

@@ -4,7 +4,7 @@ Statut: actif
 Date: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 TODO derive: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
-Chantier compatible mais distinct: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Portee: consultation native, a la demande, d'une bibliotheque documentaire persistante deja adossee a Frida Catalogue / doc-pipeline
 Hors-scope: runtime dans ce commit, endpoint FridaDev, frontend, migration, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal
 

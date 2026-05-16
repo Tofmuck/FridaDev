@@ -1,12 +1,15 @@
 # Documents actifs de conversation - audit-plan
 
-Statut: actif
+Statut: clos / archive
 Date: 2026-05-15
-Classement: `app/docs/todo-todo/product/`
-TODO derive: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+Date de cloture: 2026-05-16
+Classement: `app/docs/todo-done/product/`
+TODO derive archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Portee: documents fournis volontairement par l'utilisateur a une conversation active, injectes au modele principal tant qu'ils restent actifs
 Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
 Hors-scope: OCR, RAG documentaire, Biblio native / bibliotheque documentaire persistante, AnythingLLM/OpenWebUI comme intermediaire principal, indexation, resume documentaire, promotion memoire, patch runtime dans ce commit
+
+Note de cloture 2026-05-16: ce document conserve le cadrage initial du chantier. L'implementation active_document a ete livree ensuite dans la roadmap archivee; les constats "pas encore" ci-dessous doivent etre lus comme l'etat pre-implementation de l'audit-plan, pas comme l'etat runtime courant.
 
 ## 1. Question initiale et verdict
 

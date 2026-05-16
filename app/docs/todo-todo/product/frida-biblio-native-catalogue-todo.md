@@ -4,7 +4,7 @@ Statut: actif
 Date de creation: 2026-05-16
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
-Chantier compatible mais distinct: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+Chantier compatible mais distinct archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Spec fondatrice a creer: `app/docs/states/specs/frida-biblio-native-catalogue-contract.md`
 Portee: consultation native, a la demande, d'une bibliotheque persistante via Frida Catalogue / doc-pipeline
 Hors-scope du commit de creation: runtime, endpoint, frontend, migration, backfill, OCR, fusion avec documents actifs, AnythingLLM comme intermediaire principal, rebuild

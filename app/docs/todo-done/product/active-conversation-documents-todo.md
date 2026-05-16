@@ -1,13 +1,16 @@
 # Documents actifs de conversation - TODO
 
-Statut: actif
+Statut: clos / archive
 Date de creation: 2026-05-15
-Classement: `app/docs/todo-todo/product/`
-Audit-plan source: `app/docs/todo-todo/product/active-conversation-documents-audit-plan.md`
+Date de cloture: 2026-05-16
+Classement: `app/docs/todo-done/product/`
+Audit-plan source: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 Spec fondatrice: `app/docs/states/specs/active-conversation-documents-contract.md`
 Chantier distinct reserve: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: activation serveur de documents fournis a une conversation, injection entiere ou exclusion entiere par tour, frontend chat, observabilite content-free
-Hors-scope du commit de creation: code runtime, endpoint, table DB, frontend, migration, OCR, RAG documentaire, stockage documentaire durable, rebuild
+Hors-scope conserve: OCR, RAG documentaire, stockage documentaire durable, Biblio native, ouverture automatique du texte complet dans le dashboard
+
+Note de cloture 2026-05-16: le chantier documents actifs de conversation est livre et archive. Les documents actifs sont temporaires, conversation-scoped, actifs jusqu'au retrait manuel, injectes entiers ou exclus entiers par tour, visibles dans l'UI chat et l'observabilite content-free, et verrouilles hors Memory/RAG/Identity/Summary. La Biblio native / Frida Catalogue reste un chantier separe actif, non lance runtime par cette cloture.
 
 ## 1. Intention
 
@@ -233,12 +236,14 @@ Note Lot 8 ajoute les preuves operateur bout-en-bout sans nouvelle fonctionnalit
 
 ### Lot 9 - Documentation de cloture et preparation future
 
-- [ ] Mettre a jour les docs vivantes touchees par le comportement runtime.
-- [ ] Documenter les limites restantes: pas OCR, pas RAG documentaire, pas bibliotheque persistante.
-- [ ] Documenter la transition possible vers un futur systeme documentaire durable.
-- [ ] Verifier que la transition mentionne la Biblio native comme chantier separe, pas comme prolongement automatique.
-- [ ] Verifier que le TODO ne contient plus de case ouverte reelle.
-- [ ] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+- [x] Mettre a jour les docs vivantes touchees par le comportement runtime.
+- [x] Documenter les limites restantes: pas OCR, pas RAG documentaire, pas bibliotheque persistante.
+- [x] Documenter la transition possible vers un futur systeme documentaire durable.
+- [x] Verifier que la transition mentionne la Biblio native comme chantier separe, pas comme prolongement automatique.
+- [x] Verifier que le TODO ne contient plus de case ouverte reelle.
+- [x] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+
+Note Lot 9 livre la cloture documentaire: README racine, hub docs, AGENTS, spec vivante, cartographie runtime et references Biblio sont alignes sur l'etat livre. Le chantier est archive sans lancer OCR, RAG documentaire, bibliotheque persistante ni Biblio native.
 
 ## 7. Tests attendus par le chantier
 
