@@ -61,6 +61,7 @@ class _FakeActiveDocuments:
             "created_at": "2026-05-16T12:00:00Z",
             "deactivated_at": "",
             "last_injected_turn_id": "",
+            "last_excluded_turn_id": "",
             "last_excluded_reason_code": "",
             "source": "active_conversation_documents",
         }

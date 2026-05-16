@@ -256,6 +256,7 @@ Champs conceptuels minimaux:
 - `created_at`;
 - `deactivated_at`;
 - `last_injected_turn_id`;
+- `last_excluded_turn_id`;
 - `last_excluded_reason_code`.
 
 Le texte extrait peut etre necessaire au runtime pour reinjection, mais il ne doit pas etre expose par defaut ni alimente dans Memory/RAG/Identity/Summary.
@@ -266,7 +267,7 @@ Flux cible:
 
 1. Le frontend garantit une conversation courante.
 2. L'utilisateur glisse-depose un fichier.
-3. Le serveur valide type, taille brute et extension.
+3. Le serveur valide type/extension via l'extracteur et mesure la taille brute; aucun couperet arbitraire de taille upload n'est ajoute sans decision operateur explicite.
 4. Le serveur extrait le texte.
 5. Le document devient actif si l'extraction est complete et exploitable.
 6. Le frontend affiche pres de la zone de saisie les documents actifs.

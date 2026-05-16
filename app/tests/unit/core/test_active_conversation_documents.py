@@ -54,6 +54,7 @@ class FakeCursor:
                 "created_at": params[11],
                 "deactivated_at": None,
                 "last_injected_turn_id": None,
+                "last_excluded_turn_id": None,
                 "last_excluded_reason_code": None,
             }
             self.conn.rows[row["document_id"]] = row
@@ -85,7 +86,17 @@ class FakeCursor:
             row = self.conn.rows.get(doc_id)
             if row and self._is_active(row) and row["conversation_id"] == conv_id:
                 row["last_injected_turn_id"] = turn_id
+                row["last_excluded_turn_id"] = ""
                 row["last_excluded_reason_code"] = ""
+                self.rowcount = 1
+            return
+
+        if compact.startswith("update active_conversation_documents") and "set last_excluded_turn_id" in compact:
+            turn_id, reason_code, conv_id, doc_id = params
+            row = self.conn.rows.get(doc_id)
+            if row and self._is_active(row) and row["conversation_id"] == conv_id:
+                row["last_excluded_turn_id"] = turn_id
+                row["last_excluded_reason_code"] = reason_code
                 self.rowcount = 1
             return
 
@@ -151,6 +162,7 @@ class FakeCursor:
             "created_at": row["created_at"],
             "deactivated_at": row["deactivated_at"],
             "last_injected_turn_id": row["last_injected_turn_id"],
+            "last_excluded_turn_id": row["last_excluded_turn_id"],
             "last_excluded_reason_code": row["last_excluded_reason_code"],
         }
         if include_text:
@@ -316,6 +328,32 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
             )
         )
         self.assertEqual(self.conn.rows[DOC_A]["last_injected_turn_id"], "turn-a")
+        self.assertEqual(self.conn.rows[DOC_A]["last_excluded_turn_id"], "")
+        self.assertEqual(self.conn.rows[DOC_A]["last_excluded_reason_code"], "")
+
+    def test_record_document_excluded_updates_only_scoped_active_document(self):
+        self.activate(conversation_id=CONV_A, document_id=DOC_A)
+
+        self.assertFalse(
+            active_docs.record_document_excluded(
+                CONV_B,
+                DOC_A,
+                turn_id="turn-b",
+                reason_code="document_too_large_for_turn",
+                conn_factory=self.conn_factory,
+            )
+        )
+        self.assertTrue(
+            active_docs.record_document_excluded(
+                CONV_A,
+                DOC_A,
+                turn_id="turn-a",
+                reason_code="document_too_large_for_turn",
+                conn_factory=self.conn_factory,
+            )
+        )
+        self.assertEqual(self.conn.rows[DOC_A]["last_excluded_turn_id"], "turn-a")
+        self.assertEqual(self.conn.rows[DOC_A]["last_excluded_reason_code"], "document_too_large_for_turn")
 
 
 if __name__ == "__main__":

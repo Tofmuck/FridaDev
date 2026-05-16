@@ -46,6 +46,7 @@ class ActiveDocumentMetadata:
     created_at: str
     deactivated_at: str
     last_injected_turn_id: str
+    last_excluded_turn_id: str
     last_excluded_reason_code: str
     source: str = ACTIVE_DOCUMENTS_SOURCE
 
@@ -65,6 +66,7 @@ class ActiveDocumentMetadata:
             "created_at": self.created_at,
             "deactivated_at": self.deactivated_at,
             "last_injected_turn_id": self.last_injected_turn_id,
+            "last_excluded_turn_id": self.last_excluded_turn_id,
             "last_excluded_reason_code": self.last_excluded_reason_code,
             "source": self.source,
         }
@@ -152,6 +154,7 @@ def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
         created_at=_ts_to_iso(row.get("created_at")),
         deactivated_at=_ts_to_iso(deactivated_at),
         last_injected_turn_id=str(row.get("last_injected_turn_id") or ""),
+        last_excluded_turn_id=str(row.get("last_excluded_turn_id") or ""),
         last_excluded_reason_code=str(row.get("last_excluded_reason_code") or ""),
     )
 
@@ -196,6 +199,7 @@ def init_db(
                         created_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
                         deactivated_at             TIMESTAMPTZ,
                         last_injected_turn_id      TEXT,
+                        last_excluded_turn_id      TEXT,
                         last_excluded_reason_code  TEXT
                     );
                     """
@@ -211,6 +215,7 @@ def init_db(
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS text_content TEXT NOT NULL DEFAULT '';",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_injected_turn_id TEXT;",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_excluded_turn_id TEXT;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_excluded_reason_code TEXT;",
                 ):
                     cur.execute(column_sql)
@@ -304,6 +309,7 @@ def activate_document(
                     created_at,
                     deactivated_at,
                     last_injected_turn_id,
+                    last_excluded_turn_id,
                     last_excluded_reason_code;
                 """,
                 row_values,
@@ -379,6 +385,7 @@ def get_active_document_for_prompt(
                     created_at,
                     deactivated_at,
                     last_injected_turn_id,
+                    last_excluded_turn_id,
                     last_excluded_reason_code
                 FROM active_conversation_documents
                 WHERE conversation_id = %s::uuid
@@ -412,6 +419,7 @@ def record_document_injected(
                 """
                 UPDATE active_conversation_documents
                 SET last_injected_turn_id = %s,
+                    last_excluded_turn_id = '',
                     last_excluded_reason_code = ''
                 WHERE conversation_id = %s::uuid
                   AND document_id = %s::uuid
@@ -419,6 +427,43 @@ def record_document_injected(
                   AND deactivated_at IS NULL
                 """,
                 (str(turn_id or ""), conv_id, doc_id),
+            )
+            changed = int(getattr(cur, "rowcount", 0) or 0)
+        conn.commit()
+    return changed > 0
+
+
+def record_document_excluded(
+    conversation_id: str,
+    document_id: str,
+    *,
+    turn_id: str,
+    reason_code: str,
+    conn_factory: Optional[Callable[[], Any]] = None,
+) -> bool:
+    conv_id = _normalize_uuid(conversation_id)
+    doc_id = _normalize_uuid(document_id)
+    if not conv_id or not doc_id:
+        return False
+    get_conn = conn_factory or _db_conn
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE active_conversation_documents
+                SET last_excluded_turn_id = %s,
+                    last_excluded_reason_code = %s
+                WHERE conversation_id = %s::uuid
+                  AND document_id = %s::uuid
+                  AND status = 'active'
+                  AND deactivated_at IS NULL
+                """,
+                (
+                    str(turn_id or ""),
+                    _safe_text(reason_code, 120) or "document_runtime_unavailable",
+                    conv_id,
+                    doc_id,
+                ),
             )
             changed = int(getattr(cur, "rowcount", 0) or 0)
         conn.commit()
@@ -547,6 +592,7 @@ def _read_active_document_rows(
                     created_at,
                     deactivated_at,
                     last_injected_turn_id,
+                    last_excluded_turn_id,
                     last_excluded_reason_code
                 FROM active_conversation_documents
                 WHERE conversation_id = %s::uuid

@@ -174,6 +174,46 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
             0,
         )
 
+    def test_chat_service_records_prompt_lane_decisions_for_ui_state(self):
+        from core import chat_service
+
+        observed = {"injected": [], "excluded": []}
+
+        fake_module = SimpleNamespace(
+            record_document_injected=lambda conversation_id, document_id, *, turn_id: observed["injected"].append(
+                (conversation_id, document_id, turn_id)
+            )
+            or True,
+            record_document_excluded=lambda conversation_id, document_id, *, turn_id, reason_code: observed[
+                "excluded"
+            ].append((conversation_id, document_id, turn_id, reason_code))
+            or True,
+        )
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(document_id="doc-injected", injected=True, reason_code=""),
+                SimpleNamespace(
+                    document_id="doc-excluded",
+                    injected=False,
+                    reason_code="document_too_large_for_turn",
+                ),
+            )
+        )
+
+        chat_service._record_active_document_prompt_decisions(
+            conversation={"id": "conv-1"},
+            lane=lane,
+            turn_id="turn-1",
+            active_documents_module=fake_module,
+            logger=SimpleNamespace(warning=lambda *_args, **_kwargs: None),
+        )
+
+        self.assertEqual(observed["injected"], [("conv-1", "doc-injected", "turn-1")])
+        self.assertEqual(
+            observed["excluded"],
+            [("conv-1", "doc-excluded", "turn-1", "document_too_large_for_turn")],
+        )
+
     def test_zero_budget_does_not_exclude_document_from_soft_limit(self):
         full_text = "Document actif sans limite documentaire configuree."
         lane = prompt_lane.build_active_document_prompt_lane(

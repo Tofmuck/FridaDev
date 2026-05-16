@@ -93,6 +93,44 @@ def _active_document_prompt_max_tokens(config_module: Any) -> int:
         return 0
 
 
+def _record_active_document_prompt_decisions(
+    *,
+    conversation: Mapping[str, Any],
+    lane: Any,
+    turn_id: str,
+    active_documents_module: Any = active_conversation_documents,
+    logger: Any = None,
+) -> None:
+    conversation_id = _text(conversation.get('id'))
+    if not conversation_id:
+        return
+    decisions = getattr(lane, 'decisions', ()) or ()
+    if not decisions:
+        return
+
+    injected_writer = getattr(active_documents_module, 'record_document_injected', None)
+    excluded_writer = getattr(active_documents_module, 'record_document_excluded', None)
+    for decision in decisions:
+        document_id = _text(getattr(decision, 'document_id', ''))
+        if not document_id:
+            continue
+        try:
+            if bool(getattr(decision, 'injected', False)):
+                if callable(injected_writer):
+                    injected_writer(conversation_id, document_id, turn_id=turn_id)
+                continue
+            if callable(excluded_writer):
+                excluded_writer(
+                    conversation_id,
+                    document_id,
+                    turn_id=turn_id,
+                    reason_code=_text(getattr(decision, 'reason_code', '')) or 'document_runtime_unavailable',
+                )
+        except Exception as exc:
+            if logger is not None:
+                logger.warning('active_document_prompt_decision_record_failed doc=%s err=%s', document_id, exc)
+
+
 _FINAL_ANSWER_OUTPUT_REGIME = {
     'discursive_regime': 'simple',
     'resituation_level': 'none',
@@ -595,12 +633,18 @@ def chat_response(
             admin_logs_module=admin_logs_module,
             web_context_payload=web_runtime_payload,
         )
-    active_document_prompt_lane.inject_active_document_prompt_lane(
+    active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
         prompt_messages,
         active_documents_for_prompt,
         model=runtime_main_model,
         count_tokens_func=_prompt_token_counter(token_utils_module),
         max_tokens=_active_document_prompt_max_tokens(config_module),
+    )
+    _record_active_document_prompt_decisions(
+        conversation=conversation,
+        lane=active_document_lane,
+        turn_id=chat_turn_logger.current_turn_id(),
+        logger=logger,
     )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,

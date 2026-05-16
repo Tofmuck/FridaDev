@@ -198,6 +198,8 @@ Note Lot 5 livre `app/tests/unit/core/test_active_document_non_contamination_lot
 
 Note Lot 6 livre les routes produit `GET/POST/DELETE /api/conversations/<conversation_id>/active-documents`, le module frontend `app/web/chat_active_documents.js` et son integration dans le chat. Le controle parle de documents actifs de conversation, pas de Biblio; l'UI affiche uniquement metadonnees/statuts, jamais le texte du fichier.
 
+Correction ciblee avant Lot 7: les decisions de lane prompt sont maintenant persistees dans l'etat actif court terme via `last_injected_turn_id`, `last_excluded_turn_id` et `last_excluded_reason_code`. L'UI peut donc relire apres un tour qu'un document actif a ete injecte ou exclu pour `document_too_large_for_turn`. La route d'upload mesure et expose `byte_size`, valide type/extension/parsing, mais n'impose pas de plafond arbitraire de taille brute upload dans ce chantier; la taille qui bloque un tour reste la limite documentaire explicite `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` quand elle est configuree.
+
 ### Lot 7 - Observabilite, logs, read-models et dashboard
 
 - [ ] Ajouter events compacts d'activation, retrait et decision par tour.

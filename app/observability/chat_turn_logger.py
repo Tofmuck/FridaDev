@@ -147,6 +147,13 @@ def is_active() -> bool:
     return _current() is not None
 
 
+def current_turn_id() -> str:
+    ctx = _current()
+    if ctx is None:
+        return ''
+    return str(ctx.turn_id or '')
+
+
 def begin_turn(*, conversation_id: str | None, user_msg: str, web_search_enabled: bool) -> Token:
     conv_id = str(conversation_id or '').strip() or _PENDING_CONVERSATION_ID
     ctx = TurnContext(

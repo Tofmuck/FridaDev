@@ -370,6 +370,7 @@ Par defaut, logs, read-models et dashboard peuvent exposer:
 - created_at;
 - deactivated_at;
 - last_injected_turn_id;
+- last_excluded_turn_id;
 - last_excluded_reason_code;
 - source `active_conversation_documents`.
 
@@ -461,6 +462,7 @@ Champs minimaux:
 - `created_at`;
 - `deactivated_at`;
 - `last_injected_turn_id`;
+- `last_excluded_turn_id`;
 - `last_excluded_reason_code`.
 
 Retention et nettoyage:
