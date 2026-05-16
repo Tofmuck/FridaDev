@@ -204,6 +204,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             fact.get('identity') or {},
             fact.get('hermeneutic') or {},
             fact.get('web') or {},
+            fact.get('documents') or {},
             fact.get('node_state') or {},
             fact.get('latencies') or {},
             fact.get('errors') or {},
@@ -217,7 +218,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         return {
             'kind': 'dashboard_turn_fact',
             'schema_version': '1',
-            'calculation_version': params[22],
+            'calculation_version': params[23],
             'conversation_id': params[0],
             'turn_id': params[1],
             'first_ts': params[2],
@@ -234,12 +235,13 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             'identity': json.loads(params[13]),
             'hermeneutic': json.loads(params[14]),
             'web': json.loads(params[15]),
-            'node_state': json.loads(params[16]),
-            'latencies': json.loads(params[17]),
-            'errors': json.loads(params[18]),
-            'stage_counts': json.loads(params[19]),
-            'flags': json.loads(params[20]),
-            'content_availability': json.loads(params[21]),
+            'documents': json.loads(params[16]),
+            'node_state': json.loads(params[17]),
+            'latencies': json.loads(params[18]),
+            'errors': json.loads(params[19]),
+            'stage_counts': json.loads(params[20]),
+            'flags': json.loads(params[21]),
+            'content_availability': json.loads(params[22]),
             'redaction': {'raw_content_stored': False, 'raw_event_payloads_included': False},
         }
 
@@ -530,6 +532,97 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertNotIn('RAW PARENT SUMMARY MUST NOT LEAK', serialized)
         self.assertNotIn('content', self._collect_keys(fact))
 
+    def test_turn_fact_materializes_active_documents_content_free(self) -> None:
+        events = [
+            *self._complete_turn(),
+            self._event(
+                'active_documents',
+                payload={
+                    'source_kind': 'active_conversation_documents',
+                    'active_count': 2,
+                    'injected_count': 1,
+                    'not_injected_count': 1,
+                    'too_large_count': 1,
+                    'reason_code_counts': {'document_too_large_for_turn': 1},
+                    'documents': [
+                        {
+                            'document_id': 'doc-injected',
+                            'document_ref': 'refinject',
+                            'filename': 'note.txt',
+                            'media_type': 'text/plain',
+                            'source_extension': '.txt',
+                            'byte_size': 42,
+                            'text_chars': 31,
+                            'token_estimate': 8,
+                            'text_sha256_12': 'hashtext1234',
+                            'active': True,
+                            'injected': True,
+                            'raw_content_included': False,
+                            'text_content': 'RAW DOCUMENT TEXT MUST NOT LEAK',
+                        },
+                        {
+                            'document_id': 'doc-large',
+                            'document_ref': 'reflarge',
+                            'filename': 'grand.pdf',
+                            'media_type': 'application/pdf',
+                            'source_extension': '.pdf',
+                            'byte_size': 900000,
+                            'text_chars': 300000,
+                            'token_estimate': 75000,
+                            'text_sha256_12': 'hashlarge123',
+                            'active': True,
+                            'injected': False,
+                            'reason_code': 'document_too_large_for_turn',
+                            'raw_content_included': False,
+                            'text_content': 'RAW LARGE DOCUMENT TEXT MUST NOT LEAK',
+                        },
+                    ],
+                    'future_biblio_included': False,
+                    'raw_content_included': False,
+                },
+                event_id='turn-dashboard:0009:active_documents',
+            ),
+        ]
+
+        fact = dashboard_analytics.build_dashboard_turn_fact(events)
+        documents = fact['documents']
+
+        self.assertEqual(documents['source_kind'], 'active_conversation_documents')
+        self.assertTrue(documents['event_present'])
+        self.assertEqual(documents['active_count'], 2)
+        self.assertEqual(documents['injected_count'], 1)
+        self.assertEqual(documents['not_injected_count'], 1)
+        self.assertEqual(documents['too_large_count'], 1)
+        self.assertFalse(documents['future_biblio_included'])
+        self.assertFalse(documents['raw_content_included'])
+        self.assertEqual(documents['documents'][0]['filename'], 'note.txt')
+        self.assertEqual(documents['documents'][1]['reason_code'], 'document_too_large_for_turn')
+
+        summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
+        self.assertEqual(summaries[0]['documents_active_turns'], 1)
+        self.assertEqual(summaries[0]['documents_injected_total'], 1)
+        self.assertEqual(summaries[0]['documents_not_injected_total'], 1)
+        self.assertEqual(summaries[0]['modules_involved']['documents'], 1)
+
+        buckets = dashboard_analytics.build_dashboard_metric_buckets(
+            [fact],
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        doc_hour_bucket = next(
+            bucket for bucket in buckets
+            if bucket['module_key'] == 'documents' and bucket['granularity'] == 'hour'
+        )
+        self.assertEqual(doc_hour_bucket['metrics']['active_turns'], 1)
+        self.assertEqual(doc_hour_bucket['metrics']['active_documents_total'], 2)
+        self.assertEqual(doc_hour_bucket['metrics']['injected_documents_total'], 1)
+        self.assertEqual(doc_hour_bucket['metrics']['not_injected_documents_total'], 1)
+        self.assertEqual(doc_hour_bucket['metrics']['too_large_documents_total'], 1)
+
+        serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
+        self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', serialized)
+        self.assertNotIn('RAW LARGE DOCUMENT TEXT MUST NOT LEAK', serialized)
+        self.assertNotIn('text_content', self._collect_keys(fact))
+
     def test_materialization_status_tracks_lag_without_raw_error_message(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
         error = RuntimeError('RAW SECRET DSN MUST NOT LEAK')
@@ -756,6 +849,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         joined = '\n'.join(observed)
 
         self.assertIn('observability.dashboard_turn_facts', joined)
+        self.assertIn('documents_json', joined)
         self.assertIn('observability.dashboard_conversation_summaries', joined)
         self.assertIn('observability.dashboard_metric_buckets', joined)
         self.assertIn('observability.dashboard_materialization_status', joined)

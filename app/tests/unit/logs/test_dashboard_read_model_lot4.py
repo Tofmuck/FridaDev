@@ -498,6 +498,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             {'block_present': True, 'status': 'ok'},
             {'block_present': True, 'status': 'ok'},
             {'requested': False, 'status': 'not_applicable'},
+            {},
             {'read_present': True, 'write_attempted': True},
             {'main_duration_ms': 120},
             {'error_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
@@ -633,6 +634,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             {'block_present': False, 'status': 'missing'},
             {'block_present': False, 'status': 'missing'},
             {'requested': False, 'status': 'not_applicable'},
+            {},
             {'read_present': False, 'write_attempted': False},
             {},
             {'error_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
@@ -687,6 +689,72 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
         self.assertNotIn('Aucun compteur embeddings n est disponible', story_text)
         self._assert_content_free(payload)
 
+    def test_turn_story_tells_active_documents_without_raw_text(self) -> None:
+        fact = {
+            'conversation_id': 'conv-documents',
+            'turn_id': 'turn-documents',
+            'classification': 'partial',
+            'score': 86,
+            'source_event_count': 8,
+            'persistence': {'status': 'saved', 'assistant_final_saved': True},
+            'providers': {'main': {'present': True, 'status': 'ok'}, 'secondary': {}},
+            'rag': {'retrieved': 0, 'kept': 0, 'injected': 0},
+            'identity': {'block_present': False, 'status': 'missing'},
+            'hermeneutic': {'block_present': False, 'status': 'missing'},
+            'web': {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            'documents': {
+                'active_count': 2,
+                'injected_count': 1,
+                'not_injected_count': 1,
+                'too_large_count': 1,
+                'documents': [
+                    {
+                        'document_id': 'doc-injected',
+                        'document_ref': 'refinject',
+                        'filename': 'note.txt',
+                        'source_extension': '.txt',
+                        'byte_size': 42,
+                        'text_chars': 31,
+                        'token_estimate': 8,
+                        'text_sha256_12': 'hashtext1234',
+                        'active': True,
+                        'injected': True,
+                        'reason_code': '',
+                    },
+                    {
+                        'document_id': 'doc-large',
+                        'document_ref': 'reflarge',
+                        'filename': 'grand.pdf',
+                        'source_extension': '.pdf',
+                        'byte_size': 900000,
+                        'text_chars': 300000,
+                        'token_estimate': 75000,
+                        'text_sha256_12': 'hashlarge123',
+                        'active': True,
+                        'injected': False,
+                        'reason_code': 'document_too_large_for_turn',
+                        'text_content': 'RAW DOCUMENT TEXT MUST NOT LEAK',
+                    },
+                ],
+                'future_biblio_included': False,
+                'raw_content_included': False,
+            },
+            'node_state': {},
+            'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
+            'flags': {'events_truncated': False},
+            'content_availability': {'content_comprehension_status': 'compact_only'},
+        }
+
+        story = dashboard_read_model._turn_story(fact)
+        story_text = json.dumps(story, ensure_ascii=False, sort_keys=True)
+
+        self.assertIn('1 document(s) actif(s) injecte(s) entier(s)', story_text)
+        self.assertIn('2 document(s) actif(s) de conversation observe(s).', story_text)
+        self.assertIn('note.txt (.txt, 42 octets, 31 caracteres): envoye entier.', story_text)
+        self.assertIn('grand.pdf (.pdf, 900000 octets, 300000 caracteres): non envoye: trop gros', story_text)
+        self.assertIn('Aucun texte de document actif n est affiche', story_text)
+        self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', story_text)
+
     def test_turn_story_does_not_invent_parent_summary_window_when_only_count_exists(self) -> None:
         fact = {
             'conversation_id': 'conv-summary-count-only',
@@ -711,6 +779,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             'identity': {'block_present': False, 'status': 'missing'},
             'hermeneutic': {'block_present': False, 'status': 'missing'},
             'web': {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            'documents': {},
             'node_state': {},
             'errors': {'error_count': 0, 'skipped_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},
             'flags': {'events_truncated': False},
@@ -768,6 +837,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             {'block_present': False, 'status': 'missing'},
             {'block_present': False, 'status': 'missing', 'fallback': True},
             {'requested': False, 'success': False, 'injected': False, 'status': 'not_applicable'},
+            {},
             {'read_present': False, 'read_valid': False, 'write_attempted': False, 'write_succeeded': False},
             {},
             {
@@ -881,6 +951,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
             {'block_present': True, 'status': 'ok'},
             {'block_present': True, 'status': 'ok'},
             {'requested': True, 'success': True, 'injected': True},
+            {},
             {'read_present': True},
             {},
             {'error_count': 0, 'fallback_count': 0, 'reason_code_counts': {}},

@@ -640,6 +640,69 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _safe_document_items(value: Any) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for raw_item in _sequence(value):
+        item = _mapping(raw_item)
+        filename = _text(item.get('filename')) or 'document'
+        items.append(
+            {
+                'document_id': _text(item.get('document_id')),
+                'document_ref': _text(item.get('document_ref')),
+                'filename': filename,
+                'media_type': _text(item.get('media_type')),
+                'source_extension': _text(item.get('source_extension')),
+                'byte_size': _to_int(item.get('byte_size')),
+                'text_chars': _to_int(item.get('text_chars')),
+                'token_estimate': _to_int(item.get('token_estimate')),
+                'text_sha256_12': _text(item.get('text_sha256_12')),
+                'active': bool(item.get('active')),
+                'injected': bool(item.get('injected')),
+                'reason_code': _text(item.get('reason_code')),
+            }
+        )
+    return items
+
+
+def _documents_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    document_events = _events_for_stage(events, 'active_documents')
+    latest = document_events[-1] if document_events else None
+    payload = _payload(latest or {})
+    documents = _safe_document_items(payload.get('documents'))
+    reason_counts = dict(_mapping(payload.get('reason_code_counts')))
+    active_count = _to_int(payload.get('active_count')) or len(documents)
+    injected_count = _to_int(payload.get('injected_count')) or sum(1 for item in documents if item.get('injected'))
+    not_injected_count = _to_int(payload.get('not_injected_count')) or sum(
+        1 for item in documents if not item.get('injected')
+    )
+    too_large_count = _to_int(payload.get('too_large_count')) or _to_int(
+        reason_counts.get('document_too_large_for_turn')
+    )
+    empty_count = _to_int(payload.get('empty_count')) or _to_int(reason_counts.get('document_empty_text'))
+    if latest:
+        status = 'active' if active_count else 'not_applicable'
+        reason = _reason_code(payload)
+    else:
+        status = 'not_applicable'
+        reason = 'active_documents_not_observed'
+    return {
+        'source_kind': 'active_conversation_documents',
+        'event_present': bool(latest),
+        'status': status,
+        'active_count': active_count,
+        'injected_count': injected_count,
+        'not_injected_count': not_injected_count,
+        'too_large_count': too_large_count,
+        'empty_count': empty_count,
+        'reason_code_counts': reason_counts,
+        'reason_code': reason,
+        'documents': documents,
+        'future_biblio_included': bool(payload.get('future_biblio_included')),
+        'raw_content_included': False,
+        'latest_ts': _event_ts(latest or {}),
+    }
+
+
 def _latencies_summary(events: Sequence[Mapping[str, Any]], providers: Mapping[str, Any]) -> dict[str, Any]:
     turn_end = _latest_stage_event(events, 'turn_end')
     turn_payload = _payload(turn_end or {})
@@ -745,6 +808,7 @@ def build_turn_pipeline_item(
         'identity': _identity_summary(prompt_payload),
         'hermeneutic': _hermeneutic_summary(safe_events, prompt_payload),
         'web': _web_summary(safe_events),
+        'documents': _documents_summary(safe_events),
         'latencies': _latencies_summary(safe_events, providers),
         'errors': _errors_summary(safe_events),
         'stage_counts': _stage_counts(safe_events),

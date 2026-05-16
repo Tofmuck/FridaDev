@@ -18,6 +18,7 @@ from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import validation_agent
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
 
@@ -645,6 +646,10 @@ def chat_response(
         lane=active_document_lane,
         turn_id=chat_turn_logger.current_turn_id(),
         logger=logger,
+    )
+    active_documents_observability.emit_prompt_decision_event(
+        active_document_lane,
+        chat_turn_logger_module=chat_turn_logger,
     )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,

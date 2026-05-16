@@ -77,6 +77,14 @@ class _FakeActiveDocuments:
         return False
 
 
+class _FakeAdminLogs:
+    def __init__(self):
+        self.events = []
+
+    def log_event(self, stage, **payload):
+        self.events.append({"stage": stage, "payload": payload})
+
+
 class ServerActiveDocumentsContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -86,13 +94,17 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         self.client = self.server.app.test_client()
         self.original_conv_store = self.server.conv_store
         self.original_active_docs = self.server.active_conversation_documents
+        self.original_admin_logs = self.server.admin_logs
         self.fake_docs = _FakeActiveDocuments()
+        self.fake_admin_logs = _FakeAdminLogs()
         self.server.conv_store = _FakeConvStore()
         self.server.active_conversation_documents = self.fake_docs
+        self.server.admin_logs = self.fake_admin_logs
 
     def tearDown(self) -> None:
         self.server.conv_store = self.original_conv_store
         self.server.active_conversation_documents = self.original_active_docs
+        self.server.admin_logs = self.original_admin_logs
 
     def test_upload_list_and_remove_active_document_are_content_free(self):
         response = self.client.post(
@@ -110,6 +122,9 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         self.assertNotIn("text", payload["document"])
         self.assertEqual(self.fake_docs.activated_texts, [RAW_DOCUMENT_TEXT])
         self.assertNotIn(RAW_DOCUMENT_TEXT, json.dumps(payload, ensure_ascii=False))
+        self.assertEqual(self.fake_admin_logs.events[0]["stage"], "active_document_activated")
+        self.assertFalse(self.fake_admin_logs.events[0]["payload"]["raw_content_included"])
+        self.assertNotIn(RAW_DOCUMENT_TEXT, json.dumps(self.fake_admin_logs.events, ensure_ascii=False))
 
         list_response = self.client.get(f"/api/conversations/{CONV_ID}/active-documents")
         self.assertEqual(list_response.status_code, 200)
@@ -121,6 +136,8 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         self.assertEqual(delete_response.status_code, 200)
         self.assertTrue(delete_response.get_json()["ok"])
         self.assertEqual(self.fake_docs.items, [])
+        self.assertEqual(self.fake_admin_logs.events[-1]["stage"], "active_document_removed")
+        self.assertEqual(self.fake_admin_logs.events[-1]["payload"]["reason_code"], "manual_remove")
 
     def test_unsupported_upload_returns_visible_reason_without_activation(self):
         response = self.client.post(
@@ -137,6 +154,12 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         self.assertNotIn("text", payload["document"])
         self.assertEqual(self.fake_docs.items, [])
         self.assertEqual(self.fake_docs.activated_texts, [])
+        self.assertEqual(self.fake_admin_logs.events[-1]["stage"], "active_document_activation_failed")
+        self.assertEqual(
+            self.fake_admin_logs.events[-1]["payload"]["reason_code"],
+            "document_type_unsupported",
+        )
+        self.assertNotIn("not supported", json.dumps(self.fake_admin_logs.events, ensure_ascii=False))
 
     def test_active_documents_require_existing_conversation_scope(self):
         invalid = self.client.get("/api/conversations/not-a-uuid/active-documents")

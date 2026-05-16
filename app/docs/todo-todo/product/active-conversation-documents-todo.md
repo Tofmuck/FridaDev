@@ -202,14 +202,16 @@ Correction ciblee avant Lot 7: les decisions de lane prompt sont maintenant pers
 
 ### Lot 7 - Observabilite, logs, read-models et dashboard
 
-- [ ] Ajouter events compacts d'activation, retrait et decision par tour.
-- [ ] Exposer par defaut seulement nom, type, bytes, chars, token_estimate, active, injected, reason_code, hashes courts ou refs.
-- [ ] Ajouter le module observable `documents` reel sans dupliquer Memory/RAG.
-- [ ] Garder une observabilite separee de la future Biblio: actif/injecte/retire/trop gros cote documents actifs, requete/document/locator/passage/ambiguite/confiance cote Biblio future.
-- [ ] Enrichir l'inspection traduite du dashboard: document actif, injecte, non injecte car trop gros, erreur parsing, retrait manuel.
-- [ ] Limiter l'inspection exhaustive documentaire aux metadonnees, statuts d'injection et raisons compactes.
-- [ ] Documenter que tout acces futur au texte complet du document releve d'une decision produit separee.
-- [ ] Tester content-free strict et absence de contenu brut dans logs/read-models/dashboard.
+- [x] Ajouter events compacts d'activation, retrait et decision par tour.
+- [x] Exposer par defaut seulement nom, type, bytes, chars, token_estimate, active, injected, reason_code, hashes courts ou refs.
+- [x] Ajouter le module observable `documents` reel sans dupliquer Memory/RAG.
+- [x] Garder une observabilite separee de la future Biblio: actif/injecte/retire/trop gros cote documents actifs, requete/document/locator/passage/ambiguite/confiance cote Biblio future.
+- [x] Enrichir l'inspection traduite du dashboard: document actif, injecte, non injecte car trop gros, erreur parsing, retrait manuel.
+- [x] Limiter l'inspection exhaustive documentaire aux metadonnees, statuts d'injection et raisons compactes.
+- [x] Documenter que tout acces futur au texte complet du document releve d'une decision produit separee.
+- [x] Tester content-free strict et absence de contenu brut dans logs/read-models/dashboard.
+
+Note Lot 7 livre `app/observability/active_documents_observability.py`, l'event de tour `active_documents`, les events admin `active_document_activated`, `active_document_activation_failed` et `active_document_removed`, la colonne persistante `dashboard_turn_facts.documents_json`, le module observable initial `documents`, et le recit dashboard content-free des documents actifs injectes ou exclus. La lecture reste strictement metadonnees/statuts/raisons compactes; aucun texte de fichier n'est charge dans les logs/read-models/dashboard ordinaires, et la future Biblio reste separee.
 
 ### Lot 8 - Tests integration et preuves operateur
 

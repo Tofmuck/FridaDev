@@ -1222,6 +1222,7 @@ def api_upload_active_conversation_document(conversation_id: str):
         request.files,
         conv_store_module=conv_store,
         active_documents_module=active_conversation_documents,
+        admin_logs_module=admin_logs,
     )
     return jsonify(payload), status
 
@@ -1233,6 +1234,7 @@ def api_remove_active_conversation_document(conversation_id: str, document_id: s
         document_id,
         conv_store_module=conv_store,
         active_documents_module=active_conversation_documents,
+        admin_logs_module=admin_logs,
     )
     return jsonify(payload), status
 

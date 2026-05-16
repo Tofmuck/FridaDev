@@ -56,7 +56,7 @@ def _fact_from_persisted_row(row: Sequence[Any]) -> dict[str, Any]:
     return {
         'kind': 'dashboard_turn_fact',
         'schema_version': SCHEMA_VERSION,
-        'calculation_version': str(row[22] or CALCULATION_VERSION),
+        'calculation_version': str(row[23] or CALCULATION_VERSION),
         'conversation_id': str(row[0] or ''),
         'turn_id': str(row[1] or ''),
         'first_ts': _iso(_parse_ts(row[2])),
@@ -73,12 +73,13 @@ def _fact_from_persisted_row(row: Sequence[Any]) -> dict[str, Any]:
         'identity': _json_mapping(row[13]),
         'hermeneutic': _json_mapping(row[14]),
         'web': _json_mapping(row[15]),
-        'node_state': _json_mapping(row[16]),
-        'latencies': _json_mapping(row[17]),
-        'errors': _json_mapping(row[18]),
-        'stage_counts': _json_mapping(row[19]),
-        'flags': _json_mapping(row[20]),
-        'content_availability': _json_mapping(row[21]),
+        'documents': _json_mapping(row[16]),
+        'node_state': _json_mapping(row[17]),
+        'latencies': _json_mapping(row[18]),
+        'errors': _json_mapping(row[19]),
+        'stage_counts': _json_mapping(row[20]),
+        'flags': _json_mapping(row[21]),
+        'content_availability': _json_mapping(row[22]),
         'redaction': {
             'raw_content_stored': False,
             'raw_event_payloads_included': False,
@@ -105,6 +106,7 @@ def _dashboard_turn_fact_select_sql() -> str:
             identity_json,
             hermeneutic_json,
             web_json,
+            documents_json,
             node_state_json,
             latencies_json,
             errors_json,
@@ -411,6 +413,7 @@ def execute_dashboard_analytics_schema(cur: Any) -> None:
             identity_json               JSONB       NOT NULL DEFAULT '{}'::jsonb,
             hermeneutic_json            JSONB       NOT NULL DEFAULT '{}'::jsonb,
             web_json                    JSONB       NOT NULL DEFAULT '{}'::jsonb,
+            documents_json              JSONB       NOT NULL DEFAULT '{}'::jsonb,
             node_state_json             JSONB       NOT NULL DEFAULT '{}'::jsonb,
             latencies_json              JSONB       NOT NULL DEFAULT '{}'::jsonb,
             errors_json                 JSONB       NOT NULL DEFAULT '{}'::jsonb,
@@ -423,6 +426,12 @@ def execute_dashboard_analytics_schema(cur: Any) -> None:
             PRIMARY KEY (conversation_id, turn_id),
             CHECK (raw_event_payloads_included = false)
         );
+        '''
+    )
+    cur.execute(
+        '''
+        ALTER TABLE observability.dashboard_turn_facts
+        ADD COLUMN IF NOT EXISTS documents_json JSONB NOT NULL DEFAULT '{}'::jsonb;
         '''
     )
     cur.execute(
@@ -590,7 +599,7 @@ def persist_dashboard_analytics(
                             classification, score, source_event_ids, source_event_count,
                             source_first_event_id, source_latest_event_id,
                             persistence_json, providers_json, rag_json, identity_json,
-                            hermeneutic_json, web_json, node_state_json, latencies_json,
+                            hermeneutic_json, web_json, documents_json, node_state_json, latencies_json,
                             errors_json, stage_counts_json, flags_json,
                             content_availability_json, calculation_version,
                             raw_event_payloads_included, materialized_ts
@@ -600,7 +609,7 @@ def persist_dashboard_analytics(
                             %s, %s, %s::jsonb, %s,
                             %s, %s,
                             %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
-                            %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
+                            %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
                             %s::jsonb, %s::jsonb, %s::jsonb,
                             %s::jsonb, %s,
                             false, now()
@@ -620,6 +629,7 @@ def persist_dashboard_analytics(
                             identity_json = EXCLUDED.identity_json,
                             hermeneutic_json = EXCLUDED.hermeneutic_json,
                             web_json = EXCLUDED.web_json,
+                            documents_json = EXCLUDED.documents_json,
                             node_state_json = EXCLUDED.node_state_json,
                             latencies_json = EXCLUDED.latencies_json,
                             errors_json = EXCLUDED.errors_json,
@@ -647,6 +657,7 @@ def persist_dashboard_analytics(
                             _json(fact.get('identity') or {}),
                             _json(fact.get('hermeneutic') or {}),
                             _json(fact.get('web') or {}),
+                            _json(fact.get('documents') or {}),
                             _json(fact.get('node_state') or {}),
                             _json(fact.get('latencies') or {}),
                             _json(fact.get('errors') or {}),

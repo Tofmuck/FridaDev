@@ -118,6 +118,16 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'results_count': 2,
                 'injected_chars': 77,
             },
+            'documents': {
+                'source_kind': 'active_conversation_documents',
+                'active_count': 2,
+                'injected_count': 1,
+                'not_injected_count': 1,
+                'too_large_count': 1,
+                'reason_code_counts': {'document_too_large_for_turn': 1},
+                'future_biblio_included': False,
+                'raw_content_included': False,
+            },
             'node_state': {
                 'read_present': True,
                 'read_valid': True,
@@ -148,6 +158,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'persistence',
                 'memory',
                 'web',
+                'documents',
                 'providers',
                 'identity',
                 'hermeneutic',
@@ -250,12 +261,35 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(by_key['memory']['metrics']['injected_total'], 2)
         self.assertEqual(by_key['web']['metrics']['requested_turns'], 1)
         self.assertEqual(by_key['web']['metrics']['injected_turns'], 1)
+        self.assertEqual(by_key['documents']['metrics']['active_turns'], 1)
+        self.assertEqual(by_key['documents']['metrics']['active_documents_total'], 2)
+        self.assertEqual(by_key['documents']['metrics']['injected_documents_total'], 1)
+        self.assertEqual(by_key['documents']['metrics']['not_injected_documents_total'], 1)
+        self.assertEqual(by_key['documents']['metrics']['too_large_documents_total'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_call_present_count'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_duration_ms_p50'], 120)
         self.assertEqual(by_key['identity']['metrics']['block_present_turns'], 1)
         self.assertEqual(by_key['hermeneutic']['metrics']['block_present_turns'], 1)
         self.assertEqual(by_key['node_state']['metrics']['write_succeeded_count'], 1)
         self.assertEqual(by_key['errors']['metrics']['error_count'], 0)
+
+    def test_documents_module_has_specialized_summary_and_reason(self) -> None:
+        summary = dashboard_analytics.summarize_module_turn(
+            'documents',
+            self._turn_fact(),
+        )
+        reason = dashboard_analytics.resolve_module_turn_degradation_reason(
+            'documents',
+            self._turn_fact(),
+        )
+
+        self.assertEqual(
+            summary,
+            '2 document(s) actif(s) etaient presents; 1 etaient trop gros pour ce tour.',
+        )
+        self.assertEqual(reason, 'document_too_large_for_turn')
+        self.assertNotIn('RAW', summary)
+        self.assertNotIn('library_document', summary)
 
     def test_catalog_public_labels_do_not_include_runtime_content(self) -> None:
         raw_values = (
@@ -264,6 +298,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             'RAW MEMORY MUST NOT LEAK',
             'RAW QUERY MUST NOT LEAK',
             'RAW WEB CONTEXT MUST NOT LEAK',
+            'RAW DOCUMENT TEXT MUST NOT LEAK',
         )
         catalog = dashboard_analytics.build_dashboard_module_catalog(
             include_future=True,

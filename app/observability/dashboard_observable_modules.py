@@ -157,6 +157,23 @@ def _reduce_web_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> Non
     _add_metric_count(metrics, 'injected_chars_total', _to_int(web.get('injected_chars')))
 
 
+def _reduce_documents_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
+    documents = _mapping(fact.get('documents'))
+    active_count = _to_int(documents.get('active_count'))
+    injected_count = _to_int(documents.get('injected_count'))
+    not_injected_count = _to_int(documents.get('not_injected_count'))
+    _add_metric_label(metrics, 'status_counts', documents.get('status'))
+    _add_metric_count(metrics, 'active_turns', 1 if active_count > 0 else 0)
+    _add_metric_count(metrics, 'active_documents_total', active_count)
+    _add_metric_count(metrics, 'injected_documents_total', injected_count)
+    _add_metric_count(metrics, 'not_injected_documents_total', not_injected_count)
+    _add_metric_count(metrics, 'too_large_documents_total', _to_int(documents.get('too_large_count')))
+    _add_metric_count(metrics, 'empty_documents_total', _to_int(documents.get('empty_count')))
+    reason_counts = _mapping(documents.get('reason_code_counts'))
+    for reason, count in reason_counts.items():
+        _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
+
+
 def _reduce_provider_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) -> None:
     providers = _mapping(fact.get('providers'))
     main = _mapping(providers.get('main'))
@@ -250,6 +267,29 @@ def _summarize_web_turn(fact: Mapping[str, Any]) -> str:
     return 'La recherche web n a pas ete demandee pour ce tour.'
 
 
+def _summarize_documents_turn(fact: Mapping[str, Any]) -> str:
+    documents = _mapping(fact.get('documents'))
+    active_count = _to_int(documents.get('active_count'))
+    injected_count = _to_int(documents.get('injected_count'))
+    not_injected_count = _to_int(documents.get('not_injected_count'))
+    too_large_count = _to_int(documents.get('too_large_count'))
+    if active_count <= 0:
+        return 'Aucun document actif de conversation n est observe sur ce tour.'
+    if injected_count and not_injected_count == 0:
+        return f'{injected_count} document(s) actif(s) ont ete envoyes entiers au modele.'
+    if too_large_count:
+        return (
+            f'{active_count} document(s) actif(s) etaient presents; '
+            f'{too_large_count} etaient trop gros pour ce tour.'
+        )
+    if not_injected_count:
+        return (
+            f'{active_count} document(s) actif(s) etaient presents; '
+            f'{not_injected_count} n ont pas ete envoyes dans ce tour.'
+        )
+    return f'{active_count} document(s) actif(s) etaient visibles sur ce tour.'
+
+
 def _summarize_providers_turn(fact: Mapping[str, Any]) -> str:
     main = _mapping(_mapping(fact.get('providers')).get('main'))
     if main.get('present'):
@@ -288,6 +328,14 @@ def _summarize_errors_turn(fact: Mapping[str, Any]) -> str:
 
 def _resolve_errors_reason(fact: Mapping[str, Any]) -> str | None:
     reason_counts = _mapping(_mapping(fact.get('errors')).get('reason_code_counts'))
+    return next(iter(reason_counts.keys()), None)
+
+
+def _resolve_documents_reason(fact: Mapping[str, Any]) -> str | None:
+    reason_counts = _mapping(_mapping(fact.get('documents')).get('reason_code_counts'))
+    for reason in ('document_too_large_for_turn', 'document_empty_text'):
+        if _to_int(reason_counts.get(reason)) > 0:
+            return reason
     return next(iter(reason_counts.keys()), None)
 
 
@@ -507,6 +555,47 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         turn_summary_renderer=_summarize_web_turn,
     ),
     _module(
+        module_key='documents',
+        label_fr='Documents actifs',
+        description_fr='Indique les fichiers temporaires fournis par l utilisateur et injectes ou exclus du tour.',
+        global_metrics=_fields(
+            ('active_turns', 'Tours avec document actif'),
+            ('active_documents_total', 'Documents actifs observes'),
+            ('injected_documents_total', 'Documents envoyes entiers'),
+            ('not_injected_documents_total', 'Documents non envoyes'),
+            ('too_large_documents_total', 'Documents trop gros pour le tour'),
+        ),
+        conversation_summary=_fields(
+            ('documents_active_turns', 'Tours avec documents actifs'),
+            ('modules_involved.documents', 'Documents actifs impliques'),
+        ),
+        turn_summary=_fields(
+            ('active_count', 'Documents actifs'),
+            ('injected_count', 'Documents envoyes entiers'),
+            ('not_injected_count', 'Documents non envoyes'),
+            ('reason_code_counts', 'Raisons compactes'),
+        ),
+        human_detail=_fields(
+            ('active_document_flow', 'Explique quels documents actifs ont ete envoyes ou exclus sans afficher leur texte.'),
+        ),
+        sources=('active_documents events', 'dashboard_turn_facts.documents', 'active_conversation_documents'),
+        limits=(
+            'Concerne seulement les documents actifs temporaires fournis par l utilisateur.',
+            'Ne couvre pas la future Biblio native ni les passages documentaires Catalogue.',
+            'Ne contient jamais le texte complet du fichier.',
+        ),
+        degradation_reasons=(
+            ('document_too_large_for_turn', 'Un document actif etait trop gros pour etre envoye entier dans ce tour.'),
+            ('document_empty_text', 'Un document actif ne contenait pas de texte injectable.'),
+            ('document_parse_error', 'Un document n a pas pu etre lu lors de l activation.'),
+            ('manual_remove', 'Un document actif a ete retire manuellement.'),
+        ),
+        gated_content=(),
+        bucket_metrics_reducer=_reduce_documents_metrics,
+        turn_summary_renderer=_summarize_documents_turn,
+        turn_degradation_reason_resolver=_resolve_documents_reason,
+    ),
+    _module(
         module_key='providers',
         label_fr='Modeles consultes',
         description_fr='Separe le modele principal des appels secondaires.',
@@ -671,35 +760,6 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
 
 
 FUTURE_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
-    _module(
-        module_key='documents',
-        label_fr='Documents',
-        description_fr='Module futur pour lecture, selection et injection documentaire.',
-        global_metrics=_fields(
-            ('documents_requested_count', 'Demandes documentaires'),
-            ('documents_used_count', 'Documents utilises'),
-            ('documents_error_count', 'Problemes documentaires'),
-        ),
-        conversation_summary=_fields(
-            ('documents_used_turns', 'Tours avec documents'),
-        ),
-        turn_summary=_fields(
-            ('requested', 'Recherche documentaire demandee'),
-            ('used_count', 'Documents utilises'),
-            ('injected_count', 'Passages injectes'),
-        ),
-        human_detail=_fields(
-            ('document_flow', 'Explique quels documents ont ete utilises sans afficher leur contenu.'),
-        ),
-        sources=('future document events', 'future document artifacts'),
-        limits=('Contrat reserve: aucun event documentaire n est materialise dans le Lot 3.'),
-        degradation_reasons=(
-            ('document_unavailable', 'Le document attendu n est pas disponible.'),
-            ('document_injection_missing', 'Aucun passage documentaire n a ete injecte.'),
-        ),
-        gated_content=('Document complet', 'Passages documentaires injectes'),
-        future=True,
-    ),
     _module(
         module_key='images',
         label_fr='Images',

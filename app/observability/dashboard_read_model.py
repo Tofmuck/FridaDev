@@ -614,6 +614,9 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
     memory_used_turns = 0
     web_requested_turns = 0
     web_injected_turns = 0
+    documents_active_turns = 0
+    documents_injected_total = 0
+    documents_not_injected_total = 0
     error_count = 0
     fallback_count = 0
     last_turn_id = None
@@ -623,13 +626,18 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         last_turn_id = str(row[5] or '') or last_turn_id
         rag = _mapping(row[7])
         web = _mapping(row[8])
-        errors = _mapping(row[9])
+        documents = _mapping(row[9])
+        errors = _mapping(row[10])
         if _to_int(rag.get('injected')) > 0 or _to_int(rag.get('retrieved')) > 0:
             memory_used_turns += 1
         if bool(web.get('requested')):
             web_requested_turns += 1
         if bool(web.get('injected')):
             web_injected_turns += 1
+        if _to_int(documents.get('active_count')) > 0:
+            documents_active_turns += 1
+        documents_injected_total += _to_int(documents.get('injected_count'))
+        documents_not_injected_total += _to_int(documents.get('not_injected_count'))
         error_count += _to_int(errors.get('error_count'))
         fallback_count += _to_int(errors.get('fallback_count'))
     return {
@@ -644,6 +652,9 @@ def _conversation_summary_from_facts(rows: Sequence[Sequence[Any]]) -> dict[str,
         'memory_used_turns': memory_used_turns,
         'web_requested_turns': web_requested_turns,
         'web_injected_turns': web_injected_turns,
+        'documents_active_turns': documents_active_turns,
+        'documents_injected_total': documents_injected_total,
+        'documents_not_injected_total': documents_not_injected_total,
         'error_count': error_count,
         'fallback_count': fallback_count,
         'redaction': {'raw_content_included': False},
@@ -675,6 +686,7 @@ def read_dashboard_conversations(
                         f.classification,
                         f.rag_json,
                         f.web_json,
+                        f.documents_json,
                         f.errors_json
                     FROM observability.dashboard_turn_facts AS f
                     LEFT JOIN observability.dashboard_conversation_summaries AS s
@@ -744,14 +756,15 @@ def _turn_fact_row(row: Sequence[Any]) -> dict[str, Any]:
         'identity': _json_mapping(row[12]),
         'hermeneutic': _json_mapping(row[13]),
         'web': _json_mapping(row[14]),
-        'node_state': _json_mapping(row[15]),
-        'latencies': _json_mapping(row[16]),
-        'errors': _json_mapping(row[17]),
-        'stage_counts': _json_mapping(row[18]),
-        'flags': _json_mapping(row[19]),
-        'content_availability': _json_mapping(row[20]),
-        'calculation_version': str(row[21] or ''),
-        'materialized_ts': _iso(row[22]),
+        'documents': _json_mapping(row[15]),
+        'node_state': _json_mapping(row[16]),
+        'latencies': _json_mapping(row[17]),
+        'errors': _json_mapping(row[18]),
+        'stage_counts': _json_mapping(row[19]),
+        'flags': _json_mapping(row[20]),
+        'content_availability': _json_mapping(row[21]),
+        'calculation_version': str(row[22] or ''),
+        'materialized_ts': _iso(row[23]),
         'redaction': {'raw_content_included': False},
     }
 
@@ -774,6 +787,7 @@ def _turn_fact_select_sql() -> str:
             identity_json,
             hermeneutic_json,
             web_json,
+            documents_json,
             node_state_json,
             latencies_json,
             errors_json,
@@ -1028,6 +1042,10 @@ _REASON_CODE_LABELS = {
     'timeout': 'delai depasse',
     'validation_error': 'validation en erreur',
     'validation_fail_open': 'validation ouverte par securite',
+    'document_too_large_for_turn': 'document actif trop gros pour ce tour',
+    'document_empty_text': 'document actif sans texte injectable',
+    'document_parse_error': 'document impossible a lire',
+    'manual_remove': 'document actif retire manuellement',
 }
 
 
@@ -1114,6 +1132,44 @@ def _debug_links(fact: Mapping[str, Any]) -> list[dict[str, str]]:
     ]
 
 
+def _document_story_lines(documents: Mapping[str, Any]) -> list[str]:
+    active_count = _to_int(documents.get('active_count'))
+    injected_count = _to_int(documents.get('injected_count'))
+    not_injected_count = _to_int(documents.get('not_injected_count'))
+    if active_count <= 0:
+        return ['Aucun document actif de conversation n est observe sur ce tour.']
+
+    lines = [
+        f'{active_count} document(s) actif(s) de conversation observe(s).',
+        f'{injected_count} document(s) envoye(s) entiers au modele.',
+        f'{not_injected_count} document(s) non envoye(s) dans ce tour.',
+    ]
+    for item in [
+        _mapping(raw_item)
+        for raw_item in (documents.get('documents') or [])
+        if isinstance(raw_item, Mapping)
+    ][:5]:
+        filename = str(item.get('filename') or 'document')
+        ext = str(item.get('source_extension') or '').strip()
+        reason = str(item.get('reason_code') or '').strip()
+        if item.get('injected'):
+            status = 'envoye entier'
+        elif reason == 'document_too_large_for_turn':
+            status = 'non envoye: trop gros pour ce tour'
+        elif reason:
+            status = f'non envoye: {_REASON_CODE_LABELS.get(reason, "raison compacte disponible")}'
+        else:
+            status = 'non envoye'
+        lines.append(
+            f'{filename} ({ext or "type inconnu"}, {_to_int(item.get("byte_size"))} octets, '
+            f'{_to_int(item.get("text_chars"))} caracteres): {status}.'
+        )
+    if active_count > 5:
+        lines.append(f'{active_count - 5} document(s) supplementaire(s) non detaille(s).')
+    lines.append('Aucun texte de document actif n est affiche dans cette inspection ordinaire.')
+    return lines
+
+
 def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     rag = _mapping(fact.get('rag'))
     providers = _mapping(fact.get('providers'))
@@ -1122,6 +1178,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
     identity = _mapping(fact.get('identity'))
     hermeneutic = _mapping(fact.get('hermeneutic'))
     web = _mapping(fact.get('web'))
+    documents = _mapping(fact.get('documents'))
     node_state = _mapping(fact.get('node_state'))
     persistence = _mapping(fact.get('persistence'))
     errors = _mapping(fact.get('errors'))
@@ -1163,6 +1220,12 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append('un contexte web injecte')
     else:
         context_parts.append('pas de contexte web injecte observe')
+    if _to_int(documents.get('injected_count')) > 0:
+        context_parts.append(f"{_to_int(documents.get('injected_count'))} document(s) actif(s) injecte(s) entier(s)")
+    elif _to_int(documents.get('active_count')) > 0:
+        context_parts.append('document actif observe mais non injecte')
+    else:
+        context_parts.append('pas de document actif observe')
 
     embeddings_requested, embeddings_requested_present = _first_present_int(
         rag,
@@ -1259,6 +1322,7 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
                     f"Web: demande {_yes_no(web.get('requested'))}, reussi {_yes_no(web.get('success'))}, "
                     f"injecte {_yes_no(web.get('injected'))}, resultats comptes {_to_int(web.get('results_count'))}."
                 ),
+                *_document_story_lines(documents),
                 f"Persistence: etat {_status_fr(persistence.get('status'))}.",
             ],
         },

@@ -11,6 +11,7 @@ from typing import Any, Mapping, Tuple
 
 from . import active_conversation_documents
 from . import active_document_text_extraction
+from observability import active_documents_observability
 
 
 UPLOAD_FIELD = "file"
@@ -37,6 +38,7 @@ def upload_active_document_response(
     conv_store_module: Any,
     active_documents_module: Any = active_conversation_documents,
     extractor_module: Any = active_document_text_extraction,
+    admin_logs_module: Any = None,
 ) -> Tuple[dict[str, Any], int]:
     conv_id, error = _resolve_existing_conversation(conversation_id, conv_store_module=conv_store_module)
     if error:
@@ -55,6 +57,16 @@ def upload_active_document_response(
     try:
         content = bytes(file_obj.read() or b"")
     except Exception:
+        active_documents_observability.log_activation_failure(
+            admin_logs_module,
+            conversation_id=conv_id,
+            extraction={
+                "filename": filename,
+                "media_type": media_type,
+                "status": "parse_error",
+                "reason_code": "document_parse_error",
+            },
+        )
         return {
             "ok": False,
             "error": "lecture du fichier impossible",
@@ -74,6 +86,11 @@ def upload_active_document_response(
     )
     extraction_meta = _content_free_extraction(extraction)
     if extraction.status != extractor_module.STATUS_COMPLETE:
+        active_documents_observability.log_activation_failure(
+            admin_logs_module,
+            conversation_id=conv_id,
+            extraction=extraction_meta,
+        )
         return {
             "ok": False,
             "error": _human_upload_error(extraction.reason_code),
@@ -97,6 +114,11 @@ def upload_active_document_response(
             "reason_code": "document_runtime_unavailable",
         }, 503
 
+    active_documents_observability.log_activation_success(
+        admin_logs_module,
+        conversation_id=conv_id,
+        document=document,
+    )
     return {"ok": True, "conversation_id": conv_id, "document": document}, 201
 
 
@@ -106,6 +128,7 @@ def remove_active_document_response(
     *,
     conv_store_module: Any,
     active_documents_module: Any = active_conversation_documents,
+    admin_logs_module: Any = None,
 ) -> Tuple[dict[str, Any], int]:
     conv_id, error = _resolve_existing_conversation(conversation_id, conv_store_module=conv_store_module)
     if error:
@@ -122,6 +145,12 @@ def remove_active_document_response(
             "error": "document actif introuvable",
             "reason_code": "document_not_found",
         }, 404
+    active_documents_observability.log_manual_remove(
+        admin_logs_module,
+        conversation_id=conv_id,
+        document_id=str(document_id or ""),
+        reason_code=active_documents_module.DEFAULT_REMOVE_REASON,
+    )
     return {"ok": True, "conversation_id": conv_id, "document_id": str(document_id or "")}, 200
 
 
