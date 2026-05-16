@@ -155,6 +155,20 @@ Implications:
 
 Si plusieurs documents actifs existent, les futurs lots devront fixer une politique d'ordre stable. Cette spec interdit seulement les politiques qui tronquent silencieusement un document.
 
+Lot 4 fixe la politique de tour:
+
+- les documents actifs sont relus apres la decision de resume;
+- ils sont ajoutes au prompt principal avant l'appel modele principal;
+- l'ordre est stable: `created_at`, puis `filename`, puis `document_id`;
+- chaque document est decide separement:
+  - injecte entierement si le prompt du tour avec ce document reste sous `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS`;
+  - exclu entierement avec reason `document_too_large_for_turn` sinon;
+- un document vide est exclu avec reason `document_empty_text`;
+- le dialogue recent non resume n'est jamais coupe pour faire entrer un document actif;
+- le tour continue meme si tous les documents actifs sont exclus.
+
+`ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` est un budget d'admission des documents actifs, pas un mecanisme de fenetre dialogique. Il peut reprendre par defaut le soft limit de prompt complet existant, mais il ne doit jamais couper les messages `user` / `assistant` non resumes.
+
 ## 6. Frontieres strictes
 
 ### 6.1 Memory / RAG
@@ -222,6 +236,18 @@ Le chantier documents actifs ne cree pas:
 
 Le prompt principal doit contenir une lane dediee et bornee.
 
+Lot 4 livre le builder de lane dans:
+
+- `app/core/active_document_prompt_lane.py`.
+
+Insertion runtime:
+
+- `chat_service.chat_response()` lit les documents actifs de la conversation via `active_conversation_documents.list_active_documents_for_prompt()`;
+- `conv_store.build_prompt_messages()` compose d'abord le prompt canonique apres la decision de resume, sans faire entrer les documents actifs dans la logique de fenetre dialogique;
+- l'injection Web eventuelle est appliquee;
+- `active_document_prompt_lane.inject_active_document_prompt_lane()` decide ensuite, sur le prompt courant du tour, quels documents entrent entiers;
+- la lane est inseree comme message systeme avant le dialogue utilisateur/assistant, juste avant l'appel au modele principal.
+
 Balises stables a utiliser comme contrat initial:
 
 ```text
@@ -271,6 +297,8 @@ Instruction attendue, a formuler dans le prompt final lors du lot implementation
 - le modele peut expliquer naturellement que le document n'a pas ete envoye dans ce tour, sans phrase mecanique imposee.
 
 Le contrat d'interpretation doit etre teste plus tard dans le prompt final. La presence du texte documentaire seul ne suffira pas comme preuve.
+
+Lot 4 ferme cette exigence pour le prompt principal: les tests verifient la presence de l'instruction d'interpretation dans le prompt final, pas seulement la presence du texte documentaire.
 
 ## 9. Signal document actif non injecte
 

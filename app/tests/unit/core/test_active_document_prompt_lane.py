@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+import unittest
+from types import SimpleNamespace
+
+from core import active_document_prompt_lane as prompt_lane
+
+
+def _doc(
+    document_id: str,
+    filename: str,
+    text_content: str,
+    *,
+    created_at: str = "2026-05-16T12:00:00Z",
+) -> dict[str, object]:
+    return {
+        "document_id": document_id,
+        "conversation_id": "11111111-1111-1111-1111-111111111111",
+        "filename": filename,
+        "media_type": "text/plain",
+        "source_extension": "txt",
+        "byte_size": len(text_content.encode("utf-8")),
+        "text_chars": len(text_content),
+        "text_sha256_12": f"hash-{document_id[:4]}",
+        "token_estimate": max(1, len(text_content) // 4),
+        "status": "active",
+        "active": True,
+        "created_at": created_at,
+        "text_content": text_content,
+    }
+
+
+class ActiveDocumentPromptLaneTest(unittest.TestCase):
+    def test_document_that_fits_is_injected_in_full_with_interpretation_contract(self):
+        full_text = "Texte complet du document actif.\nDeuxieme ligne intacte."
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [_doc("doc-1", "note.txt", full_text)],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda messages, _model: sum(len(item["content"]) for item in messages),
+            max_tokens=5000,
+        )
+
+        self.assertIsNotNone(lane.message)
+        content = lane.message["content"]
+        self.assertIn("[DOCUMENTS ACTIFS DE CONVERSATION]", content)
+        self.assertIn("fourni volontairement par l'utilisateur", content)
+        self.assertIn("contexte de travail direct du tour courant", content)
+        self.assertIn("distincte de la memoire, des resumes, du Web, de l'identite", content)
+        self.assertIn(full_text, content)
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+
+    def test_document_that_does_not_fit_is_excluded_without_text_and_with_signal(self):
+        full_text = "DOCUMENT TROP LONG " * 20
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [_doc("doc-1", "long.txt", full_text)],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda messages, _model: sum(len(item["content"]) for item in messages),
+            max_tokens=200,
+        )
+
+        self.assertIsNotNone(lane.message)
+        content = lane.message["content"]
+        self.assertNotIn(full_text, content)
+        self.assertIn("[DOCUMENTS ACTIFS NON INJECTES]", content)
+        self.assertIn("reason_code=document_too_large_for_turn", content)
+        self.assertIn("ne pretends jamais l'avoir lu", content)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+
+    def test_multiple_documents_have_stable_created_at_filename_order(self):
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [
+                _doc("doc-b", "zeta.txt", "Second", created_at="2026-05-16T12:02:00Z"),
+                _doc("doc-a", "alpha.txt", "First", created_at="2026-05-16T12:01:00Z"),
+            ],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        content = lane.message["content"]
+        self.assertLess(content.index("alpha.txt"), content.index("zeta.txt"))
+        self.assertLess(content.index("First"), content.index("Second"))
+        self.assertEqual(lane.injected_count, 2)
+
+    def test_empty_document_gets_non_injected_signal(self):
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [_doc("doc-empty", "empty.txt", "")],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertIn("reason_code=document_empty_text", lane.message["content"])
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+
+    def test_inject_helper_places_lane_before_dialogue_in_current_prompt(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "system", "content": "CONTEXTE WEB DEJA INJECTE"},
+            {"role": "user", "content": "Travaille sur le document."},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_doc("doc-1", "note.txt", "Texte integral du document.")],
+            model="model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        contents = [message["content"] for message in prompt_messages]
+        lane_index = next(index for index, content in enumerate(contents) if "[DOCUMENTS ACTIFS DE CONVERSATION]" in content)
+        user_index = next(index for index, message in enumerate(prompt_messages) if message["role"] == "user")
+        self.assertLess(lane_index, user_index)
+        self.assertEqual(prompt_messages[lane_index - 1]["content"], "CONTEXTE WEB DEJA INJECTE")
+        self.assertIn("Texte integral du document.", contents[lane_index])
+        self.assertEqual(lane.injected_count, 1)
+
+    def test_whole_or_absent_decision_accounts_for_existing_prompt_context(self):
+        full_text = "Court mais seulement si le prompt courant laisse de la place."
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "CONTEXTE DEJA PRESENT " * 30},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_doc("doc-1", "note.txt", full_text)],
+            model="model",
+            count_tokens_func=lambda messages, _model: sum(len(item["content"]) for item in messages),
+            max_tokens=200,
+        )
+
+        content = "\n".join(message["content"] for message in prompt_messages)
+        self.assertNotIn(full_text, content)
+        self.assertIn("reason_code=document_too_large_for_turn", content)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+
+    def test_chat_service_document_reader_is_non_blocking_on_store_error(self):
+        from core import chat_service
+
+        fake_module = SimpleNamespace(
+            list_active_documents_for_prompt=lambda _conversation_id: (_ for _ in ()).throw(RuntimeError("db down"))
+        )
+        fake_logger = SimpleNamespace(warning=lambda *_args, **_kwargs: None)
+
+        result = chat_service._active_documents_for_prompt(
+            conversation={"id": "11111111-1111-1111-1111-111111111111"},
+            active_documents_module=fake_module,
+            logger=fake_logger,
+        )
+
+        self.assertEqual(result, [])
+
+    def test_chat_service_uses_dedicated_active_document_prompt_budget(self):
+        from core import chat_service
+
+        self.assertEqual(
+            chat_service._active_document_prompt_max_tokens(
+                SimpleNamespace(ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS=123, MAX_TOKENS=999)
+            ),
+            123,
+        )
+        self.assertEqual(
+            chat_service._active_document_prompt_max_tokens(SimpleNamespace(MAX_TOKENS=999)),
+            999,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

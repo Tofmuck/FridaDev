@@ -160,17 +160,19 @@ Note Lot 3 livre `app/core/active_document_text_extraction.py`. Il utilise `pypd
 
 ### Lot 4 - Integration prompt entier ou rien
 
-- [ ] Brancher les documents actifs apres la decision de resume et avant l'appel modele principal.
-- [ ] Injecter une lane documentaire dediee avec balises stables.
-- [ ] Ajouter au prompt principal le contrat d'interpretation de cette lane; ne pas se contenter d'injecter un bloc documentaire.
-- [ ] Enseigner explicitement au modele qu'un document actif de conversation est fourni volontairement par l'utilisateur et sert de contexte de travail direct quand il est injecte.
-- [ ] Enseigner explicitement que cette lane n'est ni un souvenir, ni un resume, ni un contexte web, ni une identite.
-- [ ] Calculer la decision entier ou exclu par tour.
-- [ ] Ne jamais tronquer silencieusement.
-- [ ] Ajouter le signal structure pour les documents actifs non injectes.
-- [ ] Garantir que le signal non injecte indique au modele de ne pas pretendre avoir lu le document.
-- [ ] Garder une politique stable quand plusieurs documents sont actifs.
-- [ ] Tester document injecte entier, document trop gros exclu entier, tour non bloque et instruction d'interpretation bien presente dans le prompt final.
+- [x] Brancher les documents actifs apres la decision de resume et avant l'appel modele principal.
+- [x] Injecter une lane documentaire dediee avec balises stables.
+- [x] Ajouter au prompt principal le contrat d'interpretation de cette lane; ne pas se contenter d'injecter un bloc documentaire.
+- [x] Enseigner explicitement au modele qu'un document actif de conversation est fourni volontairement par l'utilisateur et sert de contexte de travail direct quand il est injecte.
+- [x] Enseigner explicitement que cette lane n'est ni un souvenir, ni un resume, ni un contexte web, ni une identite.
+- [x] Calculer la decision entier ou exclu par tour.
+- [x] Ne jamais tronquer silencieusement.
+- [x] Ajouter le signal structure pour les documents actifs non injectes.
+- [x] Garantir que le signal non injecte indique au modele de ne pas pretendre avoir lu le document.
+- [x] Garder une politique stable quand plusieurs documents sont actifs.
+- [x] Tester document injecte entier, document trop gros exclu entier, tour non bloque et instruction d'interpretation bien presente dans le prompt final.
+
+Note Lot 4 livre `app/core/active_document_prompt_lane.py` et branche la lane dans `chat_service`, apres `conv_store.build_prompt_messages()` et apres l'injection Web eventuelle, juste avant l'appel au modele principal. La decision entier ou absent porte donc sur le prompt courant du tour et le budget d'admission `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS`; elle ne coupe jamais le dialogue recent non resume. Il ne branche pas encore frontend, endpoint produit, observabilite, dashboard ni anti-contamination complete du Lot 5.
 
 ### Lot 5 - Barriere Memory/RAG/Identity/Summary
 

@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from core import assistant_output_contract
+from core import active_conversation_documents
+from core import active_document_prompt_lane
 from core import chat_llm_flow
 from core import chat_memory_flow
 from core import chat_prompt_context
@@ -49,6 +51,50 @@ def _mapping(value: Any) -> dict[str, Any]:
 
 def _text(value: Any) -> str:
     return str(value or '').strip()
+
+
+def _active_documents_for_prompt(
+    *,
+    conversation: Mapping[str, Any],
+    active_documents_module: Any = active_conversation_documents,
+    logger: Any = None,
+) -> list[dict[str, Any]]:
+    conversation_id = _text(conversation.get('id'))
+    if not conversation_id:
+        return []
+    reader = getattr(active_documents_module, 'list_active_documents_for_prompt', None)
+    if not callable(reader):
+        return []
+    try:
+        raw_documents = reader(conversation_id)
+    except Exception as exc:
+        if logger is not None:
+            logger.warning('active_documents_prompt_read_failed id=%s err=%s', conversation_id, exc)
+        return []
+    documents: list[dict[str, Any]] = []
+    for item in raw_documents or []:
+        if isinstance(item, Mapping):
+            documents.append(dict(item))
+    return documents
+
+
+def _prompt_token_counter(token_utils_module: Any):
+    counter = getattr(token_utils_module, 'estimate_tokens', None)
+    if callable(counter):
+        return counter
+    return lambda _messages, _model: 0
+
+
+def _active_document_prompt_max_tokens(config_module: Any) -> int:
+    value = getattr(
+        config_module,
+        'ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS',
+        getattr(config_module, 'MAX_TOKENS', 0),
+    )
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 _FINAL_ANSWER_OUTPUT_REGIME = {
@@ -532,6 +578,10 @@ def chat_response(
     )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
+    active_documents_for_prompt = _active_documents_for_prompt(
+        conversation=conversation,
+        logger=logger,
+    )
     prompt_messages = conv_store_module.build_prompt_messages(
         conversation,
         runtime_main_model,
@@ -549,6 +599,13 @@ def chat_response(
             admin_logs_module=admin_logs_module,
             web_context_payload=web_runtime_payload,
         )
+    active_document_prompt_lane.inject_active_document_prompt_lane(
+        prompt_messages,
+        active_documents_for_prompt,
+        model=runtime_main_model,
+        count_tokens_func=_prompt_token_counter(token_utils_module),
+        max_tokens=_active_document_prompt_max_tokens(config_module),
+    )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,
         prompt_messages=prompt_messages,
