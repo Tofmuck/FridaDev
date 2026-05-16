@@ -331,9 +331,37 @@ Doctrine:
 
 Le chantier courant peut prouver qu'un fichier nomme a ete actif et injecte. Il ne promet pas de derouler le fichier dans le dashboard.
 
-## 13. Etat actif serveur conceptuel
+## 13. Etat actif serveur
 
-Le Lot 2 devra definir l'implementation. Le contrat conceptuel est deja fixe:
+Lot 2 livre le service d'etat serveur dedie dans:
+
+- `app/core/active_conversation_documents.py`.
+
+Emplacement retenu:
+
+- `app/core/`, car l'etat est un etat applicatif de conversation;
+- pas `app/memory/`, car il ne doit pas etre Memory/RAG;
+- pas `app/admin/`, car il n'est pas une surface admin;
+- pas `app/observability/`, car il n'est pas seulement une projection de lecture.
+
+Persistence retenue:
+
+- table runtime dediee `active_conversation_documents`;
+- cle primaire `document_id`;
+- liaison stricte `conversation_id`;
+- reference `conversations(id) ON DELETE CASCADE`;
+- initialisation au demarrage serveur via `active_conversation_documents.init_db()`, apres le catalogue de conversations;
+- soft deactivation sur retrait manuel;
+- cleanup explicite possible des documents desactives ou d'une conversation;
+- aucune table Memory/RAG/Identity/Summary n'est utilisee.
+
+Le texte extrait necessaire a la reinjection multi-tour est persiste dans cette table d'etat actif court terme. Il ne doit pas etre expose par les projections ordinaires:
+
+- `list_active_documents()` retourne seulement les metadonnees content-free;
+- `list_active_documents_for_prompt()` est reserve au futur builder de prompt et retourne explicitement `text_content`;
+- les lots frontend, logs, dashboard et inspection ne doivent pas utiliser le chemin prompt pour afficher le texte.
+
+Contrat d'etat:
 
 - l'etat actif vit cote serveur;
 - il est scoped par conversation;
@@ -343,7 +371,7 @@ Le Lot 2 devra definir l'implementation. Le contrat conceptuel est deja fixe:
 - il n'est pas Biblio;
 - il n'est pas partage entre conversations.
 
-Champs conceptuels minimaux:
+Champs minimaux:
 
 - `document_id`;
 - `conversation_id`;
@@ -359,6 +387,23 @@ Champs conceptuels minimaux:
 - `deactivated_at`;
 - `last_injected_turn_id`;
 - `last_excluded_reason_code`.
+
+Retention et nettoyage:
+
+- activation: insertion active pour une conversation unique;
+- reinjection: relecture de tous les documents actifs de cette conversation;
+- retrait manuel: `status=inactive`, `deactivated_at`, reason code `manual_remove`;
+- tours suivants: un document desactive n'est plus relu pour le prompt;
+- suppression dure de conversation: cascade DB ou cleanup explicite;
+- purge court terme: les documents desactives peuvent etre supprimes par seuil temporel sans toucher aux documents actifs.
+
+Limite volontaire du Lot 2:
+
+- aucun endpoint;
+- aucun parsing de fichier;
+- aucune injection prompt;
+- aucune observabilite dashboard;
+- aucun branchement Memory/RAG/Identity/Summary.
 
 ## 14. Tests requis par les futurs lots
 

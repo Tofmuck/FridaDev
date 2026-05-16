@@ -136,13 +136,15 @@ Ce chantier separe est desormais ouvert comme cadrage produit sous `app/docs/tod
 
 ### Lot 2 - Etat actif serveur non memoire
 
-- [ ] Choisir l'emplacement de code dedie apres relecture du depot.
-- [ ] Creer le modele/service d'etat actif conversation-scoped.
-- [ ] Persister metadonnees et texte extrait necessaire a la reinjection multi-tour, sans classer cette persistence comme memoire.
-- [ ] Ajouter activation, liste, retrait/desactivation.
-- [ ] Garantir que l'etat n'est pas reutilisable hors conversation.
-- [ ] Definir retention et nettoyage minimal apres retrait ou suppression de conversation.
-- [ ] Ajouter tests de deux tours successifs et retrait manuel.
+- [x] Choisir l'emplacement de code dedie apres relecture du depot.
+- [x] Creer le modele/service d'etat actif conversation-scoped.
+- [x] Persister metadonnees et texte extrait necessaire a la reinjection multi-tour, sans classer cette persistence comme memoire.
+- [x] Ajouter activation, liste, retrait/desactivation.
+- [x] Garantir que l'etat n'est pas reutilisable hors conversation.
+- [x] Definir retention et nettoyage minimal apres retrait ou suppression de conversation.
+- [x] Ajouter tests de deux tours successifs et retrait manuel.
+
+Note Lot 2 livre le service `app/core/active_conversation_documents.py`, la table dediee `active_conversation_documents` et son initialisation au demarrage serveur. Il ne branche pas encore endpoint, parsing, frontend, lane prompt ni observabilite; ces points restent dans les lots suivants.
 
 ### Lot 3 - Extraction texte des formats cibles
 

@@ -22,6 +22,7 @@ from tools import web_search as ws
 from core import assistant_turn_state
 from core import chat_stream_control
 from core import conv_store
+from core import active_conversation_documents
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
@@ -120,6 +121,7 @@ conv_store.ensure_conv_dir()
 memory_store.init_db()
 conv_store.init_catalog_db()
 conv_store.init_messages_db()
+active_conversation_documents.init_db()
 try:
     _runtime_secret_backfill = runtime_settings.backfill_runtime_secrets_from_env()
 except (runtime_settings.RuntimeSettingsDbUnavailableError, runtime_settings.runtime_secrets.RuntimeSettingsCryptoKeyMissingError) as exc:
