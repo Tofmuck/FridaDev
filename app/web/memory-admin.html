@@ -20,15 +20,19 @@
         </div>
       </div>
 
-      <div class="admin-actions">
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/">Chat</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/dashboard">Dashboard</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/log">Logs applicatifs</a>
-        <a class="admin-btn admin-btn-primary admin-btn-link" href="/memory-admin" aria-current="page">Memory Admin</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/hermeneutic-admin">Hermeneutic admin</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/identity">Identity</a>
-        <a class="admin-btn admin-btn-secondary admin-btn-link" href="/admin">Admin</a>
-        <button id="memoryAdminRefresh" class="admin-btn admin-btn-primary" type="button">Actualiser</button>
+      <div class="admin-header-controls">
+        <nav class="admin-global-nav" aria-label="Navigation globale">
+          <a class="admin-nav-link" href="/">Chat</a>
+          <a class="admin-nav-link" href="/dashboard">Dashboard</a>
+          <a class="admin-nav-link" href="/log">Logs</a>
+          <a class="admin-nav-link" href="/memory-admin" aria-current="page">Memory Admin</a>
+          <a class="admin-nav-link" href="/hermeneutic-admin">Hermeneutic Admin</a>
+          <a class="admin-nav-link" href="/identity">Identity</a>
+          <a class="admin-nav-link" href="/admin">Admin</a>
+        </nav>
+        <div class="admin-page-actions" aria-label="Actions de page">
+          <button id="memoryAdminRefresh" class="admin-btn admin-btn-secondary admin-page-action" type="button">Actualiser</button>
+        </div>
       </div>
     </header>
 

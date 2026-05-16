@@ -345,6 +345,11 @@ body {
   background: var(--surface);
 }
 
+.topbar .icon-link[aria-current="page"] {
+  color: var(--fg);
+  background: var(--surface-active);
+}
+
 /* ===== Panel paramètres ===== */
 .panel {
   position: fixed;

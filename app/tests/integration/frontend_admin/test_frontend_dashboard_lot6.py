@@ -123,6 +123,15 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
             "identity.html": ("identity-editor", "/identity"),
             "admin.html": ("runtime-settings", "/admin"),
         }
+        expected_nav = [
+            ("/", "Chat"),
+            ("/dashboard", "Dashboard"),
+            ("/log", "Logs"),
+            ("/memory-admin", "Memory Admin"),
+            ("/hermeneutic-admin", "Hermeneutic Admin"),
+            ("/identity", "Identity"),
+            ("/admin", "Admin"),
+        ]
 
         for filename, (role, current_href) in surfaces.items():
             with self.subTest(filename=filename):
@@ -131,6 +140,34 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
                 self.assertIn(f'href="{current_href}" aria-current="page"', source)
                 positions = [source.index(marker) for marker in expected_links]
                 self.assertEqual(positions, sorted(positions))
+                nav_match = re.search(
+                    r'<nav class="admin-global-nav" aria-label="Navigation globale">(?P<nav>.*?)</nav>',
+                    source,
+                    re.S,
+                )
+                self.assertIsNotNone(nav_match)
+                nav_html = nav_match.group("nav")
+                nav_links = re.findall(
+                    r'<a class="admin-nav-link" href="([^"]+)"(?: aria-current="page")?>([^<]+)</a>',
+                    nav_html,
+                )
+                self.assertEqual(nav_links, expected_nav)
+                self.assertNotIn("Actualiser", nav_html)
+
+        chat_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        chat_nav_match = re.search(
+            r'<nav class="right global-nav" aria-label="Navigation globale">(?P<nav>.*?)</nav>',
+            chat_source,
+            re.S,
+        )
+        self.assertIsNotNone(chat_nav_match)
+        chat_nav_html = chat_nav_match.group("nav")
+        chat_nav_links = re.findall(
+            r'<a id="[^"]+" class="icon-link" title="[^"]+" href="([^"]+)"(?: aria-current="page")?>([^<]+)</a>',
+            chat_nav_html,
+        )
+        self.assertEqual(chat_nav_links, expected_nav)
+        self.assertIn('href="/" aria-current="page"', chat_nav_html)
 
         dashboard_source = (APP_DIR / "web" / "dashboard.html").read_text(encoding="utf-8")
         log_source = (APP_DIR / "web" / "log.html").read_text(encoding="utf-8")

@@ -98,14 +98,67 @@ body.admin-page {
 }
 
 .admin-actions,
-.admin-inline-actions {
+.admin-inline-actions,
+.admin-global-nav,
+.admin-page-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.admin-actions {
+.admin-actions,
+.admin-header-controls,
+.admin-global-nav,
+.admin-page-actions {
   justify-content: flex-end;
+}
+
+.admin-header-controls {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-global-nav {
+  gap: 2px;
+  align-items: center;
+  max-width: min(72vw, 720px);
+}
+
+.admin-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.admin-nav-link:hover {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.admin-nav-link[aria-current="page"] {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.admin-page-actions {
+  padding-top: 7px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.admin-page-action {
+  padding: 7px 11px;
+  font-size: 12px;
 }
 
 .admin-btn {
@@ -903,8 +956,16 @@ body.admin-page {
   }
 
   .admin-actions,
-  .admin-inline-actions {
+  .admin-inline-actions,
+  .admin-header-controls,
+  .admin-global-nav,
+  .admin-page-actions {
     justify-content: flex-start;
+    justify-items: start;
+  }
+
+  .admin-global-nav {
+    max-width: 100%;
   }
 
   .admin-section-note {
