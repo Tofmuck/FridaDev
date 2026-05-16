@@ -151,9 +151,10 @@ FRIDA_ADMIN_ALLOWED_CIDRS = ''
 # must not be clipped by non-dialogue prompt layers.
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 
-# Admission budget for active conversation documents. It decides whether a
-# document can be injected whole in the current prompt; it never clips dialogue.
-ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS = _env_int('ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS', MAX_TOKENS)
+# Optional hard admission limit for active conversation documents. 0 means no
+# document-specific hard limit is enforced here; FRIDA_MAX_TOKENS remains only a
+# soft observability limit and must not exclude active documents by default.
+ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS = _env_int('ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS', 0)
 
 # Prompt files
 MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')

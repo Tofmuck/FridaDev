@@ -161,13 +161,14 @@ Lot 4 fixe la politique de tour:
 - ils sont ajoutes au prompt principal avant l'appel modele principal;
 - l'ordre est stable: `created_at`, puis `filename`, puis `document_id`;
 - chaque document est decide separement:
-  - injecte entierement si le prompt du tour avec ce document reste sous `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS`;
-  - exclu entierement avec reason `document_too_large_for_turn` sinon;
+  - injecte entierement si aucune limite documentaire dure n'est configuree;
+  - injecte entierement si le prompt du tour avec ce document reste sous `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` quand cette limite vaut plus de `0`;
+  - exclu entierement avec reason `document_too_large_for_turn` seulement si cette limite documentaire dure explicite est configuree et depassee;
 - un document vide est exclu avec reason `document_empty_text`;
 - le dialogue recent non resume n'est jamais coupe pour faire entrer un document actif;
 - le tour continue meme si tous les documents actifs sont exclus.
 
-`ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` est un budget d'admission des documents actifs, pas un mecanisme de fenetre dialogique. Il peut reprendre par defaut le soft limit de prompt complet existant, mais il ne doit jamais couper les messages `user` / `assistant` non resumes.
+`ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` est une limite dure optionnelle d'admission des documents actifs. Sa valeur par defaut est `0`, ce qui desactive ce couperet documentaire. Elle ne doit pas heriter implicitement de `FRIDA_MAX_TOKENS`, car `FRIDA_MAX_TOKENS` reste un soft limit d'observabilite du prompt complet. Une valeur non nulle doit correspondre a une decision operateur explicite de capacite documentaire / provider; elle ne doit jamais couper les messages `user` / `assistant` non resumes.
 
 ## 6. Frontieres strictes
 

@@ -172,7 +172,7 @@ Note Lot 3 livre `app/core/active_document_text_extraction.py`. Il utilise `pypd
 - [x] Garder une politique stable quand plusieurs documents sont actifs.
 - [x] Tester document injecte entier, document trop gros exclu entier, tour non bloque et instruction d'interpretation bien presente dans le prompt final.
 
-Note Lot 4 livre `app/core/active_document_prompt_lane.py` et branche la lane dans `chat_service`, apres `conv_store.build_prompt_messages()` et apres l'injection Web eventuelle, juste avant l'appel au modele principal. La decision entier ou absent porte donc sur le prompt courant du tour et le budget d'admission `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS`; elle ne coupe jamais le dialogue recent non resume. Il ne branche pas encore frontend, endpoint produit, observabilite, dashboard ni anti-contamination complete du Lot 5.
+Note Lot 4 livre `app/core/active_document_prompt_lane.py` et branche la lane dans `chat_service`, apres `conv_store.build_prompt_messages()` et apres l'injection Web eventuelle, juste avant l'appel au modele principal. La decision entier ou absent porte sur le prompt courant du tour. `ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS` est une limite documentaire dure optionnelle, desactivee par defaut (`0`) et distincte du soft limit d'observabilite `FRIDA_MAX_TOKENS`; elle ne coupe jamais le dialogue recent non resume. Il ne branche pas encore frontend, endpoint produit, observabilite, dashboard ni anti-contamination complete du Lot 5.
 
 ### Lot 5 - Barriere Memory/RAG/Identity/Summary
 

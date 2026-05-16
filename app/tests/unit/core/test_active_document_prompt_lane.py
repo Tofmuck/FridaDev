@@ -171,8 +171,22 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         )
         self.assertEqual(
             chat_service._active_document_prompt_max_tokens(SimpleNamespace(MAX_TOKENS=999)),
-            999,
+            0,
         )
+
+    def test_zero_budget_does_not_exclude_document_from_soft_limit(self):
+        full_text = "Document actif sans limite documentaire configuree."
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [_doc("doc-1", "note.txt", full_text)],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda _messages, _model: 999999,
+            max_tokens=0,
+        )
+
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertIn(full_text, lane.message["content"])
 
 
 if __name__ == "__main__":

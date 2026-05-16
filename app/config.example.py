@@ -89,6 +89,10 @@ TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 # must not be clipped by non-dialogue prompt layers.
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 
+# Optional hard admission limit for active conversation documents. 0 disables
+# this document-specific cutoff; do not derive it from FRIDA_MAX_TOKENS.
+ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS = _env_int('ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS', 0)
+
 # Prompt files
 MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')
 MAIN_HERMENEUTICAL_PROMPT_PATH = os.environ.get(

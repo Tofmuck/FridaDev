@@ -86,11 +86,7 @@ def _prompt_token_counter(token_utils_module: Any):
 
 
 def _active_document_prompt_max_tokens(config_module: Any) -> int:
-    value = getattr(
-        config_module,
-        'ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS',
-        getattr(config_module, 'MAX_TOKENS', 0),
-    )
+    value = getattr(config_module, 'ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS', 0)
     try:
         return max(0, int(value or 0))
     except (TypeError, ValueError):
