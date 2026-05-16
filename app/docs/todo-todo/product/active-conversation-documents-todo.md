@@ -216,14 +216,20 @@ Note Lot 7 livre `app/observability/active_documents_observability.py`, l'event 
 
 ### Lot 8 - Tests integration et preuves operateur
 
-- [ ] Tester un document actif reinjecte sur deux tours successifs.
-- [ ] Tester retrait manuel puis absence d'injection.
-- [ ] Tester document trop gros: tour continue, document exclu, signal compact.
-- [ ] Tester parse error: pas d'injection partielle.
-- [ ] Tester absence de contamination Memory/RAG/Identity/Summary.
-- [ ] Tester absence de contenu brut dans observabilite ordinaire.
-- [ ] Tester comportement apres rechargement navigateur.
-- [ ] Tester la preuve compacte dashboard/logs sans afficher le document.
+- [x] Tester un document actif reinjecte sur deux tours successifs.
+- [x] Tester retrait manuel puis absence d'injection.
+- [x] Tester document trop gros: tour continue, document exclu, signal compact.
+- [x] Tester parse error: pas d'injection partielle.
+- [x] Tester absence de contamination Memory/RAG/Identity/Summary.
+- [x] Tester absence de contenu brut dans observabilite ordinaire.
+- [x] Tester comportement apres rechargement navigateur.
+- [x] Tester la preuve compacte dashboard/logs sans afficher le document.
+
+Note Lot 8 ajoute les preuves operateur bout-en-bout sans nouvelle fonctionnalite produit:
+
+- `app/tests/unit/core/test_active_document_operator_proofs_lot8.py` prouve la reinjection sur deux tours, le retrait manuel suivi d'absence d'injection, et le cas trop gros avec tour qui continue, document exclu entier et event compact content-free.
+- `app/tests/test_server_active_documents_contract.py` prouve aussi qu'un parse error ne cree aucune activation et ne renvoie aucun texte partiel.
+- Les suites Lot 5, Lot 7, dashboard et browser prouvent respectivement la non-contamination Memory/RAG/Identity/Summary, l'observabilite content-free, la materialisation dashboard content-free, et la persistance visible apres reload navigateur.
 
 ### Lot 9 - Documentation de cloture et preparation future
 

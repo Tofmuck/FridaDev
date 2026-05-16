@@ -161,6 +161,33 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         )
         self.assertNotIn("not supported", json.dumps(self.fake_admin_logs.events, ensure_ascii=False))
 
+    def test_parse_error_upload_never_activates_or_returns_partial_text(self):
+        raw_invalid_docx = b"RAW PARTIAL DOCX TEXT MUST NOT LEAK"
+        response = self.client.post(
+            f"/api/conversations/{CONV_ID}/active-documents",
+            data={"file": (io.BytesIO(raw_invalid_docx), "broken.docx")},
+            content_type="multipart/form-data",
+        )
+
+        self.assertEqual(response.status_code, 422)
+        payload = response.get_json()
+        encoded_payload = json.dumps(payload, ensure_ascii=False)
+        encoded_logs = json.dumps(self.fake_admin_logs.events, ensure_ascii=False)
+
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "document_parse_error")
+        self.assertEqual(payload["document"]["status"], "parse_error")
+        self.assertNotIn("text", payload["document"])
+        self.assertEqual(self.fake_docs.items, [])
+        self.assertEqual(self.fake_docs.activated_texts, [])
+        self.assertEqual(self.fake_admin_logs.events[-1]["stage"], "active_document_activation_failed")
+        self.assertEqual(
+            self.fake_admin_logs.events[-1]["payload"]["reason_code"],
+            "document_parse_error",
+        )
+        self.assertNotIn("RAW PARTIAL DOCX TEXT MUST NOT LEAK", encoded_payload)
+        self.assertNotIn("RAW PARTIAL DOCX TEXT MUST NOT LEAK", encoded_logs)
+
     def test_active_documents_require_existing_conversation_scope(self):
         invalid = self.client.get("/api/conversations/not-a-uuid/active-documents")
         self.assertEqual(invalid.status_code, 400)
