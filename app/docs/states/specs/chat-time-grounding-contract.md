@@ -47,11 +47,11 @@ Ce que cela ne garantit pas encore:
   - statut: `partiellement contractuel` (entete stable, contenu narratif).
 - `conv_store._make_memory_context_message`
   - role: contextualiser les souvenirs retenus avec leurs resumes parents.
-  - forme injectee: `[Contexte du souvenir — résumé ...]`.
+  - forme injectee: `[Contexte du souvenir S1 — résumé ...]` quand un repere parent est utile, sinon `[Contexte du souvenir — résumé ...]`.
   - statut: `partiellement contractuel`.
 - `conv_store._make_memory_message`
   - role: injecter les souvenirs pertinents avec leur position relative au tour.
-  - forme injectee: `[Mémoire — souvenirs pertinents]` + lignes prefixees par `delta_t_label`.
+  - forme injectee: `[Mémoire — souvenirs pertinents]` + lignes prefixees par `delta_t_label`, avec `[contexte S1]` si la trace est liee au resume parent de meme repere.
   - statut: `partiellement contractuel`.
 - `conv_store._make_context_hints_message`
   - role: injecter des indices contextuels recents avec horodatage relatif.

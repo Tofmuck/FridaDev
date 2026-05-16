@@ -254,6 +254,65 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         self.assertNotIn("[Contexte du souvenir", rendered_without_parent)
         self.assertIn("[Mémoire — souvenirs pertinents]", rendered_without_parent)
 
+    def test_multiple_parent_summaries_are_explicitly_linked_to_memory_traces(self) -> None:
+        first_parent = {
+            "id": "summary-cadrage",
+            "conversation_id": "conv-source",
+            "start_ts": "2026-05-01T08:00:00Z",
+            "end_ts": "2026-05-02T18:00:00Z",
+            "content": "Le cadrage memoire a ete stabilise autour des preuves automatisables.",
+        }
+        second_parent = {
+            "id": "summary-observability",
+            "conversation_id": "conv-source",
+            "start_ts": "2026-05-03T08:00:00Z",
+            "end_ts": "2026-05-04T18:00:00Z",
+            "content": "Le dashboard raconte les faits compactement sans contenu brut par defaut.",
+        }
+        memory_traces = [
+            {
+                "candidate_id": "cand-1",
+                "role": "user",
+                "content": "On veut des preuves automatisables.",
+                "timestamp": "2026-05-02T10:00:00Z",
+                "parent_summary": first_parent,
+            },
+            {
+                "candidate_id": "cand-2",
+                "role": "assistant",
+                "content": "Je reformule le cadrage sans attente passive.",
+                "timestamp": "2026-05-02T11:00:00Z",
+                "parent_summary": dict(first_parent),
+            },
+            {
+                "candidate_id": "cand-3",
+                "role": "assistant",
+                "content": "Le dashboard garde une inspection traduite.",
+                "timestamp": "2026-05-04T11:00:00Z",
+                "parent_summary": second_parent,
+            },
+            {
+                "candidate_id": "summary:standalone",
+                "role": "summary",
+                "content": "Resume candidat autonome conserve dans la lane memoire.",
+                "timestamp": "2026-05-04T12:00:00Z",
+                "parent_summary": None,
+            },
+        ]
+
+        prompt_messages = self._build_prompt_with_memory(memory_traces)
+        rendered = "\n\n".join(message["content"] for message in prompt_messages)
+
+        self.assertIn("[Contexte du souvenir S1 — résumé du 2026-05-01 au 2026-05-02]", rendered)
+        self.assertIn("[Contexte du souvenir S2 — résumé du 2026-05-03 au 2026-05-04]", rendered)
+        self.assertEqual(rendered.count("[Contexte du souvenir S1"), 1)
+        self.assertEqual(rendered.count("[Contexte du souvenir S2"), 1)
+        self.assertIn("Utilisateur [contexte S1] : On veut des preuves automatisables.", rendered)
+        self.assertIn("Assistant [contexte S1] : Je reformule le cadrage sans attente passive.", rendered)
+        self.assertIn("Assistant [contexte S2] : Le dashboard garde une inspection traduite.", rendered)
+        self.assertIn("Resume : Resume candidat autonome conserve dans la lane memoire.", rendered)
+        self.assertNotIn("Resume [contexte", rendered)
+
     def test_identity_preview_rejects_irony_and_role_play_even_with_durable_high_confidence(self) -> None:
         base_entry = {
             "subject": "user",

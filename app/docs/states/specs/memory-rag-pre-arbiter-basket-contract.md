@@ -371,6 +371,7 @@ Decision retenue:
 - `parent_summary` complet est absent du panier vu par l'arbitre;
 - `parent_summary_present` existe dans le panier cible comme signal diagnostic;
 - le contenu de `parent_summary` n'est resolu qu'en aval, pour les candidats gardes, au moment du rendu prompt.
+- dans le prompt final, le rendu aval peut ajouter des reperes lisibles (`S1`, `S2`, ...) pour relier chaque bloc `[Contexte du souvenir ...]` aux lignes de `[Mémoire — souvenirs pertinents]` qui portent le meme marqueur `[contexte S1]`; ces reperes ne sont pas des champs de diagnostic du panier.
 
 Donc:
 - `parent_summary` n'est pas un hint arbitre dans le premier lot V2;

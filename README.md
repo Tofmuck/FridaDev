@@ -140,6 +140,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Historical FR state milestone (2026-04-03): `app/docs/states/project/Frida-State-french-03-04-26.md`
 - Installation/operations guide: `app/docs/states/operations/frida-installation-operations.md`
 - Chat enunciation / identity / time-gap doctrine: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Active prompt/payload semantic contract audit: `app/docs/todo-todo/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
 - Response arbiter power contract for lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Streaming protocol source-of-truth: `app/docs/states/specs/streaming-protocol.md`
 - Archived streaming hardening closure: `app/docs/todo-done/product/frida-response-streaming-todo.md`
@@ -333,6 +334,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Jalon historique EN (2026-04-03): `app/docs/states/project/Frida-State-english-03-04-26.md`
 - Guide installation/exploitation: `app/docs/states/operations/frida-installation-operations.md`
 - Doctrine produit voix / identite / gap du chat: `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
+- Audit actif du contrat semantique prompt/payload: `app/docs/todo-todo/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
 - Contrat de pouvoir de l'arbitre de reponse pour le lot 1: `app/docs/states/specs/response-arbiter-power-contract.md`
 - Spec source-of-truth du protocole streaming: `app/docs/states/specs/streaming-protocol.md`
 - Archive de cloture du chantier streaming: `app/docs/todo-done/product/frida-response-streaming-todo.md`

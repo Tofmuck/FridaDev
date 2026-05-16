@@ -118,7 +118,13 @@ def make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dic
             period = f"du {start}"
         else:
             period = ""
-        header = f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX} — résumé {period}]" if period else f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX}]"
+        prompt_ref = str(summary.get("prompt_ref") or "").strip()
+        ref_suffix = f" {prompt_ref}" if prompt_ref else ""
+        header = (
+            f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX}{ref_suffix} — résumé {period}]"
+            if period
+            else f"{MEMORY_CONTEXT_BLOCK_HEADER_PREFIX}{ref_suffix}]"
+        )
         lines.append(f"{header}\n{summary['content']}")
     return {"role": "system", "content": "\n\n".join(lines)}
 
@@ -177,8 +183,35 @@ def make_memory_message(
         ts = trace.get("timestamp") or ""
         label = delta_t_label_func(ts, ts_now) if ts else ""
         prefix = f"[{label}] " if label else ""
-        lines.append(f"{prefix}{role} : {trace['content']}")
+        parent_ref = str(trace.get("parent_summary_ref") or "").strip()
+        context_marker = f" [contexte {parent_ref}]" if parent_ref else ""
+        lines.append(f"{prefix}{role}{context_marker} : {trace['content']}")
     return {"role": "system", "content": "\n".join(lines)}
+
+
+def attach_parent_summary_prompt_refs(
+    traces: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Ajoute des repères lisibles liant les traces à leurs résumés parents."""
+    parent_refs: dict[str, str] = {}
+    parent_summaries: list[dict[str, Any]] = []
+    traces_with_refs: list[dict[str, Any]] = []
+
+    for trace in traces:
+        trace_payload = dict(trace)
+        parent_summary = trace_payload.get("parent_summary")
+        if isinstance(parent_summary, dict):
+            parent_id = str(parent_summary.get("id") or "").strip()
+            if parent_id:
+                prompt_ref = parent_refs.get(parent_id)
+                if prompt_ref is None:
+                    prompt_ref = f"S{len(parent_refs) + 1}"
+                    parent_refs[parent_id] = prompt_ref
+                    parent_summaries.append({**parent_summary, "prompt_ref": prompt_ref})
+                trace_payload["parent_summary_ref"] = prompt_ref
+        traces_with_refs.append(trace_payload)
+
+    return traces_with_refs, parent_summaries
 
 
 def make_context_hints_message(
@@ -272,17 +305,11 @@ def build_prompt_messages(
         if ctx_hints_msg:
             prefix.append(ctx_hints_msg)
     if memory_traces:
-        seen_ids: set[str] = set()
-        parent_summaries: list[dict[str, Any]] = []
-        for trace in memory_traces:
-            parent_summary = trace.get("parent_summary")
-            if parent_summary and parent_summary.get("id") not in seen_ids:
-                seen_ids.add(parent_summary["id"])
-                parent_summaries.append(parent_summary)
+        memory_traces_for_prompt, parent_summaries = attach_parent_summary_prompt_refs(memory_traces)
         ctx_msg = make_memory_context_message_func(parent_summaries)
         if ctx_msg:
             prefix.append(ctx_msg)
-        mem_msg = make_memory_message_func(memory_traces, ts_now)
+        mem_msg = make_memory_message_func(memory_traces_for_prompt, ts_now)
         if mem_msg:
             prefix.append(mem_msg)
 

@@ -88,6 +88,7 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "[Resume de la periode ...]",
             "[Indices contextuels recents]",
             "[Contexte du souvenir -- resume ...]",
+            "[contexte S1]",
             "[Memoire -- souvenirs pertinents]",
             "[RECHERCHE WEB -- ...]",
             "[FIN DES RESULTATS WEB]",

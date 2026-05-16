@@ -1,8 +1,15 @@
 # Audit - Contrat semantique entre payloads modele et prompts - 2026-05-16
 
-Statut: audit transverse read-only
+Statut: audit transverse actif a garder ouvert
+Classement courant: `app/docs/todo-todo/audits/`
 Portee: modele principal, prompts effectifs, payloads secondaires quand ils portent leur propre contrat d'interpretation
-Hors-scope: patch correctif de prompt, refonte runtime, dashboard, documents actifs de conversation
+Hors-scope courant: refonte large de prompt, dashboard, documents actifs de conversation
+
+Note de classement du 2026-05-16:
+- cet audit a commence comme audit transverse dans `states/audits/`;
+- le P1 runtime a ete corrige le 2026-05-16;
+- le P2 `trace memoire -> resume parent` a ete corrige le 2026-05-16;
+- le fichier reste volontairement ouvert dans `todo-todo/audits/` pour garder visibles les reliquats de hygiene prompt/payload, notamment le P3 identity et les futurs alignements de libelles.
 
 ## EXECUTIVE SUMMARY
 
@@ -10,21 +17,22 @@ Verdict court: FridaDev possede deja un contrat d'interpretation substantiel pou
 
 Relecture ciblee du 2026-05-16: plusieurs formulations du premier audit etaient trop larges. Le constat solide n'est pas "tout est tronque": il faut distinguer le remplacement explicite par resume actif et l'exclusion budgetaire silencieuse des messages plus anciens. De meme, l'identite `[STATIQUE]` / `[MUTABLE]` est la forme active normale et deja expliquee dans le prompt; seul un reliquat de vocabulaire sur les anciennes lignes dynamiques reste a nettoyer. Le web transporte bien son contexte dans le dernier message utilisateur, mais le contrat prompt couvre cette forme assez clairement: ce n'est pas un finding semantique demontre, seulement une note d'architecture.
 
-Les deux points qui restent vraiment solides sont:
+Les deux points solides qui ont ete traites aujourd'hui sont:
 
-- la selection budgetaire de la fenetre conversationnelle peut exclure des messages visibles sans marqueur explicite dans le prompt final;
-- les resumes parents associes aux traces memoire sont injectes avant les traces, mais le lien trace -> parent_summary reste semantiquement implicite pour le modele principal.
+- l'ancienne selection budgetaire de la fenetre conversationnelle pouvait exclure des messages visibles sans marqueur explicite dans le prompt final;
+- les resumes parents associes aux traces memoire etaient injectes avant les traces sans rendre explicitement lisible quel parent eclairait quelle trace.
 
 Mise a jour corrective du 2026-05-16:
 
 - le finding P1 de selection budgetaire silencieuse est ferme cote runtime: `build_prompt_messages()` conserve desormais tous les messages `user` + `assistant` eligibles apres le cutoff du resume actif;
 - `FRIDA_MAX_TOKENS` / `config.MAX_TOKENS` n'est plus un mecanisme normal de coupe de dialogue recent, mais un soft limit d'observabilite du prompt complet;
 - si le prompt complet depasse ce soft limit, les evenements `token_window` et `context_build` le signalent via `prompt_soft_limit_exceeded` sans retirer de messages dialogiques recents et sans parler de troncature;
+- le finding P2 `trace memoire -> resume parent` est ferme cote prompt: chaque resume parent injecte porte desormais un repere lisible (`S1`, `S2`, ...) et chaque trace liee porte le meme marqueur (`[contexte S1]`, `[contexte S2]`, ...);
 - le risque residuel n'est plus une troncature silencieuse normale, mais l'eventuelle impossibilite physique provider, qui devra rester une garde explicite si elle se manifeste.
 
 Reponse a la question centrale:
 
-Quand Frida recoit quelque chose dans son payload principal, elle sait en general ce que c'est et quoi en faire au niveau bloc. Elle doit encore deviner certains details de limites, de provenance fine et de relation entre blocs. Le danger n'est pas l'absence totale de contrat; le danger est de confondre "bloc interpretable" avec "composition complete et limites parfaitement explicites", ou de maquiller une exclusion budgetaire de messages en simple question de prompt.
+Quand Frida recoit quelque chose dans son payload principal, elle sait en general ce que c'est et quoi en faire au niveau bloc. Les deux ambiguites fortes relevees ce soir ont ete fermees: le dialogue recent non resume n'est plus coupe par le budget complet, et le lien entre une trace memoire et son resume parent est lisible dans le prompt. Le danger restant n'est pas l'absence totale de contrat; il est dans les reliquats de hygiene statique, les libelles approximatifs et les limites volontairement non exposees du pipeline.
 
 ## VERDICT GLOBAL
 
@@ -44,11 +52,11 @@ Le contrat semantique principal est globalement solide pour:
 - le jugement hermeneutique valide;
 - les gardes de lecture vocale, web, identitaire et sortie texte.
 
-Il est partiel pour:
+Il reste partiel pour:
 
-- les limites exactes de la fenetre conversationnelle recente quand le budget prompt exclut des messages plus anciens;
-- le couplage exact entre parent summaries et traces memoire;
-- la distinction entre ce que le pipeline a exclu avant prompt et ce que le modele ne voit simplement pas.
+- la distinction entre ce que le pipeline a exclu avant prompt et ce que le modele ne voit simplement pas;
+- les reliquats de libelles statiques qui ne suivent pas toujours exactement les balises runtime;
+- la hygiene identity autour des anciennes lignes dynamiques `stability/recurrence/confidence`.
 
 Il n'est plus considere partiel pour l'interpretation principale de l'identite `[STATIQUE]` / `[MUTABLE]`: cette coexistence est bien la forme active normale et le prompt l'explique deja. Le reliquat identity est une dette de hygiene du contrat statique, pas un trou semantique majeur.
 
@@ -98,7 +106,7 @@ Oui. Le meilleur plan est de ne pas corriger mecaniquement les findings initiaux
 | --- | --- | --- | --- | --- |
 | Fenetre recente / historique tronque | Confirme, requalifie, puis corrige runtime le 2026-05-16 | Ancien probleme de composition payload/runtime pour l'exclusion budgetaire; le cutoff par resume reste une substitution explicite distincte | `build_prompt_messages()` applique toujours le cutoff apres resume actif, mais conserve maintenant tous les candidats posterieurs au cutoff et journalise seulement le soft limit (`app/core/conversations_prompt_window.py`) | P1 ferme cote runtime; surveiller seulement les impossibilites provider explicites |
 | Identite active `[STATIQUE]` / `[MUTABLE]` | Requalifie a la baisse | Hygiene de contrat prompt, pas trou semantique principal | `active_identity_projection` compose explicitement `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`); le prompt explique le socle statique et la modulation mutable (`app/prompts/main_hermeneutical.txt:38-40`, `74-84`) | Remplacer le P2 initial par un P3 sur les lignes dynamiques legacy encore decrites |
-| Lien trace memoire -> resume parent | Confirme | Probleme semantique de composition du payload prompt | Les parent summaries sont deduples puis injectes avant les traces (`app/core/conversations_prompt_window.py:274-287`); les traces elles-memes ne portent pas de reference visible au resume parent (`app/core/conversations_prompt_window.py:159-181`) | Garder en P2 solide |
+| Lien trace memoire -> resume parent | Confirme puis corrige prompt le 2026-05-16 | Ancien probleme semantique de composition du payload prompt | Les parent summaries etaient deduples puis injectes avant les traces sans reference visible; le builder ajoute maintenant des reperes `S1`, `S2` aux contextes et `[contexte S1]`, `[contexte S2]` aux traces liees (`app/core/conversations_prompt_window.py`) | P2 ferme; conserver les tests multi-summaries |
 | Contexte web dans message utilisateur | Invalide comme finding semantique demontre; conserve comme note architecture | Remarque d'architecture | `inject_web_context()` prepend le contexte au dernier message user (`app/core/chat_prompt_context.py:294-303`), mais le bloc porte `[RECHERCHE WEB]`, `[FIN DES RÉSULTATS WEB]`, `Question :`, et le prompt explique cette forme (`app/prompts/main_hermeneutical.txt:123-133`) | Ne pas le traiter comme dette urgente; eventuellement nettoyer la lane plus tard si un lot prompt hygiene existe |
 | NOW | Confirme complet | Pas de finding | `time_input.build_time_reference_block()` injecte `NOW` / `TIMEZONE` et l'interdit de pretendre ne pas avoir le temps (`app/core/hermeneutic_node/inputs/time_input.py:68-86`); le prompt le couvre (`app/prompts/main_hermeneutical.txt:45-60`); tests contractuels existent (`app/tests/unit/chat/test_chat_prompt_context.py:80-110`) | Conserver comme chaine payload -> prompt -> usage complete |
 
@@ -147,8 +155,8 @@ Le payload principal contient donc:
 | Resume actif de conversation | `conversations_prompt_window.get_active_summary()` + `make_summary_message()` | Message system `[Résumé de la période ...]` puis contenu du resume | `main_hermeneutical.txt:95-100`; `memory-rag-summaries-lane-contract.md` | Memoire du passe, continuite generale, moins fort qu'un souvenir specifique | Le modele voit le resume et sait que c'est une synthese; il ne voit pas les messages exacts remplaces par ce resume, ce qui est une limite assumee de fidelity, pas la meme chose qu'une troncature silencieuse |
 | Fenetre conversationnelle recente | `conversations_prompt_window.build_prompt_messages()` | Messages user/assistant eligibles posterieurs au cutoff summary, conserves integralement; le budget complet est seulement observe | `main_hermeneutical.txt:62-72`, `142-146`; contrat temporel; `memory-rag-summaries-lane-contract.md` | Lire les messages visibles comme contexte conversationnel recent complet depuis le dernier resume actif | P1 ferme cote runtime le 2026-05-16: les couches non dialogiques ne coupent plus silencieusement ce dialogue recent |
 | Indices contextuels recents | `make_context_hints_message()` | `[Indices contextuels recents]`, lignes avec scope et confidence | `main_hermeneutical.txt:102-107` | Indices faibles, non decisifs | Contrat suffisant |
-| Traces memoire injectees | `prepare_memory_context()` puis `make_memory_message()` | `[Mémoire -- souvenirs pertinents]`, lignes avec role et contenu | `main_hermeneutical.txt:116-121`; `memory-rag-current-pipeline-cartography.md` | Utiliser seulement si lien utile avec demande courante; plus fort qu'indice contextuel, moins fort que demande finale | Le modele ne voit pas les scores, decisions arbitre, rejected candidates ni limites du panier; cela est volontaire mais doit rester compris comme limite |
-| Resumes parents de traces memoire | `memory_store.enrich_traces_with_summaries()`, `make_memory_context_message()` | `[Contexte du souvenir — résumé ...]` avant les traces | `main_hermeneutical.txt:109-114`; spec summaries lane | Contexte de cadrage pour mieux comprendre la portee du souvenir | Le lien exact entre chaque trace et son parent summary reste implicite; pas de mapping visible par trace |
+| Traces memoire injectees | `prepare_memory_context()` puis `make_memory_message()` | `[Mémoire -- souvenirs pertinents]`, lignes avec role, contenu, et eventuellement `[contexte S1]` si un resume parent eclaire la trace | `main_hermeneutical.txt:116-122`; `memory-rag-current-pipeline-cartography.md`; spec summaries lane | Utiliser seulement si lien utile avec demande courante; lire `[contexte S1]` comme le lien explicite vers le bloc `[Contexte du souvenir S1 ...]`; plus fort qu'indice contextuel, moins fort que demande finale | Le modele ne voit pas les scores, decisions arbitre, rejected candidates ni limites du panier; cela est volontaire mais doit rester compris comme limite |
+| Resumes parents de traces memoire | `memory_store.enrich_traces_with_summaries()`, `attach_parent_summary_prompt_refs()`, `make_memory_context_message()` | `[Contexte du souvenir S1 — résumé ...]` avant les traces; les traces liees portent `[contexte S1]` | `main_hermeneutical.txt:109-115`; spec summaries lane | Contexte de cadrage pour mieux comprendre la portee des souvenirs portant le meme repere | P2 ferme: le mapping prompt est visible. Limite restante: le modele ne voit pas les IDs techniques ni les traces rejetees, volontairement |
 | Contexte web | `web_search.build_context_payload()` + `chat_prompt_context.inject_web_context()` | `[RECHERCHE WEB — date]`, sources, URLs, contenu utilise, `[FIN DES RÉSULTATS WEB]`, puis `Question :` dans le dernier message user | `main_hermeneutical.txt:123-133`; `build_web_reading_guard_block()` si `read_state` explicite | Lire comme contexte externe injecte pour la question courante; prioritaire sur memoire pour faits externes recents | Relecture: le risque de confusion avec la parole utilisateur n'est pas demontre, car la forme est explicitement decrite; la remarque restante est architecturale |
 | Garde de lecture web | `chat_prompt_context.build_web_reading_guard_block()` | `[GARDE DE LECTURE WEB]`, `read_state`, interdits de lecture directe selon cas | `chat_prompt_context.py:212-249`; tests web runtime | Ne pas pretendre lire une page si seulement snippets/fallback ou erreur | S'applique surtout aux URLs explicites; pour recherche simple, le contrat general web porte l'essentiel |
 | Jugement hermeneutique valide | `validation_agent.build_validated_output()` puis `build_hermeneutic_judgment_block()` | `[JUGEMENT HERMENEUTIQUE]`, posture finale, regime, consigne, directives | `main_hermeneutical.txt:135-140`; `hermeneutic-node-validated-output-contract.md` | Consigne aval normative deja resolue; ne pas re-deduire primary verdict ou validation decision | Le detail source_priority/source_conflicts du noeud n'est pas expose au modele principal; seule la projection finale compacte l'est |
@@ -182,7 +190,6 @@ Cette derniere phrase est importante: `main_hermeneutical.txt:148-152` dit expli
 Le modele doit encore deviner ou inferer:
 
 - que le resume actif represente des messages anterieurs sans permettre de relire leur texte exact;
-- quel resume parent correspond a quelle trace memoire quand plusieurs traces et plusieurs contextes sont presents;
 - quels candidats memoire ont ete rejetes et pourquoi, car seuls les souvenirs injectes sont visibles.
 
 Points requalifies:
@@ -190,6 +197,7 @@ Points requalifies:
 - l'identite active `[STATIQUE]` / `[MUTABLE]` n'est plus consideree comme un point que le modele doit deviner: le prompt explique deja statique comme socle et mutable comme nuance;
 - le contexte web dans le dernier message user n'est plus conserve comme ambiguite semantique demontree: le prompt le decrit comme contexte externe injecte et indique la forme `Question :`.
 - la selection budgetaire silencieuse du dialogue recent n'est plus conservee comme comportement runtime courant: le builder preserve la continuite recente et journalise seulement le soft limit.
+- le lien trace memoire -> resume parent n'est plus a deviner: les reperes partages `S1`, `S2` rendent la relation lisible dans le prompt.
 
 ## CONTRADICTIONS / AMBIGUITES / TROUS
 
@@ -214,11 +222,11 @@ Requalification: le finding initial etait trop fort. La forme `[STATIQUE]` / `[M
 
 Effet: pas d'impact semantique principal demontre pour le modele. Dette de hygiene P3: clarifier que les lignes dynamiques sont legacy/eventuelles ou les retirer si elles ne sont plus exposees.
 
-### 3. Parent summaries injectes sans mapping explicite par trace
+### 3. Parent summaries: mapping explicite par trace corrige
 
-Les resumes parents sont deduples puis injectes avant les traces (`app/core/conversations_prompt_window.py:274-287`). Le contrat dit qu'ils resituent un souvenir, mais le prompt final ne materialise pas une relation trace -> parent_summary.
+Les resumes parents sont deduples puis injectes avant les traces. Depuis le correctif du 2026-05-16, `attach_parent_summary_prompt_refs()` assigne un repere lisible a chaque parent summary injecte (`S1`, `S2`, ...), `make_memory_context_message()` met ce repere dans le bloc `[Contexte du souvenir S1 ...]`, et `make_memory_message()` met `[contexte S1]` sur chaque trace liee.
 
-Effet: avec un seul parent summary, c'est lisible. Avec plusieurs summaries et plusieurs traces, le modele peut seulement inferer la relation par proximite et par contenu.
+Effet: avec plusieurs summaries et plusieurs traces, le modele n'a plus a inferer la relation par proximite ou contenu. Il peut lire quel contexte de souvenir eclaire quelle ligne de souvenir. Le contenu technique du panier reste hors prompt principal.
 
 ### 4. Web context place dans le message user: note architecture, finding semantique invalide
 
@@ -312,23 +320,22 @@ Recommandation:
 - Conserver l'invariant dans les tests et la spec summaries: `SUMMARY_THRESHOLD_TOKENS` decide le resume sur dialogue direct; `FRIDA_MAX_TOKENS` n'est pas un ciseau de dialogue.
 - Si une vraie garde provider est ajoutee plus tard, elle doit etre visible, explicite et separee de la memoire dialogique normale.
 
-### P2 - CONFIRME - Le lien trace memoire -> parent summary reste implicite
+### P2 - CONFIRME PUIS CORRIGE - Le lien trace memoire -> parent summary restait implicite
 
 Preuve:
 
-- Les parent summaries sont collectes/dedupliques avant injection (`app/core/conversations_prompt_window.py:274-284`).
-- Les traces sont injectees ensuite dans un bloc separe (`app/core/conversations_prompt_window.py:285-287`).
-- Les lignes de traces ne portent pas de reference visible au parent summary (`app/core/conversations_prompt_window.py:159-181`).
-- Le contrat explique la fonction generale du contexte de souvenir (`app/prompts/main_hermeneutical.txt:109-114`) mais pas de mapping par trace.
+- Avant correctif, les parent summaries etaient collectes/dedupliques avant injection, puis les traces etaient injectees dans un bloc separe sans reference visible au parent summary.
+- Depuis le correctif du 2026-05-16, le builder ajoute un repere lisible stable dans le prompt du tour: `[Contexte du souvenir S1 ...]` cote resume parent et `[contexte S1]` cote trace liee.
+- Le prompt hermeneutique explique maintenant cette forme: le repere `S1`, `S2`, ... relie le contexte aux lignes de souvenirs portant le meme marqueur.
 
 Impact:
 
-- Avec plusieurs traces et plusieurs summaries, la relation exacte peut etre inferee mais pas lue structurellement.
-- Impact semantique reel: le modele peut appliquer un contexte de periode a une trace voisine ou pertinente par contenu sans preuve explicite du lien.
+- Le risque initial etait reel: avec plusieurs traces et plusieurs summaries, le modele pouvait appliquer un contexte de periode a une trace voisine ou pertinente par contenu sans preuve explicite du lien.
+- Ce risque est ferme pour le prompt courant: la relation est lisible structurellement sans exposer les champs techniques du panier.
 
 Recommandation:
 
-- Si cette precision devient importante pour la reponse, rendre la relation visible par groupement ou reference compacte dans le prompt.
+- Garder ce format compact et tester les cas multi-summaries. Ne pas remplacer ces reperes lisibles par des IDs techniques dans le prompt principal.
 
 ### P2 initial INVALIDÉ - Le contexte web est explique mais transporte dans le message utilisateur
 
@@ -370,7 +377,7 @@ Recommandation:
 
 Preuve:
 
-- Le builder produit des balises accentuees comme `[Résumé de la période ...]` et `[Contexte du souvenir — résumé ...]` (`app/core/conversations_prompt_window.py:41-51`, `107-123`).
+- Le builder produit des balises accentuees comme `[Résumé de la période ...]`, `[Contexte du souvenir S1 — résumé ...]` ou `[Contexte du souvenir — résumé ...]` (`app/core/conversations_prompt_window.py`).
 - Le prompt statique utilise parfois une forme ASCII ou approximative (`Resume`, `-- resume`, `RESULTATS`) dans la description.
 
 Impact:
@@ -385,8 +392,8 @@ Recommandation:
 ## RECOMMANDATIONS
 
 1. Ne pas refaire tout le prompt: le contrat principal existe et fait deja beaucoup de travail utile.
-2. Traiter d'abord la selection budgetaire silencieuse de la fenetre conversationnelle: c'est le trou le plus proche d'une contradiction produit/runtime.
-3. Clarifier le groupement parent summary -> traces si les reponses futures doivent s'appuyer sur cette relation.
+2. Conserver les tests qui ferment la selection budgetaire silencieuse de la fenetre conversationnelle.
+3. Conserver les tests qui ferment le mapping parent summary -> traces via les reperes `S1`, `S2`, ...
 4. Mettre a jour le contrat identity a faible risque: declarer `[STATIQUE]` / `[MUTABLE]` comme forme active et reclasser les lignes dynamiques en legacy/eventuel.
 5. Ne pas ouvrir de correction NOW: la chaine payload -> prompt -> usage attendu est complete.
 6. Ne pas prioriser le web comme finding semantique: garder seulement la possibilite d'une lane system plus propre si un futur lot de prompt hygiene le justifie.
@@ -411,6 +418,12 @@ Commandes de relecture ciblee du 2026-05-16:
 - `grep -R "parent_summary\\|summary_id\\|make_memory_context_message\\|make_memory_message\\|build_prompt_messages" -n app/core app/memory app/observability app/tests tests`
 - `grep -R "build_context_payload\\|\\[RECHERCHE WEB\\|FIN DES RESULTATS WEB\\|Question :" -n app/core app/tools app/tests tests`
 - `grep -R "NOW:\\|RÉFÉRENCE TEMPORELLE\\|build_time_reference_block\\|build_time_input" -n app/core app/prompts app/docs/states/specs app/tests tests`
+
+Commandes post-correctifs P1/P2:
+
+- `docker exec -i -w /app platform-fridadev python -m unittest tests.unit.memory.test_hermeneutical_post_stabilization_contract tests.unit.memory.test_memory_summaries_phase8c tests.test_prompt_loader_phase13 tests.test_server_logs_phase3 tests.unit.logs.test_chat_turn_logger_hermeneutic_observability`
+- `docker exec -i -w /app platform-fridadev python -m unittest tests.unit.chat.test_chat_memory_flow_prepare_context_contracts tests.unit.logs.test_dashboard_read_model_lot4 tests.test_server_admin_chat_logs_contract`
+- `git diff --check`
 
 Fichiers runtime principaux lus:
 

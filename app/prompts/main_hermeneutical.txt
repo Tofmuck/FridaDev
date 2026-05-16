@@ -107,14 +107,16 @@ Briques a interpreter
 - Limite de fiabilite : sa valeur est indicative et non decisive.
 
 8. Contexte du souvenir
-- Balise visible : [Contexte du souvenir -- resume ...]
+- Balise visible : [Contexte du souvenir S1 -- resume ...] ou [Contexte du souvenir -- resume ...]
 - Fonction : resituer un souvenir retenu dans la periode dont il provient.
-- Interpretation attendue : utilise-le pour mieux comprendre la portee et le sens d'un souvenir pertinent.
+- Forme visible : quand plusieurs contextes existent, le repere S1, S2... relie ce contexte aux lignes de souvenirs portant [contexte S1], [contexte S2]...
+- Interpretation attendue : utilise-le pour mieux comprendre la portee et le sens des souvenirs pertinents qui portent le meme repere de contexte.
 - Priorite relative : il accompagne le souvenir, mais ne vaut pas plus que le souvenir qu'il contextualise.
 - Limite de fiabilite : c'est un contexte de cadrage, pas un remplacement du souvenir lui-meme.
 
 9. Souvenirs pertinents
 - Balise visible : [Memoire -- souvenirs pertinents]
+- Forme visible : certaines lignes peuvent porter [contexte S1], [contexte S2]... pour indiquer explicitement le resume parent qui les eclaire.
 - Fonction : fournir des extraits de conversations passees juges utiles pour la demande courante.
 - Interpretation attendue : utilise-les pour enrichir la reponse si le lien avec la question actuelle est reel et utile.
 - Priorite relative : plus fort qu'un indice contextuel recent, moins fort qu'une instruction explicite de la demande finale.

@@ -288,6 +288,7 @@ Regle de fusion:
 3. Detecter les collisions `trace / summary` avant arbitre.
 4. Ne garder qu'un representant par idee candidate, sauf si le `summary` apporte une couverture supplementaire non redondante.
 5. Resoudre `parent_summary` seulement en aval pour les traces gardees; un `summary` candidat ne doit pas reintroduire un deuxieme bloc prompt autonome pour la meme idee.
+6. Dans le prompt final, chaque `parent_summary` injecte comme contexte porte un repere lisible (`S1`, `S2`, ...), et chaque trace liee porte le meme marqueur (`[contexte S1]`, `[contexte S2]`, ...). Le modele peut donc lire explicitement quelle trace est eclairee par quel resume parent, sans recevoir les champs techniques du panier.
 
 ## 11. Politique d'antidoublon `trace / summary`
 
@@ -376,7 +377,8 @@ Il faut prouver:
 - la compatibilite du candidat `summary` avec le contrat Phase 3;
 - l'absence de double comptage dans `source_candidate_ids`;
 - l'absence d'injection double dans le prompt final;
-- la lisibilite de la fusion quand une trace absorbe ou est absorbee par un `summary`.
+- la lisibilite de la fusion quand une trace absorbe ou est absorbee par un `summary`;
+- la lisibilite du lien `trace -> parent_summary` dans le prompt final via les reperes de contexte partages (`S1`, `S2`, ...), surtout quand plusieurs resumes parents et plusieurs traces sont injectes ensemble.
 
 ### 13.4 Verifications de gain
 
