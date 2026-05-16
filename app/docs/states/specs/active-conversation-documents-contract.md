@@ -184,6 +184,12 @@ Les documents actifs ne doivent pas:
 - etre promus en souvenir;
 - etre retrouves plus tard comme memoire.
 
+Lot 5 verrouille cette frontiere par tests:
+
+- le payload LLM peut contenir la lane documentaire, mais `save_new_traces(conversation)` ne recoit que les messages conversationnels `user` / `assistant`;
+- le retrieval Memory/RAG est appele avec le `user_msg` du tour, jamais avec le texte du document actif;
+- aucun embedding documentaire ni retrieval documentaire n'est cree par le chantier documents actifs.
+
 ### 6.2 Identity
 
 Les documents actifs ne doivent pas:
@@ -196,6 +202,8 @@ Les documents actifs ne doivent pas:
 
 Un document actif peut contenir du texte parlant d'identite; ce chantier ne l'extrait pas.
 
+Lot 5 verrouille cette frontiere par test: le couple de tour donne a l'extraction Identity reste le couple `user` / `assistant` persiste, sans contenu de la lane documentaire active.
+
 ### 6.3 Summary
 
 Les documents actifs ne doivent pas:
@@ -206,6 +214,8 @@ Les documents actifs ne doivent pas:
 - declencher un resume par leur poids.
 
 Le seuil de resume doit rester fonde sur la memoire dialogique directe: messages utilisateur et assistant non encore resumes.
+
+Lot 5 verrouille cette frontiere par test: le seuil de resume et le texte transmis au summarizer sont construits uniquement depuis les messages `user` / `assistant` non resumes, meme si une lane documentaire active existe ailleurs dans le prompt.
 
 ### 6.4 Web
 

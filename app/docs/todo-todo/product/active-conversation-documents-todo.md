@@ -176,12 +176,14 @@ Note Lot 4 livre `app/core/active_document_prompt_lane.py` et branche la lane da
 
 ### Lot 5 - Barriere Memory/RAG/Identity/Summary
 
-- [ ] Prouver que les documents actifs ne creent pas de memory traces.
-- [ ] Prouver qu'ils ne creent pas d'embeddings ni retrieval documentaire.
-- [ ] Prouver qu'ils n'alimentent pas Identity.
-- [ ] Prouver qu'ils ne sont pas stockes dans les summaries.
-- [ ] Prouver qu'ils ne comptent pas dans le seuil de resume.
-- [ ] Ajouter des tests anti-regression pour les chemins de contamination.
+- [x] Prouver que les documents actifs ne creent pas de memory traces.
+- [x] Prouver qu'ils ne creent pas d'embeddings ni retrieval documentaire.
+- [x] Prouver qu'ils n'alimentent pas Identity.
+- [x] Prouver qu'ils ne sont pas stockes dans les summaries.
+- [x] Prouver qu'ils ne comptent pas dans le seuil de resume.
+- [x] Ajouter des tests anti-regression pour les chemins de contamination.
+
+Note Lot 5 livre `app/tests/unit/core/test_active_document_non_contamination_lot5.py`. Le test prouve que la lane documentaire peut etre presente dans le payload LLM, mais qu'elle ne rejoint ni `save_new_traces(conversation)`, ni le couple Identity, ni la requete Memory/RAG, ni le seuil/texte de summary. Aucun runtime n'est modifie dans ce lot.
 
 ### Lot 6 - Frontend chat drag-and-drop et controle actif
 
