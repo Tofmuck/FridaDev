@@ -87,6 +87,17 @@ Formats cibles initiaux:
 - MD;
 - TXT.
 
+Lot 3 livre l'extraction dans:
+
+- `app/core/active_document_text_extraction.py`.
+
+Choix de parsing retenus:
+
+- TXT / MD: decode texte UTF strict via la bibliotheque standard;
+- DOCX: lecture ZIP + XML WordprocessingML via la bibliotheque standard;
+- ODT: lecture ZIP + `content.xml` OpenDocument via la bibliotheque standard;
+- PDF textuel: `pypdf`, ajoute comme dependance sobre dediee aux PDF.
+
 OCR:
 
 - hors-scope du chantier;
@@ -100,6 +111,31 @@ Extraction:
 - un document partiellement extrait doit etre marque en erreur ou non injectable selon la raison compacte stabilisee par le lot implementation;
 - le texte extrait n'est pas un resume;
 - le texte extrait n'est pas un chunk RAG.
+
+Statuts d'extraction stabilises:
+
+- `complete`: texte extrait entierement et normalise, sans resume;
+- `unsupported`: format non supporte, reason `document_type_unsupported`;
+- `parse_error`: parsing impossible, reason `document_parse_error`;
+- `empty`: fichier ou extraction textuelle vide, reason `document_empty_text`;
+- `ocr_required`: PDF sans texte extractible sur au moins une page, reason `document_ocr_required`.
+
+Sortie metadata du parseur:
+
+- `text`;
+- `chars` / `text_chars`;
+- `bytes` / `byte_size`;
+- `token_estimate`;
+- `sha256_12` / `text_sha256_12`;
+- `status`;
+- `reason_code`;
+- `parser`.
+
+Limite volontaire du Lot 3:
+
+- le parseur retourne le texte au service appelant, mais ne l'active pas encore;
+- aucun endpoint, frontend, prompt ou dashboard n'est branche dans ce lot;
+- aucun OCR implicite n'est ajoute.
 
 ## 5. Regle entier ou absent
 

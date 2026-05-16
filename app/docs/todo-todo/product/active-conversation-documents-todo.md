@@ -148,13 +148,15 @@ Note Lot 2 livre le service `app/core/active_conversation_documents.py`, la tabl
 
 ### Lot 3 - Extraction texte des formats cibles
 
-- [ ] Choisir les bibliotheques de parsing explicites pour PDF textuel, DOCX, ODT, MD, TXT.
-- [ ] Ajouter fixtures compactes sans contenu sensible.
-- [ ] Refuser ou marquer clairement les PDF scans / OCR requis.
-- [ ] Normaliser le texte sans le resumer.
-- [ ] Produire chars, bytes, token_estimate, hash court et status.
-- [ ] Ne jamais presenter une extraction partielle comme complete.
-- [ ] Tester succes, format non supporte, parse error et fichier vide.
+- [x] Choisir les bibliotheques de parsing explicites pour PDF textuel, DOCX, ODT, MD, TXT.
+- [x] Ajouter fixtures compactes sans contenu sensible.
+- [x] Refuser ou marquer clairement les PDF scans / OCR requis.
+- [x] Normaliser le texte sans le resumer.
+- [x] Produire chars, bytes, token_estimate, hash court et status.
+- [x] Ne jamais presenter une extraction partielle comme complete.
+- [x] Tester succes, format non supporte, parse error et fichier vide.
+
+Note Lot 3 livre `app/core/active_document_text_extraction.py`. Il utilise `pypdf` pour les PDF textuels et la bibliotheque standard pour TXT/MD/DOCX/ODT. Il ne branche pas encore activation frontend, endpoint, lane prompt ni observabilite.
 
 ### Lot 4 - Integration prompt entier ou rien
 
