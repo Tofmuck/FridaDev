@@ -15,6 +15,13 @@ Les deux points qui restent vraiment solides sont:
 - la selection budgetaire de la fenetre conversationnelle peut exclure des messages visibles sans marqueur explicite dans le prompt final;
 - les resumes parents associes aux traces memoire sont injectes avant les traces, mais le lien trace -> parent_summary reste semantiquement implicite pour le modele principal.
 
+Mise a jour corrective du 2026-05-16:
+
+- le finding P1 de selection budgetaire silencieuse est ferme cote runtime: `build_prompt_messages()` conserve desormais tous les messages `user` + `assistant` eligibles apres le cutoff du resume actif;
+- `FRIDA_MAX_TOKENS` / `config.MAX_TOKENS` n'est plus un mecanisme normal de coupe de dialogue recent, mais un soft limit d'observabilite du prompt complet;
+- si le prompt complet depasse ce soft limit, l'evenement `token_window` le signale sans retirer de messages dialogiques recents;
+- le risque residuel n'est plus une troncature silencieuse normale, mais l'eventuelle impossibilite physique provider, qui devra rester une garde explicite si elle se manifeste.
+
 Reponse a la question centrale:
 
 Quand Frida recoit quelque chose dans son payload principal, elle sait en general ce que c'est et quoi en faire au niveau bloc. Elle doit encore deviner certains details de limites, de provenance fine et de relation entre blocs. Le danger n'est pas l'absence totale de contrat; le danger est de confondre "bloc interpretable" avec "composition complete et limites parfaitement explicites", ou de maquiller une exclusion budgetaire de messages en simple question de prompt.
@@ -89,7 +96,7 @@ Oui. Le meilleur plan est de ne pas corriger mecaniquement les findings initiaux
 
 | Point relu | Statut apres relecture | Nature retenue | Preuves courtes | Decision |
 | --- | --- | --- | --- | --- |
-| Fenetre recente / historique tronque | Confirme et requalifie | Probleme de composition payload/runtime pour l'exclusion budgetaire; le cutoff par resume est une substitution explicite distincte | `build_prompt_messages()` applique un cutoff apres resume actif, puis casse la selection si `estimated_trial_tokens > max_tokens` sans ajouter de marqueur visible (`app/core/conversations_prompt_window.py:253-299`) | Garder en P1, mais parler d'exclusion budgetaire silencieuse, pas d'un vague "historique tronque" |
+| Fenetre recente / historique tronque | Confirme, requalifie, puis corrige runtime le 2026-05-16 | Ancien probleme de composition payload/runtime pour l'exclusion budgetaire; le cutoff par resume reste une substitution explicite distincte | `build_prompt_messages()` applique toujours le cutoff apres resume actif, mais conserve maintenant tous les candidats posterieurs au cutoff et journalise seulement le soft limit (`app/core/conversations_prompt_window.py`) | P1 ferme cote runtime; surveiller seulement les impossibilites provider explicites |
 | Identite active `[STATIQUE]` / `[MUTABLE]` | Requalifie a la baisse | Hygiene de contrat prompt, pas trou semantique principal | `active_identity_projection` compose explicitement `[STATIQUE]` et `[MUTABLE]` (`app/identity/active_identity_projection.py:41-49`); le prompt explique le socle statique et la modulation mutable (`app/prompts/main_hermeneutical.txt:38-40`, `74-84`) | Remplacer le P2 initial par un P3 sur les lignes dynamiques legacy encore decrites |
 | Lien trace memoire -> resume parent | Confirme | Probleme semantique de composition du payload prompt | Les parent summaries sont deduples puis injectes avant les traces (`app/core/conversations_prompt_window.py:274-287`); les traces elles-memes ne portent pas de reference visible au resume parent (`app/core/conversations_prompt_window.py:159-181`) | Garder en P2 solide |
 | Contexte web dans message utilisateur | Invalide comme finding semantique demontre; conserve comme note architecture | Remarque d'architecture | `inject_web_context()` prepend le contexte au dernier message user (`app/core/chat_prompt_context.py:294-303`), mais le bloc porte `[RECHERCHE WEB]`, `[FIN DES RÉSULTATS WEB]`, `Question :`, et le prompt explique cette forme (`app/prompts/main_hermeneutical.txt:123-133`) | Ne pas le traiter comme dette urgente; eventuellement nettoyer la lane plus tard si un lot prompt hygiene existe |
@@ -138,7 +145,7 @@ Le payload principal contient donc:
 | Identite active | `identity.build_identity_block()` -> `active_identity_projection.resolve_active_identity_projection()` | `[IDENTITÉ DU MODÈLE]`, `[IDENTITÉ DE L'UTILISATEUR]`, sous-sections actuelles `[STATIQUE]` / `[MUTABLE]` | `main_hermeneutical.txt:32-43`, `74-84`; specs identity | Garder coherence relationnelle et contextuelle; statique comme socle, mutable comme nuance; ne pas ecraser la demande | La coexistence statique/mutable est bien enseignee; le contrat pourrait seulement lister les sous-balises visibles plus explicitement |
 | Lignes dynamiques d'identite | Chemin interne `_format_identity_line()`, pas la forme principale actuelle du bloc actif | Si un ancien chemin les utilisait: `- [stability=...; recurrence=...; confidence=...] ...` | `main_hermeneutical.txt:86-93` | Traiter comme indices de ponderation, pas preuves fortes | Reliquat legacy/provisoire dans le prompt statique; dette de hygiene P3, pas preuve d'un payload actif mal explique |
 | Resume actif de conversation | `conversations_prompt_window.get_active_summary()` + `make_summary_message()` | Message system `[Résumé de la période ...]` puis contenu du resume | `main_hermeneutical.txt:95-100`; `memory-rag-summaries-lane-contract.md` | Memoire du passe, continuite generale, moins fort qu'un souvenir specifique | Le modele voit le resume et sait que c'est une synthese; il ne voit pas les messages exacts remplaces par ce resume, ce qui est une limite assumee de fidelity, pas la meme chose qu'une troncature silencieuse |
-| Fenetre conversationnelle recente | `conversations_prompt_window.build_prompt_messages()` | Messages user/assistant selectionnes apres cutoff summary et sous budget token | `main_hermeneutical.txt:62-72`, `142-146`; contrat temporel | Lire les messages visibles comme contexte conversationnel recent, avec deltas/silences | Probleme confirme: si le budget casse la selection, des messages plus anciens peuvent etre exclus sans marqueur visible; cela contredit potentiellement la doctrine produit "pas de troncature silencieuse" |
+| Fenetre conversationnelle recente | `conversations_prompt_window.build_prompt_messages()` | Messages user/assistant eligibles posterieurs au cutoff summary, conserves integralement; le budget complet est seulement observe | `main_hermeneutical.txt:62-72`, `142-146`; contrat temporel; `memory-rag-summaries-lane-contract.md` | Lire les messages visibles comme contexte conversationnel recent complet depuis le dernier resume actif | P1 ferme cote runtime le 2026-05-16: les couches non dialogiques ne coupent plus silencieusement ce dialogue recent |
 | Indices contextuels recents | `make_context_hints_message()` | `[Indices contextuels recents]`, lignes avec scope et confidence | `main_hermeneutical.txt:102-107` | Indices faibles, non decisifs | Contrat suffisant |
 | Traces memoire injectees | `prepare_memory_context()` puis `make_memory_message()` | `[Mémoire -- souvenirs pertinents]`, lignes avec role et contenu | `main_hermeneutical.txt:116-121`; `memory-rag-current-pipeline-cartography.md` | Utiliser seulement si lien utile avec demande courante; plus fort qu'indice contextuel, moins fort que demande finale | Le modele ne voit pas les scores, decisions arbitre, rejected candidates ni limites du panier; cela est volontaire mais doit rester compris comme limite |
 | Resumes parents de traces memoire | `memory_store.enrich_traces_with_summaries()`, `make_memory_context_message()` | `[Contexte du souvenir — résumé ...]` avant les traces | `main_hermeneutical.txt:109-114`; spec summaries lane | Contexte de cadrage pour mieux comprendre la portee du souvenir | Le lien exact entre chaque trace et son parent summary reste implicite; pas de mapping visible par trace |
@@ -174,7 +181,6 @@ Cette derniere phrase est importante: `main_hermeneutical.txt:148-152` dit expli
 
 Le modele doit encore deviner ou inferer:
 
-- que la sequence conversationnelle visible peut avoir ete selectionnee sous budget token et donc exclure des messages plus anciens sans marqueur visible;
 - que le resume actif represente des messages anterieurs sans permettre de relire leur texte exact;
 - quel resume parent correspond a quelle trace memoire quand plusieurs traces et plusieurs contextes sont presents;
 - quels candidats memoire ont ete rejetes et pourquoi, car seuls les souvenirs injectes sont visibles.
@@ -183,6 +189,7 @@ Points requalifies:
 
 - l'identite active `[STATIQUE]` / `[MUTABLE]` n'est plus consideree comme un point que le modele doit deviner: le prompt explique deja statique comme socle et mutable comme nuance;
 - le contexte web dans le dernier message user n'est plus conserve comme ambiguite semantique demontree: le prompt le decrit comme contexte externe injecte et indique la forme `Question :`.
+- la selection budgetaire silencieuse du dialogue recent n'est plus conservee comme comportement runtime courant: le builder preserve la continuite recente et journalise seulement le soft limit.
 
 ## CONTRADICTIONS / AMBIGUITES / TROUS
 
@@ -191,11 +198,11 @@ Points requalifies:
 `conversations_prompt_window.build_prompt_messages()` applique deux mecanismes distincts (`app/core/conversations_prompt_window.py:253-299`):
 
 - si un resume actif existe, les candidats sont limites aux messages apres le cutoff du resume, et le resume est injecte explicitement avant la fenetre recente;
-- ensuite, une selection sous budget token parcourt les candidats recents a rebours et s'arrete des qu'un message rendrait le prompt trop gros.
+- depuis le correctif du 2026-05-16, les candidats recents posterieurs au cutoff sont conserves integralement; le prompt complet est seulement estime et compare a `FRIDA_MAX_TOKENS` comme soft limit d'observabilite.
 
-Requalification: le cutoff par resume n'est pas une "troncature silencieuse" au meme sens, car le modele voit bien un `[Résumé ...]` et sait qu'il s'agit d'une synthese. En revanche, la selection budgetaire peut exclure des messages plus anciens sans aucun marqueur visible. Si la doctrine produit impose "pas de troncature silencieuse de l'historique conversationnel", le vrai finding est donc un probleme runtime/payload plus grave qu'un simple manque de prompt.
+Requalification: le cutoff par resume n'est pas une "troncature silencieuse" au meme sens, car le modele voit bien un `[Résumé ...]` et sait qu'il s'agit d'une synthese. L'ancienne selection budgetaire pouvait, elle, exclure des messages plus anciens sans marqueur visible. Ce point a ete corrige cote runtime: les blocs non dialogiques ne rabotent plus la continuite recente directe.
 
-Effet: le modele peut interpreter correctement les messages visibles, mais il ne sait pas qu'un ou plusieurs messages candidats ont pu etre exclus par budget. L'absence d'un message non visible peut donc etre lue comme une absence naturelle d'historique.
+Effet residuel: le modele ne voit toujours pas le texte exact remplace par un resume actif, par definition du resume glissant. Si le prompt complet depasse un jour la capacite physique du provider, cela doit etre gere comme garde explicite, pas comme fenetre normale silencieuse.
 
 ### 2. Contrat identity: forme active bien comprise, reliquat dynamique legacy
 
@@ -286,23 +293,24 @@ Verdict: suffisant pour leurs payloads propres.
 
 Aucun P0 trouve. Aucun bloc majeur du payload principal n'est totalement non explique.
 
-### P1 - CONFIRME ET REQUALIFIE - La selection budgetaire peut exclure des messages sans marqueur visible
+### P1 - CONFIRME, REQUALIFIE, PUIS CORRIGE - La selection budgetaire pouvait exclure des messages sans marqueur visible
 
 Preuve:
 
 - `build_prompt_messages()` applique d'abord un cutoff lie au resume actif, puis une selection budgetaire sur les candidats recents (`app/core/conversations_prompt_window.py:253-299`).
 - Le cutoff lie au resume n'est pas une perte muette: le prompt contient le resume actif via `make_summary_message()`.
-- La selection budgetaire, elle, casse la boucle quand `estimated_trial_tokens > max_tokens` (`app/core/conversations_prompt_window.py:289-295`) sans ajouter de marqueur au prompt final sur les messages candidats exclus.
+- Avant correctif, la selection budgetaire cassait la boucle quand `estimated_trial_tokens > max_tokens` sans ajouter de marqueur au prompt final sur les messages candidats exclus.
+- Depuis le correctif du 2026-05-16, le builder conserve tous les candidats dialogiques posterieurs au resume actif et journalise `prompt_soft_limit_exceeded` sans couper le dialogue recent.
 
 Impact:
 
-- Le modele interprete les messages visibles, mais peut devoir deviner les limites de l'historique disponible.
-- Si la doctrine produit est "pas de troncature silencieuse de l'historique conversationnel", ce n'est pas seulement un trou de prompt: c'est un probleme de composition payload/runtime a traiter avant ou avec le contrat prompt.
+- Le comportement runtime courant ne demande plus au modele de deviner une coupe budgetaire silencieuse du dialogue recent.
+- La limite restante concerne seulement les anciens messages remplaces par resume actif et les impossibilites provider explicites futures.
 
 Recommandation:
 
-- Distinguer explicitement dans un futur lot: messages remplaces par resume actif, messages selectionnes sous budget, messages exclus par budget.
-- Ajouter un marqueur ou un fait compact quand une exclusion budgetaire a eu lieu, au lieu de laisser le modele inferer que la fenetre visible est naturellement complete.
+- Conserver l'invariant dans les tests et la spec summaries: `SUMMARY_THRESHOLD_TOKENS` decide le resume sur dialogue direct; `FRIDA_MAX_TOKENS` n'est pas un ciseau de dialogue.
+- Si une vraie garde provider est ajoutee plus tard, elle doit etre visible, explicite et separee de la memoire dialogique normale.
 
 ### P2 - CONFIRME - Le lien trace memoire -> parent summary reste implicite
 

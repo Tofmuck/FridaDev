@@ -146,7 +146,9 @@ FRIDA_ADMIN_TOKEN = ''
 FRIDA_ADMIN_LAN_ONLY = False
 FRIDA_ADMIN_ALLOWED_CIDRS = ''
 
-# LLM context window
+# Legacy full-prompt soft estimate. It is used for observability/warnings only:
+# the direct dialogue memory window is governed by SUMMARY_THRESHOLD_TOKENS and
+# must not be clipped by non-dialogue prompt layers.
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 
 # Prompt files

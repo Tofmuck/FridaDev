@@ -84,7 +84,9 @@ TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 # Public admin access is expected to be protected by Authelia/Caddy; /api/admin/*
 # accepts only loopback proof calls or trusted proxy calls with Remote-User.
 
-# LLM context window
+# Legacy full-prompt soft estimate. It is used for observability/warnings only:
+# the direct dialogue memory window is governed by SUMMARY_THRESHOLD_TOKENS and
+# must not be clipped by non-dialogue prompt layers.
 MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 
 # Prompt files

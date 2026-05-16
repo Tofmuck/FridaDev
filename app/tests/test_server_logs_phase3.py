@@ -79,24 +79,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(prompt_payload.get('memory_items_used'), 0)
         self.assertEqual(
             prompt_payload.get('memory_prompt_injection'),
-            {
-                'injected': False,
-                'injection_class': 'none',
-                'injection_lanes': [],
-                'injection_lane_count': 0,
-                'prompt_block_count': 0,
-                'trace_memory_injected': False,
-                'trace_memory_injected_count': 0,
-                'summary_context_injected': False,
-                'summary_context_injected_count': 0,
-                'memory_traces_injected': False,
-                'memory_traces_injected_count': 0,
-                'injected_candidate_ids': [],
-                'memory_context_injected': False,
-                'memory_context_summary_count': 0,
-                'context_hints_injected': False,
-                'context_hints_injected_count': 0,
-            },
+            self.server.prompt_injection_summary.empty_memory_prompt_injection_summary(),
         )
         self.assertEqual(
             prompt_payload.get('identity_prompt_injection'),
@@ -603,6 +586,26 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'injected_candidate_ids': ['cand-user', 'cand-assistant'],
                 'memory_context_injected': True,
                 'memory_context_summary_count': 2,
+                'injected_traces_with_summary_id_count': 2,
+                'injected_traces_with_parent_summary_count': 2,
+                'parent_summaries_resolved_count': 2,
+                'parent_summaries_injected_count': 2,
+                'parent_summaries_injected': [
+                    {
+                        'summary_id': 'summary-1',
+                        'summary_id_sha256_12': hashlib.sha256(b'summary-1').hexdigest()[:12],
+                        'start_ts': None,
+                        'end_ts': None,
+                        'linked_trace_count': 1,
+                    },
+                    {
+                        'summary_id': 'summary-2',
+                        'summary_id_sha256_12': hashlib.sha256(b'summary-2').hexdigest()[:12],
+                        'start_ts': None,
+                        'end_ts': None,
+                        'linked_trace_count': 1,
+                    },
+                ],
                 'context_hints_injected': True,
                 'context_hints_injected_count': 2,
             },

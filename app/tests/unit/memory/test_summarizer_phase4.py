@@ -36,6 +36,85 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
             ],
         }
 
+    def test_maybe_summarize_threshold_counts_only_unsummarized_dialogue(self) -> None:
+        observed = {'messages': None}
+        original_estimate_tokens = summarizer.estimate_tokens
+        original_threshold = config.SUMMARY_THRESHOLD_TOKENS
+
+        def fake_estimate_tokens(messages, model):
+            observed['messages'] = [dict(message) for message in messages]
+            return 0
+
+        conversation = {
+            'id': 'conv-dialogue-only',
+            'messages': [
+                {'role': 'system', 'content': 'SYSTEM ' * 10000, 'timestamp': '2026-03-24T09:00:00Z'},
+                {'role': 'user', 'content': 'deja resume', 'timestamp': '2026-03-24T09:10:00Z', 'summarized_by': 'summary-old'},
+                {'role': 'assistant', 'content': 'deja resume aussi', 'timestamp': '2026-03-24T09:11:00Z', 'summarized_by': 'summary-old'},
+                {'role': 'user', 'content': 'message courant', 'timestamp': '2026-03-24T10:00:00Z'},
+                {'role': 'assistant', 'content': 'reponse courante', 'timestamp': '2026-03-24T10:01:00Z'},
+            ],
+        }
+
+        summarizer.estimate_tokens = fake_estimate_tokens
+        config.SUMMARY_THRESHOLD_TOKENS = 1
+        try:
+            changed = summarizer.maybe_summarize(conversation, 'token-model')
+        finally:
+            summarizer.estimate_tokens = original_estimate_tokens
+            config.SUMMARY_THRESHOLD_TOKENS = original_threshold
+
+        self.assertFalse(changed)
+        self.assertEqual(
+            observed['messages'],
+            [
+                {'role': 'user', 'content': 'message courant'},
+                {'role': 'assistant', 'content': 'reponse courante'},
+            ],
+        )
+
+    def test_maybe_summarize_marks_old_messages_and_keeps_recent_turns_unsummarized(self) -> None:
+        original_estimate_tokens = summarizer.estimate_tokens
+        original_summarize_conversation = summarizer.summarize_conversation
+        original_get_settings = summarizer.runtime_settings.get_summary_model_settings
+        original_threshold = config.SUMMARY_THRESHOLD_TOKENS
+        original_keep_turns = config.SUMMARY_KEEP_TURNS
+
+        import memory.memory_store as memory_store
+        original_save_summary = memory_store.save_summary
+        original_update_summary_id = memory_store.update_traces_summary_id
+
+        conversation = self._conversation()
+        summarizer.estimate_tokens = lambda _messages, _model: 999
+        summarizer.summarize_conversation = lambda _turns, _model: 'resume test'
+        summarizer.runtime_settings.get_summary_model_settings = lambda: runtime_settings.RuntimeSectionView(
+            section='summary_model',
+            payload=runtime_settings.build_env_seed_bundle('summary_model').payload,
+            source='env',
+            source_reason='test',
+        )
+        memory_store.save_summary = lambda conv_id, summary_entry: None
+        memory_store.update_traces_summary_id = lambda conv_id, summary_id, start_ts, end_ts: None
+        config.SUMMARY_THRESHOLD_TOKENS = 1
+        config.SUMMARY_KEEP_TURNS = 1
+        try:
+            changed = summarizer.maybe_summarize(conversation, 'token-model')
+        finally:
+            summarizer.estimate_tokens = original_estimate_tokens
+            summarizer.summarize_conversation = original_summarize_conversation
+            summarizer.runtime_settings.get_summary_model_settings = original_get_settings
+            memory_store.save_summary = original_save_summary
+            memory_store.update_traces_summary_id = original_update_summary_id
+            config.SUMMARY_THRESHOLD_TOKENS = original_threshold
+            config.SUMMARY_KEEP_TURNS = original_keep_turns
+
+        self.assertTrue(changed)
+        first_summary_id = conversation['messages'][0].get('summarized_by')
+        self.assertTrue(first_summary_id)
+        self.assertEqual(conversation['messages'][1].get('summarized_by'), first_summary_id)
+        self.assertNotIn('summarized_by', conversation['messages'][2])
+        self.assertNotIn('summarized_by', conversation['messages'][3])
+
     def test_maybe_summarize_uses_runtime_summary_model_from_db_when_present(self) -> None:
         observed = {'model': None}
         original_get_settings = summarizer.runtime_settings.get_summary_model_settings

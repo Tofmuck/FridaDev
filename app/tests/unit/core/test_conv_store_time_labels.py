@@ -142,6 +142,103 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
             ],
         )
 
+    def test_build_prompt_messages_keeps_recent_dialogue_when_prefix_exceeds_soft_limit(self) -> None:
+        conversation = {
+            "id": "conv-large-prefix",
+            "messages": [
+                {"role": "system", "content": "SYSTEM " * 5000, "timestamp": "2026-03-28T10:00:00Z"},
+                {"role": "user", "content": "Premier message recent", "timestamp": "2026-03-28T11:55:00Z"},
+                {"role": "assistant", "content": "Premiere reponse recente", "timestamp": "2026-03-28T11:56:00Z"},
+                {"role": "user", "content": "Deuxieme message recent", "timestamp": "2026-03-28T11:57:00Z"},
+            ],
+        }
+        observed_logs: list[tuple[str, dict[str, object]]] = []
+
+        with (
+            mock.patch.object(conv_store, "_get_active_summary", return_value=None),
+            mock.patch.object(conv_store, "count_tokens", return_value=999),
+            mock.patch.object(conv_store.config, "MAX_TOKENS", 10),
+            mock.patch.object(
+                conv_store.admin_logs,
+                "log_event",
+                side_effect=lambda event, **fields: observed_logs.append((event, dict(fields))),
+            ),
+        ):
+            result = conv_store.build_prompt_messages(
+                conversation,
+                model="fake-model",
+                now="2026-03-28T12:00:00Z",
+                memory_traces=None,
+                context_hints=None,
+            )
+
+        dialogue_contents = [
+            msg["content"]
+            for msg in result
+            if msg.get("role") in {"user", "assistant"}
+        ]
+        self.assertEqual(len(dialogue_contents), 3)
+        self.assertTrue(any("Premier message recent" in content for content in dialogue_contents))
+        self.assertTrue(any("Premiere reponse recente" in content for content in dialogue_contents))
+        self.assertTrue(any("Deuxieme message recent" in content for content in dialogue_contents))
+
+        token_window_payload = next(fields for event, fields in observed_logs if event == "token_window")
+        self.assertEqual(token_window_payload["dialogue_candidate_message_count"], 3)
+        self.assertEqual(token_window_payload["selected_dialogue_message_count"], 3)
+        self.assertFalse(token_window_payload["dialogue_messages_truncated"])
+        self.assertEqual(token_window_payload["selection_policy"], "all_dialogue_after_active_summary")
+        self.assertTrue(token_window_payload["prompt_soft_limit_exceeded"])
+
+    def test_build_prompt_messages_keeps_all_messages_after_active_summary_cutoff(self) -> None:
+        conversation = {
+            "id": "conv-active-summary",
+            "messages": [
+                {"role": "system", "content": "SYSTEM " * 5000, "timestamp": "2026-03-28T10:00:00Z"},
+                {"role": "user", "content": "Ancien message resume", "timestamp": "2026-03-28T10:10:00Z"},
+                {"role": "assistant", "content": "Ancienne reponse resumee", "timestamp": "2026-03-28T10:11:00Z"},
+                {"role": "user", "content": "Message recent conserve", "timestamp": "2026-03-28T11:55:00Z"},
+                {"role": "assistant", "content": "Reponse recente conservee", "timestamp": "2026-03-28T11:56:00Z"},
+            ],
+        }
+        active_summary = {
+            "id": "summary-1",
+            "start_ts": "2026-03-28T10:00:00Z",
+            "end_ts": "2026-03-28T10:30:00Z",
+            "content": "Les anciens messages ont ete resumes.",
+        }
+        observed_logs: list[tuple[str, dict[str, object]]] = []
+
+        with (
+            mock.patch.object(conv_store, "_get_active_summary", return_value=active_summary),
+            mock.patch.object(conv_store, "count_tokens", return_value=999),
+            mock.patch.object(conv_store.config, "MAX_TOKENS", 10),
+            mock.patch.object(
+                conv_store.admin_logs,
+                "log_event",
+                side_effect=lambda event, **fields: observed_logs.append((event, dict(fields))),
+            ),
+        ):
+            result = conv_store.build_prompt_messages(
+                conversation,
+                model="fake-model",
+                now="2026-03-28T12:00:00Z",
+                memory_traces=None,
+                context_hints=None,
+            )
+
+        contents = [msg["content"] for msg in result]
+        self.assertTrue(any(content.startswith("[Résumé") for content in contents))
+        self.assertFalse(any("Ancien message resume" in content for content in contents))
+        self.assertFalse(any("Ancienne reponse resumee" in content for content in contents))
+        self.assertTrue(any("Message recent conserve" in content for content in contents))
+        self.assertTrue(any("Reponse recente conservee" in content for content in contents))
+
+        token_window_payload = next(fields for event, fields in observed_logs if event == "token_window")
+        self.assertTrue(token_window_payload["active_summary_present"])
+        self.assertEqual(token_window_payload["dialogue_candidate_message_count"], 2)
+        self.assertEqual(token_window_payload["selected_dialogue_message_count"], 2)
+        self.assertFalse(token_window_payload["dialogue_messages_truncated"])
+
 
 if __name__ == "__main__":
     unittest.main()

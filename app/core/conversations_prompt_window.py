@@ -286,17 +286,19 @@ def build_prompt_messages(
         if mem_msg:
             prefix.append(mem_msg)
 
-    selected_reversed: list[dict[str, Any]] = []
-    for msg in reversed(candidates):
-        trial = prefix + list(reversed(selected_reversed + [msg]))
-        estimated_trial_tokens = count_tokens_func(trial, model)
-        if estimated_trial_tokens > max_tokens:
-            break
-        selected_reversed.append(msg)
-    selected = list(reversed(selected_reversed))
+    selected = list(candidates)
 
     prompt_messages = prefix + selected
     estimated_prompt_window_tokens = count_tokens_func(prompt_messages, model)
+    prompt_soft_limit_exceeded = max_tokens > 0 and estimated_prompt_window_tokens > max_tokens
+    if prompt_soft_limit_exceeded:
+        logger.warning(
+            "prompt_soft_token_limit_exceeded id=%s estimated_tokens=%s soft_limit=%s messages=%s",
+            conversation.get("id"),
+            estimated_prompt_window_tokens,
+            max_tokens,
+            len(prompt_messages),
+        )
     logger.info(
         "token_window id=%s estimated_tokens=%s messages=%s summary=%s",
         conversation.get("id"),
@@ -310,6 +312,13 @@ def build_prompt_messages(
         estimated_prompt_window_tokens=estimated_prompt_window_tokens,
         message_count=len(prompt_messages),
         summary_id=active_summary["id"] if active_summary else None,
+        active_summary_present=bool(active_summary),
+        dialogue_candidate_message_count=len(candidates),
+        selected_dialogue_message_count=len(selected),
+        dialogue_messages_truncated=False,
+        selection_policy="all_dialogue_after_active_summary",
+        prompt_soft_token_limit=max_tokens,
+        prompt_soft_limit_exceeded=prompt_soft_limit_exceeded,
     )
 
     result: list[dict[str, str]] = []

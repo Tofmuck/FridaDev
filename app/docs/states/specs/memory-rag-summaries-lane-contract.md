@@ -143,6 +143,22 @@ Ce n'est pas:
 - une panne evidente de persistence `summarized_by`;
 - ni un simple effet de `SUMMARY_KEEP_TURNS` seul.
 
+### 5.4 Contrat runtime de la memoire dialogique directe
+
+Mise a jour du 2026-05-16:
+- la memoire dialogique directe est definie strictement comme les messages `user` + `assistant` non encore resumes;
+- `SUMMARY_THRESHOLD_TOKENS` est le seuil qui decide le resume glissant, et il ne compte que ce dialogue direct non resume;
+- les couches non dialogiques ne participent pas a ce seuil: system prompt, contrat hermeneutique, `NOW`, identite, memoire injectee, resumes parents, web, jugement hermeneutique, gardes runtime ou autres blocs de prompt;
+- apres injection d'un resume actif, les messages `user` + `assistant` posterieurs au cutoff du resume restent la continuite recente directe;
+- le builder de prompt ne doit pas appliquer une seconde fenetre silencieuse sur ces messages recents au motif que `system + identite + memoire + web + dialogue` depasserait un budget de prompt complet;
+- `FRIDA_MAX_TOKENS` / `config.MAX_TOKENS` est conserve comme soft limit d'observabilite du prompt complet, pas comme mecanisme normal de coupe de la memoire dialogique directe;
+- si une impossibilite physique provider apparait un jour, elle doit etre traitee comme garde explicite et visible, separee de la logique normale de resume glissant.
+
+Invariant produit:
+- les messages recents non resumes partent tous au modele, sauf impossibilite provider explicite;
+- les blocs non dialogiques ne peuvent pas faire disparaitre silencieusement une partie du dialogue recent;
+- le resume actif remplace les anciens messages couverts, mais ne justifie pas une coupe des messages posterieurs au resume.
+
 ## 6. Strategie de preparation retenue
 
 Decision retenue:
