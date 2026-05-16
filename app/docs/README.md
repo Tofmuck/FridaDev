@@ -70,6 +70,16 @@ Lire d'abord:
 
 But: cadrer le chantier produit permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
+Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
+
+### Biblio native / Frida Catalogue
+
+Lire d'abord:
+- `todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
+- `todo-todo/product/frida-biblio-native-catalogue-todo.md`
+
+But: cadrer le chantier separe permettant a Frida de consulter une bibliotheque persistante native, identifier un `library_document` / `catalogue_document`, resoudre un locator et extraire un `passage documentaire` sans confondre cette capacite avec les documents actifs de conversation.
+
 ### Identity / doctrine
 
 Lire d'abord:

@@ -154,6 +154,8 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 - Archived hermeneutic implementation roadmap: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Memory Admin surface contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Active installation roadmap: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Active conversation documents roadmap: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+- Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Archived chat enunciation prompt-first closure note: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - Closed Lot 9 archive: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 
@@ -348,6 +350,8 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 - Archive de la grande roadmap hermeneutique: `app/docs/todo-done/notes/hermeneutical-add-todo.md`
 - Contrat de surface Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Roadmap installation active: `app/docs/todo-todo/product/Frida-installation-config.md`
+- Roadmap documents actifs de conversation: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
+- Roadmap Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Note archivee de cloture prompt-first voix / identite / gap du chat: `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`
 - Archive de cloture Lot 9: `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md`
 

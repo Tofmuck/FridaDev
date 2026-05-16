@@ -5,7 +5,8 @@ Date: 2026-05-15
 Classement: `app/docs/todo-todo/product/`
 TODO derive: `app/docs/todo-todo/product/active-conversation-documents-todo.md`
 Portee: documents fournis volontairement par l'utilisateur a une conversation active, injectes au modele principal tant qu'ils restent actifs
-Hors-scope: OCR, RAG documentaire, bibliotheque documentaire persistante, AnythingLLM/OpenWebUI comme intermediaire principal, indexation, resume documentaire, promotion memoire, patch runtime dans ce commit
+Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
+Hors-scope: OCR, RAG documentaire, Biblio native / bibliotheque documentaire persistante, AnythingLLM/OpenWebUI comme intermediaire principal, indexation, resume documentaire, promotion memoire, patch runtime dans ce commit
 
 ## 1. Question initiale et verdict
 
@@ -35,6 +36,31 @@ La meilleure architecture cible pour ces documents actifs de conversation dans l
 - ne promet pas l'ouverture du texte complet du document dans le dashboard; une telle capacite demanderait une decision produit separee.
 
 Cette architecture cree une capacite produit de lecture ponctuelle dans la conversation sans construire prematurement un systeme documentaire persistant.
+
+### Frontiere avec la future Biblio native
+
+L'audit complementaire du 2026-05-16 a confirme que les **documents actifs de conversation** et la future **Biblio / Frida Catalogue** sont deux capacites differentes mais compatibles.
+
+Vocabulaire a reserver des maintenant:
+
+- `document actif de conversation` / `active_document`: fichier fourni volontairement par l'utilisateur, temporaire, conversation-scoped, actif jusqu'au retrait manuel;
+- `document de bibliotheque` / `library_document` / `catalogue_document`: document persistant deja connu d'une bibliotheque native, consulte a la demande;
+- `passage documentaire`: extrait borne issu d'un `library_document` / `catalogue_document`, injecte pour repondre a une demande precise.
+
+Decision:
+
+- le chantier courant ne cree pas de Biblio;
+- l'etat actif serveur temporaire ne doit jamais devenir le stockage de la bibliotheque persistante;
+- il faut reserver deux lanes distinctes:
+  - lane `documents actifs`: fichiers fournis par l'utilisateur dans la conversation courante;
+  - future lane `Biblio / Catalogue`: passages recuperes a la demande depuis une bibliotheque persistante;
+- l'observabilite doit rester separee:
+  - documents actifs: actif, injecte, retire, trop gros, parsing error;
+  - Biblio: requete, document resolu, locator, passage extrait, ambiguite, confiance;
+- l'UI ne doit pas introduire un bouton ou vocabulaire generique `Documents` qui melangerait upload temporaire et bibliotheque persistante;
+- AnythingLLM et OpenWebUI peuvent rester des precedents a relire, mais ne sont pas le chemin principal cible pour cette capacite.
+
+La compatibilite entre les deux chantiers tient donc a un contrat de lanes, de vocabulaire et d'observabilite; elle ne passe pas par un etat serveur commun.
 
 ## 2. Doctrine produit non negociable
 
@@ -421,6 +447,8 @@ Rejete dans ce chantier. Resumer le document transformerait la capacite en pipel
 ### Bibliotheque documentaire durable maintenant
 
 Rejetee. Elle pourra venir plus tard, avec ses propres decisions de retention, recherche, droits, OCR et RAG. Le chantier actuel reste conversationnel et actif.
+
+Le futur chantier est explicitement separe sous le nom Biblio native / Frida Catalogue. Il devra consulter des `library_document` / `catalogue_document`, resoudre des locators, extraire des passages documentaires (`passage documentaire`), puis injecter ces passages dans une lane dediee. Il ne doit pas reutiliser l'etat `active_document`.
 
 ## 7. Risques a traiter par les lots de code
 

@@ -5,6 +5,7 @@ Date de creation: 2026-05-15
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/active-conversation-documents-audit-plan.md`
 Spec fondatrice a creer: `app/docs/states/specs/active-conversation-documents-contract.md`
+Chantier distinct reserve: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: activation serveur de documents fournis a une conversation, injection entiere ou exclusion entiere par tour, frontend chat, observabilite content-free
 Hors-scope du commit de creation: code runtime, endpoint, table DB, frontend, migration, OCR, RAG documentaire, stockage documentaire durable, rebuild
 
@@ -13,6 +14,16 @@ Hors-scope du commit de creation: code runtime, endpoint, table DB, frontend, mi
 Ce TODO ouvre le chantier produit des documents actifs de conversation.
 
 Le besoin n'est pas encore de construire une bibliotheque documentaire, un OCR ou un RAG documentaire. Le besoin est de permettre a l'utilisateur de fournir ponctuellement des fichiers a Frida dans une conversation et de garder ces fichiers actifs jusqu'a retrait manuel explicite.
+
+Decision produit issue de l'audit complementaire du 2026-05-16: ce chantier reste separe de la future Biblio native / Frida Catalogue.
+
+Vocabulaire a reserver:
+
+- `document actif de conversation` / `active_document`: fichier temporaire fourni volontairement par l'utilisateur dans la conversation courante;
+- `document de bibliotheque` / `library_document` / `catalogue_document`: document persistant consulte plus tard via Biblio / Frida Catalogue;
+- `passage documentaire`: extrait borne issu d'un `library_document` / `catalogue_document`.
+
+Le chantier courant ne cree pas de Biblio. Il doit seulement eviter de fermer cette porte et eviter tout vocabulaire ou controle UI generique `Documents` qui melangerait upload temporaire et bibliotheque persistante.
 
 Formats cibles du premier chantier:
 
@@ -48,12 +59,20 @@ Regle semantique centrale: le modele ne doit pas seulement recevoir les octets d
 - Pas de promesse actuelle d'ouverture du texte complet du document dans le dashboard.
 - Toute ouverture future du texte complet du document exige une decision produit separee; elle n'est pas une consequence automatique du gate dashboard existant.
 - Pas d'AnythingLLM ni OpenWebUI comme intermediaire principal de cette capacite.
+- Le chantier documents actifs ne cree pas de Biblio native.
+- L'etat actif serveur temporaire ne doit jamais devenir le stockage de la bibliotheque persistante.
+- La lane `documents actifs` est reservee aux fichiers fournis par l'utilisateur.
+- La future lane `Biblio / Catalogue` est reservee aux passages recuperes a la demande depuis une bibliotheque persistante.
+- L'observabilite documents actifs reste separee de l'observabilite Biblio:
+  - documents actifs: actif, injecte, retire, trop gros, parsing error;
+  - Biblio: requete, document resolu, locator, passage extrait, ambiguite, confiance.
 
 ## 3. Hors-scope du chantier
 
 - OCR;
 - documents scans;
 - bibliotheque documentaire persistante;
+- Biblio native / Frida Catalogue;
 - recherche documentaire durable;
 - embeddings documentaires;
 - chunking RAG documentaire;
@@ -62,6 +81,8 @@ Regle semantique centrale: le modele ne doit pas seulement recevoir les octets d
 - modification de la doctrine Memory/RAG;
 - modification de la doctrine Identity;
 - stockage long terme de documents hors decision explicite;
+- stockage Catalogue ou `library_document` dans l'etat `active_document`;
+- bouton ou vocabulaire generique `Documents` qui confondrait upload temporaire et bibliotheque persistante;
 - exposition de contenu brut dans logs ou dashboard par defaut.
 
 ## 4. Criteres de fermeture du chantier
@@ -77,6 +98,8 @@ Le chantier pourra etre clos seulement si:
 - le document trop gros n'empeche pas le tour et produit un signal compact;
 - le prompt principal enseigne explicitement au modele le statut de document actif de conversation et son usage attendu;
 - les tests prouvent que le modele recoit cette instruction d'interpretation, pas seulement le contenu du document;
+- le vocabulaire `active_document` est distingue de `library_document` / `catalogue_document` / `passage documentaire`;
+- la future lane Biblio / Catalogue est reservee sans etre implementee dans ce chantier;
 - Memory/RAG/Identity/Summary ne sont pas contamines;
 - le seuil de resume n'integre pas les documents actifs;
 - les logs/read-models/dashboard montrent les metadonnees utiles sans contenu brut par defaut;
@@ -91,6 +114,8 @@ La condition de non-prolongation est atteinte quand Frida sait lire ponctuelleme
 
 Les capacites documentaires persistantes futures devront etre ouvertes dans un chantier separe.
 
+Ce chantier separe est desormais ouvert comme cadrage produit sous `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`, mais il ne doit pas etre execute par les lots documents actifs.
+
 ## 6. Lots
 
 ### Lot 1 - Spec fondatrice et contrat de lanes
@@ -98,8 +123,11 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Creer `app/docs/states/specs/active-conversation-documents-contract.md`.
 - [ ] Fixer les formats supportes et l'absence d'OCR.
 - [ ] Fixer le vocabulaire: document actif, activation, retrait manuel, injection entiere, exclusion entiere, lane documentaire, signal non injecte.
+- [ ] Fixer explicitement `document actif de conversation` / `active_document` et le distinguer des futurs `library_document` / `catalogue_document` / `passage documentaire`.
 - [ ] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
+- [ ] Definir la frontiere stricte avec la future Biblio native / Frida Catalogue.
 - [ ] Definir la lane prompt structuree et ses balises stables.
+- [ ] Reserver une future lane Biblio / Catalogue sans l'implementer dans ce chantier.
 - [ ] Definir le contrat d'interpretation prompt: document actif de conversation, fourni volontairement par l'utilisateur, contexte de travail direct du tour courant.
 - [ ] Definir les instructions que le prompt principal devra donner au modele pour distinguer cette lane de Memory/RAG, du resume, d'Identity, du Web et de l'hermeneutique.
 - [ ] Definir la semantique du signal "document actif non injecte": le modele sait qu'un document existe mais ne doit pas pretendre l'avoir lu.
@@ -154,6 +182,7 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Ajouter drag-and-drop fichiers sur la surface chat.
 - [ ] Ajouter controle visible pres des controles d'entree.
 - [ ] Afficher les fichiers actifs avec nom, type, taille/statut et action retirer.
+- [ ] Eviter un libelle ou bouton generique `Documents` qui melangerait documents actifs et future Biblio.
 - [ ] Garder l'activation visible sur les tours suivants.
 - [ ] Gerer erreurs de parsing/type/taille sans bloquer la saisie.
 - [ ] Ne pas afficher le contenu du document dans l'UI par defaut.
@@ -164,6 +193,7 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Ajouter events compacts d'activation, retrait et decision par tour.
 - [ ] Exposer par defaut seulement nom, type, bytes, chars, token_estimate, active, injected, reason_code, hashes courts ou refs.
 - [ ] Ajouter le module observable `documents` reel sans dupliquer Memory/RAG.
+- [ ] Garder une observabilite separee de la future Biblio: actif/injecte/retire/trop gros cote documents actifs, requete/document/locator/passage/ambiguite/confiance cote Biblio future.
 - [ ] Enrichir l'inspection traduite du dashboard: document actif, injecte, non injecte car trop gros, erreur parsing, retrait manuel.
 - [ ] Limiter l'inspection exhaustive documentaire aux metadonnees, statuts d'injection et raisons compactes.
 - [ ] Documenter que tout acces futur au texte complet du document releve d'une decision produit separee.
@@ -185,6 +215,7 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Mettre a jour les docs vivantes touchees par le comportement runtime.
 - [ ] Documenter les limites restantes: pas OCR, pas RAG documentaire, pas bibliotheque persistante.
 - [ ] Documenter la transition possible vers un futur systeme documentaire durable.
+- [ ] Verifier que la transition mentionne la Biblio native comme chantier separe, pas comme prolongement automatique.
 - [ ] Verifier que le TODO ne contient plus de case ouverte reelle.
 - [ ] Archiver le TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
 
@@ -211,3 +242,4 @@ Les lots devront adapter les suites exactes au code courant, mais viser:
 - Les budgets tokens doivent etre alignes avec le provider reel et les settings runtime.
 - Le texte complet du document n'est pas promis par le dashboard; ne pas le precharger ni l'exposer sans decision produit separee.
 - Les recouvrements futurs avec le module dashboard `documents` doivent etre explicites, pas confus.
+- Les recouvrements futurs avec Biblio native doivent rester vocabulairement nets: `active_document` temporaire d'un cote, `library_document` / `catalogue_document` et `passage documentaire` de l'autre.
