@@ -1044,8 +1044,6 @@ _REASON_CODE_LABELS = {
     'validation_fail_open': 'validation ouverte par securite',
     'document_too_large_for_turn': 'document actif trop gros pour ce tour',
     'document_empty_text': 'document actif sans texte injectable',
-    'document_parse_error': 'document impossible a lire',
-    'manual_remove': 'document actif retire manuellement',
 }
 
 

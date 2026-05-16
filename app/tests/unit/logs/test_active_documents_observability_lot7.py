@@ -153,6 +153,8 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         ])
         self.assertIn('document_ref', events[0][1])
         self.assertEqual(events[2][1]['reason_code'], 'manual_remove')
+        self.assertNotIn('turn_id', events[1][1])
+        self.assertNotIn('turn_id', events[2][1])
         self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', encoded)
         self.assertNotIn('RAW BAD DOCUMENT TEXT MUST NOT LEAK', encoded)
         self.assertNotIn('text_content', encoded)

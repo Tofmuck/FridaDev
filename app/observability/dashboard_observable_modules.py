@@ -587,8 +587,6 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
         degradation_reasons=(
             ('document_too_large_for_turn', 'Un document actif etait trop gros pour etre envoye entier dans ce tour.'),
             ('document_empty_text', 'Un document actif ne contenait pas de texte injectable.'),
-            ('document_parse_error', 'Un document n a pas pu etre lu lors de l activation.'),
-            ('manual_remove', 'Un document actif a ete retire manuellement.'),
         ),
         gated_content=(),
         bucket_metrics_reducer=_reduce_documents_metrics,

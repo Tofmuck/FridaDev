@@ -291,6 +291,18 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertNotIn('RAW', summary)
         self.assertNotIn('library_document', summary)
 
+    def test_documents_module_does_not_promise_out_of_turn_reasons_as_turn_degradations(self) -> None:
+        catalog = dashboard_analytics.build_dashboard_module_catalog()
+        document_module = next(
+            module for module in catalog['modules']
+            if module['module_key'] == 'documents'
+        )
+
+        self.assertIn('document_too_large_for_turn', document_module['degradation_reasons'])
+        self.assertIn('document_empty_text', document_module['degradation_reasons'])
+        self.assertNotIn('document_parse_error', document_module['degradation_reasons'])
+        self.assertNotIn('manual_remove', document_module['degradation_reasons'])
+
     def test_catalog_public_labels_do_not_include_runtime_content(self) -> None:
         raw_values = (
             'RAW PROMPT MUST NOT LEAK',

@@ -357,8 +357,8 @@ Toute extension doit rester compacte et content-free.
 Implementation courante:
 
 - l'activation reussie emet un event admin compact `active_document_activated`;
-- l'echec d'activation emet `active_document_activation_failed`;
-- le retrait manuel emet `active_document_removed`;
+- l'echec d'activation emet un event admin compact hors tour `active_document_activation_failed`;
+- le retrait manuel emet un event admin compact hors tour `active_document_removed`;
 - chaque tour avec au moins un document actif emet un event de tour `active_documents`;
 - la materialisation dashboard persistante expose `dashboard_turn_facts.documents_json`;
 - le module observable dashboard `documents` est reel pour les documents actifs de conversation;
@@ -400,13 +400,14 @@ Le dashboard peut raconter:
 - "1 document etait actif sur ce tour.";
 - "Le document a ete envoye entier au modele.";
 - "Le document etait actif mais trop gros pour ce tour.";
-- "Le document a ete retire manuellement.";
 
 Cette lecture doit rester metadata-only.
 
 Le read-model d'inspection peut dire qu'un document actif a ete injecte entier ou exclu,
 citer son nom, son type, sa taille, son estimation de tokens, son hash court et sa raison compacte.
 Il ne doit pas recopier le texte, ni faire passer cette lane pour Memory/RAG, Web, Identity, Summary ou Biblio.
+Il ne doit pas rattacher artificiellement un echec d'activation ou un retrait manuel a un tour:
+ces deux cas restent visibles dans les logs admin compacts tant qu'aucun read-model hors-tour dedie n'existe.
 
 ## 12. Gate dashboard et contenu complet
 

@@ -206,12 +206,13 @@ Correction ciblee avant Lot 7: les decisions de lane prompt sont maintenant pers
 - [x] Exposer par defaut seulement nom, type, bytes, chars, token_estimate, active, injected, reason_code, hashes courts ou refs.
 - [x] Ajouter le module observable `documents` reel sans dupliquer Memory/RAG.
 - [x] Garder une observabilite separee de la future Biblio: actif/injecte/retire/trop gros cote documents actifs, requete/document/locator/passage/ambiguite/confiance cote Biblio future.
-- [x] Enrichir l'inspection traduite du dashboard: document actif, injecte, non injecte car trop gros, erreur parsing, retrait manuel.
+- [x] Enrichir l'inspection traduite du dashboard par tour: document actif, injecte, non injecte car trop gros.
+- [x] Garder `activation_failed` et `manual_remove` visibles dans les logs admin compacts hors tour, sans les rattacher artificiellement a un tour.
 - [x] Limiter l'inspection exhaustive documentaire aux metadonnees, statuts d'injection et raisons compactes.
 - [x] Documenter que tout acces futur au texte complet du document releve d'une decision produit separee.
 - [x] Tester content-free strict et absence de contenu brut dans logs/read-models/dashboard.
 
-Note Lot 7 livre `app/observability/active_documents_observability.py`, l'event de tour `active_documents`, les events admin `active_document_activated`, `active_document_activation_failed` et `active_document_removed`, la colonne persistante `dashboard_turn_facts.documents_json`, le module observable initial `documents`, et le recit dashboard content-free des documents actifs injectes ou exclus. La lecture reste strictement metadonnees/statuts/raisons compactes; aucun texte de fichier n'est charge dans les logs/read-models/dashboard ordinaires, et la future Biblio reste separee.
+Note Lot 7 livre `app/observability/active_documents_observability.py`, l'event de tour `active_documents`, les events admin hors tour `active_document_activated`, `active_document_activation_failed` et `active_document_removed`, la colonne persistante `dashboard_turn_facts.documents_json`, le module observable initial `documents`, et le recit dashboard content-free des documents actifs injectes ou exclus pendant un tour. La lecture de tour reste strictement metadonnees/statuts/raisons compactes; aucun texte de fichier n'est charge dans les logs/read-models/dashboard ordinaires. Les echecs d'activation et retraits manuels restent prouvables dans les logs admin compacts, pas dans l'inspection de tour tant qu'il n'existe pas de read-model hors-tour dedie. La future Biblio reste separee.
 
 ### Lot 8 - Tests integration et preuves operateur
 
