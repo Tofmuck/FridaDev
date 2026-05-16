@@ -362,14 +362,19 @@ class _ConvStoreChatLogProxy:
         chat_turn_logger.set_state('memory_prompt_injection', memory_prompt_injection)
         chat_turn_logger.set_state('memory_items_used', memory_items_used)
 
-        token_limit = int(config.MAX_TOKENS)
+        prompt_soft_token_limit = int(config.MAX_TOKENS)
+        prompt_soft_limit_exceeded = (
+            prompt_soft_token_limit > 0
+            and estimated_context_tokens > prompt_soft_token_limit
+        )
         chat_turn_logger.emit(
             'context_build',
             status='ok',
             payload={
                 'estimated_context_tokens': estimated_context_tokens,
-                'token_limit': token_limit,
-                'truncated': bool(estimated_context_tokens >= token_limit),
+                'prompt_soft_token_limit': prompt_soft_token_limit,
+                'prompt_soft_limit_exceeded': prompt_soft_limit_exceeded,
+                'dialogue_messages_truncated': False,
             },
         )
 

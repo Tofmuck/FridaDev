@@ -177,7 +177,16 @@ class ChatTurnLoggerCoreContractTests(unittest.TestCase):
             web_search_enabled=False,
         )
         try:
-            chat_turn_logger.emit('context_build', status='ok', payload={'estimated_context_tokens': 42, 'token_limit': 4000})
+            chat_turn_logger.emit(
+                'context_build',
+                status='ok',
+                payload={
+                    'estimated_context_tokens': 42,
+                    'prompt_soft_token_limit': 4000,
+                    'prompt_soft_limit_exceeded': False,
+                    'dialogue_messages_truncated': False,
+                },
+            )
             chat_turn_logger.emit_branch_skipped(reason_code='no_data', reason_short='no_optional_branch')
             chat_turn_logger.emit_error(
                 error_code='upstream_error',

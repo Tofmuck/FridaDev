@@ -19,7 +19,7 @@ Mise a jour corrective du 2026-05-16:
 
 - le finding P1 de selection budgetaire silencieuse est ferme cote runtime: `build_prompt_messages()` conserve desormais tous les messages `user` + `assistant` eligibles apres le cutoff du resume actif;
 - `FRIDA_MAX_TOKENS` / `config.MAX_TOKENS` n'est plus un mecanisme normal de coupe de dialogue recent, mais un soft limit d'observabilite du prompt complet;
-- si le prompt complet depasse ce soft limit, l'evenement `token_window` le signale sans retirer de messages dialogiques recents;
+- si le prompt complet depasse ce soft limit, les evenements `token_window` et `context_build` le signalent via `prompt_soft_limit_exceeded` sans retirer de messages dialogiques recents et sans parler de troncature;
 - le risque residuel n'est plus une troncature silencieuse normale, mais l'eventuelle impossibilite physique provider, qui devra rester une garde explicite si elle se manifeste.
 
 Reponse a la question centrale:
@@ -297,10 +297,10 @@ Aucun P0 trouve. Aucun bloc majeur du payload principal n'est totalement non exp
 
 Preuve:
 
-- `build_prompt_messages()` applique d'abord un cutoff lie au resume actif, puis une selection budgetaire sur les candidats recents (`app/core/conversations_prompt_window.py:253-299`).
+- `build_prompt_messages()` applique d'abord un cutoff lie au resume actif; depuis le correctif runtime, il ne fait plus de selection budgetaire sur les candidats recents (`app/core/conversations_prompt_window.py:253-324`).
 - Le cutoff lie au resume n'est pas une perte muette: le prompt contient le resume actif via `make_summary_message()`.
 - Avant correctif, la selection budgetaire cassait la boucle quand `estimated_trial_tokens > max_tokens` sans ajouter de marqueur au prompt final sur les messages candidats exclus.
-- Depuis le correctif du 2026-05-16, le builder conserve tous les candidats dialogiques posterieurs au resume actif et journalise `prompt_soft_limit_exceeded` sans couper le dialogue recent.
+- Depuis le correctif du 2026-05-16, le builder conserve tous les candidats dialogiques posterieurs au resume actif et journalise `prompt_soft_limit_exceeded` sans couper le dialogue recent; `context_build` utilise le meme vocabulaire et ne publie plus de `truncated` pour un simple depassement du soft limit.
 
 Impact:
 

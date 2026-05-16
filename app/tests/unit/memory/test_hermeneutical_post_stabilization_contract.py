@@ -511,7 +511,12 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         events = [
             {
                 "event": "context_build",
-                "payload": {"estimated_context_tokens": 400, "token_limit": 8000, "truncated": False},
+                "payload": {
+                    "estimated_context_tokens": 400,
+                    "prompt_soft_token_limit": 8000,
+                    "prompt_soft_limit_exceeded": False,
+                    "dialogue_messages_truncated": False,
+                },
             },
             {
                 "event": "prompt_prepared",

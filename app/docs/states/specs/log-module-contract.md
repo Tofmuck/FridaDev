@@ -176,7 +176,9 @@ Minimum event-specific details:
   - forbidden: raw prompt, raw messages, raw content, raw original user message, raw query, raw web context, search results, snippets or crawled material
 
 - `context_build`
-  - `estimated_context_tokens`, `token_limit`, `truncated`
+  - `estimated_context_tokens`, `prompt_soft_token_limit`, `prompt_soft_limit_exceeded`, `dialogue_messages_truncated`
+  - `prompt_soft_limit_exceeded=true` means the complete prompt exceeded the observability soft limit; it is not a truncation proof
+  - `dialogue_messages_truncated` must stay `false` unless a real dialogic-message cut occurred; a soft-limit overrun must not be reported as `truncated`
 
 - `stimmung_prompt_prepared`
   - content-free proof of the secondary provider payload prepared by `stimmung_agent`

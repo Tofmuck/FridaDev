@@ -1302,8 +1302,14 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         context_events = [event for event in observed if event.get('stage') == 'context_build']
         self.assertEqual(len(summaries_events), 1)
         self.assertEqual(len(context_events), 1)
-        self.assertEqual(context_events[0]['payload_json'].get('estimated_context_tokens'), 42)
-        self.assertNotIn('context_tokens', context_events[0]['payload_json'])
+        context_payload = context_events[0]['payload_json']
+        self.assertEqual(context_payload.get('estimated_context_tokens'), 42)
+        self.assertEqual(context_payload.get('prompt_soft_token_limit'), self.server.config.MAX_TOKENS)
+        self.assertFalse(context_payload.get('prompt_soft_limit_exceeded'))
+        self.assertFalse(context_payload.get('dialogue_messages_truncated'))
+        self.assertNotIn('context_tokens', context_payload)
+        self.assertNotIn('token_limit', context_payload)
+        self.assertNotIn('truncated', context_payload)
         summary_event = summaries_events[0]
         self.assertEqual(summary_event.get('status'), 'ok')
         payload = summary_event['payload_json']
@@ -1318,6 +1324,53 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertNotIn('messages', payload)
         branch_skipped_events = [event for event in observed if event.get('stage') == 'branch_skipped']
         self.assertEqual(branch_skipped_events, [])
+
+    def test_build_prompt_messages_logs_soft_limit_exceeded_without_truncation(self) -> None:
+        observed: list[dict[str, object]] = []
+        original_insert = self.server.log_store.insert_chat_log_event
+        original_max_tokens = self.server.config.MAX_TOKENS
+
+        def fake_insert(event: dict[str, object], **_kwargs: object) -> bool:
+            observed.append(event)
+            return True
+
+        self.server.log_store.insert_chat_log_event = fake_insert
+        self.server.config.MAX_TOKENS = 10
+        token = self.server.chat_turn_logger.begin_turn(
+            conversation_id='conv-context-soft-limit',
+            user_msg='bonjour',
+            web_search_enabled=False,
+        )
+        try:
+            proxy = self.server._ConvStoreChatLogProxy(
+                base_module=SimpleNamespace(
+                    build_prompt_messages=lambda _conversation, _model, **_kwargs: [
+                        {'role': 'user', 'content': 'bonjour'},
+                        {'role': 'assistant', 'content': 'salut'},
+                    ]
+                ),
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 42),
+            )
+            prompt_messages = proxy.build_prompt_messages(
+                {'id': 'conv-context-soft-limit', 'messages': []},
+                'openrouter/runtime-main-model',
+                memory_traces=[],
+            )
+            self.assertEqual(len(prompt_messages), 2)
+            self.server.chat_turn_logger.end_turn(token, final_status='ok')
+        finally:
+            self.server.config.MAX_TOKENS = original_max_tokens
+            self.server.log_store.insert_chat_log_event = original_insert
+
+        context_events = [event for event in observed if event.get('stage') == 'context_build']
+        self.assertEqual(len(context_events), 1)
+        payload = context_events[0]['payload_json']
+        self.assertEqual(payload.get('estimated_context_tokens'), 42)
+        self.assertEqual(payload.get('prompt_soft_token_limit'), 10)
+        self.assertTrue(payload.get('prompt_soft_limit_exceeded'))
+        self.assertFalse(payload.get('dialogue_messages_truncated'))
+        self.assertNotIn('token_limit', payload)
+        self.assertNotIn('truncated', payload)
 
     def test_build_prompt_messages_logs_summaries_ok_for_undated_runtime_header(self) -> None:
         observed: list[dict[str, object]] = []
