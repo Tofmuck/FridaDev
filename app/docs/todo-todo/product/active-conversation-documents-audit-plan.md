@@ -30,6 +30,7 @@ La meilleure architecture cible pour ces documents actifs de conversation dans l
 - decide a chaque tour si chaque document actif peut etre injecte entier dans le prompt;
 - exclut entierement le document du tour si l'injection entiere ne rentre pas;
 - transmet au modele un signal structure compact quand un document actif n'a pas ete injecte;
+- enseigne explicitement au modele que la lane est un **document actif de conversation** fourni volontairement par l'utilisateur pour le travail direct du tour courant;
 - expose par defaut seulement des metadonnees content-free aux logs, read-models et dashboard;
 - ne promet pas l'ouverture du texte complet du document dans le dashboard; une telle capacite demanderait une decision produit separee.
 
@@ -61,6 +62,8 @@ Le prompt principal doit identifier explicitement la lane documentaire par des b
 - Web;
 - Hermeneutic;
 - resume de conversation.
+
+Ce balisage ne suffit pas a lui seul. Le prompt principal doit aussi contenir un contrat d'interpretation clair: un document actif de conversation est un document temporaire fourni volontairement par l'utilisateur dans la conversation courante, utilisable comme contexte de travail direct tant qu'il reste actif. Quand l'utilisateur demande de travailler "sur le document", le modele doit comprendre cette demande a partir de cette lane documentaire active, et non comme un souvenir, un resume, un contexte web ou une piece peripherique. Si un document actif est signale mais non injecte sur le tour courant, le modele ne doit jamais pretendre l'avoir lu.
 
 ## 3. Etat actuel cartographie
 
@@ -299,6 +302,15 @@ La lane documentaire doit etre un bloc dedie, avec en-tete stable, par exemple:
 
 Le nom exact doit etre fixe dans une future spec, mais la frontiere est obligatoire.
 
+La future spec devra aussi fixer le **contrat d'interpretation prompt** de cette lane. Le modele doit recevoir une instruction explicite indiquant que:
+
+- cette lane contient des documents actifs de conversation;
+- ces documents ont ete fournis volontairement par l'utilisateur;
+- ils font partie du contexte de travail direct du tour courant tant qu'ils restent actifs et injectes;
+- une demande de type "travaille sur le document" ou "resume/analyse/corrige ce fichier" doit etre interpretee en priorite a partir de cette lane;
+- la lane documentaire est distincte de Memory/RAG, du resume de conversation, d'Identity, du Web et du jugement hermeneutique;
+- un document actif non injecte pour cause de taille, parsing ou indisponibilite ne doit pas etre traite comme lu.
+
 Le bloc doit distinguer:
 
 - documents actifs injectes;
@@ -313,6 +325,8 @@ Le bloc documentaire ne doit pas etre confondu avec:
 - Web;
 - Hermeneutic;
 - resume.
+
+Le lot d'integration prompt ne devra donc pas seulement ajouter un bloc de texte dans le payload: il devra aussi enseigner au modele le statut semantique de ce bloc.
 
 ### 5.6 Exclusion du seuil de resume
 
@@ -486,6 +500,8 @@ Les lots de code devront prouver au minimum:
 - deux tours successifs avec document actif reinjecte;
 - retrait manuel puis absence d'injection;
 - document trop gros exclu entierement sans bloquer le tour;
+- prompt principal contenant le contrat d'interpretation de la lane document actif de conversation;
+- test prouvant que le modele recoit l'instruction qui distingue le document actif de la memoire, du resume, d'Identity et du web;
 - summary non declenche par le poids documentaire;
 - Memory/RAG/Identity non alimentes;
 - logs/read-models/dashboard content-free;

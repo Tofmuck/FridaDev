@@ -24,6 +24,8 @@ Formats cibles du premier chantier:
 
 Regle centrale: un document actif est envoye entier au modele quand il rentre dans le payload du tour. S'il ne rentre pas entier, il est exclu entierement de ce tour, le tour continue, et Frida recoit un signal structure lui permettant de l'expliquer naturellement.
 
+Regle semantique centrale: le modele ne doit pas seulement recevoir les octets du document. Il doit recevoir, dans le prompt principal, un contrat explicite lui permettant de comprendre que cette lane est un **document actif de conversation**: un document temporaire fourni volontairement par l'utilisateur, actif dans la conversation courante, et utilisable comme contexte de travail direct du tour tant qu'il reste actif et injecte.
+
 ## 2. Doctrine produit
 
 - Aucune troncature silencieuse.
@@ -38,6 +40,10 @@ Regle centrale: un document actif est envoye entier au modele quand il rentre da
 - Retrait manuel explicite par l'utilisateur.
 - Exclusion explicite du seuil de resume de conversation.
 - Lane documentaire bornee dans le prompt principal.
+- Contrat d'interpretation prompt obligatoire pour la lane document actif de conversation.
+- Le prompt principal doit expliquer que le document est fourni volontairement par l'utilisateur, actif dans la conversation courante et distinct de Memory/RAG, du resume, d'Identity et du Web.
+- Quand l'utilisateur demande de travailler "sur le document", le modele doit interpreter cette demande a partir de la lane documentaire active injectee.
+- Si un document actif n'est pas injecte sur un tour parce qu'il est trop gros, indisponible ou en erreur de parsing, le modele doit recevoir un signal explicite et ne jamais pretendre l'avoir lu.
 - Observabilite content-free par defaut.
 - Pas de promesse actuelle d'ouverture du texte complet du document dans le dashboard.
 - Toute ouverture future du texte complet du document exige une decision produit separee; elle n'est pas une consequence automatique du gate dashboard existant.
@@ -69,6 +75,8 @@ Le chantier pourra etre clos seulement si:
 - le retrait manuel le rend absent des tours suivants;
 - l'injection est entiere ou absente, jamais tronquee silencieusement;
 - le document trop gros n'empeche pas le tour et produit un signal compact;
+- le prompt principal enseigne explicitement au modele le statut de document actif de conversation et son usage attendu;
+- les tests prouvent que le modele recoit cette instruction d'interpretation, pas seulement le contenu du document;
 - Memory/RAG/Identity/Summary ne sont pas contamines;
 - le seuil de resume n'integre pas les documents actifs;
 - les logs/read-models/dashboard montrent les metadonnees utiles sans contenu brut par defaut;
@@ -92,6 +100,9 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 - [ ] Fixer le vocabulaire: document actif, activation, retrait manuel, injection entiere, exclusion entiere, lane documentaire, signal non injecte.
 - [ ] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
 - [ ] Definir la lane prompt structuree et ses balises stables.
+- [ ] Definir le contrat d'interpretation prompt: document actif de conversation, fourni volontairement par l'utilisateur, contexte de travail direct du tour courant.
+- [ ] Definir les instructions que le prompt principal devra donner au modele pour distinguer cette lane de Memory/RAG, du resume, d'Identity, du Web et de l'hermeneutique.
+- [ ] Definir la semantique du signal "document actif non injecte": le modele sait qu'un document existe mais ne doit pas pretendre l'avoir lu.
 - [ ] Definir les reason codes initiaux: `document_too_large_for_turn`, `document_parse_error`, `document_type_unsupported`, `document_runtime_unavailable`, `manual_remove`.
 - [ ] Definir la doctrine content-free et interdire de transformer automatiquement le gate dashboard existant en acces au texte complet du document.
 
@@ -119,11 +130,15 @@ Les capacites documentaires persistantes futures devront etre ouvertes dans un c
 
 - [ ] Brancher les documents actifs apres la decision de resume et avant l'appel modele principal.
 - [ ] Injecter une lane documentaire dediee avec balises stables.
+- [ ] Ajouter au prompt principal le contrat d'interpretation de cette lane; ne pas se contenter d'injecter un bloc documentaire.
+- [ ] Enseigner explicitement au modele qu'un document actif de conversation est fourni volontairement par l'utilisateur et sert de contexte de travail direct quand il est injecte.
+- [ ] Enseigner explicitement que cette lane n'est ni un souvenir, ni un resume, ni un contexte web, ni une identite.
 - [ ] Calculer la decision entier ou exclu par tour.
 - [ ] Ne jamais tronquer silencieusement.
 - [ ] Ajouter le signal structure pour les documents actifs non injectes.
+- [ ] Garantir que le signal non injecte indique au modele de ne pas pretendre avoir lu le document.
 - [ ] Garder une politique stable quand plusieurs documents sont actifs.
-- [ ] Tester document injecte entier, document trop gros exclu entier, tour non bloque.
+- [ ] Tester document injecte entier, document trop gros exclu entier, tour non bloque et instruction d'interpretation bien presente dans le prompt final.
 
 ### Lot 5 - Barriere Memory/RAG/Identity/Summary
 
@@ -180,7 +195,8 @@ Les lots devront adapter les suites exactes au code courant, mais viser:
 - tests unitaires du store/service d'etat actif;
 - tests d'extraction par format;
 - tests de decision budget entier ou exclu;
-- tests du prompt pour lane documentaire et signal compact;
+- tests du prompt pour lane documentaire, contrat d'interpretation modele et signal compact;
+- tests prouvant que la lane document actif de conversation est distinguee de Memory/RAG, du resume, d'Identity et du Web;
 - tests anti-contamination Memory/RAG/Identity/Summary;
 - tests frontend chat drag-and-drop et retrait;
 - tests observabilite/dashboard content-free;
