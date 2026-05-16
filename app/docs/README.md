@@ -65,6 +65,7 @@ Archives utiles:
 ### Documents actifs de conversation
 
 Lire d'abord:
+- `states/specs/active-conversation-documents-contract.md`
 - `todo-todo/product/active-conversation-documents-audit-plan.md`
 - `todo-todo/product/active-conversation-documents-todo.md`
 

@@ -4,7 +4,7 @@ Statut: actif
 Date de creation: 2026-05-15
 Classement: `app/docs/todo-todo/product/`
 Audit-plan source: `app/docs/todo-todo/product/active-conversation-documents-audit-plan.md`
-Spec fondatrice a creer: `app/docs/states/specs/active-conversation-documents-contract.md`
+Spec fondatrice: `app/docs/states/specs/active-conversation-documents-contract.md`
 Chantier distinct reserve: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: activation serveur de documents fournis a une conversation, injection entiere ou exclusion entiere par tour, frontend chat, observabilite content-free
 Hors-scope du commit de creation: code runtime, endpoint, table DB, frontend, migration, OCR, RAG documentaire, stockage documentaire durable, rebuild
@@ -120,19 +120,19 @@ Ce chantier separe est desormais ouvert comme cadrage produit sous `app/docs/tod
 
 ### Lot 1 - Spec fondatrice et contrat de lanes
 
-- [ ] Creer `app/docs/states/specs/active-conversation-documents-contract.md`.
-- [ ] Fixer les formats supportes et l'absence d'OCR.
-- [ ] Fixer le vocabulaire: document actif, activation, retrait manuel, injection entiere, exclusion entiere, lane documentaire, signal non injecte.
-- [ ] Fixer explicitement `document actif de conversation` / `active_document` et le distinguer des futurs `library_document` / `catalogue_document` / `passage documentaire`.
-- [ ] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
-- [ ] Definir la frontiere stricte avec la future Biblio native / Frida Catalogue.
-- [ ] Definir la lane prompt structuree et ses balises stables.
-- [ ] Reserver une future lane Biblio / Catalogue sans l'implementer dans ce chantier.
-- [ ] Definir le contrat d'interpretation prompt: document actif de conversation, fourni volontairement par l'utilisateur, contexte de travail direct du tour courant.
-- [ ] Definir les instructions que le prompt principal devra donner au modele pour distinguer cette lane de Memory/RAG, du resume, d'Identity, du Web et de l'hermeneutique.
-- [ ] Definir la semantique du signal "document actif non injecte": le modele sait qu'un document existe mais ne doit pas pretendre l'avoir lu.
-- [ ] Definir les reason codes initiaux: `document_too_large_for_turn`, `document_parse_error`, `document_type_unsupported`, `document_runtime_unavailable`, `manual_remove`.
-- [ ] Definir la doctrine content-free et interdire de transformer automatiquement le gate dashboard existant en acces au texte complet du document.
+- [x] Creer `app/docs/states/specs/active-conversation-documents-contract.md`.
+- [x] Fixer les formats supportes et l'absence d'OCR.
+- [x] Fixer le vocabulaire: document actif, activation, retrait manuel, injection entiere, exclusion entiere, lane documentaire, signal non injecte.
+- [x] Fixer explicitement `document actif de conversation` / `active_document` et le distinguer des futurs `library_document` / `catalogue_document` / `passage documentaire`.
+- [x] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
+- [x] Definir la frontiere stricte avec la future Biblio native / Frida Catalogue.
+- [x] Definir la lane prompt structuree et ses balises stables.
+- [x] Reserver une future lane Biblio / Catalogue sans l'implementer dans ce chantier.
+- [x] Definir le contrat d'interpretation prompt: document actif de conversation, fourni volontairement par l'utilisateur, contexte de travail direct du tour courant.
+- [x] Definir les instructions que le prompt principal devra donner au modele pour distinguer cette lane de Memory/RAG, du resume, d'Identity, du Web et de l'hermeneutique.
+- [x] Definir la semantique du signal "document actif non injecte": le modele sait qu'un document existe mais ne doit pas pretendre l'avoir lu.
+- [x] Definir les reason codes initiaux: `document_too_large_for_turn`, `document_parse_error`, `document_type_unsupported`, `document_runtime_unavailable`, `manual_remove`.
+- [x] Definir la doctrine content-free et interdire de transformer automatiquement le gate dashboard existant en acces au texte complet du document.
 
 ### Lot 2 - Etat actif serveur non memoire
 
