@@ -209,12 +209,12 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 
 ### Lot 2 - Client OCR Stirling et configuration
 
-- [ ] Choisir l'emplacement code exact apres relecture.
-- [ ] Ajouter un client borne vers `platform-stirling-pdf`.
-- [ ] Ajouter config URL interne, timeout, langues, page limit et byte limit.
-- [ ] Detecter le nombre de pages avant OCR.
-- [ ] Refuser `document_ocr_too_large` et `document_ocr_too_many_pages` avant appel OCR.
-- [ ] Tester health/unavailable, timeout, erreur HTTP et retour non-PDF.
+- [x] Choisir l'emplacement code exact apres relecture.
+- [x] Ajouter un client borne vers `platform-stirling-pdf`.
+- [x] Ajouter config URL interne, timeout, langues, page limit et byte limit.
+- [x] Detecter le nombre de pages avant OCR.
+- [x] Refuser `document_ocr_too_large` et `document_ocr_too_many_pages` avant appel OCR.
+- [x] Tester health/unavailable, timeout, erreur HTTP et retour non-PDF.
 
 ### Lot 3 - Integration upload OCR
 

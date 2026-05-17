@@ -154,6 +154,25 @@ Parametres operateur V1:
 - plafond V1: `25 Mo` maximum;
 - OCR synchrone bornee pendant l'upload.
 
+Lot 2 livre le client OCR borne dans:
+
+- `app/core/active_document_ocr_client.py`.
+
+Configuration runtime:
+
+- `ACTIVE_DOCUMENT_OCR_URL`, defaut `http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf`;
+- `ACTIVE_DOCUMENT_OCR_TIMEOUT_S`, defaut `180`;
+- `ACTIVE_DOCUMENT_OCR_LANGUAGES`, defaut `fra+eng+deu`;
+- `ACTIVE_DOCUMENT_OCR_MAX_PAGES`, defaut `25`;
+- `ACTIVE_DOCUMENT_OCR_MAX_BYTES`, defaut `26214400` (`25 Mo`).
+
+Le client detecte le nombre de pages avant l'appel OCR. Il refuse avant Stirling:
+
+- `document_ocr_too_large` si le fichier depasse `ACTIVE_DOCUMENT_OCR_MAX_BYTES`;
+- `document_ocr_too_many_pages` si le PDF depasse `ACTIVE_DOCUMENT_OCR_MAX_PAGES`.
+
+Le client retourne seulement des statuts, reason codes, metadonnees et, en cas de succes, le PDF OCRise en memoire pour le lot d'integration suivant. Ses projections ordinaires restent content-free et n'exposent pas le texte OCR brut.
+
 Au-dela de `25 pages` ou `25 Mo`, le document doit etre refuse pour ce chantier avec un motif clair. A cette echelle, le besoin releve du futur chantier Biblio / Catalogue, pas du document actif ponctuel.
 
 Frontieres OCR:

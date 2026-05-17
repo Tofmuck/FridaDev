@@ -156,6 +156,17 @@ MAX_TOKENS = _env_int('FRIDA_MAX_TOKENS', 35000)
 # soft observability limit and must not exclude active documents by default.
 ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS = _env_int('ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS', 0)
 
+# Bounded OCR client for scanned active conversation document PDFs.
+# This is only used after the text extractor returns document_ocr_required.
+ACTIVE_DOCUMENT_OCR_URL = os.environ.get(
+    'ACTIVE_DOCUMENT_OCR_URL',
+    'http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf',
+).strip()
+ACTIVE_DOCUMENT_OCR_TIMEOUT_S = _env_int('ACTIVE_DOCUMENT_OCR_TIMEOUT_S', 180)
+ACTIVE_DOCUMENT_OCR_LANGUAGES = os.environ.get('ACTIVE_DOCUMENT_OCR_LANGUAGES', 'fra+eng+deu').strip() or 'fra+eng+deu'
+ACTIVE_DOCUMENT_OCR_MAX_PAGES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_PAGES', 25)
+ACTIVE_DOCUMENT_OCR_MAX_BYTES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_BYTES', 25 * 1024 * 1024)
+
 # Prompt files
 MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')
 MAIN_HERMENEUTICAL_PROMPT_PATH = os.environ.get(
