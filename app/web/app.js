@@ -12,6 +12,10 @@
   if (!activeConversationDocuments) {
     throw new Error("FridaActiveConversationDocuments module missing");
   }
+  const chatCopyExport = window.FridaChatCopyExport;
+  if (!chatCopyExport) {
+    throw new Error("FridaChatCopyExport module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -38,6 +42,7 @@
   const message = $("#message");
   const btnMic = $("#btnMic");
   const btnActiveDocument = $("#btnActiveDocument");
+  const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
   const activeDocumentsBar = $("#activeDocumentsBar");
   const activeDocumentsList = $("#activeDocumentsList");
@@ -144,7 +149,13 @@
     if (status) {
       wrapper.appendChild(status);
     }
-    wrapper.appendChild(by);
+    const metaRow = document.createElement("div");
+    metaRow.className = "msg-meta-row";
+    metaRow.appendChild(by);
+    metaRow.appendChild(chatCopyExport.createCopyButton({
+      getText: () => bubble.innerText || bubble.textContent || "",
+    }));
+    wrapper.appendChild(metaRow);
     log.appendChild(wrapper);
 
     scrollToBottom(true);
@@ -242,6 +253,48 @@
     appendMessageToThread,
   } = threadsLifecycle;
 
+  const updateExportConversationButton = () => {
+    if (!btnExportConversation) return;
+    const hasThread = Boolean(getCurrentId());
+    btnExportConversation.disabled = !hasThread;
+    btnExportConversation.title = hasThread
+      ? "Exporter la conversation en Markdown"
+      : "Aucune conversation à exporter";
+  };
+
+  const exportCurrentConversation = async () => {
+    const currentId = getCurrentId();
+    if (!currentId || !btnExportConversation) return;
+    btnExportConversation.disabled = true;
+    try {
+      const messages = await hydrateThreadMessages(currentId, { force: true });
+      const thread = getThreadById(currentId);
+      const markdown = chatCopyExport.buildConversationMarkdown({
+        messages,
+        exportedAt: new Date(),
+      });
+      const filename = chatCopyExport.buildMarkdownFilename(thread?.updated_at || new Date());
+      const downloaded = chatCopyExport.downloadMarkdownFile({ markdown, filename });
+      if (!downloaded) {
+        throw new Error("download_unavailable");
+      }
+      btnExportConversation.disabled = false;
+      btnExportConversation.title = "Conversation exportée";
+      window.setTimeout(updateExportConversationButton, 1300);
+    } catch (err) {
+      console.error(err);
+      btnExportConversation.disabled = false;
+      btnExportConversation.title = "Export indisponible";
+      window.setTimeout(updateExportConversationButton, 1800);
+    }
+  };
+
+  if (btnExportConversation) {
+    btnExportConversation.addEventListener("click", () => {
+      void exportCurrentConversation();
+    });
+  }
+
   const activeDocumentsController = activeConversationDocuments.createActiveDocumentController({
     chatEl,
     composerEl: ask,
@@ -269,12 +322,14 @@
   newChatBtn.addEventListener("click", async () => {
     await newThread();
     await refreshActiveDocuments();
+    updateExportConversationButton();
   });
 
   if (threadsUl) {
     threadsUl.addEventListener("click", () => {
       window.setTimeout(() => {
         void refreshActiveDocuments();
+        updateExportConversationButton();
       }, 0);
     });
   }
@@ -358,6 +413,7 @@
       }
       await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
+      updateExportConversationButton();
       if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
         await loadThread(requestThreadId);
       } else {
@@ -369,6 +425,7 @@
       let rehydratedAfterUnpersistedTerminalError = false;
       if (applyConversationTerminalMeta(requestThreadId, errorTerminal)) {
         renderThreads();
+        updateExportConversationButton();
       }
       if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {
         appendMessageToThread(
@@ -384,6 +441,7 @@
           await hydrateThreadMessages(requestThreadId, { force: true });
           await refreshThreadsFromServer({ keepSelection: true });
           renderThreads();
+          updateExportConversationButton();
           if (getCurrentId() === requestThreadId) {
             await loadThread(requestThreadId);
             rehydratedAfterUnpersistedTerminalError = true;
@@ -522,6 +580,7 @@
   const bootstrapApp = async () => {
     const loaded = await refreshThreadsFromServer({ keepSelection: false });
     renderThreads();
+    updateExportConversationButton();
 
     if (!loaded) {
       log.innerHTML = '';
@@ -533,9 +592,11 @@
     if (current) {
       await loadThread(current);
       await refreshActiveDocuments();
+      updateExportConversationButton();
     } else {
       await newThread();
       await refreshActiveDocuments();
+      updateExportConversationButton();
     }
   };
 

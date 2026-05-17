@@ -28,6 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
 - Discipline triadique `Warum / Wofür / Wozu` du `validation_agent`: `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`
 
@@ -60,6 +61,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 Lire d'abord:
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/specs/streaming-protocol.md`
+- `states/specs/chat-copy-export-contract.md`
 - `states/specs/chat-enunciation-and-gap-contract.md`
 - `states/specs/response-arbiter-power-contract.md`
 - `todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md` pour l'audit archive du contrat semantique prompt/payload et les limites volontaires conservees.

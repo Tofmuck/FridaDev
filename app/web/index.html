@@ -43,6 +43,13 @@
         </svg>
       </button>
       <div class="title"></div>
+      <button id="btnExportConversation" class="chat-action-btn" type="button" title="Exporter la conversation en Markdown" aria-label="Exporter la conversation en Markdown" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
       <nav class="right global-nav" aria-label="Navigation globale">
         <a id="btnChat" class="icon-link" title="Chat" href="/" aria-current="page">Chat</a>
         <a id="btnDashboard" class="icon-link" title="Dashboard" href="/dashboard">Dashboard</a>
@@ -125,6 +132,7 @@
   <script src="chat_streaming.js"></script>
   <script src="chat_threads_sidebar.js"></script>
   <script src="chat_active_documents.js"></script>
+  <script src="chat_copy_export.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

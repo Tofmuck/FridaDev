@@ -93,6 +93,29 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertNotIn("marked(", app_source)
         self.assertNotIn("markdown-it", app_source)
 
+    def test_main_chat_exposes_copy_and_markdown_export_without_admin_metadata(self) -> None:
+        app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        export_source = (APP_DIR / "web" / "chat_copy_export.js").read_text(encoding="utf-8")
+
+        self.assertIn('<script src="chat_copy_export.js"></script>', index_source)
+        self.assertLess(
+            index_source.index('<script src="chat_copy_export.js"></script>'),
+            index_source.index('<script src="app.js"></script>'),
+        )
+        self.assertIn('id="btnExportConversation"', index_source)
+        self.assertIn('class="chat-action-btn"', index_source)
+        self.assertIn('Exporter la conversation en Markdown', index_source)
+        self.assertIn('chatCopyExport.createCopyButton', app_source)
+        self.assertIn('chatCopyExport.buildConversationMarkdown', app_source)
+        self.assertIn('hydrateThreadMessages(currentId, { force: true })', app_source)
+        self.assertIn("EXPORT_TITLE = 'Conversation avec Frida'", export_source)
+        self.assertIn("EXPORT_USER_LABEL = 'Tof'", export_source)
+        self.assertIn("EXPORT_ASSISTANT_LABEL = 'Frida'", export_source)
+        self.assertNotIn('conversation_id', export_source)
+        self.assertNotIn('text_sha256', export_source)
+        self.assertNotIn('payload_json', export_source)
+
     def test_streaming_front_keeps_pre_body_updated_at_header_out_of_stream_contract_and_uses_terminal_metadata(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         streaming_source = (APP_DIR / "web" / "chat_streaming.js").read_text(encoding="utf-8")

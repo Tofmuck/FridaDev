@@ -84,6 +84,11 @@ async function openBrowserPage({ pathSuffix = '/', mockScript, afterPage = null 
   }
 }
 
+async function readDownloadText(download) {
+  const filePath = await download.path();
+  return fs.readFile(filePath, 'utf8');
+}
+
 function chatMockScript({ streamMode }) {
   const nominalTerminal = `${STREAM_CONTROL_PREFIX}${JSON.stringify({
     kind: 'frida-stream-control',
@@ -124,11 +129,21 @@ function chatMockScript({ streamMode }) {
         streamMode: ${JSON.stringify(streamMode)},
         chatSubmitted: false,
         updatedAt: "2026-05-03T09:00:00Z",
+        lastUserMessage: "",
+        clipboardWrites: [],
         fetchCalls: [],
         conversationFetches: 0,
         messageFetches: 0,
       };
       window.__fridaBrowserState = state;
+      Object.defineProperty(window.navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text) => {
+            state.clipboardWrites.push(String(text || ""));
+          },
+        },
+      });
       window.fetch = async (input, init = {}) => {
         const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
         const method = String(init.method || "GET").toUpperCase();
@@ -158,7 +173,25 @@ function chatMockScript({ streamMode }) {
 
         if (url.pathname === "/api/conversations/conv-browser/messages" && method === "GET") {
           state.messageFetches += 1;
-          const messages = state.streamMode === "error" && state.chatSubmitted ? ${JSON.stringify(messagesAfterError)} : [];
+          let messages = [];
+          if (state.streamMode === "error" && state.chatSubmitted) {
+            messages = ${JSON.stringify(messagesAfterError)};
+          } else if (state.chatSubmitted) {
+            messages = [
+              {
+                role: "user",
+                content: state.lastUserMessage || "Bonjour nominal",
+                timestamp: "2026-05-03T09:59:00Z",
+                conversation_id: "conv-browser",
+              },
+              {
+                role: "assistant",
+                content: "Réponse nominale",
+                timestamp: "2026-05-03T10:00:00Z",
+                meta: { hash: "abc123" },
+              },
+            ];
+          }
           return new Response(JSON.stringify({ ok: true, messages }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
@@ -223,6 +256,11 @@ function chatMockScript({ streamMode }) {
 
         if (url.pathname === "/api/chat" && method === "POST") {
           state.chatSubmitted = true;
+          try {
+            state.lastUserMessage = String(JSON.parse(init.body || "{}").message || "");
+          } catch {
+            state.lastUserMessage = "";
+          }
           if (state.streamMode !== "error") {
             state.updatedAt = "2026-05-03T10:00:00Z";
           }
@@ -275,6 +313,11 @@ test('chat active conversation documents upload, persist across reload and remov
 
     const box = await page.locator('#ask').boundingBox();
     assert.ok(box && box.width <= 390, 'composer should fit mobile viewport');
+    const exportBox = await page.locator('#btnExportConversation').boundingBox();
+    assert.ok(
+      exportBox && exportBox.x >= 0 && exportBox.x + exportBox.width <= 390,
+      'export action should fit mobile topbar'
+    );
 
     await page.click('#activeDocumentsList .active-document-remove');
     await page.waitForFunction(() =>
@@ -312,6 +355,25 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
 
     const assistantBubble = page.locator('.msg-wrapper:not(.me) .msg').last();
     await assertTextContains(assistantBubble, 'Réponse nominale');
+    await page.locator('.msg-wrapper:not(.me) .msg-copy').last().click();
+    await page.waitForFunction(() => window.__fridaBrowserState.clipboardWrites.includes('Réponse nominale'));
+    const clipboardWrites = await page.evaluate(() => window.__fridaBrowserState.clipboardWrites);
+    assert.equal(clipboardWrites.at(-1), 'Réponse nominale');
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.click('#btnExportConversation');
+    const download = await downloadPromise;
+    assert.match(download.suggestedFilename(), /^frida-conversation-.*\.md$/);
+    const markdown = await readDownloadText(download);
+    assert.match(markdown, /^# Conversation avec Frida\n\nExportée le /);
+    assert.match(markdown, /## Tof — .*09:59/);
+    assert.match(markdown, /## Frida — .*10:00/);
+    assert.match(markdown, /Bonjour nominal/);
+    assert.match(markdown, /Réponse nominale/);
+    assert.equal(markdown.includes('conversation_id'), false);
+    assert.equal(markdown.includes('conv-browser'), false);
+    assert.equal(markdown.includes('hash'), false);
+    assert.equal(markdown.includes('abc123'), false);
     const statusText = await page.locator('.msg-wrapper:not(.me) .msg-stream-status').last().textContent();
     assert.equal(String(statusText || '').trim(), '');
 

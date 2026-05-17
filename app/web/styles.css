@@ -350,6 +350,22 @@ body {
   background: var(--surface-active);
 }
 
+.chat-action-btn {
+  flex-shrink: 0;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.34;
+}
+
 /* ===== Panel paramètres ===== */
 .panel {
   position: fixed;
@@ -502,6 +518,52 @@ body {
   font-size: 11px;
   color: var(--fg-subtle);
   letter-spacing: 0.2px;
+}
+
+.msg-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.msg-wrapper.me .msg-meta-row {
+  flex-direction: row-reverse;
+}
+
+.msg-copy {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.58;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.msg-copy:hover,
+.msg-copy:focus-visible {
+  opacity: 1;
+  color: var(--fg-muted);
+  background: var(--surface);
+}
+
+.msg-copy[data-copied="true"] {
+  opacity: 1;
+  color: var(--fg);
+  background: var(--surface-active);
+}
+
+.msg-copy[data-copied="false"] {
+  opacity: 1;
+  color: #b85050;
+  background: rgba(184, 80, 80, 0.08);
 }
 
 .msg-stream-status {
