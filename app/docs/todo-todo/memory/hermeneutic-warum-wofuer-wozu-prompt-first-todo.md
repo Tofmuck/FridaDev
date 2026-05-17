@@ -1,10 +1,17 @@
 # Hermeneutic - Warum / Wofür / Wozu prompt-first - mini TODO
 
-Statut: mini-chantier executable actif
+Statut: mini-chantier executable livre
 Classement: `app/docs/todo-todo/memory/`
 Portee: premier pas prompt-first pour inscrire la triade `Warum / Wofür / Wozu` comme discipline de lecture du `validation_agent`
 Source doctrinale: `app/docs/todo-todo/memory/hermeneutic-warum-wofuer-wozu-triad-todo.md`
 Etat runtime vise: prompt / tests uniquement, sans nouvelle architecture
+
+Note d'execution 2026-05-17:
+
+- V1 livree dans le prompt du `validation_agent` et dans un rappel runtime compact de la tache provider;
+- schema de sortie inchange;
+- aucune projection directe vers le modele principal, les logs, les read-models ou le dashboard;
+- la qualite hermeneutique effective reste a observer en dialogues reels, hors mini-lot.
 
 ## 1. Question prealable
 
@@ -48,7 +55,7 @@ Elle ne doit pas:
 
 ## 3. Lot unique - prompt-first validation_agent
 
-Statut: [ ]
+Statut: [x]
 
 Objectif:
 

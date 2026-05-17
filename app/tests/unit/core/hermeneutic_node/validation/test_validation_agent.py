@@ -445,6 +445,51 @@ class ValidationAgentTests(unittest.TestCase):
             ],
         )
 
+    def test_build_messages_carries_triadic_reading_without_new_output_fields(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
+            ]
+        )
+
+        validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        user_message = requests_module.calls[0]["json"]["messages"][1]["content"]
+        self.assertIn("Warum / Wofür / Wozu", user_message)
+        self.assertIn("dernier enonce et le dialogue comme texte", user_message)
+        self.assertIn("sans checklist ni sortie dediee", user_message)
+
+        schema_tail = user_message.split("schema attendu: ", 1)[1].lower()
+        for forbidden_key in ("warum", "wofuer", "wozu", "interpretive_center", "triad"):
+            self.assertNotIn(forbidden_key, schema_tail)
+
+    def test_model_verdict_rejects_triadic_output_fields(self) -> None:
+        base_payload = {
+            "schema_version": "v1",
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "lecture locale suffisante",
+        }
+
+        for forbidden_key in ("warum", "wofuer", "wozu", "interpretive_center", "triad"):
+            with self.subTest(forbidden_key=forbidden_key):
+                payload = dict(base_payload)
+                payload[forbidden_key] = "champ interdit"
+                with self.assertRaises(validation_agent._ValidationPayloadError):
+                    validation_agent._validated_model_verdict(payload)
+
     def test_validation_prompt_prepared_observes_memory_exposure_without_raw_content(self) -> None:
         raw_trace = "RAW TRACE MEMORY SHOULD NEVER APPEAR IN LOGS"
         raw_summary = "RAW PARENT SUMMARY SHOULD NEVER APPEAR IN LOGS"

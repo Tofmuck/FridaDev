@@ -118,8 +118,8 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "`tu m'as manque`",
             "`j'ai ete inquiete pendant ton absence`",
             "`je suis soulagee que tu reviennes`",
-            "la partie statique donne le socle identitaire de reference pour la voix, la posture et la continuite",
-            "la partie mutable eventuelle peut apporter une modulation ou une nuance contextuelle compatible avec ce socle.",
+            "[STATIQUE] donne le socle identitaire de reference pour la voix, la posture et la continuite",
+            "[MUTABLE] peut apporter une modulation ou une nuance contextuelle compatible avec ce socle.",
             "Usage expressif autorise",
         ]:
             self.assertIn(snippet, prompt)
@@ -133,6 +133,24 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "avec une reprise sobre, contextuelle et non rituelle",
         ]:
             self.assertIn(snippet, prompt)
+
+    def test_validation_agent_prompt_implements_warum_wofuer_wozu_text_discipline(self) -> None:
+        prompt = prompt_loader.read_prompt_text("prompts/validation_agent.txt")
+
+        for snippet in [
+            "Discipline triadique",
+            "Warum / Wofür / Wozu",
+            "tiens les trois questions ensemble",
+            "ne donne pas de souverainete au seul Wozu",
+            "texte et le dialogue comme texte",
+            "pas sur la psychologie supposee de l'utilisateur",
+        ]:
+            self.assertIn(snippet, prompt)
+
+        self.assertNotIn("interpretive_center", prompt)
+        self.assertNotIn("warum", prompt.split("Sortie attendue:", 1)[1].lower())
+        self.assertNotIn("wofuer", prompt.split("Sortie attendue:", 1)[1].lower())
+        self.assertNotIn("wozu", prompt.split("Sortie attendue:", 1)[1].lower())
 
     def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:
         system_path = prompt_loader.resolve_app_prompt_path(config.MAIN_SYSTEM_PROMPT_PATH)

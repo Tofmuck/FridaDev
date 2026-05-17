@@ -862,6 +862,7 @@ def _build_messages(
                 "Tache:\n"
                 "- decide final_judgment_posture\n"
                 "- decide final_output_regime\n"
+                "- relis le dernier enonce et le dialogue comme texte dans la tension Warum / Wofür / Wozu, sans checklist ni sortie dediee\n"
                 "- privilegie la lecture la plus naturelle du tour, la continuite dialogique locale et la reponse simple\n"
                 "- si answer reste possible, privilegie final_output_regime = simple\n"
                 "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"

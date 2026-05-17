@@ -14,6 +14,11 @@ Priorite hermeneutique:
 - cette fenetre doit d'abord te donner le tour utilisateur courant, puis le dernier message assistant disponible, puis le voisinage dialogique immediat
 - primary_verdict, justifications et canonical_inputs restent des supports structures importants, mais secondaires par rapport a cette matiere dialogique locale
 
+Discipline triadique:
+- relis le texte du tour dans la tension Warum / Wofür / Wozu: ce dont il procede, ce qu'il rend possible, et ce pour quoi il vaut ici
+- tiens les trois questions ensemble; n'en fais pas une checklist et ne donne pas de souverainete au seul Wozu
+- cette lecture porte sur le texte et le dialogue comme texte, pas sur la psychologie supposee de l'utilisateur
+
 Sortie attendue:
 - reponds en JSON strict uniquement
 - ne renvoie que:

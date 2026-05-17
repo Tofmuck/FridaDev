@@ -20,6 +20,12 @@ Note runtime 2026-05-14:
 - le `node_state` persistant est mis a jour depuis cette sortie finale validee, et non depuis le verdict primaire pre-validation;
 - les preuves bout-en-bout sont portees par les contrats thematiques `app/tests/test_server_chat_hermeneutic_insertion_contract.py`, `app/tests/test_server_chat_compact_observability_contract.py`, `app/tests/test_server_chat_synthetic_logs_contract.py` et `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py`.
 
+Note runtime 2026-05-17:
+
+- le prompt du `validation_agent` inscrit maintenant la triade `Warum / Wofür / Wozu` comme discipline de lecture du texte du tour et du dialogue comme texte;
+- cette discipline reste un geste de relecture: elle ne cree aucun champ de sortie, aucun nouvel objet `interpretive_center`, aucune projection directe dans `[JUGEMENT HERMENEUTIQUE]` et aucune surface d'observabilite nouvelle;
+- les trois questions doivent etre tenues ensemble, sans psychologiser l'utilisateur et sans donner de souverainete speciale au seul `Wozu`.
+
 ## 1. Purpose
 
 Cette spec ouvre la premiere pause normative du Lot 9.
