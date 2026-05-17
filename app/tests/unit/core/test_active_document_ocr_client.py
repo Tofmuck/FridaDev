@@ -12,7 +12,8 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
     def test_defaults_match_contract(self):
         config = ocr.get_active_document_ocr_config(SimpleNamespace())
 
-        self.assertEqual(config.url, "http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf")
+        self.assertEqual(config.url, "http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf")
+        self.assertIn("/pdf/api/v1/misc/ocr-pdf", config.url)
         self.assertEqual(config.timeout_s, 180)
         self.assertEqual(config.languages, "fra+eng+deu")
         self.assertEqual(config.max_pages, 25)
@@ -44,7 +45,7 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
         self.assertEqual(result.ocr_languages, "fra+eng+deu")
         self.assertEqual(len(requests_module.calls), 1)
         call = requests_module.calls[0]
-        self.assertEqual(call["url"], "http://ocr.example/api/v1/misc/ocr-pdf")
+        self.assertEqual(call["url"], "http://ocr.example/pdf/api/v1/misc/ocr-pdf")
         self.assertEqual(call["timeout"], 180)
         self.assertEqual(call["data"], {"languages": "fra+eng+deu"})
         self.assertEqual(call["files"]["fileInput"][0], "scan.pdf")
@@ -200,7 +201,7 @@ class _FakeResponse:
 
 def _config(**overrides):
     values = {
-        "ACTIVE_DOCUMENT_OCR_URL": "http://ocr.example/api/v1/misc/ocr-pdf",
+        "ACTIVE_DOCUMENT_OCR_URL": "http://ocr.example/pdf/api/v1/misc/ocr-pdf",
         "ACTIVE_DOCUMENT_OCR_TIMEOUT_S": 180,
         "ACTIVE_DOCUMENT_OCR_LANGUAGES": "fra+eng+deu",
         "ACTIVE_DOCUMENT_OCR_MAX_PAGES": 25,

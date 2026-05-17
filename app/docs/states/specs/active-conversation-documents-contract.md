@@ -160,7 +160,7 @@ Lot 2 livre le client OCR borne dans:
 
 Configuration runtime:
 
-- `ACTIVE_DOCUMENT_OCR_URL`, defaut `http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf`;
+- `ACTIVE_DOCUMENT_OCR_URL`, defaut `http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf`;
 - `ACTIVE_DOCUMENT_OCR_TIMEOUT_S`, defaut `180`;
 - `ACTIVE_DOCUMENT_OCR_LANGUAGES`, defaut `fra+eng+deu`;
 - `ACTIVE_DOCUMENT_OCR_MAX_PAGES`, defaut `25`;

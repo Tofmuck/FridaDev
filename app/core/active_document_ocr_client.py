@@ -29,7 +29,7 @@ REASON_OCR_EMPTY = "document_ocr_empty"
 REASON_OCR_TOO_LARGE = "document_ocr_too_large"
 REASON_OCR_TOO_MANY_PAGES = "document_ocr_too_many_pages"
 
-DEFAULT_OCR_URL = "http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf"
+DEFAULT_OCR_URL = "http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf"
 DEFAULT_TIMEOUT_S = 180
 DEFAULT_LANGUAGES = "fra+eng+deu"
 DEFAULT_MAX_PAGES = 25

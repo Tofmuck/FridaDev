@@ -160,7 +160,7 @@ ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS = _env_int('ACTIVE_DOCUMENT_PROMPT_MAX_TOKENS'
 # This is only used after the text extractor returns document_ocr_required.
 ACTIVE_DOCUMENT_OCR_URL = os.environ.get(
     'ACTIVE_DOCUMENT_OCR_URL',
-    'http://platform-stirling-pdf:8080/api/v1/misc/ocr-pdf',
+    'http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf',
 ).strip()
 ACTIVE_DOCUMENT_OCR_TIMEOUT_S = _env_int('ACTIVE_DOCUMENT_OCR_TIMEOUT_S', 180)
 ACTIVE_DOCUMENT_OCR_LANGUAGES = os.environ.get('ACTIVE_DOCUMENT_OCR_LANGUAGES', 'fra+eng+deu').strip() or 'fra+eng+deu'
