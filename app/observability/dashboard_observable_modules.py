@@ -280,6 +280,18 @@ def _summarize_documents_turn(fact: Mapping[str, Any]) -> str:
     too_large_count = _to_int(documents.get('too_large_count'))
     ocr_count = _to_int(documents.get('ocr_applied_count'))
     ocr_sentence = f' {ocr_count} etaient OCRise(s).' if ocr_count else ''
+    status = str(documents.get('status') or '').strip().lower()
+    read_status = str(documents.get('read_status') or '').strip().lower()
+    if status == 'error' or read_status == 'error':
+        reason = str(
+            documents.get('read_reason_code')
+            or documents.get('reason_code')
+            or 'active_documents_read_error'
+        ).strip()
+        return (
+            'La lecture des documents actifs de conversation a echoue pour ce tour; '
+            f'raison compacte: {reason}.'
+        )
     if active_count <= 0:
         return 'Aucun document actif de conversation n est observe sur ce tour.'
     if injected_count and not_injected_count == 0:
@@ -340,7 +352,12 @@ def _resolve_errors_reason(fact: Mapping[str, Any]) -> str | None:
 
 def _resolve_documents_reason(fact: Mapping[str, Any]) -> str | None:
     reason_counts = _mapping(_mapping(fact.get('documents')).get('reason_code_counts'))
-    for reason in ('document_too_large_for_turn', 'document_empty_text'):
+    for reason in (
+        'active_documents_read_error',
+        'active_documents_reader_unavailable',
+        'document_too_large_for_turn',
+        'document_empty_text',
+    ):
         if _to_int(reason_counts.get(reason)) > 0:
             return reason
     return next(iter(reason_counts.keys()), None)
@@ -594,6 +611,8 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             'Ne contient jamais le texte complet du fichier.',
         ),
         degradation_reasons=(
+            ('active_documents_read_error', 'L etat des documents actifs n a pas pu etre lu pendant ce tour.'),
+            ('active_documents_reader_unavailable', 'Le lecteur des documents actifs etait indisponible au runtime.'),
             ('document_too_large_for_turn', 'Un document actif etait trop gros pour etre envoye entier dans ce tour.'),
             ('document_empty_text', 'Un document actif ne contenait pas de texte injectable.'),
         ),

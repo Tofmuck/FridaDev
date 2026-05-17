@@ -297,6 +297,29 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertNotIn('RAW', summary)
         self.assertNotIn('library_document', summary)
 
+    def test_documents_module_tells_read_error_without_inventing_document(self) -> None:
+        fact = self._turn_fact()
+        fact['documents'] = {
+            'source_kind': 'active_conversation_documents',
+            'status': 'error',
+            'read_status': 'error',
+            'read_reason_code': 'active_documents_read_error',
+            'active_count': 0,
+            'injected_count': 0,
+            'not_injected_count': 0,
+            'reason_code_counts': {'active_documents_read_error': 1},
+            'raw_content_included': False,
+        }
+
+        summary = dashboard_analytics.summarize_module_turn('documents', fact)
+        reason = dashboard_analytics.resolve_module_turn_degradation_reason('documents', fact)
+
+        self.assertIn('lecture des documents actifs', summary)
+        self.assertIn('active_documents_read_error', summary)
+        self.assertNotIn('Aucun document actif de conversation n est observe', summary)
+        self.assertEqual(reason, 'active_documents_read_error')
+        self.assertNotIn('RAW', summary)
+
     def test_documents_module_does_not_promise_out_of_turn_reasons_as_turn_degradations(self) -> None:
         catalog = dashboard_analytics.build_dashboard_module_catalog()
         document_module = next(
@@ -304,6 +327,8 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             if module['module_key'] == 'documents'
         )
 
+        self.assertIn('active_documents_read_error', document_module['degradation_reasons'])
+        self.assertIn('active_documents_reader_unavailable', document_module['degradation_reasons'])
         self.assertIn('document_too_large_for_turn', document_module['degradation_reasons'])
         self.assertIn('document_empty_text', document_module['degradation_reasons'])
         self.assertNotIn('document_parse_error', document_module['degradation_reasons'])

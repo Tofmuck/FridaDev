@@ -702,16 +702,30 @@ def _documents_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 continue
             engine = _text(item.get('ocr_engine')) or 'unknown'
             ocr_engine_counts[engine] = int(ocr_engine_counts.get(engine, 0)) + 1
+    read_status = (_text(payload.get('read_status')) or '').lower()
+    read_reason = _text(payload.get('read_reason_code'))
     if latest:
-        status = 'active' if active_count else 'not_applicable'
-        reason = _reason_code(payload)
+        read_error = read_status == 'error' or _status(latest) == 'error'
+        if read_error:
+            status = 'error'
+            reason = read_reason or _reason_code(payload) or 'active_documents_read_error'
+            read_reason = reason
+            reason_counts[reason] = max(1, _to_int(reason_counts.get(reason)))
+        else:
+            status = 'active' if active_count else 'not_applicable'
+            reason = _reason_code(payload)
+        if not read_status:
+            read_status = 'ok' if active_count else 'empty'
     else:
         status = 'not_applicable'
         reason = 'active_documents_not_observed'
+        read_status = 'not_observed'
     return {
         'source_kind': 'active_conversation_documents',
         'event_present': bool(latest),
         'status': status,
+        'read_status': read_status,
+        'read_reason_code': read_reason,
         'active_count': active_count,
         'injected_count': injected_count,
         'not_injected_count': not_injected_count,

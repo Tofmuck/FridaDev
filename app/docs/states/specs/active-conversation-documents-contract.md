@@ -420,6 +420,8 @@ La lecture runtime des documents actifs distingue trois etats:
 - `empty`: aucun document actif n'est disponible pour cette conversation;
 - `error`: l'etat documentaire n'a pas pu etre lu. Le tour continue, mais le prompt recoit un signal content-free `active_documents_read_error` ou `active_documents_reader_unavailable`, et le modele ne doit pas pretendre s'appuyer sur les documents actifs de ce tour.
 
+Les projections compactes et le dashboard doivent conserver cette distinction: `empty` peut etre raconte comme une absence de document actif observe, tandis que `error` doit rester une erreur de lecture documentaire et ne doit jamais etre rabattu sur `not_applicable`.
+
 ## 10. Reason codes initiaux
 
 Reason codes obligatoires:

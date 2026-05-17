@@ -1044,6 +1044,8 @@ _REASON_CODE_LABELS = {
     'validation_fail_open': 'validation ouverte par securite',
     'document_too_large_for_turn': 'document actif trop gros pour ce tour',
     'document_empty_text': 'document actif sans texte injectable',
+    'active_documents_read_error': 'lecture des documents actifs en erreur',
+    'active_documents_reader_unavailable': 'lecteur des documents actifs indisponible',
 }
 
 
@@ -1134,6 +1136,21 @@ def _document_story_lines(documents: Mapping[str, Any]) -> list[str]:
     active_count = _to_int(documents.get('active_count'))
     injected_count = _to_int(documents.get('injected_count'))
     not_injected_count = _to_int(documents.get('not_injected_count'))
+    status = str(documents.get('status') or '').strip().lower()
+    read_status = str(documents.get('read_status') or '').strip().lower()
+    if status == 'error' or read_status == 'error':
+        reason = str(
+            documents.get('read_reason_code')
+            or documents.get('reason_code')
+            or 'active_documents_read_error'
+        ).strip()
+        label = _REASON_CODE_LABELS.get(reason, 'raison compacte disponible')
+        return [
+            'Erreur de lecture des documents actifs de conversation sur ce tour.',
+            f'Raison compacte: {reason} ({label}).',
+            'Aucun document actif n est affirme present par cette erreur de lecture.',
+            'Aucun texte de document actif n est affiche dans cette inspection ordinaire.',
+        ]
     if active_count <= 0:
         return ['Aucun document actif de conversation n est observe sur ce tour.']
 
@@ -1219,7 +1236,11 @@ def _turn_story(fact: Mapping[str, Any]) -> dict[str, Any]:
         context_parts.append('un contexte web injecte')
     else:
         context_parts.append('pas de contexte web injecte observe')
-    if _to_int(documents.get('injected_count')) > 0:
+    document_status = str(documents.get('status') or '').strip().lower()
+    document_read_status = str(documents.get('read_status') or '').strip().lower()
+    if document_status == 'error' or document_read_status == 'error':
+        context_parts.append('lecture des documents actifs en erreur')
+    elif _to_int(documents.get('injected_count')) > 0:
         context_parts.append(f"{_to_int(documents.get('injected_count'))} document(s) actif(s) injecte(s) entier(s)")
     elif _to_int(documents.get('active_count')) > 0:
         context_parts.append('document actif observe mais non injecte')
