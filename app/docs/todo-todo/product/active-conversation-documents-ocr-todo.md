@@ -200,12 +200,12 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 
 ### Lot 1 - Spec OCR active documents
 
-- [ ] Mettre a jour `app/docs/states/specs/active-conversation-documents-contract.md`.
-- [ ] Graver que l'OCR est maintenant une extension bornee de `active_document`, pas Biblio.
-- [ ] Graver le chemin V1: `ocr_required` -> `Stirling` -> PDF OCRise -> extracteur FridaDev -> `complete`.
-- [ ] Graver les limites: `180` secondes, `fra+eng+deu`, `25 pages`, `25 Mo`.
-- [ ] Graver les reason codes OCR.
-- [ ] Graver la doctrine content-free de l'OCR.
+- [x] Mettre a jour `app/docs/states/specs/active-conversation-documents-contract.md`.
+- [x] Graver que l'OCR est maintenant une extension bornee de `active_document`, pas Biblio.
+- [x] Graver le chemin V1: `ocr_required` -> `Stirling` -> PDF OCRise -> extracteur FridaDev -> `complete`.
+- [x] Graver les limites: `180` secondes, `fra+eng+deu`, `25 pages`, `25 Mo`.
+- [x] Graver les reason codes OCR.
+- [x] Graver la doctrine content-free de l'OCR.
 
 ### Lot 2 - Client OCR Stirling et configuration
 

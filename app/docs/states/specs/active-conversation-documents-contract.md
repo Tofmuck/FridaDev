@@ -1,12 +1,14 @@
 # Active conversation documents contract
 
 Statut: spec vivante
-Date: 2026-05-16
+Date: 2026-05-17
 Roadmap archivee: `app/docs/todo-done/product/active-conversation-documents-todo.md`
+Roadmap OCR active: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
 Audit-plan source archive: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: contrat produit, prompt, frontieres et observabilite des documents actifs de conversation
-Limites conservees: OCR, Biblio native, RAG documentaire, stockage documentaire persistant, ouverture automatique du texte complet dans le dashboard
+Extension OCR V1: OCR bornee des PDF scannes via Stirling, seulement apres `document_ocr_required`, puis repassage par l'extracteur FridaDev.
+Limites conservees: Biblio native, RAG documentaire, stockage documentaire persistant, ouverture automatique du texte complet dans le dashboard
 
 ## 1. Verdict de plan
 
@@ -77,7 +79,7 @@ Ces termes sont reserves pour le chantier separe Biblio native / Frida Catalogue
 
 Un `library_document` ou `catalogue_document` ne doit pas etre stocke dans l'etat `active_document`. Un `passage documentaire` ne doit pas devenir automatiquement un document actif.
 
-## 4. Formats supportes et absence d'OCR
+## 4. Formats supportes et OCR bornee
 
 Formats cibles initiaux:
 
@@ -100,9 +102,11 @@ Choix de parsing retenus:
 
 OCR:
 
-- hors-scope du chantier;
-- aucun PDF scanne ne doit etre presente comme document textuel lu;
-- aucune extraction OCR implicite ne doit etre ajoutee dans ce chantier.
+- l'extraction initiale sans OCR peut retourner `ocr_required`;
+- aucun PDF scanne ne doit etre presente comme document textuel lu avant OCR explicite;
+- aucune extraction OCR implicite ne doit etre ajoutee;
+- l'OCR V1 est seulement le chemin explicite decrit en 4.1, apres `document_ocr_required`;
+- un PDF deja textuel ne doit jamais etre OCRise.
 
 Extraction:
 
@@ -119,6 +123,51 @@ Statuts d'extraction stabilises:
 - `parse_error`: parsing impossible, reason `document_parse_error`;
 - `empty`: fichier ou extraction textuelle vide, reason `document_empty_text`;
 - `ocr_required`: PDF sans texte extractible sur au moins une page, reason `document_ocr_required`.
+
+### 4.1 Extension OCR V1 des PDF scannes
+
+L'OCR est une extension bornee de `active_document`. Elle ne cree pas une Biblio, ne cree pas de `library_document`, ne cree pas de `catalogue_document`, ne cree pas de `passage documentaire`, et ne transforme pas l'upload ponctuel en ingestion persistante.
+
+Chemin V1 normatif:
+
+```text
+document_ocr_required -> Stirling -> PDF OCRise -> extracteur FridaDev -> complete
+```
+
+Regles obligatoires:
+
+- `active_document` reste maitre du flux;
+- l'OCR n'est appelee que lorsque l'extracteur initial retourne `ocr_required` avec reason `document_ocr_required`;
+- un PDF deja textuel n'est jamais OCRise;
+- le client V1 appelle `platform-stirling-pdf`;
+- Stirling renvoie un PDF OCRise;
+- FridaDev repasse toujours ce PDF OCRise dans `app/core/active_document_text_extraction.py`;
+- seul un resultat final `complete` peut activer le document;
+- si le resultat final reste non-`complete`, le document reste non actif avec reason compact;
+- une fois actif, un document OCRise suit exactement les memes regles qu'un autre `active_document`: conversation-scoped, retire manuellement, injecte entier ou exclu entier par tour, hors Memory/RAG/Identity/Summary.
+
+Parametres operateur V1:
+
+- timeout OCR maximal: `180` secondes;
+- langues OCR par defaut: `fra+eng+deu`;
+- plafond V1: `25 pages` maximum;
+- plafond V1: `25 Mo` maximum;
+- OCR synchrone bornee pendant l'upload.
+
+Au-dela de `25 pages` ou `25 Mo`, le document doit etre refuse pour ce chantier avec un motif clair. A cette echelle, le besoin releve du futur chantier Biblio / Catalogue, pas du document actif ponctuel.
+
+Frontieres OCR:
+
+- pas d'OCR sur PDF deja textuel;
+- pas de Biblio;
+- pas de n8n nominal;
+- pas de doc-pipeline nominal;
+- pas d'OCR de masse;
+- pas d'image multimodale generale;
+- pas de stockage durable inter-conversations;
+- pas de fuite du texte OCR brut dans l'UI, les logs ordinaires, les read-models ou le dashboard.
+
+Le texte OCR brut peut seulement servir a produire le texte complet final du `active_document` si l'extracteur FridaDev conclut `complete`. Il ne doit pas etre expose par defaut.
 
 Sortie metadata du parseur:
 
@@ -348,6 +397,14 @@ Reason codes autorises en extension si necessaires aux lots implementation:
 - `document_partial_extraction_not_supported`;
 - `document_ocr_required`.
 
+Reason codes OCR V1:
+
+- `document_ocr_failed`: le moteur OCR n'a pas produit un PDF OCRise exploitable;
+- `document_ocr_timeout`: le traitement OCR a depasse le timeout borne;
+- `document_ocr_empty`: le PDF OCRise ne donne pas de texte final exploitable;
+- `document_ocr_too_large`: le fichier depasse le plafond `25 Mo`;
+- `document_ocr_too_many_pages`: le fichier depasse le plafond `25 pages`.
+
 Toute extension doit rester compacte et content-free.
 
 ## 11. Observabilite content-free
@@ -560,6 +617,6 @@ Cette spec devra etre revisee si:
 - une decision produit autorise le texte complet des documents dans un gate dedie;
 - le chantier Biblio native commence a definir sa lane prompt;
 - l'etat actif serveur change de retention;
-- un besoin OCR entre dans le produit.
+- l'architecture OCR V1, ses limites ou son moteur changent.
 
 Sans decision explicite, cette spec interdit la fusion entre documents actifs et Biblio native.
