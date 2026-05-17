@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
@@ -54,29 +55,46 @@ def _text(value: Any) -> str:
     return str(value or '').strip()
 
 
+@dataclass(frozen=True)
+class ActiveDocumentsPromptRead:
+    status: str
+    documents: tuple[dict[str, Any], ...] = ()
+    reason_code: str = ''
+    error_class: str = ''
+
+
 def _active_documents_for_prompt(
     *,
     conversation: Mapping[str, Any],
     active_documents_module: Any = active_conversation_documents,
     logger: Any = None,
-) -> list[dict[str, Any]]:
+) -> ActiveDocumentsPromptRead:
     conversation_id = _text(conversation.get('id'))
     if not conversation_id:
-        return []
+        return ActiveDocumentsPromptRead(status='empty')
     reader = getattr(active_documents_module, 'list_active_documents_for_prompt', None)
     if not callable(reader):
-        return []
+        return ActiveDocumentsPromptRead(
+            status='error',
+            reason_code='active_documents_reader_unavailable',
+        )
     try:
         raw_documents = reader(conversation_id)
     except Exception as exc:
         if logger is not None:
             logger.warning('active_documents_prompt_read_failed id=%s err=%s', conversation_id, exc)
-        return []
+        return ActiveDocumentsPromptRead(
+            status='error',
+            reason_code='active_documents_read_error',
+            error_class=exc.__class__.__name__,
+        )
     documents: list[dict[str, Any]] = []
     for item in raw_documents or []:
         if isinstance(item, Mapping):
             documents.append(dict(item))
-    return documents
+    if not documents:
+        return ActiveDocumentsPromptRead(status='empty')
+    return ActiveDocumentsPromptRead(status='ok', documents=tuple(documents))
 
 
 def _prompt_token_counter(token_utils_module: Any):
@@ -613,7 +631,7 @@ def chat_response(
     )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
-    active_documents_for_prompt = _active_documents_for_prompt(
+    active_documents_read = _active_documents_for_prompt(
         conversation=conversation,
         logger=logger,
     )
@@ -636,10 +654,12 @@ def chat_response(
         )
     active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
         prompt_messages,
-        active_documents_for_prompt,
+        active_documents_read.documents,
         model=runtime_main_model,
         count_tokens_func=_prompt_token_counter(token_utils_module),
         max_tokens=_active_document_prompt_max_tokens(config_module),
+        read_status=active_documents_read.status,
+        read_reason_code=active_documents_read.reason_code,
     )
     _record_active_document_prompt_decisions(
         conversation=conversation,

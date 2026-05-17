@@ -14,6 +14,8 @@ Note de cloture 2026-05-16: le chantier documents actifs de conversation est liv
 
 Note post-cloture 2026-05-17: l'OCR V1 bornee des PDF scannes a ensuite ete livree dans le mini-chantier archive `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`. Les lignes qui excluent l'OCR ci-dessous decrivent le perimetre du chantier initial, pas l'etat runtime courant.
 
+Note post-cloture 2026-05-17 bis: le prompt des documents actifs a ete resserre sans rouvrir le chantier. Le contrat d'interpretation reste en `system`, mais le contenu complet fourni par l'utilisateur est transporte dans un message `user` separe et encadre comme contenu non autoritaire. La lecture runtime distingue aussi `ok`, `empty` et `error`, afin qu'une erreur de lecture ne soit plus confondue avec l'absence de document.
+
 ## 1. Intention
 
 Ce TODO ouvre le chantier produit des documents actifs de conversation.

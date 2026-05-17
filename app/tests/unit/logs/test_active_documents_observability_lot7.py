@@ -114,6 +114,39 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertEqual(events[0]['status'], 'ok')
         self.assertEqual(events[0]['payload']['injected_count'], 1)
 
+    def test_prompt_read_error_event_is_content_free_and_distinct_from_empty(self) -> None:
+        events: list[dict[str, object]] = []
+        lane = SimpleNamespace(
+            decisions=(),
+            read_status='error',
+            read_reason_code='active_documents_read_error',
+        )
+        logger = SimpleNamespace(
+            emit=lambda stage, status, payload: events.append(
+                {'stage': stage, 'status': status, 'payload': payload}
+            )
+            or True
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(payload['status'], 'error')
+        self.assertEqual(payload['read_status'], 'error')
+        self.assertEqual(payload['read_reason_code'], 'active_documents_read_error')
+        self.assertEqual(payload['active_count'], 0)
+        self.assertEqual(payload['reason_code_counts'], {'active_documents_read_error': 1})
+        self.assertFalse(payload['raw_content_included'])
+        self.assertNotIn('text_content', encoded)
+        self.assertTrue(
+            active_documents_observability.emit_prompt_decision_event(
+                lane,
+                chat_turn_logger_module=logger,
+            )
+        )
+        self.assertEqual(events[0]['stage'], 'active_documents')
+        self.assertEqual(events[0]['status'], 'error')
+
     def test_admin_activation_and_remove_events_are_content_free(self) -> None:
         events: list[tuple[str, dict[str, object]]] = []
         admin_logs = SimpleNamespace(

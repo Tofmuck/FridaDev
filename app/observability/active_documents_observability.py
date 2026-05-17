@@ -92,6 +92,8 @@ def _ocr_metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
 
 def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
     decisions = list(getattr(lane, 'decisions', ()) or ())
+    read_status = _text(getattr(lane, 'read_status', ''), max_chars=80) or 'ok'
+    read_reason_code = _text(getattr(lane, 'read_reason_code', ''), max_chars=120)
     documents: list[dict[str, Any]] = []
     reason_counts: dict[str, int] = {}
     injected_count = 0
@@ -133,10 +135,15 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
     status = 'not_applicable'
     if documents:
         status = 'partial' if not_injected_count else 'ok'
+    elif read_status == 'error':
+        status = 'error'
+        reason_counts[read_reason_code or 'active_documents_read_error'] = 1
     return {
         'kind': 'active_document_prompt_decisions',
         'source_kind': 'active_conversation_documents',
         'status': status,
+        'read_status': read_status,
+        'read_reason_code': read_reason_code,
         'active_count': len(documents),
         'injected_count': injected_count,
         'not_injected_count': not_injected_count,
@@ -154,7 +161,7 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
 
 def emit_prompt_decision_event(lane: Any, *, chat_turn_logger_module: Any) -> bool:
     payload = build_prompt_decision_payload(lane)
-    if _to_int(payload.get('active_count')) <= 0:
+    if _to_int(payload.get('active_count')) <= 0 and _text(payload.get('read_status')) != 'error':
         return False
     emitter = getattr(chat_turn_logger_module, 'emit', None)
     if not callable(emitter):
@@ -162,7 +169,7 @@ def emit_prompt_decision_event(lane: Any, *, chat_turn_logger_module: Any) -> bo
     return bool(
         emitter(
             'active_documents',
-            status='ok',
+            status='error' if _text(payload.get('read_status')) == 'error' else 'ok',
             payload=payload,
         )
     )
