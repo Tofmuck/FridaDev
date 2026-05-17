@@ -218,6 +218,27 @@ function chatMockScript({ streamMode }) {
               headers: { "Content-Type": "application/json" },
             });
           }
+          const ocrFailures = {
+            "timeout.pdf": "document_ocr_timeout",
+            "failed.pdf": "document_ocr_failed",
+            "empty.pdf": "document_ocr_empty",
+            "too-large.pdf": "document_ocr_too_large",
+            "too-many-pages.pdf": "document_ocr_too_many_pages",
+          };
+          if (Object.prototype.hasOwnProperty.call(ocrFailures, name)) {
+            const reason = ocrFailures[name];
+            return new Response(JSON.stringify({
+              ok: false,
+              reason_code: reason,
+              document: { filename: name, status: "ocr_failed", reason_code: reason },
+            }), {
+              status: 422,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          if (name === "scan.pdf") {
+            await new Promise((resolve) => setTimeout(resolve, 180));
+          }
           const docs = readActiveDocs();
           const item = {
             document_id: "doc-browser-" + String(docs.length + 1),
@@ -235,6 +256,10 @@ function chatMockScript({ streamMode }) {
             deactivated_at: "",
             last_injected_turn_id: "",
             last_excluded_reason_code: "",
+            ocr_applied: name === "scan.pdf",
+            ocr_engine: name === "scan.pdf" ? "stirling-pdf" : "",
+            ocr_languages: name === "scan.pdf" ? "fra+eng+deu" : "",
+            ocr_duration_ms: name === "scan.pdf" ? 1200 : 0,
             source: "active_conversation_documents",
           };
           docs.push(item);
@@ -336,6 +361,56 @@ test('chat active conversation documents upload, persist across reload and remov
     });
     await page.waitForFunction(() =>
       document.querySelector('#activeDocumentsStatus')?.textContent.includes('Format non pris en charge'));
+
+    const ocrFailures = [
+      ['timeout.pdf', 'OCR trop long'],
+      ['failed.pdf', 'OCR impossible'],
+      ['empty.pdf', 'OCR sans texte lisible'],
+      ['too-large.pdf', "PDF trop volumineux pour l'OCR de conversation"],
+      ['too-many-pages.pdf', "PDF trop long pour l'OCR de conversation"],
+    ];
+    for (const [filename, label] of ocrFailures) {
+      await page.evaluate((name) => {
+        const file = new File(['ocr failure'], name, { type: 'application/pdf' });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.querySelector('.chat').dispatchEvent(new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer,
+        }));
+      }, filename);
+      await page.waitForFunction((expected) =>
+        document.querySelector('#activeDocumentsStatus')?.textContent.includes(expected), label);
+      const statusText = await page.locator('#activeDocumentsStatus').textContent();
+      assert.equal(String(statusText || '').includes('document_ocr_'), false);
+    }
+
+    await page.evaluate(() => {
+      const file = new File(['TEXTE OCR BRUT NE DOIT PAS APPARAITRE'], 'scan.pdf', { type: 'application/pdf' });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      document.querySelector('.chat').dispatchEvent(new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }));
+    });
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsStatus')?.textContent.includes('OCR si nécessaire'));
+    const pendingOcrText = await page.locator('#activeDocumentsStatus').textContent();
+    assert.equal(String(pendingOcrText || '').includes('%'), false);
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsList')?.textContent.includes('OCRisé'));
+    const ocrBarText = await page.locator('#activeDocumentsBar').textContent();
+    assert.equal(String(ocrBarText || '').includes('TEXTE OCR BRUT NE DOIT PAS APPARAITRE'), false);
+    await assertTextContains(page.locator('#activeDocumentsBar'), 'Documents actifs de conversation');
+    await page.setViewportSize({ width: 1024, height: 760 });
+    const desktopBarBox = await page.locator('#activeDocumentsBar').boundingBox();
+    assert.ok(
+      desktopBarBox && desktopBarBox.x >= 0 && desktopBarBox.x + desktopBarBox.width <= 1024,
+      'active documents OCR bar should fit desktop viewport'
+    );
 
     const calls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
     assert.ok(calls.some((call) => call.method === 'DELETE' && call.path.includes('/api/conversations/conv-browser/active-documents/')));

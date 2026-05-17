@@ -134,6 +134,7 @@ function createActiveDocumentController({
     const fileList = Array.from(files || []).filter(Boolean);
     if (!fileList.length || !httpFetch) return;
     state.busy = true;
+    setStatus(uploadInProgressLabel(fileList));
     render();
     try {
       if (typeof ensureConversation === 'function') {
@@ -151,6 +152,7 @@ function createActiveDocumentController({
         const formData = new FormData();
         formData.append('file', file, file.name || 'document');
         try {
+          setStatus(uploadInProgressLabel([file]));
           const response = await httpFetch(url, { method: 'POST', body: formData });
           await parseJsonResponse(response);
           activated += 1;
@@ -254,12 +256,20 @@ function compactDocumentMeta(item) {
   if (size) parts.push(size);
   const chars = Number(item.text_chars || 0);
   if (chars > 0) parts.push(`${chars} caractères`);
+  if (item.ocr_applied) parts.push('OCRisé');
   if (item.last_excluded_reason_code) {
     parts.push(uploadErrorLabel(item.last_excluded_reason_code));
   } else {
     parts.push('actif');
   }
   return parts.join(' · ');
+}
+
+function uploadInProgressLabel(files) {
+  const list = Array.from(files || []).filter(Boolean);
+  const hasPdf = list.some((file) => String(file?.name || '').toLowerCase().endsWith('.pdf'));
+  if (hasPdf) return 'Analyse du PDF, OCR si nécessaire…';
+  return 'Activation du document actif…';
 }
 
 function formatBytes(value) {
@@ -276,6 +286,11 @@ function uploadErrorLabel(reasonCode) {
     document_parse_error: 'Lecture du fichier impossible.',
     document_empty_text: 'Aucun texte lisible.',
     document_ocr_required: 'PDF scanné: OCR requis.',
+    document_ocr_failed: 'OCR impossible.',
+    document_ocr_timeout: 'OCR trop long.',
+    document_ocr_empty: 'OCR sans texte lisible.',
+    document_ocr_too_large: "PDF trop volumineux pour l'OCR de conversation.",
+    document_ocr_too_many_pages: "PDF trop long pour l'OCR de conversation.",
     document_runtime_unavailable: 'Service documentaire indisponible.',
     document_too_large_for_turn: 'Trop gros pour ce tour.',
     document_file_missing: 'Fichier manquant.',
@@ -288,6 +303,7 @@ const FridaActiveConversationDocuments = Object.freeze({
   createActiveDocumentController,
   compactDocumentMeta,
   formatBytes,
+  uploadInProgressLabel,
   uploadErrorLabel,
 });
 

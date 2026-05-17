@@ -229,12 +229,12 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 
 ### Lot 4 - UI et etats utilisateur
 
-- [ ] Afficher un etat discret pendant l'OCR.
-- [ ] Ne pas afficher de faux pourcentage.
-- [ ] Afficher qu'un document actif est OCRise apres succes.
-- [ ] Afficher un motif humain simple apres echec/refus.
-- [ ] Garder le libelle `documents actifs de conversation`, sans bouton generique `Documents`.
-- [ ] Tester desktop/mobile et absence de contenu brut.
+- [x] Afficher un etat discret pendant l'OCR.
+- [x] Ne pas afficher de faux pourcentage.
+- [x] Afficher qu'un document actif est OCRise apres succes.
+- [x] Afficher un motif humain simple apres echec/refus.
+- [x] Garder le libelle `documents actifs de conversation`, sans bouton generique `Documents`.
+- [x] Tester desktop/mobile et absence de contenu brut.
 
 ### Lot 5 - Observabilite et dashboard proportionne
 

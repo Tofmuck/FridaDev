@@ -608,6 +608,9 @@ Surface chat:
 - le drag-and-drop sur la surface chat active les fichiers supportes;
 - le controle pres du composer ouvre le selecteur de fichiers;
 - la liste affiche nom, type/extension, taille, longueur et statut compact;
+- pendant un upload PDF, l'UI affiche un etat discret de type `OCR si necessaire`, sans faux pourcentage;
+- lorsqu'un document actif a `ocr_applied=true`, la liste affiche une mention discrete `OCRise`;
+- les refus OCR sont traduits en libelles humains simples, sans exposer les reason codes comme lecture principale;
 - le retrait manuel reste accessible par fichier;
 - l'etat serveur est recharge a chaque ouverture/rechargement de conversation;
 - le contenu brut du document n'est pas affiche dans l'UI ordinaire.
