@@ -133,7 +133,7 @@ Archives utiles:
 - `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
 
 Brouillons actifs:
-- `todo-todo/memory/hermeneutic-interpretive-center-todo.md`: cadrage d'un possible centre interpretatif compact du tour, a garder dans le sillage du `validation_agent` sans nouvel agent ni nouvelle memoire.
+- `todo-todo/memory/hermeneutic-warum-wofuer-wozu-triad-todo.md`: cadrage d'une discipline de lecture hermeneutique par la triade `Warum / Wofür / Wozu`, a garder dans le sillage du `validation_agent` sans nouvel agent ni nouvelle memoire.
 
 ### Install / operations
 
