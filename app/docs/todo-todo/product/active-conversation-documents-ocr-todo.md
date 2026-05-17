@@ -218,13 +218,13 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 
 ### Lot 3 - Integration upload OCR
 
-- [ ] Brancher l'OCR seulement quand l'extraction initiale retourne `document_ocr_required`.
-- [ ] Ne jamais OCRiser les PDF deja textuels.
-- [ ] Repasser le PDF OCRise dans l'extracteur FridaDev.
-- [ ] Activer seulement si le resultat final est `complete`.
-- [ ] Refuser avec reason compact si le resultat final est vide, erreur ou non-complete.
-- [ ] Garantir que le texte OCR ne fuit pas dans la reponse upload.
-- [ ] Tester succes OCR, echec OCR, timeout, vide, trop gros, trop de pages.
+- [x] Brancher l'OCR seulement quand l'extraction initiale retourne `document_ocr_required`.
+- [x] Ne jamais OCRiser les PDF deja textuels.
+- [x] Repasser le PDF OCRise dans l'extracteur FridaDev.
+- [x] Activer seulement si le resultat final est `complete`.
+- [x] Refuser avec reason compact si le resultat final est vide, erreur ou non-complete.
+- [x] Garantir que le texte OCR ne fuit pas dans la reponse upload.
+- [x] Tester succes OCR, echec OCR, timeout, vide, trop gros, trop de pages.
 
 ### Lot 4 - UI et etats utilisateur
 

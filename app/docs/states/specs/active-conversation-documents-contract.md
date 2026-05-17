@@ -173,6 +173,15 @@ Le client detecte le nombre de pages avant l'appel OCR. Il refuse avant Stirling
 
 Le client retourne seulement des statuts, reason codes, metadonnees et, en cas de succes, le PDF OCRise en memoire pour le lot d'integration suivant. Ses projections ordinaires restent content-free et n'exposent pas le texte OCR brut.
 
+Lot 3 branche ce client dans `app/core/active_document_upload_service.py`:
+
+- l'OCR est tentee seulement quand l'extraction initiale retourne `ocr_required` avec reason `document_ocr_required`;
+- un PDF deja textuel, donc extrait en `complete`, ne passe pas par l'OCR;
+- le PDF OCRise est repasse dans l'extracteur FridaDev existant;
+- le document est active seulement si cette extraction finale retourne `complete`;
+- si l'OCR echoue, expire, retourne vide, depasse les limites ou produit un PDF non extractible en `complete`, l'upload est refuse avec reason compact;
+- les reponses ordinaires d'upload restent content-free et ne contiennent ni texte OCR brut, ni PDF OCRise.
+
 Au-dela de `25 pages` ou `25 Mo`, le document doit etre refuse pour ce chantier avec un motif clair. A cette echelle, le besoin releve du futur chantier Biblio / Catalogue, pas du document actif ponctuel.
 
 Frontieres OCR:
