@@ -135,6 +135,9 @@ Archives utiles:
 Brouillons actifs:
 - `todo-todo/memory/hermeneutic-warum-wofuer-wozu-triad-todo.md`: cadrage d'une discipline de lecture hermeneutique par la triade `Warum / Wofür / Wozu`, a garder dans le sillage du `validation_agent` sans nouvel agent ni nouvelle memoire.
 
+Mini-chantiers actifs:
+- `todo-todo/memory/hermeneutic-warum-wofuer-wozu-prompt-first-todo.md`: mini-lot prompt-first pour inscrire la triade dans le `validation_agent`, sans nouveau JSON ni projection directe vers `[JUGEMENT HERMENEUTIQUE]`.
+
 ### Install / operations
 
 Lire d'abord:
