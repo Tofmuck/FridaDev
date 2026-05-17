@@ -6,7 +6,7 @@ Cet audit cartographie les appels modele et services d'inference reellement pres
 
 Verdict court:
 
-- FridaDev expose **12 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.
+- FridaDev expose **11 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.
 - Les chemins OpenRouter partagent aujourd'hui **un seul secret applicatif**: `main_model.api_key`.
 - Sur OVH, ce secret est configure et resolu via les runtime settings chiffrés (`db_encrypted`), avec origine historique `env_backfill`. Le repo ne prouve pas a lui seul la separation ou non des projets cote console OpenRouter.
 - Le systeme est fonctionnel mais heterogene: certains callers utilisent `llm_client.or_chat_completions_url()` et donc `main_model.base_url` runtime; d'autres utilisent encore `config.OR_BASE`.
@@ -40,9 +40,11 @@ Ce que l'audit ne prouve pas:
 
 ## Carte complete des modeles et services
 
-### Synthese des chemins actifs
+### Synthese des slots actifs
 
-| # | Chemin fonctionnel | Type | Caller / fichier principal | Modele ou service runtime OVH | Statut |
+La table ci-dessous liste les **slots modele/service** observables. Les **11 chemins fonctionnels** regroupent `stimmung_agent` primary/fallback en un seul chemin et `validation_agent` primary/fallback en un seul chemin: chat principal, reformulation web, arbitre memoire, resume, extracteur identity, agent periodic identity, stimmung, validation, embeddings, Whisper, OCR.
+
+| # | Slot modele/service | Type | Caller / fichier principal | Modele ou service runtime OVH | Statut |
 |---|---|---|---|---|---|
 | 1 | Chat principal | OpenRouter chat completion | `app/core/chat_llm_flow.py` | `anthropic/claude-sonnet-4.6` | actif |
 | 2 | Reformulation web | OpenRouter chat completion | `app/tools/web_search.py` | `anthropic/claude-sonnet-4.6` | actif quand web active |
@@ -84,6 +86,25 @@ Chemins explicitement absents ou retires:
 | Transcription vocale | `/api/chat/transcribe` -> `whisper_transcription_service` | pas de prompt | Service Whisper HTTP | payload `model=whisper-1` | constant `whisper-1` | `WHISPER_API_URL`, `WHISPER_API_TIMEOUT_S`, `WHISPER_API_KEY` dans `config.py` | bearer optionnel `WHISPER_API_KEY`; OVH `set=True` | n/a | n/a | n/a | `120` | n/a | n/a | JSON avec `text`; Frida renvoie `{ok,text,input_mode:"voice"}` | non admin runtime | route HTTP; erreurs mappees 400/502/504 |
 | OCR documents actifs | `active_document_ocr_client.ocr_pdf_with_stirling()` | pas de prompt | Stirling PDF HTTP | `platform-stirling-pdf` endpoint `/pdf/api/v1/misc/ocr-pdf` | meme defaut | `ACTIVE_DOCUMENT_OCR_*` dans `config.py` | pas d'auth cote FridaDev | n/a | n/a | n/a | `180` | n/a | n/a | PDF OCRise + meta compacte; activation seulement apres extraction finale `complete` | non admin runtime | active document events; metadata content-free |
 
+## Payloads sortants et parametres fixes
+
+Cette section rend explicites les champs envoyes qui ne sont pas tous visibles dans le tableau principal.
+
+| Chemin | Payload ou formulaire sortant | Parametres fixes / additionnels | Notes |
+|---|---|---|---|
+| Chat principal | JSON OpenRouter construit par `llm_client.build_payload()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stop=["<\|endoftext\|>", "<\|return\|>", "<\|call\|>"]`; si streaming: `stream=true`, `stream_options={"include_usage": true}` | `max_tokens` vient du runtime `response_max_tokens` sauf override de requete; pas de `response_format`, pas de champ `reasoning` |
+| Reformulation web | JSON OpenRouter dans `web_search.reformulate()` | `model`, `messages` system/user, `max_tokens=40`, `temperature=0.2` | pas de `top_p`, pas de `stop`, pas de streaming, pas de `response_format` |
+| Arbitre memoire | JSON OpenRouter dans `arbiter.filter_traces_with_diagnostics()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=600` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Extracteur identity | JSON OpenRouter dans `arbiter.extract_identities()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=700` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Agent periodic identity | JSON OpenRouter dans `arbiter.run_identity_periodic_agent()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=1400` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Resume conversationnel | JSON OpenRouter dans `summarizer.summarize_conversation()` | `model`, `messages`, `temperature=0.3`, `top_p=1.0`, `max_tokens=SUMMARY_TARGET_TOKENS` | pas de `stop`, pas de streaming, pas de `response_format`; texte libre attendu |
+| Stimmung agent | JSON OpenRouter dans `stimmung_agent._call_model()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` | primary/fallback partagent la meme forme; pas de `stop`, pas de streaming, pas de `response_format` |
+| Validation agent | JSON OpenRouter dans `validation_agent._call_model()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens=_bounded_response_max_tokens(max_tokens)` | primary/fallback partagent la meme forme; pas de `stop`, pas de streaming, pas de `response_format` |
+| Embeddings | JSON HTTP vers `/embed` | headers `X-Embed-Token`, `Content-Type: application/json`; body `inputs=[prefix + text]`, `model`; prefixe `query: ` ou `passage: ` | timeout `(5,120)`; sortie attendue `response.json()[0]` |
+| Whisper | multipart/form-data vers `/v1/audio/transcriptions` | fichier `file`; data `model=whisper-1`, `response_format=json`; header `Authorization: Bearer ...` seulement si `WHISPER_API_KEY` est present | pas de timestamps/langue demandes par FridaDev |
+| OCR Stirling | multipart/form-data vers Stirling | fichier `fileInput`; data `languages` repete pour chaque langue de `fra+eng+deu`, `ocrType=force-ocr`, `ocrRenderType=sandwich` | refus local avant appel si bytes/pages depassent les limites; pas d'auth cote FridaDev |
+| SearXNG / Crawl4AI support web | hors table inference principale | SearXNG GET: `q`, `format=json`, `language=fr-FR`, `safesearch=0`; Crawl4AI `/md`: `url`, `f`, `c`, optionnel `q` | services support web, non comptes comme modeles d'inference FridaDev |
+
 ## Topologie OpenRouter et tokens
 
 ### Reponse nette
@@ -112,22 +133,22 @@ Donc la source de verite applicative actuelle est:
 
 ### Tableau auth / transport
 
-| Caller OpenRouter demande | Caller normalise par `llm_client` | Token | Base URL effective | Referer/title effectifs | Particularite |
-|---|---|---|---|---|---|
-| `llm` | `llm` | `main_model.api_key` | chat: `config.OR_BASE`; helper: runtime `main_model.base_url` | `main_model.referer_llm`, `main_model.title_llm` | chat principal n'utilise pas encore le helper URL |
-| `web_reformulation` | `web_reformulation` | meme | runtime `main_model.base_url` via helper | fallback config `OPENROUTER_REFERER_WEB_REFORMULATION` / `OPENROUTER_TITLE_WEB_REFORMULATION` | pas de fields runtime admin dedies |
-| `arbiter` | `arbiter` | meme | `config.OR_BASE` | `main_model.referer_arbiter`, `main_model.title_arbiter` | timeout runtime admin non utilise |
-| `identity_extractor` | `identity_extractor` | meme | `config.OR_BASE` | `main_model.referer_identity_extractor`, `main_model.title_identity_extractor` | modele partage `arbiter_model` |
-| `identity_periodic_agent` | `llm` | meme | `config.OR_BASE` | `main_model.referer_llm`, `main_model.title_llm` | caller non connu par `llm_client`, donc pas distingue dans headers |
-| `resumer` | `resumer` | meme | `config.OR_BASE` | `main_model.referer_resumer`, `main_model.title_resumer` | temp/top_p runtime non utilises |
-| `stimmung_agent` | `stimmung_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_stimmung_agent`, `main_model.title_stimmung_agent` | primary/fallback propres |
-| `validation_agent` | `validation_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_validation_agent`, `main_model.title_validation_agent` | primary/fallback propres |
+| Caller OpenRouter demande | Caller normalise par `llm_client` | Token | Base URL effective | Referer/title effectifs | `X-Frida-Caller` vers provider | Particularite |
+|---|---|---|---|---|---|---|
+| `llm` | `llm` | `main_model.api_key` | chat: `config.OR_BASE`; helper: runtime `main_model.base_url` | `main_model.referer_llm`, `main_model.title_llm` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy` avant l'appel externe | chat principal n'utilise pas encore le helper URL |
+| `web_reformulation` | `web_reformulation` | meme | runtime `main_model.base_url` via helper | fallback config `OPENROUTER_REFERER_WEB_REFORMULATION` / `OPENROUTER_TITLE_WEB_REFORMULATION` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy`; appel direct de module: transmis | pas de fields runtime admin dedies |
+| `arbiter` | `arbiter` | meme | `config.OR_BASE` | `main_model.referer_arbiter`, `main_model.title_arbiter` | transmis: appel direct `requests.post()` sans proxy | timeout runtime admin non utilise |
+| `identity_extractor` | `identity_extractor` | meme | `config.OR_BASE` | `main_model.referer_identity_extractor`, `main_model.title_identity_extractor` | transmis: appel direct `requests.post()` sans proxy | modele partage `arbiter_model` |
+| `identity_periodic_agent` | `llm` | meme | `config.OR_BASE` | `main_model.referer_llm`, `main_model.title_llm` | transmis comme `X-Frida-Caller: llm`, car caller inconnu normalise en `llm` | caller non connu par `llm_client`, donc pas distingue dans headers |
+| `resumer` | `resumer` | meme | `config.OR_BASE` | `main_model.referer_resumer`, `main_model.title_resumer` | transmis: appel direct `requests.post()` sans proxy | temp/top_p runtime non utilises |
+| `stimmung_agent` | `stimmung_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_stimmung_agent`, `main_model.title_stimmung_agent` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy`; appel direct de module: transmis | primary/fallback propres |
+| `validation_agent` | `validation_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_validation_agent`, `main_model.title_validation_agent` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy`; appel direct de module: transmis | primary/fallback propres |
 
 ### Ce que le repo permet deja
 
 - Un seul secret OpenRouter peut etre rote dans `main_model.api_key`.
 - Les headers `HTTP-Referer`, `X-OpenRouter-Title`, `X-Title` distinguent deja la plupart des composants.
-- Le header interne `X-Frida-Caller` est construit par `llm_client`; il sert a resoudre/observer le caller dans le code, mais il est aussi present dans les headers envoyes au provider.
+- Le header interne `X-Frida-Caller` est toujours construit par `llm_client.or_headers()` apres normalisation du caller. Sur les appels passes par `_RequestsChatLogProxy`, il sert localement a l'observabilite puis il est retire avant l'appel externe; sur les appels directs `requests.post()` de certains modules, il est transmis au provider.
 
 ### Ce qu'il faudra verifier cote console OpenRouter
 
