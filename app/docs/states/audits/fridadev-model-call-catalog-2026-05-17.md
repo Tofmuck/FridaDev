@@ -72,7 +72,7 @@ Chemins explicitement absents ou retires:
 
 | Role | Caller / fichier | Prompt | Provider | Modele effectif runtime OVH | Defaut code / seed | Source config runtime | Token / auth source | Temperature | top_p | Max tokens | Timeout | Raisonnement | Stream | Output contract | Admin configurable | Observabilite |
 |---|---|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---|---|---|
-| Chat principal | `chat_llm_flow.run_llm_exchange()` | `MAIN_SYSTEM_PROMPT_PATH`, `main_hermeneutical.txt`, prompt window runtime | OpenRouter | `anthropic/claude-sonnet-4.6` | `OPENROUTER_MODEL=openai/gpt-5.1` | `main_model.model` runtime DB | `main_model.api_key`, resolu `db_encrypted`; header caller `llm` | `0.4` | `1.0` | `8192` par defaut, override request possible | `FRIDA_TIMEOUT=900` | aucun parametre `reasoning` envoye | oui, si `stream=true` | texte libre assistant, normalise puis persiste | oui: `main_model.model`, sampling, response max, headers; base_url runtime existe mais ce call utilise encore `config.OR_BASE` | `llm_payload`, `llm_call`, `llm_provider_response`, `AssistantText`, stream events |
+| Chat principal | `chat_llm_flow.run_llm_exchange()` | `MAIN_SYSTEM_PROMPT_PATH`, `main_hermeneutical.txt`, prompt window runtime | OpenRouter | `anthropic/claude-sonnet-4.6` | `OPENROUTER_MODEL=openai/gpt-5.1` | `main_model.model` runtime DB | `main_model.api_key`, present origine `admin_ui`, resolu `db_encrypted`; header caller `llm` | `0.7` | `1.0` | `8192` par defaut, override request possible | `FRIDA_TIMEOUT=900` | aucun parametre `reasoning` envoye | oui, si `stream=true` | texte libre assistant, normalise puis persiste | oui: `main_model.model`, sampling, response max, headers; base_url runtime existe mais ce call utilise encore `config.OR_BASE` | `llm_payload`, `llm_call`, `llm_provider_response`, `AssistantText`, stream events |
 | Reformulation web | `web_search.reformulate()` | `prompts/web_reformulation.txt` | OpenRouter | `openai/gpt-5.4-mini` | `WEB_REFORMULATION_MODEL=openai/gpt-5.4-mini` | `web_reformulation_model.model`; base via `llm_client.or_chat_completions_url()` | `main_model.api_key`, caller `web_reformulation` | `0.2` | non envoye | `40` | `10` | aucun | non | texte court, fallback vers message utilisateur si erreur | oui: `web_reformulation_model` pour model/temp/max/timeout; transport/token partages via `main_model`; referer/title web restent config-only | `web_reformulation_prompt_prepared`, `web_search` |
 | Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `openai/gpt-5.4-mini` | `ARBITER_MODEL=openai/gpt-5.4-mini` | `arbiter_model.model` runtime DB | `main_model.api_key`, caller `arbiter` | `0.0` fixe | `1.0` fixe | `600` fixe | `config.ARBITER_TIMEOUT_S=10` effectif; runtime admin affiche `60` mais non utilise ici | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | modele oui; temp/top_p/timeout exposes mais temp/top_p/timeout non sources effectives du payload courant | provider logs, metrics, `record_arbiter_decisions()` |
 | Resume conversationnel | `summarizer.summarize_conversation()` | `prompts/summary_system.txt` | OpenRouter | `openai/gpt-5.4-mini` | `SUMMARY_MODEL=openai/gpt-5.4-mini` | `summary_model.model` runtime DB | `main_model.api_key`, caller `resumer` | `0.3` fixe | `1.0` fixe | `SUMMARY_TARGET_TOKENS=2000` | `90` fixe | aucun | non | texte libre de resume; persiste en summary actif | modele oui; temp/top_p exposes mais non sources effectives | provider metadata log; summary persistence |
@@ -122,7 +122,7 @@ Le secret est lu par `llm_client.or_headers()`, appele par:
 
 Sur OVH, la lecture assainie indique:
 
-- `main_model.api_key`: `is_set=True`, origine affichage `env_backfill`, resolution effective `db_encrypted`;
+- `main_model.api_key`: `is_set=True`, origine affichage `admin_ui`, resolution effective `db_encrypted`;
 - `config.OR_KEY`: present en environnement, mais le chemin normal runtime passe par `runtime_settings.get_runtime_secret_value('main_model', 'api_key')`.
 
 Donc la source de verite applicative actuelle est:
@@ -392,10 +392,10 @@ Lecture assainie le 2026-05-17:
 |---|---|---|---|
 | `main_model` | `base_url` | `https://openrouter.ai/api/v1` | `admin_ui` |
 | `main_model` | `model` | `anthropic/claude-sonnet-4.6` | `admin_ui` |
-| `main_model` | `temperature` | `0.4` | `db_seed` |
+| `main_model` | `temperature` | `0.7` | `admin_ui` |
 | `main_model` | `top_p` | `1.0` | `db_seed` |
 | `main_model` | `response_max_tokens` | `8192` | `admin_ui` |
-| `main_model` | `api_key` | secret present, resolu `db_encrypted` | `env_backfill` / DB chiffree |
+| `main_model` | `api_key` | secret present, resolu `db_encrypted` | `admin_ui` / DB chiffree |
 | `arbiter_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` |
 | `arbiter_model` | `timeout_s` | `60` | `admin_ui` |
 | `summary_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` |
