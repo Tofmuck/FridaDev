@@ -28,7 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
-- Extension OCR des documents actifs de conversation: `todo-todo/product/active-conversation-documents-ocr-todo.md`
+- Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
 - Discipline triadique `Warum / Wofür / Wozu` du `validation_agent`: `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`
@@ -42,6 +42,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Fiabilisation archivee du streaming des reponses: `todo-done/product/frida-response-streaming-todo.md`
 - Roadmap archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-todo.md`
 - Audit-plan archive des documents actifs de conversation: `todo-done/product/active-conversation-documents-audit-plan.md`
+- Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Roadmap archivee du dashboard long terme: `todo-done/admin/dashboard-long-term-observability-todo.md`
 
 ## Docs a lire d'abord selon le chantier
@@ -77,13 +78,13 @@ Lire d'abord:
 - `states/specs/active-conversation-documents-contract.md`
 - `todo-done/product/active-conversation-documents-audit-plan.md`
 - `todo-done/product/active-conversation-documents-todo.md`
-- `todo-todo/product/active-conversation-documents-ocr-todo.md` pour le mini-chantier actif OCR des PDF scannes.
+- `todo-done/product/active-conversation-documents-ocr-todo.md` pour l'archive de l'extension OCR bornee des PDF scannes.
 
-But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
+But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels, ou certains PDF scannes apres OCR V1 bornee, a une conversation active, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
 Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
 
-Extension active: l'OCR bornee des PDF scannes est suivie separement dans `todo-todo/product/active-conversation-documents-ocr-todo.md`; elle prolonge `active_document` sans ouvrir Biblio.
+Extension livree: l'OCR bornee des PDF scannes est archivee dans `todo-done/product/active-conversation-documents-ocr-todo.md`; elle prolonge `active_document` via Stirling seulement apres `document_ocr_required`, avec limites `25 pages`, `25 Mo`, `180` secondes, `fra+eng+deu`, sans ouvrir Biblio, n8n ni doc-pipeline nominal.
 
 ### Biblio native / Frida Catalogue
 

@@ -1,7 +1,7 @@
 # FridaDev Current Runtime Pipeline
 
 Statut: reference architecture active
-Date de reference: samedi 16 mai 2026
+Date de reference: dimanche 17 mai 2026
 Classement: `app/docs/states/architecture/`
 Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 
@@ -18,6 +18,7 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- optional voice draft -> /api/chat/transcribe -> whisper_transcription_service
   |- optional web_search flag
   |- active documents UI -> /api/conversations/<id>/active-documents
+  |- scanned PDF active_document OCR V1 -> platform-stirling-pdf when extractor says document_ocr_required
   v
 [server.py / /api/chat]
   |- begin_turn + public chat entrypoint
@@ -116,8 +117,12 @@ FR: sur le chemin JSON nominal, la sauvegarde assistant finale precede `Assistan
 EN: on the nominal JSON path, the final assistant save precedes `AssistantText`, traces, identity writes, and reactivations. On the nominal streaming path, the final assistant save also precedes these derivations and the `done(updated_at)` terminal. The relative order between traces and identity can differ after that barrier; it must not be interpreted as a canonicalization difference.
 
 6. Les documents actifs de conversation ne sont pas de la memoire.
-FR: `active_document` est un etat serveur temporaire scope conversation. Il est injecte dans une lane prompt dediee apres la decision de resume, entier ou absent. Il ne compte pas dans le seuil de resume, ne cree pas de traces memoire, n'alimente pas Identity et n'est pas Biblio.
-EN: `active_document` is temporary conversation-scoped server state. It is injected into a dedicated prompt lane after the summary decision, whole or absent. It does not count toward the summary threshold, does not create memory traces, does not feed Identity, and is not Biblio.
+FR: `active_document` est un etat serveur temporaire scope conversation. Il accepte les formats textuels supportes et certains PDF scannes apres OCR V1 bornee via Stirling (`document_ocr_required` -> PDF OCRise -> extracteur FridaDev -> `complete`). Il est injecte dans une lane prompt dediee apres la decision de resume, entier ou absent. Il ne compte pas dans le seuil de resume, ne cree pas de traces memoire, n'alimente pas Identity et n'est pas Biblio.
+EN: `active_document` is temporary conversation-scoped server state. It accepts supported textual formats and eligible scanned PDFs after bounded OCR V1 through Stirling (`document_ocr_required` -> OCRized PDF -> FridaDev extractor -> `complete`). It is injected into a dedicated prompt lane after the summary decision, whole or absent. It does not count toward the summary threshold, does not create memory traces, does not feed Identity, and is not Biblio.
+
+6bis. L'OCR V1 reste bornee.
+FR: l'OCR des documents actifs est synchrone, limitee a `25 pages`, `25 Mo`, `180` secondes et `fra+eng+deu`. Elle n'est pas une OCR generale, pas une modalite image, pas Biblio, et n'utilise ni n8n ni doc-pipeline dans le chemin nominal. Les surfaces ordinaires ne publient pas le texte OCR brut.
+EN: active document OCR is synchronous and bounded by `25 pages`, `25 Mo`, `180` seconds, and `fra+eng+deu`. It is not general OCR, not image multimodality, not Biblio, and does not use n8n or doc-pipeline in the nominal path. Ordinary surfaces do not publish raw OCR text.
 
 7. Les surfaces operateur ne sont pas des pipelines paralleles.
 FR: `/dashboard`, `/log`, `/hermeneutic-admin`, `/identity`, `/memory-admin` et `/admin` lisent le runtime et ses derives; elles ne remplacent pas le pipeline principal.
@@ -140,6 +145,7 @@ EN: future `library_document` / `catalogue_document` and `passage documentaire` 
 - `app/core/conversations_prompt_window.py`
 - `app/core/active_conversation_documents.py`
 - `app/core/active_document_text_extraction.py`
+- `app/core/active_document_ocr_client.py`
 - `app/core/active_document_prompt_lane.py`
 - `app/core/active_document_upload_service.py`
 - `app/memory/memory_store.py`

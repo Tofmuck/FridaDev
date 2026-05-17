@@ -1,13 +1,14 @@
 # Documents actifs de conversation - OCR TODO
 
-Statut: actif
+Statut: clos / archive
 Date de creation: 2026-05-17
-Classement: `app/docs/todo-todo/product/`
+Date de cloture: 2026-05-17
+Classement: `app/docs/todo-done/product/`
 Spec source: `app/docs/states/specs/active-conversation-documents-contract.md`
 Chantier parent archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Chantier distinct a ne pas demarrer ici: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: extension OCR bornee des `active_document` PDF scannes, sans Biblio, sans RAG documentaire, sans ingestion persistante
-Hors-scope du commit de creation: runtime, endpoint, frontend, changement plateforme, n8n, doc-pipeline nominal, Biblio, image multimodale, rebuild
+Hors-scope conserve: n8n, doc-pipeline nominal, Biblio, image multimodale generale
 
 ## 1. Verdict de plan
 
@@ -187,7 +188,9 @@ La future Biblio garde son observabilite separee: requete, document resolu, loca
 
 ## 9. Dashboard
 
-Une petite surface dashboard peut etre incluse seulement si elle reste proportionnee au mini-chantier:
+Decision de livraison: le chantier expose les metadonnees OCR compactes dans l'observabilite `documents` et dans l'inspection de tour quand un document actif OCRise est injecte ou exclu. Les refus/echecs OCR hors tour restent des events admin compacts. Aucune courbe dashboard OCR supplementaire n'a ete livree dans ce mini-chantier.
+
+La possibilite initiale etait:
 
 - compter OCR reussies vs echouees;
 - afficher une serie compacte ou une petite courbe si les buckets existants le rendent naturel;
@@ -271,10 +274,16 @@ Note de livraison Lot 6:
 
 ### Lot 7 - Documentation de cloture
 
-- [ ] Mettre a jour docs vivantes touchees.
-- [ ] Documenter les limites restantes: qualite OCR, documents volumineux, Biblio separee.
-- [ ] Verifier qu'aucune case ouverte reelle ne reste.
-- [ ] Archiver ce TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+- [x] Mettre a jour docs vivantes touchees.
+- [x] Documenter les limites restantes: qualite OCR, documents volumineux, Biblio separee.
+- [x] Verifier qu'aucune case ouverte reelle ne reste.
+- [x] Archiver ce TODO dans `app/docs/todo-done/product/` quand tous les lots sont fermes.
+
+Note de cloture Lot 7:
+
+- le README racine, le hub documentaire, la spec et la cartographie runtime racontent desormais l'OCR V1 bornee comme capacite livree des `active_document`;
+- les limites restent explicites: qualite OCR variable, `25 pages`, `25 Mo`, `180` secondes, `fra+eng+deu`, Stirling, pas de Biblio, pas de n8n nominal, pas de doc-pipeline nominal;
+- aucune courbe dashboard OCR hors-tour supplementaire n'est promise dans ce chantier archive.
 
 ## 11. Criteres de fermeture
 

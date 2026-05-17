@@ -7,9 +7,11 @@ Classement: `app/docs/todo-done/product/`
 TODO derive archive: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 Portee: documents fournis volontairement par l'utilisateur a une conversation active, injectes au modele principal tant qu'ils restent actifs
 Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-audit-plan.md`
-Hors-scope: OCR, RAG documentaire, Biblio native / bibliotheque documentaire persistante, AnythingLLM/OpenWebUI comme intermediaire principal, indexation, resume documentaire, promotion memoire, patch runtime dans ce commit
+Hors-scope initial: OCR, RAG documentaire, Biblio native / bibliotheque documentaire persistante, AnythingLLM/OpenWebUI comme intermediaire principal, indexation, resume documentaire, promotion memoire, patch runtime dans ce commit
 
 Note de cloture 2026-05-16: ce document conserve le cadrage initial du chantier. L'implementation active_document a ete livree ensuite dans la roadmap archivee; les constats "pas encore" ci-dessous doivent etre lus comme l'etat pre-implementation de l'audit-plan, pas comme l'etat runtime courant.
+
+Note post-cloture 2026-05-17: l'OCR V1 bornee des PDF scannes a ensuite ete livree et archivee dans `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`. Les mentions d'OCR exclue dans ce document de plan initial decrivent le perimetre du premier chantier, pas la capacite runtime courante.
 
 ## 1. Question initiale et verdict
 
@@ -67,12 +69,12 @@ La compatibilite entre les deux chantiers tient donc a un contrat de lanes, de v
 
 ## 2. Doctrine produit non negociable
 
-Le premier chantier documentaire de Frida n'est pas une bibliotheque documentaire persistante, ni un OCR, ni un RAG documentaire.
+Le premier chantier documentaire de Frida n'etait pas une bibliotheque documentaire persistante, ni un chantier OCR, ni un RAG documentaire. Depuis le 2026-05-17, une extension OCR V1 bornee existe separement pour certains PDF scannes `active_document`.
 
 C'est un systeme de documents actifs de conversation:
 
 - formats cibles initiaux: PDF deja textuels, DOCX, ODT, MD, TXT;
-- pas d'OCR dans ce chantier;
+- OCR exclue du chantier initial; extension V1 livree ensuite dans un mini-chantier separe;
 - contenu textuel envoye entier au modele quand c'est possible;
 - aucune troncature silencieuse;
 - si un document ne peut pas entrer entier dans le payload du tour, il est entierement exclu de ce tour;
@@ -285,13 +287,13 @@ Formats initiaux:
 
 - TXT: texte UTF-8 ou detection stricte documentee;
 - MD: texte brut Markdown, sans rendu HTML obligatoire;
-- PDF: uniquement PDF textuels, sans OCR;
+- PDF: uniquement PDF textuels dans le chantier initial; OCR V1 bornee livree ensuite separement;
 - DOCX: extraction du texte principal;
 - ODT: extraction du texte principal.
 
 Regles:
 
-- pas d'OCR;
+- OCR exclue du chantier initial; extension V1 bornee livree ensuite separement;
 - pas de parsing partiel presente comme complet;
 - si extraction partielle unavoidable par une bibliotheque, le document doit etre marque `parse_error` ou `partial_extraction_not_supported` et non injecte comme complet;
 - normalisation minimale des fins de ligne;

@@ -3,7 +3,7 @@
 Statut: spec vivante
 Date: 2026-05-17
 Roadmap archivee: `app/docs/todo-done/product/active-conversation-documents-todo.md`
-Roadmap OCR active: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
+Roadmap OCR archivee: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 Audit-plan source archive: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
 Chantier distinct: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: contrat produit, prompt, frontieres et observabilite des documents actifs de conversation

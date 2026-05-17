@@ -1,7 +1,7 @@
 # Frida
 
-Current repository state as of Saturday, May 16, 2026.
-Etat courant du depot au samedi 16 mai 2026.
+Current repository state as of Sunday, May 17, 2026.
+Etat courant du depot au dimanche 17 mai 2026.
 
 ## English
 
@@ -12,7 +12,7 @@ Primary current-state references:
 - Documentation hub: `app/docs/README.md`
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
-- Active conversation documents OCR roadmap: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
+- Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Log module contract: `app/docs/states/specs/log-module-contract.md`
@@ -30,7 +30,7 @@ Detailed companion: `app/docs/states/architecture/fridadev-current-runtime-pipel
 ```text
 Browser chat
   |- typed message, optional voice transcription, optional web search
-  |- active conversation documents upload/list/remove
+  |- active conversation documents upload/list/remove, with bounded OCR V1 for eligible scanned PDFs
   v
 POST /api/chat
   |- session and conversation resolution
@@ -66,8 +66,10 @@ Frontend rehydration and operator observability
 - The browser chat sends typed turns or optional voice transcripts to `POST /api/chat`; the server validates `input_mode`, resolves or creates the conversation, persists the user turn, and only then builds the assistant response.
 - Conversation summaries are triggered from dialogue-only `user` / `assistant` text. System prompts, identity, memory, web, hermeneutic context, and active documents do not count toward the summary threshold.
 - Prompt construction combines the main prompt, hermeneutic contract, time grounding, identity block, active summary, recent dialogue, Memory/RAG traces with parent summaries, context hints, optional web context, and the validated hermeneutic judgment.
-- Active conversation documents are temporary, conversation-scoped files supplied by the user. Supported textual formats are PDF text, DOCX, ODT, MD, and TXT. They are injected into the model whole when they fit the explicit document admission rule, or excluded whole with a compact reason signal; they are never silently truncated.
+- Active conversation documents are temporary, conversation-scoped files supplied by the user. Supported formats are PDF text, DOCX, ODT, MD, TXT, plus eligible scanned PDFs after bounded OCR V1 through `platform-stirling-pdf`. OCR is attempted only after `document_ocr_required`, with `fra+eng+deu`, `25 pages`, `25 Mo`, and `180 s` limits; the OCRized PDF is reprocessed by the FridaDev extractor and becomes active only if the final extraction is `complete`.
+- Active documents, including OCRized ones, are injected into the model whole when they fit the explicit document admission rule, or excluded whole with a compact reason signal; they are never silently truncated.
 - Active documents are not Memory/RAG, not Identity, not Summary, not Web, and not Biblio. They are not embedded, indexed, summarized, promoted to memory, or reused outside their conversation.
+- Active document OCR is not general OCR, not image multimodality, not Biblio, and not a durable document pipeline. It does not use n8n or doc-pipeline in the nominal path, and ordinary UI/logs/dashboard surfaces do not expose raw OCR text.
 - The main LLM call runs under a plain-text output contract. Streaming uses visible text chunks plus one terminal control frame.
 - On `done`, Frida saves the complete assistant text, verifies canonical persistence, then emits derived writes. On `error`, it stores an interrupted marker when that marker save is proven; it does not canonicalize partial assistant text.
 - `/dashboard` is the long-term operator dashboard: recent health, materialized metrics, conversation comparison, translated inspection, and content-free summaries.
@@ -103,7 +105,7 @@ Frontend rehydration and operator observability
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents roadmap: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
-- Active conversation documents OCR roadmap: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
+- Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Archived long-term dashboard roadmap: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
@@ -173,7 +175,7 @@ References principales pour l'etat courant:
 - Hub documentaire: `app/docs/README.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
-- Roadmap active OCR des documents actifs: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
+- Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Contrat du module logs: `app/docs/states/specs/log-module-contract.md`
@@ -191,7 +193,7 @@ Document compagnon detaille: `app/docs/states/architecture/fridadev-current-runt
 ```text
 Chat navigateur
   |- message tape, transcription vocale optionnelle, recherche web optionnelle
-  |- upload/list/retrait des documents actifs de conversation
+  |- upload/list/retrait des documents actifs de conversation, avec OCR V1 bornee pour les PDF scannes eligibles
   v
 POST /api/chat
   |- resolution session et conversation
@@ -227,8 +229,10 @@ Rehydratation frontend et observabilite operateur
 - Le chat navigateur envoie les tours tapes ou les transcriptions vocales optionnelles vers `POST /api/chat`; le serveur valide `input_mode`, resolve ou cree la conversation, persiste le tour utilisateur, puis fabrique la reponse assistant.
 - Les resumes de conversation sont declenches depuis le seul texte dialogique `user` / `assistant`. Les prompts systeme, l'identite, la memoire, le web, le contexte hermeneutique et les documents actifs ne comptent pas dans le seuil de resume.
 - La construction du prompt combine prompt principal, contrat hermeneutique, ancrage temporel, bloc identite, resume actif, dialogue recent, traces Memory/RAG avec resumes parents, context hints, contexte web optionnel et jugement hermeneutique valide.
-- Les documents actifs de conversation sont des fichiers temporaires, fournis par l'utilisateur et scopes a une conversation. Les formats textuels supportes sont PDF textuel, DOCX, ODT, MD et TXT. Ils sont injectes entiers si la regle explicite d'admission documentaire le permet, ou exclus entiers avec un signal compact; ils ne sont jamais tronques silencieusement.
+- Les documents actifs de conversation sont des fichiers temporaires, fournis par l'utilisateur et scopes a une conversation. Les formats supportes sont PDF textuel, DOCX, ODT, MD, TXT, et certains PDF scannes apres OCR V1 bornee via `platform-stirling-pdf`. L'OCR est tentee seulement apres `document_ocr_required`, avec les limites `fra+eng+deu`, `25 pages`, `25 Mo` et `180 s`; le PDF OCRise est repasse dans l'extracteur FridaDev et devient actif seulement si l'extraction finale est `complete`.
+- Les documents actifs, y compris OCRises, sont injectes entiers si la regle explicite d'admission documentaire le permet, ou exclus entiers avec un signal compact; ils ne sont jamais tronques silencieusement.
 - Les documents actifs ne sont ni Memory/RAG, ni Identity, ni Summary, ni Web, ni Biblio. Ils ne sont pas embedded, indexes, resumes, promus en memoire ou reutilises hors conversation.
+- L'OCR des documents actifs n'est pas une OCR generale, pas une modalite image, pas Biblio et pas un pipeline documentaire durable. Elle n'utilise ni n8n ni doc-pipeline dans le chemin nominal, et les surfaces ordinaires UI/logs/dashboard n'exposent pas le texte OCR brut.
 - L'appel LLM principal suit un contrat de sortie texte brut. Le streaming utilise des chunks texte visibles et un seul terminal de controle.
 - Sur `done`, Frida sauvegarde le texte assistant complet, verifie la persistance canonique, puis emet les ecritures derivees. Sur `error`, Frida sauvegarde un marqueur interrompu lorsque cette sauvegarde est prouvee; elle ne canonise pas de texte assistant partiel.
 - `/dashboard` est le dashboard operateur long terme: sante recente, metriques materialisees, comparaison des conversations, inspection traduite et statut du content gate.
@@ -264,7 +268,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
-- Roadmap active OCR des documents actifs: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
+- Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Roadmap active Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Roadmap archivee dashboard long terme: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`

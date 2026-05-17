@@ -8,15 +8,17 @@ Audit-plan source: `app/docs/todo-done/product/active-conversation-documents-aud
 Spec fondatrice: `app/docs/states/specs/active-conversation-documents-contract.md`
 Chantier distinct reserve: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 Portee: activation serveur de documents fournis a une conversation, injection entiere ou exclusion entiere par tour, frontend chat, observabilite content-free
-Hors-scope conserve: OCR, RAG documentaire, stockage documentaire durable, Biblio native, ouverture automatique du texte complet dans le dashboard
+Hors-scope initial conserve: OCR, RAG documentaire, stockage documentaire durable, Biblio native, ouverture automatique du texte complet dans le dashboard
 
 Note de cloture 2026-05-16: le chantier documents actifs de conversation est livre et archive. Les documents actifs sont temporaires, conversation-scoped, actifs jusqu'au retrait manuel, injectes entiers ou exclus entiers par tour, visibles dans l'UI chat et l'observabilite content-free, et verrouilles hors Memory/RAG/Identity/Summary. La Biblio native / Frida Catalogue reste un chantier separe actif, non lance runtime par cette cloture.
+
+Note post-cloture 2026-05-17: l'OCR V1 bornee des PDF scannes a ensuite ete livree dans le mini-chantier archive `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`. Les lignes qui excluent l'OCR ci-dessous decrivent le perimetre du chantier initial, pas l'etat runtime courant.
 
 ## 1. Intention
 
 Ce TODO ouvre le chantier produit des documents actifs de conversation.
 
-Le besoin n'est pas encore de construire une bibliotheque documentaire, un OCR ou un RAG documentaire. Le besoin est de permettre a l'utilisateur de fournir ponctuellement des fichiers a Frida dans une conversation et de garder ces fichiers actifs jusqu'a retrait manuel explicite.
+Le besoin initial n'etait pas de construire une bibliotheque documentaire, un chantier OCR ou un RAG documentaire. Le besoin etait de permettre a l'utilisateur de fournir ponctuellement des fichiers a Frida dans une conversation et de garder ces fichiers actifs jusqu'a retrait manuel explicite.
 
 Decision produit issue de l'audit complementaire du 2026-05-16: ce chantier reste separe de la future Biblio native / Frida Catalogue.
 
@@ -72,8 +74,8 @@ Regle semantique centrale: le modele ne doit pas seulement recevoir les octets d
 
 ## 3. Hors-scope du chantier
 
-- OCR;
-- documents scans;
+- OCR dans le chantier initial; extension V1 bornee livree ensuite separement;
+- documents scans dans le chantier initial; certains PDF scannes sont desormais pris en charge par l'extension OCR V1 bornee;
 - bibliotheque documentaire persistante;
 - Biblio native / Frida Catalogue;
 - recherche documentaire durable;
@@ -111,7 +113,7 @@ Le chantier pourra etre clos seulement si:
 
 ## 5. Condition de non-prolongation
 
-Ne pas prolonger ce chantier vers OCR, RAG documentaire, bibliotheque persistante, recherche documentaire durable, indexation, chunking, stockage long terme ou ingestion multi-conversations.
+Ne pas prolonger ce chantier initial vers RAG documentaire, bibliotheque persistante, recherche documentaire durable, indexation, chunking, stockage long terme ou ingestion multi-conversations. L'OCR V1 bornee a ete traitee ensuite comme mini-chantier separe, sans Biblio.
 
 La condition de non-prolongation est atteinte quand Frida sait lire ponctuellement des documents textuels fournis a une conversation, les garder actifs cote serveur jusqu'a retrait manuel, les injecter entierement quand possible, les exclure proprement quand ils sont trop gros, et prouver tout cela sans contaminer Memory/RAG/Identity/Summary.
 
@@ -124,7 +126,7 @@ Ce chantier separe est desormais ouvert comme cadrage produit sous `app/docs/tod
 ### Lot 1 - Spec fondatrice et contrat de lanes
 
 - [x] Creer `app/docs/states/specs/active-conversation-documents-contract.md`.
-- [x] Fixer les formats supportes et l'absence d'OCR.
+- [x] Fixer les formats supportes et l'absence d'OCR dans le chantier initial.
 - [x] Fixer le vocabulaire: document actif, activation, retrait manuel, injection entiere, exclusion entiere, lane documentaire, signal non injecte.
 - [x] Fixer explicitement `document actif de conversation` / `active_document` et le distinguer des futurs `library_document` / `catalogue_document` / `passage documentaire`.
 - [x] Definir la frontiere stricte avec Memory/RAG/Identity/Summary.
