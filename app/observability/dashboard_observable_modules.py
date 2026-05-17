@@ -169,6 +169,11 @@ def _reduce_documents_metrics(metrics: dict[str, Any], fact: Mapping[str, Any]) 
     _add_metric_count(metrics, 'not_injected_documents_total', not_injected_count)
     _add_metric_count(metrics, 'too_large_documents_total', _to_int(documents.get('too_large_count')))
     _add_metric_count(metrics, 'empty_documents_total', _to_int(documents.get('empty_count')))
+    _add_metric_count(metrics, 'ocr_applied_documents_total', _to_int(documents.get('ocr_applied_count')))
+    _add_metric_count(metrics, 'ocr_duration_ms_total', _to_int(documents.get('ocr_duration_ms_total')))
+    ocr_engine_counts = _mapping(documents.get('ocr_engine_counts'))
+    for engine, count in ocr_engine_counts.items():
+        _add_metric_label(metrics, 'ocr_engine_counts', engine, _to_int(count))
     reason_counts = _mapping(documents.get('reason_code_counts'))
     for reason, count in reason_counts.items():
         _add_metric_label(metrics, 'reason_code_counts', reason, _to_int(count))
@@ -273,21 +278,23 @@ def _summarize_documents_turn(fact: Mapping[str, Any]) -> str:
     injected_count = _to_int(documents.get('injected_count'))
     not_injected_count = _to_int(documents.get('not_injected_count'))
     too_large_count = _to_int(documents.get('too_large_count'))
+    ocr_count = _to_int(documents.get('ocr_applied_count'))
+    ocr_sentence = f' {ocr_count} etaient OCRise(s).' if ocr_count else ''
     if active_count <= 0:
         return 'Aucun document actif de conversation n est observe sur ce tour.'
     if injected_count and not_injected_count == 0:
-        return f'{injected_count} document(s) actif(s) ont ete envoyes entiers au modele.'
+        return f'{injected_count} document(s) actif(s) ont ete envoyes entiers au modele.{ocr_sentence}'
     if too_large_count:
         return (
             f'{active_count} document(s) actif(s) etaient presents; '
-            f'{too_large_count} etaient trop gros pour ce tour.'
+            f'{too_large_count} etaient trop gros pour ce tour.{ocr_sentence}'
         )
     if not_injected_count:
         return (
             f'{active_count} document(s) actif(s) etaient presents; '
-            f'{not_injected_count} n ont pas ete envoyes dans ce tour.'
+            f'{not_injected_count} n ont pas ete envoyes dans ce tour.{ocr_sentence}'
         )
-    return f'{active_count} document(s) actif(s) etaient visibles sur ce tour.'
+    return f'{active_count} document(s) actif(s) etaient visibles sur ce tour.{ocr_sentence}'
 
 
 def _summarize_providers_turn(fact: Mapping[str, Any]) -> str:
@@ -564,6 +571,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('injected_documents_total', 'Documents envoyes entiers'),
             ('not_injected_documents_total', 'Documents non envoyes'),
             ('too_large_documents_total', 'Documents trop gros pour le tour'),
+            ('ocr_applied_documents_total', 'Documents OCRises observes'),
         ),
         conversation_summary=_fields(
             ('documents_active_turns', 'Tours avec documents actifs'),
@@ -573,6 +581,7 @@ INITIAL_OBSERVABLE_MODULES: tuple[ObservableModule, ...] = (
             ('active_count', 'Documents actifs'),
             ('injected_count', 'Documents envoyes entiers'),
             ('not_injected_count', 'Documents non envoyes'),
+            ('ocr_applied_count', 'Documents OCRises'),
             ('reason_code_counts', 'Raisons compactes'),
         ),
         human_detail=_fields(

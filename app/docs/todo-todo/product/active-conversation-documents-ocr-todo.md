@@ -238,11 +238,18 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 
 ### Lot 5 - Observabilite et dashboard proportionne
 
-- [ ] Ajouter events compacts OCR content-free.
-- [ ] Exposer `ocr_applied`, `ocr_engine`, `ocr_languages`, `ocr_duration_ms`, statut et reason code.
-- [ ] Alimenter le module observable `documents` sans dupliquer Memory/RAG.
-- [ ] Ajouter une lecture dashboard seulement si elle reste petite et naturelle.
-- [ ] Tester OCR succes/echec dans logs/read-models/dashboard sans texte brut.
+- [x] Ajouter events compacts OCR content-free.
+- [x] Exposer `ocr_applied`, `ocr_engine`, `ocr_languages`, `ocr_duration_ms`, statut et reason code.
+- [x] Alimenter le module observable `documents` sans dupliquer Memory/RAG.
+- [x] Ajouter une lecture dashboard seulement si elle reste petite et naturelle.
+- [x] Tester OCR succes/echec dans logs/read-models/dashboard sans texte brut.
+
+Note de livraison Lot 5:
+
+- les succes OCR sont visibles comme metadonnees compactes sur les documents actifs et dans l'event de tour `active_documents`;
+- les refus/echecs OCR d'activation restent des events admin compacts hors tour `active_document_activation_failed`;
+- le dashboard de tour ne force pas ces refus hors-tour dans une inspection de tour;
+- le module `documents` expose les comptes OCR des documents actifs observes, sans texte OCR brut.
 
 ### Lot 6 - Tests et preuves bout-en-bout
 

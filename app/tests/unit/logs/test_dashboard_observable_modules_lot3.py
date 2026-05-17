@@ -124,6 +124,9 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
                 'injected_count': 1,
                 'not_injected_count': 1,
                 'too_large_count': 1,
+                'ocr_applied_count': 1,
+                'ocr_duration_ms_total': 1200,
+                'ocr_engine_counts': {'stirling-pdf': 1},
                 'reason_code_counts': {'document_too_large_for_turn': 1},
                 'future_biblio_included': False,
                 'raw_content_included': False,
@@ -266,6 +269,9 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
         self.assertEqual(by_key['documents']['metrics']['injected_documents_total'], 1)
         self.assertEqual(by_key['documents']['metrics']['not_injected_documents_total'], 1)
         self.assertEqual(by_key['documents']['metrics']['too_large_documents_total'], 1)
+        self.assertEqual(by_key['documents']['metrics']['ocr_applied_documents_total'], 1)
+        self.assertEqual(by_key['documents']['metrics']['ocr_duration_ms_total'], 1200)
+        self.assertEqual(by_key['documents']['metrics']['ocr_engine_counts']['stirling-pdf'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_call_present_count'], 1)
         self.assertEqual(by_key['providers']['metrics']['main_duration_ms_p50'], 120)
         self.assertEqual(by_key['identity']['metrics']['block_present_turns'], 1)
@@ -285,7 +291,7 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
 
         self.assertEqual(
             summary,
-            '2 document(s) actif(s) etaient presents; 1 etaient trop gros pour ce tour.',
+            '2 document(s) actif(s) etaient presents; 1 etaient trop gros pour ce tour. 1 etaient OCRise(s).',
         )
         self.assertEqual(reason, 'document_too_large_for_turn')
         self.assertNotIn('RAW', summary)

@@ -446,6 +446,7 @@ Implementation courante:
 - chaque tour avec au moins un document actif emet un event de tour `active_documents`;
 - la materialisation dashboard persistante expose `dashboard_turn_facts.documents_json`;
 - le module observable dashboard `documents` est reel pour les documents actifs de conversation;
+- les metadonnees OCR compactes sont propagees dans les events de tour et les logs admin quand elles existent;
 - cette observabilite ne couvre pas la future Biblio native.
 
 Par defaut, logs, read-models et dashboard peuvent exposer:
@@ -466,6 +467,11 @@ Par defaut, logs, read-models et dashboard peuvent exposer:
 - last_injected_turn_id;
 - last_excluded_turn_id;
 - last_excluded_reason_code;
+- ocr_applied;
+- ocr_engine;
+- ocr_languages;
+- ocr_duration_ms;
+- comptes compacts OCR dans le module dashboard `documents`;
 - source `active_conversation_documents`.
 
 Par defaut, ils ne doivent jamais exposer:
@@ -484,11 +490,13 @@ Le dashboard peut raconter:
 - "1 document etait actif sur ce tour.";
 - "Le document a ete envoye entier au modele.";
 - "Le document etait actif mais trop gros pour ce tour.";
+- "Le document actif etait OCRise.";
 
 Cette lecture doit rester metadata-only.
 
 Le read-model d'inspection peut dire qu'un document actif a ete injecte entier ou exclu,
 citer son nom, son type, sa taille, son estimation de tokens, son hash court et sa raison compacte.
+Pour un document OCRise, il peut citer seulement le statut OCRise et les metadonnees OCR compactes.
 Il ne doit pas recopier le texte, ni faire passer cette lane pour Memory/RAG, Web, Identity, Summary ou Biblio.
 Il ne doit pas rattacher artificiellement un echec d'activation ou un retrait manuel a un tour:
 ces deux cas restent visibles dans les logs admin compacts tant qu'aucun read-model hors-tour dedie n'existe.

@@ -32,6 +32,10 @@ class ActiveDocumentPromptDecision:
     token_estimate: int
     text_sha256_12: str
     injected: bool
+    ocr_applied: bool = False
+    ocr_engine: str = ""
+    ocr_languages: str = ""
+    ocr_duration_ms: int = 0
     reason_code: str = ""
     text_content: str = ""
 
@@ -142,6 +146,10 @@ def _decision_from_document(document: Mapping[str, Any], *, injected: bool) -> A
         text_chars=_safe_int(document.get("text_chars") if "text_chars" in document else document.get("chars")),
         token_estimate=_safe_int(document.get("token_estimate")),
         text_sha256_12=_text(document.get("text_sha256_12") if "text_sha256_12" in document else document.get("sha256_12")),
+        ocr_applied=_safe_bool(document.get("ocr_applied")),
+        ocr_engine=_text(document.get("ocr_engine")),
+        ocr_languages=_text(document.get("ocr_languages")),
+        ocr_duration_ms=_safe_int(document.get("ocr_duration_ms")),
         injected=injected,
         text_content=str(document.get("text_content") or ""),
     )
@@ -162,6 +170,10 @@ def _replace_decision(
         text_chars=decision.text_chars,
         token_estimate=decision.token_estimate,
         text_sha256_12=decision.text_sha256_12,
+        ocr_applied=decision.ocr_applied,
+        ocr_engine=decision.ocr_engine,
+        ocr_languages=decision.ocr_languages,
+        ocr_duration_ms=decision.ocr_duration_ms,
         injected=decision.injected if injected is None else bool(injected),
         reason_code=decision.reason_code if reason_code is None else reason_code,
         text_content=decision.text_content,
@@ -235,3 +247,9 @@ def _safe_int(value: Any) -> int:
         return max(0, int(value or 0))
     except (TypeError, ValueError):
         return 0
+
+
+def _safe_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)

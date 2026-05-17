@@ -28,6 +28,12 @@ def _to_int(value: Any) -> int:
         return 0
 
 
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+    return bool(value)
+
+
 def _text(value: Any) -> str | None:
     text = str(value or '').strip()
     return text or None
@@ -656,6 +662,10 @@ def _safe_document_items(value: Any) -> list[dict[str, Any]]:
                 'text_chars': _to_int(item.get('text_chars')),
                 'token_estimate': _to_int(item.get('token_estimate')),
                 'text_sha256_12': _text(item.get('text_sha256_12')),
+                'ocr_applied': _to_bool(item.get('ocr_applied')),
+                'ocr_engine': _text(item.get('ocr_engine')),
+                'ocr_languages': _text(item.get('ocr_languages')),
+                'ocr_duration_ms': _to_int(item.get('ocr_duration_ms')),
                 'active': bool(item.get('active')),
                 'injected': bool(item.get('injected')),
                 'reason_code': _text(item.get('reason_code')),
@@ -679,6 +689,19 @@ def _documents_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         reason_counts.get('document_too_large_for_turn')
     )
     empty_count = _to_int(payload.get('empty_count')) or _to_int(reason_counts.get('document_empty_text'))
+    ocr_applied_count = _to_int(payload.get('ocr_applied_count')) or sum(
+        1 for item in documents if item.get('ocr_applied')
+    )
+    ocr_duration_ms_total = _to_int(payload.get('ocr_duration_ms_total')) or sum(
+        _to_int(item.get('ocr_duration_ms')) for item in documents if item.get('ocr_applied')
+    )
+    ocr_engine_counts = dict(_mapping(payload.get('ocr_engine_counts')))
+    if not ocr_engine_counts:
+        for item in documents:
+            if not item.get('ocr_applied'):
+                continue
+            engine = _text(item.get('ocr_engine')) or 'unknown'
+            ocr_engine_counts[engine] = int(ocr_engine_counts.get(engine, 0)) + 1
     if latest:
         status = 'active' if active_count else 'not_applicable'
         reason = _reason_code(payload)
@@ -694,6 +717,9 @@ def _documents_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'not_injected_count': not_injected_count,
         'too_large_count': too_large_count,
         'empty_count': empty_count,
+        'ocr_applied_count': ocr_applied_count,
+        'ocr_duration_ms_total': ocr_duration_ms_total,
+        'ocr_engine_counts': dict(sorted(ocr_engine_counts.items())),
         'reason_code_counts': reason_counts,
         'reason_code': reason,
         'documents': documents,

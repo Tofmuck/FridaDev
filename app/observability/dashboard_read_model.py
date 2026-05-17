@@ -1160,7 +1160,8 @@ def _document_story_lines(documents: Mapping[str, Any]) -> list[str]:
             status = 'non envoye'
         lines.append(
             f'{filename} ({ext or "type inconnu"}, {_to_int(item.get("byte_size"))} octets, '
-            f'{_to_int(item.get("text_chars"))} caracteres): {status}.'
+            f'{_to_int(item.get("text_chars"))} caracteres'
+            f'{", OCRise" if item.get("ocr_applied") else ""}): {status}.'
         )
     if active_count > 5:
         lines.append(f'{active_count - 5} document(s) supplementaire(s) non detaille(s).')

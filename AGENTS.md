@@ -126,6 +126,9 @@ Regles:
 - extraire par responsabilite reelle, pas par confort local;
 - ne pas creer de fichier fourre-tout comme `utils.py` ou `helpers.py`;
 - ne pas renommer/deplacer un fichier pour un geste cosmetique;
+- autour de 500-600 lignes, verifier que le fichier garde une responsabilite nette;
+- au-dela de 500-600 lignes, eviter de rallonger encore sauf necessite vitale clairement justifiee;
+- sinon, preferer une separation par responsabilite plutot que continuer a empiler;
 - si un fichier devient un grab-bag, s'arreter et proposer une separation par responsabilite.
 
 ## Documentation

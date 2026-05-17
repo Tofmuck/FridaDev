@@ -717,6 +717,10 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
                         'text_chars': 31,
                         'token_estimate': 8,
                         'text_sha256_12': 'hashtext1234',
+                        'ocr_applied': True,
+                        'ocr_engine': 'stirling-pdf',
+                        'ocr_languages': 'fra+eng+deu',
+                        'ocr_duration_ms': 1200,
                         'active': True,
                         'injected': True,
                         'reason_code': '',
@@ -750,7 +754,7 @@ class DashboardReadModelLot4Tests(unittest.TestCase):
 
         self.assertIn('1 document(s) actif(s) injecte(s) entier(s)', story_text)
         self.assertIn('2 document(s) actif(s) de conversation observe(s).', story_text)
-        self.assertIn('note.txt (.txt, 42 octets, 31 caracteres): envoye entier.', story_text)
+        self.assertIn('note.txt (.txt, 42 octets, 31 caracteres, OCRise): envoye entier.', story_text)
         self.assertIn('grand.pdf (.pdf, 900000 octets, 300000 caracteres): non envoye: trop gros', story_text)
         self.assertIn('Aucun texte de document actif n est affiche', story_text)
         self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', story_text)

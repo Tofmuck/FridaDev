@@ -543,6 +543,9 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                     'injected_count': 1,
                     'not_injected_count': 1,
                     'too_large_count': 1,
+                    'ocr_applied_count': 1,
+                    'ocr_duration_ms_total': 1200,
+                    'ocr_engine_counts': {'stirling-pdf': 1},
                     'reason_code_counts': {'document_too_large_for_turn': 1},
                     'documents': [
                         {
@@ -555,6 +558,10 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                             'text_chars': 31,
                             'token_estimate': 8,
                             'text_sha256_12': 'hashtext1234',
+                            'ocr_applied': True,
+                            'ocr_engine': 'stirling-pdf',
+                            'ocr_languages': 'fra+eng+deu',
+                            'ocr_duration_ms': 1200,
                             'active': True,
                             'injected': True,
                             'raw_content_included': False,
@@ -593,9 +600,13 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(documents['injected_count'], 1)
         self.assertEqual(documents['not_injected_count'], 1)
         self.assertEqual(documents['too_large_count'], 1)
+        self.assertEqual(documents['ocr_applied_count'], 1)
+        self.assertEqual(documents['ocr_duration_ms_total'], 1200)
+        self.assertEqual(documents['ocr_engine_counts'], {'stirling-pdf': 1})
         self.assertFalse(documents['future_biblio_included'])
         self.assertFalse(documents['raw_content_included'])
         self.assertEqual(documents['documents'][0]['filename'], 'note.txt')
+        self.assertTrue(documents['documents'][0]['ocr_applied'])
         self.assertEqual(documents['documents'][1]['reason_code'], 'document_too_large_for_turn')
 
         summaries = dashboard_analytics.build_dashboard_conversation_summaries([fact])
@@ -617,6 +628,8 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         self.assertEqual(doc_hour_bucket['metrics']['injected_documents_total'], 1)
         self.assertEqual(doc_hour_bucket['metrics']['not_injected_documents_total'], 1)
         self.assertEqual(doc_hour_bucket['metrics']['too_large_documents_total'], 1)
+        self.assertEqual(doc_hour_bucket['metrics']['ocr_applied_documents_total'], 1)
+        self.assertEqual(doc_hour_bucket['metrics']['ocr_engine_counts']['stirling-pdf'], 1)
 
         serialized = json.dumps({'fact': fact, 'summaries': summaries, 'buckets': buckets}, sort_keys=True)
         self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', serialized)

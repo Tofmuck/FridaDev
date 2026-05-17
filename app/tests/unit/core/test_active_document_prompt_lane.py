@@ -12,6 +12,7 @@ def _doc(
     text_content: str,
     *,
     created_at: str = "2026-05-16T12:00:00Z",
+    ocr_applied: bool = False,
 ) -> dict[str, object]:
     return {
         "document_id": document_id,
@@ -26,6 +27,10 @@ def _doc(
         "status": "active",
         "active": True,
         "created_at": created_at,
+        "ocr_applied": ocr_applied,
+        "ocr_engine": "stirling-pdf" if ocr_applied else "",
+        "ocr_languages": "fra+eng+deu" if ocr_applied else "",
+        "ocr_duration_ms": 1200 if ocr_applied else 0,
         "text_content": text_content,
     }
 
@@ -86,6 +91,21 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertLess(content.index("alpha.txt"), content.index("zeta.txt"))
         self.assertLess(content.index("First"), content.index("Second"))
         self.assertEqual(lane.injected_count, 2)
+
+    def test_ocr_metadata_survives_prompt_decision_without_changing_prompt_contract(self):
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [_doc("doc-ocr", "scan.pdf", "Texte OCRise complet.", ocr_applied=True)],
+            model="model",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertTrue(lane.decisions[0].ocr_applied)
+        self.assertEqual(lane.decisions[0].ocr_engine, "stirling-pdf")
+        self.assertEqual(lane.decisions[0].ocr_languages, "fra+eng+deu")
+        self.assertEqual(lane.decisions[0].ocr_duration_ms, 1200)
+        self.assertNotIn("stirling-pdf", lane.message["content"])
 
     def test_empty_document_gets_non_injected_signal(self):
         lane = prompt_lane.build_active_document_prompt_lane(

@@ -20,6 +20,12 @@ def _to_int(value: Any) -> int:
         return 0
 
 
+def _to_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+    return bool(value)
+
+
 def _sha256_12(value: Any) -> str:
     text = str(value or '').strip()
     if not text:
@@ -29,7 +35,7 @@ def _sha256_12(value: Any) -> str:
 
 def _metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
     document_id = _text(item.get('document_id'), max_chars=120)
-    return {
+    metadata = {
         'document_id': document_id,
         'document_ref': _sha256_12(document_id),
         'filename': _text(item.get('filename'), max_chars=500) or 'document',
@@ -45,11 +51,13 @@ def _metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
         'source': 'active_conversation_documents',
         'raw_content_included': False,
     }
+    metadata.update(_ocr_metadata_from_mapping(item))
+    return metadata
 
 
 def _metadata_from_decision(decision: Any) -> dict[str, Any]:
     document_id = _text(getattr(decision, 'document_id', ''), max_chars=120)
-    return {
+    metadata = {
         'document_id': document_id,
         'document_ref': _sha256_12(document_id),
         'filename': _text(getattr(decision, 'filename', ''), max_chars=500) or 'document',
@@ -62,6 +70,24 @@ def _metadata_from_decision(decision: Any) -> dict[str, Any]:
         'source': 'active_conversation_documents',
         'raw_content_included': False,
     }
+    metadata.update(
+        {
+            'ocr_applied': _to_bool(getattr(decision, 'ocr_applied', False)),
+            'ocr_engine': _text(getattr(decision, 'ocr_engine', ''), max_chars=120),
+            'ocr_languages': _text(getattr(decision, 'ocr_languages', ''), max_chars=120),
+            'ocr_duration_ms': _to_int(getattr(decision, 'ocr_duration_ms', 0)),
+        }
+    )
+    return metadata
+
+
+def _ocr_metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        'ocr_applied': _to_bool(item.get('ocr_applied')),
+        'ocr_engine': _text(item.get('ocr_engine'), max_chars=120),
+        'ocr_languages': _text(item.get('ocr_languages'), max_chars=120),
+        'ocr_duration_ms': _to_int(item.get('ocr_duration_ms')),
+    }
 
 
 def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
@@ -72,6 +98,9 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
     not_injected_count = 0
     too_large_count = 0
     empty_count = 0
+    ocr_applied_count = 0
+    ocr_duration_ms_total = 0
+    ocr_engine_counts: dict[str, int] = {}
 
     for decision in decisions:
         injected = bool(getattr(decision, 'injected', False))
@@ -85,6 +114,11 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
             }
         )
         documents.append(metadata)
+        if metadata.get('ocr_applied'):
+            ocr_applied_count += 1
+            ocr_duration_ms_total += _to_int(metadata.get('ocr_duration_ms'))
+            engine = _text(metadata.get('ocr_engine'), max_chars=120) or 'unknown'
+            ocr_engine_counts[engine] = int(ocr_engine_counts.get(engine, 0)) + 1
         if injected:
             injected_count += 1
             continue
@@ -108,6 +142,9 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
         'not_injected_count': not_injected_count,
         'too_large_count': too_large_count,
         'empty_count': empty_count,
+        'ocr_applied_count': ocr_applied_count,
+        'ocr_duration_ms_total': ocr_duration_ms_total,
+        'ocr_engine_counts': dict(sorted(ocr_engine_counts.items())),
         'reason_code_counts': dict(sorted(reason_counts.items())),
         'documents': documents,
         'future_biblio_included': False,

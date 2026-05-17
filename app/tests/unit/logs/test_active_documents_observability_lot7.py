@@ -34,6 +34,10 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
                     text_chars=31,
                     token_estimate=8,
                     text_sha256_12='hashtext1234',
+                    ocr_applied=True,
+                    ocr_engine='stirling-pdf',
+                    ocr_languages='fra+eng+deu',
+                    ocr_duration_ms=1200,
                     injected=True,
                     reason_code='',
                     text_content='RAW DOCUMENT TEXT MUST NOT LEAK',
@@ -62,6 +66,10 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertEqual(payload['injected_count'], 1)
         self.assertEqual(payload['not_injected_count'], 1)
         self.assertEqual(payload['too_large_count'], 1)
+        self.assertEqual(payload['ocr_applied_count'], 1)
+        self.assertEqual(payload['ocr_duration_ms_total'], 1200)
+        self.assertEqual(payload['ocr_engine_counts'], {'stirling-pdf': 1})
+        self.assertTrue(payload['documents'][0]['ocr_applied'])
         self.assertEqual(payload['reason_code_counts'], {'document_too_large_for_turn': 1})
         self.assertFalse(payload['future_biblio_included'])
         self.assertFalse(payload['raw_content_included'])
@@ -124,6 +132,10 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
                 'text_chars': 31,
                 'token_estimate': 8,
                 'text_sha256_12': 'hashtext1234',
+                'ocr_applied': True,
+                'ocr_engine': 'stirling-pdf',
+                'ocr_languages': 'fra+eng+deu',
+                'ocr_duration_ms': 1200,
                 'text_content': 'RAW DOCUMENT TEXT MUST NOT LEAK',
             },
         )
@@ -136,6 +148,10 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
                 'source_extension': '.bin',
                 'status': 'unsupported',
                 'reason_code': 'document_type_unsupported',
+                'ocr_applied': False,
+                'ocr_engine': 'stirling-pdf',
+                'ocr_languages': 'fra+eng+deu',
+                'ocr_duration_ms': 800,
                 'text': 'RAW BAD DOCUMENT TEXT MUST NOT LEAK',
             },
         )
@@ -152,6 +168,9 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
             'active_document_removed',
         ])
         self.assertIn('document_ref', events[0][1])
+        self.assertTrue(events[0][1]['ocr_applied'])
+        self.assertEqual(events[0][1]['ocr_engine'], 'stirling-pdf')
+        self.assertEqual(events[1][1]['ocr_duration_ms'], 800)
         self.assertEqual(events[2][1]['reason_code'], 'manual_remove')
         self.assertNotIn('turn_id', events[1][1])
         self.assertNotIn('turn_id', events[2][1])
