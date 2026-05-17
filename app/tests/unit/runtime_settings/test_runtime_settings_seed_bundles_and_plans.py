@@ -65,6 +65,13 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             'env_seed',
         )
 
+    def test_build_env_seed_bundle_uses_dedicated_web_reformulation_model_values(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('web_reformulation_model')
+        self.assertEqual(bundle.payload['model']['value'], config.WEB_REFORMULATION_MODEL)
+        self.assertEqual(bundle.payload['temperature']['value'], config.WEB_REFORMULATION_TEMPERATURE)
+        self.assertEqual(bundle.payload['max_tokens']['value'], config.WEB_REFORMULATION_MAX_TOKENS)
+        self.assertEqual(bundle.payload['timeout_s']['value'], config.WEB_REFORMULATION_TIMEOUT_S)
+
     def test_build_env_seed_bundle_marks_seed_default_fields_with_seed_default_origin(self) -> None:
         main_model_bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')
@@ -115,6 +122,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'embedding',
@@ -131,6 +139,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'database',
@@ -146,6 +155,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'database',
@@ -154,7 +164,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[4].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[5].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

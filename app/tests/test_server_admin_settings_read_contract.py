@@ -148,12 +148,12 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['summary_model']['readonly_info']['system_prompt']['value'],
         )
         self.assertEqual(
-            data['sections']['services']['readonly_info']['web_reformulation_max_tokens']['value'],
-            40,
+            data['sections']['web_reformulation_model']['readonly_info']['prompt_path']['value'],
+            runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH,
         )
         self.assertIn(
             'Nous sommes le {today}.',
-            data['sections']['services']['readonly_info']['web_reformulation_system_prompt']['value'],
+            data['sections']['web_reformulation_model']['readonly_info']['system_prompt']['value'],
         )
         self.assertEqual(data['sections']['main_model']['secret_sources']['api_key'], 'db_encrypted')
 
@@ -214,9 +214,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'main_model',
             'arbiter_model',
             'summary_model',
+            'web_reformulation_model',
             'stimmung_agent_model',
             'validation_agent_model',
-            'services',
             'identity_governance',
         ):
             readonly_info = data['sections'][section]['readonly_info']
@@ -225,7 +225,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 self.assertEqual(set(item.keys()), {'label', 'value', 'is_editable', 'source'})
                 self.assertFalse(item['is_editable'])
 
-        for section in ('embedding', 'database', 'resources'):
+        for section in ('embedding', 'database', 'services', 'resources'):
             self.assertEqual(data['sections'][section]['readonly_info'], {}, section)
 
     def test_get_admin_settings_main_model_returns_single_section_with_redacted_secrets(self) -> None:
@@ -364,6 +364,38 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'Tu es un assistant de synthèse.',
             data['readonly_info']['system_prompt']['value'],
         )
+
+    def test_get_admin_settings_web_reformulation_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'web_reformulation_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.2, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 40, 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/web-reformulation-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'web_reformulation_model')
+        self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['max_tokens']['value'], 40)
+        self.assertIn('Nous sommes le {today}.', data['readonly_info']['system_prompt']['value'])
+        self.assertIn('OPENROUTER_TITLE_WEB_REFORMULATION', data['readonly_info']['shared_transport']['value'])
 
     def test_get_admin_settings_stimmung_agent_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -560,15 +592,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'services')
         self.assertEqual(data['payload']['searxng_url']['value'], 'http://127.0.0.1:8092')
         self.assertEqual(data['payload']['crawl4ai_token'], {'is_secret': True, 'is_set': True, 'origin': 'db'})
-        self.assertEqual(data['readonly_info']['web_reformulation_max_tokens']['value'], 40)
-        self.assertIn(
-            'Nous sommes le {today}.',
-            data['readonly_info']['web_reformulation_system_prompt']['value'],
-        )
-        self.assertIn(
-            'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
-            data['readonly_info']['web_reformulation_system_prompt']['value'],
-        )
+        self.assertEqual(data['readonly_info'], {})
         self.assertEqual(data['secret_sources']['crawl4ai_token'], 'db_encrypted')
 
     def test_get_admin_settings_resources_returns_single_section(self) -> None:

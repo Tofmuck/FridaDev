@@ -10,6 +10,7 @@ _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'main-model': 'main_model',
     'arbiter-model': 'arbiter_model',
     'summary-model': 'summary_model',
+    'web-reformulation-model': 'web_reformulation_model',
     'stimmung-agent-model': 'stimmung_agent_model',
     'validation-agent-model': 'validation_agent_model',
     'embedding': 'embedding',
@@ -80,6 +81,10 @@ def api_admin_settings_summary_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
 
 
+def api_admin_settings_web_reformulation_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['web-reformulation-model'])
+
+
 def api_admin_settings_stimmung_agent_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
 
@@ -124,6 +129,10 @@ def api_admin_settings_summary_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
 
 
+def api_admin_settings_web_reformulation_model_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['web-reformulation-model'])
+
+
 def api_admin_settings_stimmung_agent_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['stimmung-agent-model'])
 
@@ -150,6 +159,10 @@ def api_admin_settings_arbiter_model_validate():
 
 def api_admin_settings_summary_model_validate():
     return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['summary-model'])
+
+
+def api_admin_settings_web_reformulation_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['web-reformulation-model'])
 
 
 def api_admin_settings_stimmung_agent_model_validate():
@@ -195,6 +208,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/summary-model',
         'api_admin_settings_summary_model_get',
         api_admin_settings_summary_model_get,
+        ('GET',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/web-reformulation-model',
+        'api_admin_settings_web_reformulation_model_get',
+        api_admin_settings_web_reformulation_model_get,
         ('GET',),
     ),
     (
@@ -264,6 +283,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         ('PATCH',),
     ),
     (
+        f'{_ADMIN_SETTINGS_PREFIX}/web-reformulation-model',
+        'api_admin_settings_web_reformulation_model_patch',
+        api_admin_settings_web_reformulation_model_patch,
+        ('PATCH',),
+    ),
+    (
         f'{_ADMIN_SETTINGS_PREFIX}/stimmung-agent-model',
         'api_admin_settings_stimmung_agent_model_patch',
         api_admin_settings_stimmung_agent_model_patch,
@@ -303,6 +328,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/summary-model/validate',
         'api_admin_settings_summary_model_validate',
         api_admin_settings_summary_model_validate,
+        ('POST',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/web-reformulation-model/validate',
+        'api_admin_settings_web_reformulation_model_validate',
+        api_admin_settings_web_reformulation_model_validate,
         ('POST',),
     ),
     (

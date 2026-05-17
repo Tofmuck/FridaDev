@@ -41,6 +41,12 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
                 },
                 "arbiter_model": {"section": "arbiter_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
                 "summary_model": {"section": "summary_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
+                "web_reformulation_model": {
+                    "section": "web_reformulation_model",
+                    "payload": {},
+                    "source": "env",
+                    "source_reason": "empty_table",
+                },
                 "stimmung_agent_model": {
                     "section": "stimmung_agent_model",
                     "payload": {},
@@ -111,6 +117,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
             },
             "arbiter_model": {},
             "summary_model": {},
+            "web_reformulation_model": {},
             "embedding": {
                 "endpoint": {"value": "https://embed.example", "origin": "db"},
                 "token": {"is_secret": True, "is_set": True, "origin": "db"},
@@ -241,7 +248,7 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         )
         self.assertIn("adminStimmungAgentModelFields", details["admin_field_containers_checked"])
         self.assertIn("adminValidationAgentModelFields", details["admin_field_containers_checked"])
-        self.assertIn('target="_blank"', details["index_hermeneutic_markers"])
+        self.assertNotIn('target="_blank"', details["index_hermeneutic_markers"])
         self.assertIn('href="/dashboard"', details["index_markers"])
         self.assertIn('href="/identity"', details["index_markers"])
         self.assertIn('href="/memory-admin"', details["index_markers"])

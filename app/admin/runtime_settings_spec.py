@@ -8,6 +8,7 @@ SECTION_NAMES: tuple[str, ...] = (
     'main_model',
     'arbiter_model',
     'summary_model',
+    'web_reformulation_model',
     'stimmung_agent_model',
     'validation_agent_model',
     'embedding',
@@ -108,6 +109,15 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('model', 'text', env_var='SUMMARY_MODEL'),
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.3),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
+        ),
+    ),
+    'web_reformulation_model': SectionSpec(
+        name='web_reformulation_model',
+        fields=(
+            FieldSpec('model', 'text', env_var='WEB_REFORMULATION_MODEL'),
+            FieldSpec('temperature', 'float', env_var='WEB_REFORMULATION_TEMPERATURE'),
+            FieldSpec('max_tokens', 'int', env_var='WEB_REFORMULATION_MAX_TOKENS'),
+            FieldSpec('timeout_s', 'int', env_var='WEB_REFORMULATION_TIMEOUT_S'),
         ),
     ),
     'stimmung_agent_model': SectionSpec(

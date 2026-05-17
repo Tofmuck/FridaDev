@@ -10,8 +10,8 @@ Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne
 
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
-- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
-- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
+- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
+- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
 - `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
@@ -37,7 +37,7 @@ Colonnes cibles :
 
 Contraintes cibles :
 
-- `section` appartient strictement a : `main_model`, `arbiter_model`, `summary_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
+- `section` appartient strictement a : `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
 - une seule ligne par section
 
 ## Table `runtime_settings_history`
@@ -150,6 +150,22 @@ Notes:
 | `model` | `text` | non | `SUMMARY_MODEL` |
 | `temperature` | `float` | non | hardcode `app/memory/summarizer.py` = `0.3` |
 | `top_p` | `float` | non | hardcode `app/memory/summarizer.py` = `1.0` |
+
+### `web_reformulation_model`
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `model` | `text` | non | `WEB_REFORMULATION_MODEL`, defaut `openai/gpt-5.4-mini` |
+| `temperature` | `float` | non | `WEB_REFORMULATION_TEMPERATURE`, defaut `0.2` |
+| `max_tokens` | `int` | non | `WEB_REFORMULATION_MAX_TOKENS`, defaut `40` |
+| `timeout_s` | `int` | non | `WEB_REFORMULATION_TIMEOUT_S`, defaut `10` |
+
+Convention explicite:
+
+- cette section pilote uniquement la micro-tache `web_search.reformulate()`;
+- elle ne modifie ni le modele principal du chat, ni le prompt de reformulation web;
+- elle partage le transport OpenRouter de `main_model` (`base_url` et `api_key`);
+- les referer/title `web_reformulation` restent pour ce lot des constantes config-only (`OPENROUTER_REFERER_WEB_REFORMULATION`, `OPENROUTER_TITLE_WEB_REFORMULATION`) consommees par `llm_client`.
 
 ### `stimmung_agent_model`
 

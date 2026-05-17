@@ -179,23 +179,23 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertIn('final_output_regime', readonly_info['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', readonly_info['validated_output_contract']['value'])
 
-    def test_get_section_readonly_info_services_exposes_web_reformulation_prompt(self) -> None:
-        readonly_info = runtime_settings.get_section_readonly_info('services')
+    def test_get_section_readonly_info_web_reformulation_model_exposes_prompt_and_transport(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('web_reformulation_model')
 
-        self.assertEqual(readonly_info['web_reformulation_max_tokens']['value'], 40)
-        self.assertFalse(readonly_info['web_reformulation_max_tokens']['is_editable'])
-        self.assertEqual(readonly_info['web_reformulation_max_tokens']['source'], 'prompt_file')
+        self.assertEqual(readonly_info['prompt_path']['value'], runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH)
+        self.assertIn('main_model', readonly_info['shared_transport']['value'])
+        self.assertIn('OPENROUTER_TITLE_WEB_REFORMULATION', readonly_info['shared_transport']['value'])
         self.assertEqual(
-            readonly_info['web_reformulation_system_prompt']['label'],
+            readonly_info['system_prompt']['label'],
             'web_reformulation_system_prompt',
         )
-        self.assertEqual(readonly_info['web_reformulation_system_prompt']['source'], 'prompt_file')
-        self.assertIn('Nous sommes le {today}.', readonly_info['web_reformulation_system_prompt']['value'])
+        self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
+        self.assertIn('Nous sommes le {today}.', readonly_info['system_prompt']['value'])
         self.assertIn(
             'Tu es un assistant qui transforme un message en requête de recherche web courte et efficace.',
-            readonly_info['web_reformulation_system_prompt']['value'],
+            readonly_info['system_prompt']['value'],
         )
-        self.assertIn('Maximum 8 mots.', readonly_info['web_reformulation_system_prompt']['value'])
+        self.assertIn('Maximum 8 mots.', readonly_info['system_prompt']['value'])
 
     def test_get_section_readonly_info_identity_governance_points_to_hermeneutic_admin_surface(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_governance')
@@ -214,14 +214,15 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'main_model',
             'arbiter_model',
             'summary_model',
+            'web_reformulation_model',
             'stimmung_agent_model',
             'validation_agent_model',
-            'services',
             'identity_governance',
         }
         expected_empty = {
             'embedding',
             'database',
+            'services',
             'resources',
         }
 

@@ -35,6 +35,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'main_model',
                 'arbiter_model',
                 'summary_model',
+                'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'embedding',
@@ -118,6 +119,26 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertFalse(spec.is_secret)
         self.assertFalse(spec.seed_from_env)
         self.assertEqual(spec.seed_default, 8192)
+
+    def test_web_reformulation_model_has_dedicated_runtime_section(self) -> None:
+        spec = runtime_settings.get_section_spec('web_reformulation_model')
+        self.assertEqual(
+            spec.field_names(),
+            ('model', 'temperature', 'max_tokens', 'timeout_s'),
+        )
+        self.assertEqual(runtime_settings.get_field_spec('web_reformulation_model', 'model').env_var, 'WEB_REFORMULATION_MODEL')
+        self.assertEqual(
+            runtime_settings.get_field_spec('web_reformulation_model', 'temperature').env_var,
+            'WEB_REFORMULATION_TEMPERATURE',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('web_reformulation_model', 'max_tokens').env_var,
+            'WEB_REFORMULATION_MAX_TOKENS',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('web_reformulation_model', 'timeout_s').env_var,
+            'WEB_REFORMULATION_TIMEOUT_S',
+        )
 
     def test_main_model_includes_identity_extractor_title_field(self) -> None:
         spec = runtime_settings.get_field_spec('main_model', 'title_identity_extractor')

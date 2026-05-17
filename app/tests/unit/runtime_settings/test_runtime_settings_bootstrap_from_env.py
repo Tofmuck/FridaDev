@@ -92,6 +92,7 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'summary_model',
+                'web_reformulation_model',
                 'stimmung_agent_model',
                 'validation_agent_model',
                 'database',
@@ -108,15 +109,16 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
             for query, params in zip(observed['queries'], observed['params'])
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
-        self.assertEqual(len(runtime_payloads), 8)
+        self.assertEqual(len(runtime_payloads), 9)
         self.assertEqual(runtime_payloads[0]['model']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[0]['timeout_s']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[2]['primary_model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[2]['model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[3]['primary_model']['origin'], 'db_seed')
         self.assertEqual(runtime_payloads[-1]['CONTEXT_HINTS_MAX_ITEMS']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[3]['fallback_model']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[4]['backend']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[5]['searxng_url']['origin'], 'db_seed')
-        self.assertEqual(runtime_payloads[6]['llm_identity_path']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[4]['fallback_model']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[5]['backend']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[6]['searxng_url']['origin'], 'db_seed')
+        self.assertEqual(runtime_payloads[7]['llm_identity_path']['origin'], 'db_seed')
 
     def test_bootstrap_runtime_settings_from_env_does_not_overwrite_existing_sections(self) -> None:
         observed = {

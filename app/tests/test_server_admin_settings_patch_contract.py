@@ -290,6 +290,14 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         )
         self.assertIn('top_p=2.0', data['error'])
 
+    def test_patch_admin_settings_web_reformulation_model_rejects_nonpositive_max_tokens_before_update(self) -> None:
+        data = self._assert_patch_rejected_before_update(
+            '/api/admin/settings/web-reformulation-model',
+            {'max_tokens': {'value': 0}},
+            'max_tokens',
+        )
+        self.assertIn('max_tokens=0', data['error'])
+
     def test_patch_admin_settings_embedding_rejects_nonpositive_dimensions_before_update(self) -> None:
         data = self._assert_patch_rejected_before_update(
             '/api/admin/settings/embedding',
@@ -481,6 +489,62 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertIn('Cadre de réponse', data['readonly_info']['system_prompt']['value'])
         self.assertIn("Contrat d'interpretation du prompt augmente", data['readonly_info']['hermeneutical_prompt']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
+
+    def test_patch_admin_settings_web_reformulation_model_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'admin_ui'},
+                    'temperature': {'value': 0.2, 'is_secret': False, 'origin': 'admin_ui'},
+                    'max_tokens': {'value': 40, 'is_secret': False, 'origin': 'admin_ui'},
+                    'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/web-reformulation-model',
+                json={
+                    'updated_by': 'phase-web-reformulation-admin',
+                    'payload': {
+                        'model': {'value': 'openai/gpt-5.4-mini'},
+                        'temperature': {'value': 0.2},
+                        'max_tokens': {'value': 40},
+                        'timeout_s': {'value': 10},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'web_reformulation_model')
+        self.assertEqual(observed['updated_by'], 'phase-web-reformulation-admin')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'model': {'value': 'openai/gpt-5.4-mini'},
+                'temperature': {'value': 0.2},
+                'max_tokens': {'value': 40},
+                'timeout_s': {'value': 10},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'web_reformulation_model')
+        self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['max_tokens']['value'], 40)
+        self.assertIn('Nous sommes le {today}.', data['readonly_info']['system_prompt']['value'])
 
     def test_patch_admin_settings_main_model_accepts_secret_replace_value(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}

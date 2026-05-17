@@ -178,6 +178,10 @@ def _seed_value(section: str, field: str) -> Any:
         ('summary_model', 'model'): config.SUMMARY_MODEL,
         ('summary_model', 'temperature'): 0.3,
         ('summary_model', 'top_p'): 1.0,
+        ('web_reformulation_model', 'model'): config.WEB_REFORMULATION_MODEL,
+        ('web_reformulation_model', 'temperature'): config.WEB_REFORMULATION_TEMPERATURE,
+        ('web_reformulation_model', 'max_tokens'): config.WEB_REFORMULATION_MAX_TOKENS,
+        ('web_reformulation_model', 'timeout_s'): config.WEB_REFORMULATION_TIMEOUT_S,
         ('embedding', 'endpoint'): config.EMBED_BASE_URL,
         ('embedding', 'model'): 'intfloat/multilingual-e5-small',
         ('embedding', 'token'): config.EMBED_TOKEN,
@@ -432,6 +436,13 @@ def get_arbiter_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict
 
 def get_summary_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('summary_model', fetcher=fetcher)
+
+
+def get_web_reformulation_model_settings(
+    *,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    return get_runtime_section('web_reformulation_model', fetcher=fetcher)
 
 
 def get_embedding_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:

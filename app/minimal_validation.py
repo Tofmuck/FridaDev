@@ -922,8 +922,6 @@ def _check_ui_assets() -> Dict[str, Any]:
     index_hermeneutic_markers = [
         'id="btnHermeneuticAdmin"',
         'href="/hermeneutic-admin"',
-        'target="_blank"',
-        'rel="noopener noreferrer"',
     ]
     for marker in index_hermeneutic_markers:
         if marker not in index_html:

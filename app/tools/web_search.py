@@ -20,6 +20,7 @@ from core.web_read_state import (
     READ_STATE_PAGE_READ,
 )
 from observability import chat_turn_logger
+from tools import web_reformulation_settings
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
@@ -37,11 +38,6 @@ def _sha256_12(value: Any) -> str:
 
 def _safe_len(value: Any) -> int:
     return len(str(value or ''))
-
-
-def _runtime_main_model_name() -> str:
-    view = runtime_settings.get_main_model_settings()
-    return str(view.payload['model']['value'])
 
 
 def _runtime_services_view() -> runtime_settings.RuntimeSectionView:
@@ -642,10 +638,11 @@ def reformulate(
 
         today = datetime.now(timezone.utc).strftime("%d %B %Y")
         system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
-        model = _runtime_main_model_name()
-        max_tokens = 40
-        temperature = 0.2
-        timeout_s = 10
+        reformulation_settings = web_reformulation_settings.get_runtime_settings()
+        model = reformulation_settings.model
+        max_tokens = reformulation_settings.max_tokens
+        temperature = reformulation_settings.temperature
+        timeout_s = reformulation_settings.timeout_s
         payload = {
             "model": model,
             "messages": [

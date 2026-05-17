@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
 
 from observability import chat_turn_logger
 from observability import log_store
+from admin import runtime_settings
 from tools import web_search
 
 
@@ -120,7 +121,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
     def test_web_reformulation_prompt_prepared_is_content_free(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
-        original_runtime_main_model_name = web_search._runtime_main_model_name
+        original_runtime_settings_getter = (
+            web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings
+        )
         original_prompt_getter = web_search.prompt_loader.get_web_reformulation_prompt
 
         def fake_insert(event: dict[str, Any], **_kwargs: Any) -> bool:
@@ -156,7 +159,22 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
         )
 
         log_store.insert_chat_log_event = fake_insert
-        web_search._runtime_main_model_name = lambda: 'openai/gpt-5.4-mini'
+        web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings = (
+            lambda: runtime_settings.RuntimeSectionView(
+                section='web_reformulation_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'web_reformulation_model',
+                    {
+                        'model': {'value': 'openai/gpt-5.4-mini', 'origin': 'db'},
+                        'temperature': {'value': 0.2, 'origin': 'db'},
+                        'max_tokens': {'value': 40, 'origin': 'db'},
+                        'timeout_s': {'value': 10, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+        )
         web_search.prompt_loader.get_web_reformulation_prompt = lambda: 'WEB SYSTEM {today}'
         token = chat_turn_logger.begin_turn(
             conversation_id='conv-web-reformulation-prepared',
@@ -172,7 +190,9 @@ class ChatTurnLoggerWebSearchTests(unittest.TestCase):
             chat_turn_logger.end_turn(token, final_status='ok')
         finally:
             log_store.insert_chat_log_event = original_insert
-            web_search._runtime_main_model_name = original_runtime_main_model_name
+            web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings = (
+                original_runtime_settings_getter
+            )
             web_search.prompt_loader.get_web_reformulation_prompt = original_prompt_getter
 
         self.assertEqual(query, 'query compact')

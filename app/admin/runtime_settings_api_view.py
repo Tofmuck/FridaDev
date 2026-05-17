@@ -216,6 +216,37 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'prompt_file',
             },
         }
+    if section == 'web_reformulation_model':
+        return {
+            'prompt_path': {
+                'label': 'WEB_REFORMULATION_PROMPT_PATH',
+                'value': str(config.WEB_REFORMULATION_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'prompt_loader': {
+                'label': 'WEB_REFORMULATION_PROMPT_RUNTIME_SOURCE',
+                'value': 'core.prompt_loader.get_web_reformulation_prompt()',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'system_prompt': {
+                'label': 'web_reformulation_system_prompt',
+                'value': prompt_loader.get_web_reformulation_prompt(),
+                'is_editable': False,
+                'source': 'prompt_file',
+            },
+            'shared_transport': {
+                'label': 'SHARED_OPENROUTER_TRANSPORT',
+                'value': (
+                    'Transport OpenRouter partage via main_model: base_url + api_key. '
+                    'Referer/title web restent config-only via '
+                    'OPENROUTER_REFERER_WEB_REFORMULATION / OPENROUTER_TITLE_WEB_REFORMULATION.'
+                ),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+        }
     if section == 'stimmung_agent_model':
         return {
             'prompt_path': {
@@ -313,20 +344,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
         }
     if section == 'services':
-        return {
-            'web_reformulation_max_tokens': {
-                'label': 'web_reformulation_max_tokens',
-                'value': 40,
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
-            'web_reformulation_system_prompt': {
-                'label': 'web_reformulation_system_prompt',
-                'value': prompt_loader.get_web_reformulation_prompt(),
-                'is_editable': False,
-                'source': 'prompt_file',
-            },
-        }
+        return {}
     if section == 'identity_governance':
         return {
             'surface_route': {

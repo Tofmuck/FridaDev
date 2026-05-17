@@ -112,6 +112,12 @@ OR_TITLE_VALIDATION_AGENT = os.environ.get(
 ).strip() or f'{OR_TITLE_BASE}/ValidationAgent'
 OR_TITLE = OR_TITLE_LLM
 
+# Web reformulation model
+WEB_REFORMULATION_MODEL = os.environ.get('WEB_REFORMULATION_MODEL', 'openai/gpt-5.4-mini').strip() or 'openai/gpt-5.4-mini'
+WEB_REFORMULATION_TEMPERATURE = _env_float('WEB_REFORMULATION_TEMPERATURE', 0.2)
+WEB_REFORMULATION_MAX_TOKENS = _env_int('WEB_REFORMULATION_MAX_TOKENS', 40)
+WEB_REFORMULATION_TIMEOUT_S = _env_int('WEB_REFORMULATION_TIMEOUT_S', 10)
+
 # SearXNG
 SEARXNG_URL = os.environ.get('SEARXNG_URL', 'http://127.0.0.1:8092')
 SEARXNG_RESULTS = _env_int('SEARXNG_RESULTS', 5)
