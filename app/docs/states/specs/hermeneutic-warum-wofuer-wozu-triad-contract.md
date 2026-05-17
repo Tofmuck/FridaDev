@@ -1,10 +1,10 @@
-# Hermeneutic - triade Warum / Wofür / Wozu - brouillon TODO
+# Hermeneutic - triade Warum / Wofür / Wozu - contrat doctrinal
 
-Statut: brouillon de cadrage actif
-Classement: `app/docs/todo-todo/memory/`
+Statut: reference doctrinale active
+Classement: `app/docs/states/specs/`
 Portee: cadrage d'une discipline hermeneutique de lecture du texte par la triade `Warum / Wofür / Wozu`
-Etat runtime vise: aucun patch runtime dans ce document
-Nature: hypothese de chantier futur, pas encore roadmap executable
+Etat runtime actuel: V1 prompt-first livree dans le `validation_agent` le 2026-05-17
+Nature: doctrine de lecture, pas roadmap executable
 
 References liees:
 - `app/docs/states/specs/response-arbiter-power-contract.md`
@@ -14,8 +14,15 @@ References liees:
 - `app/core/chat_prompt_context.py`
 - `app/prompts/validation_agent.txt`
 - `app/prompts/main_hermeneutical.txt`
+- `app/docs/todo-done/memory/hermeneutic-warum-wofuer-wozu-prompt-first-todo.md`
 
-## 1. Question prealable
+Note de rangement 2026-05-17:
+
+- le mini-lot prompt-first est livre et archive dans `todo-done/memory/`;
+- ce document sort de `todo-todo` parce qu'il ne porte plus un travail actif;
+- il reste utile comme source doctrinale distincte: il conserve la definition de la triade, ses dangers propres, la frontiere anti-psychologisation et les limites de tout prolongement futur.
+
+## 1. Requalification documentaire
 
 Question:
 
@@ -28,7 +35,7 @@ Verdict:
 - le sujet est une discipline de lecture du texte selon la triade `Warum / Wofür / Wozu`;
 - le meilleur geste documentaire est donc de remplacer l'ancien brouillon par celui-ci, plutot que de conserver deux documents concurrents.
 
-Ce document reprend l'emplacement actif du brouillon precedent, mais en deplace le centre de gravite.
+Ce document conserve le cadrage conceptuel du brouillon precedent, mais n'est plus range comme travail actif.
 
 ## 2. Requalification du brouillon precedent
 
@@ -51,9 +58,9 @@ La correction conceptuelle est la suivante:
 
 > Il ne s'agit pas d'extraire le "centre" du tour comme un objet. Il s'agit de faire travailler la lecture hermeneutique du texte dans la tension des trois pourquoi: Warum, Wofür, Wozu.
 
-## 3. Objet reel du futur chantier
+## 3. Objet reel de la discipline
 
-Le futur chantier, s'il s'ouvre, ne doit pas porter d'abord sur une structure de sortie.
+Tout prolongement futur ne doit pas porter d'abord sur une structure de sortie.
 
 Il doit porter sur une discipline de lecture:
 
@@ -174,7 +181,7 @@ Tenus ensemble, ils se corrigent mutuellement:
 - `Wofür` empeche la lecture de se croire sans effet ni usage;
 - `Wozu` empeche `Warum` et `Wofür` de reduire le texte a son origine ou a son utilite.
 
-Le futur chantier, s'il existe, devra donc porter sur cette tension reciproque.
+Tout prolongement futur devra donc porter sur cette tension reciproque.
 
 Il ne devra pas designer un vainqueur parmi les trois pourquoi.
 
@@ -250,28 +257,31 @@ La triade ne doit pas devenir:
 
 Elle doit rester, si elle est retenue, une discipline de lecture.
 
-## 9. Forme de travail possible
+## 9. Forme livree et prolongements possibles
 
-Hypothese legere a explorer plus tard:
+V1 livree:
 
-1. documenter une spec courte de lecture triadique;
-2. verifier si le prompt du `validation_agent` peut etre ajuste sans changer l'architecture;
-3. tester sur un petit corpus de tours ou Frida respecte la posture mais manque le coeur du texte;
-4. n'envisager une projection dans `[JUGEMENT HERMENEUTIQUE]` que si elle apporte une clarte reelle;
-5. ne produire un champ runtime que si la discipline de lecture ne suffit pas.
+- la discipline triadique est inscrite dans le prompt du `validation_agent`;
+- un rappel runtime compact existe dans la tache provider;
+- le schema de sortie reste inchange;
+- aucune projection directe n'est faite dans `[JUGEMENT HERMENEUTIQUE]`;
+- aucun log, read-model, dashboard, nouvel agent ou nouvel objet JSON n'a ete ouvert.
 
-Cette sequence preserve l'intuition qu'une mise en oeuvre pourrait rester relativement legere.
+Prolongements possibles seulement si l'observation en dialogue les justifie:
 
-Elle inverse la tentation du brouillon precedent:
+- tester sur un petit corpus de tours ou Frida respecte la posture mais manque le coeur du texte;
+- n'envisager une projection dans `[JUGEMENT HERMENEUTIQUE]` que si elle apporte une clarte reelle;
+- ne produire un champ runtime que si la discipline de lecture ne suffit pas.
+
+La sequence reste:
 
 - d'abord le geste de lecture;
-- ensuite seulement un eventuel artefact.
+- ensuite seulement un eventuel artefact, s'il est prouve utile.
 
-## 10. Questions a trancher avant tout chantier executable
+## 10. Questions a trancher avant tout prolongement
 
-Avant tout lot runtime, il faudra repondre:
+La V1 prompt-first a tranche que la triade vit d'abord dans le `validation_agent`, sans champ de sortie. Avant tout prolongement, il faudra encore repondre:
 
-- la triade doit-elle vivre seulement dans le prompt du `validation_agent` ?
 - doit-elle rester implicite comme discipline de lecture, ou produire une trace compacte ?
 - comment verifier qu'elle aide sans transformer la reponse en commentaire hermeneutique ?
 - comment empecher `Warum` de psychologiser ?
@@ -282,18 +292,19 @@ Avant tout lot runtime, il faudra repondre:
 
 ## 11. Condition de non-prolongation
 
-Ce brouillon doit rester ferme sur son scope.
+Cette doctrine ne lance aucun travail actif par elle-meme.
 
-Il ne lance pas:
+Le mini-lot prompt-first est clos. Ne pas prolonger par inertie vers:
 
-- le runtime;
-- un prompt patch;
-- une spec normative;
 - une evaluation hermeneutique apres coup;
 - une refonte du `validation_agent`;
-- une nouvelle doctrine de memoire.
+- une nouvelle doctrine de memoire;
+- une trace structuree triadique;
+- une projection dans `[JUGEMENT HERMENEUTIQUE]`;
+- un dashboard;
+- un nouvel agent.
 
-Si un futur chantier s'ouvre, son premier lot devra etre documentaire et devra prouver:
+Si un futur chantier s'ouvre, il devra avoir un TODO separe et prouver:
 
 - que la triade porte bien sur le texte;
 - que les trois questions sont maintenues ensemble;
@@ -301,14 +312,14 @@ Si un futur chantier s'ouvre, son premier lot devra etre documentaire et devra p
 - que l'utilisateur n'est pas psychologise;
 - que l'architecture existante suffit peut-etre a porter le geste sans nouvel agent.
 
-## 12. Statut final de ce brouillon
+## 12. Statut final de cette doctrine
 
-Ce document remplace le brouillon precedent de "centre interpretatif du tour".
+Ce document remplace le brouillon precedent de "centre interpretatif du tour" et reste hors `todo-todo`.
 
 La raison du remplacement est conceptuelle:
 
 - l'ancien brouillon cherchait encore une forme d'artefact compact;
 - le cadrage actuel cherche une discipline triadique de lecture du texte;
-- l'emplacement probable reste le sillage du `validation_agent`, mais la question runtime est volontairement suspendue.
+- la V1 runtime reste volontairement limitee au prompt du `validation_agent`.
 
-Le chantier ne doit pas etre ouvert comme implementation tant que cette discipline n'a pas ete stabilisee comme doctrine de lecture.
+Le document reste une reference doctrinale pour comprendre la discipline triadique livree et pour borner tout prolongement futur.

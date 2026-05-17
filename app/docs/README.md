@@ -29,6 +29,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
+- Discipline triadique `Warum / Wofür / Wozu` du `validation_agent`: `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`
 
 ### Archives utiles
 
@@ -131,12 +132,10 @@ Archives utiles:
 - `todo-done/refactors/hermeneutic-convergence-node-todo.md`
 - `todo-done/refactors/hermeneutic-suspension-auto-web-todo.md`
 - `todo-done/notes/hermeneutic-dashboard-mode-since-todo.md`
+- `todo-done/memory/hermeneutic-warum-wofuer-wozu-prompt-first-todo.md`
 
-Brouillons actifs:
-- `todo-todo/memory/hermeneutic-warum-wofuer-wozu-triad-todo.md`: cadrage d'une discipline de lecture hermeneutique par la triade `Warum / Wofür / Wozu`, a garder dans le sillage du `validation_agent` sans nouvel agent ni nouvelle memoire.
-
-Mini-chantiers actifs:
-- `todo-todo/memory/hermeneutic-warum-wofuer-wozu-prompt-first-todo.md`: mini-lot prompt-first pour inscrire la triade dans le `validation_agent`, sans nouveau JSON ni projection directe vers `[JUGEMENT HERMENEUTIQUE]`.
+Doctrine livree:
+- `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`: discipline de lecture hermeneutique par la triade `Warum / Wofür / Wozu`, livree en V1 dans le `validation_agent` sans nouvel agent, nouveau JSON ni projection directe vers `[JUGEMENT HERMENEUTIQUE]`.
 
 ### Install / operations
 
