@@ -28,6 +28,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- Extension OCR des documents actifs de conversation: `todo-todo/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
 - Discipline triadique `Warum / Wofür / Wozu` du `validation_agent`: `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`
@@ -76,10 +77,13 @@ Lire d'abord:
 - `states/specs/active-conversation-documents-contract.md`
 - `todo-done/product/active-conversation-documents-audit-plan.md`
 - `todo-done/product/active-conversation-documents-todo.md`
+- `todo-todo/product/active-conversation-documents-ocr-todo.md` pour le mini-chantier actif OCR des PDF scannes.
 
 But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels a une conversation active, sans OCR, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
 
 Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la future Biblio persistante.
+
+Extension active: l'OCR bornee des PDF scannes est suivie separement dans `todo-todo/product/active-conversation-documents-ocr-todo.md`; elle prolonge `active_document` sans ouvrir Biblio.
 
 ### Biblio native / Frida Catalogue
 

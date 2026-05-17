@@ -12,6 +12,7 @@ Primary current-state references:
 - Documentation hub: `app/docs/README.md`
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
+- Active conversation documents OCR roadmap: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Memory Admin contract: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Log module contract: `app/docs/states/specs/log-module-contract.md`
@@ -102,6 +103,7 @@ Frontend rehydration and operator observability
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents roadmap: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
+- Active conversation documents OCR roadmap: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
 - Active Biblio native / Frida Catalogue roadmap: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Archived long-term dashboard roadmap: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
@@ -171,6 +173,7 @@ References principales pour l'etat courant:
 - Hub documentaire: `app/docs/README.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
+- Roadmap active OCR des documents actifs: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Contrat Memory Admin: `app/docs/states/specs/memory-admin-surface-contract.md`
 - Contrat du module logs: `app/docs/states/specs/log-module-contract.md`
@@ -261,6 +264,7 @@ Rehydratation frontend et observabilite operateur
 - Contrat documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
+- Roadmap active OCR des documents actifs: `app/docs/todo-todo/product/active-conversation-documents-ocr-todo.md`
 - Roadmap active Biblio native / Frida Catalogue: `app/docs/todo-todo/product/frida-biblio-native-catalogue-todo.md`
 - Contrat dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
 - Roadmap archivee dashboard long terme: `app/docs/todo-done/admin/dashboard-long-term-observability-todo.md`
