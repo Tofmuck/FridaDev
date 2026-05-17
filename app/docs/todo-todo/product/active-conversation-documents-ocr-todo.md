@@ -253,14 +253,21 @@ Note de livraison Lot 5:
 
 ### Lot 6 - Tests et preuves bout-en-bout
 
-- [ ] Tester PDF scanne non sensible -> OCR -> activation.
-- [ ] Tester PDF deja textuel -> pas d'OCR.
-- [ ] Tester PDF scanne trop gros / trop long -> non actif avec motif.
-- [ ] Tester OCR timeout / erreur Stirling -> non actif avec motif.
-- [ ] Tester OCR vide -> non actif avec motif.
-- [ ] Tester que le document OCRise actif est ensuite injecte entier ou exclu entier par tour comme les autres `active_document`.
-- [ ] Tester non-contamination Memory/RAG/Identity/Summary.
-- [ ] Tester absence de n8n et de doc-pipeline dans le chemin nominal.
+- [x] Tester PDF scanne non sensible -> OCR -> activation.
+- [x] Tester PDF deja textuel -> pas d'OCR.
+- [x] Tester PDF scanne trop gros / trop long -> non actif avec motif.
+- [x] Tester OCR timeout / erreur Stirling -> non actif avec motif.
+- [x] Tester OCR vide -> non actif avec motif.
+- [x] Tester que le document OCRise actif est ensuite injecte entier ou exclu entier par tour comme les autres `active_document`.
+- [x] Tester non-contamination Memory/RAG/Identity/Summary.
+- [x] Tester absence de n8n et de doc-pipeline dans le chemin nominal.
+
+Note de livraison Lot 6:
+
+- les tests automatises bout-en-bout utilisent des doubles explicites pour l'extracteur et le moteur OCR afin de rester rapides et deterministes;
+- une preuve live separee valide le chemin reel `ocr_required -> Stirling -> PDF OCRise -> extracteur FridaDev -> complete` avec un PDF image-only non sensible genere temporairement;
+- la preuve live a precise que le client doit traduire `fra+eng+deu` en options HTTP `languages` repetees pour Stirling;
+- les artefacts de preuve live sont temporaires et supprimes.
 
 ### Lot 7 - Documentation de cloture
 
@@ -281,6 +288,7 @@ Le chantier pourra etre clos seulement si:
 - l'UI raconte clairement succes/echec/refus sans contenu brut;
 - l'observabilite prouve l'OCR sans texte OCR brut;
 - le document OCRise respecte la regle entier ou absent;
+- les preuves bout-en-bout distinguent les tests par doubles du test live manuel avec Stirling reel;
 - Memory/RAG/Identity/Summary restent non contamines;
 - Biblio, n8n et doc-pipeline restent hors chemin nominal.
 

@@ -137,7 +137,7 @@ def ocr_pdf_with_stirling(
         response = requests_module.post(
             settings.url,
             files={"fileInput": (_safe_filename(filename), data, "application/pdf")},
-            data={"languages": settings.languages},
+            data=_stirling_form_data(settings.languages),
             timeout=settings.timeout_s,
         )
     except _timeout_exception(requests_module):
@@ -260,6 +260,19 @@ def _positive_int(value: Any, default: int) -> int:
 def _safe_filename(filename: str) -> str:
     cleaned = str(filename or "document.pdf").strip().split("/")[-1].split("\\")[-1]
     return cleaned or "document.pdf"
+
+
+def _stirling_form_data(languages: str) -> list[tuple[str, str]]:
+    parts = [
+        item.strip()
+        for item in str(languages or DEFAULT_LANGUAGES).replace(",", "+").split("+")
+        if item.strip()
+    ]
+    return [
+        *[("languages", item) for item in parts],
+        ("ocrType", "force-ocr"),
+        ("ocrRenderType", "sandwich"),
+    ]
 
 
 def _response_content_type(response: Any) -> str:

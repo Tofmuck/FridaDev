@@ -47,7 +47,16 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
         call = requests_module.calls[0]
         self.assertEqual(call["url"], "http://ocr.example/pdf/api/v1/misc/ocr-pdf")
         self.assertEqual(call["timeout"], 180)
-        self.assertEqual(call["data"], {"languages": "fra+eng+deu"})
+        self.assertEqual(
+            call["data"],
+            [
+                ("languages", "fra"),
+                ("languages", "eng"),
+                ("languages", "deu"),
+                ("ocrType", "force-ocr"),
+                ("ocrRenderType", "sandwich"),
+            ],
+        )
         self.assertEqual(call["files"]["fileInput"][0], "scan.pdf")
         self.assertNotIn("ocr_pdf", result.to_dict())
 

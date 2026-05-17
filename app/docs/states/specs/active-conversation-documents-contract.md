@@ -173,6 +173,8 @@ Le client detecte le nombre de pages avant l'appel OCR. Il refuse avant Stirling
 
 Le client retourne seulement des statuts, reason codes, metadonnees et, en cas de succes, le PDF OCRise en memoire pour le lot d'integration suivant. Ses projections ordinaires restent content-free et n'exposent pas le texte OCR brut.
 
+Le contrat operateur conserve `fra+eng+deu`, mais le client HTTP traduit cette valeur en options `languages` repetees pour Stirling et utilise le couple borne `ocrType=force-ocr` / `ocrRenderType=sandwich`.
+
 Lot 3 branche ce client dans `app/core/active_document_upload_service.py`:
 
 - l'OCR est tentee seulement quand l'extraction initiale retourne `ocr_required` avec reason `document_ocr_required`;
