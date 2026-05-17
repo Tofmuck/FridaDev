@@ -51,6 +51,12 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
         self.assertEqual(extractor.calls[1]["content"], b"%PDF OCR")
         self.assertEqual(active_docs.activated_texts, [OCR_TEXT])
         self.assertEqual(active_docs.activated_kwargs[0]["byte_size"], len(b"%PDF scanned"))
+        self.assertIs(active_docs.activated_kwargs[0]["ocr_applied"], True)
+        self.assertEqual(active_docs.activated_kwargs[0]["ocr_engine"], "stirling-pdf")
+        self.assertEqual(active_docs.activated_kwargs[0]["ocr_languages"], "fra+eng+deu")
+        self.assertEqual(active_docs.activated_kwargs[0]["ocr_duration_ms"], 10)
+        self.assertIs(payload["document"]["ocr_applied"], True)
+        self.assertEqual(payload["document"]["ocr_engine"], "stirling-pdf")
         self.assertNotIn(OCR_TEXT, json.dumps(payload, ensure_ascii=False))
         self.assertNotIn("ocr_pdf", json.dumps(payload, ensure_ascii=False))
 
@@ -73,6 +79,8 @@ class ActiveDocumentUploadOcrTest(unittest.TestCase):
         self.assertEqual(ocr.calls, [])
         self.assertEqual(len(extractor.calls), 1)
         self.assertEqual(active_docs.activated_texts, ["texte PDF"])
+        self.assertNotIn("ocr_applied", active_docs.activated_kwargs[0])
+        self.assertIs(payload["document"]["ocr_applied"], False)
 
     def test_ocr_failed_refuses_without_activation_or_text_leak(self):
         payload, status, active_docs, ocr = _run_ocr_failure("document_ocr_failed")
@@ -230,6 +238,10 @@ class _FakeActiveDocuments:
             "token_estimate": kwargs.get("token_estimate", 0),
             "status": "active",
             "active": True,
+            "ocr_applied": bool(kwargs.get("ocr_applied", False)),
+            "ocr_engine": kwargs.get("ocr_engine", ""),
+            "ocr_languages": kwargs.get("ocr_languages", ""),
+            "ocr_duration_ms": kwargs.get("ocr_duration_ms", 0),
             "source": "active_conversation_documents",
         }
 

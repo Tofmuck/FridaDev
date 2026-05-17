@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 import unittest
+import sys
+import types
 from datetime import datetime, timezone
+
+try:
+    import psycopg  # noqa: F401
+except ModuleNotFoundError:  # pragma: no cover - local host may not have repo deps.
+    sys.modules["psycopg"] = types.ModuleType("psycopg")
+    rows_module = types.ModuleType("psycopg.rows")
+    rows_module.dict_row = object()
+    sys.modules["psycopg.rows"] = rows_module
 
 from core import active_conversation_documents as active_docs
 
@@ -56,6 +66,10 @@ class FakeCursor:
                 "last_injected_turn_id": None,
                 "last_excluded_turn_id": None,
                 "last_excluded_reason_code": None,
+                "ocr_applied": params[12],
+                "ocr_engine": params[13],
+                "ocr_languages": params[14],
+                "ocr_duration_ms": params[15],
             }
             self.conn.rows[row["document_id"]] = row
             self._one = self._project(row, include_text=False)
@@ -164,6 +178,10 @@ class FakeCursor:
             "last_injected_turn_id": row["last_injected_turn_id"],
             "last_excluded_turn_id": row["last_excluded_turn_id"],
             "last_excluded_reason_code": row["last_excluded_reason_code"],
+            "ocr_applied": row["ocr_applied"],
+            "ocr_engine": row["ocr_engine"],
+            "ocr_languages": row["ocr_languages"],
+            "ocr_duration_ms": row["ocr_duration_ms"],
         }
         if include_text:
             projected["text_content"] = row["text_content"]
@@ -197,7 +215,13 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.conn = FakeConn()
         self.conn_factory = lambda: self.conn
 
-    def activate(self, conversation_id=CONV_A, document_id=DOC_A, text="texte entier du fichier"):
+    def activate(
+        self,
+        conversation_id=CONV_A,
+        document_id=DOC_A,
+        text="texte entier du fichier",
+        **kwargs,
+    ):
         return active_docs.activate_document(
             conversation_id,
             document_id=document_id,
@@ -209,6 +233,7 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
             text_content=text,
             conn_factory=self.conn_factory,
             now_func=lambda: NOW,
+            **kwargs,
         )
 
     def test_init_db_creates_dedicated_conversation_scoped_table(self):
@@ -240,6 +265,32 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.assertEqual(first_turn, second_turn)
         self.assertEqual(first_turn[0]["text_content"], "texte exact garde cote serveur")
         self.assertEqual(first_turn[0]["status"], "active")
+        self.assertIs(first_turn[0]["ocr_applied"], False)
+
+    def test_ocr_metadata_is_persisted_content_free(self):
+        metadata = self.activate(
+            text="texte OCRise",
+            ocr_applied=True,
+            ocr_engine="stirling-pdf",
+            ocr_languages="fra+eng+deu",
+            ocr_duration_ms=42,
+        )
+
+        self.assertIs(metadata["ocr_applied"], True)
+        self.assertEqual(metadata["ocr_engine"], "stirling-pdf")
+        self.assertEqual(metadata["ocr_languages"], "fra+eng+deu")
+        self.assertEqual(metadata["ocr_duration_ms"], 42)
+        self.assertNotIn("text_content", metadata)
+
+        prompt_doc = active_docs.get_active_document_for_prompt(
+            CONV_A,
+            DOC_A,
+            conn_factory=self.conn_factory,
+        )
+        self.assertIsNotNone(prompt_doc)
+        self.assertIs(prompt_doc["ocr_applied"], True)
+        self.assertEqual(prompt_doc["ocr_engine"], "stirling-pdf")
+        self.assertEqual(prompt_doc["text_content"], "texte OCRise")
 
     def test_manual_remove_hides_document_from_following_turns(self):
         self.activate()

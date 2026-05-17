@@ -81,13 +81,14 @@ def upload_active_document_response(
             },
         }, 400
 
+    ocr_success_meta: dict[str, Any] = {}
     extraction = extractor_module.extract_active_document_text(
         content,
         filename=filename,
         media_type=media_type,
     )
     if _should_attempt_ocr(extraction, extractor_module):
-        extraction, ocr_failure_meta = _extract_after_ocr(
+        extraction, ocr_failure_meta, ocr_success_meta = _extract_after_ocr(
             content,
             filename=filename,
             media_type=media_type,
@@ -130,6 +131,7 @@ def upload_active_document_response(
         source_extension=extraction.source_extension,
         byte_size=len(content),
         token_estimate=extraction.token_estimate,
+        **_activation_ocr_kwargs(ocr_success_meta),
     )
     if not document:
         return {
@@ -231,7 +233,7 @@ def _extract_after_ocr(
     initial_extraction: Any,
     extractor_module: Any,
     ocr_module: Any,
-) -> tuple[Any, dict[str, Any] | None]:
+) -> tuple[Any, dict[str, Any] | None, dict[str, Any]]:
     try:
         ocr_result = ocr_module.ocr_pdf_with_stirling(
             content,
@@ -246,14 +248,14 @@ def _extract_after_ocr(
                 "warnings": [type(exc).__name__],
             }
         )
-        return initial_extraction, failure
+        return initial_extraction, failure, {}
     ocr_meta = _content_free_ocr_result(ocr_result)
     if str(getattr(ocr_result, "status", "") or "") != str(getattr(ocr_module, "STATUS_COMPLETE", "complete")):
         failure = _content_free_extraction(initial_extraction)
         failure.update(ocr_meta)
         failure["status"] = "ocr_failed"
         failure["reason_code"] = str(getattr(ocr_result, "reason_code", "") or "document_ocr_failed")
-        return initial_extraction, failure
+        return initial_extraction, failure, {}
 
     final_extraction = extractor_module.extract_active_document_text(
         bytes(getattr(ocr_result, "ocr_pdf", b"") or b""),
@@ -261,7 +263,7 @@ def _extract_after_ocr(
         media_type="application/pdf",
     )
     if final_extraction.status == extractor_module.STATUS_COMPLETE:
-        return final_extraction, None
+        return final_extraction, None, ocr_meta
 
     failure = _content_free_extraction(final_extraction)
     failure.update(ocr_meta)
@@ -272,7 +274,7 @@ def _extract_after_ocr(
     failure["byte_size"] = len(content)
     failure["status"] = "ocr_failed"
     failure["reason_code"] = _ocr_final_extraction_reason(final_extraction)
-    return final_extraction, failure
+    return final_extraction, failure, {}
 
 
 def _content_free_ocr_result(ocr_result: Any) -> dict[str, Any]:
@@ -293,6 +295,24 @@ def _ocr_final_extraction_reason(final_extraction: Any) -> str:
     if reason == "document_empty_text" or status == "empty":
         return "document_ocr_empty"
     return "document_ocr_failed"
+
+
+def _activation_ocr_kwargs(ocr_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not ocr_meta:
+        return {}
+    return {
+        "ocr_applied": bool(ocr_meta.get("ocr_applied", True)),
+        "ocr_engine": str(ocr_meta.get("ocr_engine") or ""),
+        "ocr_languages": str(ocr_meta.get("ocr_languages") or ""),
+        "ocr_duration_ms": _safe_int(ocr_meta.get("ocr_duration_ms")),
+    }
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _human_upload_error(reason_code: str) -> str:

@@ -224,6 +224,7 @@ Si cette partie fait gonfler le chantier ou demande une nouvelle projection larg
 - [x] Activer seulement si le resultat final est `complete`.
 - [x] Refuser avec reason compact si le resultat final est vide, erreur ou non-complete.
 - [x] Garantir que le texte OCR ne fuit pas dans la reponse upload.
+- [x] Conserver dans l'etat serveur les metadonnees OCR compactes apres succes.
 - [x] Tester succes OCR, echec OCR, timeout, vide, trop gros, trop de pages.
 
 ### Lot 4 - UI et etats utilisateur

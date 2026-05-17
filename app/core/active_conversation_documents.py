@@ -48,6 +48,10 @@ class ActiveDocumentMetadata:
     last_injected_turn_id: str
     last_excluded_turn_id: str
     last_excluded_reason_code: str
+    ocr_applied: bool = False
+    ocr_engine: str = ""
+    ocr_languages: str = ""
+    ocr_duration_ms: int = 0
     source: str = ACTIVE_DOCUMENTS_SOURCE
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,6 +72,10 @@ class ActiveDocumentMetadata:
             "last_injected_turn_id": self.last_injected_turn_id,
             "last_excluded_turn_id": self.last_excluded_turn_id,
             "last_excluded_reason_code": self.last_excluded_reason_code,
+            "ocr_applied": self.ocr_applied,
+            "ocr_engine": self.ocr_engine,
+            "ocr_languages": self.ocr_languages,
+            "ocr_duration_ms": self.ocr_duration_ms,
             "source": self.source,
         }
 
@@ -130,6 +138,15 @@ def _safe_int(value: Any) -> int:
     return max(0, number)
 
 
+def _safe_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    raw = str(value or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def _sha256_12(value: str) -> str:
     if not value:
         return ""
@@ -156,6 +173,10 @@ def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
         last_injected_turn_id=str(row.get("last_injected_turn_id") or ""),
         last_excluded_turn_id=str(row.get("last_excluded_turn_id") or ""),
         last_excluded_reason_code=str(row.get("last_excluded_reason_code") or ""),
+        ocr_applied=_safe_bool(row.get("ocr_applied")),
+        ocr_engine=str(row.get("ocr_engine") or ""),
+        ocr_languages=str(row.get("ocr_languages") or ""),
+        ocr_duration_ms=_safe_int(row.get("ocr_duration_ms")),
     )
 
 
@@ -200,7 +221,11 @@ def init_db(
                         deactivated_at             TIMESTAMPTZ,
                         last_injected_turn_id      TEXT,
                         last_excluded_turn_id      TEXT,
-                        last_excluded_reason_code  TEXT
+                        last_excluded_reason_code  TEXT,
+                        ocr_applied                BOOLEAN NOT NULL DEFAULT FALSE,
+                        ocr_engine                 TEXT NOT NULL DEFAULT '',
+                        ocr_languages              TEXT NOT NULL DEFAULT '',
+                        ocr_duration_ms            INTEGER NOT NULL DEFAULT 0
                     );
                     """
                 )
@@ -217,6 +242,10 @@ def init_db(
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_injected_turn_id TEXT;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_excluded_turn_id TEXT;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_excluded_reason_code TEXT;",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS ocr_applied BOOLEAN NOT NULL DEFAULT FALSE;",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS ocr_engine TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS ocr_languages TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS ocr_duration_ms INTEGER NOT NULL DEFAULT 0;",
                 ):
                     cur.execute(column_sql)
                 cur.execute(
@@ -248,6 +277,10 @@ def activate_document(
     source_extension: str = "",
     byte_size: int = 0,
     token_estimate: int = 0,
+    ocr_applied: bool = False,
+    ocr_engine: str = "",
+    ocr_languages: str = "",
+    ocr_duration_ms: int = 0,
     document_id: Optional[str] = None,
     conn_factory: Optional[Callable[[], Any]] = None,
     now_func: Callable[[], datetime] = _now_utc,
@@ -274,6 +307,10 @@ def activate_document(
         ACTIVE_STATUS,
         text,
         created_at,
+        _safe_bool(ocr_applied),
+        _safe_text(ocr_engine, 120),
+        _safe_text(ocr_languages, 120),
+        _safe_int(ocr_duration_ms),
     )
     get_conn = conn_factory or _db_conn
     with get_conn() as conn:
@@ -292,9 +329,13 @@ def activate_document(
                     token_estimate,
                     status,
                     text_content,
-                    created_at
+                    created_at,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms
                 )
-                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING
                     document_id::text AS document_id,
                     conversation_id::text AS conversation_id,
@@ -310,7 +351,11 @@ def activate_document(
                     deactivated_at,
                     last_injected_turn_id,
                     last_excluded_turn_id,
-                    last_excluded_reason_code;
+                    last_excluded_reason_code,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms;
                 """,
                 row_values,
             )
@@ -386,7 +431,11 @@ def get_active_document_for_prompt(
                     deactivated_at,
                     last_injected_turn_id,
                     last_excluded_turn_id,
-                    last_excluded_reason_code
+                    last_excluded_reason_code,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms
                 FROM active_conversation_documents
                 WHERE conversation_id = %s::uuid
                   AND document_id = %s::uuid
@@ -593,7 +642,11 @@ def _read_active_document_rows(
                     deactivated_at,
                     last_injected_turn_id,
                     last_excluded_turn_id,
-                    last_excluded_reason_code
+                    last_excluded_reason_code,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms
                 FROM active_conversation_documents
                 WHERE conversation_id = %s::uuid
                   AND status = 'active'

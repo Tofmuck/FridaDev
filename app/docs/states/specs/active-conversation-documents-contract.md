@@ -179,6 +179,7 @@ Lot 3 branche ce client dans `app/core/active_document_upload_service.py`:
 - un PDF deja textuel, donc extrait en `complete`, ne passe pas par l'OCR;
 - le PDF OCRise est repasse dans l'extracteur FridaDev existant;
 - le document est active seulement si cette extraction finale retourne `complete`;
+- en cas de succes OCR, l'etat serveur conserve les metadonnees compactes `ocr_applied`, `ocr_engine`, `ocr_languages`, `ocr_duration_ms`;
 - si l'OCR echoue, expire, retourne vide, depasse les limites ou produit un PDF non extractible en `complete`, l'upload est refuse avec reason compact;
 - les reponses ordinaires d'upload restent content-free et ne contiennent ni texte OCR brut, ni PDF OCRise.
 
@@ -561,7 +562,11 @@ Champs minimaux:
 - `deactivated_at`;
 - `last_injected_turn_id`;
 - `last_excluded_turn_id`;
-- `last_excluded_reason_code`.
+- `last_excluded_reason_code`;
+- `ocr_applied`;
+- `ocr_engine`;
+- `ocr_languages`;
+- `ocr_duration_ms`.
 
 Retention et nettoyage:
 
