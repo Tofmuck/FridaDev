@@ -44,7 +44,7 @@ Source de verite de depart:
 - [x] Campagne finale bornee arbitre memoire avant decouplage.
 - [x] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
 - [x] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
-- [ ] Benchmark resume conversationnel.
+- [x] Benchmark resume conversationnel: campagne de lecture humaine produite.
 - [ ] Decision resume conversationnel.
 - [ ] Decouplage propre du resume conversationnel.
 - [ ] Benchmark extracteur identity.
@@ -184,9 +184,28 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 
 ## Prochain caller
 
-- [ ] Benchmark resume conversationnel.
+- [x] Benchmark resume conversationnel: meme vrai materiau Frida envoye a six modeles, sorties completes conservees pour lecture humaine.
 - [ ] Decision resume conversationnel.
 - [ ] Decouplage propre du resume conversationnel.
+
+## Campagne de lecture humaine - resume conversationnel
+
+- [x] Caller cible: `app/memory/summarizer.py`.
+- [x] Prompt cible: `app/prompts/summary_system.txt`.
+- [x] Utiliser un vrai materiau Frida representatif d'environ 35 000 tokens, sans ecrire le contenu source brut dans les artefacts versionnes.
+- [x] Comparer exactement `openai/gpt-5.4-mini`.
+- [x] Comparer exactement `anthropic/claude-sonnet-4.6`.
+- [x] Comparer exactement `mistralai/mistral-medium-3-5`.
+- [x] Comparer exactement `google/gemini-3.1-pro-preview`.
+- [x] Comparer exactement `qwen/qwen3.5-plus-20260420`.
+- [x] Comparer exactement `mistralai/mistral-small-2603`.
+- [x] Garder le meme prompt systeme, le meme materiau utilisateur et les memes parametres de generation: `temperature=0.3`, `top_p=1.0`, `max_tokens=2000`.
+- [x] Produire un fichier Markdown complet par modele pour lecture humaine.
+- [x] Produire un index Markdown de campagne avec latence, cout estime, tokens si disponibles et chemins des sorties completes.
+- [x] Produire un artefact JSON structure sans secret et sans materiau source brut.
+- [x] Ne pas attribuer de score automatique et ne pas proclamer de vainqueur.
+- [ ] Lecture humaine de Tof et decision: garder `openai/gpt-5.4-mini`, basculer vers un autre modele, ou tester encore.
+- [ ] Decouplage runtime du resume conversationnel seulement apres decision humaine documentee.
 
 ## Definition de fin globale
 

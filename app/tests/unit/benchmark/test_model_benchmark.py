@@ -17,8 +17,10 @@ REPO_ROOT = _repo_root()
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS
+from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS, DEFAULT_SUMMARY_MODELS
 from benchmark.suites.arbiter import adapter, scorer, tournament
+from benchmark.suites.summary import adapter as summary_adapter
+from benchmark.suites.summary import campaign as summary_campaign
 
 
 class ArbiterBenchmarkSuiteTests(unittest.TestCase):
@@ -171,6 +173,97 @@ class ArbiterBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(verdict["verdict"], "garder")
         self.assertIn("production unchanged", verdict["next_step"])
         self.assertIn("decoupling lot", verdict["next_step"])
+
+
+class SummaryBenchmarkSuiteTests(unittest.TestCase):
+    def test_default_summary_models_match_human_reading_campaign(self) -> None:
+        self.assertEqual(
+            DEFAULT_SUMMARY_MODELS,
+            [
+                "openai/gpt-5.4-mini",
+                "anthropic/claude-sonnet-4.6",
+                "mistralai/mistral-medium-3-5",
+                "google/gemini-3.1-pro-preview",
+                "qwen/qwen3.5-plus-20260420",
+                "mistralai/mistral-small-2603",
+            ],
+        )
+
+    def test_summary_payload_uses_production_prompt_shape_and_runtime_params(self) -> None:
+        prompt = summary_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
+        turns = [
+            {"role": "user", "content": "Bonjour", "local_date": "2026-05-18"},
+            {"role": "assistant", "content": "Bonjour Tof", "local_date": "2026-05-18"},
+        ]
+        user_content = summary_adapter.build_user_content(turns)
+
+        payload_a = summary_adapter.build_payload(
+            model="openai/gpt-5.4-mini",
+            prompt_text=prompt,
+            user_content=user_content,
+        )
+        payload_b = summary_adapter.build_payload(
+            model="mistralai/mistral-small-2603",
+            prompt_text=prompt,
+            user_content=user_content,
+        )
+
+        self.assertEqual(payload_a["messages"], payload_b["messages"])
+        self.assertEqual(payload_a["messages"][0]["content"], prompt)
+        self.assertIn("Voici le dialogue à résumer", payload_a["messages"][1]["content"])
+        self.assertEqual(payload_a["temperature"], 0.3)
+        self.assertEqual(payload_a["top_p"], 1.0)
+        self.assertEqual(payload_a["max_tokens"], 2000)
+        self.assertEqual(payload_a["model"], "openai/gpt-5.4-mini")
+        self.assertEqual(payload_b["model"], "mistralai/mistral-small-2603")
+
+    def test_summary_campaign_writes_output_files_without_raw_material_in_json(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            material_path = tmp_path / "material.json"
+            material_path.write_text(
+                json.dumps(
+                    {
+                        "source": {
+                            "source_kind": "unit_test",
+                            "conversation_id": "conv-test",
+                            "approx_tokens": 42,
+                        },
+                        "turns": [
+                            {"role": "user", "content": "Un fait important.", "local_date": "2026-05-18"},
+                            {"role": "assistant", "content": "Je le garde en tête.", "local_date": "2026-05-18"},
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            config = summary_campaign.CampaignConfig(
+                campaign_id="summary-dry",
+                suite="summary",
+                repo_root=REPO_ROOT,
+                output_dir=tmp_path / "results",
+                models=["openai/gpt-5.4-mini"],
+                dry_run=True,
+                timeout_s=1,
+            )
+
+            result = summary_campaign.run_summary_human_reading_campaign(
+                config=config,
+                input_path=material_path,
+                client=None,
+            )
+
+            json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
+            self.assertFalse(json_payload["raw_material_written"])
+            self.assertNotIn("Un fait important", json.dumps(json_payload, ensure_ascii=False))
+            summary_file = Path(json_payload["results"][0]["summary_file"])
+            if not summary_file.is_absolute():
+                summary_file = REPO_ROOT / summary_file
+            self.assertTrue(summary_file.exists())
+            self.assertIn("dry-run summary", summary_file.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

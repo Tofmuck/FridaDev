@@ -7,6 +7,10 @@ The first implemented suite is `arbiter`, which evaluates the conversational
 memory arbiter with the production prompt, fixed generation parameters and
 separate fixture sets for diagnostic and tournament campaigns.
 
+The second implemented suite is `summary`, which produces complete
+conversation summaries from one real Frida material sample for human reading.
+It intentionally does not score summary quality automatically.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -49,6 +53,20 @@ python3 benchmark/run_benchmark.py \
   --output-dir /tmp/fridadev-benchmark-dry-run
 ```
 
+For the summary suite, provide a temporary material JSON file with a `source`
+object and a `turns[]` list. The raw material can stay outside the repo; the
+campaign artifacts record only provenance, hashes, token estimates and the
+complete model summaries:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite summary \
+  --dry-run \
+  --campaign-id dry-run-summary \
+  --summary-input-file /tmp/fridadev-summary-material.json \
+  --output-dir /tmp/fridadev-summary-dry-run
+```
+
 ## Arbiter tournament
 
 Use tournament mode when the diagnostic campaign is too easy to separate the
@@ -80,6 +98,47 @@ The tournament writes six artifacts:
 
 The JSON artifacts retain per-case model decisions for divergence analysis. The
 Markdown summary keeps the human-facing ranking and recommendation.
+
+## Summary human-reading campaign
+
+The summary suite compares models by giving each one the same production
+summary prompt and the same real Frida dialogue material. The outputs are
+intended for Tof to read directly; the benchmark records latency, usage and
+cost metadata, but it does not choose a winner.
+
+Default summary models:
+
+- `openai/gpt-5.4-mini`
+- `anthropic/claude-sonnet-4.6`
+- `mistralai/mistral-medium-3-5`
+- `google/gemini-3.1-pro-preview`
+- `qwen/qwen3.5-plus-20260420`
+- `mistralai/mistral-small-2603`
+
+Fixed summary parameters:
+
+- `temperature=0.3`
+- `top_p=1.0`
+- `max_tokens=2000`
+
+Example live run:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite summary \
+  --campaign-id 2026-05-18-summary-human-reading \
+  --summary-input-file /tmp/fridadev-summary-material.json \
+  --output-dir benchmark/results/summary
+```
+
+The runner writes:
+
+- one structured JSON campaign index;
+- one Markdown campaign index;
+- one complete Markdown summary per model.
+
+Do not commit the raw source material unless it has been deliberately reviewed
+for publication. The generated summaries are the human-review artifacts.
 
 ## Scope
 

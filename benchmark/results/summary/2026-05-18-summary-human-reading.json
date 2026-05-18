@@ -1,0 +1,326 @@
+{
+  "campaign_id": "2026-05-18-summary-human-reading",
+  "created_at_utc": "2026-05-18T15:56:30Z",
+  "suite": "summary",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "anthropic/claude-sonnet-4.6",
+    "mistralai/mistral-medium-3-5",
+    "google/gemini-3.1-pro-preview",
+    "qwen/qwen3.5-plus-20260420",
+    "mistralai/mistral-small-2603"
+  ],
+  "generation_params": {
+    "temperature": 0.3,
+    "top_p": 1.0,
+    "max_tokens": 2000
+  },
+  "timeout_s": 240,
+  "prompt_path": "app/prompts/summary_system.txt",
+  "prompt_sha256": "c15fc217b6b83cb130ad25b0676a1c0297eb16edab88d43754cbc0a1c7dfbdd0",
+  "material": {
+    "source_kind": "live_conversation",
+    "conversation_id": "a2bebfd3-96d3-4088-b622-6495461f534a",
+    "first_ts": "2026-04-04T20:16:49Z",
+    "last_ts": "2026-04-21T10:15:09Z",
+    "turn_count": 106,
+    "char_count": 140500,
+    "approx_tokens": 38993,
+    "user_content_sha256": "6994324235593da3bc347e026615cae0fa1a24c775af6bcb1338a48f07551d67",
+    "raw_material_written": false
+  },
+  "secrets_written": false,
+  "raw_material_written": false,
+  "human_judgment_required": true,
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 20679.878,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 34486,
+          "completion_tokens": 2000,
+          "total_tokens": 36486,
+          "cost": 0.0348645,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.0348645,
+            "upstream_inference_prompt_cost": 0.0258645,
+            "upstream_inference_completions_cost": 0.009
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.0348645,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__openai__gpt-5.4-mini.md",
+      "summary_chars": 8587,
+      "summary_sha256": "362c3f96f613760f85c9aaeab4fdf8f58ecedcb351a495500bf13f695341a3ae",
+      "notes": "Budget de completion atteint; verifier une possible troncature a la lecture.",
+      "completion_budget_reached": true
+    },
+    {
+      "model": "anthropic/claude-sonnet-4.6",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 55144.532,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 43756,
+          "completion_tokens": 2000,
+          "total_tokens": 45756,
+          "cost": 0.161268,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.161268,
+            "upstream_inference_prompt_cost": 0.131268,
+            "upstream_inference_completions_cost": 0.03
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.161268,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__anthropic__claude-sonnet-4.6.md",
+      "summary_chars": 6463,
+      "summary_sha256": "894e379e349f7eb41e9c67c7879e411aefb6f058b7778324b944a625058c820b",
+      "notes": "Budget de completion atteint; verifier une possible troncature a la lecture.",
+      "completion_budget_reached": true
+    },
+    {
+      "model": "mistralai/mistral-medium-3-5",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 9103.088,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 35126,
+          "completion_tokens": 482,
+          "total_tokens": 35608,
+          "cost": 0.056304,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.056304,
+            "upstream_inference_prompt_cost": 0.052689,
+            "upstream_inference_completions_cost": 0.003615
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.056304,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__mistralai__mistral-medium-3-5.md",
+      "summary_chars": 2026,
+      "summary_sha256": "da049410ea83a80abd80c28c7d7fe9467eb60658b25b3d3091f0840179a9c7b6",
+      "notes": "Sortie brute a lire humainement; aucun score automatique.",
+      "completion_budget_reached": false
+    },
+    {
+      "model": "google/gemini-3.1-pro-preview",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 42321.155,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 36654,
+          "completion_tokens": 1996,
+          "total_tokens": 38650,
+          "cost": 0.09726,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.09726,
+            "upstream_inference_prompt_cost": 0.073308,
+            "upstream_inference_completions_cost": 0.023952
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1917,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.09726,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__google__gemini-3.1-pro-preview.md",
+      "summary_chars": 261,
+      "summary_sha256": "35c337946da81e9470ea56808601f243cb114b0cd6ba7dc6bdced663bc7e3b48",
+      "notes": "Budget de completion atteint; verifier une possible troncature a la lecture.",
+      "completion_budget_reached": true
+    },
+    {
+      "model": "qwen/qwen3.5-plus-20260420",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 64061.447,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 36238,
+          "completion_tokens": 3415,
+          "total_tokens": 39653,
+          "cost": 0.0170184,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.0170184,
+            "upstream_inference_prompt_cost": 0.0108714,
+            "upstream_inference_completions_cost": 0.006147
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 2686,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.0170184,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__qwen__qwen3.5-plus-20260420.md",
+      "summary_chars": 3022,
+      "summary_sha256": "1e4fcf36e200408c69ac16f89fea410f8269621f0d73ad09535739d48f21f638",
+      "notes": "Budget de completion atteint; verifier une possible troncature a la lecture.",
+      "completion_budget_reached": true
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 21125.184,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 35126,
+          "completion_tokens": 2000,
+          "total_tokens": 37126,
+          "cost": 0.0064689,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.0064689,
+            "upstream_inference_prompt_cost": 0.0052689,
+            "upstream_inference_completions_cost": 0.0012
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.0064689,
+        "cost_estimate_source": "provider_usage_cost"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 2000
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-reading__mistralai__mistral-small-2603.md",
+      "summary_chars": 7992,
+      "summary_sha256": "cb64530c5a1636396f1608c1a3dc57f10f879a337af12b9efe24178340ec50e5",
+      "notes": "Budget de completion atteint; verifier une possible troncature a la lecture.",
+      "completion_budget_reached": true
+    }
+  ]
+}
