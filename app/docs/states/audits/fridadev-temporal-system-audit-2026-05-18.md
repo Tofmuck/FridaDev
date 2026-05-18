@@ -16,10 +16,60 @@ Comptage de l'audit:
 
 | Famille | Nombre audite | Notes |
 |---|---:|---|
-| Surfaces temporelles applicatives | 39 | sources, persistence, prompt principal, UI/export/admin/observabilite |
+| Surfaces temporelles applicatives | 45 | inventaire compact reconcilie ci-dessous |
 | Slots modele/service | 13 | les 13 slots du catalogue modele du 2026-05-17 |
 | Chemins fonctionnels d'inference | 11 | chat, web, arbitre, resume, identity, stimmung, validation, embeddings, Whisper, OCR |
 | Findings actifs | 11 | 1 P1, 6 P2, 4 P3 |
+
+Inventaire compact des 45 surfaces temporelles auditees:
+
+| # | Surface | Fichier(s) repere(s) | Registre / verdict |
+|---:|---|---|---|
+| 1 | Horloge UTC de tour chat | `app/core/chat_service.py` | canonique, sain |
+| 2 | Payload temps `NOW` / local | `app/core/hermeneutic_node/inputs/time_input.py` | canonique, sain |
+| 3 | Bloc `[RÉFÉRENCE TEMPORELLE]` | `app/core/chat_prompt_context.py`, `app/prompts/main_hermeneutical.txt` | prompt principal, sain |
+| 4 | Labels Delta-T messages | `app/core/conversations_prompt_window.py`, `time_input.py` | prompt principal, sain |
+| 5 | Marqueurs de silence | `app/core/conversations_prompt_window.py` | prompt principal, narratif |
+| 6 | Normalisation timestamps conversation | `app/core/conversations_store.py` | UTC stockage, P3 si invalide |
+| 7 | Table `conversations` | `app/core/conversations_maintenance.py` | `TIMESTAMPTZ`, sain |
+| 8 | Table `conversation_messages` | `app/core/conversations_maintenance.py` | `TIMESTAMPTZ`, sain |
+| 9 | Chargement messages pour prompt/API | `app/core/conversations_store.py` | ISO UTC technique, sain si rendu local ensuite |
+| 10 | Entete resume actif | `app/core/conversations_prompt_window.py` | date locale Frida, sain |
+| 11 | Entete contexte souvenir parent | `app/core/conversations_prompt_window.py` | date locale Frida, sain |
+| 12 | Entree dialogue du resumeur | `app/memory/summarizer.py` | date locale Frida, sain |
+| 13 | Table summaries memory | `app/memory/memory_store_infra.py` | UTC stockage, sain |
+| 14 | Table traces memory | `app/memory/memory_store_infra.py` | UTC stockage, sain |
+| 15 | Injection souvenirs prompt principal | `app/core/conversations_prompt_window.py` | Delta-T local, sain |
+| 16 | Injection context hints prompt principal | `app/core/conversations_prompt_window.py` | Delta-T local, sain |
+| 17 | Candidats arbitre memoire | `app/memory/arbiter.py` | timestamps bruts/tronques, P2 |
+| 18 | Recent context arbitre memoire | `app/memory/arbiter.py` | sans timestamp, P2 |
+| 19 | Extracteur identity | `app/memory/arbiter.py`, `app/prompts/identity_extractor.txt` | sans ancre, P2 |
+| 20 | Buffer pairs identity staging | `app/memory/memory_identity_staging.py` | timestamps bruts, P3 |
+| 21 | Agent periodic identity | `app/memory/arbiter.py`, `memory_identity_periodic_agent.py` | pas de NOW local, P3 |
+| 22 | Timestamps identity durable/audit | `app/memory/memory_store_infra.py` | `TIMESTAMPTZ`, sain stockage |
+| 23 | Validation dialogue context | `app/core/hermeneutic_node/inputs/recent_context_input.py` | timestamp brut, P2 |
+| 24 | Summary input du noeud hermeneutique | `app/core/hermeneutic_node/inputs/summary_input.py` | start/end bruts, support secondaire |
+| 25 | Stimmung recent window | `app/core/stimmung_agent.py` | timestamps omis, P3 |
+| 26 | Source priority time input | `app/core/hermeneutic_node/doctrine/source_priority.py` | exige time canonical, sain |
+| 27 | Qualification temporelle du tour | `app/core/hermeneutic_node/inputs/user_turn_input.py` | manque `hier`, P2 |
+| 28 | Reformulation web | `app/tools/web_search.py`, `app/prompts/web_reformulation.txt` | date UTC hote, P1 |
+| 29 | Bloc resultats web | `app/tools/web_search.py` | date UTC hote, P1 |
+| 30 | Bloc URL explicite web | `app/tools/web_search.py` | date UTC hote, P1 |
+| 31 | Active documents metadata | `app/core/active_conversation_documents.py` | UTC technique, sain |
+| 32 | Active document prompt lane | `app/core/active_document_prompt_lane.py` | pas de timestamp expose, sain |
+| 33 | Runtime settings history | `app/admin/runtime_settings_repo.py` | operateur DB, sain |
+| 34 | Admin logs | `app/admin/admin_logs.py` | UTC technique, sain |
+| 35 | Chat turn logger | `app/observability/chat_turn_logger.py` | UTC technique, sain |
+| 36 | Export markdown logs | `app/observability/log_markdown_export.py` | UTC technique, sain |
+| 37 | Dashboard backend `today/yesterday` | `app/observability/dashboard_read_model.py` | minuit UTC sous label FR, P2 |
+| 38 | Dashboard backend fenetres glissantes | `app/observability/dashboard_read_model.py` | UTC operateur, acceptable |
+| 39 | Dashboard analytics projection | `app/observability/dashboard_analytics_projection.py` | UTC explicite, sain |
+| 40 | Dashboard web `formatDateTime()` | `app/web/dashboard/main.js` | timezone navigateur implicite, P2 |
+| 41 | Dashboard web `formatBucketLabel()` | `app/web/dashboard/main.js` | timezone navigateur implicite, P2 |
+| 42 | Chat byline `fmtHour()` | `app/web/app.js` | timezone navigateur implicite, P2 |
+| 43 | Date d'accueil chat `fmtDateFR()` / `setHero()` | `app/web/app.js` | timezone navigateur implicite, P2 |
+| 44 | Sidebar conversations `formatTimestamp()` | `app/web/chat_threads_sidebar.js` | timezone navigateur implicite, P2 |
+| 45 | Export Markdown conversation | `app/web/chat_copy_export.js` | timezone navigateur implicite, P2 |
 
 ## Doctrine temporelle actuelle reelle
 
@@ -69,7 +119,9 @@ Fonctions qui ne devraient plus recalculer un jour dialogique seules:
 | Date locale envoyee au resumeur | date locale Frida | `[YYYY-MM-DD]` | `summarizer.summarize_conversation()` | modele resumeur | sain |
 | Web reformulation/context | date UTC hote | `%d %B %Y` | `datetime.now(timezone.utc)` | modele web + prompt principal | P1 |
 | Dashboard `today/yesterday` | minuit UTC | ISO UTC | `resolve_dashboard_window()` | humain operateur | P2 |
-| Chat UI byline | timezone navigateur | `HhMM` sans timezone | `Date.getHours()` | utilisateur | P2 |
+| Surfaces navigateur chat | timezone navigateur | date/heure sans timezone | `fmtDateFR()`, `setHero()`, `fmtHour()` | utilisateur | P2 |
+| Sidebar conversations | timezone navigateur | date/heure sans timezone | `formatTimestamp()` | utilisateur | P2 |
+| Dashboard web dates/buckets | timezone navigateur | date/heure sans timezone | `formatDateTime()`, `formatBucketLabel()` | operateur/humain | P2 |
 | Export Markdown chat | timezone navigateur | date longue fr-FR sans timezone | `Intl.DateTimeFormat()` | utilisateur | P2 |
 | Validation dialogue context | timestamp brut | ISO brut | recent context | validation agent | P2 |
 | Arbitre memoire | timestamp ISO tronque | `[:25]` | trace memory | modele arbitre | P2 |
@@ -152,11 +204,13 @@ Cette preuve valide que le coeur Delta-T est sain et que le dashboard `today` re
 
 | Surface | Destinataire | Temps utilise | Verdict |
 |---|---|---|---|
-| Chat byline navigateur | utilisateur | timezone du navigateur via `getHours()` | P2 si different de Europe/Paris |
+| Chat accueil et byline navigateur | utilisateur | timezone du navigateur via `toLocaleDateString()` et `getHours()` | P2 si different de Europe/Paris |
+| Sidebar conversations | utilisateur | timezone du navigateur via `Date.getFullYear()/getHours()` | P2 |
 | Export Markdown chat | utilisateur | timezone du navigateur via `Intl.DateTimeFormat` sans `timeZone` | P2 |
 | Nom fichier export | utilisateur | timezone du navigateur | P3 |
 | Dashboard `24h/7d/30d/90d` | operateur | fenetres UTC glissantes | acceptable si assume |
 | Dashboard `today/yesterday` | operateur/humain | minuit UTC, labels "Aujourd'hui"/"Hier" | P2 |
+| Dashboard web dates/buckets | operateur/humain | timezone du navigateur via `Intl.DateTimeFormat` sans `timeZone` | P2 |
 | Dashboard inspection traduite | operateur | ISO UTC dans details techniques | P3 documentation/label |
 | Log module | operateur technique | UTC explicite / logs techniques | sain |
 | Runtime settings history | operateur | DB now/timestamptz | sain |
@@ -217,16 +271,19 @@ Preuves:
 
 Risque: surface humaine/opérateur contradictoire avec la temporalite dialogique. Si le choix UTC est volontaire, le label doit l'assumer explicitement; sinon il faut passer a `FRIDA_TIMEZONE`.
 
-### P2 - TEMP-20260518-P2-005 - Chat UI et export Markdown rendent les heures en timezone navigateur implicite
+### P2 - TEMP-20260518-P2-005 - Les surfaces navigateur rendent dates/heures en timezone implicite
 
 Preuves:
 
+- `app/web/app.js:82-83` rend la date d'accueil via `toLocaleDateString("fr-FR", ...)` sans timezone explicite, puis `app/web/app.js:165-168` l'injecte avec `setHero()`;
 - `app/web/app.js:103-123` affiche les bylines via `new Date(value).getHours()` sans timezone;
+- `app/web/chat_threads_sidebar.js:96-102` rend les timestamps de conversations via `getFullYear()`, `getMonth()`, `getDate()`, `getHours()` et `getMinutes()` sans timezone;
+- `app/web/dashboard/main.js:110-133` rend les dates et buckets dashboard via `Intl.DateTimeFormat("fr-FR")` sans `timeZone`;
 - `app/web/chat_copy_export.js:18-40` utilise `Intl.DateTimeFormat('fr-FR')` sans `timeZone`;
 - `app/tests/unit/frontend_chat/test_chat_copy_export_module.js:13-48` teste seulement la presence de `21:54`, dependante du timezone d'execution;
 - `app/tests/unit/frontend_chat/test_chat_copy_export_module.js:79-80` fixe un nom de fichier sur le timezone local.
 
-Risque: pour un navigateur hors Europe/Paris, l'utilisateur peut voir une heure/jour different de la verite dialogique Frida. C'est acceptable seulement si l'UI annonce clairement "heure locale navigateur"; ce n'est pas le cas.
+Risque: pour un navigateur hors Europe/Paris, l'utilisateur ou l'operateur peut voir une heure/jour different de la verite dialogique Frida sur l'accueil chat, les bylines, la sidebar, les exports et les dates dashboard. C'est acceptable seulement si l'UI annonce clairement "heure locale navigateur"; ce n'est pas le cas.
 
 ### P2 - TEMP-20260518-P2-006 - Le classifieur deterministe du tour ne reconnait pas `hier`
 
@@ -296,7 +353,7 @@ Risque: si `FRIDA_TIMEZONE` est mal configure, le systeme continue en UTC et peu
 | Zone | Incertitude | Traitement recommande |
 |---|---|---|
 | Dashboard UTC | le choix UTC peut etre intentionnel pour l'operateur, mais les labels `Aujourd'hui` / `Hier` ne le disent pas | decider local Frida vs UTC explicite |
-| Chat UI navigateur | le rendu browser-local peut etre un choix UX, mais il n'est ni documente ni labelle | fixer la doctrine UI et tester un timezone non Paris |
+| Surfaces navigateur | le rendu browser-local peut etre un choix UX, mais il n'est ni documente ni labelle pour l'accueil chat, les bylines, la sidebar, l'export et le dashboard web | fixer la doctrine UI et tester un timezone non Paris |
 | Stimmung | le prompt dit "fenetre locale" mais ne prouve pas que les gaps temporels sont hors sujet | documenter l'ignorance des gaps ou fournir labels locaux |
 | Identity durable | les prompts sont conservateurs, mais il manque une preuve sur les enonces relatifs `depuis hier` / `aujourd'hui` | tests de rejet ou ancrage explicite |
 | DST Europe/Paris | les fonctions `ZoneInfo` devraient gerer les changements d'heure, mais la matrice de test ne le prouve pas encore | ajouter tests DST dans le lot de fermeture |
@@ -318,7 +375,7 @@ Tests manquants:
 - identity extractor/periodic: enonces `depuis hier`, `aujourd'hui`, `en ce moment` avec ancre ou politique explicite de rejet;
 - stimmung: soit preuve qu'il ignore volontairement les gaps, soit timestamps locaux si la fenetre les utilise;
 - dashboard: `today/yesterday` Europe/Paris autour de minuit, ou labels UTC explicites;
-- frontend chat/export: rendu Europe/Paris explicite ou label navigateur explicite, avec test timezone fixe;
+- frontend navigateur: accueil chat, bylines, sidebar conversations, export Markdown et dashboard web en rendu Europe/Paris explicite ou label navigateur explicite, avec test timezone fixe;
 - `user_turn_input`: `hier`, `depuis hier`, `ce matin`, `ce soir`, `demain` en qualification temporelle;
 - timestamp invalide: absence d'invention silencieuse du present;
 - DST Europe/Paris: passage heure d'ete/hiver au moins sur labels Delta-T, web date et dashboard.
@@ -327,7 +384,7 @@ Tests manquants:
 
 1. Fermer P1 web: remplacer les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
 2. Aligner les modeles secondaires qui influencent le prompt: validation agent et arbitre memoire en premier, avec labels locaux sobres issus du coeur temporel.
-3. Fixer la politique UI/operator: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; chat/export en Europe/Paris ou "heure locale navigateur" visible.
+3. Fixer la politique UI/operator: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
 4. Corriger le classifieur deterministe `hier`/`depuis hier` et couvrir les tests.
 5. Durcir les fallbacks: timestamp invalide et timezone invalide doivent etre observables et ne pas inventer silencieusement un present dialogique.
 6. Ajouter une matrice DST/minuit commune aux tests temporels.

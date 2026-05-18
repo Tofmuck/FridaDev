@@ -53,13 +53,16 @@ Findings cibles: `TEMP-20260518-P2-004`, `TEMP-20260518-P2-005`.
 Actions:
 
 - dashboard `today/yesterday`: passer en jour local Frida ou renommer/labeliser explicitement UTC;
-- chat bylines: choisir Europe/Paris explicite ou locale navigateur explicite;
+- chat accueil `setHero()` / `fmtDateFR()`: choisir Europe/Paris explicite ou locale navigateur explicite;
+- chat bylines `fmtHour()`: meme decision, avec timezone visible si browser-local;
+- sidebar conversations `formatTimestamp()`: meme decision, sans jour silencieusement different;
+- dashboard web `formatDateTime()` / `formatBucketLabel()`: meme decision que la doctrine dashboard;
 - export Markdown: meme decision que byline, avec timezone visible;
-- tests frontend/dashboard autour de `2026-05-17T22:05:00Z`.
+- tests frontend/sidebar/dashboard/export autour de `2026-05-17T22:05:00Z`.
 
 Condition de sortie:
 
-- une heure correcte ne peut plus etre associee silencieusement au mauvais jour dans une surface utilisateur.
+- une heure correcte ne peut plus etre associee silencieusement au mauvais jour dans une surface navigateur, export ou dashboard.
 
 ## Lot 4 - Classifieur et fallbacks
 
