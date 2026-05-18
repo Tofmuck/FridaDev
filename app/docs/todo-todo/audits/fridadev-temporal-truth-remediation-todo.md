@@ -29,11 +29,11 @@ Ces sujets restent cartographies dans l'audit global, mais ne gouvernent pas le 
 
 ## Lots actifs
 
-- [ ] **Lot 1 - Web local time**
-  - [ ] Corriger la contradiction directe entre la lane web et le prompt principal.
-  - [ ] Remplacer les dates UTC hote de `app/tools/web_search.py` par une date locale Frida issue du coeur temporel.
-  - [ ] Ne pas dependre de la locale systeme pour les mois/jours francais.
-  - [ ] Prouver qu'aucune reformulation web et aucun bloc web ne peut raconter un autre jour que `[RÉFÉRENCE TEMPORELLE]` autour de `2026-05-17T22:05:00Z`.
+- [x] **Lot 1 - Web local time**
+  - [x] Corriger la contradiction directe entre la lane web et le prompt principal.
+  - [x] Remplacer les dates UTC hote de `app/tools/web_search.py` par une date locale Frida issue du coeur temporel.
+  - [x] Ne pas dependre de la locale systeme pour les mois/jours francais.
+  - [x] Prouver qu'aucune reformulation web et aucun bloc web ne peut raconter un autre jour que `[RÉFÉRENCE TEMPORELLE]` autour de `2026-05-17T22:05:00Z`.
 
 - [ ] **Lot 2 - Modeles secondaires qui influencent l'interpretation**
   - [ ] Validation agent: fournir `NOW/TIMEZONE` au bon niveau de priorite ou des labels locaux suffisants dans le contexte qu'il lit d'abord.

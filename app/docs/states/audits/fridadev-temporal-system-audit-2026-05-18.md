@@ -8,8 +8,8 @@ Verdict:
 
 - le coeur conversationnel principal dispose maintenant d'un `NOW` canonique de tour, de `FRIDA_TIMEZONE`, de labels Delta-T avec date locale absolue + heure locale + timezone + relatif, et de dates de resume locales;
 - la persistance canonique reste correctement orientee UTC / `TIMESTAMPTZ`, ce qui est sain pour le stockage;
-- plusieurs surfaces modele et operateur continuent toutefois a exposer soit une date UTC brute, soit une date locale implicite navigateur, soit aucun ancrage temporel alors qu'elles peuvent raisonner sur des enonces temporels;
-- le risque le plus net est la lane web: elle peut injecter dans le prompt principal une date construite en UTC hote, sous une forme humaine, qui peut contredire la reference temporelle locale du chat autour de minuit Europe/Paris;
+- plusieurs surfaces modele et operateur continuent toutefois a exposer soit une date locale implicite navigateur, soit aucun ancrage temporel alors qu'elles peuvent raisonner sur des enonces temporels;
+- le risque le plus net etait la lane web; elle est corrigee par le Lot 1 runtime du 2026-05-18, qui derive reformulation web et blocs web du `NOW` de tour en date locale `FRIDA_TIMEZONE`;
 - la bonne suite n'est pas une refonte globale, mais un chantier de fermeture cible en lots bornes.
 
 Comptage de l'audit:
@@ -19,7 +19,7 @@ Comptage de l'audit:
 | Surfaces temporelles applicatives | 45 | inventaire compact reconcilie ci-dessous |
 | Slots modele/service | 13 | les 13 slots du catalogue modele du 2026-05-17 |
 | Chemins fonctionnels d'inference | 11 | chat, web, arbitre, resume, identity, stimmung, validation, embeddings, Whisper, OCR |
-| Findings actifs | 11 | 1 P1, 6 P2, 4 P3 |
+| Findings actifs | 10 | P1 web corrige, 6 P2, 4 P3 |
 
 Inventaire compact des 45 surfaces temporelles auditees:
 
@@ -52,9 +52,9 @@ Inventaire compact des 45 surfaces temporelles auditees:
 | 25 | Stimmung recent window | `app/core/stimmung_agent.py` | timestamps omis, P3 |
 | 26 | Source priority time input | `app/core/hermeneutic_node/doctrine/source_priority.py` | exige time canonical, sain |
 | 27 | Qualification temporelle du tour | `app/core/hermeneutic_node/inputs/user_turn_input.py` | manque `hier`, P2 |
-| 28 | Reformulation web | `app/tools/web_search.py`, `app/prompts/web_reformulation.txt` | date UTC hote, P1 |
-| 29 | Bloc resultats web | `app/tools/web_search.py` | date UTC hote, P1 |
-| 30 | Bloc URL explicite web | `app/tools/web_search.py` | date UTC hote, P1 |
+| 28 | Reformulation web | `app/tools/web_search.py`, `app/prompts/web_reformulation.txt` | date locale Frida explicite, sain apres Lot 1 |
+| 29 | Bloc resultats web | `app/tools/web_search.py` | date locale Frida explicite, sain apres Lot 1 |
+| 30 | Bloc URL explicite web | `app/tools/web_search.py` | date locale Frida explicite, sain apres Lot 1 |
 | 31 | Active documents metadata | `app/core/active_conversation_documents.py` | UTC technique, sain |
 | 32 | Active document prompt lane | `app/core/active_document_prompt_lane.py` | pas de timestamp expose, sain |
 | 33 | Runtime settings history | `app/admin/runtime_settings_repo.py` | operateur DB, sain |
@@ -94,6 +94,7 @@ Fonctions ayant autorite:
 | `time_input.build_time_input()` | payload canonique `now_utc_iso`, `timezone`, `now_local_iso`, `local_date`, `local_time` | `app/core/hermeneutic_node/inputs/time_input.py:119-134` |
 | `time_input.build_time_reference_block()` | rendu prompt de `[RÉFÉRENCE TEMPORELLE]` | `app/core/hermeneutic_node/inputs/time_input.py:137-156` |
 | `time_input.local_date_iso()` | date locale Frida a partir d'un instant | `app/core/hermeneutic_node/inputs/time_input.py:79-85` |
+| `time_input.local_date_label_fr()` | libelle francais stable de date locale Frida, option timezone | `app/core/hermeneutic_node/inputs/time_input.py` |
 | `time_input.build_delta_info()` / `render_delta_label()` | Delta-T local absolu + relatif | `app/core/hermeneutic_node/inputs/time_input.py:159-259` |
 | `conversations_store.ts_to_iso()` | normalisation stockage UTC `Z` | `app/core/conversations_store.py:62-72` |
 | `summarizer.summarize_conversation()` | dates locales envoyees au resumeur | `app/memory/summarizer.py:36-47` |
@@ -117,7 +118,7 @@ Fonctions qui ne devraient plus recalculer un jour dialogique seules:
 | Silences | duree relative | texte prompt | `render_silence_label()` | LLM principal | correct mais narratif |
 | Date locale de resume actif | date locale Frida | `YYYY-MM-DD` | `local_date_iso()` | LLM principal | sain |
 | Date locale envoyee au resumeur | date locale Frida | `[YYYY-MM-DD]` | `summarizer.summarize_conversation()` | modele resumeur | sain |
-| Web reformulation/context | date UTC hote | `%d %B %Y` | `datetime.now(timezone.utc)` | modele web + prompt principal | P1 |
+| Web reformulation/context | date locale Frida + timezone | libelle francais stable | `time_input.local_date_label_fr()` depuis `NOW` de tour | modele web + prompt principal | sain apres Lot 1 |
 | Dashboard `today/yesterday` | minuit UTC | ISO UTC | `resolve_dashboard_window()` | humain operateur | P2 |
 | Surfaces navigateur chat | timezone navigateur | date/heure sans timezone | `fmtDateFR()`, `setHero()`, `fmtHour()` | utilisateur | P2 |
 | Sidebar conversations | timezone navigateur | date/heure sans timezone | `formatTimestamp()` | utilisateur | P2 |
@@ -153,8 +154,8 @@ Conclusion persistence: le stockage UTC n'est pas le probleme. Le risque apparai
 
 | Caller | Recoit un NOW ? | Recoit timezone ? | Recoit timestamps complets ? | Temps aplati/perdu ? | Peut raisonner temporellement ? | Verdict |
 |---|---|---|---|---|---|---|
-| Chat principal | oui | oui | oui via Delta-T local + UTC NOW | non sur voie principale | oui | sain sauf web context P1 |
-| Reformulation web | non | non | non | oui, date UTC hote | oui, recherche actuelle | P1 |
+| Chat principal | oui | oui | oui via Delta-T local + UTC NOW | non sur voie principale | oui | sain sur voie principale et web Lot 1 |
+| Reformulation web | oui, date locale issue du `NOW` de tour | oui via label `FRIDA_TIMEZONE` | non, jour local seulement | heure volontairement absente | oui, recherche actuelle | sain pour jour local |
 | Arbitre memoire | non | non | candidats avec `timestamp_iso` tronque | recent context sans temps | oui, penalise les souvenirs circonstanciels | P2 |
 | Resumeur | non explicite | non explicite | non, date locale seule | heure volontairement perdue | oui, mais objectif resume | sain pour date de jour; P3 si besoin futur d'heure |
 | Identity extractor | non | non | non | oui | oui, durable vs episodique | P2 |
@@ -184,7 +185,7 @@ Notes:
 | indices contextuels recents | oui via Delta-T | oui | oui | faible |
 | documents actifs | pas de temps expose | n/a | n/a | faible |
 | jugement hermeneutique | indirect, via upstream | non garanti | non garanti | depend validation P2 |
-| web context | date humaine UTC hote | non | non | eleve |
+| web context | date locale Frida + timezone | non | oui | faible apres Lot 1 |
 
 Preuve runtime compacte, conteneur vivant `platform-fridadev`:
 
@@ -216,19 +217,19 @@ Cette preuve valide que le coeur Delta-T est sain et que le dashboard `today` re
 | Runtime settings history | operateur | DB now/timestamptz | sain |
 | Active documents admin metadata | operateur | UTC technique | sain |
 
-## Findings actifs
+## Findings et etats
 
-### P1 - TEMP-20260518-P1-001 - La lane web fabrique une date humaine depuis l'UTC hote
+### P1 corrige - TEMP-20260518-P1-001 - La lane web fabriquait une date humaine depuis l'UTC hote
 
-Preuves:
+Preuves initiales:
 
 - `app/tools/web_search.py:387` et `app/tools/web_search.py:462` construisent `today = datetime.now(timezone.utc).strftime("%d %B %Y")` pour les blocs `[RECHERCHE WEB - ...]`;
 - `app/tools/web_search.py:639-640` fait la meme chose pour le prompt de reformulation web;
 - `app/prompts/web_reformulation.txt:1` injecte `Nous sommes le {today}.`
 
-Risque: autour de minuit Europe/Paris, la reformulation web et le contexte web peuvent dire "17 May 2026" pendant que `[RÉFÉRENCE TEMPORELLE]` et Delta-T disent localement "18 mai 2026". Comme le contexte web est reinjecte dans le prompt principal, c'est une contradiction temporelle directe.
+Risque initial: autour de minuit Europe/Paris, la reformulation web et le contexte web pouvaient dire "17 May 2026" pendant que `[RÉFÉRENCE TEMPORELLE]` et Delta-T disaient localement "18 mai 2026". Comme le contexte web est reinjecte dans le prompt principal, c'etait une contradiction temporelle directe.
 
-Correction minimale future: fournir au web une fonction de date locale Frida partagee (`local_date`, libelle francais stable, timezone explicite) et tester `2026-05-17T22:05:00Z -> 18 mai 2026 Europe/Paris`.
+Etat apres Lot 1 runtime du 2026-05-18: `app/tools/web_search.py` recoit le `now_iso` du tour quand la lane web est appelee depuis le chat, puis rend reformulation, blocs `[RECHERCHE WEB - ...]` et blocs URL explicite via `time_input.local_date_label_fr(..., FRIDA_TIMEZONE, include_timezone=True)`. Le scenario `2026-05-17T22:05:00Z` rend `lundi 18 mai 2026 Europe/Paris`.
 
 ### P2 - TEMP-20260518-P2-001 - Le validation agent lit en priorite un contexte horodate en brut
 
@@ -343,6 +344,7 @@ Risque: si `FRIDA_TIMEZONE` est mal configure, le systeme continue en UTC et peu
 | Resumes actifs | entetes de periode en date locale Frida, plus tests post-`aa129f5`. |
 | Contextes de souvenirs parents | dates locales Frida, coherentes avec Delta-T. |
 | Entree du resumeur | `[YYYY-MM-DD]` derive de la date locale Frida. |
+| Lane web Lot 1 | reformulation web et blocs web utilisent la date locale Frida + timezone issue du `NOW` de tour. |
 | Stockage conversations/messages | `TIMESTAMPTZ`/UTC pour instants techniques, sans pretention de jour local. |
 | Active documents prompt lane | n'expose pas de timestamp au modele; les timestamps restent metadata/admin. |
 | Embeddings/Whisper/OCR | pas de raisonnement temporel Frida. |
@@ -366,10 +368,11 @@ Tests existants probants:
 - `app/tests/unit/chat/test_chat_prompt_context.py` couvre `[RÉFÉRENCE TEMPORELLE]`, `NOW`, `TIMEZONE`, date locale et interdiction de nier l'ancrage;
 - `app/tests/unit/memory/test_memory_summaries_phase8c.py` couvre `2026-05-17T22:05:00Z -> 2026-05-18` pour resume actif, contexte parent et entree du resumeur;
 - `app/tests/test_prompt_loader_phase13.py` couvre la presence des exemples Delta-T dans le prompt principal.
+- `app/tests/unit/web_search/test_web_search_phase4.py` couvre la reformulation web et les blocs web sur `2026-05-17T22:05:00Z -> lundi 18 mai 2026 Europe/Paris`, avec absence de date UTC contradictoire.
+- `app/tests/unit/core/test_chat_turn_runtime_inputs.py` couvre la propagation du `now_iso` de tour vers la lane web.
 
 Tests manquants:
 
-- web reformulation et web context: Paris minuit, `FRIDA_TIMEZONE`, date francaise stable, absence de date UTC contradictoire;
 - validation agent: `validation_dialogue_context` doit exposer des labels locaux ou recevoir `NOW`/timezone en priorite;
 - arbitre memoire: candidats et recent context avec ancre locale, test sur memoire `hier` vs `aujourd'hui`;
 - identity extractor/periodic: enonces `depuis hier`, `aujourd'hui`, `en ce moment` avec ancre ou politique explicite de rejet;
@@ -382,7 +385,7 @@ Tests manquants:
 
 ## Plan de remediation minimal et ordonne
 
-1. Fermer P1 web: remplacer les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
+1. Ferme le 2026-05-18: P1 web remplace les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
 2. Aligner les modeles secondaires qui influencent le prompt: validation agent et arbitre memoire en premier, avec labels locaux sobres issus du coeur temporel.
 3. Fixer la politique UI/operator: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
 4. Corriger le classifieur deterministe `hier`/`depuis hier` et couvrir les tests.

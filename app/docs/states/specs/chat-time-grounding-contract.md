@@ -57,6 +57,10 @@ Ce que cela ne garantit pas encore:
   - role: injecter des indices contextuels recents avec horodatage relatif.
   - forme injectee: `[Indices contextuels recents]` + lignes avec label relatif et `confidence`.
   - statut: `partiellement contractuel`.
+- `web_search.reformulate` + blocs `[RECHERCHE WEB]`
+  - role: reformuler la requete web et injecter le contexte web dans le prompt principal.
+  - forme injectee: `Nous sommes le lundi 18 mai 2026 Europe/Paris.` dans le prompt de reformulation web, puis `[RECHERCHE WEB — lundi 18 mai 2026 Europe/Paris]` dans les blocs web.
+  - statut: `derive du NOW de tour` + `date locale Frida visible` + `timezone visible`.
 
 ### Zones encore trop narratives (lot 1)
 - La phrase humaine du bloc `[RÉFÉRENCE TEMPORELLE]` reste en prose naturelle (lisible, mais moins stable qu'un champ strict).
@@ -80,6 +84,7 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Les messages injectes dans le prompt doivent rester situables relativement a ce `NOW`.
 - Les labels Delta-T visibles sur les messages doivent aussi porter la date locale absolue, l'heure locale et la timezone afin d'eviter toute reconstruction fragile du jour a partir d'une heure correcte.
 - Les dates visibles des resumes actifs, des contextes de souvenirs parents et du dialogue envoye au resumeur doivent etre calculees en date locale `FRIDA_TIMEZONE`, jamais par troncature brute d'un timestamp UTC.
+- Les dates visibles par la lane web, reformulation comprise, doivent etre calculees depuis le `NOW` de tour en date locale `FRIDA_TIMEZONE`, jamais depuis une date humaine UTC hote.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"
   - en forme relative et/ou absolue selon le besoin.

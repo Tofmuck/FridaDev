@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from typing import Any, Mapping
 
 from core import conversations_prompt_window
@@ -176,6 +177,7 @@ def resolve_web_runtime_payload(
     web_search_module: Any,
     requests_module: Any,
     llm_module: Any,
+    now_iso: str | None = None,
 ) -> dict[str, Any]:
     activation_mode = 'manual' if web_search_on else 'not_requested'
 
@@ -211,20 +213,30 @@ def resolve_web_runtime_payload(
         }
     build_context_payload = getattr(web_search_module, 'build_context_payload', None)
     if callable(build_context_payload):
+        payload_kwargs = _web_search_call_kwargs(
+            build_context_payload,
+            requests_module=requests_module,
+            llm_module=llm_module,
+            now_iso=now_iso,
+        )
         payload = dict(
             build_context_payload(
                 user_msg,
-                requests_module=requests_module,
-                llm_module=llm_module,
+                **payload_kwargs,
             )
         )
         payload['activation_mode'] = activation_mode
         return payload
 
-    ctx, query, n_results = web_search_module.build_context(
-        user_msg,
+    context_kwargs = _web_search_call_kwargs(
+        web_search_module.build_context,
         requests_module=requests_module,
         llm_module=llm_module,
+        now_iso=now_iso,
+    )
+    ctx, query, n_results = web_search_module.build_context(
+        user_msg,
+        **context_kwargs,
     )
     return {
         'enabled': True,
@@ -238,6 +250,37 @@ def resolve_web_runtime_payload(
         'sources': [],
         'context_block': str(ctx or ''),
     }
+
+
+def _web_search_call_kwargs(
+    func: Any,
+    *,
+    requests_module: Any,
+    llm_module: Any,
+    now_iso: str | None,
+) -> dict[str, Any]:
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):
+        return {
+            'requests_module': requests_module,
+            'llm_module': llm_module,
+            'now_iso': now_iso,
+        }
+
+    params = signature.parameters
+    supports_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in params.values()
+    )
+    kwargs: dict[str, Any] = {}
+    if supports_kwargs or 'requests_module' in params:
+        kwargs['requests_module'] = requests_module
+    if supports_kwargs or 'llm_module' in params:
+        kwargs['llm_module'] = llm_module
+    if supports_kwargs or 'now_iso' in params:
+        kwargs['now_iso'] = now_iso
+    return kwargs
 
 
 def run_stimmung_agent_stage(

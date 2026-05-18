@@ -172,6 +172,69 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed['headers']['X-Frida-Caller'], 'web_reformulation')
         self.assertEqual(observed['headers']['X-Title'], 'FridaDev/WebReformulation')
 
+    def test_reformulate_uses_frida_local_date_around_midnight(self) -> None:
+        observed = {'system_prompt': ''}
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {"choices": [{"message": {"content": "requete locale"}}]}
+
+        def fake_post(_url, json, _headers, _timeout):
+            observed['system_prompt'] = json['messages'][0]['content']
+            return FakeResponse()
+
+        fake_llm_module = SimpleNamespace(
+            or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
+            or_headers=lambda *, caller='llm': {'X-Frida-Caller': caller},
+            read_openrouter_response_payload=lambda response: response.json(),
+            extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
+        )
+
+        query = web_search.reformulate(
+            'actualites du jour',
+            requests_module=SimpleNamespace(post=fake_post),
+            llm_module=fake_llm_module,
+            now_iso='2026-05-17T22:05:00Z',
+        )
+
+        self.assertEqual(query, 'requete locale')
+        self.assertIn('Nous sommes le lundi 18 mai 2026 Europe/Paris.', observed['system_prompt'])
+        self.assertNotIn('17 May 2026', observed['system_prompt'])
+        self.assertNotIn('17 mai 2026', observed['system_prompt'])
+
+    def test_web_context_blocks_use_frida_local_date_around_midnight(self) -> None:
+        original_runtime_services_value = web_search._runtime_services_value
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 5,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 400,
+            'crawl4ai_explicit_url_max_chars': 400,
+        }[field]
+        try:
+            search_material = web_search._build_search_context_material(
+                'requete',
+                [{'title': 'A', 'url': 'https://a.example', 'content': 'snippet'}],
+                now_iso='2026-05-17T22:05:00Z',
+            )
+            explicit_material = web_search._build_explicit_url_context_material(
+                'https://a.example',
+                'contenu lu',
+                now_iso='2026-05-17T22:05:00Z',
+            )
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+
+        expected_header = '[RECHERCHE WEB — lundi 18 mai 2026 Europe/Paris]'
+        self.assertEqual(search_material['context_block'].splitlines()[0], expected_header)
+        self.assertEqual(explicit_material['context_block'].splitlines()[0], expected_header)
+        self.assertNotIn('17 May 2026', search_material['context_block'])
+        self.assertNotIn('17 mai 2026', search_material['context_block'])
+        self.assertNotIn('17 May 2026', explicit_material['context_block'])
+        self.assertNotIn('17 mai 2026', explicit_material['context_block'])
+
     def test_search_error_log_does_not_expose_raw_query(self) -> None:
         original_get = web_search.requests.get
         raw_query = 'requete privee sensible'

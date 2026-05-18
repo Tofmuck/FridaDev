@@ -555,6 +555,7 @@ def chat_response(
         web_search_module=web_search_module,
         requests_module=requests_module,
         llm_module=llm_module,
+        now_iso=now_iso_value,
     )
     web_payload = _build_web_input_from_runtime_payload(web_runtime_payload)
 

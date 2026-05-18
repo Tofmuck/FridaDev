@@ -12,6 +12,7 @@ import requests
 import config
 from admin import runtime_settings
 from core import prompt_loader
+from core.hermeneutic_node.inputs import time_input
 from core.web_read_state import (
     READ_STATE_PAGE_NOT_READ_CRAWL_EMPTY,
     READ_STATE_PAGE_NOT_READ_ERROR,
@@ -77,6 +78,22 @@ def _runtime_collection_settings() -> dict[str, int | None]:
         'crawl4ai_max_chars': _safe_runtime_services_value('crawl4ai_max_chars'),
         'crawl4ai_explicit_url_max_chars': _safe_runtime_services_value('crawl4ai_explicit_url_max_chars'),
     }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _web_temporal_label(*, now_iso: str | None = None) -> str:
+    source_now = str(now_iso or '').strip() or _now_iso()
+    return (
+        time_input.local_date_label_fr(
+            source_now,
+            timezone_name=str(config.FRIDA_TIMEZONE),
+            include_timezone=True,
+        )
+        or source_now
+    )
 
 
 def _source_domain(url: str) -> str | None:
@@ -347,8 +364,13 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _build_context_material(query: str, results: list[dict[str, str]]) -> dict[str, Any]:
-    return _build_search_context_material(query, results)
+def _build_context_material(
+    query: str,
+    results: list[dict[str, str]],
+    *,
+    now_iso: str | None = None,
+) -> dict[str, Any]:
+    return _build_search_context_material(query, results, now_iso=now_iso)
 
 
 def _build_explicit_url_fallback_source(
@@ -381,10 +403,15 @@ def _build_explicit_url_fallback_source(
     return source
 
 
-def _build_explicit_url_context_material(url: str, crawled_markdown: str) -> dict[str, Any]:
+def _build_explicit_url_context_material(
+    url: str,
+    crawled_markdown: str,
+    *,
+    now_iso: str | None = None,
+) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
     crawl4ai_max_chars = _explicit_url_max_chars(runtime)
-    today = datetime.now(timezone.utc).strftime("%d %B %Y")
+    today = _web_temporal_label(now_iso=now_iso)
     content_used, truncated = _truncate_crawl_markdown(crawled_markdown, crawl4ai_max_chars)
     source = {
         'rank': 1,
@@ -455,11 +482,12 @@ def _build_search_context_material(
     explicit_url: str | None = None,
     primary_read_status: str = 'not_attempted',
     preloaded_crawl_results: dict[str, dict[str, Any]] | None = None,
+    now_iso: str | None = None,
 ) -> dict[str, Any]:
     runtime = _runtime_collection_settings()
     crawl4ai_top_n = int(runtime.get('crawl4ai_top_n') or 0)
     crawl4ai_max_chars = int(runtime.get('crawl4ai_max_chars') or 0)
-    today = datetime.now(timezone.utc).strftime("%d %B %Y")
+    today = _web_temporal_label(now_iso=now_iso)
     primary_source: dict[str, Any] | None = None
     fallback_results = list(results or [])
 
@@ -554,6 +582,7 @@ def _call_reformulate(
     *,
     requests_module: Any = requests,
     llm_module: Any | None = None,
+    now_iso: str | None = None,
 ) -> str:
     reformulate_func = reformulate
     try:
@@ -567,12 +596,15 @@ def _call_reformulate(
             parameter.kind == inspect.Parameter.VAR_KEYWORD
             for parameter in params.values()
         )
-        if supports_kwargs or ('requests_module' in params and 'llm_module' in params):
-            return reformulate_func(
-                user_msg,
-                requests_module=requests_module,
-                llm_module=llm_module,
-            )
+        kwargs: dict[str, Any] = {}
+        if supports_kwargs or 'requests_module' in params:
+            kwargs['requests_module'] = requests_module
+        if supports_kwargs or 'llm_module' in params:
+            kwargs['llm_module'] = llm_module
+        if supports_kwargs or 'now_iso' in params:
+            kwargs['now_iso'] = now_iso
+        if kwargs:
+            return reformulate_func(user_msg, **kwargs)
     return reformulate_func(user_msg)
 
 
@@ -630,13 +662,14 @@ def reformulate(
     *,
     requests_module: Any = requests,
     llm_module: Any | None = None,
+    now_iso: str | None = None,
 ) -> str:
     """Reformule le message utilisateur en requête de recherche web concise."""
     try:
         if llm_module is None:
             from core import llm_client as llm_module
 
-        today = datetime.now(timezone.utc).strftime("%d %B %Y")
+        today = _web_temporal_label(now_iso=now_iso)
         system_prompt = prompt_loader.get_web_reformulation_prompt().format(today=today)
         reformulation_settings = web_reformulation_settings.get_runtime_settings()
         model = reformulation_settings.model
@@ -718,14 +751,19 @@ def crawl(url: str) -> str:
     return str(crawl_with_status(url).get('markdown') or '')
 
 
-def _format_context(query: str, results: list[dict[str, str]]) -> str:
+def _format_context(
+    query: str,
+    results: list[dict[str, str]],
+    *,
+    now_iso: str | None = None,
+) -> str:
     """Formate les résultats SearXNG + contenu crawlé pour le LLM."""
     if not results:
         return (
             f"[RECHERCHE WEB — aucun résultat pour : « {query} »]\n"
             "Je n'ai rien trouvé pour cette recherche.\n"
         )
-    return str(_build_context_material(query, results)['context_block'])
+    return str(_build_context_material(query, results, now_iso=now_iso)['context_block'])
 
 
 def _emit_web_search_runtime_event(
@@ -821,6 +859,7 @@ def _build_payload_from_collection(
     explicit_url: str | None,
     requests_module: Any = requests,
     llm_module: Any | None = None,
+    now_iso: str | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
@@ -831,6 +870,7 @@ def _build_payload_from_collection(
             material = _build_explicit_url_context_material(
                 explicit_url,
                 str(primary_crawl.get('markdown') or ''),
+                now_iso=now_iso,
             )
             read_state = _derive_read_state(
                 explicit_url=explicit_url,
@@ -864,6 +904,7 @@ def _build_payload_from_collection(
             user_msg,
             requests_module=requests_module,
             llm_module=llm_module,
+            now_iso=now_iso,
         )
         results = search(query)
         material = _build_search_context_material(
@@ -872,6 +913,7 @@ def _build_payload_from_collection(
             explicit_url=explicit_url,
             primary_read_status=primary_read_status,
             preloaded_crawl_results={explicit_url: primary_crawl},
+            now_iso=now_iso,
         )
         has_results = int(material['results_count']) > 0
         read_state = _derive_read_state(
@@ -906,9 +948,10 @@ def _build_payload_from_collection(
         user_msg,
         requests_module=requests_module,
         llm_module=llm_module,
+        now_iso=now_iso,
     )
     results = search(query)
-    material = _build_search_context_material(query, results)
+    material = _build_search_context_material(query, results, now_iso=now_iso)
     has_results = int(material['results_count']) > 0
     return {
         'enabled': True,
@@ -939,6 +982,7 @@ def build_context_payload(
     *,
     requests_module: Any = requests,
     llm_module: Any | None = None,
+    now_iso: str | None = None,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     try:
@@ -947,6 +991,7 @@ def build_context_payload(
             explicit_url=explicit_url,
             requests_module=requests_module,
             llm_module=llm_module,
+            now_iso=now_iso,
         ))
         _emit_web_search_runtime_event(
             enabled=True,
@@ -1030,6 +1075,7 @@ def build_context(
     *,
     requests_module: Any = requests,
     llm_module: Any | None = None,
+    now_iso: str | None = None,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1041,6 +1087,7 @@ def build_context(
             user_msg,
             requests_module=requests_module,
             llm_module=llm_module,
+            now_iso=now_iso,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -1049,11 +1096,15 @@ def build_context(
             user_msg,
             requests_module=requests_module,
             llm_module=llm_module,
+            now_iso=now_iso,
         )
         results = search(query)
         ctx_parts = []
         if results:
-            ctx_parts.append(_format_context(query, results))
+            if now_iso:
+                ctx_parts.append(_format_context(query, results, now_iso=now_iso))
+            else:
+                ctx_parts.append(_format_context(query, results))
         ctx = "\n\n".join(ctx_parts)
         has_results = len(results) > 0
         _emit_web_search_runtime_event(

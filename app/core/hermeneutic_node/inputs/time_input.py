@@ -85,6 +85,23 @@ def local_date_iso(ts_iso: str, *, timezone_name: str) -> str:
     return dt_value.astimezone(timezone_ref).strftime("%Y-%m-%d")
 
 
+def local_date_label_fr(
+    ts_iso: str,
+    *,
+    timezone_name: str,
+    include_timezone: bool = False,
+) -> str:
+    try:
+        dt_value = _parse_iso_datetime(ts_iso)
+    except Exception:
+        return ""
+    timezone_ref = _resolve_timezone(timezone_name)
+    rendered = _format_local_date_fr(dt_value.astimezone(timezone_ref))
+    if include_timezone:
+        return f"{rendered} {timezone_name}"
+    return rendered
+
+
 def _format_local_datetime_fr(local_dt: datetime, *, timezone_name: str | None = None) -> str:
     rendered = f"{_format_local_date_fr(local_dt)} à {_format_local_hour(local_dt)}"
     if timezone_name:
