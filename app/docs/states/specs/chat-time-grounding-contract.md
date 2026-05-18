@@ -90,6 +90,9 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
   - l'arbitre memoire recoit le `NOW` local du tour, des labels locaux pour le recent context et les candidats, et ne doit pas inferer le jour local depuis l'UTC brut;
   - identity extractor et identity periodic ne raisonnent pas temporellement: ils retirent les sources portant des claims relatifs faibles (`hier`, `aujourd'hui`, `depuis hier`, `en ce moment`) du materiau admissible et rejettent toute promotion pour un sujet sans source non relative, meme si le modele paraphrase le claim;
   - stimmung ignore volontairement timestamps, delais, gaps et claims relatifs; ce caller ne produit qu'un signal affectif centre sur le tour courant.
+- La qualification deterministe du tour doit reconnaitre `hier` et `depuis hier` comme une portee `passee` ancree sur `now`; ces marqueurs ne doivent jamais rester atemporels.
+- Un timestamp invalide de conversation ne doit pas etre transforme en `now`: il doit etre rejete explicitement avant de nourrir une surface lisible par un modele.
+- Une timezone Frida invalide ne doit pas produire une verite UTC implicite: elle doit etre detectee par une erreur explicite au point de resolution temporelle.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"
   - en forme relative et/ou absolue selon le besoin.

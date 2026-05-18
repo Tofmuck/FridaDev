@@ -43,11 +43,11 @@ Ces sujets restent cartographies dans l'audit global, mais ne gouvernent pas le 
   - [x] Stimmung: statuer sur son influence reelle; si les gaps temporels influencent le signal, fournir labels locaux, sinon documenter et tester l'ignorance volontaire.
   - [x] Couvrir chaque caller par un test ou une preuve montrant qu'il ne peut pas introduire un jour contradictoire dans l'interpretation finale.
 
-- [ ] **Lot 3 - Qualification deterministe et fallbacks**
-  - [ ] Reconnaitre `hier` et `depuis hier` dans la qualification temporelle du tour.
-  - [ ] Empecher un timestamp invalide de devenir silencieusement `now` dans une surface qui nourrit la comprehension de Frida.
-  - [ ] Rendre le fallback timezone invalide observable, pour qu'il ne recree pas silencieusement une verite UTC contradictoire.
-  - [ ] Tester les cas `hier`, `depuis hier`, timestamp invalide et timezone invalide.
+- [x] **Lot 3 - Qualification deterministe et fallbacks**
+  - [x] Reconnaitre `hier` et `depuis hier` dans la qualification temporelle du tour.
+  - [x] Empecher un timestamp invalide de devenir silencieusement `now` dans une surface qui nourrit la comprehension de Frida.
+  - [x] Rendre le fallback timezone invalide observable, pour qu'il ne recree pas silencieusement une verite UTC contradictoire.
+  - [x] Tester les cas `hier`, `depuis hier`, timestamp invalide et timezone invalide.
 
 - [ ] **Lot 4 - Fermeture de la verite temporelle modele**
   - [ ] Ajouter une matrice de preuves autour de minuit Europe/Paris.

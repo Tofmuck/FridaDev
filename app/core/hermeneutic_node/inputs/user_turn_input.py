@@ -622,7 +622,12 @@ def _resolve_qualification_temporelle(
     time_input_payload: Mapping[str, Any] | None,
 ) -> dict[str, str]:
     immediate_markers = _contains_any(text, ("maintenant", "tout de suite", "immediatement", "a linstant"))
-    current_markers = _contains_any(text, ("aujourdhui", "actuellement", "en ce moment", "pour le moment"))
+    current_markers = _contains_any(text, ("aujourd hui", "actuellement", "en ce moment", "pour le moment"))
+    past_relative_markers = _contains_any(text, ("hier", "depuis hier"))
+    day_part_markers = _mapping(time_input_payload) and _contains_any(
+        text,
+        ("ce matin", "cet apres midi", "ce soir", "cette nuit"),
+    )
     future_markers = _contains_any(text, ("demain", "ensuite", "plus tard", "prochain", "prevoir", "plan", "devra", "fera"))
     summary_markers = _summary_markers(text)
     trace_markers = _trace_markers(text)
@@ -632,6 +637,8 @@ def _resolve_qualification_temporelle(
 
     if future_markers:
         portee = "prospective"
+    elif past_relative_markers:
+        portee = "passee"
     elif summary_markers or trace_markers or historical_markers:
         portee = "passee"
     elif immediate_markers:
@@ -650,7 +657,7 @@ def _resolve_qualification_temporelle(
         anchors.append("historique_externe")
     if future_markers:
         anchors.append("projection")
-    if immediate_markers or current_markers or (_mapping(time_input_payload) and _contains_any(text, ("ce matin", "cet apres midi", "ce soir"))):
+    if immediate_markers or current_markers or past_relative_markers or day_part_markers:
         anchors.append("now")
 
     unique_anchors = []

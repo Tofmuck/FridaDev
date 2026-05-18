@@ -20,6 +20,28 @@ from core import conversations_store
 
 
 class ConversationsStoreSaveResultTests(unittest.TestCase):
+    def test_ts_to_iso_rejects_invalid_timestamp_without_calling_now(self) -> None:
+        with self.assertRaisesRegex(conversations_store.InvalidTimestampError, 'invalid_timestamp'):
+            conversations_store.ts_to_iso(
+                'not-a-date',
+                now_iso_func=lambda: self.fail('invalid timestamp must not fall back to now'),
+            )
+
+    def test_parse_iso_to_dt_rejects_invalid_timestamp_without_now(self) -> None:
+        with self.assertRaisesRegex(conversations_store.InvalidTimestampError, 'invalid_timestamp'):
+            conversations_store.parse_iso_to_dt('still-not-a-date')
+
+    def test_normalize_messages_for_storage_rejects_invalid_timestamp(self) -> None:
+        with self.assertRaisesRegex(conversations_store.InvalidTimestampError, 'invalid_timestamp'):
+            conversations_store.normalize_messages_for_storage(
+                [{'role': 'user', 'content': 'bonjour', 'timestamp': 'bad-date'}],
+                ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+                    raw,
+                    now_iso_func=lambda: self.fail('invalid message timestamp must not become now'),
+                ),
+                coerce_bool_func=conversations_store.coerce_bool,
+            )
+
     def _save(self, *, catalog_result, messages_result):
         conversation = {
             'id': 'conv-save-result',

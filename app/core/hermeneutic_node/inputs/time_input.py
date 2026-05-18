@@ -41,6 +41,10 @@ _MONTH_NAMES_FR = (
 )
 
 
+class InvalidTimezoneError(ValueError):
+    pass
+
+
 def _parse_iso_datetime(raw: str) -> datetime:
     dt_value = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     if dt_value.tzinfo is None:
@@ -48,11 +52,12 @@ def _parse_iso_datetime(raw: str) -> datetime:
     return dt_value
 
 
-def _resolve_timezone(timezone_name: str) -> ZoneInfo | timezone:
+def _resolve_timezone(timezone_name: str) -> ZoneInfo:
+    value = str(timezone_name or "").strip()
     try:
-        return ZoneInfo(str(timezone_name))
-    except Exception:
-        return timezone.utc
+        return ZoneInfo(value)
+    except Exception as exc:
+        raise InvalidTimezoneError(f"invalid_timezone:{value}") from exc
 
 
 def _derive_day_part(local_dt: datetime) -> tuple[str, str]:
@@ -257,6 +262,8 @@ def build_delta_info(
             local_msg=local_msg,
             timezone_name=timezone_name,
         )
+    except InvalidTimezoneError:
+        raise
     except Exception:
         return _delta_payload(
             delta_seconds=None,

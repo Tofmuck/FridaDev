@@ -20,6 +20,18 @@ from core.hermeneutic_node.inputs import user_turn_input
 
 
 class UserTurnInputTests(unittest.TestCase):
+    def _qualification_for(self, user_message: str) -> dict[str, str]:
+        payload = user_turn_input.build_user_turn_input(
+            user_message=user_message,
+            recent_window_input_payload=None,
+            time_input_payload={
+                'now_utc_iso': '2026-04-01T10:00:00Z',
+                'timezone': 'Europe/Paris',
+                'now_local_iso': '2026-04-01T12:00:00+02:00',
+            },
+        )
+        return payload['qualification_temporelle']
+
     def test_build_user_turn_input_for_definition_question_without_cleaned_punctuation_is_sober(self) -> None:
         bundle = user_turn_input.build_user_turn_bundle(
             user_message="C'est quoi un embedding",
@@ -313,6 +325,32 @@ class UserTurnInputTests(unittest.TestCase):
         self.assertEqual(payload['active_signal_families'], ['referent'])
         self.assertTrue(payload['ambiguity_present'])
         self.assertFalse(payload['underdetermination_present'])
+
+    def test_build_user_turn_input_anchors_hier_as_past_relative_to_now(self) -> None:
+        qualification = self._qualification_for("Je t'en ai parlé hier")
+
+        self.assertEqual(qualification['portee_temporelle'], 'passee')
+        self.assertEqual(qualification['ancrage_temporel'], 'now')
+
+    def test_build_user_turn_input_anchors_depuis_hier_as_past_relative_to_now(self) -> None:
+        qualification = self._qualification_for('Depuis hier, ça me travaille')
+
+        self.assertEqual(qualification['portee_temporelle'], 'passee')
+        self.assertEqual(qualification['ancrage_temporel'], 'now')
+
+    def test_build_user_turn_input_keeps_existing_temporal_marker_contracts(self) -> None:
+        cases = [
+            ("Aujourd'hui je reprends ce point", 'actuelle', 'now'),
+            ('Ce matin je reprends ce point', 'atemporale', 'now'),
+            ('Ce soir je reprends ce point', 'atemporale', 'now'),
+            ('Demain on reprend ce point', 'prospective', 'projection'),
+        ]
+
+        for user_message, expected_scope, expected_anchor in cases:
+            with self.subTest(user_message=user_message):
+                qualification = self._qualification_for(user_message)
+                self.assertEqual(qualification['portee_temporelle'], expected_scope)
+                self.assertEqual(qualification['ancrage_temporel'], expected_anchor)
 
     def test_build_user_turn_signals_keeps_ambiguous_deictic_point_as_referent(self) -> None:
         payload = user_turn_input.build_user_turn_signals(

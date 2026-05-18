@@ -51,7 +51,7 @@ Inventaire compact des 45 surfaces temporelles auditees:
 | 24 | Summary input du noeud hermeneutique | `app/core/hermeneutic_node/inputs/summary_input.py` | start/end bruts, support secondaire |
 | 25 | Stimmung recent window | `app/core/stimmung_agent.py` | timestamps omis par contrat d'ignorance explicite, sain apres Lot 2 |
 | 26 | Source priority time input | `app/core/hermeneutic_node/doctrine/source_priority.py` | exige time canonical, sain |
-| 27 | Qualification temporelle du tour | `app/core/hermeneutic_node/inputs/user_turn_input.py` | manque `hier`, P2 |
+| 27 | Qualification temporelle du tour | `app/core/hermeneutic_node/inputs/user_turn_input.py` | `hier` / `depuis hier` -> passee + `now`, sain apres Lot 3 |
 | 28 | Reformulation web | `app/tools/web_search.py`, `app/prompts/web_reformulation.txt` | date locale Frida explicite, sain apres Lot 1 |
 | 29 | Bloc resultats web | `app/tools/web_search.py` | date locale Frida explicite, sain apres Lot 1 |
 | 30 | Bloc URL explicite web | `app/tools/web_search.py` | date locale Frida explicite, sain apres Lot 1 |
@@ -135,7 +135,7 @@ Fonctions qui ne devraient plus recalculer un jour dialogique seules:
 |---|---|---|---|---|
 | `conversations` | `created_at`, `updated_at`, `deleted_at` | DB / app UTC | `TIMESTAMPTZ`, normalise via store | sain |
 | `conversation_messages` | `timestamp` | `chat_service.user_timestamp` ou messages charges | `TIMESTAMPTZ`, retour ISO UTC | sain |
-| normalization messages | `timestamp` | payload message | `conversations_store.ts_to_iso()` | P3 si timestamp invalide fallback `now` silencieux |
+| normalization messages | `timestamp` | payload message | `conversations_store.ts_to_iso()` | timestamp invalide rejete, sain apres Lot 3 |
 | summaries memory | `start_ts`, `end_ts`, `created_at`, `updated_at` | traces/message timestamps | stockage UTC, rendu prompt local | sain apres `aa129f5` |
 | traces memory | `timestamp`, `created_at` | messages/source lanes | `TIMESTAMPTZ`, selection UTC | sain stockage, attention rendu modele secondaire |
 | arbiter decisions | `created_at`, trace timestamps associes | DB now / trace | UTC operateur | sain stockage |
@@ -302,6 +302,8 @@ Preuves:
 
 Risque: le noeud hermeneutique peut sous-qualifier une demande explicitement ancree dans `hier`, donc affaiblir la re-situation temporelle.
 
+Etat apres Lot 3: corrige. `user_turn_input._resolve_qualification_temporelle()` reconnait `hier` et `depuis hier` comme `portee_temporelle=passee` avec `ancrage_temporel=now`; le meme test verrouille aussi les contrats existants pour `aujourd'hui`, `ce matin`, `ce soir` et `demain`.
+
 ### P3 - TEMP-20260518-P3-001 - Stimmung agent perd les ecarts temporels
 
 Preuves:
@@ -336,6 +338,8 @@ Preuves:
 
 Risque: une donnee temporelle invalide peut etre remplacee par le present au lieu d'etre marquee invalide/absente. Ce n'est pas le bug `hier/aujourd'hui`, mais c'est dangereux pour la verite temporelle.
 
+Etat apres Lot 3: corrige. `parse_iso_to_dt()` et `ts_to_iso()` levent `InvalidTimestampError` sur timestamp absent ou invalide; `ts_to_iso()` n'appelle plus `now_iso_func()` comme fallback de parsing et les tests prouvent que `not-a-date` ne devient pas le present.
+
 ### P3 - TEMP-20260518-P3-004 - Fallback timezone invalide vers UTC trop silencieux
 
 Preuves:
@@ -343,6 +347,8 @@ Preuves:
 - `app/core/hermeneutic_node/inputs/time_input.py:51-55` retombe sur `timezone.utc` en cas de `ZoneInfo` invalide.
 
 Risque: si `FRIDA_TIMEZONE` est mal configure, le systeme continue en UTC et peut recreer les contradictions de date locale. Un fallback peut rester utile, mais doit etre observable/teste.
+
+Etat apres Lot 3: corrige par echec explicite. `_resolve_timezone()` leve `InvalidTimezoneError` sur zone invalide; `build_time_input()` et `render_delta_label()` propagent cette erreur au lieu de produire une date UTC implicite.
 
 ## Zones correctes prouvees
 
@@ -383,23 +389,23 @@ Tests existants probants:
 - `app/tests/unit/memory/test_identity_temporal_guard.py` couvre les paraphrases issues de sources faibles, le retrait du materiau source et l'assainissement identity periodic par provenance.
 - `app/tests/unit/core/test_stimmung_agent.py` couvre l'ignorance contractuelle des timestamps/gaps par le stimmung agent.
 - `app/tests/test_prompt_loader_phase13.py` couvre aussi les contrats temporels Lot 2 des prompts secondaires.
+- `app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py` couvre `hier`, `depuis hier`, `aujourd'hui`, `ce matin`, `ce soir` et `demain` dans la qualification temporelle.
+- `app/tests/unit/core/test_conversations_store_save_result.py` couvre le rejet des timestamps invalides sans fallback `now`.
+- `app/tests/unit/chat/test_chat_prompt_context.py` couvre le rejet d'une timezone invalide sans fallback UTC.
 
 Tests manquants:
 
 - dashboard: `today/yesterday` Europe/Paris autour de minuit, ou labels UTC explicites;
 - frontend navigateur: accueil chat, bylines, sidebar conversations, export Markdown et dashboard web en rendu Europe/Paris explicite ou label navigateur explicite, avec test timezone fixe;
-- `user_turn_input`: `hier`, `depuis hier`, `ce matin`, `ce soir`, `demain` en qualification temporelle;
-- timestamp invalide: absence d'invention silencieuse du present;
 - DST Europe/Paris: passage heure d'ete/hiver au moins sur labels Delta-T, web date et dashboard.
 
 ## Plan de remediation minimal et ordonne
 
 1. Ferme le 2026-05-18: P1 web remplace les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
 2. Ferme le 2026-05-18: modeles secondaires alignes sur leur responsabilite temporelle; validation/arbitre ancres localement, identity/stimmung rejettent ou ignorent les claims temporels faibles hors contrat.
-3. Fixer la politique UI/operator: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
-4. Corriger le classifieur deterministe `hier`/`depuis hier` et couvrir les tests.
-5. Durcir les fallbacks: timestamp invalide et timezone invalide doivent etre observables et ne pas inventer silencieusement un present dialogique.
-6. Ajouter une matrice DST/minuit commune aux tests temporels.
+3. Ferme le 2026-05-18: classifieur deterministe `hier`/`depuis hier`, timestamp invalide et timezone invalide durcis sans fallback silencieux.
+4. Fixer la politique UI/operator hors chantier modele si elle redevient prioritaire: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
+5. Ajouter une matrice DST/minuit commune aux tests temporels modele.
 
 Un TODO de fermeture dedie est ouvert dans `app/docs/todo-todo/audits/fridadev-temporal-truth-remediation-todo.md`.
 

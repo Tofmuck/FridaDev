@@ -36,6 +36,10 @@ def conversation_save_failure_reason(*, catalog_saved: bool, messages_saved: boo
     return "messages_write_failed"
 
 
+class InvalidTimestampError(ValueError):
+    pass
+
+
 def collapse_ws(value: str) -> str:
     return " ".join(str(value or "").strip().split())
 
@@ -50,10 +54,13 @@ def safe_title(raw: str, fallback: str = "", *, title_max_chars: int = TITLE_MAX
 
 
 def parse_iso_to_dt(raw: str) -> datetime:
+    value = str(raw or "").strip()
+    if not value:
+        raise InvalidTimestampError("missing_timestamp")
     try:
-        dt = datetime.fromisoformat(str(raw or "").replace("Z", "+00:00"))
-    except ValueError:
-        dt = datetime.now(timezone.utc)
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError) as exc:
+        raise InvalidTimestampError(f"invalid_timestamp:{value}") from exc
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
@@ -63,10 +70,13 @@ def ts_to_iso(value: Any, *, now_iso_func: Callable[[], str]) -> str:
     if isinstance(value, datetime):
         dt = value
     else:
+        raw = str(value or "").strip()
+        if not raw:
+            raise InvalidTimestampError("missing_timestamp")
         try:
-            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        except Exception:
-            return now_iso_func()
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except (TypeError, ValueError) as exc:
+            raise InvalidTimestampError(f"invalid_timestamp:{raw}") from exc
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

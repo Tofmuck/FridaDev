@@ -59,6 +59,21 @@ class ChatPromptContextTests(unittest.TestCase):
         self.assertEqual(payload['day_part_class'], 'morning')
         self.assertEqual(payload['day_part_human'], 'matin')
 
+    def test_build_time_input_rejects_invalid_timezone_without_utc_fallback(self) -> None:
+        with self.assertRaisesRegex(time_input.InvalidTimezoneError, 'invalid_timezone'):
+            time_input.build_time_input(
+                now_utc_iso='2026-05-17T22:05:00Z',
+                timezone_name='No/Such_Zone',
+            )
+
+    def test_delta_label_rejects_invalid_timezone_without_utc_day(self) -> None:
+        with self.assertRaisesRegex(time_input.InvalidTimezoneError, 'invalid_timezone'):
+            time_input.render_delta_label(
+                '2026-05-17T22:05:00Z',
+                '2026-05-17T22:10:00Z',
+                timezone_name='No/Such_Zone',
+            )
+
     def test_resolve_backend_prompts_uses_prompt_loader_authority(self) -> None:
         loader = SimpleNamespace(
             get_main_system_prompt=lambda: 'BACKEND SYSTEM PROMPT',
