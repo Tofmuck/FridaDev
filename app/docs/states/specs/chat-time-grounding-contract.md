@@ -73,6 +73,13 @@ Ce que cela ne garantit pas encore:
 - `app/prompts/main_hermeneutical.txt`: formule explicitement l'interdit de pretendre etre prive d'ancrage temporel quand `NOW` est fourni.
 - `app/prompts/main_system.txt`: neutre et compatible, sans contradiction directe avec le contrat temporel.
 
+### Resserrement prompt-first du 2026-05-18
+- `app/prompts/main_hermeneutical.txt` formule maintenant `NOW` comme autorite du present du tour pour le LLM final.
+- Les dates absolues visibles des labels Delta-T y priment explicitement sur les relatifs (`aujourd'hui`, `hier`, `il y a 3 jours`), qui restent des aides de lecture.
+- Les mots temporels de l'utilisateur y sont traites comme des reperes relatifs a interpreter depuis `NOW` et les timestamps visibles, jamais comme preuve isolee plus forte que les reperes explicites du prompt.
+- Une contradiction temporelle ne doit pas etre lissee par une continuite commode: le modele privilegie la source temporelle la plus explicite ou nomme sobrement la tension si elle compte.
+- Un etat local ou temporaire ne devient pas une verite durable sans autre support explicite non relatif; le silence reste un intervalle conversationnel, pas un vecu.
+
 ## 2) These normative
 Dans FridaDev, le temps n'est pas d'abord une donnee de memoire: c'est une condition de forme du discours.
 La memoire conserve des traces horodatees, mais le discours en produit le sens temporel relativement a un `NOW` canonique de tour.
@@ -83,6 +90,9 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Chaque tour doit avoir un `NOW` canonique, autoritaire, explicite, timezone incluse.
 - Les messages injectes dans le prompt doivent rester situables relativement a ce `NOW`.
 - Les labels Delta-T visibles sur les messages doivent aussi porter la date locale absolue, l'heure locale et la timezone afin d'eviter toute reconstruction fragile du jour a partir d'une heure correcte.
+- Pour le LLM final, l'absolu visible du label Delta-T prime sur le relatif humain; le relatif aide la lecture, mais ne remplace jamais la chronologie explicite du prompt.
+- Les marqueurs temporels ecrits par l'utilisateur (`hier`, `aujourd'hui`, `depuis hier`, `en ce moment`) doivent etre interpretes depuis `NOW` et les timestamps visibles, sans devenir une horloge autonome ni une identite durable par eux-memes.
+- Si deux indices temporels semblent contradictoires, le modele ne doit pas fabriquer une continuite commode; il privilegie la source temporelle la plus explicite ou signale sobrement la tension si elle compte.
 - Les dates visibles des resumes actifs, des contextes de souvenirs parents et du dialogue envoye au resumeur doivent etre calculees en date locale `FRIDA_TIMEZONE`, jamais par troncature brute d'un timestamp UTC.
 - Les dates visibles par la lane web, reformulation comprise, doivent etre calculees depuis le `NOW` de tour en date locale `FRIDA_TIMEZONE`, jamais depuis une date humaine UTC hote.
 - Les modeles secondaires qui influencent l'interpretation finale ne doivent pas reconstruire `hier` / `aujourd'hui` depuis des timestamps UTC bruts:

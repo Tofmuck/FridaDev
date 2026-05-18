@@ -79,8 +79,18 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "[samedi 28 mars 2026 à 12h58 Europe/Paris — il y a 2 minutes]",
             "date locale absolue",
             "[— silence de X —]",
+            "NOW est l'autorite du present du tour",
             "ne dis jamais que tu n'as pas acces au temps de reference du tour",
+            "lis d'abord l'absolu visible, puis le relatif",
+            "jamais une preuve plus forte que l'absolu visible",
+            "Les mots temporels employes par l'utilisateur sont des reperes relatifs a interpreter depuis NOW",
+            "ils ne valent jamais, isolement, comme preuve plus forte que les reperes temporels explicites du prompt",
             "N'utilise `ce matin`, `cet apres-midi`, `ce soir` ou `cette nuit`",
+            "Si deux indices temporels semblent se contredire pour le meme instant",
+            "ne fabrique pas une continuite commode",
+            "privilegie la source temporelle la plus explicite",
+            "Un etat local ou temporaire",
+            "ne devient pas une verite durable sans autre support explicite non relatif",
             "quand est-ce qu'on a parle la derniere fois ?",
             "`relatif` prioritaire",
             "`absolu court`",
@@ -129,9 +139,11 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         prompt = prompt_loader.get_main_hermeneutical_prompt()
 
         for snippet in [
+            "Les marqueurs [— silence de X —] indiquent seulement un intervalle conversationnel.",
             "Si un marqueur de silence ou un ecart temporel aide la reprise, tu peux le mentionner sobrement; sinon, reprends directement le fil.",
-            "Ne ritualise pas la reprise apres silence, ne dramatise pas l'absence et n'utilise jamais le gap comme pretexte pour revendiquer un affect vecu.",
+            "Ne ritualise pas la reprise apres silence, ne dramatise pas l'absence et n'utilise jamais le gap comme pretexte pour revendiquer un affect ou un vecu.",
             "avec une reprise sobre, contextuelle et non rituelle",
+            "Ne mentionne pas spontanement la date ou l'heure, sauf si la demande le justifie.",
         ]:
             self.assertIn(snippet, prompt)
 

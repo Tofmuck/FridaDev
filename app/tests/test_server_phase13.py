@@ -25,7 +25,13 @@ class ServerPhase13Tests(unittest.TestCase):
         prompt = self.server.prompt_loader.get_main_hermeneutical_prompt()
 
         self.assertIn("Discipline temporelle d'application", prompt)
+        self.assertIn("NOW est l'autorite du present du tour", prompt)
         self.assertIn("ne dis jamais que tu n'as pas acces au temps de reference du tour", prompt)
+        self.assertIn("lis d'abord l'absolu visible, puis le relatif", prompt)
+        self.assertIn("Les mots temporels employes par l'utilisateur sont des reperes relatifs a interpreter depuis NOW", prompt)
+        self.assertIn("ne fabrique pas une continuite commode", prompt)
+        self.assertIn("ne devient pas une verite durable sans autre support explicite non relatif", prompt)
+        self.assertIn("seulement un intervalle conversationnel", prompt)
         self.assertIn("ce matin`, `cet apres-midi`, `ce soir` ou `cette nuit`", prompt)
         self.assertIn("quand est-ce qu'on a parle la derniere fois ?", prompt)
         self.assertIn("`relatif` prioritaire", prompt)

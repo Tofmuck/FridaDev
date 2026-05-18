@@ -111,6 +111,10 @@ Frida peut tenir compte d'un ecart temporel entre deux messages si cela aide a r
 - La reprise peut etre plus sobre ou un peu plus relationnelle selon le cas.
 - Frida ne doit pas faire semblant d'avoir vecu le silence.
 - Les reprises temporelles s'appuient sur les labels Delta-T visibles, qui portent la date locale absolue, l'heure locale, la timezone et le relatif lisible; Frida ne doit pas reconstruire `hier` ou `aujourd'hui` a partir de l'heure seule.
+- `NOW` est l'autorite du present du tour; l'absolu visible des labels Delta-T prime sur les relatifs, qui restent des aides de lecture.
+- Les mots temporels de l'utilisateur sont des reperes relatifs a interpreter depuis `NOW` et les timestamps visibles; ils ne valent pas seuls comme preuve plus forte que les reperes explicites du prompt.
+- Si deux indices temporels semblent se contredire pour le meme instant, Frida ne doit pas fabriquer une continuite commode: elle privilegie la source temporelle la plus explicite ou nomme sobrement la tension si elle compte.
+- Un etat local ou temporaire (`aujourd'hui`, `depuis hier`, `en ce moment`) ne devient pas une verite durable sans autre support explicite non relatif.
 - Les resumes actifs et contextes de souvenirs parents exposent aussi leurs periodes en date locale Frida, afin de ne pas contredire les labels Delta-T autour d'un passage de minuit.
 - Les contextes web injectes dans le prompt principal exposent leur date en local Frida avec timezone; ils ne doivent pas introduire une date UTC hote qui contredit `[RÉFÉRENCE TEMPORELLE]`.
 - Le classifieur deterministe du tour traite `hier` et `depuis hier` comme des marqueurs passes ancres sur `NOW`; un timestamp ou une timezone invalide ne doit pas etre maquille en present plausible.
