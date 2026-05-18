@@ -184,7 +184,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 
 ## Prochain caller
 
-- [x] Benchmark resume conversationnel: meme vrai materiau Frida envoye aux finalistes, sorties completes conservees pour lecture humaine.
+- [x] Benchmark resume conversationnel: meme vrai materiau Frida envoye aux finalistes, sorties completes produites pour lecture humaine puis retirees apres decision.
 - [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`.
 - [x] Decouplage propre du resume conversationnel.
 - [ ] Prochain caller: extracteur identity.
@@ -203,7 +203,8 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Garder le meme prompt systeme, le meme materiau utilisateur et les memes parametres de generation, sauf `max_tokens=4500`.
 - [x] Exposer dans le rapport le `finish_reason`, les `completion_tokens` et une evaluation conservative de terminaison/troncature.
 - [x] Produire un fichier Markdown complet par modele pour lecture humaine.
-- [x] Produire un index Markdown de campagne avec latence, cout estime, tokens si disponibles et chemins des sorties completes.
+- [x] Retirer les sorties Markdown brutes apres lecture humaine et decision.
+- [x] Produire un index Markdown de campagne avec latence, cout estime, tokens si disponibles, terminaison et note de retention.
 - [x] Produire un artefact JSON structure sans secret et sans materiau source brut.
 - [x] Ne pas attribuer de score automatique et ne pas proclamer de vainqueur.
 - [x] Lecture humaine finale de Tof: garder `openai/gpt-5.4-mini`.

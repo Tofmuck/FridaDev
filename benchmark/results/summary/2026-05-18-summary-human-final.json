@@ -75,12 +75,14 @@
           "max_tokens": 4500
         }
       },
-      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__openai__gpt-5.4-mini.md",
+      "summary_file": null,
       "summary_chars": 7260,
       "summary_sha256": "f7cb37f974e4455e87671457027620f5287fb2eab3a1f099349bc6d2cc96117a",
       "completion_budget_reached": false,
       "termination_assessment": "provider_declares_clean_stop",
-      "notes": "Sortie brute a lire humainement; aucun score automatique."
+      "notes": "Sortie brute retiree apres decision; modele retenu par lecture humaine.",
+      "summary_file_removed": true,
+      "summary_retention_note": "Raw Markdown output removed after human reading and model decision."
     },
     {
       "model": "anthropic/claude-sonnet-4.6",
@@ -126,12 +128,14 @@
           "max_tokens": 4500
         }
       },
-      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__anthropic__claude-sonnet-4.6.md",
+      "summary_file": null,
       "summary_chars": 8267,
       "summary_sha256": "09b921b09aed120e0cb2eeca901d8468c1a1f70a97d45a14e0a8e1ea506a77b9",
       "completion_budget_reached": false,
       "termination_assessment": "provider_declares_clean_stop",
-      "notes": "Sortie brute a lire humainement; aucun score automatique."
+      "notes": "Sortie brute retiree apres decision; metriques conservees.",
+      "summary_file_removed": true,
+      "summary_retention_note": "Raw Markdown output removed after human reading and model decision."
     },
     {
       "model": "qwen/qwen3.5-plus-20260420",
@@ -177,12 +181,16 @@
           "max_tokens": 4500
         }
       },
-      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__qwen__qwen3.5-plus-20260420.md",
+      "summary_file": null,
       "summary_chars": 3200,
       "summary_sha256": "20108d4238673454492b167d37011fdc5af838c31090977d543bde8f28ba9ec4",
       "completion_budget_reached": false,
       "termination_assessment": "provider_declares_clean_stop",
-      "notes": "Sortie brute a lire humainement; aucun score automatique."
+      "notes": "Sortie brute retiree apres decision; metriques conservees.",
+      "summary_file_removed": true,
+      "summary_retention_note": "Raw Markdown output removed after human reading and model decision."
     }
-  ]
+  ],
+  "raw_summary_outputs_retained": false,
+  "raw_summary_outputs_retention_note": "Raw per-model Markdown summaries were removed after human reading and model decision; compact metrics, signatures and hashes are retained."
 }

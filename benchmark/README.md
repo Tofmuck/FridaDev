@@ -153,6 +153,11 @@ The runner writes:
 - one Markdown campaign index;
 - one complete Markdown summary per model.
 
+For human-reading campaigns, the per-model Markdown summaries are temporary
+review artefacts. Once the human decision is made, they can be removed from the
+repo while keeping the compact JSON/Markdown campaign indexes with metrics,
+finish reasons, request hashes and output hashes.
+
 Summary reports include provider `finish_reason` when OpenRouter exposes it,
 completion token counts, and a conservative termination assessment. If a
 provider omits or blurs the finish reason, the report says so instead of
