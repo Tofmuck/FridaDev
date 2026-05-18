@@ -9,6 +9,7 @@ import requests
 
 import config
 from admin import runtime_settings
+from core.hermeneutic_node.inputs import time_input
 from core import llm_client, prompt_loader
 from core.token_utils import estimate_tokens
 
@@ -37,7 +38,10 @@ def summarize_conversation(turns: list[dict[str, Any]], model: str) -> str:
     parts = []
     for turn in turns:
         role = "Utilisateur" if turn.get("role") == "user" else "Assistant"
-        ts = (turn.get("timestamp") or "")[:10]
+        ts = time_input.local_date_iso(
+            str(turn.get("timestamp") or ""),
+            timezone_name=config.FRIDA_TIMEZONE,
+        )
         prefix = f"[{ts}] " if ts else ""
         parts.append(f"{prefix}{role} : {turn.get('content', '')}")
     dialogue_text = "\n\n".join(parts)
@@ -130,8 +134,10 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
         if id(m) in to_summarize_ids:
             m["summarized_by"] = summary_id
 
+    start_local_date = time_input.local_date_iso(start_ts, timezone_name=config.FRIDA_TIMEZONE)
+    end_local_date = time_input.local_date_iso(end_ts, timezone_name=config.FRIDA_TIMEZONE)
     logger.info(
         "summarize_done conv_id=%s summary_id=%s start=%s end=%s covered=%s",
-        conversation.get("id"), summary_id, start_ts[:10], end_ts[:10], len(to_summarize),
+        conversation.get("id"), summary_id, start_local_date, end_local_date, len(to_summarize),
     )
     return True

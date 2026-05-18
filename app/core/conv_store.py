@@ -481,7 +481,7 @@ def _silence_label(ts_before: str, ts_after: str) -> str:
     return conversations_prompt_window.silence_label(ts_before, ts_after)
 
 def _make_summary_message(summary: dict[str, Any]) -> dict[str, str]:
-    return conversations_prompt_window.make_summary_message(summary)
+    return conversations_prompt_window.make_summary_message(summary, timezone_name=config.FRIDA_TIMEZONE)
 
 
 def _get_active_summary(conversation_id: Optional[str]) -> Optional[dict[str, Any]]:
@@ -495,7 +495,7 @@ def _get_active_summary(conversation_id: Optional[str]) -> Optional[dict[str, An
 
 
 def _make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dict[str, str]]:
-    return conversations_prompt_window.make_memory_context_message(summaries)
+    return conversations_prompt_window.make_memory_context_message(summaries, timezone_name=config.FRIDA_TIMEZONE)
 
 
 def _summary_cutoff_iso(summary: Optional[dict[str, Any]]) -> Optional[str]:

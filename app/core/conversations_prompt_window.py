@@ -13,6 +13,7 @@ CONTEXT_HINTS_COUNT_MARKER = "(confidence: "
 MEMORY_CONTEXT_BLOCK_HEADER_PREFIX = "[Contexte du souvenir"
 MEMORY_TRACES_BLOCK_HEADER = "[Mémoire — souvenirs pertinents]"
 ACTIVE_SUMMARY_BLOCK_HEADER_PREFIXES = ("[Résumé de la période ", "[Résumé]")
+DEFAULT_SUMMARY_TIMEZONE = "Europe/Paris"
 
 
 def is_prompt_eligible_message(message: dict[str, Any]) -> bool:
@@ -38,9 +39,17 @@ def silence_label(ts_before: str, ts_after: str) -> str:
     return time_input.render_silence_label(ts_before, ts_after)
 
 
-def make_summary_message(summary: dict[str, Any]) -> dict[str, str]:
-    start = (summary.get("start_ts") or "")[:10]
-    end = (summary.get("end_ts") or "")[:10]
+def _summary_local_date(value: Any, *, timezone_name: str) -> str:
+    return time_input.local_date_iso(str(value or ""), timezone_name=timezone_name)
+
+
+def make_summary_message(
+    summary: dict[str, Any],
+    *,
+    timezone_name: str = DEFAULT_SUMMARY_TIMEZONE,
+) -> dict[str, str]:
+    start = _summary_local_date(summary.get("start_ts"), timezone_name=timezone_name)
+    end = _summary_local_date(summary.get("end_ts"), timezone_name=timezone_name)
     if start and end and start != end:
         period = f"du {start} au {end}"
     elif start:
@@ -104,14 +113,18 @@ def get_active_summary(
     }
 
 
-def make_memory_context_message(summaries: list[dict[str, Any]]) -> Optional[dict[str, str]]:
+def make_memory_context_message(
+    summaries: list[dict[str, Any]],
+    *,
+    timezone_name: str = DEFAULT_SUMMARY_TIMEZONE,
+) -> Optional[dict[str, str]]:
     """Formate les résumés parents des traces mémoire en un slot contexte."""
     if not summaries:
         return None
     lines = []
     for summary in summaries:
-        start = (summary.get("start_ts") or "")[:10]
-        end = (summary.get("end_ts") or "")[:10]
+        start = _summary_local_date(summary.get("start_ts"), timezone_name=timezone_name)
+        end = _summary_local_date(summary.get("end_ts"), timezone_name=timezone_name)
         if start and end and start != end:
             period = f"du {start} au {end}"
         elif start:

@@ -111,6 +111,7 @@ Frida peut tenir compte d'un ecart temporel entre deux messages si cela aide a r
 - La reprise peut etre plus sobre ou un peu plus relationnelle selon le cas.
 - Frida ne doit pas faire semblant d'avoir vecu le silence.
 - Les reprises temporelles s'appuient sur les labels Delta-T visibles, qui portent la date locale absolue, l'heure locale, la timezone et le relatif lisible; Frida ne doit pas reconstruire `hier` ou `aujourd'hui` a partir de l'heure seule.
+- Les resumes actifs et contextes de souvenirs parents exposent aussi leurs periodes en date locale Frida, afin de ne pas contredire les labels Delta-T autour d'un passage de minuit.
 
 ### Ce que cela autorise
 

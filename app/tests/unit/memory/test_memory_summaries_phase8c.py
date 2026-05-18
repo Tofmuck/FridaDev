@@ -17,8 +17,9 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import conversations_prompt_window
-from core.hermeneutic_node.inputs import memory_arbitration_input, memory_retrieved_input
+from core.hermeneutic_node.inputs import memory_arbitration_input, memory_retrieved_input, time_input
 from memory import memory_pre_arbiter_basket
+from memory import summarizer
 from observability import prompt_injection_summary
 
 
@@ -308,6 +309,84 @@ class MemorySummariesPhase8CTests(unittest.TestCase):
 
         self.assertIsNotNone(message)
         self.assertIn('Resume : Resume de preferences durables', message['content'])
+
+    def test_summary_headers_use_frida_local_date_not_truncated_utc_date(self) -> None:
+        summary = {
+            'id': 'sum-midnight',
+            'conversation_id': 'conv-midnight',
+            'start_ts': '2026-05-17T22:05:00Z',
+            'end_ts': '2026-05-17T22:05:00Z',
+            'content': 'Message autour du passage de minuit local.',
+        }
+
+        active_summary = conversations_prompt_window.make_summary_message(summary)
+        memory_context = conversations_prompt_window.make_memory_context_message([summary])
+        delta_label = time_input.render_delta_label(
+            '2026-05-17T22:05:00Z',
+            '2026-05-18T20:00:00Z',
+            timezone_name='Europe/Paris',
+        )
+
+        self.assertEqual(
+            active_summary['content'].splitlines()[0],
+            '[Résumé de la période du 2026-05-18]',
+        )
+        self.assertIsNotNone(memory_context)
+        self.assertIn('[Contexte du souvenir — résumé du 2026-05-18]', memory_context['content'])
+        self.assertIn('lundi 18 mai 2026 à 0h05 Europe/Paris', delta_label)
+        self.assertNotIn('du 2026-05-17', active_summary['content'])
+        self.assertNotIn('du 2026-05-17', memory_context['content'])
+
+    def test_summarizer_input_uses_frida_local_date_not_truncated_utc_date(self) -> None:
+        observed: dict[str, object] = {}
+        original_post = summarizer.requests.post
+        original_or_headers = summarizer.llm_client.or_headers
+        original_log_provider_metadata = summarizer.llm_client.log_provider_metadata
+        original_get_summary_system_prompt = summarizer.prompt_loader.get_summary_system_prompt
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {
+                    'id': 'gen-summary-local-date',
+                    'model': 'summary-model',
+                    'choices': [{'message': {'content': 'resume test'}}],
+                }
+
+        def fake_post(_url, *, json, headers, timeout):
+            observed['payload'] = json
+            observed['headers'] = headers
+            observed['timeout'] = timeout
+            return FakeResponse()
+
+        summarizer.requests.post = fake_post
+        summarizer.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
+        summarizer.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        summarizer.prompt_loader.get_summary_system_prompt = lambda: 'SYSTEM SUMMARY'
+        try:
+            summarizer.summarize_conversation(
+                [
+                    {
+                        'role': 'user',
+                        'content': 'Message autour du passage de minuit local.',
+                        'timestamp': '2026-05-17T22:05:00Z',
+                    }
+                ],
+                'summary-model',
+            )
+        finally:
+            summarizer.requests.post = original_post
+            summarizer.llm_client.or_headers = original_or_headers
+            summarizer.llm_client.log_provider_metadata = original_log_provider_metadata
+            summarizer.prompt_loader.get_summary_system_prompt = original_get_summary_system_prompt
+
+        payload = observed['payload']
+        self.assertIsInstance(payload, dict)
+        dialogue = payload['messages'][1]['content']
+        self.assertIn('[2026-05-18] Utilisateur : Message autour du passage de minuit local.', dialogue)
+        self.assertNotIn('[2026-05-17] Utilisateur', dialogue)
 
 
 if __name__ == '__main__':

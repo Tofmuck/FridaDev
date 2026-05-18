@@ -9,7 +9,7 @@ Ce qui existe deja dans le code:
 - `app/core/chat_service.py` fixe deja un `now` de tour (timestamp canonique de message utilisateur) et le propage a la construction du prompt.
 - `app/core/conv_store.py` porte deja des labels Delta-T (`delta_t_label`) et des marqueurs de silence (`_silence_label`) injectes dans les messages de prompt.
 - `app/prompts/main_hermeneutical.txt` formalise deja l'interpretation du repere temporel, des deltas et des silences.
-- resume actif, souvenirs et indices contextuels sont deja situes en partie relativement au temps de tour.
+- resume actif, contextes de souvenirs parents, souvenirs et indices contextuels sont situes sur la temporalite locale Frida quand une date est visible.
 - Contradiction principale initiale (desormais resolue dans le code courant):
   - auparavant, `chat_prompt_context.build_augmented_system()` recalculait un `datetime.now(...)` local en concurrence avec le `NOW` de tour de `chat_service`;
   - maintenant, `chat_service.chat_response()` fixe `user_timestamp` / `now_iso_value` et `build_augmented_system(...)` consomme explicitement ce `now_iso`;
@@ -43,12 +43,12 @@ Ce que cela ne garantit pas encore:
   - statut: `derive` + `narratif`.
 - `conv_store._get_active_summary` + `_make_summary_message`
   - role: injection du resume actif antérieur.
-  - forme injectee: `[Résumé de la période ...]` + contenu resume, ou `[Résumé]` quand aucun bornage temporel n'est disponible.
-  - statut: `partiellement contractuel` (entete stable, contenu narratif).
+  - forme injectee: `[Résumé de la période ...]` + contenu resume, ou `[Résumé]` quand aucun bornage temporel n'est disponible; les dates de periode sont derivees en date locale `FRIDA_TIMEZONE`.
+  - statut: `partiellement contractuel` (entete stable en date locale, contenu narratif).
 - `conv_store._make_memory_context_message`
   - role: contextualiser les souvenirs retenus avec leurs resumes parents.
-  - forme injectee: `[Contexte du souvenir S1 — résumé ...]` quand un repere parent est utile, sinon `[Contexte du souvenir — résumé ...]`.
-  - statut: `partiellement contractuel`.
+  - forme injectee: `[Contexte du souvenir S1 — résumé ...]` quand un repere parent est utile, sinon `[Contexte du souvenir — résumé ...]`; les dates de periode sont derivees en date locale `FRIDA_TIMEZONE`.
+  - statut: `partiellement contractuel` (entete stable en date locale).
 - `conv_store._make_memory_message`
   - role: injecter les souvenirs pertinents avec leur position relative au tour.
   - forme injectee: `[Mémoire — souvenirs pertinents]` + lignes prefixees par `delta_t_label`, avec `[contexte S1]` si la trace est liee au resume parent de meme repere.
@@ -65,8 +65,8 @@ Ce que cela ne garantit pas encore:
 - Les contenus injectes de resume/souvenirs/indices restent textuels metier (necessaire pour le dialogue, mais non contractuels).
 
 ### Alignement des prompts statiques (lot 1)
-- `app/prompts/main_hermeneutical.txt`: aligne sur la these "temps du discours" et l'usage de `REFERENCE TEMPORELLE`/Delta-T, mais partiellement en retard sur la forme canonique actuelle (`NOW:` + `TIMEZONE:` non explicites dans ce texte statique).
-- `app/prompts/main_hermeneutical.txt`: ne formule pas encore explicitement l'interdit "ne pas pretendre etre prive d'ancrage temporel quand `NOW` est fourni" (point a traiter dans un lot suivant).
+- `app/prompts/main_hermeneutical.txt`: aligne sur la these "temps du discours", l'usage de `[RÉFÉRENCE TEMPORELLE]`, les lignes `NOW:` / `TIMEZONE:` et les labels Delta-T absolus + relatifs.
+- `app/prompts/main_hermeneutical.txt`: formule explicitement l'interdit de pretendre etre prive d'ancrage temporel quand `NOW` est fourni.
 - `app/prompts/main_system.txt`: neutre et compatible, sans contradiction directe avec le contrat temporel.
 
 ## 2) These normative
@@ -79,6 +79,7 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Chaque tour doit avoir un `NOW` canonique, autoritaire, explicite, timezone incluse.
 - Les messages injectes dans le prompt doivent rester situables relativement a ce `NOW`.
 - Les labels Delta-T visibles sur les messages doivent aussi porter la date locale absolue, l'heure locale et la timezone afin d'eviter toute reconstruction fragile du jour a partir d'une heure correcte.
+- Les dates visibles des resumes actifs, des contextes de souvenirs parents et du dialogue envoye au resumeur doivent etre calculees en date locale `FRIDA_TIMEZONE`, jamais par troncature brute d'un timestamp UTC.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"
   - en forme relative et/ou absolue selon le besoin.
