@@ -182,7 +182,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             def json(self):
                 return {"choices": [{"message": {"content": "requete locale"}}]}
 
-        def fake_post(_url, json, _headers, _timeout):
+        def fake_post(_url, json, headers, timeout):
+            _ = headers, timeout
             observed['system_prompt'] = json['messages'][0]['content']
             return FakeResponse()
 
