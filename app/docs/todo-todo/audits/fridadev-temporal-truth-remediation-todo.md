@@ -1,85 +1,62 @@
-# FridaDev - remediation de verite temporelle - TODO
+# FridaDev - comprehension temporelle modele - TODO
 
-Source: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+Source cartographique large: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 
-## Objectif
+## Objectif prioritaire
 
-Fermer les findings actifs de l'audit temporel du 2026-05-18 sans refonte opportuniste. La cible est simple: toute temporalite visible par un modele ou par l'utilisateur doit etre derivee de la meme verite locale Frida, sauf surfaces operateur explicitement UTC.
+Ce chantier existe pour que Frida sache toujours correctement quel jour on est quand elle interprete et repond.
 
-## Non-objectifs
+Il ne cherche pas a harmoniser toutes les dates visibles dans le produit. Il ne traite que:
 
-- Pas de changement provider/modele.
-- Pas de refonte memoire.
-- Pas de refonte dashboard large.
-- Pas de chantier Biblio.
-- Pas de normalisation generale des logs hors clarification UTC necessaire.
-- Pas de requalification de la doctrine conversationnelle au-dela du temps.
+- [ ] ce que le modele principal lit;
+- [ ] ce que les modeles secondaires injectent ou influencent dans l'interpretation finale;
+- [ ] les classifieurs et fallbacks qui peuvent faire croire a Frida qu'un instant appartient au mauvais jour.
 
-## Lot 1 - Web local time
+Doctrine active de ce TODO: pour la comprehension modele, la verite temporelle est la temporalite locale Frida; les choix timezone des surfaces navigateur ou operateur relevent d'un backlog separe.
 
-Finding cible: `TEMP-20260518-P1-001`.
+## Hors scope pour ce chantier
 
-Actions:
+Ces sujets restent cartographies dans l'audit global, mais ne gouvernent pas le chemin critique courant:
 
-- remplacer les dates `datetime.now(timezone.utc).strftime("%d %B %Y")` de `app/tools/web_search.py` par une date locale Frida construite via le coeur temporel;
-- inclure la timezone ou une mention explicite Europe/Paris dans le contexte web et le prompt de reformulation;
-- ne pas dependre de la locale systeme pour les mois/jours francais;
-- tester `2026-05-17T22:05:00Z -> 18 mai 2026 Europe/Paris`.
+- [ ] hero/date d'accueil du chat;
+- [ ] sidebar conversations;
+- [ ] export Markdown;
+- [ ] nom fichier exporte;
+- [ ] dashboard `today/yesterday`;
+- [ ] dates et buckets dashboard web, dont `formatDateTime()` et `formatBucketLabel()`;
+- [ ] fenetre custom dashboard;
+- [ ] toute autre surface purement UI, export ou operateur qui ne modifie pas la comprehension des modeles.
 
-Condition de sortie:
+## Lots actifs
 
-- aucun contexte web ne peut contredire `[RÉFÉRENCE TEMPORELLE]` autour de minuit local.
+- [ ] **Lot 1 - Web local time**
+  - [ ] Corriger la contradiction directe entre la lane web et le prompt principal.
+  - [ ] Remplacer les dates UTC hote de `app/tools/web_search.py` par une date locale Frida issue du coeur temporel.
+  - [ ] Ne pas dependre de la locale systeme pour les mois/jours francais.
+  - [ ] Prouver qu'aucune reformulation web et aucun bloc web ne peut raconter un autre jour que `[RÉFÉRENCE TEMPORELLE]` autour de `2026-05-17T22:05:00Z`.
 
-## Lot 2 - Modeles secondaires temporellement ancres
+- [ ] **Lot 2 - Modeles secondaires qui influencent l'interpretation**
+  - [ ] Validation agent: fournir `NOW/TIMEZONE` au bon niveau de priorite ou des labels locaux suffisants dans le contexte qu'il lit d'abord.
+  - [ ] Arbitre memoire: fournir recent context et candidats avec ancre locale suffisante, ou une politique explicite d'ignorance des claims temporels faibles.
+  - [ ] Identity extractor: soit fournir une ancre temporelle, soit rejeter explicitement les claims relatifs faibles (`hier`, `aujourd'hui`, `en ce moment`) comme non durables.
+  - [ ] Identity periodic: statuer sur son influence reelle; si elle peut consolider un claim temporel relatif, appliquer la meme regle d'ancrage ou de rejet.
+  - [ ] Stimmung: statuer sur son influence reelle; si les gaps temporels influencent le signal, fournir labels locaux, sinon documenter et tester l'ignorance volontaire.
+  - [ ] Couvrir chaque caller par un test ou une preuve montrant qu'il ne peut pas introduire un jour contradictoire dans l'interpretation finale.
 
-Findings cibles: `TEMP-20260518-P2-001`, `TEMP-20260518-P2-002`, `TEMP-20260518-P2-003`, `TEMP-20260518-P3-001`, `TEMP-20260518-P3-002`.
+- [ ] **Lot 3 - Qualification deterministe et fallbacks**
+  - [ ] Reconnaitre `hier` et `depuis hier` dans la qualification temporelle du tour.
+  - [ ] Empecher un timestamp invalide de devenir silencieusement `now` dans une surface qui nourrit la comprehension de Frida.
+  - [ ] Rendre le fallback timezone invalide observable, pour qu'il ne recree pas silencieusement une verite UTC contradictoire.
+  - [ ] Tester les cas `hier`, `depuis hier`, timestamp invalide et timezone invalide.
 
-Actions:
-
-- validation agent: exposer les timestamps du `validation_dialogue_context` sous forme locale robuste, ou remonter `NOW/TIMEZONE` au meme niveau de priorite que le contexte;
-- arbitre memoire: fournir recent context et candidats avec labels locaux sobres, en conservant l'UTC technique si utile;
-- identity extractor: ajouter un ancrage temporel ou une regle de rejet explicite des claims temporels relatifs non durables;
-- identity periodic: statuer sur le besoin d'ancre locale pour les `buffer_pairs`;
-- stimmung: choisir explicitement entre "ignore les gaps" documente/teste ou "recoit les gaps locaux".
-
-Condition de sortie:
-
-- aucun modele secondaire influencant la reponse finale ne recoit un `hier/aujourd'hui` sans ancre locale ou politique d'ignorance explicite.
-
-## Lot 3 - UI, exports et dashboard
-
-Findings cibles: `TEMP-20260518-P2-004`, `TEMP-20260518-P2-005`.
-
-Actions:
-
-- dashboard `today/yesterday`: passer en jour local Frida ou renommer/labeliser explicitement UTC;
-- chat accueil `setHero()` / `fmtDateFR()`: choisir Europe/Paris explicite ou locale navigateur explicite;
-- chat bylines `fmtHour()`: meme decision, avec timezone visible si browser-local;
-- sidebar conversations `formatTimestamp()`: meme decision, sans jour silencieusement different;
-- dashboard web `formatDateTime()` / `formatBucketLabel()`: meme decision que la doctrine dashboard;
-- export Markdown: meme decision que byline, avec timezone visible;
-- tests frontend/sidebar/dashboard/export autour de `2026-05-17T22:05:00Z`.
-
-Condition de sortie:
-
-- une heure correcte ne peut plus etre associee silencieusement au mauvais jour dans une surface navigateur, export ou dashboard.
-
-## Lot 4 - Classifieur et fallbacks
-
-Findings cibles: `TEMP-20260518-P2-006`, `TEMP-20260518-P3-003`, `TEMP-20260518-P3-004`.
-
-Actions:
-
-- reconnaitre `hier` / `depuis hier` dans la qualification temporelle du tour;
-- rendre le fallback timestamp invalide observable et non inventif pour le dialogue;
-- rendre le fallback timezone invalide observable, avec test;
-- ajouter tests DST Europe/Paris si le lot touche le coeur temporel.
-
-Condition de sortie:
-
-- un signal temporel relatif explicite n'est plus classe atemporel;
-- une donnee temporelle invalide n'est plus transformee silencieusement en present dialogique.
+- [ ] **Lot 4 - Fermeture de la verite temporelle modele**
+  - [ ] Ajouter une matrice de preuves autour de minuit Europe/Paris.
+  - [ ] Ajouter une matrice DST Europe/Paris pour les lanes lisibles par un modele.
+  - [ ] Prouver qu'aucune lane pertinente pour la comprehension modele ne peut presenter a Frida deux jours contradictoires pour le meme instant.
+  - [ ] Relire l'audit global et requalifier les findings modele comme corriges ou stale avec preuves.
+  - [ ] Archiver ce TODO seulement quand la propriete modele est prouvee de bout en bout.
 
 ## Condition de non-prolongation
 
-Ce TODO est clos quand les findings listes sont resolus ou explicitement requalifies stale avec tests/preuves. Toute nouvelle demande de refonte memoire, provider, dashboard ou Biblio doit ouvrir un autre chantier.
+- [ ] Ne pas ajouter de lot UI, dashboard operateur, export, Biblio, provider ou refactor general dans ce TODO.
+- [ ] Ouvrir un autre chantier si la coherence temporelle produit hors modele redevient prioritaire.
