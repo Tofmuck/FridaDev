@@ -1,0 +1,2254 @@
+{
+  "campaign_id": "2026-05-18-arbiter-openrouter",
+  "created_at_utc": "2026-05-18T13:33:54Z",
+  "suite": "arbiter",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "google/gemini-3.1-flash-lite",
+    "qwen/qwen3.6-flash",
+    "mistralai/mistral-small-2603"
+  ],
+  "generation_params": {
+    "temperature": 0,
+    "top_p": 1.0,
+    "max_tokens": 600
+  },
+  "prompt_path": "app/prompts/arbiter.txt",
+  "prompt_sha256": "06f4a8f719d595f33473f49d8b27f6f7f9591d1f9ecb896305ad63efda7889e1",
+  "fixture_path": "benchmark/suites/arbiter/fixtures/arbiter_memory_cases.json",
+  "fixture_sha256": "9818cdf088d3a299477fc392591df0867f2b838bcd39b2c133f1f7d30e45b048",
+  "case_count": 8,
+  "secrets_written": false,
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "summary": {
+        "model": "openai/gpt-5.4-mini",
+        "score": 100.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "provider_error_rate": 0.0,
+        "avg_latency_ms": 1814.052,
+        "cost_estimate_usd": 0.0074805,
+        "verdict": "garder",
+        "notes": "ok on diagnostic fixtures"
+      },
+      "calls": [
+        {
+          "case_id": "clear_useful_project_memory",
+          "case_tags": [
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "clear-useful-python"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1857.391,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"clear-useful-python\",\"keep\":true,\"semantic_relevance\":0.97,\"contextual_gain\":0.89,\"redundant_with_recent\":false,\"reason\":\"Préférence directement utile pour répondre sur les petits outils internes FridaDev.\"},{\"candidate_id\":\"clear-useful-unrelated\",\"keep\":false,\"semantic_relevance\":0.05,\"contextual_gain\":0.0,\"redundant_with_recent\":false,\"reason\":\"Sans rapport avec la question.\"}]}",
+            "usage": {
+              "prompt_tokens": 876,
+              "completion_tokens": 110,
+              "total_tokens": 986,
+              "cost": 0.001152,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001152,
+                "upstream_inference_prompt_cost": 0.000657,
+                "upstream_inference_completions_cost": 0.000495
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001152,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "e7a111fcbfb0bb6d2654184087f40f293efd845762df80e327445bfca022ef88",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 2,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "clear-useful-python"
+            ],
+            "true_positives": [
+              "clear-useful-python"
+            ],
+            "true_negatives": [
+              "clear-useful-unrelated"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "clearly_useless_noise",
+          "case_tags": [
+            "clearly_useless",
+            "noise",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1394.81,
+            "error": null,
+            "raw_text": "{\"decisions\":[]}",
+            "usage": {
+              "prompt_tokens": 651,
+              "completion_tokens": 9,
+              "total_tokens": 660,
+              "cost": 0.00052875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00052875,
+                "upstream_inference_prompt_cost": 0.00048825,
+                "upstream_inference_completions_cost": 4.05e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00052875,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8352d9f8586b0b9a376e2a3ea02208fab21da9ae68e7486d32b730711da37b3c",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "noise-coffee"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "ambiguous_low_utility",
+          "case_tags": [
+            "ambiguous",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1405.476,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"ambiguous-modeles\",\"keep\":false,\"semantic_relevance\":0.48,\"contextual_gain\":0.12,\"redundant_with_recent\":true,\"reason\":\"Too vague and largely repeats the current request about clarifying the models workstream.\"}]}",
+            "usage": {
+              "prompt_tokens": 659,
+              "completion_tokens": 65,
+              "total_tokens": 724,
+              "cost": 0.00078675,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00078675,
+                "upstream_inference_prompt_cost": 0.00049425,
+                "upstream_inference_completions_cost": 0.0002925
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00078675,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7c98af3decba40137ffeaef88e179aed77719c038a344d9312861a94459d902e",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "ambiguous-modeles"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "redundant_with_recent_context",
+          "case_tags": [
+            "redundancy",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1121.529,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"redundant-caller-by-caller\",\"keep\":false,\"semantic_relevance\":0.98,\"contextual_gain\":0.02,\"redundant_with_recent\":true,\"reason\":\"Exact duplicate of recent user message; no added utility.\"}]}",
+            "usage": {
+              "prompt_tokens": 662,
+              "completion_tokens": 64,
+              "total_tokens": 726,
+              "cost": 0.0007845,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0007845,
+                "upstream_inference_prompt_cost": 0.0004965,
+                "upstream_inference_completions_cost": 0.000288
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0007845,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "293923ac0d346a1a2743e1391df8fd8cb8f59e7213e68c869a6fc3e986e2323f",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "redundant-caller-by-caller"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "affective_near_but_not_useful",
+          "case_tags": [
+            "affective_near",
+            "clearly_useless",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1106.07,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"affective-fragile\",\"keep\":false,\"semantic_relevance\":0.18,\"contextual_gain\":0.05,\"redundant_with_recent\":false,\"reason\":\"État émotionnel ponctuel, sans utilité claire pour expliquer faux positifs/faux négatifs.\"}]}",
+            "usage": {
+              "prompt_tokens": 654,
+              "completion_tokens": 77,
+              "total_tokens": 731,
+              "cost": 0.000837,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000837,
+                "upstream_inference_prompt_cost": 0.0004905,
+                "upstream_inference_completions_cost": 0.0003465
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000837,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "095889fbc8eff3b540446240db43efb16dd17a3bf01a327170006dd8a98d825b",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "affective-fragile"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "user_identity_useful",
+          "case_tags": [
+            "identity",
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "identity-dyslexic"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2554.601,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"identity-dyslexic\",\"keep\":true,\"semantic_relevance\":0.84,\"contextual_gain\":0.86,\"redundant_with_recent\":false,\"reason\":\"Useful preference for rewriting: short sentences and explicit guidance fit this reformulation request.\"}]}",
+            "usage": {
+              "prompt_tokens": 660,
+              "completion_tokens": 72,
+              "total_tokens": 732,
+              "cost": 0.000819,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000819,
+                "upstream_inference_prompt_cost": 0.000495,
+                "upstream_inference_completions_cost": 0.000324
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000819,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "fec105a5bc2f3a3c501bbb56de7a145e56c784b1d1b57a9c47fd50fef44fc044",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "identity-dyslexic"
+            ],
+            "true_positives": [
+              "identity-dyslexic"
+            ],
+            "true_negatives": [],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "false_memory_reject",
+          "case_tags": [
+            "false_memory",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2906.972,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"false-kubernetes\",\"keep\":false,\"semantic_relevance\":0.52,\"contextual_gain\":0.05,\"redundant_with_recent\":true,\"reason\":\"Contradicted by recent context and adds no useful new detail.\"}]}",
+            "usage": {
+              "prompt_tokens": 653,
+              "completion_tokens": 61,
+              "total_tokens": 714,
+              "cost": 0.00076425,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00076425,
+                "upstream_inference_prompt_cost": 0.00048975,
+                "upstream_inference_completions_cost": 0.0002745
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00076425,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7cec36e336602e7afdf658e79ef3eaa0fe11f8c4cbdd73b44c5f25a7ba1d39f2",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "false-kubernetes"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "temporal_circumstantial_mix",
+          "case_tags": [
+            "temporal",
+            "circumstantial",
+            "today",
+            "hier",
+            "ce_soir",
+            "depuis_hier",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "depuis-hier-build-useful"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2165.566,
+            "error": null,
+            "raw_text": "{\"decisions\":[{\"candidate_id\":\"today-report-weak\",\"keep\":false,\"semantic_relevance\":0.2,\"contextual_gain\":0.05,\"redundant_with_recent\":false,\"reason\":\"Unrelated to the FridaDev build issue and low utility.\"},{\"candidate_id\":\"hier-lost-weak\",\"keep\":false,\"semantic_relevance\":0.18,\"contextual_gain\":0.03,\"redundant_with_recent\":false,\"reason\":\"Generic mood note, not actionable for build diagnosis.\"},{\"candidate_id\":\"ce-soir-family-weak\",\"keep\":false,\"semantic_relevance\":0.14,\"contextual_gain\":0.02,\"redundant_with_recent\":false,\"reason\":\"Ephemeral personal constraint with no clear relevance here.\"},{\"candidate_id\":\"depuis-hier-build-useful\",\"keep\":true,\"semantic_relevance\":0.97,\"contextual_gain\":0.95,\"redundant_with_recent\":false,\"reason\":\"Directly relevant build failure detail and specific failing test.\"}]}",
+            "usage": {
+              "prompt_tokens": 1115,
+              "completion_tokens": 216,
+              "total_tokens": 1331,
+              "cost": 0.00180825,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00180825,
+                "upstream_inference_prompt_cost": 0.00083625,
+                "upstream_inference_completions_cost": 0.000972
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00180825,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "9c002e651b2b9234b35394a46bffebf13f5694bcb47a887dd69b0f9571aed468",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 4,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "depuis-hier-build-useful"
+            ],
+            "true_positives": [
+              "depuis-hier-build-useful"
+            ],
+            "true_negatives": [
+              "ce-soir-family-weak",
+              "hier-lost-weak",
+              "today-report-weak"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "summary": {
+        "model": "google/gemini-3.1-flash-lite",
+        "score": 100.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "provider_error_rate": 0.0,
+        "avg_latency_ms": 1504.923,
+        "cost_estimate_usd": 0.00346175,
+        "verdict": "garder",
+        "notes": "ok on diagnostic fixtures"
+      },
+      "calls": [
+        {
+          "case_id": "clear_useful_project_memory",
+          "case_tags": [
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "clear-useful-python"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2559.276,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"clear-useful-python\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.89,\n      \"contextual_gain\": 0.95,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Directly answers the user's question about Tof's preferences for FridaDev tools.\"\n    },\n    {\n      \"candidate_id\": \"clear-useful-unrelated\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.18,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Irrelevant information regarding weather, provides no utility for the current query.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 1044,
+              "completion_tokens": 192,
+              "total_tokens": 1236,
+              "cost": 0.000549,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000549,
+                "upstream_inference_prompt_cost": 0.000261,
+                "upstream_inference_completions_cost": 0.000288
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000549,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "e7a111fcbfb0bb6d2654184087f40f293efd845762df80e327445bfca022ef88",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 2,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "clear-useful-python"
+            ],
+            "true_positives": [
+              "clear-useful-python"
+            ],
+            "true_negatives": [
+              "clear-useful-unrelated"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "clearly_useless_noise",
+          "case_tags": [
+            "clearly_useless",
+            "noise",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1024.083,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"noise-coffee\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.12,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Memory is circumstantial, ephemeral, and lacks any utility for the technical task of configuring Authelia.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 748,
+              "completion_tokens": 102,
+              "total_tokens": 850,
+              "cost": 0.00034,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00034,
+                "upstream_inference_prompt_cost": 0.000187,
+                "upstream_inference_completions_cost": 0.000153
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00034,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8352d9f8586b0b9a376e2a3ea02208fab21da9ae68e7486d32b730711da37b3c",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "noise-coffee"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "ambiguous_low_utility",
+          "case_tags": [
+            "ambiguous",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1232.541,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"ambiguous-modeles\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.3,\n      \"contextual_gain\": 0.1,\n      \"redundant_with_recent\": true,\n      \"reason\": \"Le souvenir est trop vague et n'apporte aucune information actionnable pour clarifier l'étape actuelle du chantier.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 761,
+              "completion_tokens": 108,
+              "total_tokens": 869,
+              "cost": 0.00035225,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00035225,
+                "upstream_inference_prompt_cost": 0.00019025,
+                "upstream_inference_completions_cost": 0.000162
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00035225,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7c98af3decba40137ffeaef88e179aed77719c038a344d9312861a94459d902e",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "ambiguous-modeles"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "redundant_with_recent_context",
+          "case_tags": [
+            "redundancy",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2017.525,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"redundant-caller-by-caller\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.95,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": true,\n      \"reason\": \"The memory is an exact duplicate of the current user prompt.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 768,
+              "completion_tokens": 100,
+              "total_tokens": 868,
+              "cost": 0.000342,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000342,
+                "upstream_inference_prompt_cost": 0.000192,
+                "upstream_inference_completions_cost": 0.00015
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000342,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "293923ac0d346a1a2743e1391df8fd8cb8f59e7213e68c869a6fc3e986e2323f",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "redundant-caller-by-caller"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "affective_near_but_not_useful",
+          "case_tags": [
+            "affective_near",
+            "clearly_useless",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2099.55,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"affective-fragile\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.1,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": false,\n      \"reason\": \"The memory is circumstantial and lacks utility for the technical question regarding scoring metrics.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 752,
+              "completion_tokens": 99,
+              "total_tokens": 851,
+              "cost": 0.0003365,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0003365,
+                "upstream_inference_prompt_cost": 0.000188,
+                "upstream_inference_completions_cost": 0.0001485
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0003365,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "095889fbc8eff3b540446240db43efb16dd17a3bf01a327170006dd8a98d825b",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "affective-fragile"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "user_identity_useful",
+          "case_tags": [
+            "identity",
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "identity-dyslexic"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 754.825,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"identity-dyslexic\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.84,\n      \"contextual_gain\": 0.95,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Provides essential stylistic constraints for the requested task.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 763,
+              "completion_tokens": 95,
+              "total_tokens": 858,
+              "cost": 0.00033325,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00033325,
+                "upstream_inference_prompt_cost": 0.00019075,
+                "upstream_inference_completions_cost": 0.0001425
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00033325,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "fec105a5bc2f3a3c501bbb56de7a145e56c784b1d1b57a9c47fd50fef44fc044",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "identity-dyslexic"
+            ],
+            "true_positives": [
+              "identity-dyslexic"
+            ],
+            "true_negatives": [],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "false_memory_reject",
+          "case_tags": [
+            "false_memory",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 767.202,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"false-kubernetes\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.58,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": true,\n      \"reason\": \"The memory is contradicted by the current context and contains an outdated temporal reference.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 752,
+              "completion_tokens": 98,
+              "total_tokens": 850,
+              "cost": 0.000335,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000335,
+                "upstream_inference_prompt_cost": 0.000188,
+                "upstream_inference_completions_cost": 0.000147
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000335,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7cec36e336602e7afdf658e79ef3eaa0fe11f8c4cbdd73b44c5f25a7ba1d39f2",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "false-kubernetes"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "temporal_circumstantial_mix",
+          "case_tags": [
+            "temporal",
+            "circumstantial",
+            "today",
+            "hier",
+            "ce_soir",
+            "depuis_hier",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "depuis-hier-build-useful"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1584.38,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"today-report-weak\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.31,\n      \"contextual_gain\": 0.1,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Circumstantial memory with low utility for the current technical task.\"\n    },\n    {\n      \"candidate_id\": \"hier-lost-weak\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.44,\n      \"contextual_gain\": 0.1,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Generic emotional state, lacks actionable technical information.\"\n    },\n    {\n      \"candidate_id\": \"ce-soir-family-weak\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.28,\n      \"contextual_gain\": 0.1,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Circumstantial memory, irrelevant to the FridaDev diagnostic.\"\n    },\n    {\n      \"candidate_id\": \"depuis-hier-build-useful\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.91,\n      \"contextual_gain\": 0.85,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Provides specific technical context (test arbitre memoire) for the current build failure.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 1347,
+              "completion_tokens": 358,
+              "total_tokens": 1705,
+              "cost": 0.00087375,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00087375,
+                "upstream_inference_prompt_cost": 0.00033675,
+                "upstream_inference_completions_cost": 0.000537
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00087375,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "9c002e651b2b9234b35394a46bffebf13f5694bcb47a887dd69b0f9571aed468",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 4,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "depuis-hier-build-useful"
+            ],
+            "true_positives": [
+              "depuis-hier-build-useful"
+            ],
+            "true_negatives": [
+              "ce-soir-family-weak",
+              "hier-lost-weak",
+              "today-report-weak"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "model": "qwen/qwen3.6-flash",
+      "summary": {
+        "model": "qwen/qwen3.6-flash",
+        "score": 100.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "provider_error_rate": 0.0,
+        "avg_latency_ms": 3654.218,
+        "cost_estimate_usd": 0.0067575,
+        "verdict": "garder",
+        "notes": "ok on diagnostic fixtures"
+      },
+      "calls": [
+        {
+          "case_id": "clear_useful_project_memory",
+          "case_tags": [
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "clear-useful-python"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 4459.683,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"clear-useful-python\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.95,\n      \"contextual_gain\": 0.90,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Directly answers the user's question about Tof's preference for internal FridaDev tools.\"\n    },\n    {\n      \"candidate_id\": \"clear-useful-unrelated\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.10,\n      \"contextual_gain\": 0.00,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Unrelated to the current topic of internal tools and Tof's preferences.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 1029,
+              "completion_tokens": 858,
+              "total_tokens": 1887,
+              "cost": 0.0011581875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0011581875,
+                "upstream_inference_prompt_cost": 0.0001929375,
+                "upstream_inference_completions_cost": 0.00096525
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 667,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00115819,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "e7a111fcbfb0bb6d2654184087f40f293efd845762df80e327445bfca022ef88",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 2,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "clear-useful-python"
+            ],
+            "true_positives": [
+              "clear-useful-python"
+            ],
+            "true_negatives": [
+              "clear-useful-unrelated"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "clearly_useless_noise",
+          "case_tags": [
+            "clearly_useless",
+            "noise",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2063.608,
+            "error": null,
+            "raw_text": "```json\n{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"noise-coffee\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.05,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Irrelevant to the current task of configuring Authelia.\"\n    }\n  ]\n}\n```",
+            "usage": {
+              "prompt_tokens": 744,
+              "completion_tokens": 297,
+              "total_tokens": 1041,
+              "cost": 0.000473625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000473625,
+                "upstream_inference_prompt_cost": 0.0001395,
+                "upstream_inference_completions_cost": 0.000334125
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 196,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00047362,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8352d9f8586b0b9a376e2a3ea02208fab21da9ae68e7486d32b730711da37b3c",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "noise-coffee"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "ambiguous_low_utility",
+          "case_tags": [
+            "ambiguous",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 3690.615,
+            "error": null,
+            "raw_text": "```json\n{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"ambiguous-modeles\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.63,\n      \"contextual_gain\": 0.1,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Memory is too vague and generic to provide actionable context for the next step of the project.\"\n    }\n  ]\n}\n```",
+            "usage": {
+              "prompt_tokens": 755,
+              "completion_tokens": 526,
+              "total_tokens": 1281,
+              "cost": 0.0007333125,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0007333125,
+                "upstream_inference_prompt_cost": 0.0001415625,
+                "upstream_inference_completions_cost": 0.00059175
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 418,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00073331,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7c98af3decba40137ffeaef88e179aed77719c038a344d9312861a94459d902e",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "ambiguous-modeles"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "redundant_with_recent_context",
+          "case_tags": [
+            "redundancy",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1185.908,
+            "error": null,
+            "raw_text": "```json\n{\n  \"decisions\": []\n}\n```",
+            "usage": {
+              "prompt_tokens": 761,
+              "completion_tokens": 107,
+              "total_tokens": 868,
+              "cost": 0.0002630625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002630625,
+                "upstream_inference_prompt_cost": 0.0001426875,
+                "upstream_inference_completions_cost": 0.000120375
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 87,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00026306,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "293923ac0d346a1a2743e1391df8fd8cb8f59e7213e68c869a6fc3e986e2323f",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "redundant-caller-by-caller"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "affective_near_but_not_useful",
+          "case_tags": [
+            "affective_near",
+            "clearly_useless",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2222.807,
+            "error": null,
+            "raw_text": "```json\n{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"affective-fragile\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.1,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": false,\n      \"reason\": \"No semantic link between user's emotional state from 2 days ago and current technical question about scorer metrics.\"\n    }\n  ]\n}\n```",
+            "usage": {
+              "prompt_tokens": 750,
+              "completion_tokens": 274,
+              "total_tokens": 1024,
+              "cost": 0.000448875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000448875,
+                "upstream_inference_prompt_cost": 0.000140625,
+                "upstream_inference_completions_cost": 0.00030825
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 162,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00044888,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "095889fbc8eff3b540446240db43efb16dd17a3bf01a327170006dd8a98d825b",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "affective-fragile"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "user_identity_useful",
+          "case_tags": [
+            "identity",
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "identity-dyslexic"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2507.316,
+            "error": null,
+            "raw_text": "```json\n{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"identity-dyslexic\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.9,\n      \"contextual_gain\": 0.8,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Provides specific stylistic preferences directly applicable to the current reformulation request.\"\n    }\n  ]\n}\n```",
+            "usage": {
+              "prompt_tokens": 757,
+              "completion_tokens": 336,
+              "total_tokens": 1093,
+              "cost": 0.0005199375,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0005199375,
+                "upstream_inference_prompt_cost": 0.0001419375,
+                "upstream_inference_completions_cost": 0.000378
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 231,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00051994,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "fec105a5bc2f3a3c501bbb56de7a145e56c784b1d1b57a9c47fd50fef44fc044",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "identity-dyslexic"
+            ],
+            "true_positives": [
+              "identity-dyslexic"
+            ],
+            "true_negatives": [],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "false_memory_reject",
+          "case_tags": [
+            "false_memory",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 4914.909,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"false-kubernetes\",\n      \"keep\": false,\n      \"semantic_relevance\": 0.58,\n      \"contextual_gain\": 0.0,\n      \"redundant_with_recent\": true,\n      \"reason\": \"Redondant et contredit par la décision récente de ne pas utiliser Kubernetes.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 747,
+              "completion_tokens": 815,
+              "total_tokens": 1562,
+              "cost": 0.0010569375,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0010569375,
+                "upstream_inference_prompt_cost": 0.0001400625,
+                "upstream_inference_completions_cost": 0.000916875
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 714,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00105694,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7cec36e336602e7afdf658e79ef3eaa0fe11f8c4cbdd73b44c5f25a7ba1d39f2",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "false-kubernetes"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "temporal_circumstantial_mix",
+          "case_tags": [
+            "temporal",
+            "circumstantial",
+            "today",
+            "hier",
+            "ce_soir",
+            "depuis_hier",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "depuis-hier-build-useful"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 8188.902,
+            "error": null,
+            "raw_text": "{\n  \"decisions\": [\n    {\n      \"candidate_id\": \"depuis-hier-build-useful\",\n      \"keep\": true,\n      \"semantic_relevance\": 0.91,\n      \"contextual_gain\": 0.85,\n      \"redundant_with_recent\": false,\n      \"reason\": \"Provides the specific failure point (test arbitre memoire) required to continue the FridaDev build diagnosis.\"\n    }\n  ]\n}",
+            "usage": {
+              "prompt_tokens": 1319,
+              "completion_tokens": 1650,
+              "total_tokens": 2969,
+              "cost": 0.0021035625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0021035625,
+                "upstream_inference_prompt_cost": 0.0002473125,
+                "upstream_inference_completions_cost": 0.00185625
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 1538,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00210356,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "9c002e651b2b9234b35394a46bffebf13f5694bcb47a887dd69b0f9571aed468",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 4,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "depuis-hier-build-useful"
+            ],
+            "true_positives": [
+              "depuis-hier-build-useful"
+            ],
+            "true_negatives": [
+              "ce-soir-family-weak",
+              "hier-lost-weak",
+              "today-report-weak"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "summary": {
+        "model": "mistralai/mistral-small-2603",
+        "score": 100.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "provider_error_rate": 0.0,
+        "avg_latency_ms": 2298.625,
+        "cost_estimate_usd": 0.00153417,
+        "verdict": "garder",
+        "notes": "ok on diagnostic fixtures"
+      },
+      "calls": [
+        {
+          "case_id": "clear_useful_project_memory",
+          "case_tags": [
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "clear-useful-python"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1233.735,
+            "error": null,
+            "raw_text": "{\"decisions\": [{\"candidate_id\": \"clear-useful-python\", \"keep\": true, \"semantic_relevance\": 0.91, \"contextual_gain\": 0.85, \"redundant_with_recent\": false, \"reason\": \"directly answers the question about Tof's preference for FridaDev tools\"}, {\"candidate_id\": \"clear-useful-unrelated\", \"keep\": false, \"semantic_relevance\": 0.18, \"contextual_gain\": 0.0, \"redundant_with_recent\": false, \"reason\": \"irrelevant to the current query and context\"}]}",
+            "usage": {
+              "prompt_tokens": 987,
+              "completion_tokens": 145,
+              "total_tokens": 1132,
+              "cost": 0.00023505,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00023505,
+                "upstream_inference_prompt_cost": 0.00014805,
+                "upstream_inference_completions_cost": 8.7e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00023505,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "e7a111fcbfb0bb6d2654184087f40f293efd845762df80e327445bfca022ef88",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 2,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "clear-useful-python"
+            ],
+            "true_positives": [
+              "clear-useful-python"
+            ],
+            "true_negatives": [
+              "clear-useful-unrelated"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "clearly_useless_noise",
+          "case_tags": [
+            "clearly_useless",
+            "noise",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 11631.309,
+            "error": null,
+            "raw_text": "{\"decisions\": []}",
+            "usage": {
+              "prompt_tokens": 710,
+              "completion_tokens": 8,
+              "total_tokens": 718,
+              "cost": 0.000139125,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000139125,
+                "upstream_inference_prompt_cost": 0.000133125,
+                "upstream_inference_completions_cost": 6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00013913,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8352d9f8586b0b9a376e2a3ea02208fab21da9ae68e7486d32b730711da37b3c",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "noise-coffee"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "ambiguous_low_utility",
+          "case_tags": [
+            "ambiguous",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 353.008,
+            "error": null,
+            "raw_text": "{\"decisions\": []}",
+            "usage": {
+              "prompt_tokens": 721,
+              "completion_tokens": 8,
+              "total_tokens": 729,
+              "cost": 0.00011295,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00011295,
+                "upstream_inference_prompt_cost": 0.00010815,
+                "upstream_inference_completions_cost": 4.8e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00011295,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7c98af3decba40137ffeaef88e179aed77719c038a344d9312861a94459d902e",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "ambiguous-modeles"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "redundant_with_recent_context",
+          "case_tags": [
+            "redundancy",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 766.822,
+            "error": null,
+            "raw_text": "{\"decisions\": []}",
+            "usage": {
+              "prompt_tokens": 724,
+              "completion_tokens": 8,
+              "total_tokens": 732,
+              "cost": 0.00014175,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 512,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00014175,
+                "upstream_inference_prompt_cost": 0.00013575,
+                "upstream_inference_completions_cost": 6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00014175,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "293923ac0d346a1a2743e1391df8fd8cb8f59e7213e68c869a6fc3e986e2323f",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "redundant-caller-by-caller"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "affective_near_but_not_useful",
+          "case_tags": [
+            "affective_near",
+            "clearly_useless",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 780.233,
+            "error": null,
+            "raw_text": "{\"decisions\": []}",
+            "usage": {
+              "prompt_tokens": 713,
+              "completion_tokens": 8,
+              "total_tokens": 721,
+              "cost": 0.0001396875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 512,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001396875,
+                "upstream_inference_prompt_cost": 0.0001336875,
+                "upstream_inference_completions_cost": 6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00013969,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "095889fbc8eff3b540446240db43efb16dd17a3bf01a327170006dd8a98d825b",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "affective-fragile"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "user_identity_useful",
+          "case_tags": [
+            "identity",
+            "clearly_useful",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "identity-dyslexic"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1135.883,
+            "error": null,
+            "raw_text": "{\"decisions\": [{\"candidate_id\": \"identity-dyslexic\", \"keep\": true, \"semantic_relevance\": 0.87, \"contextual_gain\": 0.85, \"redundant_with_recent\": false, \"reason\": \"préférence utilisateur pour phrases courtes et guidage explicite utile pour reformulation\"}]}",
+            "usage": {
+              "prompt_tokens": 722,
+              "completion_tokens": 83,
+              "total_tokens": 805,
+              "cost": 0.000197625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 512,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000197625,
+                "upstream_inference_prompt_cost": 0.000135375,
+                "upstream_inference_completions_cost": 6.225e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00019762,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "fec105a5bc2f3a3c501bbb56de7a145e56c784b1d1b57a9c47fd50fef44fc044",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "identity-dyslexic"
+            ],
+            "true_positives": [
+              "identity-dyslexic"
+            ],
+            "true_negatives": [],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "false_memory_reject",
+          "case_tags": [
+            "false_memory",
+            "french"
+          ],
+          "expected_keep_ids": [],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 389.578,
+            "error": null,
+            "raw_text": "{\"decisions\": []}",
+            "usage": {
+              "prompt_tokens": 712,
+              "completion_tokens": 8,
+              "total_tokens": 720,
+              "cost": 0.0001116,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001116,
+                "upstream_inference_prompt_cost": 0.0001068,
+                "upstream_inference_completions_cost": 4.8e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001116,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7cec36e336602e7afdf658e79ef3eaa0fe11f8c4cbdd73b44c5f25a7ba1d39f2",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 1,
+            "expected_keep_count": 0,
+            "predicted_keep_ids": [],
+            "true_positives": [],
+            "true_negatives": [
+              "false-kubernetes"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        },
+        {
+          "case_id": "temporal_circumstantial_mix",
+          "case_tags": [
+            "temporal",
+            "circumstantial",
+            "today",
+            "hier",
+            "ce_soir",
+            "depuis_hier",
+            "french"
+          ],
+          "expected_keep_ids": [
+            "depuis-hier-build-useful"
+          ],
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2098.435,
+            "error": null,
+            "raw_text": "{\"decisions\": [{\"candidate_id\": \"depuis-hier-build-useful\", \"keep\": true, \"semantic_relevance\": 0.91, \"contextual_gain\": 0.85, \"redundant_with_recent\": false, \"reason\": \"précise l'échec du build FridaDev depuis hier, utile pour le diagnostic en cours\"}, {\"candidate_id\": \"today-report-weak\", \"keep\": false, \"semantic_relevance\": 0.31, \"contextual_gain\": 0.0, \"redundant_with_recent\": false, \"reason\": \"hors sujet (rapport personnel) et sans utilité pour la situation actuelle\"}, {\"candidate_id\": \"hier-lost-weak\", \"keep\": false, \"semantic_relevance\": 0.44, \"contextual_gain\": 0.0, \"redundant_with_recent\": false, \"reason\": \"éphemère et non actionnable pour le diagnostic\"}, {\"candidate_id\": \"ce-soir-family-weak\", \"keep\": false, \"semantic_relevance\": 0.28, \"contextual_gain\": 0.0, \"redundant_with_recent\": false, \"reason\": \"contrainte familiale non pertinente pour le diagnostic en cours\"}]}",
+            "usage": {
+              "prompt_tokens": 1262,
+              "completion_tokens": 293,
+              "total_tokens": 1555,
+              "cost": 0.000456375,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 512,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000456375,
+                "upstream_inference_prompt_cost": 0.000236625,
+                "upstream_inference_completions_cost": 0.00021975
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00045638,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "9c002e651b2b9234b35394a46bffebf13f5694bcb47a887dd69b0f9571aed468",
+            "generation_params": {
+              "temperature": 0,
+              "top_p": 1.0,
+              "max_tokens": 600
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "candidate_count": 4,
+            "expected_keep_count": 1,
+            "predicted_keep_ids": [
+              "depuis-hier-build-useful"
+            ],
+            "true_positives": [
+              "depuis-hier-build-useful"
+            ],
+            "true_negatives": [
+              "ce-soir-family-weak",
+              "hier-lost-weak",
+              "today-report-weak"
+            ],
+            "false_positives": [],
+            "false_negatives": [],
+            "accuracy": 1.0,
+            "score": 100.0,
+            "error": null
+          }
+        }
+      ]
+    }
+  ],
+  "campaign_verdict": {
+    "verdict": "garder",
+    "summary": "4 model(s) are viable on the diagnostic arbiter fixtures; fastest kept model: google/gemini-3.1-flash-lite. Cheapest estimated kept model: mistralai/mistral-small-2603.",
+    "next_step": "Keep production unchanged until the bounded arbiter decoupling lot chooses the caller-local slot."
+  }
+}

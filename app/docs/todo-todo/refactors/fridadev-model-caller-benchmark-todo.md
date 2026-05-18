@@ -21,7 +21,7 @@ Source de verite de depart:
 - [ ] Organiser progressivement les appels OpenRouter de Frida, caller par caller, a partir de benchmarks concrets.
 - [ ] Individualiser chaque caller important avec son propre point d'appel ou module, son modele, ses parametres et son contrat runtime.
 - [ ] Repercuter les resultats des campagnes dans les settings runtime ou dans la documentation de contrat, caller par caller.
-- [ ] Conserver un atelier de benchmark durable dans le repo, reutilisable au lieu de scripts jetables.
+- [x] Conserver un atelier de benchmark durable dans le repo, reutilisable au lieu de scripts jetables.
 
 ## Deja traite hors de ce TODO
 
@@ -40,8 +40,8 @@ Source de verite de depart:
 
 ## Ordre de progression
 
-- [ ] Benchmark arbitre memoire.
-- [ ] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
+- [x] Benchmark arbitre memoire.
+- [x] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
 - [ ] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
 - [ ] Benchmark resume conversationnel.
 - [ ] Decision resume conversationnel.
@@ -63,86 +63,85 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 
 ## Lot 1 - atelier durable + premiere campagne arbitre memoire
 
-- [ ] Creer un repertoire durable `benchmark/` dans le repo.
-- [ ] Concevoir `benchmark/` comme un atelier reutilisable pour les callers OpenRouter de Frida, pas comme un script jetable pour l'arbitre memoire.
-- [ ] Prevoir un moteur commun d'execution.
-- [ ] Prevoir des suites par caller.
-- [ ] Prevoir des fixtures propres a chaque caller.
-- [ ] Prevoir des scorers propres a chaque caller.
-- [ ] Prevoir des sorties comparables communes.
-- [ ] Prevoir la conservation des resultats et rapports de campagne.
-- [ ] Ne changer aucun modele de production tant que la premiere campagne n'a pas produit son verdict.
+- [x] Creer un repertoire durable `benchmark/` dans le repo.
+- [x] Concevoir `benchmark/` comme un atelier reutilisable pour les callers OpenRouter de Frida, pas comme un script jetable pour l'arbitre memoire.
+- [x] Prevoir un moteur commun d'execution.
+- [x] Prevoir des suites par caller.
+- [x] Prevoir des fixtures propres a chaque caller.
+- [x] Prevoir des scorers propres a chaque caller.
+- [x] Prevoir des sorties comparables communes.
+- [x] Prevoir la conservation des resultats et rapports de campagne.
+- [x] Ne changer aucun modele de production tant que la premiere campagne n'a pas produit son verdict.
 
 ## Premiere campagne - arbitre memoire seulement
 
-- [ ] Caller cible: `app/memory/arbiter.py`.
-- [ ] Prompt cible: `app/prompts/arbiter.txt`.
-- [ ] Comparer exactement `openai/gpt-5.4-mini`, baseline actuelle.
-- [ ] Comparer exactement `google/gemini-3.1-flash-lite`.
-- [ ] Comparer exactement `qwen/qwen3.6-flash`.
-- [ ] Comparer exactement `mistralai/mistral-small-2603`.
-- [ ] Ne pas inclure `openai/gpt-5.4-nano` dans cette premiere campagne.
-- [ ] Utiliser le meme prompt arbitre pour tous les modeles.
-- [ ] Utiliser le meme jeu de fixtures pour tous les modeles.
-- [ ] Utiliser `temperature=0`.
-- [ ] Utiliser `top_p=1.0`.
-- [ ] Utiliser `max_tokens=600`.
-- [ ] Utiliser le meme token et le meme projet OpenRouter.
-- [ ] Ne faire varier que le modele.
+- [x] Caller cible: `app/memory/arbiter.py`.
+- [x] Prompt cible: `app/prompts/arbiter.txt`.
+- [x] Comparer exactement `openai/gpt-5.4-mini`, baseline actuelle.
+- [x] Comparer exactement `google/gemini-3.1-flash-lite`.
+- [x] Comparer exactement `qwen/qwen3.6-flash`.
+- [x] Comparer exactement `mistralai/mistral-small-2603`.
+- [x] Ne pas inclure `openai/gpt-5.4-nano` dans cette premiere campagne.
+- [x] Utiliser le meme prompt arbitre pour tous les modeles.
+- [x] Utiliser le meme jeu de fixtures pour tous les modeles.
+- [x] Utiliser `temperature=0`.
+- [x] Utiliser `top_p=1.0`.
+- [x] Utiliser `max_tokens=600`.
+- [x] Utiliser le meme token et le meme projet OpenRouter.
+- [x] Ne faire varier que le modele.
 
 ## Fixtures attendues pour l'arbitre memoire
 
-- [ ] Traces clairement utiles.
-- [ ] Traces clairement inutiles.
-- [ ] Traces ambigues.
-- [ ] Bruit conversationnel.
-- [ ] Redondance forte avec contexte recent.
-- [ ] Souvenirs affectivement proches mais peu utiles.
-- [ ] Identite utilisateur.
-- [ ] Faux souvenirs.
-- [ ] Souvenirs circonstanciels ou temporels: aujourd'hui, hier, ce soir, depuis hier.
-- [ ] Cas en francais.
+- [x] Traces clairement utiles.
+- [x] Traces clairement inutiles.
+- [x] Traces ambigues.
+- [x] Bruit conversationnel.
+- [x] Redondance forte avec contexte recent.
+- [x] Souvenirs affectivement proches mais peu utiles.
+- [x] Identite utilisateur.
+- [x] Faux souvenirs.
+- [x] Souvenirs circonstanciels ou temporels: aujourd'hui, hier, ce soir, depuis hier.
+- [x] Cas en francais.
 
 ## Mesures minimales
 
-- [ ] JSON valide ou non.
-- [ ] Respect du schema.
-- [ ] Keep/drop attendu.
-- [ ] Faux positifs memoire.
-- [ ] Faux negatifs memoire.
-- [ ] Latence.
-- [ ] Cout estime.
-- [ ] Taux d'erreur provider.
-- [ ] Remarques qualitatives.
-- [ ] Verdict de campagne: garder, tester plus ou exclure.
+- [x] JSON valide ou non.
+- [x] Respect du schema.
+- [x] Keep/drop attendu.
+- [x] Faux positifs memoire.
+- [x] Faux negatifs memoire.
+- [x] Latence.
+- [x] Cout estime.
+- [x] Taux d'erreur provider.
+- [x] Remarques qualitatives.
+- [x] Verdict de campagne: garder, tester plus ou exclure.
 
 ## Sorties attendues
 
-- [ ] Produire un tableau Markdown lisible pour chaque campagne.
-- [ ] Inclure au minimum dans le tableau: modele, score, validite JSON, cout, latence, remarques qualitatives, verdict.
-- [ ] Conserver un resultat structure exploitable pour comparer plusieurs campagnes.
-- [ ] Documenter le verdict sans masquer les limites du jeu de fixtures.
+- [x] Produire un tableau Markdown lisible pour chaque campagne.
+- [x] Inclure au minimum dans le tableau: modele, score, validite JSON, cout, latence, remarques qualitatives, verdict.
+- [x] Conserver un resultat structure exploitable pour comparer plusieurs campagnes.
+- [x] Documenter le verdict sans masquer les limites du jeu de fixtures.
 
-## Hors scope du cadrage documentaire actuel
+## Hors scope respecte dans le Lot 1
 
-- [x] Pas de code benchmark cree dans ce lot documentaire.
 - [x] Pas de changement de modele en production.
 - [x] Pas de changement aux runtime settings.
 - [x] Pas de separation immediate des slots `identity_extractor` / `identity_periodic`.
 - [x] Pas de rotation de token.
 - [x] Pas de changement de projet OpenRouter.
-- [x] Pas de benchmark du resume conversationnel ou des autres callers dans ce lot documentaire.
+- [x] Pas de benchmark du resume conversationnel ou des autres callers dans le Lot 1.
 - [x] Pas de nouveau grand TODO separe pour le decouplage global.
 
 ## Definition de fin du Lot 1
 
-- [ ] `benchmark/` existe avec une architecture reutilisable.
-- [ ] La suite arbitre memoire est isolee dans l'atelier.
-- [ ] Les fixtures arbitre memoire couvrent les familles de cas attendues.
-- [ ] Les scorers arbitre memoire mesurent schema, keep/drop, faux positifs, faux negatifs, latence et cout.
-- [ ] Les quatre modeles de la premiere campagne ont ete executes avec les memes parametres.
-- [ ] Un rapport Markdown de campagne existe.
-- [ ] Un verdict caller est documente.
+- [x] `benchmark/` existe avec une architecture reutilisable.
+- [x] La suite arbitre memoire est isolee dans l'atelier.
+- [x] Les fixtures arbitre memoire couvrent les familles de cas attendues.
+- [x] Les scorers arbitre memoire mesurent schema, keep/drop, faux positifs, faux negatifs, latence et cout.
+- [x] Les quatre modeles de la premiere campagne ont ete executes avec les memes parametres.
+- [x] Un rapport Markdown de campagne existe.
+- [x] Un verdict caller est documente.
 - [ ] Le lot suivant borne individualise l'arbitre memoire avant de passer au resume conversationnel: point d'appel clair, modele propre, parametres propres et contrat runtime propre.
 
 ## Definition de fin globale

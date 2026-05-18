@@ -68,6 +68,7 @@ Lire d'abord:
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
 - `todo-todo/refactors/fridadev-model-caller-benchmark-todo.md` pour le chantier actif de benchmark puis decision caller par caller.
+- `../../benchmark/README.md` pour relancer l'atelier durable de benchmark des callers modeles.
 - `states/audits/fridadev-temporal-system-audit-2026-05-18.md` avant tout changement touchant `NOW`, `hier/aujourd'hui`, les timestamps, les resumes, la memoire, le web, le dashboard ou les exports.
 - `states/specs/streaming-protocol.md`
 - `states/specs/chat-copy-export-contract.md`

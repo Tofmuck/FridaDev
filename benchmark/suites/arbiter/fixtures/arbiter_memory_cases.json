@@ -1,0 +1,268 @@
+[
+  {
+    "id": "clear_useful_project_memory",
+    "tags": ["clearly_useful", "french"],
+    "why": "The user asks about a known FridaDev preference; the memory directly answers it.",
+    "temporal_reference": {
+      "now_utc_iso": "2026-05-18T12:00:00Z",
+      "timezone": "Europe/Paris",
+      "now_local_iso": "2026-05-18T14:00:00+02:00",
+      "local_date": "2026-05-18",
+      "local_time": "14:00:00"
+    },
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Pour les petits outils internes FridaDev, quelle approche Tof prefere ?",
+        "temporal_label": "lundi 18 mai 2026 à 14h Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "clear-useful-python",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Tof prefere des outils Python sobres et testables pour les scripts internes FridaDev.",
+        "timestamp_iso": "2026-05-12T08:15:00Z",
+        "retrieval_score": 0.91,
+        "semantic_score": 0.89,
+        "temporal_label": "mardi 12 mai 2026 à 10h15 Europe/Paris — il y a 6 jours"
+      },
+      {
+        "candidate_id": "clear-useful-unrelated",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "assistant",
+        "content": "La meteo etait pluvieuse pendant une ancienne pause.",
+        "timestamp_iso": "2026-05-10T17:00:00Z",
+        "retrieval_score": 0.64,
+        "semantic_score": 0.18,
+        "temporal_label": "dimanche 10 mai 2026 à 19h Europe/Paris — il y a 8 jours"
+      }
+    ],
+    "expected_keep_ids": ["clear-useful-python"]
+  },
+  {
+    "id": "clearly_useless_noise",
+    "tags": ["clearly_useless", "noise", "french"],
+    "why": "The candidate is mundane noise and should not help the next answer.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "On reprend le parametrage Authelia de FridaDev.",
+        "temporal_label": "lundi 18 mai 2026 à 15h Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "noise-coffee",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "J'ai bu un cafe avant de sortir acheter du pain.",
+        "timestamp_iso": "2026-05-14T07:00:00Z",
+        "retrieval_score": 0.72,
+        "semantic_score": 0.12,
+        "temporal_label": "jeudi 14 mai 2026 à 9h Europe/Paris — il y a 4 jours"
+      }
+    ],
+    "expected_keep_ids": []
+  },
+  {
+    "id": "ambiguous_low_utility",
+    "tags": ["ambiguous", "french"],
+    "why": "The memory is topically near but too vague to improve the answer.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Tu peux m'aider a clarifier la prochaine etape du chantier modeles ?",
+        "temporal_label": "lundi 18 mai 2026 à 16h Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "ambiguous-modeles",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "assistant",
+        "content": "On avait parle de modeles et de clarifier des choses plus tard.",
+        "timestamp_iso": "2026-05-11T12:20:00Z",
+        "retrieval_score": 0.83,
+        "semantic_score": 0.63,
+        "temporal_label": "lundi 11 mai 2026 à 14h20 Europe/Paris — il y a 7 jours"
+      }
+    ],
+    "expected_keep_ids": []
+  },
+  {
+    "id": "redundant_with_recent_context",
+    "tags": ["redundancy", "french"],
+    "why": "The candidate repeats the recent context and has low contextual gain.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Je veux que le benchmark avance caller par caller, pas tout d'un bloc.",
+        "temporal_label": "lundi 18 mai 2026 à 16h30 Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "redundant-caller-by-caller",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Je veux que le benchmark avance caller par caller, pas tout d'un bloc.",
+        "timestamp_iso": "2026-05-18T14:29:00Z",
+        "retrieval_score": 0.96,
+        "semantic_score": 0.95,
+        "temporal_label": "lundi 18 mai 2026 à 16h29 Europe/Paris — à l'instant"
+      }
+    ],
+    "expected_keep_ids": []
+  },
+  {
+    "id": "affective_near_but_not_useful",
+    "tags": ["affective_near", "clearly_useless", "french"],
+    "why": "The memory is emotionally near but not useful for the technical question.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Pourquoi le scorer devrait distinguer faux positif et faux negatif ?",
+        "temporal_label": "lundi 18 mai 2026 à 17h Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "affective-fragile",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Ce soir je me sens fragile et un peu a cote de moi.",
+        "timestamp_iso": "2026-05-16T19:00:00Z",
+        "retrieval_score": 0.75,
+        "semantic_score": 0.52,
+        "temporal_label": "samedi 16 mai 2026 à 21h Europe/Paris — il y a 2 jours"
+      }
+    ],
+    "expected_keep_ids": []
+  },
+  {
+    "id": "user_identity_useful",
+    "tags": ["identity", "clearly_useful", "french"],
+    "why": "The user asks for help writing; a stable accessibility preference is useful.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Aide-moi a reformuler ce texte plus clairement.",
+        "temporal_label": "lundi 18 mai 2026 à 17h30 Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "identity-dyslexic",
+        "source_kind": "identity",
+        "source_lane": "user_mutable",
+        "role": "user",
+        "content": "L'utilisateur prefere des phrases courtes et un guidage explicite quand on reformule.",
+        "timestamp_iso": "2026-05-01T09:00:00Z",
+        "retrieval_score": 0.88,
+        "semantic_score": 0.84,
+        "temporal_label": "vendredi 1 mai 2026 à 11h Europe/Paris — il y a 17 jours"
+      }
+    ],
+    "expected_keep_ids": ["identity-dyslexic"]
+  },
+  {
+    "id": "false_memory_reject",
+    "tags": ["false_memory", "french"],
+    "why": "The memory asserts a false direction unrelated to the current FridaDev work.",
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "On reste sur FridaDev et OpenRouter, pas sur Kubernetes.",
+        "temporal_label": "lundi 18 mai 2026 à 18h Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "false-kubernetes",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "assistant",
+        "content": "Tof veut migrer FridaDev vers Kubernetes aujourd'hui.",
+        "timestamp_iso": "2026-05-09T11:00:00Z",
+        "retrieval_score": 0.79,
+        "semantic_score": 0.58,
+        "temporal_label": "samedi 9 mai 2026 à 13h Europe/Paris — il y a 9 jours"
+      }
+    ],
+    "expected_keep_ids": []
+  },
+  {
+    "id": "temporal_circumstantial_mix",
+    "tags": ["temporal", "circumstantial", "today", "hier", "ce_soir", "depuis_hier", "french"],
+    "why": "The fixture separates useful temporal memories from weak circumstantial memories.",
+    "temporal_reference": {
+      "now_utc_iso": "2026-05-17T22:05:00Z",
+      "timezone": "Europe/Paris",
+      "now_local_iso": "2026-05-18T00:05:00+02:00",
+      "local_date": "2026-05-18",
+      "local_time": "00:05:00"
+    },
+    "recent_turns": [
+      {
+        "role": "user",
+        "content": "Le build FridaDev echoue encore, on reprend le diagnostic maintenant.",
+        "temporal_label": "lundi 18 mai 2026 à 0h05 Europe/Paris — aujourd'hui"
+      }
+    ],
+    "candidates": [
+      {
+        "candidate_id": "today-report-weak",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Aujourd'hui je dois envoyer un rapport personnel sans lien avec FridaDev.",
+        "timestamp_iso": "2026-05-17T20:00:00Z",
+        "retrieval_score": 0.68,
+        "semantic_score": 0.31,
+        "temporal_label": "dimanche 17 mai 2026 à 22h Europe/Paris — hier"
+      },
+      {
+        "candidate_id": "hier-lost-weak",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Hier je me sentais perdu et fatigue.",
+        "timestamp_iso": "2026-05-16T19:30:00Z",
+        "retrieval_score": 0.65,
+        "semantic_score": 0.44,
+        "temporal_label": "samedi 16 mai 2026 à 21h30 Europe/Paris — il y a 2 jours"
+      },
+      {
+        "candidate_id": "ce-soir-family-weak",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Ce soir j'ai une contrainte familiale.",
+        "timestamp_iso": "2026-05-17T18:00:00Z",
+        "retrieval_score": 0.61,
+        "semantic_score": 0.28,
+        "temporal_label": "dimanche 17 mai 2026 à 20h Europe/Paris — hier"
+      },
+      {
+        "candidate_id": "depuis-hier-build-useful",
+        "source_kind": "trace",
+        "source_lane": "global",
+        "role": "user",
+        "content": "Depuis hier le build FridaDev echoue sur le test arbitre memoire.",
+        "timestamp_iso": "2026-05-17T21:30:00Z",
+        "retrieval_score": 0.92,
+        "semantic_score": 0.91,
+        "temporal_label": "dimanche 17 mai 2026 à 23h30 Europe/Paris — hier"
+      }
+    ],
+    "expected_keep_ids": ["depuis-hier-build-useful"]
+  }
+]
