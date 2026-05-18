@@ -374,7 +374,6 @@ class MemorySummariesPhase8CTests(unittest.TestCase):
                         'timestamp': '2026-05-17T22:05:00Z',
                     }
                 ],
-                'summary-model',
             )
         finally:
             summarizer.requests.post = original_post

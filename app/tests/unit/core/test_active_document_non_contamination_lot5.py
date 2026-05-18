@@ -187,7 +187,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             observed["threshold_messages"] = [dict(message) for message in messages]
             return 999
 
-        def fake_summarize_conversation(turns, _model):
+        def fake_summarize_conversation(turns):
             observed["summary_turns"] = [dict(turn) for turn in turns]
             return "resume compact"
 
@@ -196,7 +196,6 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
             mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
             mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
-            mock.patch.object(summarizer, "_runtime_summary_model_name", return_value="summary-model"),
             mock.patch("memory.memory_store.save_summary", return_value=None),
             mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
         ):

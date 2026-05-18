@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import sys
 import unittest
 from pathlib import Path
@@ -26,3 +27,8 @@ class SummarizerPhase13Tests(unittest.TestCase):
         self.assertIn('prompt_loader.get_summary_system_prompt()', source)
         self.assertNotIn('Tu es un assistant de synthèse. Résume le dialogue suivant en conservant', source)
         self.assertNotIn('def needs_summarization(', source)
+
+    def test_summarize_conversation_signature_keeps_summary_model_as_runtime_source(self) -> None:
+        signature = inspect.signature(summarizer.summarize_conversation)
+
+        self.assertEqual(tuple(signature.parameters), ('turns',))

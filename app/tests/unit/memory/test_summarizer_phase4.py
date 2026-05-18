@@ -86,7 +86,7 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
 
         conversation = self._conversation()
         summarizer.estimate_tokens = lambda _messages, _model: 999
-        summarizer.summarize_conversation = lambda _turns, _model: 'resume test'
+        summarizer.summarize_conversation = lambda _turns: 'resume test'
         summarizer.runtime_settings.get_summary_model_settings = lambda: runtime_settings.RuntimeSectionView(
             section='summary_model',
             payload=runtime_settings.build_env_seed_bundle('summary_model').payload,
@@ -115,34 +115,17 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertNotIn('summarized_by', conversation['messages'][2])
         self.assertNotIn('summarized_by', conversation['messages'][3])
 
-    def test_maybe_summarize_uses_runtime_summary_model_from_db_when_present(self) -> None:
-        observed = {'model': None}
-        original_get_settings = summarizer.runtime_settings.get_summary_model_settings
+    def test_maybe_summarize_calls_summarize_conversation_without_model_argument(self) -> None:
+        observed = {'arg_count': None, 'turn_count': None}
         original_summarize_conversation = summarizer.summarize_conversation
         original_save_summary = None
         original_update_summary_id = None
         original_threshold = config.SUMMARY_THRESHOLD_TOKENS
         original_keep_turns = config.SUMMARY_KEEP_TURNS
 
-        def fake_get_summary_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='summary_model',
-                payload=runtime_settings.normalize_stored_payload(
-                    'summary_model',
-                    {
-                        'model': {'value': 'openai/gpt-5.4-mini', 'origin': 'db'},
-                        'temperature': {'value': 0.3, 'origin': 'db'},
-                        'top_p': {'value': 1.0, 'origin': 'db'},
-                        'max_tokens': {'value': 2000, 'origin': 'db'},
-                        'timeout_s': {'value': 90, 'origin': 'db'},
-                    },
-                ),
-                source='db',
-                source_reason='db_row',
-            )
-
-        def fake_summarize_conversation(turns, model):
-            observed['model'] = model
+        def fake_summarize_conversation(*args):
+            observed['arg_count'] = len(args)
+            observed['turn_count'] = len(args[0])
             return 'resume test'
 
         import memory.memory_store as memory_store
@@ -152,12 +135,10 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         memory_store.update_traces_summary_id = lambda conv_id, summary_id, start_ts, end_ts: None
         config.SUMMARY_THRESHOLD_TOKENS = 1
         config.SUMMARY_KEEP_TURNS = 1
-        summarizer.runtime_settings.get_summary_model_settings = fake_get_summary_model_settings
         summarizer.summarize_conversation = fake_summarize_conversation
         try:
             changed = summarizer.maybe_summarize(self._conversation(), 'token-model')
         finally:
-            summarizer.runtime_settings.get_summary_model_settings = original_get_settings
             summarizer.summarize_conversation = original_summarize_conversation
             memory_store.save_summary = original_save_summary
             memory_store.update_traces_summary_id = original_update_summary_id
@@ -165,50 +146,8 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
             config.SUMMARY_KEEP_TURNS = original_keep_turns
 
         self.assertTrue(changed)
-        self.assertEqual(observed['model'], 'openai/gpt-5.4-mini')
-
-    def test_maybe_summarize_keeps_env_fallback_when_db_row_is_missing(self) -> None:
-        observed = {'model': None}
-        original_get_settings = summarizer.runtime_settings.get_summary_model_settings
-        original_summarize_conversation = summarizer.summarize_conversation
-        original_save_summary = None
-        original_update_summary_id = None
-        original_threshold = config.SUMMARY_THRESHOLD_TOKENS
-        original_keep_turns = config.SUMMARY_KEEP_TURNS
-
-        def fake_get_summary_model_settings():
-            return runtime_settings.RuntimeSectionView(
-                section='summary_model',
-                payload=runtime_settings.build_env_seed_bundle('summary_model').payload,
-                source='env',
-                source_reason='empty_table',
-            )
-
-        def fake_summarize_conversation(turns, model):
-            observed['model'] = model
-            return 'resume fallback'
-
-        import memory.memory_store as memory_store
-        original_save_summary = memory_store.save_summary
-        original_update_summary_id = memory_store.update_traces_summary_id
-        memory_store.save_summary = lambda conv_id, summary_entry: None
-        memory_store.update_traces_summary_id = lambda conv_id, summary_id, start_ts, end_ts: None
-        config.SUMMARY_THRESHOLD_TOKENS = 1
-        config.SUMMARY_KEEP_TURNS = 1
-        summarizer.runtime_settings.get_summary_model_settings = fake_get_summary_model_settings
-        summarizer.summarize_conversation = fake_summarize_conversation
-        try:
-            changed = summarizer.maybe_summarize(self._conversation(), 'token-model')
-        finally:
-            summarizer.runtime_settings.get_summary_model_settings = original_get_settings
-            summarizer.summarize_conversation = original_summarize_conversation
-            memory_store.save_summary = original_save_summary
-            memory_store.update_traces_summary_id = original_update_summary_id
-            config.SUMMARY_THRESHOLD_TOKENS = original_threshold
-            config.SUMMARY_KEEP_TURNS = original_keep_turns
-
-        self.assertTrue(changed)
-        self.assertEqual(observed['model'], config.SUMMARY_MODEL)
+        self.assertEqual(observed['arg_count'], 1)
+        self.assertEqual(observed['turn_count'], 2)
 
     def test_summarize_conversation_logs_provider_metadata_and_uses_runtime_summary_slot(self) -> None:
         observed = {'url': None, 'payload': None, 'headers': None, 'timeout': None, 'provider_logs': []}
@@ -266,7 +205,6 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         try:
             result = summarizer.summarize_conversation(
                 [{'role': 'user', 'content': 'bonjour', 'timestamp': '2026-03-24T10:00:00Z'}],
-                'openai/gpt-5.4-mini',
             )
         finally:
             summarizer.requests.post = original_post

@@ -16,10 +16,6 @@ from core.token_utils import estimate_tokens
 logger = logging.getLogger("frida.summarizer")
 
 
-def _runtime_summary_model_name() -> str:
-    return str(_runtime_summary_settings()['model'])
-
-
 def _runtime_summary_settings() -> dict[str, Any]:
     view = runtime_settings.get_summary_model_settings()
     payload = view.payload
@@ -54,7 +50,7 @@ def _raw_dialogue(conversation: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def summarize_conversation(turns: list[dict[str, Any]], model: str | None = None) -> str:
+def summarize_conversation(turns: list[dict[str, Any]]) -> str:
     """Appelle un LLM cheap via OpenRouter pour résumer une liste de tours de dialogue."""
     summary_settings = _runtime_summary_settings()
     summary_model = str(summary_settings['model'])
@@ -125,7 +121,7 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
     )
 
     try:
-        summary_text = summarize_conversation(to_summarize, _runtime_summary_model_name())
+        summary_text = summarize_conversation(to_summarize)
     except Exception as exc:
         logger.error("summarize_failed conv_id=%s err=%s", conversation.get("id"), exc)
         return False
