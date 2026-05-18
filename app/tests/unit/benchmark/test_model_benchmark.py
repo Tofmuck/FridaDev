@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS, DEFAULT_SUMMARY_MODELS
+from benchmark.core import openrouter
 from benchmark.suites.arbiter import adapter, scorer, tournament
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
@@ -206,6 +207,7 @@ class SummaryBenchmarkSuiteTests(unittest.TestCase):
             model="mistralai/mistral-small-2603",
             prompt_text=prompt,
             user_content=user_content,
+            generation_params=summary_adapter.generation_params(max_tokens=4500),
         )
 
         self.assertEqual(payload_a["messages"], payload_b["messages"])
@@ -214,8 +216,44 @@ class SummaryBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(payload_a["temperature"], 0.3)
         self.assertEqual(payload_a["top_p"], 1.0)
         self.assertEqual(payload_a["max_tokens"], 2000)
+        self.assertEqual(payload_b["max_tokens"], 4500)
         self.assertEqual(payload_a["model"], "openai/gpt-5.4-mini")
         self.assertEqual(payload_b["model"], "mistralai/mistral-small-2603")
+
+    def test_summary_campaign_reports_provider_finish_reason(self) -> None:
+        provider = {
+            "ok": True,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {"completion_tokens": 4500},
+        }
+        self.assertEqual(
+            summary_campaign._termination_assessment(provider, "Résumé coupé", True),
+            "provider_declares_length_stop",
+        )
+        self.assertIn(
+            "longueur",
+            summary_campaign._result_notes(
+                provider,
+                "Résumé coupé",
+                True,
+                "provider_declares_length_stop",
+            ),
+        )
+
+    def test_openrouter_extracts_finish_reason_metadata(self) -> None:
+        data = {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "native_finish_reason": "end_turn",
+                    "message": {"content": "ok"},
+                }
+            ]
+        }
+        self.assertEqual(openrouter._extract_text(data), "ok")
+        self.assertEqual(openrouter._finish_reason(data), "stop")
+        self.assertEqual(openrouter._native_finish_reason(data), "end_turn")
 
     def test_summary_campaign_writes_output_files_without_raw_material_in_json(self) -> None:
         from tempfile import TemporaryDirectory

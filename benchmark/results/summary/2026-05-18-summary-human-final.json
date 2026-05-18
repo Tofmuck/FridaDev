@@ -1,0 +1,188 @@
+{
+  "campaign_id": "2026-05-18-summary-human-final",
+  "created_at_utc": "2026-05-18T16:20:26Z",
+  "suite": "summary",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "anthropic/claude-sonnet-4.6",
+    "qwen/qwen3.5-plus-20260420"
+  ],
+  "generation_params": {
+    "temperature": 0.3,
+    "top_p": 1.0,
+    "max_tokens": 4500
+  },
+  "timeout_s": 300,
+  "prompt_path": "app/prompts/summary_system.txt",
+  "prompt_sha256": "c15fc217b6b83cb130ad25b0676a1c0297eb16edab88d43754cbc0a1c7dfbdd0",
+  "material": {
+    "source_kind": "live_conversation",
+    "conversation_id": "a2bebfd3-96d3-4088-b622-6495461f534a",
+    "first_ts": "2026-04-04T20:16:49Z",
+    "last_ts": "2026-04-21T10:15:09Z",
+    "turn_count": 106,
+    "char_count": 140500,
+    "approx_tokens": 38993,
+    "user_content_sha256": "6994324235593da3bc347e026615cae0fa1a24c775af6bcb1338a48f07551d67",
+    "raw_material_written": false
+  },
+  "secrets_written": false,
+  "raw_material_written": false,
+  "human_judgment_required": true,
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 12971.552,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 34486,
+          "completion_tokens": 1693,
+          "total_tokens": 36179,
+          "cost": 0.033483,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.033483,
+            "upstream_inference_prompt_cost": 0.0258645,
+            "upstream_inference_completions_cost": 0.0076185
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.033483,
+        "cost_estimate_source": "provider_usage_cost",
+        "finish_reason": "stop",
+        "native_finish_reason": "completed"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 4500
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__openai__gpt-5.4-mini.md",
+      "summary_chars": 7260,
+      "summary_sha256": "f7cb37f974e4455e87671457027620f5287fb2eab3a1f099349bc6d2cc96117a",
+      "completion_budget_reached": false,
+      "termination_assessment": "provider_declares_clean_stop",
+      "notes": "Sortie brute a lire humainement; aucun score automatique."
+    },
+    {
+      "model": "anthropic/claude-sonnet-4.6",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 67150.612,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 43756,
+          "completion_tokens": 2588,
+          "total_tokens": 46344,
+          "cost": 0.170088,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.170088,
+            "upstream_inference_prompt_cost": 0.131268,
+            "upstream_inference_completions_cost": 0.03882
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.170088,
+        "cost_estimate_source": "provider_usage_cost",
+        "finish_reason": "stop",
+        "native_finish_reason": "end_turn"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 4500
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__anthropic__claude-sonnet-4.6.md",
+      "summary_chars": 8267,
+      "summary_sha256": "09b921b09aed120e0cb2eeca901d8468c1a1f70a97d45a14e0a8e1ea506a77b9",
+      "completion_budget_reached": false,
+      "termination_assessment": "provider_declares_clean_stop",
+      "notes": "Sortie brute a lire humainement; aucun score automatique."
+    },
+    {
+      "model": "qwen/qwen3.5-plus-20260420",
+      "ok": true,
+      "provider": {
+        "ok": true,
+        "status_code": 200,
+        "elapsed_ms": 55431.151,
+        "error": null,
+        "usage": {
+          "prompt_tokens": 36238,
+          "completion_tokens": 2945,
+          "total_tokens": 39183,
+          "cost": 0.0161724,
+          "is_byok": false,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "audio_tokens": 0,
+            "video_tokens": 0
+          },
+          "cost_details": {
+            "upstream_inference_cost": 0.0161724,
+            "upstream_inference_prompt_cost": 0.0108714,
+            "upstream_inference_completions_cost": 0.005301
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 2131,
+            "image_tokens": 0,
+            "audio_tokens": 0
+          }
+        },
+        "cost_estimate_usd": 0.0161724,
+        "cost_estimate_source": "provider_usage_cost",
+        "finish_reason": "stop",
+        "native_finish_reason": "stop"
+      },
+      "request_signature": {
+        "messages_sha256": "90ee7852abbcdf35fbfd94392add7e3daafaeb6e7b45b2da93c8f15161fa838f",
+        "generation_params": {
+          "temperature": 0.3,
+          "top_p": 1.0,
+          "max_tokens": 4500
+        }
+      },
+      "summary_file": "benchmark/results/summary/2026-05-18-summary-human-final__qwen__qwen3.5-plus-20260420.md",
+      "summary_chars": 3200,
+      "summary_sha256": "20108d4238673454492b167d37011fdc5af838c31090977d543bde8f28ba9ec4",
+      "completion_budget_reached": false,
+      "termination_assessment": "provider_declares_clean_stop",
+      "notes": "Sortie brute a lire humainement; aucun score automatique."
+    }
+  ]
+}

@@ -14,11 +14,13 @@ def run_summary_human_reading_campaign(
     config: CampaignConfig,
     input_path: Path,
     client: OpenRouterClient | None,
+    generation_params: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     campaign = build_summary_human_reading_campaign(
         config=config,
         input_path=input_path,
         client=client,
+        generation_params=generation_params,
     )
     output_dir = config.output_dir
     json_path = output_dir / f"{config.campaign_id}.json"
@@ -33,17 +35,24 @@ def build_summary_human_reading_campaign(
     config: CampaignConfig,
     input_path: Path,
     client: OpenRouterClient | None,
+    generation_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     prompt = adapter.prompt_path(config.repo_root).read_text(encoding="utf-8").strip()
     material = adapter.load_material(input_path)
     prompt_sha = sha256_text(prompt)
     user_content = str(material["user_content"])
+    resolved_generation_params = dict(generation_params or adapter.GENERATION_PARAMS)
     output_dir = config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     results: list[dict[str, Any]] = []
     for model in config.models:
-        payload = adapter.build_payload(model=model, prompt_text=prompt, user_content=user_content)
+        payload = adapter.build_payload(
+            model=model,
+            prompt_text=prompt,
+            user_content=user_content,
+            generation_params=resolved_generation_params,
+        )
         request_signature = {
             "messages_sha256": sha256_text(json.dumps(payload["messages"], ensure_ascii=False, sort_keys=True)),
             "generation_params": {
@@ -70,11 +79,15 @@ def build_summary_human_reading_campaign(
                 material_sha256=str(material["user_content_sha256"]),
                 provider=provider,
                 summary_text=summary_text,
-                generation_params=adapter.GENERATION_PARAMS,
+                generation_params=resolved_generation_params,
             ),
             encoding="utf-8",
         )
-        completion_budget_reached = _completion_budget_reached(provider, adapter.GENERATION_PARAMS["max_tokens"])
+        completion_budget_reached = _completion_budget_reached(
+            provider,
+            resolved_generation_params["max_tokens"],
+        )
+        termination_assessment = _termination_assessment(provider, summary_text, completion_budget_reached)
         results.append(
             {
                 "model": model,
@@ -85,7 +98,8 @@ def build_summary_human_reading_campaign(
                 "summary_chars": len(summary_text),
                 "summary_sha256": sha256_text(summary_text) if summary_text else None,
                 "completion_budget_reached": completion_budget_reached,
-                "notes": _result_notes(provider, summary_text, completion_budget_reached),
+                "termination_assessment": termination_assessment,
+                "notes": _result_notes(provider, summary_text, completion_budget_reached, termination_assessment),
             }
         )
 
@@ -95,7 +109,7 @@ def build_summary_human_reading_campaign(
         "suite": "summary",
         "dry_run": config.dry_run,
         "models": config.models,
-        "generation_params": adapter.GENERATION_PARAMS,
+        "generation_params": resolved_generation_params,
         "timeout_s": config.timeout_s,
         "prompt_path": str(adapter.prompt_path(config.repo_root).relative_to(config.repo_root)),
         "prompt_sha256": prompt_sha,
@@ -132,7 +146,10 @@ def render_summary_output_file(
         f"- Completion tokens: `{usage.get('completion_tokens')}`",
         f"- Total tokens: `{usage.get('total_tokens')}`",
         f"- Cost estimate USD: `{provider.get('cost_estimate_usd')}`",
+        f"- Finish reason: `{provider.get('finish_reason')}`",
+        f"- Native finish reason: `{provider.get('native_finish_reason')}`",
         f"- Completion budget reached: `{completion_budget_reached}`",
+        f"- Termination assessment: `{_termination_assessment(provider, summary_text, completion_budget_reached)}`",
         "",
         "## Résumé brut",
         "",
@@ -150,7 +167,7 @@ def render_summary_human_reading_report(campaign: dict[str, Any]) -> str:
         f"- Created UTC: `{campaign['created_at_utc']}`",
         f"- Dry run: `{campaign['dry_run']}`",
         f"- Prompt: `{campaign['prompt_path']}` (`{campaign['prompt_sha256'][:12]}`)",
-        "- Goal: produire six résumés complets du même matériau réel pour lecture humaine.",
+        "- Goal: produire les résumés complets du même matériau réel pour lecture humaine.",
         "- Verdict: non attribué automatiquement; décision humaine de Tof requise.",
         "- Production runtime changed: `False`",
         "",
@@ -175,8 +192,8 @@ def render_summary_human_reading_report(campaign: dict[str, Any]) -> str:
         "",
         "## Sorties à lire",
         "",
-        "| Modèle | Provider OK | Latence | Prompt tokens | Completion tokens | Coût estimé | Note | Résumé complet |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        "| Modèle | Provider OK | Finish reason | Latence | Prompt tokens | Completion tokens | Coût estimé | Terminaison | Note | Résumé complet |",
+        "| --- | ---: | --- | ---: | ---: | ---: | ---: | --- | --- | --- |",
     ]
     for result in campaign.get("results", []):
         provider = result.get("provider") or {}
@@ -187,10 +204,12 @@ def render_summary_human_reading_report(campaign: dict[str, Any]) -> str:
                 [
                     f"`{result.get('model')}`",
                     str(bool(result.get("ok"))),
+                    str(provider.get("finish_reason")),
                     f"{float(provider.get('elapsed_ms') or 0.0):.0f} ms",
                     str(usage.get("prompt_tokens")),
                     str(usage.get("completion_tokens")),
                     _format_cost(provider.get("cost_estimate_usd")),
+                    str(result.get("termination_assessment") or ""),
                     str(result.get("notes") or ""),
                     f"`{result.get('summary_file')}`",
                 ]
@@ -225,6 +244,8 @@ def _provider_public_metadata(provider: dict[str, Any]) -> dict[str, Any]:
         "usage": provider.get("usage") if isinstance(provider.get("usage"), dict) else {},
         "cost_estimate_usd": provider.get("cost_estimate_usd"),
         "cost_estimate_source": provider.get("cost_estimate_source"),
+        "finish_reason": provider.get("finish_reason"),
+        "native_finish_reason": provider.get("native_finish_reason"),
     }
 
 
@@ -238,6 +259,8 @@ def _dry_provider() -> dict[str, Any]:
         "usage": {},
         "cost_estimate_usd": None,
         "cost_estimate_source": "dry_run",
+        "finish_reason": "dry_run",
+        "native_finish_reason": "dry_run",
     }
 
 
@@ -264,11 +287,38 @@ def _completion_budget_reached(provider: dict[str, Any], max_tokens: Any) -> boo
     return limit > 0 and completion_tokens >= int(limit * 0.95)
 
 
-def _result_notes(provider: dict[str, Any], summary_text: str, completion_budget_reached: bool) -> str:
+def _termination_assessment(
+    provider: dict[str, Any],
+    summary_text: str,
+    completion_budget_reached: bool,
+) -> str:
+    finish_reason = str(provider.get("finish_reason") or "").strip().lower()
+    native_finish_reason = str(provider.get("native_finish_reason") or "").strip().lower()
+    if finish_reason in {"length", "max_tokens"} or native_finish_reason in {"length", "max_tokens"}:
+        return "provider_declares_length_stop"
+    if not summary_text.strip():
+        return "empty_output"
+    if completion_budget_reached:
+        return "near_completion_budget"
+    if finish_reason in {"stop", "end_turn", "eos_token"} or native_finish_reason in {"stop", "end_turn", "eos_token"}:
+        return "provider_declares_clean_stop"
+    if summary_text.rstrip().endswith((".", "!", "?", "…", "```")):
+        return "text_ends_cleanly_but_provider_unclear"
+    return "ending_suspect_or_provider_unclear"
+
+
+def _result_notes(
+    provider: dict[str, Any],
+    summary_text: str,
+    completion_budget_reached: bool,
+    termination_assessment: str,
+) -> str:
     if not provider.get("ok"):
         return "Erreur provider; sortie brute indisponible ou partielle."
     if not summary_text.strip():
         return "Provider OK mais sortie vide."
-    if completion_budget_reached:
-        return "Budget de completion atteint; verifier une possible troncature a la lecture."
+    if termination_assessment == "provider_declares_length_stop":
+        return "Le provider signale une fin par longueur; sortie probablement tronquee."
+    if completion_budget_reached or termination_assessment == "near_completion_budget":
+        return "Budget de completion presque atteint; verifier une possible troncature a la lecture."
     return "Sortie brute a lire humainement; aucun score automatique."

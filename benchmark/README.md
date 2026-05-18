@@ -106,7 +106,11 @@ summary prompt and the same real Frida dialogue material. The outputs are
 intended for Tof to read directly; the benchmark records latency, usage and
 cost metadata, but it does not choose a winner.
 
-Default summary models:
+The first broad summary run can be used as an exploratory pass. If useful
+models are cut by the output budget, run a smaller human final with a higher
+`--summary-max-tokens` value instead of comparing truncated summaries.
+
+Default exploratory summary models:
 
 - `openai/gpt-5.4-mini`
 - `anthropic/claude-sonnet-4.6`
@@ -119,7 +123,7 @@ Fixed summary parameters:
 
 - `temperature=0.3`
 - `top_p=1.0`
-- `max_tokens=2000`
+- `max_tokens=2000` unless overridden with `--summary-max-tokens`
 
 Example live run:
 
@@ -131,11 +135,28 @@ OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --output-dir benchmark/results/summary
 ```
 
+Example human final after selecting finalists:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite summary \
+  --campaign-id 2026-05-18-summary-human-final \
+  --summary-input-file /tmp/fridadev-summary-material.json \
+  --summary-max-tokens 4500 \
+  --models openai/gpt-5.4-mini anthropic/claude-sonnet-4.6 qwen/qwen3.5-plus-20260420 \
+  --output-dir benchmark/results/summary
+```
+
 The runner writes:
 
 - one structured JSON campaign index;
 - one Markdown campaign index;
 - one complete Markdown summary per model.
+
+Summary reports include provider `finish_reason` when OpenRouter exposes it,
+completion token counts, and a conservative termination assessment. If a
+provider omits or blurs the finish reason, the report says so instead of
+pretending the end state is proven.
 
 Do not commit the raw source material unless it has been deliberately reviewed
 for publication. The generated summaries are the human-review artifacts.

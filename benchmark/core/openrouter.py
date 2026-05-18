@@ -55,6 +55,8 @@ class OpenRouterClient:
                     "elapsed_ms": round(elapsed_ms, 3),
                     "error": _compact_error(data) or response.text[:500],
                     "raw_text": None,
+                    "finish_reason": _finish_reason(data),
+                    "native_finish_reason": _native_finish_reason(data),
                     "usage": _usage(data),
                     "cost_estimate_usd": None,
                     "cost_estimate_source": "provider_error",
@@ -68,6 +70,8 @@ class OpenRouterClient:
                 "elapsed_ms": round(elapsed_ms, 3),
                 "error": None,
                 "raw_text": raw_text,
+                "finish_reason": _finish_reason(data),
+                "native_finish_reason": _native_finish_reason(data),
                 "usage": usage,
                 "cost_estimate_usd": cost,
                 "cost_estimate_source": source,
@@ -80,6 +84,8 @@ class OpenRouterClient:
                 "elapsed_ms": round(elapsed_ms, 3),
                 "error": f"{type(exc).__name__}: {str(exc)[:300]}",
                 "raw_text": None,
+                "finish_reason": None,
+                "native_finish_reason": None,
                 "usage": {},
                 "cost_estimate_usd": None,
                 "cost_estimate_source": "exception",
@@ -150,6 +156,24 @@ def _extract_text(data: dict[str, Any]) -> str:
 def _usage(data: dict[str, Any]) -> dict[str, Any]:
     usage = data.get("usage") if isinstance(data, dict) else None
     return dict(usage) if isinstance(usage, dict) else {}
+
+
+def _choice(data: dict[str, Any]) -> dict[str, Any]:
+    try:
+        choice = data["choices"][0]
+    except Exception:
+        return {}
+    return choice if isinstance(choice, dict) else {}
+
+
+def _finish_reason(data: dict[str, Any]) -> str | None:
+    value = _choice(data).get("finish_reason")
+    return str(value) if value is not None else None
+
+
+def _native_finish_reason(data: dict[str, Any]) -> str | None:
+    value = _choice(data).get("native_finish_reason")
+    return str(value) if value is not None else None
 
 
 def _compact_error(data: Any) -> str:

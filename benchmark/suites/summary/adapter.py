@@ -48,14 +48,27 @@ def build_user_content(turns: list[dict[str, str]]) -> str:
     return "Voici le dialogue à résumer :\n\n" + "\n\n".join(parts)
 
 
-def build_payload(*, model: str, prompt_text: str, user_content: str) -> dict[str, Any]:
+def generation_params(*, max_tokens: int | None = None) -> dict[str, Any]:
+    params = dict(GENERATION_PARAMS)
+    if max_tokens is not None:
+        params["max_tokens"] = int(max_tokens)
+    return params
+
+
+def build_payload(
+    *,
+    model: str,
+    prompt_text: str,
+    user_content: str,
+    generation_params: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "model": model,
         "messages": [
             {"role": "system", "content": prompt_text},
             {"role": "user", "content": user_content},
         ],
-        **GENERATION_PARAMS,
+        **dict(generation_params or GENERATION_PARAMS),
     }
 
 

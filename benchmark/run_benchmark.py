@@ -15,6 +15,7 @@ from benchmark.core.reporting import write_markdown_report
 from benchmark.suites.arbiter import adapter as arbiter_adapter
 from benchmark.suites.arbiter import scorer as arbiter_scorer
 from benchmark.suites.arbiter import tournament as arbiter_tournament
+from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 
 
@@ -44,6 +45,7 @@ def main() -> int:
     parser.add_argument("--fixture-set", default="diagnostic")
     parser.add_argument("--arbiter-tournament", action="store_true")
     parser.add_argument("--summary-input-file", default=None)
+    parser.add_argument("--summary-max-tokens", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout-s", type=int, default=90)
     parser.add_argument("--base-url", default=None)
@@ -85,6 +87,9 @@ def main() -> int:
             if not Path(args.summary_input_file).is_absolute()
             else Path(args.summary_input_file).resolve(),
             client=client,
+            generation_params=summary_adapter.generation_params(
+                max_tokens=args.summary_max_tokens,
+            ),
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")
