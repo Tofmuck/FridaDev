@@ -12,14 +12,14 @@ Source de verite de depart:
 
 - [x] Ne pas ouvrir un gros chantier global de refonte des modeles d'un seul bloc.
 - [x] Ne pas remplacer un modele auxiliaire a l'intuition.
-- [x] Avancer caller par caller, avec la sequence: benchmark -> decision -> decouplage si necessaire.
+- [x] Avancer caller par caller, avec la sequence: benchmark -> decision -> decouplage propre du caller.
 - [x] Garder la possibilite de partager le meme token et le meme projet OpenRouter, meme quand les callers gagnent leur propre modele ou leurs propres parametres.
 - [x] Consigner l'horizon global ici, sans creer un deuxieme TODO de decouplage general.
 
 ## Horizon global
 
 - [ ] Organiser progressivement les appels OpenRouter de Frida, caller par caller, a partir de benchmarks concrets.
-- [ ] Donner a chaque caller important un contrat runtime explicite: modele, parametres et responsabilite propres.
+- [ ] Individualiser chaque caller important avec son propre point d'appel ou module, son modele, ses parametres et son contrat runtime.
 - [ ] Repercuter les resultats des campagnes dans les settings runtime ou dans la documentation de contrat, caller par caller.
 - [ ] Conserver un atelier de benchmark durable dans le repo, reutilisable au lieu de scripts jetables.
 
@@ -42,19 +42,24 @@ Source de verite de depart:
 
 - [ ] Benchmark arbitre memoire.
 - [ ] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
-- [ ] Decouplage eventuel ou necessaire de son slot runtime propre.
+- [ ] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
 - [ ] Benchmark resume conversationnel.
-- [ ] Decision resume conversationnel puis decouplage eventuel.
+- [ ] Decision resume conversationnel.
+- [ ] Decouplage propre du resume conversationnel.
 - [ ] Benchmark extracteur identity.
-- [ ] Decision extracteur identity puis decouplage eventuel.
+- [ ] Decision extracteur identity.
+- [ ] Decouplage propre de l'extracteur identity.
 - [ ] Benchmark periodic identity.
-- [ ] Decision periodic identity puis decouplage eventuel.
+- [ ] Decision periodic identity.
+- [ ] Decouplage propre de periodic identity.
 - [ ] Benchmark stimmung agent primaire.
-- [ ] Decision stimmung agent primaire puis decouplage eventuel.
+- [ ] Decision stimmung agent primaire.
+- [ ] Decouplage propre du stimmung agent primaire.
 - [ ] Benchmark validation agent primaire.
-- [ ] Decision validation agent primaire puis decouplage eventuel.
+- [ ] Decision validation agent primaire.
+- [ ] Decouplage propre du validation agent primaire.
 
-On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance benchmark -> decision -> decouplage caller par caller.
+On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance benchmark -> decision -> decouplage caller par caller, puis caller suivant.
 
 ## Lot 1 - atelier durable + premiere campagne arbitre memoire
 
@@ -138,8 +143,8 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [ ] Les quatre modeles de la premiere campagne ont ete executes avec les memes parametres.
 - [ ] Un rapport Markdown de campagne existe.
 - [ ] Un verdict caller est documente.
-- [ ] Si le verdict l'exige, un lot suivant borne decouple ou ajuste le slot runtime de l'arbitre memoire.
+- [ ] Le lot suivant borne individualise l'arbitre memoire avant de passer au resume conversationnel: point d'appel clair, modele propre, parametres propres et contrat runtime propre.
 
 ## Definition de fin globale
 
-- [ ] Le chantier global d'organisation des modeles ne pourra pas etre considere comme acheve tant que les resultats des benchmarks n'auront pas ete repercutes caller par caller et que chaque appel modele concerne n'aura pas son propre contrat runtime explicite - modele, parametres et responsabilite propres - tout en pouvant continuer a partager le meme token / projet OpenRouter.
+- [ ] Le chantier global d'organisation des modeles ne pourra pas etre considere comme acheve tant que les resultats des benchmarks n'auront pas ete repercutes caller par caller et que chaque appel modele important n'aura pas ete individualise avec son propre point d'appel ou module, son modele propre, ses parametres propres et son contrat runtime propre - tout en pouvant continuer a partager le meme token / projet OpenRouter.
