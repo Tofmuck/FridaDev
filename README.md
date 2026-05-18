@@ -13,6 +13,7 @@ Primary current-state references:
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+- Archived model temporal truth remediation: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents OCR roadmap: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Long-term dashboard contract: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -106,6 +107,7 @@ Frontend rehydration and operator observability
 - Current runtime pipeline: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Model call catalog and OpenRouter topology audit: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Global temporal truth audit: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+- Archived model temporal truth remediation: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Active conversation documents contract: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Archived active conversation documents roadmap: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Archived active conversation documents audit-plan: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`
@@ -180,6 +182,7 @@ References principales pour l'etat courant:
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+- Remediation archivee de comprehension temporelle modele: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Contrat des documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee OCR des documents actifs: `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
 - Contrat du dashboard long terme: `app/docs/states/specs/dashboard-long-term-observability-contract.md`
@@ -272,6 +275,8 @@ Rehydratation frontend et observabilite operateur
 - Hub docs: `app/docs/README.md`
 - Pipeline runtime courant: `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`
 - Catalogue des appels modeles et audit de topologie OpenRouter: `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
+- Audit global de verite temporelle: `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+- Remediation archivee de comprehension temporelle modele: `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Contrat documents actifs de conversation: `app/docs/states/specs/active-conversation-documents-contract.md`
 - Roadmap archivee documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - Audit-plan archive documents actifs de conversation: `app/docs/todo-done/product/active-conversation-documents-audit-plan.md`

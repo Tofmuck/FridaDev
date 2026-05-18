@@ -188,6 +188,7 @@ Utiliser ces documents comme points d'entree, sauf decision explicite contraire:
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`: doctrine produit sur la voix dialogique, la coherence identitaire forte et la reprise apres ecart temporel.
 - `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`: audit archive du contrat semantique prompt/payload; P1/P2/P3 corriges, limites volontaires documentees.
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`: cartographie actuelle des appels modeles et services d'inference, topologie OpenRouter, secrets, parametres et contrats de sortie; a relire avant rotation token ou raffinage provider.
+- `app/docs/states/audits/fridadev-temporal-system-audit-2026-05-18.md` et `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`: audit global de verite temporelle et archive de cloture Lots 1-4 du chantier de comprehension temporelle modele; UI/dashboard/export restent hors de ce chantier archive.
 - `app/docs/todo-done/notes/chat-enunciation-gap-validation-todo.md`: note archivee de cloture du lot prompt-first voix / identite / gap temporel.
 - `app/docs/todo-done/audits/fridadev_repo_audit.md`: audit general repo archive.
 - `app/docs/states/audits/fridadev-global-audit-2026-05-03.md`: audit global exhaustif date du 2026-05-03, source de verite des findings `AUDIT-20260503-*`.

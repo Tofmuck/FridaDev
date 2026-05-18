@@ -18,7 +18,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
-- Remediation active de comprehension temporelle modele: `todo-todo/audits/fridadev-temporal-truth-remediation-todo.md`
+- Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Archive de cloture de la remediation de l'audit global: `todo-done/audits/fridadev-global-audit-remediation-todo.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`

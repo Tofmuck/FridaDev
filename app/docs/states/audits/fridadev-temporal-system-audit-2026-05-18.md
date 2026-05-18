@@ -2,15 +2,16 @@
 
 ## Verdict executif
 
-Question prealable: il existe un meilleur plan qu'un correctif immediat, et c'est bien l'audit global docs-first demande. Les correctifs `54e7760` et `aa129f5` ont ferme la voie principale du prompt chat et des resumes, mais l'audit montre que la propriete "Frida ne se perd pas dans le temps" traverse encore plusieurs lanes secondaires.
+Question prealable: il existe un meilleur plan qu'un correctif immediat, et c'est bien l'audit global docs-first demande. Les correctifs `54e7760` et `aa129f5` ont ferme la voie principale du prompt chat et des resumes; les Lots 1 a 4 du chantier de comprehension temporelle modele ont ensuite ferme les lanes modele secondaires et les fallbacks deterministes.
 
 Verdict:
 
 - le coeur conversationnel principal dispose maintenant d'un `NOW` canonique de tour, de `FRIDA_TIMEZONE`, de labels Delta-T avec date locale absolue + heure locale + timezone + relatif, et de dates de resume locales;
 - la persistance canonique reste correctement orientee UTC / `TIMESTAMPTZ`, ce qui est sain pour le stockage;
-- plusieurs surfaces modele et operateur continuent toutefois a exposer soit une date locale implicite navigateur, soit aucun ancrage temporel alors qu'elles peuvent raisonner sur des enonces temporels;
+- les surfaces pertinentes pour la comprehension modele sont maintenant cloturees par une matrice de tests dediee: prompt principal, web, validation agent, arbitre memoire, resumes, identity, stimmung, classifieur deterministe et invalides;
+- plusieurs surfaces utilisateur/operateur continuent toutefois a exposer une date locale implicite navigateur ou des buckets UTC sous labels humains; elles restent cartographiees ici, mais hors du chantier prioritaire modele;
 - le risque le plus net etait la lane web; elle est corrigee par le Lot 1 runtime du 2026-05-18, qui derive reformulation web et blocs web du `NOW` de tour en date locale `FRIDA_TIMEZONE`;
-- la bonne suite n'est pas une refonte globale, mais un chantier de fermeture cible en lots bornes.
+- la bonne suite n'est pas une refonte globale; la cloture modele est archivee, et un chantier separe ne devra etre ouvert que si la coherence temporelle UI/operateur redevient prioritaire.
 
 Comptage de l'audit:
 
@@ -19,7 +20,7 @@ Comptage de l'audit:
 | Surfaces temporelles applicatives | 45 | inventaire compact reconcilie ci-dessous |
 | Slots modele/service | 13 | les 13 slots du catalogue modele du 2026-05-17 |
 | Chemins fonctionnels d'inference | 11 | chat, web, arbitre, resume, identity, stimmung, validation, embeddings, Whisper, OCR |
-| Findings actifs | 10 | P1 web corrige, 6 P2, 4 P3 |
+| Findings recenses | 10 | 8 findings modele corriges ou bornes par les Lots 1-4; 2 findings UI/operateur restent hors chantier modele |
 
 Inventaire compact des 45 surfaces temporelles auditees:
 
@@ -231,7 +232,7 @@ Risque initial: autour de minuit Europe/Paris, la reformulation web et le contex
 
 Etat apres Lot 1 runtime du 2026-05-18: `app/tools/web_search.py` recoit le `now_iso` du tour quand la lane web est appelee depuis le chat, puis rend reformulation, blocs `[RECHERCHE WEB - ...]` et blocs URL explicite via `time_input.local_date_label_fr(..., FRIDA_TIMEZONE, include_timezone=True)`. Le scenario `2026-05-17T22:05:00Z` rend `lundi 18 mai 2026 Europe/Paris`.
 
-### P2 - TEMP-20260518-P2-001 - Le validation agent lit en priorite un contexte horodate en brut
+### P2 corrige - TEMP-20260518-P2-001 - Le validation agent lisait en priorite un contexte horodate en brut
 
 Preuves:
 
@@ -243,9 +244,9 @@ Preuves:
 
 Risque: le validation agent peut arbitrer le regime de reponse a partir d'un timestamp UTC brut, alors que le local Frida est la verite dialogique. La presence possible du temps dans `canonical_inputs` ne suffit pas, car cette section est secondaire et bornee.
 
-Etat apres Lot 2: corrige. `validation_agent._build_messages()` place maintenant `temporal_reference` avant `validation_dialogue_context`, et le contexte compacte ajoute un `temporal_label` local par message quand un timestamp existe. Le prompt `validation_agent.txt` donne autorite aux `temporal_label` sur les timestamps ISO bruts pour lire `aujourd'hui`, `hier` et les passages de minuit.
+Etat apres Lots 2 et 4: corrige. `validation_agent._build_messages()` place maintenant `temporal_reference` avant `validation_dialogue_context`, et le contexte compacte ajoute un `temporal_label` local par message quand un timestamp existe. Le prompt `validation_agent.txt` donne autorite aux `temporal_label` sur les timestamps ISO bruts pour lire `aujourd'hui`, `hier` et les passages de minuit. `app/tests/unit/core/test_temporal_model_truth_closure.py` prouve aussi que, pour `2026-05-17T22:05:00Z`, le validateur expose `2026-05-18` / `lundi 18 mai 2026` au lieu de suggerer le `17 mai`.
 
-### P2 - TEMP-20260518-P2-002 - L'arbitre memoire raisonne sur des souvenirs circonstanciels sans ancrage local
+### P2 corrige - TEMP-20260518-P2-002 - L'arbitre memoire raisonnait sur des souvenirs circonstanciels sans ancrage local
 
 Preuves:
 
@@ -255,9 +256,9 @@ Preuves:
 
 Risque: une memoire "hier soir" ou "aujourd'hui" peut etre selectionnee/penalisee sans que l'arbitre possede le `NOW` local, puis etre reinjectee dans le prompt principal.
 
-Etat apres Lot 2: corrige pour le flux chat. `chat_service` propage le `now_iso` du tour a `chat_memory_flow.prepare_memory_context()`, puis l'arbitre recoit une reference temporelle locale et des `temporal_label` pour le recent context et les candidats. Le prompt `arbiter.txt` interdit d'inferer le jour local depuis un timestamp UTC brut.
+Etat apres Lots 2 et 4: corrige pour le flux chat. `chat_service` propage le `now_iso` du tour a `chat_memory_flow.prepare_memory_context()`, puis l'arbitre recoit une reference temporelle locale et des `temporal_label` pour le recent context et les candidats. Le prompt `arbiter.txt` interdit d'inferer le jour local depuis un timestamp UTC brut. La matrice de cloture verifie que timestamp UTC brut et label local restent subordonnes a la meme date locale autour de minuit.
 
-### P2 - TEMP-20260518-P2-003 - L'extracteur identity n'a pas d'ancre temporelle
+### P2 corrige - TEMP-20260518-P2-003 - L'extracteur identity n'avait pas d'ancre temporelle
 
 Preuves:
 
@@ -266,9 +267,9 @@ Preuves:
 
 Risque: des phrases comme "depuis hier", "en ce moment" ou "aujourd'hui je suis..." peuvent etre classees sans ancre locale. La politique conservatrice reduit le risque, mais ne le prouve pas.
 
-Etat apres Lot 2: corrige par politique de rejet et provenance, pas par ancrage. L'extracteur identity n'a pas a transformer `hier` ou `aujourd'hui` en identite durable; les tours sources qui portent un marqueur relatif faible sont retires du dialogue admissible et `_validate_identity_output()` rejette aussi toute sortie pour un sujet sans source non relative admissible, meme si le modele paraphrase le claim.
+Etat apres Lots 2 et 4: corrige par politique de rejet et provenance, pas par ancrage. L'extracteur identity n'a pas a transformer `hier` ou `aujourd'hui` en identite durable; les tours sources qui portent un marqueur relatif faible sont retires du dialogue admissible et `_validate_identity_output()` rejette aussi toute sortie pour un sujet sans source non relative admissible, meme si le modele paraphrase le claim. La cloture prouve qu'un input `Depuis hier je suis anxieux` ne peut pas devenir `L'utilisateur est anxieux` en identite durable.
 
-### P2 - TEMP-20260518-P2-004 - Dashboard `today/yesterday` en UTC sous labels humains francais
+### P2 hors chantier modele - TEMP-20260518-P2-004 - Dashboard `today/yesterday` en UTC sous labels humains francais
 
 Preuves:
 
@@ -278,7 +279,7 @@ Preuves:
 
 Risque: surface humaine/opérateur contradictoire avec la temporalite dialogique. Si le choix UTC est volontaire, le label doit l'assumer explicitement; sinon il faut passer a `FRIDA_TIMEZONE`.
 
-### P2 - TEMP-20260518-P2-005 - Les surfaces navigateur rendent dates/heures en timezone implicite
+### P2 hors chantier modele - TEMP-20260518-P2-005 - Les surfaces navigateur rendent dates/heures en timezone implicite
 
 Preuves:
 
@@ -292,7 +293,7 @@ Preuves:
 
 Risque: pour un navigateur hors Europe/Paris, l'utilisateur ou l'operateur peut voir une heure/jour different de la verite dialogique Frida sur l'accueil chat, les bylines, la sidebar, les exports et les dates dashboard. C'est acceptable seulement si l'UI annonce clairement "heure locale navigateur"; ce n'est pas le cas.
 
-### P2 - TEMP-20260518-P2-006 - Le classifieur deterministe du tour ne reconnait pas `hier`
+### P2 corrige - TEMP-20260518-P2-006 - Le classifieur deterministe du tour ne reconnaissait pas `hier`
 
 Preuves:
 
@@ -302,9 +303,9 @@ Preuves:
 
 Risque: le noeud hermeneutique peut sous-qualifier une demande explicitement ancree dans `hier`, donc affaiblir la re-situation temporelle.
 
-Etat apres Lot 3: corrige. `user_turn_input._resolve_qualification_temporelle()` reconnait `hier` et `depuis hier` comme `portee_temporelle=passee` avec `ancrage_temporel=now`; le meme test verrouille aussi les contrats existants pour `aujourd'hui`, `ce matin`, `ce soir` et `demain`.
+Etat apres Lots 3 et 4: corrige. `user_turn_input._resolve_qualification_temporelle()` reconnait `hier` et `depuis hier` comme `portee_temporelle=passee` avec `ancrage_temporel=now`; le meme test verrouille aussi les contrats existants pour `aujourd'hui`, `ce matin`, `ce soir` et `demain`. La matrice de cloture reutilise ce verrou avec le `NOW` local Paris du passage de minuit.
 
-### P3 - TEMP-20260518-P3-001 - Stimmung agent perd les ecarts temporels
+### P3 corrige - TEMP-20260518-P3-001 - Stimmung agent perdait les ecarts temporels
 
 Preuves:
 
@@ -314,9 +315,9 @@ Preuves:
 
 Risque: un ton affectif peut etre interprete sans savoir s'il suit une minute ou deux jours de silence. Le scope affectif minimal rend ce P3, sauf decision produit contraire.
 
-Etat apres Lot 2: corrige par contrat d'ignorance. Le prompt `stimmung_agent.txt` precise que les timestamps, delais, gaps et claims relatifs ne sont pas un signal affectif pour ce caller. La fenetre envoyee au modele continue donc volontairement sans timestamps.
+Etat apres Lots 2 et 4: corrige par contrat d'ignorance. Le prompt `stimmung_agent.txt` precise que les timestamps, delais, gaps et claims relatifs ne sont pas un signal affectif pour ce caller. La fenetre envoyee au modele continue donc volontairement sans timestamps, et la matrice de cloture prouve que ce caller ne peut pas injecter de jour contradictoire.
 
-### P3 - TEMP-20260518-P3-002 - Agent periodic identity recoit des timestamps bruts mais pas de NOW local
+### P3 corrige - TEMP-20260518-P3-002 - Agent periodic identity recevait des timestamps bruts mais pas de NOW local
 
 Preuves:
 
@@ -327,9 +328,9 @@ Preuves:
 
 Risque: faible grace a la consigne de durabilite, mais non prouve pour les claims temporels relatifs.
 
-Etat apres Lot 2: corrige par politique de rejet et provenance. Le payload du modele periodic contient `identity_temporal_policy.source_summary`; les contenus sources faibles sont retires du buffer envoye au modele, et le resultat est assaini avant application si une operation non `no_change` vient d'un sujet sans source non relative admissible, meme si la proposition finale a paraphrase le marqueur.
+Etat apres Lots 2 et 4: corrige par politique de rejet et provenance. Le payload du modele periodic contient `identity_temporal_policy.source_summary`; les contenus sources faibles sont retires du buffer envoye au modele, et le resultat est assaini avant application si une operation non `no_change` vient d'un sujet sans source non relative admissible, meme si la proposition finale a paraphrase le marqueur. La matrice de cloture verrouille explicitement ce cas par paraphrase.
 
-### P3 - TEMP-20260518-P3-003 - Timestamp invalide de conversation peut devenir `now` silencieusement
+### P3 corrige - TEMP-20260518-P3-003 - Timestamp invalide de conversation pouvait devenir `now` silencieusement
 
 Preuves:
 
@@ -338,9 +339,9 @@ Preuves:
 
 Risque: une donnee temporelle invalide peut etre remplacee par le present au lieu d'etre marquee invalide/absente. Ce n'est pas le bug `hier/aujourd'hui`, mais c'est dangereux pour la verite temporelle.
 
-Etat apres Lot 3: corrige. `parse_iso_to_dt()` et `ts_to_iso()` levent `InvalidTimestampError` sur timestamp absent ou invalide; `ts_to_iso()` n'appelle plus `now_iso_func()` comme fallback de parsing et les tests prouvent que `not-a-date` ne devient pas le present.
+Etat apres Lots 3 et 4: corrige. `parse_iso_to_dt()` et `ts_to_iso()` levent `InvalidTimestampError` sur timestamp absent ou invalide; `ts_to_iso()` n'appelle plus `now_iso_func()` comme fallback de parsing et les tests prouvent que `not-a-date` ne devient pas le present.
 
-### P3 - TEMP-20260518-P3-004 - Fallback timezone invalide vers UTC trop silencieux
+### P3 corrige - TEMP-20260518-P3-004 - Fallback timezone invalide vers UTC trop silencieux
 
 Preuves:
 
@@ -348,7 +349,7 @@ Preuves:
 
 Risque: si `FRIDA_TIMEZONE` est mal configure, le systeme continue en UTC et peut recreer les contradictions de date locale. Un fallback peut rester utile, mais doit etre observable/teste.
 
-Etat apres Lot 3: corrige par echec explicite. `_resolve_timezone()` leve `InvalidTimezoneError` sur zone invalide; `build_time_input()` et `render_delta_label()` propagent cette erreur au lieu de produire une date UTC implicite.
+Etat apres Lots 3 et 4: corrige par echec explicite. `_resolve_timezone()` leve `InvalidTimezoneError` sur zone invalide; `build_time_input()` et `render_delta_label()` propagent cette erreur au lieu de produire une date UTC implicite.
 
 ## Zones correctes prouvees
 
@@ -361,6 +362,7 @@ Etat apres Lot 3: corrige par echec explicite. `_resolve_timezone()` leve `Inval
 | Contextes de souvenirs parents | dates locales Frida, coherentes avec Delta-T. |
 | Entree du resumeur | `[YYYY-MM-DD]` derive de la date locale Frida. |
 | Lane web Lot 1 | reformulation web et blocs web utilisent la date locale Frida + timezone issue du `NOW` de tour. |
+| Matrice de cloture modele | `app/tests/unit/core/test_temporal_model_truth_closure.py` prouve minuit Europe/Paris, DST ete/hiver, lanes modele secondaires, invalides et absence de contradiction inter-lanes. |
 | Stockage conversations/messages | `TIMESTAMPTZ`/UTC pour instants techniques, sans pretention de jour local. |
 | Active documents prompt lane | n'expose pas de timestamp au modele; les timestamps restent metadata/admin. |
 | Embeddings/Whisper/OCR | pas de raisonnement temporel Frida. |
@@ -372,7 +374,7 @@ Etat apres Lot 3: corrige par echec explicite. `_resolve_timezone()` leve `Inval
 |---|---|---|
 | Dashboard UTC | le choix UTC peut etre intentionnel pour l'operateur, mais les labels `Aujourd'hui` / `Hier` ne le disent pas | decider local Frida vs UTC explicite |
 | Surfaces navigateur | le rendu browser-local peut etre un choix UX, mais il n'est ni documente ni labelle pour l'accueil chat, les bylines, la sidebar, l'export et le dashboard web | fixer la doctrine UI et tester un timezone non Paris |
-| DST Europe/Paris | les fonctions `ZoneInfo` devraient gerer les changements d'heure, mais la matrice de test ne le prouve pas encore | ajouter tests DST dans le lot de fermeture |
+| DST UI/dashboard | la matrice prouve les lanes modele, mais pas les rendus navigateur/dashboard hors chantier modele | traiter seulement si le backlog UI/operateur est ouvert |
 
 ## Tests existants vs tests manquants
 
@@ -384,6 +386,7 @@ Tests existants probants:
 - `app/tests/test_prompt_loader_phase13.py` couvre la presence des exemples Delta-T dans le prompt principal.
 - `app/tests/unit/web_search/test_web_search_phase4.py` couvre la reformulation web et les blocs web sur `2026-05-17T22:05:00Z -> lundi 18 mai 2026 Europe/Paris`, avec absence de date UTC contradictoire.
 - `app/tests/unit/core/test_chat_turn_runtime_inputs.py` couvre la propagation du `now_iso` de tour vers la lane web.
+- `app/tests/unit/core/test_temporal_model_truth_closure.py` couvre l'invariant global modele: minuit Europe/Paris, DST ete/hiver, prompt principal, web, validation agent, arbitre memoire, resumes, identity, stimmung, classifieur, timestamp invalide et timezone invalide.
 - `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py` couvre la priorite de `temporal_reference` et les `temporal_label` locaux du contexte de validation autour de minuit.
 - `app/tests/unit/memory/test_arbiter_phase4.py` couvre l'ancre locale de l'arbitre memoire et le rejet lexical identity livre au Lot 2.
 - `app/tests/unit/memory/test_identity_temporal_guard.py` couvre les paraphrases issues de sources faibles, le retrait du materiau source et l'assainissement identity periodic par provenance.
@@ -397,25 +400,25 @@ Tests manquants:
 
 - dashboard: `today/yesterday` Europe/Paris autour de minuit, ou labels UTC explicites;
 - frontend navigateur: accueil chat, bylines, sidebar conversations, export Markdown et dashboard web en rendu Europe/Paris explicite ou label navigateur explicite, avec test timezone fixe;
-- DST Europe/Paris: passage heure d'ete/hiver au moins sur labels Delta-T, web date et dashboard.
+- frontend/dashboard hors chantier modele: DST et timezone navigateur explicite si un chantier UI/operateur est ouvert.
 
 ## Plan de remediation minimal et ordonne
 
 1. Ferme le 2026-05-18: P1 web remplace les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
 2. Ferme le 2026-05-18: modeles secondaires alignes sur leur responsabilite temporelle; validation/arbitre ancres localement, identity/stimmung rejettent ou ignorent les claims temporels faibles hors contrat.
 3. Ferme le 2026-05-18: classifieur deterministe `hier`/`depuis hier`, timestamp invalide et timezone invalide durcis sans fallback silencieux.
-4. Fixer la politique UI/operator hors chantier modele si elle redevient prioritaire: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
-5. Ajouter une matrice DST/minuit commune aux tests temporels modele.
+4. Ferme le 2026-05-18: matrice de cloture modele commune couvrant minuit Europe/Paris, DST ete/hiver, lanes modele pertinentes et invalides.
+5. Hors chantier modele: fixer la politique UI/operator si elle redevient prioritaire: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
 
-Un TODO de fermeture dedie est ouvert dans `app/docs/todo-todo/audits/fridadev-temporal-truth-remediation-todo.md`.
+Le TODO de fermeture modele est archive dans `app/docs/todo-done/audits/fridadev-temporal-truth-remediation-todo.md`.
 
 ## Condition de cloture forte
 
-On pourra dire honnetement que la temporalite du repo est alignee quand:
+On peut dire honnetement que la temporalite lisible par les modeles et pertinente pour la comprehension de Frida est alignee quand:
 
 - toute surface lisible par un modele qui manipule `hier`, `aujourd'hui`, `demain`, une periode ou un souvenir recoit soit `NOW + TIMEZONE`, soit des labels locaux derives du coeur temporel;
 - aucune date de jour destinee au dialogue ou au prompt n'est produite par troncature UTC ou `datetime.now(timezone.utc).strftime(...)`;
-- l'UTC reste reserve au stockage, aux logs techniques et aux fenetres operateur explicitement qualifiees;
-- l'UI utilisateur et les exports ne peuvent plus afficher silencieusement un autre jour que la temporalite Frida sans l'annoncer;
-- les tests prouvent minuit Europe/Paris, DST, timestamp invalide, timezone invalide, web, resumes, memoire, validation, stimmung, dashboard et export;
-- le prompt principal, les modeles secondaires, l'admin et les exports racontent le meme instant selon un registre explicite: local Frida pour le dialogue, UTC qualifie pour l'operateur technique.
+- l'identity et le stimmung agent ne tirent pas de conclusion temporelle depuis des claims faibles hors contrat;
+- les tests prouvent minuit Europe/Paris, DST, timestamp invalide, timezone invalide, web, resumes, memoire, validation, identity, stimmung et qualification deterministe.
+
+Etat au 2026-05-18: cette condition de cloture modele est atteinte par les Lots 1 a 4. La temporalite globale produit reste plus large: l'UTC doit rester explicite dans le registre operateur, et les surfaces navigateur/dashboard/export conservees dans cet audit devront avoir leur propre chantier si Tof les remet dans le chemin critique.
