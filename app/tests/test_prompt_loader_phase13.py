@@ -164,7 +164,9 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertIn("Temporal discipline", arbiter_prompt)
         self.assertIn("Do not infer the local day from raw UTC timestamps.", arbiter_prompt)
         self.assertIn("Reject weak relative temporal claims", identity_prompt)
+        self.assertIn("admissible dialogue", identity_prompt)
         self.assertIn("Reject weak relative temporal claims", periodic_prompt)
+        self.assertIn("source_summary", periodic_prompt)
         self.assertIn("Tu ignores les timestamps, les delais et les gaps temporels", stimmung_prompt)
 
     def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:

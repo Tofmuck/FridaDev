@@ -88,7 +88,7 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Les modeles secondaires qui influencent l'interpretation finale ne doivent pas reconstruire `hier` / `aujourd'hui` depuis des timestamps UTC bruts:
   - le validation agent recoit une `temporal_reference` prioritaire et des `temporal_label` locaux dans son contexte principal;
   - l'arbitre memoire recoit le `NOW` local du tour, des labels locaux pour le recent context et les candidats, et ne doit pas inferer le jour local depuis l'UTC brut;
-  - identity extractor et identity periodic ne raisonnent pas temporellement: ils rejettent les claims relatifs faibles (`hier`, `aujourd'hui`, `depuis hier`, `en ce moment`) au lieu de les consolider en identite durable;
+  - identity extractor et identity periodic ne raisonnent pas temporellement: ils retirent les sources portant des claims relatifs faibles (`hier`, `aujourd'hui`, `depuis hier`, `en ce moment`) du materiau admissible et rejettent toute promotion pour un sujet sans source non relative, meme si le modele paraphrase le claim;
   - stimmung ignore volontairement timestamps, delais, gaps et claims relatifs; ce caller ne produit qu'un signal affectif centre sur le tour courant.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"

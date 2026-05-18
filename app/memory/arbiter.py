@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import requests
 
@@ -12,6 +12,7 @@ import config
 from admin import runtime_settings
 from core import llm_client
 from core.hermeneutic_node.inputs import time_input
+from memory import identity_temporal_guard
 
 logger = logging.getLogger('frida.arbiter')
 
@@ -74,22 +75,6 @@ _CIRCUMSTANTIAL_MARKERS = (
     'right now',
     'this week',
 )
-_WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS = (
-    "aujourd'hui",
-    "aujourd’hui",
-    'aujourdhui',
-    'hier',
-    'depuis hier',
-    'en ce moment',
-    'actuellement',
-    'maintenant',
-    'today',
-    'yesterday',
-    'since yesterday',
-    'right now',
-    'currently',
-)
-
 
 def _inc_metric(name: str) -> int:
     _METRICS[name] = _METRICS.get(name, 0) + 1
@@ -209,14 +194,6 @@ def _format_recent_turn_for_arbiter(turn: Dict[str, Any], *, now_iso: str | None
     label = _temporal_label(str(turn.get('timestamp') or turn.get('timestamp_iso') or ''), now_iso=now_iso)
     prefix = f'[{label}] ' if label else ''
     return f"{prefix}{role}: {content}"
-
-
-def _has_weak_relative_temporal_marker(value: Any) -> bool:
-    normalized = str(value or '').lower()
-    return any(
-        re.search(rf'(?<![\w]){re.escape(marker)}(?![\w])', normalized)
-        for marker in _WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS
-    )
 
 
 def _append_reason(decision: Dict[str, Any], suffix: str) -> None:
@@ -590,7 +567,11 @@ def filter_traces(
     return kept
 
 
-def _validate_identity_output(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _validate_identity_output(
+    data: Dict[str, Any],
+    *,
+    source_summary: Mapping[str, Any] | None = None,
+) -> List[Dict[str, Any]]:
     raw_entries = data.get('entries')
     if not isinstance(raw_entries, list):
         raise ValueError("'entries' must be a list")
@@ -604,7 +585,9 @@ def _validate_identity_output(data: Dict[str, Any]) -> List[Dict[str, Any]]:
         content = str(entry.get('content', '')).strip()
         if subject not in {'user', 'llm'} or not content:
             continue
-        if _has_weak_relative_temporal_marker(content):
+        if identity_temporal_guard.has_weak_relative_temporal_marker(content):
+            continue
+        if not identity_temporal_guard.subject_has_admissible_source(source_summary, subject):
             continue
 
         stability = str(entry.get('stability', '')).strip()
@@ -662,21 +645,26 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
     if not system_prompt:
         return []
 
+    admissible_turns, source_summary = identity_temporal_guard.admissible_turns_with_source_summary(
+        recent_turns
+    )
     dialogue = '\n'.join(
         f"{t.get('role', '?').upper()}: {t.get('content', '')}"
-        for t in recent_turns
+        for t in admissible_turns
     )
     temporal_policy = (
         "Temporal identity policy:\n"
         "- Relative claims such as aujourd'hui, hier, depuis hier, en ce moment, "
         "right now or currently are weak situational signals.\n"
+        "- Source turns containing those weak signals are removed from the admissible identity dialogue.\n"
         "- Do not extract them as identity entries; prefer no entry.\n\n"
+        f"Temporal source summary:\n{json.dumps(source_summary, ensure_ascii=False, indent=2)}\n\n"
     )
     payload = {
         'model': arbiter_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': f'{temporal_policy}Here is the dialogue:\\n\\n{dialogue}'},
+            {'role': 'user', 'content': f'{temporal_policy}Here is the admissible dialogue:\\n\\n{dialogue}'},
         ],
         'temperature': 0.0,
         'top_p': 1.0,
@@ -702,7 +690,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         )
         raw = llm_client.extract_openrouter_text(response_payload)
         result = _safe_json_loads(raw)
-        entries = _validate_identity_output(result)
+        entries = _validate_identity_output(result, source_summary=source_summary)
         logger.info('identity_extracted count=%s', len(entries))
         return entries
     except requests.exceptions.Timeout:
@@ -723,7 +711,11 @@ def rewrite_identity_mutables(payload_input: Dict[str, Any]) -> Dict[str, Any] |
     return None
 
 
-def _sanitize_identity_periodic_temporal_claims(result: Dict[str, Any]) -> Dict[str, Any]:
+def _sanitize_identity_periodic_temporal_claims(
+    result: Dict[str, Any],
+    *,
+    source_summary: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
     sanitized = dict(result)
     for subject in ('llm', 'user'):
         subject_payload = sanitized.get(subject)
@@ -735,16 +727,26 @@ def _sanitize_identity_periodic_temporal_claims(result: Dict[str, Any]) -> Dict[
 
         retained_operations: list[dict[str, Any]] = []
         rejected_count = 0
+        rejection_reason = ''
         for operation in raw_operations:
             if not isinstance(operation, dict):
                 continue
             operation_payload = dict(operation)
             proposition = str(operation_payload.get('proposition') or '')
-            if (
-                str(operation_payload.get('kind') or '') != 'no_change'
-                and _has_weak_relative_temporal_marker(proposition)
-            ):
+            kind = str(operation_payload.get('kind') or '')
+            if kind == 'no_change':
+                retained_operations.append(operation_payload)
+                continue
+            if identity_temporal_guard.has_weak_relative_temporal_marker(proposition):
                 rejected_count += 1
+                rejection_reason = rejection_reason or 'relative temporal identity signal rejected'
+                continue
+            if not identity_temporal_guard.subject_has_admissible_source(source_summary, subject):
+                rejected_count += 1
+                rejection_reason = rejection_reason or identity_temporal_guard.rejection_reason_for_subject(
+                    source_summary,
+                    subject,
+                )
                 continue
             retained_operations.append(operation_payload)
 
@@ -753,7 +755,10 @@ def _sanitize_identity_periodic_temporal_claims(result: Dict[str, Any]) -> Dict[
                 {
                     'kind': 'no_change',
                     'proposition': '',
-                    'reason': 'relative temporal identity signal rejected',
+                    'reason': rejection_reason or identity_temporal_guard.rejection_reason_for_subject(
+                        source_summary,
+                        subject,
+                    ),
                 }
             ]
         subject_payload['operations'] = retained_operations
@@ -773,11 +778,19 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
     if not system_prompt:
         return None
 
+    sanitized_buffer_pairs, source_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
+        list(payload_input.get('buffer_pairs') or [])
+    )
     payload_for_model = dict(payload_input)
+    payload_for_model['buffer_pairs'] = sanitized_buffer_pairs
     payload_for_model['identity_temporal_policy'] = {
         'relative_claims_are_non_durable': True,
-        'reject_markers': list(_WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS),
-        'instruction': 'Reject weak relative temporal claims instead of promoting them to mutable identity.',
+        'reject_markers': list(identity_temporal_guard.WEAK_RELATIVE_TEMPORAL_IDENTITY_MARKERS),
+        'source_summary': source_summary,
+        'instruction': (
+            'Reject weak relative temporal source claims instead of promoting them to mutable identity. '
+            'Only propose an operation for a subject when that subject has admissible non-relative source content.'
+        ),
     }
 
     payload = {
@@ -812,7 +825,10 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
             ),
         )
         raw = llm_client.extract_openrouter_text(response_payload)
-        result = _sanitize_identity_periodic_temporal_claims(_safe_json_loads(raw))
+        result = _sanitize_identity_periodic_temporal_claims(
+            _safe_json_loads(raw),
+            source_summary=source_summary,
+        )
         logger.info('identity_periodic_agent_result keys=%s', sorted(result.keys()))
         return result
     except requests.exceptions.Timeout:

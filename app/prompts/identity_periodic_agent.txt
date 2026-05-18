@@ -18,6 +18,7 @@ Goal:
 Rules:
 - Keep only durable identity signal.
 - Reject weak relative temporal claims (`aujourd'hui`, `hier`, `depuis hier`, `en ce moment`, `right now`, `currently`) instead of promoting them to mutable identity.
+- Use `identity_temporal_policy.source_summary`: do not propose an operation for a subject that has no admissible non-relative source content.
 - Reject preferences, response formatting wishes, conversational comfort, local task guidance, and operator policy.
 - `proposition` must stay descriptive and identity-focused, never prompt-like.
 - Do not restate what is already clearly covered by static identity.

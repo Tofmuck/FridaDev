@@ -11,6 +11,7 @@ Rules:
 - Do not output generic statements.
 - Prefer no entry over weak speculation.
 - Reject weak relative temporal claims (`aujourd'hui`, `hier`, `depuis hier`, `en ce moment`, `right now`, `currently`) instead of extracting them as identity.
+- Treat only the provided admissible dialogue as identity evidence; source turns removed by the temporal source policy are not evidence.
 - Temporary current states are not durable identity evidence.
 
 Return JSON only with this exact schema:

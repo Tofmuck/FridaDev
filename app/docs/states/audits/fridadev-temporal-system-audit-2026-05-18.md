@@ -43,9 +43,9 @@ Inventaire compact des 45 surfaces temporelles auditees:
 | 16 | Injection context hints prompt principal | `app/core/conversations_prompt_window.py` | Delta-T local, sain |
 | 17 | Candidats arbitre memoire | `app/memory/arbiter.py` | timestamp technique + `temporal_label` local, sain apres Lot 2 |
 | 18 | Recent context arbitre memoire | `app/memory/arbiter.py` | labels locaux quand `now_iso` est fourni, sain apres Lot 2 |
-| 19 | Extracteur identity | `app/memory/arbiter.py`, `app/prompts/identity_extractor.txt` | politique de rejet des claims relatifs faibles, sain apres Lot 2 |
-| 20 | Buffer pairs identity staging | `app/memory/memory_identity_staging.py` | timestamps bruts de staging, acceptables car le modele periodic rejette les claims relatifs faibles |
-| 21 | Agent periodic identity | `app/memory/arbiter.py`, `memory_identity_periodic_agent.py` | politique de rejet des claims relatifs faibles, sain apres Lot 2 |
+| 19 | Extracteur identity | `app/memory/arbiter.py`, `app/memory/identity_temporal_guard.py`, `app/prompts/identity_extractor.txt` | sources faibles retirees + rejet par provenance, sain apres Lot 2 |
+| 20 | Buffer pairs identity staging | `app/memory/memory_identity_staging.py` | timestamps bruts de staging, acceptables car le payload periodic est filtre avant modele |
+| 21 | Agent periodic identity | `app/memory/arbiter.py`, `app/memory/identity_temporal_guard.py`, `memory_identity_periodic_agent.py` | sources faibles retirees + rejet par provenance, sain apres Lot 2 |
 | 22 | Timestamps identity durable/audit | `app/memory/memory_store_infra.py` | `TIMESTAMPTZ`, sain stockage |
 | 23 | Validation dialogue context | `app/core/hermeneutic_node/inputs/recent_context_input.py` | `temporal_reference` prioritaire + `temporal_label`, sain apres Lot 2 |
 | 24 | Summary input du noeud hermeneutique | `app/core/hermeneutic_node/inputs/summary_input.py` | start/end bruts, support secondaire |
@@ -126,7 +126,7 @@ Fonctions qui ne devraient plus recalculer un jour dialogique seules:
 | Export Markdown chat | timezone navigateur | date longue fr-FR sans timezone | `Intl.DateTimeFormat()` | utilisateur | P2 |
 | Validation dialogue context | reference temporelle locale + labels par message | JSON compact | `time_input.render_delta_label()` depuis le `NOW` canonique | validation agent | sain apres Lot 2 |
 | Arbitre memoire | reference temporelle locale + labels candidats/recent context | JSON + texte recent | `time_input.build_time_input()` / `render_delta_label()` depuis `now_iso` | modele arbitre | sain apres Lot 2 |
-| Identity extractor | aucun timestamp par choix | role/content + politique de rejet | prompt + filtre deterministe | modele identity | sain apres Lot 2 |
+| Identity extractor | aucun timestamp par choix | dialogue admissible sans sources faibles + source summary | `identity_temporal_guard` + filtre deterministe | modele identity | sain apres Lot 2 |
 | Stimmung agent | aucun timestamp visible par choix | role/content | prompt d'ignorance des gaps/claims relatifs | modele stimmung | sain apres Lot 2 |
 
 ## Persistence et schemas
@@ -158,8 +158,8 @@ Conclusion persistence: le stockage UTC n'est pas le probleme. Le risque apparai
 | Reformulation web | oui, date locale issue du `NOW` de tour | oui via label `FRIDA_TIMEZONE` | non, jour local seulement | heure volontairement absente | oui, recherche actuelle | sain pour jour local |
 | Arbitre memoire | oui, si appele depuis le chat | oui | candidats avec `timestamp_iso` + `temporal_label`; recent context labelle | non quand `now_iso` est fourni | oui, penalise les souvenirs circonstanciels | sain apres Lot 2 |
 | Resumeur | non explicite | non explicite | non, date locale seule | heure volontairement perdue | oui, mais objectif resume | sain pour date de jour; P3 si besoin futur d'heure |
-| Identity extractor | non par choix | non par choix | non | oui, volontaire | oui, durable vs episodique | sain apres Lot 2: rejet explicite des claims relatifs faibles |
-| Identity periodic agent | non par choix | non par choix | timestamps bruts dans buffer, mais sans autorite temporelle | oui, volontaire | oui, operations identite | sain apres Lot 2: rejet explicite des claims relatifs faibles |
+| Identity extractor | non par choix | non par choix | non | oui, volontaire | oui, durable vs episodique | sain apres Lot 2: sources faibles retirees et rejet par provenance |
+| Identity periodic agent | non par choix | non par choix | buffer filtre avant modele + source summary | oui, volontaire | oui, operations identite | sain apres Lot 2: sources faibles retirees et rejet par provenance |
 | Stimmung agent | non par choix | non par choix | non dans prompt | oui, volontaire | oui, affect courant | sain apres Lot 2: ignore gaps et claims temporels |
 | Validation agent | oui, `temporal_reference` prioritaire | oui | contexte principal avec timestamps bruts + `temporal_label` local | non | oui, regime final | sain apres Lot 2 |
 | Embeddings Memory/RAG | n/a | n/a | n/a | n/a | non temporel | sain |
@@ -266,7 +266,7 @@ Preuves:
 
 Risque: des phrases comme "depuis hier", "en ce moment" ou "aujourd'hui je suis..." peuvent etre classees sans ancre locale. La politique conservatrice reduit le risque, mais ne le prouve pas.
 
-Etat apres Lot 2: corrige par politique de rejet, pas par ancrage. L'extracteur identity n'a pas a transformer `hier` ou `aujourd'hui` en identite durable; son prompt rejette les claims relatifs faibles, et `_validate_identity_output()` filtre deterministiquement les sorties qui les contiennent.
+Etat apres Lot 2: corrige par politique de rejet et provenance, pas par ancrage. L'extracteur identity n'a pas a transformer `hier` ou `aujourd'hui` en identite durable; les tours sources qui portent un marqueur relatif faible sont retires du dialogue admissible et `_validate_identity_output()` rejette aussi toute sortie pour un sujet sans source non relative admissible, meme si le modele paraphrase le claim.
 
 ### P2 - TEMP-20260518-P2-004 - Dashboard `today/yesterday` en UTC sous labels humains francais
 
@@ -325,7 +325,7 @@ Preuves:
 
 Risque: faible grace a la consigne de durabilite, mais non prouve pour les claims temporels relatifs.
 
-Etat apres Lot 2: corrige par politique de rejet. Le payload du modele periodic contient `identity_temporal_policy`, le prompt rejette les claims relatifs faibles, et le resultat est assaini avant application si une operation non `no_change` contient un marqueur comme `aujourd'hui`, `hier`, `depuis hier` ou `en ce moment`.
+Etat apres Lot 2: corrige par politique de rejet et provenance. Le payload du modele periodic contient `identity_temporal_policy.source_summary`; les contenus sources faibles sont retires du buffer envoye au modele, et le resultat est assaini avant application si une operation non `no_change` vient d'un sujet sans source non relative admissible, meme si la proposition finale a paraphrase le marqueur.
 
 ### P3 - TEMP-20260518-P3-003 - Timestamp invalide de conversation peut devenir `now` silencieusement
 
@@ -379,7 +379,8 @@ Tests existants probants:
 - `app/tests/unit/web_search/test_web_search_phase4.py` couvre la reformulation web et les blocs web sur `2026-05-17T22:05:00Z -> lundi 18 mai 2026 Europe/Paris`, avec absence de date UTC contradictoire.
 - `app/tests/unit/core/test_chat_turn_runtime_inputs.py` couvre la propagation du `now_iso` de tour vers la lane web.
 - `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py` couvre la priorite de `temporal_reference` et les `temporal_label` locaux du contexte de validation autour de minuit.
-- `app/tests/unit/memory/test_arbiter_phase4.py` couvre l'ancre locale de l'arbitre memoire, le rejet identity extractor des claims relatifs faibles et l'assainissement identity periodic.
+- `app/tests/unit/memory/test_arbiter_phase4.py` couvre l'ancre locale de l'arbitre memoire et le rejet lexical identity livre au Lot 2.
+- `app/tests/unit/memory/test_identity_temporal_guard.py` couvre les paraphrases issues de sources faibles, le retrait du materiau source et l'assainissement identity periodic par provenance.
 - `app/tests/unit/core/test_stimmung_agent.py` couvre l'ignorance contractuelle des timestamps/gaps par le stimmung agent.
 - `app/tests/test_prompt_loader_phase13.py` couvre aussi les contrats temporels Lot 2 des prompts secondaires.
 
