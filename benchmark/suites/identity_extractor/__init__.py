@@ -1,0 +1,1 @@
+"""Identity extractor benchmark suite."""

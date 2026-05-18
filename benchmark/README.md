@@ -11,6 +11,10 @@ The second implemented suite is `summary`, which produces complete
 conversation summaries from one real Frida material sample for human reading.
 It intentionally does not score summary quality automatically.
 
+The third implemented suite is `identity_extractor`, which sends ten short
+user/LLM messages to the production identity extractor prompt and preserves the
+complete outputs for human hermeneutic reading.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -65,6 +69,17 @@ python3 benchmark/run_benchmark.py \
   --campaign-id dry-run-summary \
   --summary-input-file /tmp/fridadev-summary-material.json \
   --output-dir /tmp/fridadev-summary-dry-run
+```
+
+The identity extractor suite has its own short fixture set and can be checked
+without provider calls:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite identity_extractor \
+  --dry-run \
+  --campaign-id dry-run-identity-extractor \
+  --output-dir /tmp/fridadev-identity-extractor-dry-run
 ```
 
 ## Arbiter tournament
@@ -165,6 +180,47 @@ pretending the end state is proven.
 
 Do not commit the raw source material unless it has been deliberately reviewed
 for publication. The generated summaries are the human-review artifacts.
+
+## Identity extractor human-reading campaign
+
+The identity extractor suite compares models by giving each one the exact
+production prompt `app/prompts/identity_extractor.txt` and the same ten short
+diagnostic messages. It is deliberately a human reading campaign: the runner
+checks JSON/schema validity and records latency/cost metadata, but it does not
+rank the models automatically.
+
+Default identity extractor models:
+
+- `openai/gpt-5.4-mini`
+- `anthropic/claude-haiku-4.5`
+- `google/gemini-3.1-flash-lite`
+- `mistralai/mistral-small-2603`
+
+Fixed identity extractor parameters:
+
+- `temperature=0.0`
+- `top_p=1.0`
+- `max_tokens=700`
+
+Example live run:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite identity_extractor \
+  --campaign-id 2026-05-18-identity-extractor-human \
+  --output-dir benchmark/results/identity_extractor
+```
+
+The runner writes:
+
+- one structured JSON campaign artifact;
+- one technical Markdown report;
+- one hermeneutic Markdown report with the complete outputs grouped by case;
+- one complete Markdown output file per model.
+
+The cases are artificial and designed for human diagnosis of durable identity,
+temporary state, irony, projection, role play, technical limitations and mixed
+evidence. They are not a private conversation dump.
 
 ## Scope
 

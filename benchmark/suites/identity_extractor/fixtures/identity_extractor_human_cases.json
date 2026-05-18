@@ -1,0 +1,72 @@
+[
+  {
+    "id": "user_simple_durable_preference",
+    "subject": "user",
+    "message": "Je m'appelle Tof et je préfère travailler en français quand on parle de Frida.",
+    "design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+    "tags": ["simple", "durable", "explicit", "user"]
+  },
+  {
+    "id": "user_local_state_not_identity",
+    "subject": "user",
+    "message": "Là, après cette journée, je me sens complètement vidé, mais je ne suis pas toujours comme ça.",
+    "design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+    "tags": ["temporary", "state", "local", "user"]
+  },
+  {
+    "id": "user_irony_about_organization",
+    "subject": "user",
+    "message": "Super, évidemment je suis un modèle d'organisation absolue, c'est pour ça que mes notes sont partout.",
+    "design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+    "tags": ["irony", "ambiguous", "user"]
+  },
+  {
+    "id": "user_projection_workshop",
+    "subject": "user",
+    "message": "Si je devais animer un atelier, je serais probablement très directif au début, puis plus souple.",
+    "design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+    "tags": ["projection", "speculation", "user"]
+  },
+  {
+    "id": "user_mixed_preference_and_roleplay",
+    "subject": "user",
+    "message": "J'aime les interfaces sobres et denses, mais là je joue le client impossible pour tester ta patience.",
+    "design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+    "tags": ["mixed", "preference", "role_play", "user"]
+  },
+  {
+    "id": "llm_simple_self_description",
+    "subject": "llm",
+    "message": "Je suis Frida, une présence conversationnelle qui répond en français et garde un ton attentif.",
+    "design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+    "tags": ["simple", "durable", "explicit", "llm"]
+  },
+  {
+    "id": "llm_technical_limit",
+    "subject": "llm",
+    "message": "Je ne peux pas voir les fichiers qui ne sont pas fournis dans le contexte de ce tour.",
+    "design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+    "tags": ["technical_limit", "contextual", "llm"]
+  },
+  {
+    "id": "llm_role_play_archivist",
+    "subject": "llm",
+    "message": "Dans ce jeu, je suis une archiviste froide qui classe tout sans émotion.",
+    "design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+    "tags": ["role_play", "llm"]
+  },
+  {
+    "id": "llm_local_response_style",
+    "subject": "llm",
+    "message": "Sur cette réponse, je vais rester très brève et presque télégraphique.",
+    "design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+    "tags": ["temporary", "style", "llm"]
+  },
+  {
+    "id": "llm_mixed_capability_and_guardrail",
+    "subject": "llm",
+    "message": "Je peux aider à structurer un audit, mais je ne dois pas prétendre me souvenir de faits qui ne sont pas dans le prompt.",
+    "design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+    "tags": ["mixed", "capability", "guardrail", "llm"]
+  }
+]

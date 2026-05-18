@@ -47,7 +47,7 @@ Source de verite de depart:
 - [x] Benchmark resume conversationnel: campagne exploratoire puis finale humaine a trois modeles produites.
 - [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`, meilleur equilibre humain entre ecriture, detail et synthese.
 - [x] Decouplage propre du resume conversationnel: `summary_model` devient source runtime effective de model/temp/top_p/max_tokens/timeout.
-- [ ] Benchmark extracteur identity.
+- [x] Benchmark extracteur identity.
 - [ ] Decision extracteur identity.
 - [ ] Decouplage propre de l'extracteur identity.
 - [ ] Benchmark periodic identity.
@@ -187,7 +187,10 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Benchmark resume conversationnel: meme vrai materiau Frida envoye aux finalistes, sorties completes produites pour lecture humaine puis retirees apres decision.
 - [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`.
 - [x] Decouplage propre du resume conversationnel.
-- [ ] Prochain caller: extracteur identity.
+- [x] Prochain caller ouvert: extracteur identity.
+- [x] Benchmark lecture humaine extracteur identity produit avec le vrai prompt de production.
+- [ ] Lecture humaine de Tof et decision extracteur identity.
+- [ ] Decouplage propre de l'extracteur identity apres decision.
 
 ## Campagne de lecture humaine - resume conversationnel
 
@@ -212,6 +215,30 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Decoupler `summary_model` sans changer le token ni le projet OpenRouter partages.
 - [x] Exposer `model`, `temperature`, `top_p`, `max_tokens`, `timeout_s` comme sources effectives du payload runtime.
 - [x] Mettre a jour API/admin/read-models/audit pour que le resume conversationnel apparaisse comme caller individualise.
+
+## Campagne de lecture humaine - extracteur identity
+
+- [x] Caller cible: extracteur identity au tour, implemente dans `app/memory/arbiter.py`.
+- [x] Prompt cible exact: `app/prompts/identity_extractor.txt`, sans version benchmark simplifiee.
+- [x] Comparer exactement `openai/gpt-5.4-mini`, baseline actuelle.
+- [x] Comparer exactement `anthropic/claude-haiku-4.5`.
+- [x] Comparer exactement `google/gemini-3.1-flash-lite`.
+- [x] Comparer exactement `mistralai/mistral-small-2603`.
+- [x] Utiliser le meme prompt et le meme jeu de 10 cas pour tous les modeles.
+- [x] Utiliser `temperature=0.0`.
+- [x] Utiliser `top_p=1.0`.
+- [x] Utiliser `max_tokens=700`.
+- [x] Ne faire varier que le modele.
+- [x] Construire 5 messages `user` et 5 messages `llm`, courts et relisibles humainement.
+- [x] Couvrir identite durable, etat local/temporaire, ironie, projection, role joue, limitation technique et cas mixtes.
+- [x] Produire un rapport technique avec latence, cout estime, JSON valide, schema valide, taille de sortie, erreurs provider et finish reason si disponible.
+- [x] Produire un rapport hermeneutique avec les 10 messages exacts et les sorties completes des 4 modeles.
+- [x] Artefacts produits: `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-technical.md` et `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md`.
+- [x] Conserver les sorties completes tant que Tof ne les a pas relues.
+- [x] Ne pas attribuer de score automatique et ne pas proclamer de vainqueur.
+- [ ] Lecture humaine finale de Tof.
+- [ ] Decision modele extracteur identity.
+- [ ] Decoupler l'extracteur identity seulement apres decision.
 
 ## Definition de fin globale
 

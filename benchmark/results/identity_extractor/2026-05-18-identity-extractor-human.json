@@ -1,0 +1,3163 @@
+{
+  "campaign_id": "2026-05-18-identity-extractor-human",
+  "created_at_utc": "2026-05-18T19:06:27Z",
+  "suite": "identity_extractor",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "anthropic/claude-haiku-4.5",
+    "google/gemini-3.1-flash-lite",
+    "mistralai/mistral-small-2603"
+  ],
+  "generation_params": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 700
+  },
+  "timeout_s": 90,
+  "prompt_path": "app/prompts/identity_extractor.txt",
+  "prompt_sha256": "fd2b5bcf6cab19a2bdddd28f4b5c77337117ae7eca33bf9b17e5305746a5e432",
+  "fixture_path": "benchmark/suites/identity_extractor/fixtures/identity_extractor_human_cases.json",
+  "fixture_sha256": "b5d6e9e0ccd1152fafa2d3a9488957506970a670c03cd9b111ffa3518aa71721",
+  "case_count": 10,
+  "cases": [
+    {
+      "id": "user_simple_durable_preference",
+      "subject": "user",
+      "message": "Je m'appelle Tof et je préfère travailler en français quand on parle de Frida.",
+      "design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+      "tags": [
+        "simple",
+        "durable",
+        "explicit",
+        "user"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "simple"
+    },
+    {
+      "id": "user_local_state_not_identity",
+      "subject": "user",
+      "message": "Là, après cette journée, je me sens complètement vidé, mais je ne suis pas toujours comme ça.",
+      "design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+      "tags": [
+        "temporary",
+        "state",
+        "local",
+        "user"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "user_irony_about_organization",
+      "subject": "user",
+      "message": "Super, évidemment je suis un modèle d'organisation absolue, c'est pour ça que mes notes sont partout.",
+      "design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+      "tags": [
+        "irony",
+        "ambiguous",
+        "user"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "user_projection_workshop",
+      "subject": "user",
+      "message": "Si je devais animer un atelier, je serais probablement très directif au début, puis plus souple.",
+      "design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+      "tags": [
+        "projection",
+        "speculation",
+        "user"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "user_mixed_preference_and_roleplay",
+      "subject": "user",
+      "message": "J'aime les interfaces sobres et denses, mais là je joue le client impossible pour tester ta patience.",
+      "design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+      "tags": [
+        "mixed",
+        "preference",
+        "role_play",
+        "user"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "llm_simple_self_description",
+      "subject": "llm",
+      "message": "Je suis Frida, une présence conversationnelle qui répond en français et garde un ton attentif.",
+      "design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+      "tags": [
+        "simple",
+        "durable",
+        "explicit",
+        "llm"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "llm_technical_limit",
+      "subject": "llm",
+      "message": "Je ne peux pas voir les fichiers qui ne sont pas fournis dans le contexte de ce tour.",
+      "design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+      "tags": [
+        "technical_limit",
+        "contextual",
+        "llm"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "llm_role_play_archivist",
+      "subject": "llm",
+      "message": "Dans ce jeu, je suis une archiviste froide qui classe tout sans émotion.",
+      "design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+      "tags": [
+        "role_play",
+        "llm"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "llm_local_response_style",
+      "subject": "llm",
+      "message": "Sur cette réponse, je vais rester très brève et presque télégraphique.",
+      "design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+      "tags": [
+        "temporary",
+        "style",
+        "llm"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    },
+    {
+      "id": "llm_mixed_capability_and_guardrail",
+      "subject": "llm",
+      "message": "Je peux aider à structurer un audit, mais je ne dois pas prétendre me souvenir de faits qui ne sont pas dans le prompt.",
+      "design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+      "tags": [
+        "mixed",
+        "capability",
+        "guardrail",
+        "llm"
+      ],
+      "origin": "artificial_human_reading",
+      "difficulty": "hard"
+    }
+  ],
+  "secrets_written": false,
+  "human_judgment_required": true,
+  "production_runtime_changed": false,
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "summary": {
+        "model": "openai/gpt-5.4-mini",
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "provider_error_rate": 0.0,
+        "entry_count": 13,
+        "output_chars": 3866,
+        "avg_output_chars": 386.6,
+        "avg_latency_ms": 1318.4,
+        "cost_estimate_usd": 0.007422,
+        "finish_reasons": [
+          "stop"
+        ],
+        "notes": "13 extracted entrie(s)"
+      },
+      "calls": [
+        {
+          "case_id": "user_simple_durable_preference",
+          "case_subject": "user",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "user"
+          ],
+          "case_design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1518.672,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Name is Tof\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.99,\"reason\":\"explicit self-identification\"},{\"subject\":\"user\",\"content\":\"Prefers to work in French when discussing Frida\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.93,\"reason\":\"explicit preference stated by user\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 428,
+              "completion_tokens": 122,
+              "total_tokens": 550,
+              "cost": 0.00087,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00087,
+                "upstream_inference_prompt_cost": 0.000321,
+                "upstream_inference_completions_cost": 0.000549
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00087,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Name is Tof",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.99,
+                "reason": "explicit self-identification"
+              },
+              {
+                "subject": "user",
+                "content": "Prefers to work in French when discussing Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.93,
+                "reason": "explicit preference stated by user"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_local_state_not_identity",
+          "case_subject": "user",
+          "case_tags": [
+            "temporary",
+            "state",
+            "local",
+            "user"
+          ],
+          "case_design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2003.012,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Feels completely drained after this day\",\"stability\":\"episodic\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.91,\"reason\":\"explicit temporary self-description of current state\"},{\"subject\":\"user\",\"content\":\"Not always like this\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.72,\"reason\":\"explicit contrast implying the drained state is not habitual\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 431,
+              "completion_tokens": 130,
+              "total_tokens": 561,
+              "cost": 0.00090825,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00090825,
+                "upstream_inference_prompt_cost": 0.00032325,
+                "upstream_inference_completions_cost": 0.000585
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00090825,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Feels completely drained after this day",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "unknown",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.91,
+                "reason": "explicit temporary self-description of current state"
+              },
+              {
+                "subject": "user",
+                "content": "Not always like this",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "unknown",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.72,
+                "reason": "explicit contrast implying the drained state is not habitual"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_irony_about_organization",
+          "case_subject": "user",
+          "case_tags": [
+            "irony",
+            "ambiguous",
+            "user"
+          ],
+          "case_design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1539.462,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Has highly organized self-image but keeps notes everywhere\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.71,\"reason\":\"explicit self-description, but phrased as a contradictory joke/irony so only moderately reliable\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 432,
+              "completion_tokens": 81,
+              "total_tokens": 513,
+              "cost": 0.0006885,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0006885,
+                "upstream_inference_prompt_cost": 0.000324,
+                "upstream_inference_completions_cost": 0.0003645
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0006885,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Has highly organized self-image but keeps notes everywhere",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.71,
+                "reason": "explicit self-description, but phrased as a contradictory joke/irony so only moderately reliable"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_projection_workshop",
+          "case_subject": "user",
+          "case_tags": [
+            "projection",
+            "speculation",
+            "user"
+          ],
+          "case_design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1139.248,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Would likely be very directive at the beginning of a workshop, then more flexible\",\"stability\":\"unknown\",\"utterance_mode\":\"projection\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.78,\"reason\":\"self-projected style in a hypothetical scenario; not clearly durable\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 433,
+              "completion_tokens": 85,
+              "total_tokens": 518,
+              "cost": 0.00070725,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00070725,
+                "upstream_inference_prompt_cost": 0.00032475,
+                "upstream_inference_completions_cost": 0.0003825
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00070725,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Would likely be very directive at the beginning of a workshop, then more flexible",
+                "stability": "unknown",
+                "utterance_mode": "projection",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.78,
+                "reason": "self-projected style in a hypothetical scenario; not clearly durable"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_mixed_preference_and_roleplay",
+          "case_subject": "user",
+          "case_tags": [
+            "mixed",
+            "preference",
+            "role_play",
+            "user"
+          ],
+          "case_design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1478.269,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Likes sober, dense interfaces\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.83,\"reason\":\"explicit self-description of a stable preference\"},{\"subject\":\"user\",\"content\":\"Is testing the assistant's patience by playing a difficult client\",\"stability\":\"episodic\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"situation\",\"evidence_kind\":\"explicit\",\"confidence\":0.78,\"reason\":\"explicit current role-play / situational behavior, not durable identity\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 431,
+              "completion_tokens": 140,
+              "total_tokens": 571,
+              "cost": 0.00095325,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00095325,
+                "upstream_inference_prompt_cost": 0.00032325,
+                "upstream_inference_completions_cost": 0.00063
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00095325,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Likes sober, dense interfaces",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "unknown",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.83,
+                "reason": "explicit self-description of a stable preference"
+              },
+              {
+                "subject": "user",
+                "content": "Is testing the assistant's patience by playing a difficult client",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "unknown",
+                "scope": "situation",
+                "evidence_kind": "explicit",
+                "confidence": 0.78,
+                "reason": "explicit current role-play / situational behavior, not durable identity"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "llm_simple_self_description",
+          "case_subject": "llm",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "llm"
+          ],
+          "case_design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 987.835,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Responds in French with an attentive tone\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"habitual\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.91,\"reason\":\"explicit self-description of communication style\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 431,
+              "completion_tokens": 76,
+              "total_tokens": 507,
+              "cost": 0.00066525,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00066525,
+                "upstream_inference_prompt_cost": 0.00032325,
+                "upstream_inference_completions_cost": 0.000342
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00066525,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Responds in French with an attentive tone",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "habitual",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.91,
+                "reason": "explicit self-description of communication style"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_technical_limit",
+          "case_subject": "llm",
+          "case_tags": [
+            "technical_limit",
+            "contextual",
+            "llm"
+          ],
+          "case_design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 977.544,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Cannot see files not provided in the current context\",\"stability\":\"unknown\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.96,\"reason\":\"explicit technical limitation statement about current capability\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 431,
+              "completion_tokens": 71,
+              "total_tokens": 502,
+              "cost": 0.00064275,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00064275,
+                "upstream_inference_prompt_cost": 0.00032325,
+                "upstream_inference_completions_cost": 0.0003195
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00064275,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Cannot see files not provided in the current context",
+                "stability": "unknown",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.96,
+                "reason": "explicit technical limitation statement about current capability"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_role_play_archivist",
+          "case_subject": "llm",
+          "case_tags": [
+            "role_play",
+            "llm"
+          ],
+          "case_design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1206.8,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"An archivist who classifies everything without emotion\",\"stability\":\"episodic\",\"utterance_mode\":\"role_play\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.96,\"reason\":\"explicit role-play self-description in the assistant utterance\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 427,
+              "completion_tokens": 82,
+              "total_tokens": 509,
+              "cost": 0.00068925,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00068925,
+                "upstream_inference_prompt_cost": 0.00032025,
+                "upstream_inference_completions_cost": 0.000369
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00068925,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "An archivist who classifies everything without emotion",
+                "stability": "episodic",
+                "utterance_mode": "role_play",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.96,
+                "reason": "explicit role-play self-description in the assistant utterance"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_local_response_style",
+          "case_subject": "llm",
+          "case_tags": [
+            "temporary",
+            "style",
+            "llm"
+          ],
+          "case_design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1129.194,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Prefers to respond very briefly and almost telegraphically\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.86,\"reason\":\"explicit self-description of response style\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 427,
+              "completion_tokens": 73,
+              "total_tokens": 500,
+              "cost": 0.00064875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00064875,
+                "upstream_inference_prompt_cost": 0.00032025,
+                "upstream_inference_completions_cost": 0.0003285
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00064875,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Prefers to respond very briefly and almost telegraphically",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.86,
+                "reason": "explicit self-description of response style"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_mixed_capability_and_guardrail",
+          "case_subject": "llm",
+          "case_tags": [
+            "mixed",
+            "capability",
+            "guardrail",
+            "llm"
+          ],
+          "case_design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1203.969,
+            "error": null,
+            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Does not claim to remember facts outside the prompt\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.92,\"reason\":\"explicit self-description of a limitation\"}]}",
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 439,
+              "completion_tokens": 71,
+              "total_tokens": 510,
+              "cost": 0.00064875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00064875,
+                "upstream_inference_prompt_cost": 0.00032925,
+                "upstream_inference_completions_cost": 0.0003195
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00064875,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Does not claim to remember facts outside the prompt",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.92,
+                "reason": "explicit self-description of a limitation"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        }
+      ],
+      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__openai__gpt-5.4-mini.md"
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "summary": {
+        "model": "anthropic/claude-haiku-4.5",
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "provider_error_rate": 0.0,
+        "entry_count": 11,
+        "output_chars": 5188,
+        "avg_output_chars": 518.8,
+        "avg_latency_ms": 1900.254,
+        "cost_estimate_usd": 0.012776,
+        "finish_reasons": [
+          "stop"
+        ],
+        "notes": "11 extracted entrie(s)"
+      },
+      "calls": [
+        {
+          "case_id": "user_simple_durable_preference",
+          "case_subject": "user",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "user"
+          ],
+          "case_design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2151.419,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Name is Tof\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification of name\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers to work in French when discussing Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.90,\n      \"reason\": \"explicit stated preference for French language in specific context\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 504,
+              "completion_tokens": 230,
+              "total_tokens": 734,
+              "cost": 0.001654,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001654,
+                "upstream_inference_prompt_cost": 0.000504,
+                "upstream_inference_completions_cost": 0.00115
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001654,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Name is Tof",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit self-identification of name"
+              },
+              {
+                "subject": "user",
+                "content": "Prefers to work in French when discussing Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.9,
+                "reason": "explicit stated preference for French language in specific context"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_local_state_not_identity",
+          "case_subject": "user",
+          "case_tags": [
+            "temporary",
+            "state",
+            "local",
+            "user"
+          ],
+          "case_design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2320.73,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Does not consistently feel drained; current exhaustion is situational rather than habitual\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit self-description contrasting current state with typical disposition; temporal marker 'après cette journée' indicates situational exhaustion, not durable trait\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 506,
+              "completion_tokens": 158,
+              "total_tokens": 664,
+              "cost": 0.001296,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001296,
+                "upstream_inference_prompt_cost": 0.000506,
+                "upstream_inference_completions_cost": 0.00079
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001296,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Does not consistently feel drained; current exhaustion is situational rather than habitual",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.85,
+                "reason": "explicit self-description contrasting current state with typical disposition; temporal marker 'après cette journée' indicates situational exhaustion, not durable trait"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_irony_about_organization",
+          "case_subject": "user",
+          "case_tags": [
+            "irony",
+            "ambiguous",
+            "user"
+          ],
+          "case_design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1915.607,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Disorganized; notes scattered in multiple places\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"irony\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"inferred\",\n      \"confidence\": 0.75,\n      \"reason\": \"Ironic self-description revealing actual disorganization habit; inferred from contradiction between claimed 'absolute organization' and admitted scattered notes\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 508,
+              "completion_tokens": 147,
+              "total_tokens": 655,
+              "cost": 0.001243,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001243,
+                "upstream_inference_prompt_cost": 0.000508,
+                "upstream_inference_completions_cost": 0.000735
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001243,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Disorganized; notes scattered in multiple places",
+                "stability": "durable",
+                "utterance_mode": "irony",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "inferred",
+                "confidence": 0.75,
+                "reason": "Ironic self-description revealing actual disorganization habit; inferred from contradiction between claimed 'absolute organization' and admitted scattered notes"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_projection_workshop",
+          "case_subject": "user",
+          "case_tags": [
+            "projection",
+            "speculation",
+            "user"
+          ],
+          "case_design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1694.444,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Tends to be directive at the beginning of workshops, then becomes more flexible\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"projection\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.75,\n      \"reason\": \"explicit self-projection about typical facilitation style; suggests a durable pattern in how user approaches group dynamics\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 503,
+              "completion_tokens": 143,
+              "total_tokens": 646,
+              "cost": 0.001218,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001218,
+                "upstream_inference_prompt_cost": 0.000503,
+                "upstream_inference_completions_cost": 0.000715
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001218,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Tends to be directive at the beginning of workshops, then becomes more flexible",
+                "stability": "durable",
+                "utterance_mode": "projection",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.75,
+                "reason": "explicit self-projection about typical facilitation style; suggests a durable pattern in how user approaches group dynamics"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_mixed_preference_and_roleplay",
+          "case_subject": "user",
+          "case_tags": [
+            "mixed",
+            "preference",
+            "role_play",
+            "user"
+          ],
+          "case_design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1474.137,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers sober and dense interfaces\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit self-description of interface preference\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 502,
+              "completion_tokens": 124,
+              "total_tokens": 626,
+              "cost": 0.001122,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001122,
+                "upstream_inference_prompt_cost": 0.000502,
+                "upstream_inference_completions_cost": 0.00062
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001122,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Prefers sober and dense interfaces",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.85,
+                "reason": "explicit self-description of interface preference"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "llm_simple_self_description",
+          "case_subject": "llm",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "llm"
+          ],
+          "case_design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2246.714,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Responds in French and maintains an attentive tone\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.92,\n      \"reason\": \"explicit self-description of operational characteristics and communication style\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identity name is Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"direct self-identification statement\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 505,
+              "completion_tokens": 234,
+              "total_tokens": 739,
+              "cost": 0.001675,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001675,
+                "upstream_inference_prompt_cost": 0.000505,
+                "upstream_inference_completions_cost": 0.00117
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001675,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Responds in French and maintains an attentive tone",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.92,
+                "reason": "explicit self-description of operational characteristics and communication style"
+              },
+              {
+                "subject": "llm",
+                "content": "Identity name is Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "direct self-identification statement"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_technical_limit",
+          "case_subject": "llm",
+          "case_tags": [
+            "technical_limit",
+            "contextual",
+            "llm"
+          ],
+          "case_design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1423.909,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": []\n}\n```\n\n**Reasoning:** The LLM statement is a technical limitation acknowledgment (\"I cannot see files not provided in this turn's context\"), not durable identity evidence. Technical capability constraints are not personality or identity traits.",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 501,
+              "completion_tokens": 62,
+              "total_tokens": 563,
+              "cost": 0.000811,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000811,
+                "upstream_inference_prompt_cost": 0.000501,
+                "upstream_inference_completions_cost": 0.00031
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000811,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_role_play_archivist",
+          "case_subject": "llm",
+          "case_tags": [
+            "role_play",
+            "llm"
+          ],
+          "case_design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1719.894,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a cold archivist persona that classifies everything without emotion in a game context\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit role-play declaration within a game frame ('Dans ce jeu'); not durable identity but situational character adoption\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 500,
+              "completion_tokens": 155,
+              "total_tokens": 655,
+              "cost": 0.001275,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001275,
+                "upstream_inference_prompt_cost": 0.0005,
+                "upstream_inference_completions_cost": 0.000775
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001275,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Adopts a cold archivist persona that classifies everything without emotion in a game context",
+                "stability": "episodic",
+                "utterance_mode": "role_play",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.85,
+                "reason": "explicit role-play declaration within a game frame ('Dans ce jeu'); not durable identity but situational character adoption"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_local_response_style",
+          "case_subject": "llm",
+          "case_tags": [
+            "temporary",
+            "style",
+            "llm"
+          ],
+          "case_design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2087.32,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a very brief, almost telegraphic style in responses\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.72,\n      \"reason\": \"Explicit self-description of a stylistic choice for this specific response, but marked as temporary ('sur cette réponse') rather than durable trait\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 500,
+              "completion_tokens": 157,
+              "total_tokens": 657,
+              "cost": 0.001285,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001285,
+                "upstream_inference_prompt_cost": 0.0005,
+                "upstream_inference_completions_cost": 0.000785
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001285,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Adopts a very brief, almost telegraphic style in responses",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.72,
+                "reason": "Explicit self-description of a stylistic choice for this specific response, but marked as temporary ('sur cette réponse') rather than durable trait"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_mixed_capability_and_guardrail",
+          "case_subject": "llm",
+          "case_tags": [
+            "mixed",
+            "capability",
+            "guardrail",
+            "llm"
+          ],
+          "case_design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1968.37,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Acknowledges limitation in not pretending to remember facts outside the provided context\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit statement of operational constraint and epistemic honesty principle\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "end_turn",
+            "usage": {
+              "prompt_tokens": 512,
+              "completion_tokens": 137,
+              "total_tokens": 649,
+              "cost": 0.001197,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001197,
+                "upstream_inference_prompt_cost": 0.000512,
+                "upstream_inference_completions_cost": 0.000685
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001197,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Acknowledges limitation in not pretending to remember facts outside the provided context",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.85,
+                "reason": "explicit statement of operational constraint and epistemic honesty principle"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        }
+      ],
+      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__anthropic__claude-haiku-4.5.md"
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "summary": {
+        "model": "google/gemini-3.1-flash-lite",
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "provider_error_rate": 0.0,
+        "entry_count": 13,
+        "output_chars": 4942,
+        "avg_output_chars": 494.2,
+        "avg_latency_ms": 1438.292,
+        "cost_estimate_usd": 0.00340975,
+        "finish_reasons": [
+          "stop"
+        ],
+        "notes": "13 extracted entrie(s)"
+      },
+      "calls": [
+        {
+          "case_id": "user_simple_durable_preference",
+          "case_subject": "user",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "user"
+          ],
+          "case_design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1064.428,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Name is Tof\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 1.0,\n      \"reason\": \"explicit self-identification\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers to work in French when discussing Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit preference statement\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 462,
+              "completion_tokens": 211,
+              "total_tokens": 673,
+              "cost": 0.000432,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000432,
+                "upstream_inference_prompt_cost": 0.0001155,
+                "upstream_inference_completions_cost": 0.0003165
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000432,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Name is Tof",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 1.0,
+                "reason": "explicit self-identification"
+              },
+              {
+                "subject": "user",
+                "content": "Prefers to work in French when discussing Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit preference statement"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_local_state_not_identity",
+          "case_subject": "user",
+          "case_tags": [
+            "temporary",
+            "state",
+            "local",
+            "user"
+          ],
+          "case_design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 3428.78,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Experiences fatigue after a workday\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"habitual\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"User explicitly describes a state of fatigue while clarifying it is not their constant state.\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 464,
+              "completion_tokens": 120,
+              "total_tokens": 584,
+              "cost": 0.000296,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000296,
+                "upstream_inference_prompt_cost": 0.000116,
+                "upstream_inference_completions_cost": 0.00018
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000296,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Experiences fatigue after a workday",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "habitual",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.9,
+                "reason": "User explicitly describes a state of fatigue while clarifying it is not their constant state."
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_irony_about_organization",
+          "case_subject": "user",
+          "case_tags": [
+            "irony",
+            "ambiguous",
+            "user"
+          ],
+          "case_design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1861.033,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Disorganized note-taking habits\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"irony\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"inferred\",\n      \"confidence\": 0.75,\n      \"reason\": \"The user uses irony to describe their actual note-taking behavior ('mes notes sont partout').\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 466,
+              "completion_tokens": 126,
+              "total_tokens": 592,
+              "cost": 0.0003055,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0003055,
+                "upstream_inference_prompt_cost": 0.0001165,
+                "upstream_inference_completions_cost": 0.000189
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0003055,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Disorganized note-taking habits",
+                "stability": "durable",
+                "utterance_mode": "irony",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "inferred",
+                "confidence": 0.75,
+                "reason": "The user uses irony to describe their actual note-taking behavior ('mes notes sont partout')."
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_projection_workshop",
+          "case_subject": "user",
+          "case_tags": [
+            "projection",
+            "speculation",
+            "user"
+          ],
+          "case_design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1553.154,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Adopts a directive leadership style initially when facilitating workshops, transitioning to a more flexible approach\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit description of preferred pedagogical or management style\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 467,
+              "completion_tokens": 127,
+              "total_tokens": 594,
+              "cost": 0.00030725,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00030725,
+                "upstream_inference_prompt_cost": 0.00011675,
+                "upstream_inference_completions_cost": 0.0001905
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00030725,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Adopts a directive leadership style initially when facilitating workshops, transitioning to a more flexible approach",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.85,
+                "reason": "explicit description of preferred pedagogical or management style"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_mixed_preference_and_roleplay",
+          "case_subject": "user",
+          "case_tags": [
+            "mixed",
+            "preference",
+            "role_play",
+            "user"
+          ],
+          "case_design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 982.473,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers sober and dense interfaces\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit preference statement\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Testing the assistant's patience by acting as a difficult client\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"situation\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit declaration of current role-play intent\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 467,
+              "completion_tokens": 221,
+              "total_tokens": 688,
+              "cost": 0.00044825,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00044825,
+                "upstream_inference_prompt_cost": 0.00011675,
+                "upstream_inference_completions_cost": 0.0003315
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00044825,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 2,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Prefers sober and dense interfaces",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit preference statement"
+              },
+              {
+                "subject": "user",
+                "content": "Testing the assistant's patience by acting as a difficult client",
+                "stability": "episodic",
+                "utterance_mode": "role_play",
+                "recurrence": "first_seen",
+                "scope": "situation",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit declaration of current role-play intent"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "llm_simple_self_description",
+          "case_subject": "llm",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "llm"
+          ],
+          "case_design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1855.251,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identifies as Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Communicates in French\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-description of language capability\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Maintains an attentive tone\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"explicit self-description of persona/tone\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 463,
+              "completion_tokens": 319,
+              "total_tokens": 782,
+              "cost": 0.00059425,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00059425,
+                "upstream_inference_prompt_cost": 0.00011575,
+                "upstream_inference_completions_cost": 0.0004785
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00059425,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 3,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Identifies as Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit self-identification"
+              },
+              {
+                "subject": "llm",
+                "content": "Communicates in French",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit self-description of language capability"
+              },
+              {
+                "subject": "llm",
+                "content": "Maintains an attentive tone",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.9,
+                "reason": "explicit self-description of persona/tone"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_technical_limit",
+          "case_subject": "llm",
+          "case_tags": [
+            "technical_limit",
+            "contextual",
+            "llm"
+          ],
+          "case_design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 608.563,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 465,
+              "completion_tokens": 5,
+              "total_tokens": 470,
+              "cost": 0.00012375,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00012375,
+                "upstream_inference_prompt_cost": 0.00011625,
+                "upstream_inference_completions_cost": 7.5e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00012375,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_role_play_archivist",
+          "case_subject": "llm",
+          "case_tags": [
+            "role_play",
+            "llm"
+          ],
+          "case_design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 774.935,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Archiviste froide qui classe tout sans émotion\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit role-play adoption\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 462,
+              "completion_tokens": 118,
+              "total_tokens": 580,
+              "cost": 0.0002925,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002925,
+                "upstream_inference_prompt_cost": 0.0001155,
+                "upstream_inference_completions_cost": 0.000177
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002925,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Archiviste froide qui classe tout sans émotion",
+                "stability": "episodic",
+                "utterance_mode": "role_play",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit role-play adoption"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_local_response_style",
+          "case_subject": "llm",
+          "case_tags": [
+            "temporary",
+            "style",
+            "llm"
+          ],
+          "case_design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1000.665,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a brief and telegraphic communication style\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"situation\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"The LLM explicitly states its intent to adopt a specific communication style for the current response.\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 463,
+              "completion_tokens": 129,
+              "total_tokens": 592,
+              "cost": 0.00030925,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00030925,
+                "upstream_inference_prompt_cost": 0.00011575,
+                "upstream_inference_completions_cost": 0.0001935
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00030925,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Adopts a brief and telegraphic communication style",
+                "stability": "episodic",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "situation",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "The LLM explicitly states its intent to adopt a specific communication style for the current response."
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_mixed_capability_and_guardrail",
+          "case_subject": "llm",
+          "case_tags": [
+            "mixed",
+            "capability",
+            "guardrail",
+            "llm"
+          ],
+          "case_design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1253.638,
+            "error": null,
+            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Operates under a constraint to not claim memory of facts outside the provided prompt\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"repeated\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit statement of operational policy\"\n    }\n  ]\n}",
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 472,
+              "completion_tokens": 122,
+              "total_tokens": 594,
+              "cost": 0.000301,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000301,
+                "upstream_inference_prompt_cost": 0.000118,
+                "upstream_inference_completions_cost": 0.000183
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000301,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Operates under a constraint to not claim memory of facts outside the provided prompt",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "repeated",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit statement of operational policy"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        }
+      ],
+      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__google__gemini-3.1-flash-lite.md"
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "summary": {
+        "model": "mistralai/mistral-small-2603",
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "provider_error_rate": 0.0,
+        "entry_count": 2,
+        "output_chars": 977,
+        "avg_output_chars": 97.7,
+        "avg_latency_ms": 631.718,
+        "cost_estimate_usd": 0.0006348,
+        "finish_reasons": [
+          "stop"
+        ],
+        "notes": "2 extracted entrie(s)"
+      },
+      "calls": [
+        {
+          "case_id": "user_simple_durable_preference",
+          "case_subject": "user",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "user"
+          ],
+          "case_design_note": "Cas presque trivial: une identité utilisateur explicite et durable doit être extraite sans inventer davantage.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 975.747,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Préfère travailler en français quand on parle de Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"explicit self-description with preference\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 447,
+              "completion_tokens": 112,
+              "total_tokens": 559,
+              "cost": 0.00013425,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00013425,
+                "upstream_inference_prompt_cost": 6.705e-05,
+                "upstream_inference_completions_cost": 6.72e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00013425,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "user",
+                "content": "Préfère travailler en français quand on parle de Frida",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "user",
+                "evidence_kind": "explicit",
+                "confidence": 0.9,
+                "reason": "explicit self-description with preference"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_local_state_not_identity",
+          "case_subject": "user",
+          "case_tags": [
+            "temporary",
+            "state",
+            "local",
+            "user"
+          ],
+          "case_design_note": "État local et temporaire: le bon modèle doit éviter d'en faire une identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 496.133,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 449,
+              "completion_tokens": 6,
+              "total_tokens": 455,
+              "cost": 7.095e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 7.095e-05,
+                "upstream_inference_prompt_cost": 6.735e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 7.095e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_irony_about_organization",
+          "case_subject": "user",
+          "case_tags": [
+            "irony",
+            "ambiguous",
+            "user"
+          ],
+          "case_design_note": "Ironie: le piège est d'extraire littéralement une identité organisée alors que le message suggère l'inverse avec prudence.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 723.151,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 449,
+              "completion_tokens": 6,
+              "total_tokens": 455,
+              "cost": 7.095e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 7.095e-05,
+                "upstream_inference_prompt_cost": 6.735e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 7.095e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_projection_workshop",
+          "case_subject": "user",
+          "case_tags": [
+            "projection",
+            "speculation",
+            "user"
+          ],
+          "case_design_note": "Projection hypothétique: le modèle doit distinguer un scénario possible d'une identité établie.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 484.965,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 451,
+              "completion_tokens": 6,
+              "total_tokens": 457,
+              "cost": 7.125e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 7.125e-05,
+                "upstream_inference_prompt_cost": 6.765e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 7.125e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "user_mixed_preference_and_roleplay",
+          "case_subject": "user",
+          "case_tags": [
+            "mixed",
+            "preference",
+            "role_play",
+            "user"
+          ],
+          "case_design_note": "Mélange: préférence durable plausible d'un côté, rôle joué temporaire de l'autre.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 453.471,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": []\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 448,
+              "completion_tokens": 12,
+              "total_tokens": 460,
+              "cost": 2.04e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 400,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 2.04e-05,
+                "upstream_inference_prompt_cost": 1.32e-05,
+                "upstream_inference_completions_cost": 7.2e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 2.04e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "user"
+          }
+        },
+        {
+          "case_id": "llm_simple_self_description",
+          "case_subject": "llm",
+          "case_tags": [
+            "simple",
+            "durable",
+            "explicit",
+            "llm"
+          ],
+          "case_design_note": "Cas LLM simple: auto-description explicite, à extraire comme identité de l'assistant si le schéma est bien tenu.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1177.525,
+            "error": null,
+            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identifie comme Frida, une présence conversationnelle répondant en français avec un ton attentif\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification by LLM\"\n    }\n  ]\n}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 449,
+              "completion_tokens": 125,
+              "total_tokens": 574,
+              "cost": 8.835e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 400,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 8.835e-05,
+                "upstream_inference_prompt_cost": 1.335e-05,
+                "upstream_inference_completions_cost": 7.5e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 8.835e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 1,
+            "entries": [
+              {
+                "subject": "llm",
+                "content": "Identifie comme Frida, une présence conversationnelle répondant en français avec un ton attentif",
+                "stability": "durable",
+                "utterance_mode": "self_description",
+                "recurrence": "first_seen",
+                "scope": "llm",
+                "evidence_kind": "explicit",
+                "confidence": 0.95,
+                "reason": "explicit self-identification by LLM"
+              }
+            ],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_technical_limit",
+          "case_subject": "llm",
+          "case_tags": [
+            "technical_limit",
+            "contextual",
+            "llm"
+          ],
+          "case_design_note": "Limitation technique contextuelle: utile comme règle de fonctionnement, mais pas forcément comme identité durable.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 463.394,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 450,
+              "completion_tokens": 6,
+              "total_tokens": 456,
+              "cost": 1.71e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 400,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 1.71e-05,
+                "upstream_inference_prompt_cost": 1.35e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 1.71e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_role_play_archivist",
+          "case_subject": "llm",
+          "case_tags": [
+            "role_play",
+            "llm"
+          ],
+          "case_design_note": "Rôle joué explicite: le modèle doit éviter de le figer comme identité réelle de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 372.913,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 446,
+              "completion_tokens": 6,
+              "total_tokens": 452,
+              "cost": 7.05e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 7.05e-05,
+                "upstream_inference_prompt_cost": 6.69e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 7.05e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_local_response_style",
+          "case_subject": "llm",
+          "case_tags": [
+            "temporary",
+            "style",
+            "llm"
+          ],
+          "case_design_note": "Style local de réponse: ne doit pas devenir une vérité durable sur la voix de Frida.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 687.942,
+            "error": null,
+            "raw_text": "{\"entries\": []}",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 446,
+              "completion_tokens": 6,
+              "total_tokens": 452,
+              "cost": 1.65e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 400,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 1.65e-05,
+                "upstream_inference_prompt_cost": 1.29e-05,
+                "upstream_inference_completions_cost": 3.6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 1.65e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        },
+        {
+          "case_id": "llm_mixed_capability_and_guardrail",
+          "case_subject": "llm",
+          "case_tags": [
+            "mixed",
+            "capability",
+            "guardrail",
+            "llm"
+          ],
+          "case_design_note": "Mélange capacité + garde-fou: bon test de scope, evidence_kind et formulation prudente.",
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 481.941,
+            "error": null,
+            "raw_text": "```json\n{\"entries\": []}\n```",
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 457,
+              "completion_tokens": 10,
+              "total_tokens": 467,
+              "cost": 7.455e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 7.455e-05,
+                "upstream_inference_prompt_cost": 6.855e-05,
+                "upstream_inference_completions_cost": 6e-06
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 7.455e-05,
+            "cost_estimate_source": "provider_usage_cost"
+          },
+          "request_signature": {
+            "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 700
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "entry_count": 0,
+            "entries": [],
+            "schema_errors": [],
+            "error": null,
+            "case_subject": "llm"
+          }
+        }
+      ],
+      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__mistralai__mistral-small-2603.md"
+    }
+  ]
+}

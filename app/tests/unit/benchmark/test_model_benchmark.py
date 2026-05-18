@@ -17,9 +17,12 @@ REPO_ROOT = _repo_root()
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS, DEFAULT_SUMMARY_MODELS
+from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS, DEFAULT_IDENTITY_EXTRACTOR_MODELS, DEFAULT_SUMMARY_MODELS
 from benchmark.core import openrouter
 from benchmark.suites.arbiter import adapter, scorer, tournament
+from benchmark.suites.identity_extractor import adapter as identity_adapter
+from benchmark.suites.identity_extractor import campaign as identity_campaign
+from benchmark.suites.identity_extractor import scorer as identity_scorer
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 
@@ -302,6 +305,116 @@ class SummaryBenchmarkSuiteTests(unittest.TestCase):
                 summary_file = REPO_ROOT / summary_file
             self.assertTrue(summary_file.exists())
             self.assertIn("dry-run summary", summary_file.read_text(encoding="utf-8"))
+
+
+class IdentityExtractorBenchmarkSuiteTests(unittest.TestCase):
+    def test_default_identity_extractor_models_match_human_campaign(self) -> None:
+        self.assertEqual(
+            DEFAULT_IDENTITY_EXTRACTOR_MODELS,
+            [
+                "openai/gpt-5.4-mini",
+                "anthropic/claude-haiku-4.5",
+                "google/gemini-3.1-flash-lite",
+                "mistralai/mistral-small-2603",
+            ],
+        )
+
+    def test_identity_fixtures_are_short_human_reading_set(self) -> None:
+        cases = identity_adapter.load_cases(REPO_ROOT)
+        self.assertEqual(len(cases), 10)
+        self.assertEqual(sum(1 for case in cases if case["subject"] == "user"), 5)
+        self.assertEqual(sum(1 for case in cases if case["subject"] == "llm"), 5)
+        tags = {tag for case in cases for tag in case.get("tags", [])}
+        required = {
+            "durable",
+            "temporary",
+            "irony",
+            "projection",
+            "role_play",
+            "technical_limit",
+            "mixed",
+            "llm",
+            "user",
+        }
+        self.assertTrue(required.issubset(tags), sorted(required - tags))
+        for case in cases:
+            self.assertTrue(case.get("message"))
+            self.assertTrue(case.get("design_note"))
+
+    def test_identity_payload_uses_production_prompt_and_fixed_params(self) -> None:
+        cases = identity_adapter.load_cases(REPO_ROOT)
+        prompt = identity_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
+        payload_a = identity_adapter.build_payload(cases[0], "openai/gpt-5.4-mini", prompt)
+        payload_b = identity_adapter.build_payload(cases[0], "mistralai/mistral-small-2603", prompt)
+
+        self.assertEqual(payload_a["temperature"], 0.0)
+        self.assertEqual(payload_a["top_p"], 1.0)
+        self.assertEqual(payload_a["max_tokens"], 700)
+        self.assertEqual(payload_a["messages"], payload_b["messages"])
+        self.assertEqual(payload_a["messages"][0]["content"], prompt)
+        self.assertIn("Return only the JSON object", payload_a["messages"][1]["content"])
+        self.assertEqual(payload_a["model"], "openai/gpt-5.4-mini")
+        self.assertEqual(payload_b["model"], "mistralai/mistral-small-2603")
+
+    def test_identity_scorer_validates_schema(self) -> None:
+        case = {"subject": "user"}
+        raw = json.dumps(
+            {
+                "entries": [
+                    {
+                        "subject": "user",
+                        "content": "L'utilisateur préfère travailler en français.",
+                        "stability": "durable",
+                        "utterance_mode": "self_description",
+                        "recurrence": "first_seen",
+                        "scope": "user",
+                        "evidence_kind": "explicit",
+                        "confidence": 0.9,
+                        "reason": "Préférence explicitement formulée.",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+        result = identity_scorer.score_response(case, raw, None)
+        self.assertTrue(result["json_valid"])
+        self.assertTrue(result["schema_valid"])
+        self.assertEqual(result["entry_count"], 1)
+
+    def test_identity_scorer_rejects_schema_drift(self) -> None:
+        result = identity_scorer.score_response({"subject": "llm"}, '{"entries": [{"subject": "assistant"}]}', None)
+        self.assertTrue(result["json_valid"])
+        self.assertFalse(result["schema_valid"])
+        self.assertIn("entry_0:invalid_subject", result["schema_errors"])
+
+    def test_identity_campaign_dry_run_writes_human_reports(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            config = identity_campaign.CampaignConfig(
+                campaign_id="identity-dry",
+                suite="identity_extractor",
+                repo_root=REPO_ROOT,
+                output_dir=tmp_path / "results",
+                models=["openai/gpt-5.4-mini"],
+                dry_run=True,
+                timeout_s=1,
+            )
+
+            result = identity_campaign.run_identity_human_campaign(config=config, client=None)
+
+            json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
+            self.assertFalse(json_payload["production_runtime_changed"])
+            self.assertTrue(json_payload["human_judgment_required"])
+            self.assertEqual(json_payload["case_count"], 10)
+            technical = Path(result["technical_path"]).read_text(encoding="utf-8")
+            hermeneutic = Path(result["hermeneutic_path"]).read_text(encoding="utf-8")
+            self.assertIn("Synthese technique", technical)
+            self.assertIn("Taille sortie", technical)
+            self.assertIn("Sorties completes par cas", hermeneutic)
+            output_file = tmp_path / "results" / "identity-dry__openai__gpt-5.4-mini.md"
+            self.assertTrue(output_file.exists())
 
 
 if __name__ == "__main__":
