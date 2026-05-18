@@ -150,25 +150,52 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'config_py',
             },
         }
+    if section == 'memory_arbiter_model':
+        return {
+            'prompt_path': {
+                'label': 'ARBITER_PROMPT_PATH',
+                'value': str(config.ARBITER_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'prompt_loader': {
+                'label': 'ARBITER_PROMPT_RUNTIME_SOURCE',
+                'value': 'memory.arbiter._load_prompt(config.ARBITER_PROMPT_PATH, "arbiter")',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'system_prompt': {
+                'label': 'arbiter_prompt',
+                'value': prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
+                'is_editable': False,
+                'source': 'app_prompt_file',
+            },
+            'shared_transport': {
+                'label': 'OPENROUTER_SHARED_TRANSPORT',
+                'value': _shared_openrouter_transport_text('main_model.title_arbiter', 'main_model.referer_arbiter'),
+                'is_editable': False,
+                'source': 'main_model_runtime_settings',
+            },
+            'benchmark_decision': {
+                'label': 'ARBITER_BENCHMARK_DECISION',
+                'value': 'benchmark/results/arbiter/2026-05-18-arbiter-final-tournament-summary.md',
+                'is_editable': False,
+                'source': 'benchmark_artifact',
+            },
+        }
     if section == 'arbiter_model':
         return {
-            'decision_max_tokens': {
-                'label': 'decision_max_tokens',
-                'value': 600,
-                'is_editable': False,
-                'source': 'memory_arbiter_py',
-            },
             'identity_extractor_max_tokens': {
                 'label': 'identity_extractor_max_tokens',
                 'value': 700,
                 'is_editable': False,
                 'source': 'memory_arbiter_py',
             },
-            'arbiter_prompt_path': {
-                'label': 'ARBITER_PROMPT_PATH',
-                'value': str(config.ARBITER_PROMPT_PATH),
+            'identity_periodic_agent_max_tokens': {
+                'label': 'identity_periodic_agent_max_tokens',
+                'value': 1400,
                 'is_editable': False,
-                'source': 'config_py',
+                'source': 'memory_arbiter_py',
             },
             'identity_extractor_prompt_path': {
                 'label': 'IDENTITY_EXTRACTOR_PROMPT_PATH',
@@ -176,17 +203,23 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'config_py',
             },
-            'arbiter_prompt': {
-                'label': 'arbiter_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
+            'identity_periodic_agent_prompt_path': {
+                'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+                'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
                 'is_editable': False,
-                'source': 'app_prompt_file',
+                'source': 'config_py',
             },
             'identity_extractor_prompt': {
                 'label': 'identity_extractor_prompt',
                 'value': prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
                 'is_editable': False,
                 'source': 'app_prompt_file',
+            },
+            'legacy_scope': {
+                'label': 'ARBITER_MODEL_LEGACY_SCOPE',
+                'value': 'Shared identity extractor / identity periodic slot until those callers are benchmarked.',
+                'is_editable': False,
+                'source': 'runtime_contract',
             },
         }
     if section == 'summary_model':

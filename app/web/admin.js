@@ -451,7 +451,7 @@
         detailChip.textContent = "Bloc detaille actif";
         meta.appendChild(detailChip);
       }
-      if (section.key === "arbiter_model") {
+      if (section.key === "memory_arbiter_model") {
         const detailChip = document.createElement("span");
         detailChip.className = "admin-chip";
         detailChip.textContent = "Bloc detaille actif";

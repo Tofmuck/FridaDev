@@ -21,6 +21,28 @@ def _runtime_arbiter_model_name() -> str:
     view = runtime_settings.get_arbiter_model_settings()
     return str(view.payload['model']['value'])
 
+
+def _runtime_memory_arbiter_settings() -> dict[str, Any]:
+    view = runtime_settings.get_memory_arbiter_model_settings()
+    payload = view.payload
+
+    def value(field: str, default: Any) -> Any:
+        field_payload = payload.get(field)
+        if not isinstance(field_payload, Mapping):
+            return default
+        resolved = field_payload.get('value')
+        if resolved in (None, ''):
+            return default
+        return resolved
+
+    return {
+        'model': str(value('model', config.MEMORY_ARBITER_MODEL)).strip() or config.MEMORY_ARBITER_MODEL,
+        'temperature': float(value('temperature', config.MEMORY_ARBITER_TEMPERATURE)),
+        'top_p': float(value('top_p', config.MEMORY_ARBITER_TOP_P)),
+        'max_tokens': int(value('max_tokens', config.MEMORY_ARBITER_MAX_TOKENS)),
+        'timeout_s': int(value('timeout_s', config.MEMORY_ARBITER_TIMEOUT_S)),
+    }
+
 _ALLOWED_STABILITY = {'durable', 'episodic', 'unknown'}
 _ALLOWED_UTTERANCE_MODE = {
     'self_description',
@@ -366,7 +388,8 @@ def filter_traces_with_diagnostics(
     if not traces:
         return [], []
 
-    arbiter_model = _runtime_arbiter_model_name()
+    arbiter_settings = _runtime_memory_arbiter_settings()
+    arbiter_model = str(arbiter_settings['model'])
     system_prompt = _load_prompt(config.ARBITER_PROMPT_PATH, 'arbiter')
     if not system_prompt:
         return _deterministic_fallback(traces, 'prompt_missing', arbiter_model)
@@ -411,17 +434,17 @@ def filter_traces_with_diagnostics(
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_content},
         ],
-        'temperature': 0.0,
-        'top_p': 1.0,
-        'max_tokens': 600,
+        'temperature': float(arbiter_settings['temperature']),
+        'top_p': float(arbiter_settings['top_p']),
+        'max_tokens': int(arbiter_settings['max_tokens']),
     }
 
     try:
         response = requests.post(
-            f'{config.OR_BASE}/chat/completions',
+            llm_client.or_chat_completions_url(),
             json=payload,
             headers=llm_client.or_headers(caller='arbiter'),
-            timeout=config.ARBITER_TIMEOUT_S,
+            timeout=int(arbiter_settings['timeout_s']),
         )
         response.raise_for_status()
         response_payload = llm_client.read_openrouter_response_payload(response)

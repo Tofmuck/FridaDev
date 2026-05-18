@@ -266,9 +266,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         )
         self.assertIn('model=missing', data['error'])
 
-    def test_patch_admin_settings_arbiter_model_rejects_nonpositive_timeout_before_update(self) -> None:
+    def test_patch_admin_settings_memory_arbiter_model_rejects_nonpositive_timeout_before_update(self) -> None:
         data = self._assert_patch_rejected_before_update(
-            '/api/admin/settings/arbiter-model',
+            '/api/admin/settings/memory-arbiter-model',
             {'timeout_s': {'value': 0}},
             'timeout_s',
         )
@@ -587,7 +587,7 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['api_key'], {'is_secret': True, 'is_set': True, 'origin': 'admin_ui'})
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
-    def test_patch_admin_settings_arbiter_model_updates_section(self) -> None:
+    def test_patch_admin_settings_memory_arbiter_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section
 
@@ -599,6 +599,7 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
                 section=section,
                 payload={
                     'model': {'value': 'openrouter/arbiter-patched', 'is_secret': False, 'origin': 'admin_ui'},
+                    'max_tokens': {'value': 600, 'is_secret': False, 'origin': 'admin_ui'},
                     'timeout_s': {'value': 8, 'is_secret': False, 'origin': 'admin_ui'},
                 },
                 source='db',
@@ -608,11 +609,12 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
         try:
             response = self.client.patch(
-                '/api/admin/settings/arbiter-model',
+                '/api/admin/settings/memory-arbiter-model',
                 json={
                     'updated_by': 'phase5-admin',
                     'payload': {
                         'model': {'value': 'openrouter/arbiter-patched'},
+                        'max_tokens': {'value': 600},
                         'timeout_s': {'value': 8},
                     },
                 },
@@ -621,19 +623,21 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
             self.server.runtime_settings.update_runtime_section = original_update
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(observed['section'], 'arbiter_model')
+        self.assertEqual(observed['section'], 'memory_arbiter_model')
         self.assertEqual(observed['updated_by'], 'phase5-admin')
         self.assertEqual(
             observed['payload'],
             {
                 'model': {'value': 'openrouter/arbiter-patched'},
+                'max_tokens': {'value': 600},
                 'timeout_s': {'value': 8},
             },
         )
         data = response.get_json()
         self.assertTrue(data['ok'])
-        self.assertEqual(data['section'], 'arbiter_model')
+        self.assertEqual(data['section'], 'memory_arbiter_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-patched')
+        self.assertEqual(data['payload']['max_tokens']['value'], 600)
         self.assertEqual(data['payload']['timeout_s']['value'], 8)
 
     def test_patch_admin_settings_summary_model_updates_section(self) -> None:

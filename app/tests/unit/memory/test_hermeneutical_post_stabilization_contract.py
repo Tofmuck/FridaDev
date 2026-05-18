@@ -612,7 +612,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         self.assertNotIn("hermeneutic_node_insertion", latency_summary)
 
     def test_l2_arbiter_parse_failure_never_reinjects_the_full_basket(self) -> None:
-        original_get_model = arbiter._runtime_arbiter_model_name
+        original_get_memory_settings = arbiter._runtime_memory_arbiter_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_headers = arbiter.llm_client.or_headers
@@ -621,7 +621,13 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
         def boom(*_args: Any, **_kwargs: Any) -> None:
             raise RuntimeError("invalid arbiter json")
 
-        arbiter._runtime_arbiter_model_name = lambda: "tests/arbiter"
+        arbiter._runtime_memory_arbiter_settings = lambda: {
+            "model": "tests/arbiter",
+            "temperature": 0.0,
+            "top_p": 1.0,
+            "max_tokens": 600,
+            "timeout_s": 10,
+        }
         arbiter._load_prompt = lambda _path, _label: "prompt"
         arbiter.requests.post = boom
         arbiter.llm_client.or_headers = lambda caller="arbiter": {"Authorization": f"caller={caller}"}
@@ -669,7 +675,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                 [{"role": "user", "content": "question"}],
             )
         finally:
-            arbiter._runtime_arbiter_model_name = original_get_model
+            arbiter._runtime_memory_arbiter_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_headers

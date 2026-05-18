@@ -58,16 +58,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_filter_traces_payload_exposes_retrieval_and_semantic_scores_separately(self) -> None:
         observed_candidates = []
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_memory_arbiter_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                section='memory_arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('memory_arbiter_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -86,7 +86,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             return FakeResponse()
 
         json_module = json
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='arbiter': {'Authorization': f'caller={caller}'}
@@ -109,7 +109,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 [{'role': 'user', 'content': 'Quel etait le code ?'}],
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -125,16 +125,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_filter_traces_payload_exposes_local_temporal_anchor_for_relative_memories(self) -> None:
         observed = {'user_content': ''}
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_memory_arbiter_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                section='memory_arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('memory_arbiter_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -150,7 +150,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             observed['user_content'] = json['messages'][1]['content']
             return FakeResponse()
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='arbiter': {'Authorization': f'caller={caller}'}
@@ -179,7 +179,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 now_iso='2026-05-17T22:05:00Z',
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -199,7 +199,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_identity_extractor_rejects_weak_relative_temporal_entries(self) -> None:
         observed = {'user_content': ''}
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
@@ -259,7 +259,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 [{'role': 'user', 'content': "Aujourd'hui je suis anxieux"}],
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -271,7 +271,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_identity_periodic_agent_rejects_weak_relative_temporal_operations(self) -> None:
         observed = {'user_content': ''}
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
@@ -328,7 +328,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -350,7 +350,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         observed_models = []
         observed_headers = []
         observed_provider_logs = []
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
@@ -372,10 +373,28 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 source_reason='db_row',
             )
 
+        def fake_get_memory_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='memory_arbiter_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'memory_arbiter_model',
+                    {
+                        'model': {'value': 'mistralai/mistral-small-2603', 'origin': 'db'},
+                        'temperature': {'value': 0.0, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                        'max_tokens': {'value': 600, 'origin': 'db'},
+                        'timeout_s': {'value': 45, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
         class FakeResponse:
-            def __init__(self, content: str, generation_id: str) -> None:
+            def __init__(self, content: str, generation_id: str, model: str = 'openai/gpt-5.4-mini') -> None:
                 self._content = content
                 self._generation_id = generation_id
+                self._model = model
 
             def raise_for_status(self) -> None:
                 return None
@@ -383,7 +402,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             def json(self):
                 return {
                     'id': self._generation_id,
-                    'model': 'openai/gpt-5.4-mini',
+                    'model': self._model,
                     'usage': {'prompt_tokens': 10, 'completion_tokens': 3, 'total_tokens': 13},
                     'choices': [{'message': {'content': self._content}}],
                 }
@@ -395,6 +414,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 return FakeResponse(
                     '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}',
                     generation_id='gen-1',
+                    model='mistralai/mistral-small-2603',
                 )
             if len(observed_models) == 2:
                 return FakeResponse('{"entries":[]}', generation_id='gen-2')
@@ -406,6 +426,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
@@ -438,7 +459,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -469,7 +491,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         )
         self.assertEqual(
             observed_models,
-            ['openai/gpt-5.4-mini', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'],
+            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'],
         )
         self.assertEqual(
             observed_headers,
@@ -486,7 +508,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     'arbiter_provider_response',
                     {
                         'provider_generation_id': 'gen-1',
-                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_model': 'mistralai/mistral-small-2603',
                         'provider_prompt_tokens': 10,
                         'provider_completion_tokens': 3,
                         'provider_total_tokens': 13,
@@ -517,7 +539,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_arbiter_calls_keep_env_fallback_when_db_row_is_missing(self) -> None:
         observed_models = []
-        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
 
@@ -525,6 +548,14 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section='arbiter_model',
                 payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        def fake_get_memory_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='memory_arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('memory_arbiter_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -554,6 +585,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         try:
@@ -582,11 +614,15 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
 
-        self.assertEqual(observed_models, [config.ARBITER_MODEL, config.ARBITER_MODEL, config.ARBITER_MODEL])
+        self.assertEqual(
+            observed_models,
+            [config.MEMORY_ARBITER_MODEL, config.ARBITER_MODEL, config.ARBITER_MODEL],
+        )
 
 
 if __name__ == '__main__':

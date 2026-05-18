@@ -3,7 +3,7 @@
   const SETTINGS_STATUS_ENDPOINT = "/api/admin/settings/status";
   const sectionRoutes = Object.freeze({
     mainModel: "main-model",
-    arbiterModel: "arbiter-model",
+    arbiterModel: "memory-arbiter-model",
     summaryModel: "summary-model",
     stimmungAgentModel: "stimmung-agent-model",
     validationAgentModel: "validation-agent-model",
@@ -15,6 +15,7 @@
   const sectionEndpoints = Object.freeze({
     "main-model": "/api/admin/settings/main-model",
     "arbiter-model": "/api/admin/settings/arbiter-model",
+    "memory-arbiter-model": "/api/admin/settings/memory-arbiter-model",
     "summary-model": "/api/admin/settings/summary-model",
     "stimmung-agent-model": "/api/admin/settings/stimmung-agent-model",
     "validation-agent-model": "/api/admin/settings/validation-agent-model",
@@ -26,6 +27,7 @@
   const sectionValidateEndpoints = Object.freeze({
     "main-model": "/api/admin/settings/main-model/validate",
     "arbiter-model": "/api/admin/settings/arbiter-model/validate",
+    "memory-arbiter-model": "/api/admin/settings/memory-arbiter-model/validate",
     "summary-model": "/api/admin/settings/summary-model/validate",
     "stimmung-agent-model": "/api/admin/settings/stimmung-agent-model/validate",
     "validation-agent-model": "/api/admin/settings/validation-agent-model/validate",

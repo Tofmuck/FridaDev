@@ -22,6 +22,7 @@ class Phase4TransversalTests(unittest.TestCase):
     def test_runtime_settings_env_fallback_still_exposes_config_values(self) -> None:
         main_model = runtime_settings.get_main_model_settings(fetcher=lambda: {})
         arbiter_model = runtime_settings.get_arbiter_model_settings(fetcher=lambda: {})
+        memory_arbiter_model = runtime_settings.get_memory_arbiter_model_settings(fetcher=lambda: {})
         summary_model = runtime_settings.get_summary_model_settings(fetcher=lambda: {})
         web_reformulation_model = runtime_settings.get_web_reformulation_model_settings(fetcher=lambda: {})
         embedding = runtime_settings.get_embedding_settings(fetcher=lambda: {})
@@ -32,6 +33,7 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertEqual(main_model.payload['model']['value'], config.OR_MODEL)
         self.assertEqual(main_model.payload['base_url']['value'], config.OR_BASE)
         self.assertEqual(arbiter_model.payload['model']['value'], config.ARBITER_MODEL)
+        self.assertEqual(memory_arbiter_model.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
         self.assertEqual(summary_model.payload['model']['value'], config.SUMMARY_MODEL)
         self.assertEqual(web_reformulation_model.payload['model']['value'], config.WEB_REFORMULATION_MODEL)
         self.assertEqual(embedding.payload['endpoint']['value'], config.EMBED_BASE_URL)

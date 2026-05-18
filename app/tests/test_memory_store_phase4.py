@@ -807,14 +807,14 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
 
     def test_record_arbiter_decisions_persists_effective_model_even_if_runtime_changes_before_insert(self) -> None:
         observed = {'persisted_models': [], 'request_models': []}
-        original_arbiter_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_memory_arbiter_get_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_conn = memory_store._conn
 
         call_count = {'n': 0}
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_memory_arbiter_model_settings():
             call_count['n'] += 1
             model = (
                 'openrouter/runtime-arbiter-v1'
@@ -822,13 +822,14 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                 else 'openrouter/runtime-arbiter-v2'
             )
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
+                section='memory_arbiter_model',
                 payload=runtime_settings.normalize_stored_payload(
-                    'arbiter_model',
+                    'memory_arbiter_model',
                     {
                         'model': {'value': model, 'origin': 'db'},
                         'temperature': {'value': 0.0, 'origin': 'db'},
                         'top_p': {'value': 1.0, 'origin': 'db'},
+                        'max_tokens': {'value': 600, 'origin': 'db'},
                         'timeout_s': {'value': 45, 'origin': 'db'},
                     },
                 ),
@@ -892,7 +893,7 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         ]
         recent_turns = [{'role': 'user', 'content': 'question recente'}]
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda _path, _label: 'prompt'
         arbiter.requests.post = fake_post
         memory_store._conn = lambda: FakeConnection()
@@ -907,7 +908,7 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
                 effective_model=effective_model,
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_arbiter_get_settings
+            arbiter.runtime_settings.get_memory_arbiter_model_settings = original_memory_arbiter_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             memory_store._conn = original_conn

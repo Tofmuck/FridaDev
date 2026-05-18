@@ -10,7 +10,7 @@ Verdict court:
 - Les chemins OpenRouter partagent aujourd'hui **un seul secret applicatif**: `main_model.api_key`.
 - Sur OVH, ce secret est configure et resolu via les runtime settings chiffrés (`db_encrypted`), avec origine historique `env_backfill`. Le repo ne prouve pas a lui seul la separation ou non des projets cote console OpenRouter.
 - Le systeme est fonctionnel mais heterogene: certains callers utilisent `llm_client.or_chat_completions_url()` et donc `main_model.base_url` runtime; d'autres utilisent encore `config.OR_BASE`.
-- Plusieurs sections runtime admin existent, mais tous leurs champs ne sont pas encore la source effective du call. Exemple important: `arbiter_model.timeout_s` vaut `60` sur OVH mais les chemins `arbiter`, `identity_extractor` et `identity_periodic_agent` utilisent encore `config.ARBITER_TIMEOUT_S` (`10`).
+- L'arbitre memoire est maintenant individualise: `memory_arbiter_model` porte son modele, ses parametres et son timeout propres. Le slot legacy `arbiter_model` reste pour `identity_extractor` et `identity_periodic_agent` jusqu'a leur benchmark.
 
 ## Perimetre et methode
 
@@ -48,7 +48,7 @@ La table ci-dessous liste les **slots modele/service** observables. Les **11 che
 |---|---|---|---|---|---|
 | 1 | Chat principal | OpenRouter chat completion | `app/core/chat_llm_flow.py` | `anthropic/claude-sonnet-4.6` | actif |
 | 2 | Reformulation web | OpenRouter chat completion | `app/tools/web_search.py` | `openai/gpt-5.4-mini` | actif quand web active |
-| 3 | Arbitre memoire | OpenRouter chat completion | `app/memory/arbiter.py` | `openai/gpt-5.4-mini` | actif |
+| 3 | Arbitre memoire | OpenRouter chat completion | `app/memory/arbiter.py` | `mistralai/mistral-small-2603` | actif, individualise |
 | 4 | Resume conversationnel | OpenRouter chat completion | `app/memory/summarizer.py` | `openai/gpt-5.4-mini` | actif au seuil de summary |
 | 5 | Extracteur identity | OpenRouter chat completion | `app/memory/arbiter.py` | `openai/gpt-5.4-mini` | actif apres tour assistant |
 | 6 | Agent periodic identity | OpenRouter chat completion | `app/memory/arbiter.py` via `memory_identity_periodic_agent.py` | `openai/gpt-5.4-mini` | actif quand buffer atteint le seuil |
@@ -74,7 +74,7 @@ Chemins explicitement absents ou retires:
 |---|---|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---|---|---|
 | Chat principal | `chat_llm_flow.run_llm_exchange()` | `MAIN_SYSTEM_PROMPT_PATH`, `main_hermeneutical.txt`, prompt window runtime | OpenRouter | `anthropic/claude-sonnet-4.6` | `OPENROUTER_MODEL=openai/gpt-5.1` | `main_model.model` runtime DB | `main_model.api_key`, present origine `admin_ui`, resolu `db_encrypted`; header caller `llm` | `0.7` | `1.0` | `8192` par defaut, override request possible | `FRIDA_TIMEOUT=900` | aucun parametre `reasoning` envoye | oui, si `stream=true` | texte libre assistant, normalise puis persiste | oui: `main_model.model`, sampling, response max, headers; base_url runtime existe mais ce call utilise encore `config.OR_BASE` | `llm_payload`, `llm_call`, `llm_provider_response`, `AssistantText`, stream events |
 | Reformulation web | `web_search.reformulate()` | `prompts/web_reformulation.txt` | OpenRouter | `openai/gpt-5.4-mini` | `WEB_REFORMULATION_MODEL=openai/gpt-5.4-mini` | `web_reformulation_model.model`; base via `llm_client.or_chat_completions_url()` | `main_model.api_key`, caller `web_reformulation` | `0.2` | non envoye | `40` | `10` | aucun | non | texte court, fallback vers message utilisateur si erreur | oui: `web_reformulation_model` pour model/temp/max/timeout; transport/token partages via `main_model`; referer/title web restent config-only | `web_reformulation_prompt_prepared`, `web_search` |
-| Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `openai/gpt-5.4-mini` | `ARBITER_MODEL=openai/gpt-5.4-mini` | `arbiter_model.model` runtime DB | `main_model.api_key`, caller `arbiter` | `0.0` fixe | `1.0` fixe | `600` fixe | `config.ARBITER_TIMEOUT_S=10` effectif; runtime admin affiche `60` mais non utilise ici | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | modele oui; temp/top_p/timeout exposes mais temp/top_p/timeout non sources effectives du payload courant | provider logs, metrics, `record_arbiter_decisions()` |
+| Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `mistralai/mistral-small-2603` | `MEMORY_ARBITER_MODEL=mistralai/mistral-small-2603` | `memory_arbiter_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `arbiter`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `600` | `10` | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | oui: section dediee `memory_arbiter_model`; benchmark final conserve sous `benchmark/results/arbiter/` | provider logs, metrics, `record_arbiter_decisions()` avec modele effectif |
 | Resume conversationnel | `summarizer.summarize_conversation()` | `prompts/summary_system.txt` | OpenRouter | `openai/gpt-5.4-mini` | `SUMMARY_MODEL=openai/gpt-5.4-mini` | `summary_model.model` runtime DB | `main_model.api_key`, caller `resumer` | `0.3` fixe | `1.0` fixe | `SUMMARY_TARGET_TOKENS=2000` | `90` fixe | aucun | non | texte libre de resume; persiste en summary actif | modele oui; temp/top_p exposes mais non sources effectives | provider metadata log; summary persistence |
 | Extracteur identity | `arbiter.extract_identities()` | `prompts/identity_extractor.txt` | OpenRouter | `openai/gpt-5.4-mini` | reutilise `ARBITER_MODEL` | `arbiter_model.model` runtime DB | `main_model.api_key`, caller `identity_extractor` | `0.0` fixe | `1.0` fixe | `700` fixe | `config.ARBITER_TIMEOUT_S=10` | aucun | non | JSON `entries[]`; invalides skips; erreur => `[]` | indirect via `arbiter_model.model`; pas de section modele dediee | provider log, metrics parse/call; staging identity |
 | Agent periodic identity | `arbiter.run_identity_periodic_agent()` | `prompts/identity_periodic_agent.txt` | OpenRouter | `openai/gpt-5.4-mini` | reutilise `ARBITER_MODEL` | `arbiter_model.model` runtime DB | `main_model.api_key`; caller demande `identity_periodic_agent` mais `llm_client` le normalise en `llm` | `0.0` fixe | `1.0` fixe | `1400` fixe | `config.ARBITER_TIMEOUT_S=10` | aucun | non | JSON `llm/user/meta`; validation stricte dans `memory_identity_periodic_apply.py`; erreur => `None` | indirect via `arbiter_model.model`; pas de headers/titles dedies | provider log sous event periodic mais headers/titles `llm`; events periodic agent |
@@ -94,7 +94,7 @@ Cette section rend explicites les champs envoyes qui ne sont pas tous visibles d
 |---|---|---|---|
 | Chat principal | JSON OpenRouter construit par `llm_client.build_payload()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stop=["<\|endoftext\|>", "<\|return\|>", "<\|call\|>"]`; si streaming: `stream=true`, `stream_options={"include_usage": true}` | `max_tokens` vient du runtime `response_max_tokens` sauf override de requete; pas de `response_format`, pas de champ `reasoning` |
 | Reformulation web | JSON OpenRouter dans `web_search.reformulate()` | `model` depuis `web_reformulation_model.model`, `messages` system/user, `max_tokens` depuis `web_reformulation_model.max_tokens`, `temperature` depuis `web_reformulation_model.temperature` | defauts `openai/gpt-5.4-mini`, `40`, `0.2`, timeout `10`; pas de `top_p`, pas de `stop`, pas de streaming, pas de `response_format` |
-| Arbitre memoire | JSON OpenRouter dans `arbiter.filter_traces_with_diagnostics()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=600` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Arbitre memoire | JSON OpenRouter dans `arbiter.filter_traces_with_diagnostics()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `memory_arbiter_model` | defaut benchmarke `mistralai/mistral-small-2603`, `0.0`, `1.0`, `600`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
 | Extracteur identity | JSON OpenRouter dans `arbiter.extract_identities()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=700` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
 | Agent periodic identity | JSON OpenRouter dans `arbiter.run_identity_periodic_agent()` | `model`, `messages`, `temperature=0.0`, `top_p=1.0`, `max_tokens=1400` | pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
 | Resume conversationnel | JSON OpenRouter dans `summarizer.summarize_conversation()` | `model`, `messages`, `temperature=0.3`, `top_p=1.0`, `max_tokens=SUMMARY_TARGET_TOKENS` | pas de `stop`, pas de streaming, pas de `response_format`; texte libre attendu |
@@ -348,13 +348,13 @@ Active document upload path
 
 ### Divergences sans raison claire documentee dans le code
 
-- `chat_llm_flow.py`, `summarizer.py` et `arbiter.py` appellent `config.OR_BASE` au lieu de `llm_client.or_chat_completions_url()`. Les valeurs runtime OVH sont aujourd'hui coherentes (`https://openrouter.ai/api/v1`), mais une modification admin de `main_model.base_url` ne toucherait pas tous les callers.
+- `chat_llm_flow.py`, `summarizer.py` et les chemins identity de `arbiter.py` appellent encore `config.OR_BASE` au lieu de `llm_client.or_chat_completions_url()`. L'arbitre memoire utilise desormais le transport runtime partage.
 - `web_reformulation` a maintenant une section runtime dediee pour `model`, `temperature`, `max_tokens`, `timeout_s`; ses referer/title restent encore config-only, contrairement aux autres composants OpenRouter exposes dans `main_model`.
 - `identity_periodic_agent` appelle `llm_client.or_headers(caller='identity_periodic_agent')`, mais ce caller n'est pas dans `_KNOWN_PROVIDER_CALLERS`; il est donc normalise en `llm` pour headers/referer/title.
-- `arbiter_model.timeout_s` est administrable et vaut `60` dans le runtime OVH, mais les trois chemins de `arbiter.py` utilisent `config.ARBITER_TIMEOUT_S=10`.
-- `arbiter_model.temperature` et `top_p` existent dans les settings runtime, mais les payloads `arbiter`, `identity_extractor` et `identity_periodic_agent` sont hardcodes a `0.0/1.0`.
+- `arbiter_model.timeout_s` reste administrable pour les chemins identity legacy, mais `identity_extractor` et `identity_periodic_agent` utilisent encore `config.ARBITER_TIMEOUT_S=10`.
+- `arbiter_model.temperature` et `top_p` existent dans les settings runtime identity legacy, mais les payloads `identity_extractor` et `identity_periodic_agent` sont hardcodes a `0.0/1.0`.
 - `summary_model.temperature` et `top_p` existent, mais le summarizer hardcode `0.3/1.0`.
-- `identity_extractor` et `identity_periodic_agent` reutilisent le modele de l'arbitre; il n'existe pas de section modele dediee pour les distinguer.
+- `identity_extractor` et `identity_periodic_agent` reutilisent le slot legacy `arbiter_model`; il n'existe pas encore de section modele dediee pour les distinguer.
 
 ### Endroits fragiles ou implicites
 
@@ -370,7 +370,7 @@ Pistes candidates, hors scope de ce lot:
 
 1. Normaliser tous les appels OpenRouter sur `llm_client.or_chat_completions_url()` pour que `main_model.base_url` soit vraiment source de verite globale.
 2. Decider si `identity_periodic_agent` doit devenir un caller OpenRouter distinct, avec referer/title dedies.
-3. Decider si `identity_extractor` et `identity_periodic_agent` doivent rester sur `arbiter_model` ou recevoir leur propre section modele.
+3. Benchmarker puis individualiser `identity_extractor` et `identity_periodic_agent` si leur lot confirme le besoin d'un slot propre.
 4. Aligner les champs runtime administrables sur les parametres reellement utilises: `timeout_s`, `temperature`, `top_p`, `max_tokens`.
 5. Decider si les referer/title `web_reformulation` doivent rester config-only ou rejoindre une surface runtime future.
 6. Preparer une rotation OpenRouter sans fuite: un plan de migration `main_model.api_key`, validation runtime, smoke calls, puis eventuelle separation par projets.
@@ -397,7 +397,12 @@ Lecture assainie le 2026-05-17:
 | `main_model` | `response_max_tokens` | `8192` | `admin_ui` |
 | `main_model` | `api_key` | secret present, resolu `db_encrypted` | `admin_ui` / DB chiffree |
 | `arbiter_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` |
-| `arbiter_model` | `timeout_s` | `60` | `admin_ui` |
+| `arbiter_model` | `timeout_s` | slot identity legacy | `db_seed` ou historique admin |
+| `memory_arbiter_model` | `model` | `mistralai/mistral-small-2603` | `db_seed` apres bootstrap |
+| `memory_arbiter_model` | `temperature` | `0.0` | `db_seed` apres bootstrap |
+| `memory_arbiter_model` | `top_p` | `1.0` | `db_seed` apres bootstrap |
+| `memory_arbiter_model` | `max_tokens` | `600` | `db_seed` apres bootstrap |
+| `memory_arbiter_model` | `timeout_s` | `10` | `db_seed` apres bootstrap |
 | `summary_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` |
 | `web_reformulation_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` apres bootstrap / env fallback |
 | `web_reformulation_model` | `temperature` | `0.2` | `db_seed` apres bootstrap / env fallback |
@@ -423,6 +428,11 @@ Constantes runtime `config.py` relevees dans le conteneur:
 - `WEB_REFORMULATION_TEMPERATURE=0.2`;
 - `WEB_REFORMULATION_MAX_TOKENS=40`;
 - `WEB_REFORMULATION_TIMEOUT_S=10`;
+- `MEMORY_ARBITER_MODEL='mistralai/mistral-small-2603'`;
+- `MEMORY_ARBITER_TEMPERATURE=0.0`;
+- `MEMORY_ARBITER_TOP_P=1.0`;
+- `MEMORY_ARBITER_MAX_TOKENS=600`;
+- `MEMORY_ARBITER_TIMEOUT_S=10`;
 - `TIMEOUT_S=900`;
 - `ARBITER_TIMEOUT_S=10`;
 - `SUMMARY_TARGET_TOKENS=2000`;

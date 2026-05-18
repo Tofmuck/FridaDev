@@ -83,6 +83,7 @@ class ServerAdminSettingsValidateContractTests(unittest.TestCase):
         routes = {rule.rule for rule in self.server.app.url_map.iter_rules()}
         self.assertIn('/api/admin/settings/main-model/validate', routes)
         self.assertIn('/api/admin/settings/arbiter-model/validate', routes)
+        self.assertIn('/api/admin/settings/memory-arbiter-model/validate', routes)
         self.assertIn('/api/admin/settings/summary-model/validate', routes)
         self.assertIn('/api/admin/settings/stimmung-agent-model/validate', routes)
         self.assertIn('/api/admin/settings/validation-agent-model/validate', routes)

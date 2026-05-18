@@ -826,9 +826,12 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
                     "token": {"is_set": True},
                 }
             ),
-            get_arbiter_model_settings=lambda: SimpleNamespace(
+            get_memory_arbiter_model_settings=lambda: SimpleNamespace(
                 payload={
                     "model": {"value": "arbiter/test"},
+                    "temperature": {"value": 0.0},
+                    "top_p": {"value": 1.0},
+                    "max_tokens": {"value": 600},
                     "timeout_s": {"value": 18},
                 }
             ),
@@ -942,6 +945,8 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertEqual(payload["embeddings"]["health"]["errors"], 1)
         self.assertEqual(payload["embeddings"]["health"]["mismatch_events"], 1)
         self.assertEqual(payload["arbiter"]["settings"]["reranker_status"], "no_go_for_now")
+        self.assertEqual(payload["arbiter"]["settings"]["runtime_section"], "memory_arbiter_model")
+        self.assertEqual(payload["arbiter"]["settings"]["max_tokens"], 600)
         self.assertEqual(payload["durable_state"]["source_kind"], "durable_persistence")
         self.assertEqual(payload["recent_turns"]["source_kind"], "historical_logs")
         self.assertTrue(payload["scope"]["dedicated_surface"])

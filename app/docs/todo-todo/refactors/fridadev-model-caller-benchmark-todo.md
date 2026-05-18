@@ -30,7 +30,7 @@ Source de verite de depart:
 
 ## Callers OpenRouter a traiter progressivement
 
-- [ ] Arbitre memoire.
+- [x] Arbitre memoire.
 - [ ] Resume conversationnel.
 - [ ] Extracteur identity.
 - [ ] Agent periodic identity.
@@ -43,7 +43,7 @@ Source de verite de depart:
 - [x] Benchmark arbitre memoire.
 - [x] Campagne finale bornee arbitre memoire avant decouplage.
 - [x] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
-- [ ] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
+- [x] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
 - [ ] Benchmark resume conversationnel.
 - [ ] Decision resume conversationnel.
 - [ ] Decouplage propre du resume conversationnel.
@@ -169,7 +169,24 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Un rapport Markdown de campagne existe.
 - [x] La campagne finale de departage a ete executee: manche 1 `40 x 4`, finale `60 x 2`.
 - [x] Un verdict caller est documente avec classement de pertinence, classement valeur, divergences et recommandation.
-- [ ] Le lot suivant borne individualise l'arbitre memoire avant de passer au resume conversationnel: point d'appel clair, modele propre, parametres propres et contrat runtime propre.
+- [x] Le lot suivant borne individualise l'arbitre memoire avant de passer au resume conversationnel: point d'appel clair, modele propre, parametres propres et contrat runtime propre.
+
+## Decouplage arbitre memoire
+
+- [x] Creer le slot runtime dedie `memory_arbiter_model`.
+- [x] Seeder et exposer `model`, `temperature`, `top_p`, `max_tokens`, `timeout_s`.
+- [x] Definir le modele initial a partir du tournoi final: `mistralai/mistral-small-2603`.
+- [x] Brancher `filter_traces_with_diagnostics()` sur `memory_arbiter_model`.
+- [x] Laisser `arbiter_model` comme slot legacy identity jusqu'aux lots `extracteur identity` et `periodic identity`.
+- [x] Mettre a jour API/admin/read-models/audit pour que l'arbitre memoire apparaisse comme caller individualise.
+- [x] Conserver le meme token et le meme projet OpenRouter partages via `main_model`.
+- [x] Ne changer aucun autre caller modele dans ce lot.
+
+## Prochain caller
+
+- [ ] Benchmark resume conversationnel.
+- [ ] Decision resume conversationnel.
+- [ ] Decouplage propre du resume conversationnel.
 
 ## Definition de fin globale
 

@@ -120,8 +120,8 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['main_model']['readonly_info']['hermeneutical_runtime_bricks']['value'],
         )
         self.assertEqual(
-            data['sections']['arbiter_model']['readonly_info']['decision_max_tokens']['value'],
-            600,
+            data['sections']['memory_arbiter_model']['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/arbiter/2026-05-18-arbiter-final-tournament-summary.md',
         )
         self.assertEqual(
             data['sections']['arbiter_model']['readonly_info']['identity_extractor_max_tokens']['value'],
@@ -137,7 +137,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         )
         self.assertIn(
             'You are a conversational memory arbiter.',
-            data['sections']['arbiter_model']['readonly_info']['arbiter_prompt']['value'],
+            data['sections']['memory_arbiter_model']['readonly_info']['system_prompt']['value'],
         )
         self.assertEqual(
             data['sections']['summary_model']['readonly_info']['summary_target_tokens']['value'],
@@ -213,6 +213,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         for section in (
             'main_model',
             'arbiter_model',
+            'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
             'stimmung_agent_model',
@@ -278,7 +279,45 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertIn('[Indices contextuels recents]', data['readonly_info']['hermeneutical_runtime_bricks']['value'])
         self.assertEqual(data['secret_sources']['api_key'], 'db_encrypted')
 
-    def test_get_admin_settings_arbiter_model_returns_single_section(self) -> None:
+    def test_get_admin_settings_memory_arbiter_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'memory_arbiter_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'mistralai/mistral-small-2603', 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 600, 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 12, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/memory-arbiter-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'memory_arbiter_model')
+        self.assertEqual(data['payload']['model']['value'], 'mistralai/mistral-small-2603')
+        self.assertEqual(data['payload']['max_tokens']['value'], 600)
+        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/arbiter.txt')
+        self.assertIn('You are a conversational memory arbiter.', data['readonly_info']['system_prompt']['value'])
+        self.assertIn('main_model.title_arbiter', data['readonly_info']['shared_transport']['value'])
+        self.assertEqual(
+            data['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/arbiter/2026-05-18-arbiter-final-tournament-summary.md',
+        )
+
+    def test_get_admin_settings_arbiter_model_returns_legacy_identity_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
 
         def fake_get_runtime_section_for_api(section: str):
@@ -305,21 +344,17 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'arbiter_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-route')
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
-        self.assertEqual(data['readonly_info']['decision_max_tokens']['value'], 600)
         self.assertEqual(data['readonly_info']['identity_extractor_max_tokens']['value'], 700)
-        self.assertEqual(data['readonly_info']['arbiter_prompt_path']['value'], 'prompts/arbiter.txt')
+        self.assertEqual(data['readonly_info']['identity_periodic_agent_max_tokens']['value'], 1400)
         self.assertEqual(
             data['readonly_info']['identity_extractor_prompt_path']['value'],
             'prompts/identity_extractor.txt',
         )
         self.assertIn(
-            'You are a conversational memory arbiter.',
-            data['readonly_info']['arbiter_prompt']['value'],
-        )
-        self.assertIn(
             'You are an identity evidence extractor.',
             data['readonly_info']['identity_extractor_prompt']['value'],
         )
+        self.assertIn('Shared identity extractor', data['readonly_info']['legacy_scope']['value'])
 
     def test_get_admin_settings_summary_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

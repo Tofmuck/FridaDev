@@ -128,11 +128,15 @@ def _embedding_health_summary(
 
 
 def _arbiter_settings_summary(runtime_settings_module: Any, config_module: Any) -> dict[str, Any]:
-    view = runtime_settings_module.get_arbiter_model_settings()
+    view = runtime_settings_module.get_memory_arbiter_model_settings()
     payload = _safe_mapping(view.payload)
     return {
         'model': str(_safe_mapping(payload.get('model')).get('value') or ''),
+        'temperature': _to_float(_safe_mapping(payload.get('temperature')).get('value')),
+        'top_p': _to_float(_safe_mapping(payload.get('top_p')).get('value')),
+        'max_tokens': _to_int(_safe_mapping(payload.get('max_tokens')).get('value')),
         'timeout_s': _to_int(_safe_mapping(payload.get('timeout_s')).get('value')),
+        'runtime_section': 'memory_arbiter_model',
         'min_semantic_relevance': _to_float(getattr(config_module, 'ARBITER_MIN_SEMANTIC_RELEVANCE', 0.0)),
         'min_contextual_gain': _to_float(getattr(config_module, 'ARBITER_MIN_CONTEXTUAL_GAIN', 0.0)),
         'max_kept_traces': _to_int(getattr(config_module, 'ARBITER_MAX_KEPT_TRACES', 0)),

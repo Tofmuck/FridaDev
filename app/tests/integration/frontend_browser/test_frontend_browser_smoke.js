@@ -256,6 +256,7 @@ function adminStatusPayload() {
   for (const key of [
     'main_model',
     'arbiter_model',
+    'memory_arbiter_model',
     'summary_model',
     'stimmung_agent_model',
     'validation_agent_model',
@@ -327,6 +328,18 @@ function sectionPayload(route) {
         temperature: settingField(0),
         top_p: settingField(1),
         timeout_s: settingField(30),
+      },
+    };
+  }
+  if (route === 'memory-arbiter-model') {
+    return {
+      ...common,
+      payload: {
+        model: settingField('mistralai/mistral-small-2603'),
+        temperature: settingField(0),
+        top_p: settingField(1),
+        max_tokens: settingField(600),
+        timeout_s: settingField(10),
       },
     };
   }
@@ -424,6 +437,7 @@ function adminMockScript() {
       const routePayloads = ${JSON.stringify({
         'main-model': sectionPayload('main-model'),
         'arbiter-model': sectionPayload('arbiter-model'),
+        'memory-arbiter-model': sectionPayload('memory-arbiter-model'),
         'summary-model': sectionPayload('summary-model'),
         'stimmung-agent-model': sectionPayload('stimmung-agent-model'),
         'validation-agent-model': sectionPayload('validation-agent-model'),

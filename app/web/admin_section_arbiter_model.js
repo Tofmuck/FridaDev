@@ -166,7 +166,7 @@
     const applyArbiterBackendFieldError = (message) => {
       applySectionBackendFieldError({
         message,
-        sectionKey: "arbiter_model",
+        sectionKey: "memory_arbiter_model",
         fieldSpecs: arbiterModelFieldSpecs,
         setFieldError: setArbiterFieldError,
       });
@@ -194,7 +194,7 @@
         draft: state.arbiterModel.draft,
         emptyDraft: emptyArbiterModelDraft,
         fieldSpecs: arbiterModelFieldSpecs,
-        integerFields: ["timeout_s"],
+        integerFields: ["max_tokens", "timeout_s"],
       });
     };
 

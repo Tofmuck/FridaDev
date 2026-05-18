@@ -104,7 +104,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('id="adminSectionGrid"', html)
         self.assertIn("L'edition detaillee s'ouvre section par section.", html)
         self.assertIn("Le backend n'accepte que replace_value pour un secret.", html)
-        self.assertIn("Modele arbitre", html)
+        self.assertIn("Arbitre memoire", html)
         self.assertIn("Bloc court et fonctionnel", html)
         self.assertIn("Modele resumeur", html)
         self.assertIn("Bloc de synthese conversationnelle", html)
@@ -193,6 +193,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "/api/admin/settings/main-model/validate",
                 "/api/admin/settings/arbiter-model",
                 "/api/admin/settings/arbiter-model/validate",
+                "/api/admin/settings/memory-arbiter-model",
+                "/api/admin/settings/memory-arbiter-model/validate",
                 "/api/admin/settings/summary-model",
                 "/api/admin/settings/summary-model/validate",
                 "/api/admin/settings/stimmung-agent-model",
@@ -388,6 +390,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/main-model/validate", source_all)
         self.assertIn("/api/admin/settings/arbiter-model", source_all)
         self.assertIn("/api/admin/settings/arbiter-model/validate", source_all)
+        self.assertIn("/api/admin/settings/memory-arbiter-model", source_all)
+        self.assertIn("/api/admin/settings/memory-arbiter-model/validate", source_all)
         self.assertIn("/api/admin/settings/summary-model", source_all)
         self.assertIn("/api/admin/settings/summary-model/validate", source_all)
         self.assertIn("/api/admin/settings/embedding", source_all)
@@ -799,6 +803,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/main-model/validate", source)
         self.assertIn("/api/admin/settings/arbiter-model", source)
         self.assertIn("/api/admin/settings/arbiter-model/validate", source)
+        self.assertIn("/api/admin/settings/memory-arbiter-model", source)
+        self.assertIn("/api/admin/settings/memory-arbiter-model/validate", source)
         self.assertIn("/api/admin/settings/summary-model", source)
         self.assertIn("/api/admin/settings/summary-model/validate", source)
         self.assertIn("/api/admin/settings/stimmung-agent-model", source)

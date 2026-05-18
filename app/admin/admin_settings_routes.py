@@ -9,6 +9,7 @@ _ADMIN_SETTINGS_PREFIX = '/api/admin/settings'
 _ADMIN_SETTINGS_ROUTE_SECTIONS = {
     'main-model': 'main_model',
     'arbiter-model': 'arbiter_model',
+    'memory-arbiter-model': 'memory_arbiter_model',
     'summary-model': 'summary_model',
     'web-reformulation-model': 'web_reformulation_model',
     'stimmung-agent-model': 'stimmung_agent_model',
@@ -75,6 +76,10 @@ def api_admin_settings_main_model_get():
 
 def api_admin_settings_arbiter_model_get():
     return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
+
+
+def api_admin_settings_memory_arbiter_model_get():
+    return _admin_settings_single_section_json(_ADMIN_SETTINGS_ROUTE_SECTIONS['memory-arbiter-model'])
 
 
 def api_admin_settings_summary_model_get():
@@ -145,6 +150,10 @@ def api_admin_settings_arbiter_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
 
 
+def api_admin_settings_memory_arbiter_model_patch():
+    return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['memory-arbiter-model'])
+
+
 def api_admin_settings_main_model_patch():
     return _admin_settings_section_patch_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['main-model'])
 
@@ -155,6 +164,10 @@ def api_admin_settings_main_model_validate():
 
 def api_admin_settings_arbiter_model_validate():
     return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['arbiter-model'])
+
+
+def api_admin_settings_memory_arbiter_model_validate():
+    return _admin_settings_section_validate_response(_ADMIN_SETTINGS_ROUTE_SECTIONS['memory-arbiter-model'])
 
 
 def api_admin_settings_summary_model_validate():
@@ -202,6 +215,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model',
         'api_admin_settings_arbiter_model_get',
         api_admin_settings_arbiter_model_get,
+        ('GET',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/memory-arbiter-model',
+        'api_admin_settings_memory_arbiter_model_get',
+        api_admin_settings_memory_arbiter_model_get,
         ('GET',),
     ),
     (
@@ -307,6 +326,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         ('PATCH',),
     ),
     (
+        f'{_ADMIN_SETTINGS_PREFIX}/memory-arbiter-model',
+        'api_admin_settings_memory_arbiter_model_patch',
+        api_admin_settings_memory_arbiter_model_patch,
+        ('PATCH',),
+    ),
+    (
         f'{_ADMIN_SETTINGS_PREFIX}/main-model',
         'api_admin_settings_main_model_patch',
         api_admin_settings_main_model_patch,
@@ -322,6 +347,12 @@ _ADMIN_SETTINGS_ROUTE_REGISTRATIONS = (
         f'{_ADMIN_SETTINGS_PREFIX}/arbiter-model/validate',
         'api_admin_settings_arbiter_model_validate',
         api_admin_settings_arbiter_model_validate,
+        ('POST',),
+    ),
+    (
+        f'{_ADMIN_SETTINGS_PREFIX}/memory-arbiter-model/validate',
+        'api_admin_settings_memory_arbiter_model_validate',
+        api_admin_settings_memory_arbiter_model_validate,
         ('POST',),
     ),
     (

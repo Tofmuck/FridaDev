@@ -258,6 +258,34 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['timeout_s']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['max_tokens']['ok'])
+
+    def test_validate_runtime_section_accepts_candidate_memory_arbiter_model_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-memory-arbiter'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'memory_arbiter_model',
+                {
+                    'model': {'value': 'mistralai/mistral-small-2603'},
+                    'timeout_s': {'value': 10},
+                    'temperature': {'value': 0.0},
+                    'top_p': {'value': 1.0},
+                    'max_tokens': {'value': 600},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['model']['ok'])
+        self.assertTrue(checks['timeout_s']['ok'])
+        self.assertTrue(checks['temperature']['ok'])
+        self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['max_tokens']['ok'])
+        self.assertTrue(checks['shared_transport_runtime']['ok'])
+        self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
         self.assertTrue(checks['shared_transport_runtime']['ok'])
         self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
 

@@ -175,6 +175,11 @@ def _seed_value(section: str, field: str) -> Any:
         ('arbiter_model', 'temperature'): 0.0,
         ('arbiter_model', 'top_p'): 1.0,
         ('arbiter_model', 'timeout_s'): config.ARBITER_TIMEOUT_S,
+        ('memory_arbiter_model', 'model'): config.MEMORY_ARBITER_MODEL,
+        ('memory_arbiter_model', 'temperature'): config.MEMORY_ARBITER_TEMPERATURE,
+        ('memory_arbiter_model', 'top_p'): config.MEMORY_ARBITER_TOP_P,
+        ('memory_arbiter_model', 'max_tokens'): config.MEMORY_ARBITER_MAX_TOKENS,
+        ('memory_arbiter_model', 'timeout_s'): config.MEMORY_ARBITER_TIMEOUT_S,
         ('summary_model', 'model'): config.SUMMARY_MODEL,
         ('summary_model', 'temperature'): 0.3,
         ('summary_model', 'top_p'): 1.0,
@@ -432,6 +437,13 @@ def get_main_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[st
 
 def get_arbiter_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('arbiter_model', fetcher=fetcher)
+
+
+def get_memory_arbiter_model_settings(
+    *,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    return get_runtime_section('memory_arbiter_model', fetcher=fetcher)
 
 
 def get_summary_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:

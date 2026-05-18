@@ -100,15 +100,26 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertEqual(readonly_info['context_max_tokens']['value'], config.MAX_TOKENS)
         self.assertFalse(readonly_info['context_max_tokens']['is_editable'])
 
-    def test_get_section_readonly_info_arbiter_model_exposes_budgets_paths_and_prompts(self) -> None:
+    def test_get_section_readonly_info_memory_arbiter_model_exposes_prompt_transport_and_benchmark(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('memory_arbiter_model')
+
+        self.assertEqual(readonly_info['prompt_path']['label'], 'ARBITER_PROMPT_PATH')
+        self.assertEqual(readonly_info['prompt_path']['value'], config.ARBITER_PROMPT_PATH)
+        self.assertIn('You are a conversational memory arbiter.', readonly_info['system_prompt']['value'])
+        self.assertIn('main_model.title_arbiter', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_arbiter', readonly_info['shared_transport']['value'])
+        self.assertEqual(
+            readonly_info['benchmark_decision']['value'],
+            'benchmark/results/arbiter/2026-05-18-arbiter-final-tournament-summary.md',
+        )
+
+    def test_get_section_readonly_info_arbiter_model_documents_identity_legacy_scope(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
 
-        self.assertEqual(readonly_info['decision_max_tokens']['value'], 600)
-        self.assertFalse(readonly_info['decision_max_tokens']['is_editable'])
         self.assertEqual(readonly_info['identity_extractor_max_tokens']['value'], 700)
         self.assertFalse(readonly_info['identity_extractor_max_tokens']['is_editable'])
-        self.assertEqual(readonly_info['arbiter_prompt_path']['label'], 'ARBITER_PROMPT_PATH')
-        self.assertEqual(readonly_info['arbiter_prompt_path']['value'], config.ARBITER_PROMPT_PATH)
+        self.assertEqual(readonly_info['identity_periodic_agent_max_tokens']['value'], 1400)
+        self.assertFalse(readonly_info['identity_periodic_agent_max_tokens']['is_editable'])
         self.assertEqual(
             readonly_info['identity_extractor_prompt_path']['label'],
             'IDENTITY_EXTRACTOR_PROMPT_PATH',
@@ -117,8 +128,8 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['identity_extractor_prompt_path']['value'],
             config.IDENTITY_EXTRACTOR_PROMPT_PATH,
         )
-        self.assertIn('You are a conversational memory arbiter.', readonly_info['arbiter_prompt']['value'])
         self.assertIn('You are an identity evidence extractor.', readonly_info['identity_extractor_prompt']['value'])
+        self.assertIn('Shared identity extractor', readonly_info['legacy_scope']['value'])
 
     def test_get_section_readonly_info_summary_model_exposes_budgets_and_inline_prompt(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('summary_model')
@@ -213,6 +224,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         expected_non_empty = {
             'main_model',
             'arbiter_model',
+            'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
             'stimmung_agent_model',

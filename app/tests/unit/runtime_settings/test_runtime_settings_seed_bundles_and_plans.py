@@ -72,6 +72,14 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['max_tokens']['value'], config.WEB_REFORMULATION_MAX_TOKENS)
         self.assertEqual(bundle.payload['timeout_s']['value'], config.WEB_REFORMULATION_TIMEOUT_S)
 
+    def test_build_env_seed_bundle_uses_dedicated_memory_arbiter_model_values(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('memory_arbiter_model')
+        self.assertEqual(bundle.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
+        self.assertEqual(bundle.payload['temperature']['value'], config.MEMORY_ARBITER_TEMPERATURE)
+        self.assertEqual(bundle.payload['top_p']['value'], config.MEMORY_ARBITER_TOP_P)
+        self.assertEqual(bundle.payload['max_tokens']['value'], config.MEMORY_ARBITER_MAX_TOKENS)
+        self.assertEqual(bundle.payload['timeout_s']['value'], config.MEMORY_ARBITER_TIMEOUT_S)
+
     def test_build_env_seed_bundle_marks_seed_default_fields_with_seed_default_origin(self) -> None:
         main_model_bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')
@@ -121,6 +129,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             missing,
             (
                 'arbiter_model',
+                'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
                 'stimmung_agent_model',
@@ -138,6 +147,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             tuple(bundle.section for bundle in plan),
             (
                 'arbiter_model',
+                'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
                 'stimmung_agent_model',
@@ -154,6 +164,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             tuple(bundle.section for bundle in plan),
             (
                 'arbiter_model',
+                'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
                 'stimmung_agent_model',
@@ -164,7 +175,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[5].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[6].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

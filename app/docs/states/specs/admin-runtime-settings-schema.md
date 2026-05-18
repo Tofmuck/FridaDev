@@ -10,8 +10,8 @@ Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne
 
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
-- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
-- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
+- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
+- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
 - `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
@@ -37,7 +37,7 @@ Colonnes cibles :
 
 Contraintes cibles :
 
-- `section` appartient strictement a : `main_model`, `arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
+- `section` appartient strictement a : `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
 - une seule ligne par section
 
 ## Table `runtime_settings_history`
@@ -136,12 +136,26 @@ Notes:
 
 ### `arbiter_model`
 
+Slot legacy temporaire pour les callers identity qui n'ont pas encore leur lot de benchmark/découplage (`extract_identities()` et `run_identity_periodic_agent()`). L'arbitre memoire n'utilise plus cette section.
+
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
 | `model` | `text` | non | `ARBITER_MODEL` |
-| `temperature` | `float` | non | hardcode `app/memory/arbiter.py` = `0.0` |
-| `top_p` | `float` | non | hardcode `app/memory/arbiter.py` = `1.0` |
+| `temperature` | `float` | non | defaut runtime `0.0` |
+| `top_p` | `float` | non | defaut runtime `1.0` |
 | `timeout_s` | `int` | non | `ARBITER_TIMEOUT_S` |
+
+### `memory_arbiter_model`
+
+Slot individualise de l'arbitre memoire. Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_arbiter`, `title_arbiter`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout.
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `model` | `text` | non | `MEMORY_ARBITER_MODEL`, defaut `mistralai/mistral-small-2603` |
+| `temperature` | `float` | non | `MEMORY_ARBITER_TEMPERATURE`, defaut `0.0` |
+| `top_p` | `float` | non | `MEMORY_ARBITER_TOP_P`, defaut `1.0` |
+| `max_tokens` | `int` | non | `MEMORY_ARBITER_MAX_TOKENS`, defaut `600` |
+| `timeout_s` | `int` | non | `MEMORY_ARBITER_TIMEOUT_S`, defaut `10` |
 
 ### `summary_model`
 

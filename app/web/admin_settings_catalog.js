@@ -7,8 +7,13 @@
     },
     {
       key: "arbiter_model",
-      title: "Modele arbitre",
-      description: "Decision memoire, timeout et reglages propres a l'arbitre.",
+      title: "Modele identity legacy",
+      description: "Slot provisoire partage par l'extracteur et l'agent periodic identity.",
+    },
+    {
+      key: "memory_arbiter_model",
+      title: "Arbitre memoire",
+      description: "Decision memoire individualisee, modele benchmarke et reglages propres.",
     },
     {
       key: "summary_model",
@@ -218,6 +223,15 @@
       step: "0.05",
       min: "0.01",
       max: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "max_tokens",
+      label: "Max tokens",
+      hint: "Budget de sortie propre a l'arbitre memoire.",
+      inputType: "number",
+      step: "1",
+      min: "1",
       autocomplete: "off",
     },
     {
