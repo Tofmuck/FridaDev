@@ -194,6 +194,7 @@
         draft: state.summaryModel.draft,
         emptyDraft: emptySummaryModelDraft,
         fieldSpecs: summaryModelFieldSpecs,
+        integerFields: ["max_tokens", "timeout_s"],
       });
     };
 

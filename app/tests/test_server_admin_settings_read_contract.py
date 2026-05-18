@@ -139,9 +139,10 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'You are a conversational memory arbiter.',
             data['sections']['memory_arbiter_model']['readonly_info']['system_prompt']['value'],
         )
+        self.assertNotIn('summary_target_tokens', data['sections']['summary_model']['readonly_info'])
         self.assertEqual(
-            data['sections']['summary_model']['readonly_info']['summary_target_tokens']['value'],
-            runtime_settings.config.SUMMARY_TARGET_TOKENS,
+            data['sections']['summary_model']['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/summary/2026-05-18-summary-human-final.md',
         )
         self.assertIn(
             'Tu es un assistant de synthèse.',
@@ -366,6 +367,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 payload={
                     'model': {'value': 'openrouter/summary-route', 'is_secret': False, 'origin': 'db'},
                     'temperature': {'value': 0.3, 'is_secret': False, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 2000, 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 90, 'is_secret': False, 'origin': 'db'},
                 },
                 source='db',
                 source_reason='db_row',
@@ -383,10 +387,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'summary_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-route')
         self.assertEqual(data['payload']['temperature']['value'], 0.3)
-        self.assertEqual(
-            data['readonly_info']['summary_target_tokens']['value'],
-            runtime_settings.config.SUMMARY_TARGET_TOKENS,
-        )
+        self.assertEqual(data['payload']['max_tokens']['value'], 2000)
+        self.assertEqual(data['payload']['timeout_s']['value'], 90)
+        self.assertNotIn('summary_target_tokens', data['readonly_info'])
         self.assertEqual(
             data['readonly_info']['summary_threshold_tokens']['value'],
             runtime_settings.config.SUMMARY_THRESHOLD_TOKENS,
@@ -398,6 +401,11 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertIn(
             'Tu es un assistant de synthèse.',
             data['readonly_info']['system_prompt']['value'],
+        )
+        self.assertIn('main_model.title_resumer', data['readonly_info']['shared_transport']['value'])
+        self.assertEqual(
+            data['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/summary/2026-05-18-summary-human-final.md',
         )
 
     def test_get_admin_settings_web_reformulation_model_returns_single_section(self) -> None:

@@ -234,6 +234,9 @@ SUMMARY_THRESHOLD_TOKENS = _env_int('SUMMARY_THRESHOLD_TOKENS', 35000)
 SUMMARY_TARGET_TOKENS = _env_int('SUMMARY_TARGET_TOKENS', 2000)
 SUMMARY_KEEP_TURNS = _env_int('SUMMARY_KEEP_TURNS', 5)
 SUMMARY_MODEL = os.environ.get('SUMMARY_MODEL', 'openai/gpt-5.4-mini')
+SUMMARY_TEMPERATURE = _env_float('SUMMARY_TEMPERATURE', 0.3)
+SUMMARY_TOP_P = _env_float('SUMMARY_TOP_P', 1.0)
+SUMMARY_TIMEOUT_S = _env_int('SUMMARY_TIMEOUT_S', 90)
 
 # Hermeneutics.
 # These thresholds are seeds, not fixed truths.

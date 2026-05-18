@@ -540,6 +540,19 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('hint: "Budget de generation par defaut envoye au modele principal."', catalog_source)
         self.assertIn('integerFields: ["response_max_tokens"]', source_all)
 
+    def test_admin_js_exposes_complete_summary_model_runtime_fields(self) -> None:
+        catalog_source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
+        summary_source = (APP_DIR / "web" / "admin_section_summary_model.js").read_text(encoding="utf-8")
+
+        self.assertIn('key: "model"', catalog_source)
+        self.assertIn('key: "temperature"', catalog_source)
+        self.assertIn('key: "top_p"', catalog_source)
+        self.assertIn('key: "max_tokens"', catalog_source)
+        self.assertIn('hint: "Budget de sortie propre au resumeur."', catalog_source)
+        self.assertIn('key: "timeout_s"', catalog_source)
+        self.assertIn('hint: "Timeout applique aux appels resumeur."', catalog_source)
+        self.assertIn('integerFields: ["max_tokens", "timeout_s"]', summary_source)
+
     def test_admin_js_exposes_editable_main_model_component_referers(self) -> None:
         source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
 

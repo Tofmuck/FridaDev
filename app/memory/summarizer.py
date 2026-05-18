@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Mapping
 
 import requests
 
@@ -17,8 +17,29 @@ logger = logging.getLogger("frida.summarizer")
 
 
 def _runtime_summary_model_name() -> str:
+    return str(_runtime_summary_settings()['model'])
+
+
+def _runtime_summary_settings() -> dict[str, Any]:
     view = runtime_settings.get_summary_model_settings()
-    return str(view.payload['model']['value'])
+    payload = view.payload
+
+    def value(field: str, default: Any) -> Any:
+        field_payload = payload.get(field)
+        if not isinstance(field_payload, Mapping):
+            return default
+        resolved = field_payload.get('value')
+        if resolved in (None, ''):
+            return default
+        return resolved
+
+    return {
+        'model': str(value('model', config.SUMMARY_MODEL)).strip() or config.SUMMARY_MODEL,
+        'temperature': float(value('temperature', config.SUMMARY_TEMPERATURE)),
+        'top_p': float(value('top_p', config.SUMMARY_TOP_P)),
+        'max_tokens': int(value('max_tokens', config.SUMMARY_TARGET_TOKENS)),
+        'timeout_s': int(value('timeout_s', config.SUMMARY_TIMEOUT_S)),
+    }
 
 
 def _now_iso() -> str:
@@ -33,8 +54,10 @@ def _raw_dialogue(conversation: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def summarize_conversation(turns: list[dict[str, Any]], model: str) -> str:
+def summarize_conversation(turns: list[dict[str, Any]], model: str | None = None) -> str:
     """Appelle un LLM cheap via OpenRouter pour résumer une liste de tours de dialogue."""
+    summary_settings = _runtime_summary_settings()
+    summary_model = str(summary_settings['model'])
     parts = []
     for turn in turns:
         role = "Utilisateur" if turn.get("role") == "user" else "Assistant"
@@ -52,24 +75,24 @@ def summarize_conversation(turns: list[dict[str, Any]], model: str) -> str:
         {"role": "user", "content": f"Voici le dialogue à résumer :\n\n{dialogue_text}"},
     ]
     payload = {
-        "model": model,
+        "model": summary_model,
         "messages": messages,
-        "temperature": 0.3,
-        "top_p": 1.0,
-        "max_tokens": config.SUMMARY_TARGET_TOKENS,
+        "temperature": float(summary_settings['temperature']),
+        "top_p": float(summary_settings['top_p']),
+        "max_tokens": int(summary_settings['max_tokens']),
     }
     r = requests.post(
-        f"{config.OR_BASE}/chat/completions",
+        llm_client.or_chat_completions_url(),
         json=payload,
         headers=llm_client.or_headers(caller='resumer'),
-        timeout=90,
+        timeout=int(summary_settings['timeout_s']),
     )
     r.raise_for_status()
     response_payload = llm_client.read_openrouter_response_payload(r)
     llm_client.log_provider_metadata(
         logger,
         'summarizer_provider_response',
-        llm_client.extract_openrouter_provider_metadata(response_payload, requested_model=model),
+        llm_client.extract_openrouter_provider_metadata(response_payload, requested_model=summary_model),
     )
     return llm_client.extract_openrouter_text(response_payload)
 

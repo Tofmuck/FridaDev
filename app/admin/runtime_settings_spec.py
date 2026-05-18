@@ -118,8 +118,10 @@ SECTION_SPECS: dict[str, SectionSpec] = {
         name='summary_model',
         fields=(
             FieldSpec('model', 'text', env_var='SUMMARY_MODEL'),
-            FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.3),
-            FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
+            FieldSpec('temperature', 'float', env_var='SUMMARY_TEMPERATURE'),
+            FieldSpec('top_p', 'float', env_var='SUMMARY_TOP_P'),
+            FieldSpec('max_tokens', 'int', env_var='SUMMARY_TARGET_TOKENS'),
+            FieldSpec('timeout_s', 'int', env_var='SUMMARY_TIMEOUT_S'),
         ),
     ),
     'web_reformulation_model': SectionSpec(

@@ -203,6 +203,10 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 payload.pop('referer_resumer', None)
                 payload.pop('referer_stimmung_agent', None)
                 payload.pop('referer_validation_agent', None)
+            if section == 'summary_model':
+                payload = dict(payload)
+                payload.pop('max_tokens', None)
+                payload.pop('timeout_s', None)
             existing_rows.append((section, payload))
 
         class FakeCursor:
@@ -249,7 +253,7 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
         self.assertTrue(observed['committed'])
         self.assertEqual(result['inserted_sections'], ())
         self.assertEqual(result['inserted_fields'], ())
-        self.assertEqual(result['updated_sections'], ('main_model',))
+        self.assertEqual(result['updated_sections'], ('main_model', 'summary_model'))
         self.assertEqual(
             result['updated_fields'],
             (
@@ -260,6 +264,8 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 'main_model.referer_stimmung_agent',
                 'main_model.referer_validation_agent',
                 'main_model.response_max_tokens',
+                'summary_model.max_tokens',
+                'summary_model.timeout_s',
             ),
         )
 
@@ -268,11 +274,15 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
             for query, params in zip(observed['queries'], observed['params'])
             if params and 'INSERT INTO runtime_settings (section' in query
         ]
-        self.assertEqual(len(updated_payloads), 1)
+        self.assertEqual(len(updated_payloads), 2)
         self.assertEqual(updated_payloads[0]['referer_llm']['value'], config.OR_REFERER_LLM)
         self.assertEqual(updated_payloads[0]['referer_llm']['origin'], 'db_seed')
         self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 8192)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
+        self.assertEqual(updated_payloads[1]['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
+        self.assertEqual(updated_payloads[1]['max_tokens']['origin'], 'db_seed')
+        self.assertEqual(updated_payloads[1]['timeout_s']['value'], config.SUMMARY_TIMEOUT_S)
+        self.assertEqual(updated_payloads[1]['timeout_s']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

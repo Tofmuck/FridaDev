@@ -653,6 +653,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
                 payload={
                     'model': {'value': 'openrouter/summary-patched', 'is_secret': False, 'origin': 'admin_ui'},
                     'temperature': {'value': 0.15, 'is_secret': False, 'origin': 'admin_ui'},
+                    'top_p': {'value': 0.9, 'is_secret': False, 'origin': 'admin_ui'},
+                    'max_tokens': {'value': 2300, 'is_secret': False, 'origin': 'admin_ui'},
+                    'timeout_s': {'value': 95, 'is_secret': False, 'origin': 'admin_ui'},
                 },
                 source='db',
                 source_reason='db_row',
@@ -667,6 +670,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
                     'payload': {
                         'model': {'value': 'openrouter/summary-patched'},
                         'temperature': {'value': 0.15},
+                        'top_p': {'value': 0.9},
+                        'max_tokens': {'value': 2300},
+                        'timeout_s': {'value': 95},
                     },
                 },
             )
@@ -681,6 +687,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
             {
                 'model': {'value': 'openrouter/summary-patched'},
                 'temperature': {'value': 0.15},
+                'top_p': {'value': 0.9},
+                'max_tokens': {'value': 2300},
+                'timeout_s': {'value': 95},
             },
         )
         data = response.get_json()
@@ -688,6 +697,9 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'summary_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/summary-patched')
         self.assertEqual(data['payload']['temperature']['value'], 0.15)
+        self.assertEqual(data['payload']['top_p']['value'], 0.9)
+        self.assertEqual(data['payload']['max_tokens']['value'], 2300)
+        self.assertEqual(data['payload']['timeout_s']['value'], 95)
 
     def test_patch_admin_settings_embedding_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}

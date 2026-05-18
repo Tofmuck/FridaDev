@@ -35,6 +35,8 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertEqual(arbiter_model.payload['model']['value'], config.ARBITER_MODEL)
         self.assertEqual(memory_arbiter_model.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
         self.assertEqual(summary_model.payload['model']['value'], config.SUMMARY_MODEL)
+        self.assertEqual(summary_model.payload['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
+        self.assertEqual(summary_model.payload['timeout_s']['value'], config.SUMMARY_TIMEOUT_S)
         self.assertEqual(web_reformulation_model.payload['model']['value'], config.WEB_REFORMULATION_MODEL)
         self.assertEqual(embedding.payload['endpoint']['value'], config.EMBED_BASE_URL)
         self.assertEqual(embedding.payload['dimensions']['value'], config.EMBED_DIM)

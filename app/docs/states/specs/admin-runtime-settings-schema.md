@@ -159,11 +159,15 @@ Slot individualise de l'arbitre memoire. Il partage le transport OpenRouter de `
 
 ### `summary_model`
 
+Slot individualise du resume conversationnel. Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_resumer`, `title_resumer`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision benchmark humaine du 2026-05-18 conserve `openai/gpt-5.4-mini`.
+
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `model` | `text` | non | `SUMMARY_MODEL` |
-| `temperature` | `float` | non | hardcode `app/memory/summarizer.py` = `0.3` |
-| `top_p` | `float` | non | hardcode `app/memory/summarizer.py` = `1.0` |
+| `model` | `text` | non | `SUMMARY_MODEL`, defaut `openai/gpt-5.4-mini` |
+| `temperature` | `float` | non | `SUMMARY_TEMPERATURE`, defaut `0.3` |
+| `top_p` | `float` | non | `SUMMARY_TOP_P`, defaut `1.0` |
+| `max_tokens` | `int` | non | `SUMMARY_TARGET_TOKENS`, defaut `2000` |
+| `timeout_s` | `int` | non | `SUMMARY_TIMEOUT_S`, defaut `90` |
 
 ### `web_reformulation_model`
 

@@ -224,12 +224,6 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
         }
     if section == 'summary_model':
         return {
-            'summary_target_tokens': {
-                'label': 'SUMMARY_TARGET_TOKENS',
-                'value': int(config.SUMMARY_TARGET_TOKENS),
-                'is_editable': False,
-                'source': 'config_py',
-            },
             'summary_threshold_tokens': {
                 'label': 'SUMMARY_THRESHOLD_TOKENS',
                 'value': int(config.SUMMARY_THRESHOLD_TOKENS),
@@ -247,6 +241,18 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'value': prompt_loader.get_summary_system_prompt(),
                 'is_editable': False,
                 'source': 'prompt_file',
+            },
+            'shared_transport': {
+                'label': 'OPENROUTER_SHARED_TRANSPORT',
+                'value': _shared_openrouter_transport_text('main_model.title_resumer', 'main_model.referer_resumer'),
+                'is_editable': False,
+                'source': 'main_model_runtime_settings',
+            },
+            'benchmark_decision': {
+                'label': 'SUMMARY_BENCHMARK_DECISION',
+                'value': 'benchmark/results/summary/2026-05-18-summary-human-final.md',
+                'is_editable': False,
+                'source': 'benchmark_artifact',
             },
         }
     if section == 'web_reformulation_model':

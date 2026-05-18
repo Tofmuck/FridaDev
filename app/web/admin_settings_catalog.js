@@ -272,6 +272,24 @@
       max: "1",
       autocomplete: "off",
     },
+    {
+      key: "max_tokens",
+      label: "Max tokens",
+      hint: "Budget de sortie propre au resumeur.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
+    {
+      key: "timeout_s",
+      label: "Timeout",
+      hint: "Timeout applique aux appels resumeur.",
+      inputType: "number",
+      step: "1",
+      min: "1",
+      autocomplete: "off",
+    },
   ];
   const stimmungAgentModelFieldSpecs = [
     {

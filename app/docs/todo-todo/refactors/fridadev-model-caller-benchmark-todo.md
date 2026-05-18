@@ -31,7 +31,7 @@ Source de verite de depart:
 ## Callers OpenRouter a traiter progressivement
 
 - [x] Arbitre memoire.
-- [ ] Resume conversationnel.
+- [x] Resume conversationnel.
 - [ ] Extracteur identity.
 - [ ] Agent periodic identity.
 - [ ] Stimmung agent primaire.
@@ -45,8 +45,8 @@ Source de verite de depart:
 - [x] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
 - [x] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
 - [x] Benchmark resume conversationnel: campagne exploratoire puis finale humaine a trois modeles produites.
-- [ ] Decision resume conversationnel.
-- [ ] Decouplage propre du resume conversationnel.
+- [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`, meilleur equilibre humain entre ecriture, detail et synthese.
+- [x] Decouplage propre du resume conversationnel: `summary_model` devient source runtime effective de model/temp/top_p/max_tokens/timeout.
 - [ ] Benchmark extracteur identity.
 - [ ] Decision extracteur identity.
 - [ ] Decouplage propre de l'extracteur identity.
@@ -185,8 +185,9 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 ## Prochain caller
 
 - [x] Benchmark resume conversationnel: meme vrai materiau Frida envoye aux finalistes, sorties completes conservees pour lecture humaine.
-- [ ] Decision resume conversationnel.
-- [ ] Decouplage propre du resume conversationnel.
+- [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`.
+- [x] Decouplage propre du resume conversationnel.
+- [ ] Prochain caller: extracteur identity.
 
 ## Campagne de lecture humaine - resume conversationnel
 
@@ -205,8 +206,11 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Produire un index Markdown de campagne avec latence, cout estime, tokens si disponibles et chemins des sorties completes.
 - [x] Produire un artefact JSON structure sans secret et sans materiau source brut.
 - [x] Ne pas attribuer de score automatique et ne pas proclamer de vainqueur.
-- [ ] Lecture humaine finale de Tof et decision: garder `openai/gpt-5.4-mini`, basculer vers un autre modele, ou tester encore.
-- [ ] Decouplage runtime du resume conversationnel seulement apres decision humaine documentee.
+- [x] Lecture humaine finale de Tof: garder `openai/gpt-5.4-mini`.
+- [x] Acter la raison humaine: meilleur equilibre entre ecriture, detail et synthese; garde le mouvement du dialogue sans devenir une fiche froide.
+- [x] Decoupler `summary_model` sans changer le token ni le projet OpenRouter partages.
+- [x] Exposer `model`, `temperature`, `top_p`, `max_tokens`, `timeout_s` comme sources effectives du payload runtime.
+- [x] Mettre a jour API/admin/read-models/audit pour que le resume conversationnel apparaisse comme caller individualise.
 
 ## Definition de fin globale
 

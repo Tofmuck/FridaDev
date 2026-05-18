@@ -80,6 +80,14 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['max_tokens']['value'], config.MEMORY_ARBITER_MAX_TOKENS)
         self.assertEqual(bundle.payload['timeout_s']['value'], config.MEMORY_ARBITER_TIMEOUT_S)
 
+    def test_build_env_seed_bundle_uses_dedicated_summary_model_values(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('summary_model')
+        self.assertEqual(bundle.payload['model']['value'], config.SUMMARY_MODEL)
+        self.assertEqual(bundle.payload['temperature']['value'], config.SUMMARY_TEMPERATURE)
+        self.assertEqual(bundle.payload['top_p']['value'], config.SUMMARY_TOP_P)
+        self.assertEqual(bundle.payload['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
+        self.assertEqual(bundle.payload['timeout_s']['value'], config.SUMMARY_TIMEOUT_S)
+
     def test_build_env_seed_bundle_marks_seed_default_fields_with_seed_default_origin(self) -> None:
         main_model_bundle = runtime_settings.build_env_seed_bundle('main_model')
         self.assertEqual(main_model_bundle.payload['temperature']['origin'], 'seed_default')

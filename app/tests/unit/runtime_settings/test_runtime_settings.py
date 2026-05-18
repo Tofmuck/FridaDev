@@ -141,6 +141,27 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             'WEB_REFORMULATION_TIMEOUT_S',
         )
 
+    def test_summary_model_has_complete_dedicated_runtime_section(self) -> None:
+        spec = runtime_settings.get_section_spec('summary_model')
+        self.assertEqual(
+            spec.field_names(),
+            ('model', 'temperature', 'top_p', 'max_tokens', 'timeout_s'),
+        )
+        self.assertEqual(runtime_settings.get_field_spec('summary_model', 'model').env_var, 'SUMMARY_MODEL')
+        self.assertEqual(
+            runtime_settings.get_field_spec('summary_model', 'temperature').env_var,
+            'SUMMARY_TEMPERATURE',
+        )
+        self.assertEqual(runtime_settings.get_field_spec('summary_model', 'top_p').env_var, 'SUMMARY_TOP_P')
+        self.assertEqual(
+            runtime_settings.get_field_spec('summary_model', 'max_tokens').env_var,
+            'SUMMARY_TARGET_TOKENS',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('summary_model', 'timeout_s').env_var,
+            'SUMMARY_TIMEOUT_S',
+        )
+
     def test_main_model_includes_identity_extractor_title_field(self) -> None:
         spec = runtime_settings.get_field_spec('main_model', 'title_identity_extractor')
         self.assertEqual(spec.value_type, 'text')

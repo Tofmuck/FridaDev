@@ -133,6 +133,8 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
                         'model': {'value': 'openai/gpt-5.4-mini', 'origin': 'db'},
                         'temperature': {'value': 0.3, 'origin': 'db'},
                         'top_p': {'value': 1.0, 'origin': 'db'},
+                        'max_tokens': {'value': 2000, 'origin': 'db'},
+                        'timeout_s': {'value': 90, 'origin': 'db'},
                     },
                 ),
                 source='db',
@@ -208,9 +210,11 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertEqual(observed['model'], config.SUMMARY_MODEL)
 
-    def test_summarize_conversation_logs_provider_metadata_and_uses_resumer_caller(self) -> None:
-        observed = {'headers': None, 'provider_logs': []}
+    def test_summarize_conversation_logs_provider_metadata_and_uses_runtime_summary_slot(self) -> None:
+        observed = {'url': None, 'payload': None, 'headers': None, 'timeout': None, 'provider_logs': []}
         original_post = summarizer.requests.post
+        original_get_settings = summarizer.runtime_settings.get_summary_model_settings
+        original_url = summarizer.llm_client.or_chat_completions_url
         original_or_headers = summarizer.llm_client.or_headers
         original_log_provider_metadata = summarizer.llm_client.log_provider_metadata
         original_get_summary_system_prompt = summarizer.prompt_loader.get_summary_system_prompt
@@ -227,11 +231,33 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
                     'choices': [{'message': {'content': 'resume test'}}],
                 }
 
-        def fake_post(_url, *, json, headers, timeout):
+        def fake_get_summary_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='summary_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'summary_model',
+                    {
+                        'model': {'value': 'openrouter/summary-runtime', 'origin': 'db'},
+                        'temperature': {'value': 0.42, 'origin': 'db'},
+                        'top_p': {'value': 0.77, 'origin': 'db'},
+                        'max_tokens': {'value': 1234, 'origin': 'db'},
+                        'timeout_s': {'value': 56, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        def fake_post(url, *, json, headers, timeout):
+            observed['url'] = url
+            observed['payload'] = dict(json)
             observed['headers'] = dict(headers)
+            observed['timeout'] = timeout
             return FakeResponse()
 
         summarizer.requests.post = fake_post
+        summarizer.runtime_settings.get_summary_model_settings = fake_get_summary_model_settings
+        summarizer.llm_client.or_chat_completions_url = lambda: 'https://openrouter.runtime.test/chat/completions'
         summarizer.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
         summarizer.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: observed['provider_logs'].append(
             (event_name, dict(provider_metadata))
@@ -244,12 +270,20 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
             )
         finally:
             summarizer.requests.post = original_post
+            summarizer.runtime_settings.get_summary_model_settings = original_get_settings
+            summarizer.llm_client.or_chat_completions_url = original_url
             summarizer.llm_client.or_headers = original_or_headers
             summarizer.llm_client.log_provider_metadata = original_log_provider_metadata
             summarizer.prompt_loader.get_summary_system_prompt = original_get_summary_system_prompt
 
         self.assertEqual(result, 'resume test')
+        self.assertEqual(observed['url'], 'https://openrouter.runtime.test/chat/completions')
         self.assertEqual(observed['headers'], {'Authorization': 'caller=resumer'})
+        self.assertEqual(observed['timeout'], 56)
+        self.assertEqual(observed['payload']['model'], 'openrouter/summary-runtime')
+        self.assertEqual(observed['payload']['temperature'], 0.42)
+        self.assertEqual(observed['payload']['top_p'], 0.77)
+        self.assertEqual(observed['payload']['max_tokens'], 1234)
         self.assertEqual(
             observed['provider_logs'],
             [

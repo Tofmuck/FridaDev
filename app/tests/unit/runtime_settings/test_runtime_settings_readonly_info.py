@@ -131,12 +131,10 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertIn('You are an identity evidence extractor.', readonly_info['identity_extractor_prompt']['value'])
         self.assertIn('Shared identity extractor', readonly_info['legacy_scope']['value'])
 
-    def test_get_section_readonly_info_summary_model_exposes_budgets_and_inline_prompt(self) -> None:
+    def test_get_section_readonly_info_summary_model_exposes_prompt_transport_and_benchmark_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('summary_model')
 
-        self.assertEqual(readonly_info['summary_target_tokens']['label'], 'SUMMARY_TARGET_TOKENS')
-        self.assertEqual(readonly_info['summary_target_tokens']['value'], config.SUMMARY_TARGET_TOKENS)
-        self.assertFalse(readonly_info['summary_target_tokens']['is_editable'])
+        self.assertNotIn('summary_target_tokens', readonly_info)
         self.assertEqual(readonly_info['summary_threshold_tokens']['label'], 'SUMMARY_THRESHOLD_TOKENS')
         self.assertEqual(
             readonly_info['summary_threshold_tokens']['value'],
@@ -149,6 +147,12 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertEqual(readonly_info['system_prompt']['source'], 'prompt_file')
         self.assertIn('Tu es un assistant de synthèse.', readonly_info['system_prompt']['value'])
         self.assertIn('Écris en français.', readonly_info['system_prompt']['value'])
+        self.assertIn('main_model.title_resumer', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_resumer', readonly_info['shared_transport']['value'])
+        self.assertEqual(
+            readonly_info['benchmark_decision']['value'],
+            'benchmark/results/summary/2026-05-18-summary-human-final.md',
+        )
 
     def test_get_section_readonly_info_stimmung_agent_model_exposes_prompt_and_shared_transport(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('stimmung_agent_model')
