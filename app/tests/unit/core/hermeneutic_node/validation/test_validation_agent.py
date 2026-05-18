@@ -19,6 +19,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.validation import hard_guards, validation_agent
 
 
@@ -1498,6 +1499,42 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertIn('"final_output_regime":"simple|meta"', user_message)
         self.assertIn('"arbiter_reason":"raison_courte_lisible"', user_message)
         self.assertNotIn("validation_decision", user_message.split("schema attendu: ", 1)[1])
+
+    def test_build_messages_puts_local_temporal_reference_before_validation_context(self) -> None:
+        messages = validation_agent._build_messages(
+            system_prompt="SYSTEM PROMPT",
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context={
+                "schema_version": "v1",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": "Message juste avant minuit local.",
+                        "timestamp": "2026-05-17T21:00:00Z",
+                    },
+                    {
+                        "role": "user",
+                        "content": "Message courant juste apres minuit local.",
+                        "timestamp": "2026-05-17T22:05:00Z",
+                    },
+                ],
+            },
+            canonical_inputs={
+                "time_input": canonical_time_input.build_time_input(
+                    now_utc_iso="2026-05-17T22:05:00Z",
+                    timezone_name="Europe/Paris",
+                ),
+            },
+            hard_guard_payload={},
+        )
+
+        user_message = messages[1]["content"]
+        self.assertLess(user_message.index("temporal_reference"), user_message.index("validation_dialogue_context"))
+        self.assertIn('"local_date":"2026-05-18"', user_message)
+        self.assertIn('"timezone":"Europe/Paris"', user_message)
+        self.assertIn("dimanche 17 mai 2026 à 23h Europe/Paris — hier", user_message)
+        self.assertIn("lundi 18 mai 2026 à 0h05 Europe/Paris — à l'instant", user_message)
 
     def test_build_messages_bounds_large_validation_inputs(self) -> None:
         large_context = {

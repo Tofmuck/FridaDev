@@ -379,6 +379,38 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertIn('Je suis perdu ici', messages[1]['content'])
         self.assertNotIn('stimmung stabilisee', messages[1]['content'])
 
+    def test_stimmung_contract_ignores_temporal_gaps_and_keeps_timestamps_out(self) -> None:
+        prompt = (APP_DIR / 'prompts' / 'stimmung_agent.txt').read_text(encoding='utf-8')
+        messages = stimmung_agent._build_messages(
+            system_prompt=prompt,
+            user_msg='Je suis perdu depuis hier',
+            recent_window_input_payload={
+                'schema_version': 'v1',
+                'turns': [
+                    {
+                        'turn_status': 'complete',
+                        'messages': [
+                            {
+                                'role': 'user',
+                                'content': 'Avant',
+                                'timestamp': '2026-05-17T21:00:00Z',
+                            },
+                            {
+                                'role': 'assistant',
+                                'content': 'Reponse avant',
+                                'timestamp': '2026-05-17T21:01:00Z',
+                            },
+                        ],
+                    }
+                ],
+            },
+        )
+
+        self.assertIn('Tu ignores les timestamps, les delais et les gaps temporels', prompt)
+        self.assertNotIn('2026-05-17T21:00:00Z', messages[1]['content'])
+        self.assertNotIn('2026-05-17T21:01:00Z', messages[1]['content'])
+        self.assertIn("Tour utilisateur courant (centre de l'analyse", messages[1]['content'])
+
     def test_validate_affective_turn_signal_rejects_tone_outside_taxonomy(self) -> None:
         with self.assertRaises(stimmung_agent._SignalValidationError):
             stimmung_agent._validate_affective_turn_signal(

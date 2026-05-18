@@ -12,6 +12,7 @@ from admin import runtime_settings
 from core import llm_client
 from core import prompt_loader
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from observability import chat_turn_logger
 from . import hard_guards
 
@@ -121,7 +122,7 @@ def _stable_unique(values: Sequence[str]) -> list[str]:
 
 
 def _compact_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def _compact_text(value: Any, *, max_chars: int) -> str:
@@ -326,7 +327,46 @@ def _emit_validation_prompt_prepared(
     )
 
 
-def _compacted_validation_dialogue_context(value: Any) -> str:
+def _validation_time_reference(canonical_inputs: Mapping[str, Any]) -> dict[str, Any]:
+    time_payload = _mapping(_mapping(canonical_inputs).get("time_input"))
+    now_utc_iso = _text(time_payload.get("now_utc_iso"))
+    timezone_name = _text(time_payload.get("timezone"))
+    if not now_utc_iso or not timezone_name:
+        return {}
+    if not _text(time_payload.get("now_local_iso")):
+        try:
+            time_payload = canonical_time_input.build_time_input(
+                now_utc_iso=now_utc_iso,
+                timezone_name=timezone_name,
+            )
+        except Exception:
+            time_payload = dict(time_payload)
+    return {
+        "now_utc_iso": _text(time_payload.get("now_utc_iso")) or now_utc_iso,
+        "timezone": timezone_name,
+        "now_local_iso": _text(time_payload.get("now_local_iso")),
+        "local_date": _text(time_payload.get("local_date")),
+        "local_time": _text(time_payload.get("local_time")),
+    }
+
+
+def _message_temporal_label(timestamp: str, time_reference: Mapping[str, Any]) -> str:
+    now_utc_iso = _text(time_reference.get("now_utc_iso"))
+    timezone_name = _text(time_reference.get("timezone"))
+    if not timestamp or not now_utc_iso or not timezone_name:
+        return ""
+    return canonical_time_input.render_delta_label(
+        timestamp,
+        now_utc_iso,
+        timezone_name=timezone_name,
+    )
+
+
+def _compacted_validation_dialogue_context(
+    value: Any,
+    *,
+    time_reference: Mapping[str, Any] | None = None,
+) -> str:
     payload = _mapping(value)
     raw_messages = payload.get("messages")
     if not isinstance(raw_messages, list):
@@ -334,6 +374,7 @@ def _compacted_validation_dialogue_context(value: Any) -> str:
 
     retained_messages: list[dict[str, Any]] = []
     content_truncated = False
+    time_payload = _mapping(time_reference)
     for item in raw_messages[-MAX_VALIDATION_CONTEXT_MESSAGES:]:
         message_payload = _mapping(item)
         role = _text(message_payload.get("role"))
@@ -342,34 +383,45 @@ def _compacted_validation_dialogue_context(value: Any) -> str:
         raw_content = _text(message_payload.get("content"))
         content = _compact_text(raw_content, max_chars=MAX_VALIDATION_CONTEXT_MESSAGE_CHARS)
         content_truncated = content_truncated or raw_content != content
-        retained_messages.append(
-            {
-                "role": role,
-                "timestamp": _text(message_payload.get("timestamp")) or None,
-                "content": content,
-            }
-        )
+        timestamp = _text(message_payload.get("timestamp")) or None
+        retained = {
+            "role": role,
+            "timestamp": timestamp,
+            "content": content,
+        }
+        if timestamp:
+            temporal_label = _message_temporal_label(timestamp, time_payload)
+            if temporal_label:
+                retained["temporal_label"] = temporal_label
+        retained_messages.append(retained)
 
+    compacted_payload: dict[str, Any] = {
+        "schema_version": _text(payload.get("schema_version")) or SCHEMA_VERSION,
+        "message_count": int(payload.get("source_message_count") or len(raw_messages)),
+        "retained_message_count": len(retained_messages),
+        "current_user_retained": bool(
+            payload.get(
+                "current_user_retained",
+                bool(retained_messages and _text(retained_messages[-1].get("role")) == "user"),
+            )
+        ),
+        "last_assistant_retained": bool(
+            payload.get(
+                "last_assistant_retained",
+                any(_text(item.get("role")) == "assistant" for item in retained_messages),
+            )
+        ),
+        "messages": retained_messages,
+        "truncated": bool(payload.get("truncated", False) or content_truncated),
+    }
+    if time_payload:
+        compacted_payload["time_reference"] = {
+            key: _text(time_payload.get(key))
+            for key in ("now_utc_iso", "timezone", "now_local_iso", "local_date", "local_time")
+            if _text(time_payload.get(key))
+        }
     return _bounded_json_preview(
-        {
-            "schema_version": _text(payload.get("schema_version")) or SCHEMA_VERSION,
-            "message_count": int(payload.get("source_message_count") or len(raw_messages)),
-            "retained_message_count": len(retained_messages),
-            "current_user_retained": bool(
-                payload.get(
-                    "current_user_retained",
-                    bool(retained_messages and _text(retained_messages[-1].get("role")) == "user"),
-                )
-            ),
-            "last_assistant_retained": bool(
-                payload.get(
-                    "last_assistant_retained",
-                    any(_text(item.get("role")) == "assistant" for item in retained_messages),
-                )
-            ),
-            "messages": retained_messages,
-            "truncated": bool(payload.get("truncated", False) or content_truncated),
-        },
+        compacted_payload,
         max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS,
     )
 
@@ -831,7 +883,12 @@ def _build_messages(
     canonical_inputs: Mapping[str, Any],
     hard_guard_payload: Mapping[str, Any] | None,
 ) -> list[dict[str, str]]:
-    compacted_validation_dialogue_context = _compacted_validation_dialogue_context(validation_dialogue_context)
+    time_reference = _validation_time_reference(canonical_inputs)
+    compacted_time_reference = _bounded_json_preview(time_reference, max_chars=420) if time_reference else ""
+    compacted_validation_dialogue_context = _compacted_validation_dialogue_context(
+        validation_dialogue_context,
+        time_reference=time_reference,
+    )
     compacted_primary_verdict = _bounded_json_preview(primary_verdict, max_chars=MAX_PRIMARY_VERDICT_JSON_CHARS)
     compacted_justifications = _bounded_json_preview(justifications, max_chars=MAX_JUSTIFICATIONS_JSON_CHARS)
     compacted_canonical_inputs = _bounded_json_preview(canonical_inputs, max_chars=MAX_CANONICAL_INPUTS_JSON_CHARS)
@@ -850,6 +907,8 @@ def _build_messages(
         {
             "role": "user",
             "content": (
+                "temporal_reference (autorite locale pour lire le validation_dialogue_context):\n"
+                f"{compacted_time_reference or '{}'}\n\n"
                 "validation_dialogue_context (matiere hermeneutique principale, fenetre dialogique locale canonisee):\n"
                 f"{compacted_validation_dialogue_context}\n\n"
                 "primary_verdict (recommendation structuree amont, secondaire et non terminale):\n"

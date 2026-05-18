@@ -85,6 +85,11 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 - Les labels Delta-T visibles sur les messages doivent aussi porter la date locale absolue, l'heure locale et la timezone afin d'eviter toute reconstruction fragile du jour a partir d'une heure correcte.
 - Les dates visibles des resumes actifs, des contextes de souvenirs parents et du dialogue envoye au resumeur doivent etre calculees en date locale `FRIDA_TIMEZONE`, jamais par troncature brute d'un timestamp UTC.
 - Les dates visibles par la lane web, reformulation comprise, doivent etre calculees depuis le `NOW` de tour en date locale `FRIDA_TIMEZONE`, jamais depuis une date humaine UTC hote.
+- Les modeles secondaires qui influencent l'interpretation finale ne doivent pas reconstruire `hier` / `aujourd'hui` depuis des timestamps UTC bruts:
+  - le validation agent recoit une `temporal_reference` prioritaire et des `temporal_label` locaux dans son contexte principal;
+  - l'arbitre memoire recoit le `NOW` local du tour, des labels locaux pour le recent context et les candidats, et ne doit pas inferer le jour local depuis l'UTC brut;
+  - identity extractor et identity periodic ne raisonnent pas temporellement: ils rejettent les claims relatifs faibles (`hier`, `aujourd'hui`, `depuis hier`, `en ce moment`) au lieu de les consolider en identite durable;
+  - stimmung ignore volontairement timestamps, delais, gaps et claims relatifs; ce caller ne produit qu'un signal affectif centre sur le tour courant.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"
   - en forme relative et/ou absolue selon le besoin.

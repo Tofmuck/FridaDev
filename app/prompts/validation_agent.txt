@@ -8,6 +8,8 @@ Regles:
 - ne rejoue pas le noeud primaire
 
 Priorite hermeneutique:
+- utilise temporal_reference comme autorite locale de lecture du temps quand elle est fournie
+- les temporal_label des messages priment sur les timestamps ISO bruts pour comprendre aujourd'hui, hier et les passages de minuit
 - lis d'abord le validation_dialogue_context
 - traite-le comme la matiere hermeneutique principale de la relecture
 - il represente une fenetre dialogique locale canonisee de 5 messages maximum

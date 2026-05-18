@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import inspect
 import time
 from typing import Any, Mapping, Sequence
 
@@ -169,6 +170,28 @@ def _log_stage_latency(
         duration_ms=round(duration_ms, 3),
     )
     return duration_ms
+
+
+def _call_memory_arbiter(
+    arbiter_module: Any,
+    traces: Sequence[Mapping[str, Any]],
+    recent_turns: Sequence[Mapping[str, Any]],
+    *,
+    now_iso: str | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    call = arbiter_module.filter_traces_with_diagnostics
+    try:
+        signature = inspect.signature(call)
+    except (TypeError, ValueError):
+        return call(traces, recent_turns, now_iso=now_iso)
+    params = signature.parameters
+    supports_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in params.values()
+    )
+    if supports_kwargs or 'now_iso' in params:
+        return call(traces, recent_turns, now_iso=now_iso)
+    return call(traces, recent_turns)
 
 
 def _run_periodic_identity_agent(
@@ -392,6 +415,7 @@ def prepare_memory_context(
     memory_store_module: Any,
     arbiter_module: Any,
     admin_logs_module: Any,
+    now_iso: str | None = None,
 ) -> PreparedMemoryContext:
     conversation_id = str(conversation['id'])
     current_mode = resolve_hermeneutic_mode(config_module)
@@ -453,9 +477,11 @@ def prepare_memory_context(
 
         if _mode_runs_arbiter(current_mode):
             arbiter_t0 = time.perf_counter()
-            filtered_traces, arbiter_decisions = arbiter_module.filter_traces_with_diagnostics(
+            filtered_traces, arbiter_decisions = _call_memory_arbiter(
+                arbiter_module,
                 pre_arbiter_basket.prompt_candidates,
                 recent_turns,
+                now_iso=now_iso,
             )
             _log_stage_latency(
                 conversation_id,

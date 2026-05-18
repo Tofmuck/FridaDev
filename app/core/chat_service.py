@@ -520,6 +520,7 @@ def chat_response(
         memory_store_module=memory_store_module,
         arbiter_module=arbiter_module,
         admin_logs_module=admin_logs_module,
+        now_iso=now_iso_value,
     )
     current_mode, memory_traces, context_hints = prepared_memory_context
     summary_payload = _resolve_summary_input(

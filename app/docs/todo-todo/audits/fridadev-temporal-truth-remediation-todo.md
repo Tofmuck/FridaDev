@@ -35,13 +35,13 @@ Ces sujets restent cartographies dans l'audit global, mais ne gouvernent pas le 
   - [x] Ne pas dependre de la locale systeme pour les mois/jours francais.
   - [x] Prouver qu'aucune reformulation web et aucun bloc web ne peut raconter un autre jour que `[RÉFÉRENCE TEMPORELLE]` autour de `2026-05-17T22:05:00Z`.
 
-- [ ] **Lot 2 - Modeles secondaires qui influencent l'interpretation**
-  - [ ] Validation agent: fournir `NOW/TIMEZONE` au bon niveau de priorite ou des labels locaux suffisants dans le contexte qu'il lit d'abord.
-  - [ ] Arbitre memoire: fournir recent context et candidats avec ancre locale suffisante, ou une politique explicite d'ignorance des claims temporels faibles.
-  - [ ] Identity extractor: soit fournir une ancre temporelle, soit rejeter explicitement les claims relatifs faibles (`hier`, `aujourd'hui`, `en ce moment`) comme non durables.
-  - [ ] Identity periodic: statuer sur son influence reelle; si elle peut consolider un claim temporel relatif, appliquer la meme regle d'ancrage ou de rejet.
-  - [ ] Stimmung: statuer sur son influence reelle; si les gaps temporels influencent le signal, fournir labels locaux, sinon documenter et tester l'ignorance volontaire.
-  - [ ] Couvrir chaque caller par un test ou une preuve montrant qu'il ne peut pas introduire un jour contradictoire dans l'interpretation finale.
+- [x] **Lot 2 - Modeles secondaires qui influencent l'interpretation**
+  - [x] Validation agent: fournir `NOW/TIMEZONE` au bon niveau de priorite ou des labels locaux suffisants dans le contexte qu'il lit d'abord.
+  - [x] Arbitre memoire: fournir recent context et candidats avec ancre locale suffisante, ou une politique explicite d'ignorance des claims temporels faibles.
+  - [x] Identity extractor: soit fournir une ancre temporelle, soit rejeter explicitement les claims relatifs faibles (`hier`, `aujourd'hui`, `en ce moment`) comme non durables.
+  - [x] Identity periodic: statuer sur son influence reelle; si elle peut consolider un claim temporel relatif, appliquer la meme regle d'ancrage ou de rejet.
+  - [x] Stimmung: statuer sur son influence reelle; si les gaps temporels influencent le signal, fournir labels locaux, sinon documenter et tester l'ignorance volontaire.
+  - [x] Couvrir chaque caller par un test ou une preuve montrant qu'il ne peut pas introduire un jour contradictoire dans l'interpretation finale.
 
 - [ ] **Lot 3 - Qualification deterministe et fallbacks**
   - [ ] Reconnaitre `hier` et `depuis hier` dans la qualification temporelle du tour.

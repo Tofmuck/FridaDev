@@ -140,6 +140,8 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
 
         for snippet in [
             "Discipline triadique",
+            "temporal_reference comme autorite locale",
+            "temporal_label des messages priment sur les timestamps ISO bruts",
             "Warum / Wofür / Wozu",
             "tiens les trois questions ensemble",
             "ne donne pas de souverainete au seul Wozu",
@@ -152,6 +154,18 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertNotIn("warum", prompt.split("Sortie attendue:", 1)[1].lower())
         self.assertNotIn("wofuer", prompt.split("Sortie attendue:", 1)[1].lower())
         self.assertNotIn("wozu", prompt.split("Sortie attendue:", 1)[1].lower())
+
+    def test_secondary_prompts_carry_temporal_lot2_contracts(self) -> None:
+        arbiter_prompt = prompt_loader.read_prompt_text("prompts/arbiter.txt")
+        identity_prompt = prompt_loader.read_prompt_text("prompts/identity_extractor.txt")
+        periodic_prompt = prompt_loader.read_prompt_text("prompts/identity_periodic_agent.txt")
+        stimmung_prompt = prompt_loader.read_prompt_text("prompts/stimmung_agent.txt")
+
+        self.assertIn("Temporal discipline", arbiter_prompt)
+        self.assertIn("Do not infer the local day from raw UTC timestamps.", arbiter_prompt)
+        self.assertIn("Reject weak relative temporal claims", identity_prompt)
+        self.assertIn("Reject weak relative temporal claims", periodic_prompt)
+        self.assertIn("Tu ignores les timestamps, les delais et les gaps temporels", stimmung_prompt)
 
     def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:
         system_path = prompt_loader.resolve_app_prompt_path(config.MAIN_SYSTEM_PROMPT_PATH)

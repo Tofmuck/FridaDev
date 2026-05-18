@@ -123,6 +123,229 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(observed_candidates[0]['semantic_score'], 0.0)
         self.assertNotIn('score', observed_candidates[0])
 
+    def test_filter_traces_payload_exposes_local_temporal_anchor_for_relative_memories(self) -> None:
+        observed = {'user_content': ''}
+        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': '{"decisions":[]}'}}]}
+
+        def fake_post(_url, json, headers, timeout):
+            observed['user_content'] = json['messages'][1]['content']
+            return FakeResponse()
+
+        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='arbiter': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            arbiter.filter_traces_with_diagnostics(
+                [
+                    {
+                        'candidate_id': 'cand-hier',
+                        'source_kind': 'trace',
+                        'source_lane': 'global',
+                        'role': 'user',
+                        'content': "Hier soir j'avais besoin de calme",
+                        'timestamp_iso': '2026-05-17T21:00:00Z',
+                        'retrieval_score': 0.91,
+                        'semantic_score': 0.91,
+                    }
+                ],
+                [
+                    {
+                        'role': 'user',
+                        'content': "Aujourd'hui je reparle de ce calme",
+                        'timestamp': '2026-05-17T22:05:00Z',
+                    }
+                ],
+                now_iso='2026-05-17T22:05:00Z',
+            )
+        finally:
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
+
+        user_content = observed['user_content']
+        self.assertLess(user_content.index('=== Temporal reference ==='), user_content.index('=== Recent context ==='))
+        self.assertIn('"local_date": "2026-05-18"', user_content)
+        self.assertIn('"timezone": "Europe/Paris"', user_content)
+        self.assertIn("lundi 18 mai 2026 à 0h05 Europe/Paris — à l'instant", user_content)
+        candidates = json.loads(user_content.split('=== Candidate memories ===\\n', 1)[1])
+        self.assertEqual(candidates[0]['candidate_id'], 'cand-hier')
+        self.assertEqual(
+            candidates[0]['temporal_label'],
+            'dimanche 17 mai 2026 à 23h Europe/Paris — hier',
+        )
+
+    def test_identity_extractor_rejects_weak_relative_temporal_entries(self) -> None:
+        observed = {'user_content': ''}
+        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {
+                    'choices': [
+                        {
+                            'message': {
+                                'content': json.dumps(
+                                    {
+                                        'entries': [
+                                            {
+                                                'subject': 'user',
+                                                'content': "Aujourd'hui je suis anxieux",
+                                                'stability': 'durable',
+                                                'utterance_mode': 'self_description',
+                                                'recurrence': 'first_seen',
+                                                'scope': 'user',
+                                                'evidence_kind': 'explicit',
+                                                'confidence': 0.9,
+                                                'reason': 'temporal self description',
+                                            }
+                                        ]
+                                    },
+                                    ensure_ascii=False,
+                                )
+                            }
+                        }
+                    ]
+                }
+
+        def fake_post(_url, json, headers, timeout):
+            observed['user_content'] = json['messages'][1]['content']
+            return FakeResponse()
+
+        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='identity_extractor': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            entries = arbiter.extract_identities(
+                [{'role': 'user', 'content': "Aujourd'hui je suis anxieux"}],
+            )
+        finally:
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
+
+        self.assertEqual(entries, [])
+        self.assertIn('Temporal identity policy', observed['user_content'])
+        self.assertIn('prefer no entry', observed['user_content'])
+
+    def test_identity_periodic_agent_rejects_weak_relative_temporal_operations(self) -> None:
+        observed = {'user_content': ''}
+        original_get_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
+
+        def fake_get_arbiter_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='arbiter_model',
+                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {
+                    'choices': [
+                        {
+                            'message': {
+                                'content': (
+                                    '{"llm":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
+                                    '"user":{"operations":[{"kind":"add","proposition":"En ce moment l utilisateur est anxieux",'
+                                    '"reason":"current state"}]},'
+                                    '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
+                                )
+                            }
+                        }
+                    ]
+                }
+
+        def fake_post(_url, json, headers, timeout):
+            observed['user_content'] = json['messages'][1]['content']
+            return FakeResponse()
+
+        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='identity_periodic_agent': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            result = arbiter.run_identity_periodic_agent(
+                {
+                    'buffer_pairs': [],
+                    'buffer_pairs_count': 15,
+                    'buffer_target_pairs': 15,
+                    'identities': {
+                        'llm': {'static': 'Frida statique', 'mutable_current': ''},
+                        'user': {'static': 'Utilisateur statique', 'mutable_current': ''},
+                    },
+                    'mutable_budget': {'target_chars': 3000, 'max_chars': 3300},
+                }
+            )
+        finally:
+            arbiter.runtime_settings.get_arbiter_model_settings = original_get_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
+
+        self.assertEqual(
+            result['user']['operations'],
+            [
+                {
+                    'kind': 'no_change',
+                    'proposition': '',
+                    'reason': 'relative temporal identity signal rejected',
+                }
+            ],
+        )
+        self.assertIn('identity_temporal_policy', observed['user_content'])
+
     def test_arbiter_calls_use_runtime_model_from_db_when_present(self) -> None:
         observed_models = []
         observed_headers = []

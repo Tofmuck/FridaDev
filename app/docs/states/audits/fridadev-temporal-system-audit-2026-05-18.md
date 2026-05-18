@@ -41,15 +41,15 @@ Inventaire compact des 45 surfaces temporelles auditees:
 | 14 | Table traces memory | `app/memory/memory_store_infra.py` | UTC stockage, sain |
 | 15 | Injection souvenirs prompt principal | `app/core/conversations_prompt_window.py` | Delta-T local, sain |
 | 16 | Injection context hints prompt principal | `app/core/conversations_prompt_window.py` | Delta-T local, sain |
-| 17 | Candidats arbitre memoire | `app/memory/arbiter.py` | timestamps bruts/tronques, P2 |
-| 18 | Recent context arbitre memoire | `app/memory/arbiter.py` | sans timestamp, P2 |
-| 19 | Extracteur identity | `app/memory/arbiter.py`, `app/prompts/identity_extractor.txt` | sans ancre, P2 |
-| 20 | Buffer pairs identity staging | `app/memory/memory_identity_staging.py` | timestamps bruts, P3 |
-| 21 | Agent periodic identity | `app/memory/arbiter.py`, `memory_identity_periodic_agent.py` | pas de NOW local, P3 |
+| 17 | Candidats arbitre memoire | `app/memory/arbiter.py` | timestamp technique + `temporal_label` local, sain apres Lot 2 |
+| 18 | Recent context arbitre memoire | `app/memory/arbiter.py` | labels locaux quand `now_iso` est fourni, sain apres Lot 2 |
+| 19 | Extracteur identity | `app/memory/arbiter.py`, `app/prompts/identity_extractor.txt` | politique de rejet des claims relatifs faibles, sain apres Lot 2 |
+| 20 | Buffer pairs identity staging | `app/memory/memory_identity_staging.py` | timestamps bruts de staging, acceptables car le modele periodic rejette les claims relatifs faibles |
+| 21 | Agent periodic identity | `app/memory/arbiter.py`, `memory_identity_periodic_agent.py` | politique de rejet des claims relatifs faibles, sain apres Lot 2 |
 | 22 | Timestamps identity durable/audit | `app/memory/memory_store_infra.py` | `TIMESTAMPTZ`, sain stockage |
-| 23 | Validation dialogue context | `app/core/hermeneutic_node/inputs/recent_context_input.py` | timestamp brut, P2 |
+| 23 | Validation dialogue context | `app/core/hermeneutic_node/inputs/recent_context_input.py` | `temporal_reference` prioritaire + `temporal_label`, sain apres Lot 2 |
 | 24 | Summary input du noeud hermeneutique | `app/core/hermeneutic_node/inputs/summary_input.py` | start/end bruts, support secondaire |
-| 25 | Stimmung recent window | `app/core/stimmung_agent.py` | timestamps omis, P3 |
+| 25 | Stimmung recent window | `app/core/stimmung_agent.py` | timestamps omis par contrat d'ignorance explicite, sain apres Lot 2 |
 | 26 | Source priority time input | `app/core/hermeneutic_node/doctrine/source_priority.py` | exige time canonical, sain |
 | 27 | Qualification temporelle du tour | `app/core/hermeneutic_node/inputs/user_turn_input.py` | manque `hier`, P2 |
 | 28 | Reformulation web | `app/tools/web_search.py`, `app/prompts/web_reformulation.txt` | date locale Frida explicite, sain apres Lot 1 |
@@ -124,10 +124,10 @@ Fonctions qui ne devraient plus recalculer un jour dialogique seules:
 | Sidebar conversations | timezone navigateur | date/heure sans timezone | `formatTimestamp()` | utilisateur | P2 |
 | Dashboard web dates/buckets | timezone navigateur | date/heure sans timezone | `formatDateTime()`, `formatBucketLabel()` | operateur/humain | P2 |
 | Export Markdown chat | timezone navigateur | date longue fr-FR sans timezone | `Intl.DateTimeFormat()` | utilisateur | P2 |
-| Validation dialogue context | timestamp brut | ISO brut | recent context | validation agent | P2 |
-| Arbitre memoire | timestamp ISO tronque | `[:25]` | trace memory | modele arbitre | P2 |
-| Identity extractor | aucun timestamp | role/content | recent turns | modele identity | P2 |
-| Stimmung agent | aucun timestamp visible | role/content | recent window | modele stimmung | P3 |
+| Validation dialogue context | reference temporelle locale + labels par message | JSON compact | `time_input.render_delta_label()` depuis le `NOW` canonique | validation agent | sain apres Lot 2 |
+| Arbitre memoire | reference temporelle locale + labels candidats/recent context | JSON + texte recent | `time_input.build_time_input()` / `render_delta_label()` depuis `now_iso` | modele arbitre | sain apres Lot 2 |
+| Identity extractor | aucun timestamp par choix | role/content + politique de rejet | prompt + filtre deterministe | modele identity | sain apres Lot 2 |
+| Stimmung agent | aucun timestamp visible par choix | role/content | prompt d'ignorance des gaps/claims relatifs | modele stimmung | sain apres Lot 2 |
 
 ## Persistence et schemas
 
@@ -156,12 +156,12 @@ Conclusion persistence: le stockage UTC n'est pas le probleme. Le risque apparai
 |---|---|---|---|---|---|---|
 | Chat principal | oui | oui | oui via Delta-T local + UTC NOW | non sur voie principale | oui | sain sur voie principale et web Lot 1 |
 | Reformulation web | oui, date locale issue du `NOW` de tour | oui via label `FRIDA_TIMEZONE` | non, jour local seulement | heure volontairement absente | oui, recherche actuelle | sain pour jour local |
-| Arbitre memoire | non | non | candidats avec `timestamp_iso` tronque | recent context sans temps | oui, penalise les souvenirs circonstanciels | P2 |
+| Arbitre memoire | oui, si appele depuis le chat | oui | candidats avec `timestamp_iso` + `temporal_label`; recent context labelle | non quand `now_iso` est fourni | oui, penalise les souvenirs circonstanciels | sain apres Lot 2 |
 | Resumeur | non explicite | non explicite | non, date locale seule | heure volontairement perdue | oui, mais objectif resume | sain pour date de jour; P3 si besoin futur d'heure |
-| Identity extractor | non | non | non | oui | oui, durable vs episodique | P2 |
-| Identity periodic agent | non | non | timestamps bruts dans buffer | pas de local/NOW | oui, operations identite | P3 |
-| Stimmung agent | non | non | non dans prompt | oui | oui, affect courant | P3 |
-| Validation agent | canonical inputs peuvent contenir time, mais secondaire | idem | contexte principal timestamp brut | localite fragile | oui, regime final | P2 |
+| Identity extractor | non par choix | non par choix | non | oui, volontaire | oui, durable vs episodique | sain apres Lot 2: rejet explicite des claims relatifs faibles |
+| Identity periodic agent | non par choix | non par choix | timestamps bruts dans buffer, mais sans autorite temporelle | oui, volontaire | oui, operations identite | sain apres Lot 2: rejet explicite des claims relatifs faibles |
+| Stimmung agent | non par choix | non par choix | non dans prompt | oui, volontaire | oui, affect courant | sain apres Lot 2: ignore gaps et claims temporels |
+| Validation agent | oui, `temporal_reference` prioritaire | oui | contexte principal avec timestamps bruts + `temporal_label` local | non | oui, regime final | sain apres Lot 2 |
 | Embeddings Memory/RAG | n/a | n/a | n/a | n/a | non temporel | sain |
 | Whisper | n/a | n/a | n/a | n/a | non temporel Frida | sain |
 | OCR documents actifs | n/a | n/a | n/a | n/a | non temporel Frida | sain |
@@ -243,6 +243,8 @@ Preuves:
 
 Risque: le validation agent peut arbitrer le regime de reponse a partir d'un timestamp UTC brut, alors que le local Frida est la verite dialogique. La presence possible du temps dans `canonical_inputs` ne suffit pas, car cette section est secondaire et bornee.
 
+Etat apres Lot 2: corrige. `validation_agent._build_messages()` place maintenant `temporal_reference` avant `validation_dialogue_context`, et le contexte compacte ajoute un `temporal_label` local par message quand un timestamp existe. Le prompt `validation_agent.txt` donne autorite aux `temporal_label` sur les timestamps ISO bruts pour lire `aujourd'hui`, `hier` et les passages de minuit.
+
 ### P2 - TEMP-20260518-P2-002 - L'arbitre memoire raisonne sur des souvenirs circonstanciels sans ancrage local
 
 Preuves:
@@ -253,6 +255,8 @@ Preuves:
 
 Risque: une memoire "hier soir" ou "aujourd'hui" peut etre selectionnee/penalisee sans que l'arbitre possede le `NOW` local, puis etre reinjectee dans le prompt principal.
 
+Etat apres Lot 2: corrige pour le flux chat. `chat_service` propage le `now_iso` du tour a `chat_memory_flow.prepare_memory_context()`, puis l'arbitre recoit une reference temporelle locale et des `temporal_label` pour le recent context et les candidats. Le prompt `arbiter.txt` interdit d'inferer le jour local depuis un timestamp UTC brut.
+
 ### P2 - TEMP-20260518-P2-003 - L'extracteur identity n'a pas d'ancre temporelle
 
 Preuves:
@@ -261,6 +265,8 @@ Preuves:
 - `app/prompts/identity_extractor.txt:31-43` demande de distinguer durable, episodique, projection, mood/state, mais sans fournir de `NOW` ni de date locale.
 
 Risque: des phrases comme "depuis hier", "en ce moment" ou "aujourd'hui je suis..." peuvent etre classees sans ancre locale. La politique conservatrice reduit le risque, mais ne le prouve pas.
+
+Etat apres Lot 2: corrige par politique de rejet, pas par ancrage. L'extracteur identity n'a pas a transformer `hier` ou `aujourd'hui` en identite durable; son prompt rejette les claims relatifs faibles, et `_validate_identity_output()` filtre deterministiquement les sorties qui les contiennent.
 
 ### P2 - TEMP-20260518-P2-004 - Dashboard `today/yesterday` en UTC sous labels humains francais
 
@@ -306,6 +312,8 @@ Preuves:
 
 Risque: un ton affectif peut etre interprete sans savoir s'il suit une minute ou deux jours de silence. Le scope affectif minimal rend ce P3, sauf decision produit contraire.
 
+Etat apres Lot 2: corrige par contrat d'ignorance. Le prompt `stimmung_agent.txt` precise que les timestamps, delais, gaps et claims relatifs ne sont pas un signal affectif pour ce caller. La fenetre envoyee au modele continue donc volontairement sans timestamps.
+
 ### P3 - TEMP-20260518-P3-002 - Agent periodic identity recoit des timestamps bruts mais pas de NOW local
 
 Preuves:
@@ -316,6 +324,8 @@ Preuves:
 - `app/prompts/identity_periodic_agent.txt:7-16` demande des operations d'identite durable.
 
 Risque: faible grace a la consigne de durabilite, mais non prouve pour les claims temporels relatifs.
+
+Etat apres Lot 2: corrige par politique de rejet. Le payload du modele periodic contient `identity_temporal_policy`, le prompt rejette les claims relatifs faibles, et le resultat est assaini avant application si une operation non `no_change` contient un marqueur comme `aujourd'hui`, `hier`, `depuis hier` ou `en ce moment`.
 
 ### P3 - TEMP-20260518-P3-003 - Timestamp invalide de conversation peut devenir `now` silencieusement
 
@@ -356,8 +366,6 @@ Risque: si `FRIDA_TIMEZONE` est mal configure, le systeme continue en UTC et peu
 |---|---|---|
 | Dashboard UTC | le choix UTC peut etre intentionnel pour l'operateur, mais les labels `Aujourd'hui` / `Hier` ne le disent pas | decider local Frida vs UTC explicite |
 | Surfaces navigateur | le rendu browser-local peut etre un choix UX, mais il n'est ni documente ni labelle pour l'accueil chat, les bylines, la sidebar, l'export et le dashboard web | fixer la doctrine UI et tester un timezone non Paris |
-| Stimmung | le prompt dit "fenetre locale" mais ne prouve pas que les gaps temporels sont hors sujet | documenter l'ignorance des gaps ou fournir labels locaux |
-| Identity durable | les prompts sont conservateurs, mais il manque une preuve sur les enonces relatifs `depuis hier` / `aujourd'hui` | tests de rejet ou ancrage explicite |
 | DST Europe/Paris | les fonctions `ZoneInfo` devraient gerer les changements d'heure, mais la matrice de test ne le prouve pas encore | ajouter tests DST dans le lot de fermeture |
 
 ## Tests existants vs tests manquants
@@ -370,13 +378,13 @@ Tests existants probants:
 - `app/tests/test_prompt_loader_phase13.py` couvre la presence des exemples Delta-T dans le prompt principal.
 - `app/tests/unit/web_search/test_web_search_phase4.py` couvre la reformulation web et les blocs web sur `2026-05-17T22:05:00Z -> lundi 18 mai 2026 Europe/Paris`, avec absence de date UTC contradictoire.
 - `app/tests/unit/core/test_chat_turn_runtime_inputs.py` couvre la propagation du `now_iso` de tour vers la lane web.
+- `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py` couvre la priorite de `temporal_reference` et les `temporal_label` locaux du contexte de validation autour de minuit.
+- `app/tests/unit/memory/test_arbiter_phase4.py` couvre l'ancre locale de l'arbitre memoire, le rejet identity extractor des claims relatifs faibles et l'assainissement identity periodic.
+- `app/tests/unit/core/test_stimmung_agent.py` couvre l'ignorance contractuelle des timestamps/gaps par le stimmung agent.
+- `app/tests/test_prompt_loader_phase13.py` couvre aussi les contrats temporels Lot 2 des prompts secondaires.
 
 Tests manquants:
 
-- validation agent: `validation_dialogue_context` doit exposer des labels locaux ou recevoir `NOW`/timezone en priorite;
-- arbitre memoire: candidats et recent context avec ancre locale, test sur memoire `hier` vs `aujourd'hui`;
-- identity extractor/periodic: enonces `depuis hier`, `aujourd'hui`, `en ce moment` avec ancre ou politique explicite de rejet;
-- stimmung: soit preuve qu'il ignore volontairement les gaps, soit timestamps locaux si la fenetre les utilise;
 - dashboard: `today/yesterday` Europe/Paris autour de minuit, ou labels UTC explicites;
 - frontend navigateur: accueil chat, bylines, sidebar conversations, export Markdown et dashboard web en rendu Europe/Paris explicite ou label navigateur explicite, avec test timezone fixe;
 - `user_turn_input`: `hier`, `depuis hier`, `ce matin`, `ce soir`, `demain` en qualification temporelle;
@@ -386,7 +394,7 @@ Tests manquants:
 ## Plan de remediation minimal et ordonne
 
 1. Ferme le 2026-05-18: P1 web remplace les dates UTC hote par une date locale Frida partagee et timezone explicite dans reformulation + context blocks.
-2. Aligner les modeles secondaires qui influencent le prompt: validation agent et arbitre memoire en premier, avec labels locaux sobres issus du coeur temporel.
+2. Ferme le 2026-05-18: modeles secondaires alignes sur leur responsabilite temporelle; validation/arbitre ancres localement, identity/stimmung rejettent ou ignorent les claims temporels faibles hors contrat.
 3. Fixer la politique UI/operator: dashboard `today/yesterday` local Frida ou UTC explicitement labelle; accueil chat, bylines, sidebar, export et dashboard web en Europe/Paris ou "heure locale navigateur" visible.
 4. Corriger le classifieur deterministe `hier`/`depuis hier` et couvrir les tests.
 5. Durcir les fallbacks: timestamp invalide et timezone invalide doivent etre observables et ne pas inventer silencieusement un present dialogique.
