@@ -17,6 +17,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
+- Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
+- Remediation temporelle active: `todo-todo/audits/fridadev-temporal-truth-remediation-todo.md`
 - Archive de cloture de la remediation de l'audit global: `todo-done/audits/fridadev-global-audit-remediation-todo.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
@@ -64,6 +66,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 Lire d'abord:
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
+- `states/audits/fridadev-temporal-system-audit-2026-05-18.md` avant tout changement touchant `NOW`, `hier/aujourd'hui`, les timestamps, les resumes, la memoire, le web, le dashboard ou les exports.
 - `states/specs/streaming-protocol.md`
 - `states/specs/chat-copy-export-contract.md`
 - `states/specs/chat-enunciation-and-gap-contract.md`
