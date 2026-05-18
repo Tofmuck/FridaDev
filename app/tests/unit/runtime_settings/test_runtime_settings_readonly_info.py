@@ -116,6 +116,20 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
     def test_get_section_readonly_info_arbiter_model_documents_identity_legacy_scope(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
 
+        self.assertIn('only model is currently read', readonly_info['operator_warning']['value'])
+        self.assertIn('temperature, top_p and timeout_s', readonly_info['operator_warning']['value'])
+        self.assertIn(
+            'model=arbiter_model.model',
+            readonly_info['identity_periodic_agent_effective_parameters']['value'],
+        )
+        self.assertIn(
+            'temperature=0.0 caller-local',
+            readonly_info['identity_periodic_agent_effective_parameters']['value'],
+        )
+        self.assertIn(
+            f'timeout_s=config.ARBITER_TIMEOUT_S ({config.ARBITER_TIMEOUT_S})',
+            readonly_info['identity_periodic_agent_effective_parameters']['value'],
+        )
         self.assertEqual(readonly_info['identity_periodic_agent_max_tokens']['value'], 1400)
         self.assertFalse(readonly_info['identity_periodic_agent_max_tokens']['is_editable'])
         self.assertEqual(
@@ -124,6 +138,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         )
         self.assertIn('Legacy identity periodic slot', readonly_info['legacy_scope']['value'])
         self.assertIn('identity_extractor_model', readonly_info['legacy_scope']['value'])
+        self.assertIn('only model is an effective runtime setting', readonly_info['legacy_scope']['value'])
 
     def test_get_section_readonly_info_identity_extractor_model_exposes_prompt_transport_and_benchmark(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_extractor_model')

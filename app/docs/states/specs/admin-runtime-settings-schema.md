@@ -138,12 +138,14 @@ Notes:
 
 Slot legacy temporaire conserve pour `run_identity_periodic_agent()` jusqu'a son propre benchmark/decouplage. L'arbitre memoire et l'extracteur identity au tour n'utilisent plus cette section.
 
+Attention operateur: pour le caller periodic identity courant, seul `model` est effectivement lu depuis `arbiter_model`. Les champs `temperature`, `top_p` et `timeout_s` restent presents dans le schema legacy/admin, mais le payload periodic actuel garde `temperature=0.0`, `top_p=1.0`, `max_tokens=1400` et `timeout_s=config.ARBITER_TIMEOUT_S` dans le caller.
+
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `model` | `text` | non | `ARBITER_MODEL` |
-| `temperature` | `float` | non | defaut runtime `0.0` |
-| `top_p` | `float` | non | defaut runtime `1.0` |
-| `timeout_s` | `int` | non | `ARBITER_TIMEOUT_S` |
+| `model` | `text` | non | source effective de `run_identity_periodic_agent()`; seed `ARBITER_MODEL` |
+| `temperature` | `float` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel |
+| `top_p` | `float` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel |
+| `timeout_s` | `int` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel, qui utilise `config.ARBITER_TIMEOUT_S` |
 
 ### `identity_extractor_model`
 

@@ -388,6 +388,15 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'arbiter_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-route')
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
+        self.assertIn('only model is currently read', data['readonly_info']['operator_warning']['value'])
+        self.assertIn(
+            'model=arbiter_model.model',
+            data['readonly_info']['identity_periodic_agent_effective_parameters']['value'],
+        )
+        self.assertIn(
+            'temperature=0.0 caller-local',
+            data['readonly_info']['identity_periodic_agent_effective_parameters']['value'],
+        )
         self.assertEqual(data['readonly_info']['identity_periodic_agent_max_tokens']['value'], 1400)
         self.assertEqual(
             data['readonly_info']['identity_periodic_agent_prompt_path']['value'],
@@ -395,6 +404,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         )
         self.assertIn('Legacy identity periodic slot', data['readonly_info']['legacy_scope']['value'])
         self.assertIn('identity_extractor_model', data['readonly_info']['legacy_scope']['value'])
+        self.assertIn('only model is an effective runtime setting', data['readonly_info']['legacy_scope']['value'])
 
     def test_get_admin_settings_summary_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

@@ -230,6 +230,26 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
         }
     if section == 'arbiter_model':
         return {
+            'operator_warning': {
+                'label': 'ARBITER_MODEL_TRANSITION_WARNING',
+                'value': (
+                    'Transitional identity periodic slot: only model is currently read by '
+                    'identity_periodic_agent. temperature, top_p and timeout_s stored here do not '
+                    'drive the current periodic payload before its dedicated lot.'
+                ),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'identity_periodic_agent_effective_parameters': {
+                'label': 'IDENTITY_PERIODIC_AGENT_EFFECTIVE_PARAMETERS',
+                'value': (
+                    'model=arbiter_model.model; temperature=0.0 caller-local; '
+                    'top_p=1.0 caller-local; max_tokens=1400 caller-local; '
+                    f'timeout_s=config.ARBITER_TIMEOUT_S ({config.ARBITER_TIMEOUT_S})'
+                ),
+                'is_editable': False,
+                'source': 'memory_arbiter_py',
+            },
             'identity_periodic_agent_max_tokens': {
                 'label': 'identity_periodic_agent_max_tokens',
                 'value': 1400,
@@ -246,7 +266,8 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'ARBITER_MODEL_LEGACY_SCOPE',
                 'value': (
                     'Legacy identity periodic slot. It no longer sources extract_identities(); '
-                    'per-turn extraction uses identity_extractor_model.'
+                    'per-turn extraction uses identity_extractor_model. For periodic identity today, '
+                    'only model is an effective runtime setting from this section.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

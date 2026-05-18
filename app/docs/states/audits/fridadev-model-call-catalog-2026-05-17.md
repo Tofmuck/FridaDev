@@ -395,8 +395,9 @@ Lecture assainie le 2026-05-17:
 | `main_model` | `top_p` | `1.0` | `db_seed` |
 | `main_model` | `response_max_tokens` | `8192` | `admin_ui` |
 | `main_model` | `api_key` | secret present, resolu `db_encrypted` | `admin_ui` / DB chiffree |
-| `arbiter_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` |
-| `arbiter_model` | `timeout_s` | slot legacy `identity_periodic_agent` | `db_seed` ou historique admin |
+| `arbiter_model` | `model` | `openai/gpt-5.4-mini` | source effective du modele `identity_periodic_agent` legacy |
+| `arbiter_model` | `temperature` / `top_p` | non effectifs pour le periodic actuel | champs legacy stockes/admin; payload periodic hardcode `0.0` / `1.0` |
+| `arbiter_model` | `timeout_s` | non effectif pour le periodic actuel | champ legacy stocke/admin; le caller utilise encore `config.ARBITER_TIMEOUT_S` |
 | `identity_extractor_model` | `model` | `openai/gpt-5.4-mini` | `db_seed` apres bootstrap |
 | `identity_extractor_model` | `temperature` | `0.0` | `db_seed` apres bootstrap |
 | `identity_extractor_model` | `top_p` | `1.0` | `db_seed` apres bootstrap |

@@ -7,8 +7,8 @@
     },
     {
       key: "arbiter_model",
-      title: "Modele periodic identity legacy",
-      description: "Slot provisoire conserve pour l'agent periodic identity jusqu'a son propre lot.",
+      title: "Periodic identity legacy",
+      description: "Slot transitoire: seul model pilote le periodic; temperature/top_p/timeout restent caller-local.",
     },
     {
       key: "identity_extractor_model",
