@@ -640,6 +640,64 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['max_tokens']['value'], 600)
         self.assertEqual(data['payload']['timeout_s']['value'], 8)
 
+    def test_patch_admin_settings_identity_extractor_model_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'admin_ui'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'admin_ui'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'admin_ui'},
+                    'max_tokens': {'value': 700, 'is_secret': False, 'origin': 'admin_ui'},
+                    'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/identity-extractor-model',
+                json={
+                    'updated_by': 'phase5-admin',
+                    'payload': {
+                        'model': {'value': 'openai/gpt-5.4-mini'},
+                        'temperature': {'value': 0.0},
+                        'top_p': {'value': 1.0},
+                        'max_tokens': {'value': 700},
+                        'timeout_s': {'value': 10},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'identity_extractor_model')
+        self.assertEqual(observed['updated_by'], 'phase5-admin')
+        self.assertEqual(
+            observed['payload'],
+            {
+                'model': {'value': 'openai/gpt-5.4-mini'},
+                'temperature': {'value': 0.0},
+                'top_p': {'value': 1.0},
+                'max_tokens': {'value': 700},
+                'timeout_s': {'value': 10},
+            },
+        )
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'identity_extractor_model')
+        self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['max_tokens']['value'], 700)
+
     def test_patch_admin_settings_summary_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section

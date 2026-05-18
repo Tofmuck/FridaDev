@@ -80,6 +80,14 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(bundle.payload['max_tokens']['value'], config.MEMORY_ARBITER_MAX_TOKENS)
         self.assertEqual(bundle.payload['timeout_s']['value'], config.MEMORY_ARBITER_TIMEOUT_S)
 
+    def test_build_env_seed_bundle_uses_dedicated_identity_extractor_model_values(self) -> None:
+        bundle = runtime_settings.build_env_seed_bundle('identity_extractor_model')
+        self.assertEqual(bundle.payload['model']['value'], config.IDENTITY_EXTRACTOR_MODEL)
+        self.assertEqual(bundle.payload['temperature']['value'], config.IDENTITY_EXTRACTOR_TEMPERATURE)
+        self.assertEqual(bundle.payload['top_p']['value'], config.IDENTITY_EXTRACTOR_TOP_P)
+        self.assertEqual(bundle.payload['max_tokens']['value'], config.IDENTITY_EXTRACTOR_MAX_TOKENS)
+        self.assertEqual(bundle.payload['timeout_s']['value'], config.IDENTITY_EXTRACTOR_TIMEOUT_S)
+
     def test_build_env_seed_bundle_uses_dedicated_summary_model_values(self) -> None:
         bundle = runtime_settings.build_env_seed_bundle('summary_model')
         self.assertEqual(bundle.payload['model']['value'], config.SUMMARY_MODEL)
@@ -137,6 +145,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             missing,
             (
                 'arbiter_model',
+                'identity_extractor_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -155,6 +164,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             tuple(bundle.section for bundle in plan),
             (
                 'arbiter_model',
+                'identity_extractor_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -172,6 +182,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             tuple(bundle.section for bundle in plan),
             (
                 'arbiter_model',
+                'identity_extractor_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -183,7 +194,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[6].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[7].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

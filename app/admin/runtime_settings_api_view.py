@@ -183,25 +183,58 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'benchmark_artifact',
             },
         }
+    if section == 'identity_extractor_model':
+        return {
+            'prompt_path': {
+                'label': 'IDENTITY_EXTRACTOR_PROMPT_PATH',
+                'value': str(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'prompt_loader': {
+                'label': 'IDENTITY_EXTRACTOR_PROMPT_RUNTIME_SOURCE',
+                'value': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "identity_extractor")',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'system_prompt': {
+                'label': 'identity_extractor_prompt',
+                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
+                'is_editable': False,
+                'source': 'app_prompt_file',
+            },
+            'shared_transport': {
+                'label': 'OPENROUTER_SHARED_TRANSPORT',
+                'value': _shared_openrouter_transport_text(
+                    'main_model.title_identity_extractor',
+                    'main_model.referer_identity_extractor',
+                ),
+                'is_editable': False,
+                'source': 'main_model_runtime_settings',
+            },
+            'benchmark_decision': {
+                'label': 'IDENTITY_EXTRACTOR_BENCHMARK_DECISION',
+                'value': 'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
+                'is_editable': False,
+                'source': 'benchmark_artifact',
+            },
+            'transition_note': {
+                'label': 'IDENTITY_EXTRACTOR_DECOUPLING',
+                'value': (
+                    'extract_identities() uses identity_extractor_model. '
+                    'arbiter_model remains legacy for identity_periodic_agent until its own benchmarked lot.'
+                ),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+        }
     if section == 'arbiter_model':
         return {
-            'identity_extractor_max_tokens': {
-                'label': 'identity_extractor_max_tokens',
-                'value': 700,
-                'is_editable': False,
-                'source': 'memory_arbiter_py',
-            },
             'identity_periodic_agent_max_tokens': {
                 'label': 'identity_periodic_agent_max_tokens',
                 'value': 1400,
                 'is_editable': False,
                 'source': 'memory_arbiter_py',
-            },
-            'identity_extractor_prompt_path': {
-                'label': 'IDENTITY_EXTRACTOR_PROMPT_PATH',
-                'value': str(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
-                'is_editable': False,
-                'source': 'config_py',
             },
             'identity_periodic_agent_prompt_path': {
                 'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
@@ -209,15 +242,12 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'config_py',
             },
-            'identity_extractor_prompt': {
-                'label': 'identity_extractor_prompt',
-                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
-                'is_editable': False,
-                'source': 'app_prompt_file',
-            },
             'legacy_scope': {
                 'label': 'ARBITER_MODEL_LEGACY_SCOPE',
-                'value': 'Shared identity extractor / identity periodic slot until those callers are benchmarked.',
+                'value': (
+                    'Legacy identity periodic slot. It no longer sources extract_identities(); '
+                    'per-turn extraction uses identity_extractor_model.'
+                ),
                 'is_editable': False,
                 'source': 'runtime_contract',
             },

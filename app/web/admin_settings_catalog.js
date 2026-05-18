@@ -7,8 +7,13 @@
     },
     {
       key: "arbiter_model",
-      title: "Modele identity legacy",
-      description: "Slot provisoire partage par l'extracteur et l'agent periodic identity.",
+      title: "Modele periodic identity legacy",
+      description: "Slot provisoire conserve pour l'agent periodic identity jusqu'a son propre lot.",
+    },
+    {
+      key: "identity_extractor_model",
+      title: "Extracteur identity",
+      description: "Extraction identity au tour individualisee, modele benchmarke et reglages propres.",
     },
     {
       key: "memory_arbiter_model",

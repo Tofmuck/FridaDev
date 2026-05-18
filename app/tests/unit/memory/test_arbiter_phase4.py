@@ -199,16 +199,17 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_identity_extractor_rejects_weak_relative_temporal_entries(self) -> None:
         observed = {'user_content': ''}
-        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
+        original_or_url = arbiter.llm_client.or_chat_completions_url
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_identity_extractor_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                section='identity_extractor_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_extractor_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -249,25 +250,90 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             observed['user_content'] = json['messages'][1]['content']
             return FakeResponse()
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='identity_extractor': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
         arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
         try:
             entries = arbiter.extract_identities(
                 [{'role': 'user', 'content': "Aujourd'hui je suis anxieux"}],
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.or_chat_completions_url = original_or_url
             arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
 
         self.assertEqual(entries, [])
         self.assertIn('Temporal identity policy', observed['user_content'])
         self.assertIn('prefer no entry', observed['user_content'])
+
+    def test_identity_extractor_uses_dedicated_runtime_payload_settings(self) -> None:
+        observed = {'payload': None, 'timeout': None, 'url': None}
+        original_get_identity_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
+        original_load_prompt = arbiter._load_prompt
+        original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_or_url = arbiter.llm_client.or_chat_completions_url
+        original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
+
+        def fake_get_identity_extractor_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_extractor_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'identity_extractor_model',
+                    {
+                        'model': {'value': 'openrouter/identity-extractor-route', 'origin': 'db'},
+                        'temperature': {'value': 0.2, 'origin': 'db'},
+                        'top_p': {'value': 0.75, 'origin': 'db'},
+                        'max_tokens': {'value': 321, 'origin': 'db'},
+                        'timeout_s': {'value': 17, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self):
+                return {'choices': [{'message': {'content': '{"entries":[]}'}}]}
+
+        def fake_post(url, json, headers, timeout):
+            observed['url'] = url
+            observed['payload'] = dict(json)
+            observed['timeout'] = timeout
+            return FakeResponse()
+
+        arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
+        arbiter._load_prompt = lambda path, label: 'prompt'
+        arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda caller='identity_extractor': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://runtime-main.test/chat/completions'
+        arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
+        try:
+            entries = arbiter.extract_identities([{'role': 'user', 'content': 'Je suis chercheur.'}])
+        finally:
+            arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_settings
+            arbiter._load_prompt = original_load_prompt
+            arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.or_chat_completions_url = original_or_url
+            arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
+
+        self.assertEqual(entries, [])
+        self.assertEqual(observed['url'], 'https://runtime-main.test/chat/completions')
+        self.assertEqual(observed['payload']['model'], 'openrouter/identity-extractor-route')
+        self.assertEqual(observed['payload']['temperature'], 0.2)
+        self.assertEqual(observed['payload']['top_p'], 0.75)
+        self.assertEqual(observed['payload']['max_tokens'], 321)
+        self.assertEqual(observed['timeout'], 17)
 
     def test_identity_periodic_agent_rejects_weak_relative_temporal_operations(self) -> None:
         observed = {'user_content': ''}
@@ -351,10 +417,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         observed_headers = []
         observed_provider_logs = []
         original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_extractor_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
         original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
+        original_or_url = arbiter.llm_client.or_chat_completions_url
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
         def fake_get_arbiter_model_settings():
@@ -363,10 +431,27 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 payload=runtime_settings.normalize_stored_payload(
                     'arbiter_model',
                     {
-                        'model': {'value': 'openai/gpt-5.4-mini', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.4-mini-periodic-legacy', 'origin': 'db'},
                         'temperature': {'value': 0.0, 'origin': 'db'},
                         'top_p': {'value': 1.0, 'origin': 'db'},
                         'timeout_s': {'value': 45, 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        def fake_get_identity_extractor_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_extractor_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'identity_extractor_model',
+                    {
+                        'model': {'value': 'openai/gpt-5.4-mini', 'origin': 'db'},
+                        'temperature': {'value': 0.0, 'origin': 'db'},
+                        'top_p': {'value': 1.0, 'origin': 'db'},
+                        'max_tokens': {'value': 700, 'origin': 'db'},
+                        'timeout_s': {'value': 44, 'origin': 'db'},
                     },
                 ),
                 source='db',
@@ -423,13 +508,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
                 '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}',
                 generation_id='gen-3',
+                model='openai/gpt-5.4-mini-periodic-legacy',
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='llm': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
         arbiter.llm_client.log_provider_metadata = lambda _logger, event_name, provider_metadata: observed_provider_logs.append(
             (event_name, dict(provider_metadata))
         )
@@ -460,10 +548,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
         finally:
             arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_extractor_settings
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.or_chat_completions_url = original_or_url
             arbiter.llm_client.log_provider_metadata = original_log_provider_metadata
 
         self.assertEqual(kept, [])
@@ -491,7 +581,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         )
         self.assertEqual(
             observed_models,
-            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini'],
+            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini-periodic-legacy'],
         )
         self.assertEqual(
             observed_headers,
@@ -528,7 +618,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     'identity_periodic_agent_provider_response',
                     {
                         'provider_generation_id': 'gen-3',
-                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_model': 'openai/gpt-5.4-mini-periodic-legacy',
                         'provider_prompt_tokens': 10,
                         'provider_completion_tokens': 3,
                         'provider_total_tokens': 13,
@@ -540,9 +630,11 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
     def test_arbiter_calls_keep_env_fallback_when_db_row_is_missing(self) -> None:
         observed_models = []
         original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_identity_extractor_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
         original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
+        original_or_url = arbiter.llm_client.or_chat_completions_url
 
         def fake_get_arbiter_model_settings():
             return runtime_settings.RuntimeSectionView(
@@ -556,6 +648,14 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section='memory_arbiter_model',
                 payload=runtime_settings.build_env_seed_bundle('memory_arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        def fake_get_identity_extractor_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_extractor_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_extractor_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -585,9 +685,11 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
         try:
             arbiter.filter_traces_with_diagnostics(
                 [{'role': 'assistant', 'content': 'memoire candidate', 'timestamp': '2026-03-24T00:00:00Z', 'score': 0.9}],
@@ -615,13 +717,15 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             )
         finally:
             arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_extractor_settings
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
+            arbiter.llm_client.or_chat_completions_url = original_or_url
 
         self.assertEqual(
             observed_models,
-            [config.MEMORY_ARBITER_MODEL, config.ARBITER_MODEL, config.ARBITER_MODEL],
+            [config.MEMORY_ARBITER_MODEL, config.IDENTITY_EXTRACTOR_MODEL, config.ARBITER_MODEL],
         )
 
 

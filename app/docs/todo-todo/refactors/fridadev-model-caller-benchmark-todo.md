@@ -32,7 +32,7 @@ Source de verite de depart:
 
 - [x] Arbitre memoire.
 - [x] Resume conversationnel.
-- [ ] Extracteur identity.
+- [x] Extracteur identity.
 - [ ] Agent periodic identity.
 - [ ] Stimmung agent primaire.
 - [ ] Validation agent primaire.
@@ -48,8 +48,8 @@ Source de verite de depart:
 - [x] Decision resume conversationnel: conserver `openai/gpt-5.4-mini`, meilleur equilibre humain entre ecriture, detail et synthese.
 - [x] Decouplage propre du resume conversationnel: `summary_model` devient source runtime effective de model/temp/top_p/max_tokens/timeout.
 - [x] Benchmark extracteur identity.
-- [ ] Decision extracteur identity.
-- [ ] Decouplage propre de l'extracteur identity.
+- [x] Decision extracteur identity: conserver `openai/gpt-5.4-mini`, d'apres lecture humaine de Tof.
+- [x] Decouplage propre de l'extracteur identity: `identity_extractor_model` devient source runtime effective de model/temp/top_p/max_tokens/timeout.
 - [ ] Benchmark periodic identity.
 - [ ] Decision periodic identity.
 - [ ] Decouplage propre de periodic identity.
@@ -177,7 +177,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Seeder et exposer `model`, `temperature`, `top_p`, `max_tokens`, `timeout_s`.
 - [x] Definir le modele initial a partir du tournoi final: `mistralai/mistral-small-2603`.
 - [x] Brancher `filter_traces_with_diagnostics()` sur `memory_arbiter_model`.
-- [x] Laisser `arbiter_model` comme slot legacy identity jusqu'aux lots `extracteur identity` et `periodic identity`.
+- [x] Laisser `arbiter_model` comme slot legacy identity jusqu'au lot `periodic identity`; l'extracteur identity est maintenant sorti de ce slot.
 - [x] Mettre a jour API/admin/read-models/audit pour que l'arbitre memoire apparaisse comme caller individualise.
 - [x] Conserver le meme token et le meme projet OpenRouter partages via `main_model`.
 - [x] Ne changer aucun autre caller modele dans ce lot.
@@ -189,8 +189,9 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Decouplage propre du resume conversationnel.
 - [x] Prochain caller ouvert: extracteur identity.
 - [x] Benchmark lecture humaine extracteur identity produit avec le vrai prompt de production.
-- [ ] Lecture humaine de Tof et decision extracteur identity.
-- [ ] Decouplage propre de l'extracteur identity apres decision.
+- [x] Lecture humaine de Tof et decision extracteur identity: conserver `openai/gpt-5.4-mini`.
+- [x] Decouplage propre de l'extracteur identity apres decision.
+- [ ] Prochain caller: `identity_periodic_agent`, sans benchmark ni choix modele lance avant GO explicite.
 
 ## Campagne de lecture humaine - resume conversationnel
 
@@ -236,9 +237,12 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Artefacts produits: `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-technical.md` et `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md`.
 - [x] Conserver les sorties completes tant que Tof ne les a pas relues.
 - [x] Ne pas attribuer de score automatique et ne pas proclamer de vainqueur.
-- [ ] Lecture humaine finale de Tof.
-- [ ] Decision modele extracteur identity.
-- [ ] Decoupler l'extracteur identity seulement apres decision.
+- [x] Lecture humaine finale de Tof.
+- [x] Decision modele extracteur identity: conserver `openai/gpt-5.4-mini`.
+- [x] Decoupler l'extracteur identity apres decision via le slot runtime dedie `identity_extractor_model`.
+- [x] Brancher uniquement `extract_identities()` sur `identity_extractor_model`.
+- [x] Laisser `identity_periodic_agent` inchange sur `arbiter_model` legacy jusqu'a son propre lot.
+- [x] Ne pas benchmarker ni choisir `identity_periodic_agent` dans ce lot.
 
 ## Definition de fin globale
 

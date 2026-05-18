@@ -34,6 +34,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
             (
                 'main_model',
                 'arbiter_model',
+                'identity_extractor_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -160,6 +161,33 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
         self.assertEqual(
             runtime_settings.get_field_spec('summary_model', 'timeout_s').env_var,
             'SUMMARY_TIMEOUT_S',
+        )
+
+    def test_identity_extractor_model_has_complete_dedicated_runtime_section(self) -> None:
+        spec = runtime_settings.get_section_spec('identity_extractor_model')
+        self.assertEqual(
+            spec.field_names(),
+            ('model', 'temperature', 'top_p', 'max_tokens', 'timeout_s'),
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('identity_extractor_model', 'model').env_var,
+            'IDENTITY_EXTRACTOR_MODEL',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('identity_extractor_model', 'temperature').env_var,
+            'IDENTITY_EXTRACTOR_TEMPERATURE',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('identity_extractor_model', 'top_p').env_var,
+            'IDENTITY_EXTRACTOR_TOP_P',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('identity_extractor_model', 'max_tokens').env_var,
+            'IDENTITY_EXTRACTOR_MAX_TOKENS',
+        )
+        self.assertEqual(
+            runtime_settings.get_field_spec('identity_extractor_model', 'timeout_s').env_var,
+            'IDENTITY_EXTRACTOR_TIMEOUT_S',
         )
 
     def test_main_model_includes_identity_extractor_title_field(self) -> None:

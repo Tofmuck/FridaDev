@@ -22,26 +22,42 @@ def _runtime_arbiter_model_name() -> str:
     return str(view.payload['model']['value'])
 
 
+def _runtime_payload_value(payload: Mapping[str, Any], field: str, default: Any) -> Any:
+    field_payload = payload.get(field)
+    if not isinstance(field_payload, Mapping):
+        return default
+    resolved = field_payload.get('value')
+    if resolved in (None, ''):
+        return default
+    return resolved
+
+
 def _runtime_memory_arbiter_settings() -> dict[str, Any]:
     view = runtime_settings.get_memory_arbiter_model_settings()
     payload = view.payload
 
-    def value(field: str, default: Any) -> Any:
-        field_payload = payload.get(field)
-        if not isinstance(field_payload, Mapping):
-            return default
-        resolved = field_payload.get('value')
-        if resolved in (None, ''):
-            return default
-        return resolved
-
     return {
-        'model': str(value('model', config.MEMORY_ARBITER_MODEL)).strip() or config.MEMORY_ARBITER_MODEL,
-        'temperature': float(value('temperature', config.MEMORY_ARBITER_TEMPERATURE)),
-        'top_p': float(value('top_p', config.MEMORY_ARBITER_TOP_P)),
-        'max_tokens': int(value('max_tokens', config.MEMORY_ARBITER_MAX_TOKENS)),
-        'timeout_s': int(value('timeout_s', config.MEMORY_ARBITER_TIMEOUT_S)),
+        'model': str(_runtime_payload_value(payload, 'model', config.MEMORY_ARBITER_MODEL)).strip()
+        or config.MEMORY_ARBITER_MODEL,
+        'temperature': float(_runtime_payload_value(payload, 'temperature', config.MEMORY_ARBITER_TEMPERATURE)),
+        'top_p': float(_runtime_payload_value(payload, 'top_p', config.MEMORY_ARBITER_TOP_P)),
+        'max_tokens': int(_runtime_payload_value(payload, 'max_tokens', config.MEMORY_ARBITER_MAX_TOKENS)),
+        'timeout_s': int(_runtime_payload_value(payload, 'timeout_s', config.MEMORY_ARBITER_TIMEOUT_S)),
     }
+
+
+def _runtime_identity_extractor_settings() -> dict[str, Any]:
+    view = runtime_settings.get_identity_extractor_model_settings()
+    payload = view.payload
+    return {
+        'model': str(_runtime_payload_value(payload, 'model', config.IDENTITY_EXTRACTOR_MODEL)).strip()
+        or config.IDENTITY_EXTRACTOR_MODEL,
+        'temperature': float(_runtime_payload_value(payload, 'temperature', config.IDENTITY_EXTRACTOR_TEMPERATURE)),
+        'top_p': float(_runtime_payload_value(payload, 'top_p', config.IDENTITY_EXTRACTOR_TOP_P)),
+        'max_tokens': int(_runtime_payload_value(payload, 'max_tokens', config.IDENTITY_EXTRACTOR_MAX_TOKENS)),
+        'timeout_s': int(_runtime_payload_value(payload, 'timeout_s', config.IDENTITY_EXTRACTOR_TIMEOUT_S)),
+    }
+
 
 _ALLOWED_STABILITY = {'durable', 'episodic', 'unknown'}
 _ALLOWED_UTTERANCE_MODE = {
@@ -663,7 +679,8 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
     if not recent_turns:
         return []
 
-    arbiter_model = _runtime_arbiter_model_name()
+    identity_settings = _runtime_identity_extractor_settings()
+    identity_model = str(identity_settings['model'])
     system_prompt = _load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, 'identity_extractor')
     if not system_prompt:
         return []
@@ -684,22 +701,22 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         f"Temporal source summary:\n{json.dumps(source_summary, ensure_ascii=False, indent=2)}\n\n"
     )
     payload = {
-        'model': arbiter_model,
+        'model': identity_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': f'{temporal_policy}Here is the admissible dialogue:\\n\\n{dialogue}'},
         ],
-        'temperature': 0.0,
-        'top_p': 1.0,
-        'max_tokens': 700,
+        'temperature': float(identity_settings['temperature']),
+        'top_p': float(identity_settings['top_p']),
+        'max_tokens': int(identity_settings['max_tokens']),
     }
 
     try:
         response = requests.post(
-            f'{config.OR_BASE}/chat/completions',
+            llm_client.or_chat_completions_url(),
             json=payload,
             headers=llm_client.or_headers(caller='identity_extractor'),
-            timeout=config.ARBITER_TIMEOUT_S,
+            timeout=int(identity_settings['timeout_s']),
         )
         response.raise_for_status()
         response_payload = llm_client.read_openrouter_response_payload(response)
@@ -708,7 +725,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
             'identity_extractor_provider_response',
             llm_client.extract_openrouter_provider_metadata(
                 response_payload,
-                requested_model=arbiter_model,
+                requested_model=identity_model,
             ),
         )
         raw = llm_client.extract_openrouter_text(response_payload)
@@ -717,7 +734,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         logger.info('identity_extracted count=%s', len(entries))
         return entries
     except requests.exceptions.Timeout:
-        logger.warning('identity_extractor_timeout model=%s', arbiter_model)
+        logger.warning('identity_extractor_timeout model=%s', identity_model)
         return []
     except Exception as exc:
         parse_count = _inc_metric('identity_parse_error_count')

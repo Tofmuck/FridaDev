@@ -29,9 +29,11 @@ class IdentityTemporalGuardTests(unittest.TestCase):
         observed = {'user_content': ''}
         originals = (
             arbiter.runtime_settings.get_arbiter_model_settings,
+            arbiter.runtime_settings.get_identity_extractor_model_settings,
             arbiter._load_prompt,
             arbiter.requests.post,
             arbiter.llm_client.or_headers,
+            arbiter.llm_client.or_chat_completions_url,
             arbiter.llm_client.log_provider_metadata,
         )
 
@@ -39,6 +41,14 @@ class IdentityTemporalGuardTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section='arbiter_model',
                 payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                source='env',
+                source_reason='empty_table',
+            )
+
+        def fake_get_identity_extractor_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='identity_extractor_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_extractor_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -55,18 +65,22 @@ class IdentityTemporalGuardTests(unittest.TestCase):
             return FakeResponse()
 
         arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='identity_extractor': {'Authorization': f'caller={caller}'}
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://openrouter.test/chat/completions'
         arbiter.llm_client.log_provider_metadata = lambda *_args, **_kwargs: None
         try:
             result = callback()
         finally:
             (
                 arbiter.runtime_settings.get_arbiter_model_settings,
+                arbiter.runtime_settings.get_identity_extractor_model_settings,
                 arbiter._load_prompt,
                 arbiter.requests.post,
                 arbiter.llm_client.or_headers,
+                arbiter.llm_client.or_chat_completions_url,
                 arbiter.llm_client.log_provider_metadata,
             ) = originals
         return result, observed['user_content']

@@ -193,6 +193,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "/api/admin/settings/main-model/validate",
                 "/api/admin/settings/arbiter-model",
                 "/api/admin/settings/arbiter-model/validate",
+                "/api/admin/settings/identity-extractor-model",
+                "/api/admin/settings/identity-extractor-model/validate",
                 "/api/admin/settings/memory-arbiter-model",
                 "/api/admin/settings/memory-arbiter-model/validate",
                 "/api/admin/settings/summary-model",
@@ -392,6 +394,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/arbiter-model/validate", source_all)
         self.assertIn("/api/admin/settings/memory-arbiter-model", source_all)
         self.assertIn("/api/admin/settings/memory-arbiter-model/validate", source_all)
+        self.assertIn("/api/admin/settings/identity-extractor-model", source_all)
+        self.assertIn("/api/admin/settings/identity-extractor-model/validate", source_all)
         self.assertIn("/api/admin/settings/summary-model", source_all)
         self.assertIn("/api/admin/settings/summary-model/validate", source_all)
         self.assertIn("/api/admin/settings/embedding", source_all)
@@ -818,6 +822,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/arbiter-model/validate", source)
         self.assertIn("/api/admin/settings/memory-arbiter-model", source)
         self.assertIn("/api/admin/settings/memory-arbiter-model/validate", source)
+        self.assertIn("/api/admin/settings/identity-extractor-model", source)
+        self.assertIn("/api/admin/settings/identity-extractor-model/validate", source)
         self.assertIn("/api/admin/settings/summary-model", source)
         self.assertIn("/api/admin/settings/summary-model/validate", source)
         self.assertIn("/api/admin/settings/stimmung-agent-model", source)

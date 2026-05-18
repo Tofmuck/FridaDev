@@ -10,8 +10,8 @@ Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne
 
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
-- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
-- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
+- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
+- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
 - `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
@@ -37,7 +37,7 @@ Colonnes cibles :
 
 Contraintes cibles :
 
-- `section` appartient strictement a : `main_model`, `arbiter_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
+- `section` appartient strictement a : `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
 - une seule ligne par section
 
 ## Table `runtime_settings_history`
@@ -136,7 +136,7 @@ Notes:
 
 ### `arbiter_model`
 
-Slot legacy temporaire pour les callers identity qui n'ont pas encore leur lot de benchmark/découplage (`extract_identities()` et `run_identity_periodic_agent()`). L'arbitre memoire n'utilise plus cette section.
+Slot legacy temporaire conserve pour `run_identity_periodic_agent()` jusqu'a son propre benchmark/decouplage. L'arbitre memoire et l'extracteur identity au tour n'utilisent plus cette section.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
@@ -144,6 +144,18 @@ Slot legacy temporaire pour les callers identity qui n'ont pas encore leur lot d
 | `temperature` | `float` | non | defaut runtime `0.0` |
 | `top_p` | `float` | non | defaut runtime `1.0` |
 | `timeout_s` | `int` | non | `ARBITER_TIMEOUT_S` |
+
+### `identity_extractor_model`
+
+Slot individualise de l'extracteur identity au tour (`extract_identities()`). Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_extractor`, `title_identity_extractor`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-18 conserve `openai/gpt-5.4-mini`.
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `model` | `text` | non | `IDENTITY_EXTRACTOR_MODEL`, defaut `openai/gpt-5.4-mini` |
+| `temperature` | `float` | non | `IDENTITY_EXTRACTOR_TEMPERATURE`, defaut `0.0` |
+| `top_p` | `float` | non | `IDENTITY_EXTRACTOR_TOP_P`, defaut `1.0` |
+| `max_tokens` | `int` | non | `IDENTITY_EXTRACTOR_MAX_TOKENS`, defaut `700` |
+| `timeout_s` | `int` | non | `IDENTITY_EXTRACTOR_TIMEOUT_S`, defaut `10` |
 
 ### `memory_arbiter_model`
 

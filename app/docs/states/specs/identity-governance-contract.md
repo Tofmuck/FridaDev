@@ -145,6 +145,7 @@ Semantique:
 Important:
 - `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent exposes pour dire vrai sur les survivances legacy;
 - ils ne doivent pas etre requalifies comme knobs actifs ni redevenir editables;
+- `identity_extractor_max_tokens` est une lecture readonly de `identity_extractor_model.max_tokens`; l'edition reste dans les runtime settings du caller;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
 - la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
 - ces caps ne racontent pas a eux seuls tout le regime actif: la gouvernance expose aussi des sections readonly pour le staging a 15 paires, le scoring Python deterministe, la promotion vers le statique et la suspension automatique.

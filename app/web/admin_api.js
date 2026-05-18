@@ -4,6 +4,7 @@
   const sectionRoutes = Object.freeze({
     mainModel: "main-model",
     arbiterModel: "memory-arbiter-model",
+    identityExtractorModel: "identity-extractor-model",
     summaryModel: "summary-model",
     stimmungAgentModel: "stimmung-agent-model",
     validationAgentModel: "validation-agent-model",
@@ -15,6 +16,7 @@
   const sectionEndpoints = Object.freeze({
     "main-model": "/api/admin/settings/main-model",
     "arbiter-model": "/api/admin/settings/arbiter-model",
+    "identity-extractor-model": "/api/admin/settings/identity-extractor-model",
     "memory-arbiter-model": "/api/admin/settings/memory-arbiter-model",
     "summary-model": "/api/admin/settings/summary-model",
     "stimmung-agent-model": "/api/admin/settings/stimmung-agent-model",
@@ -27,6 +29,7 @@
   const sectionValidateEndpoints = Object.freeze({
     "main-model": "/api/admin/settings/main-model/validate",
     "arbiter-model": "/api/admin/settings/arbiter-model/validate",
+    "identity-extractor-model": "/api/admin/settings/identity-extractor-model/validate",
     "memory-arbiter-model": "/api/admin/settings/memory-arbiter-model/validate",
     "summary-model": "/api/admin/settings/summary-model/validate",
     "stimmung-agent-model": "/api/admin/settings/stimmung-agent-model/validate",

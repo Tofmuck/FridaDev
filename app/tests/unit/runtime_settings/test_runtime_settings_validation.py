@@ -317,6 +317,34 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['shared_transport_runtime']['ok'])
         self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
 
+    def test_validate_runtime_section_accepts_candidate_identity_extractor_model_payload(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-identity-extractor'
+        try:
+            result = runtime_settings.validate_runtime_section(
+                'identity_extractor_model',
+                {
+                    'model': {'value': 'openai/gpt-5.4-mini'},
+                    'timeout_s': {'value': 10},
+                    'temperature': {'value': 0.0},
+                    'top_p': {'value': 1.0},
+                    'max_tokens': {'value': 700},
+                },
+                fetcher=lambda: {},
+            )
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(result['valid'])
+        checks = {check['name']: check for check in result['checks']}
+        self.assertTrue(checks['model']['ok'])
+        self.assertTrue(checks['timeout_s']['ok'])
+        self.assertTrue(checks['temperature']['ok'])
+        self.assertTrue(checks['top_p']['ok'])
+        self.assertTrue(checks['max_tokens']['ok'])
+        self.assertTrue(checks['shared_transport_runtime']['ok'])
+        self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
+
     def test_validate_runtime_section_rejects_candidate_validation_agent_model_payload_above_contractual_max_tokens(self) -> None:
         original_api_key = config.OR_KEY
         config.OR_KEY = 'sk-phase5-validation-agent'

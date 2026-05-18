@@ -213,13 +213,13 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
         category='active_subpipeline_readonly',
         value_type='int',
         unit='tokens',
-        source_kind='hardcoded',
-        source_ref='memory.arbiter.identity_extractor.max_tokens',
+        source_kind='runtime_settings',
+        source_ref='identity_extractor_model.max_tokens',
         active_scope='identity_extractor',
         editable=False,
         editable_via=None,
-        validation={'exact': 700},
-        operator_note='Budget encore hardcode dans le sous-pipeline extracteur, visible seulement.',
+        validation={'min': 1},
+        operator_note='Budget effectif de l extracteur identity, edite depuis le slot admin identity_extractor_model.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_DECAY_FACTOR',
@@ -268,15 +268,28 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
 ITEM_SPECS: tuple[GovernanceItemSpec, ...] = _EDITABLE_ITEM_SPECS + _READONLY_ITEM_SPECS
 EDITABLE_KEYS: tuple[str, ...] = tuple(item.key for item in _EDITABLE_ITEM_SPECS)
 
-_HARDCODED_VALUES: dict[str, Any] = {
-    'identity_extractor_max_tokens': 700,
-}
+_HARDCODED_VALUES: dict[str, Any] = {}
 
 
 def _config_value(key: str) -> Any:
     if key in _HARDCODED_VALUES:
         return _HARDCODED_VALUES[key]
     return getattr(config, key)
+
+
+def _identity_extractor_max_tokens_value(
+    *,
+    runtime_settings_module: Any = None,
+    fetcher: Any = None,
+) -> int:
+    if runtime_settings_module is None:
+        from admin import runtime_settings as runtime_settings_module
+    try:
+        view = runtime_settings_module.get_identity_extractor_model_settings(fetcher=fetcher)
+        payload = view.payload.get('max_tokens') or {}
+        return int(payload.get('value') or config.IDENTITY_EXTRACTOR_MAX_TOKENS)
+    except Exception:
+        return int(config.IDENTITY_EXTRACTOR_MAX_TOKENS)
 
 
 def _coerce_value(spec: GovernanceItemSpec, value: Any) -> Any:
@@ -322,6 +335,8 @@ def governed_value_for_runtime(
     config_module: Any = config,
     runtime_settings_module: Any = None,
 ) -> Any:
+    if key == 'identity_extractor_max_tokens':
+        return _identity_extractor_max_tokens_value(runtime_settings_module=runtime_settings_module)
     if key not in EDITABLE_KEYS:
         return getattr(config_module, key)
     if config_module is not config:
@@ -506,6 +521,11 @@ def item_value(
             runtime_settings_module=runtime_settings_module,
             fetcher=fetcher,
         )[key]
+    if key == 'identity_extractor_max_tokens':
+        return _identity_extractor_max_tokens_value(
+            runtime_settings_module=runtime_settings_module,
+            fetcher=fetcher,
+        )
     return _config_value(key)
 
 
@@ -518,7 +538,15 @@ def build_item_payloads(
     runtime_values = editable_values_from_view(view)
     items: list[dict[str, Any]] = []
     for spec in ITEM_SPECS:
-        current_value = runtime_values[spec.key] if spec.key in runtime_values else _config_value(spec.key)
+        if spec.key in runtime_values:
+            current_value = runtime_values[spec.key]
+        elif spec.key == 'identity_extractor_max_tokens':
+            current_value = _identity_extractor_max_tokens_value(
+                runtime_settings_module=runtime_settings_module,
+                fetcher=fetcher,
+            )
+        else:
+            current_value = _config_value(spec.key)
         item = {
             'key': spec.key,
             'label': spec.label,

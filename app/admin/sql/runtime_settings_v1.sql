@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS runtime_settings (
         section IN (
             'main_model',
             'arbiter_model',
+            'identity_extractor_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
@@ -47,6 +48,7 @@ ALTER TABLE runtime_settings
         section IN (
             'main_model',
             'arbiter_model',
+            'identity_extractor_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
@@ -78,6 +80,7 @@ CREATE TABLE IF NOT EXISTS runtime_settings_history (
         section IN (
             'main_model',
             'arbiter_model',
+            'identity_extractor_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
@@ -111,6 +114,7 @@ ALTER TABLE runtime_settings_history
         section IN (
             'main_model',
             'arbiter_model',
+            'identity_extractor_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',

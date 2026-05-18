@@ -175,6 +175,11 @@ def _seed_value(section: str, field: str) -> Any:
         ('arbiter_model', 'temperature'): 0.0,
         ('arbiter_model', 'top_p'): 1.0,
         ('arbiter_model', 'timeout_s'): config.ARBITER_TIMEOUT_S,
+        ('identity_extractor_model', 'model'): config.IDENTITY_EXTRACTOR_MODEL,
+        ('identity_extractor_model', 'temperature'): config.IDENTITY_EXTRACTOR_TEMPERATURE,
+        ('identity_extractor_model', 'top_p'): config.IDENTITY_EXTRACTOR_TOP_P,
+        ('identity_extractor_model', 'max_tokens'): config.IDENTITY_EXTRACTOR_MAX_TOKENS,
+        ('identity_extractor_model', 'timeout_s'): config.IDENTITY_EXTRACTOR_TIMEOUT_S,
         ('memory_arbiter_model', 'model'): config.MEMORY_ARBITER_MODEL,
         ('memory_arbiter_model', 'temperature'): config.MEMORY_ARBITER_TEMPERATURE,
         ('memory_arbiter_model', 'top_p'): config.MEMORY_ARBITER_TOP_P,
@@ -439,6 +444,13 @@ def get_main_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[st
 
 def get_arbiter_model_settings(*, fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None) -> RuntimeSectionView:
     return get_runtime_section('arbiter_model', fetcher=fetcher)
+
+
+def get_identity_extractor_model_settings(
+    *,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    return get_runtime_section('identity_extractor_model', fetcher=fetcher)
 
 
 def get_memory_arbiter_model_settings(

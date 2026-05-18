@@ -256,6 +256,7 @@ function adminStatusPayload() {
   for (const key of [
     'main_model',
     'arbiter_model',
+    'identity_extractor_model',
     'memory_arbiter_model',
     'summary_model',
     'stimmung_agent_model',
@@ -328,6 +329,18 @@ function sectionPayload(route) {
         temperature: settingField(0),
         top_p: settingField(1),
         timeout_s: settingField(30),
+      },
+    };
+  }
+  if (route === 'identity-extractor-model') {
+    return {
+      ...common,
+      payload: {
+        model: settingField('openai/gpt-5.4-mini'),
+        temperature: settingField(0),
+        top_p: settingField(1),
+        max_tokens: settingField(700),
+        timeout_s: settingField(10),
       },
     };
   }
@@ -437,6 +450,7 @@ function adminMockScript() {
       const routePayloads = ${JSON.stringify({
         'main-model': sectionPayload('main-model'),
         'arbiter-model': sectionPayload('arbiter-model'),
+        'identity-extractor-model': sectionPayload('identity-extractor-model'),
         'memory-arbiter-model': sectionPayload('memory-arbiter-model'),
         'summary-model': sectionPayload('summary-model'),
         'stimmung-agent-model': sectionPayload('stimmung-agent-model'),

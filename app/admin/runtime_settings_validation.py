@@ -161,7 +161,7 @@ def validate_runtime_section(
                 _validation_check('api_key_runtime', api_key_ok, api_key_detail),
             )
         )
-    elif section == 'memory_arbiter_model':
+    elif section in {'memory_arbiter_model', 'identity_extractor_model'}:
         model = _runtime_text_value(view, 'model')
         timeout_s = _runtime_int_value(view, 'timeout_s')
         temperature = _runtime_float_value(view, 'temperature')

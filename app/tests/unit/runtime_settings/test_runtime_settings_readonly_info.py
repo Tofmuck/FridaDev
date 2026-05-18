@@ -116,20 +116,31 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
     def test_get_section_readonly_info_arbiter_model_documents_identity_legacy_scope(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
 
-        self.assertEqual(readonly_info['identity_extractor_max_tokens']['value'], 700)
-        self.assertFalse(readonly_info['identity_extractor_max_tokens']['is_editable'])
         self.assertEqual(readonly_info['identity_periodic_agent_max_tokens']['value'], 1400)
         self.assertFalse(readonly_info['identity_periodic_agent_max_tokens']['is_editable'])
         self.assertEqual(
-            readonly_info['identity_extractor_prompt_path']['label'],
+            readonly_info['identity_periodic_agent_prompt_path']['label'],
+            'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+        )
+        self.assertIn('Legacy identity periodic slot', readonly_info['legacy_scope']['value'])
+        self.assertIn('identity_extractor_model', readonly_info['legacy_scope']['value'])
+
+    def test_get_section_readonly_info_identity_extractor_model_exposes_prompt_transport_and_benchmark(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('identity_extractor_model')
+
+        self.assertEqual(
+            readonly_info['prompt_path']['label'],
             'IDENTITY_EXTRACTOR_PROMPT_PATH',
         )
+        self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_EXTRACTOR_PROMPT_PATH)
+        self.assertIn('You are an identity evidence extractor.', readonly_info['system_prompt']['value'])
+        self.assertIn('main_model.title_identity_extractor', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_identity_extractor', readonly_info['shared_transport']['value'])
         self.assertEqual(
-            readonly_info['identity_extractor_prompt_path']['value'],
-            config.IDENTITY_EXTRACTOR_PROMPT_PATH,
+            readonly_info['benchmark_decision']['value'],
+            'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
-        self.assertIn('You are an identity evidence extractor.', readonly_info['identity_extractor_prompt']['value'])
-        self.assertIn('Shared identity extractor', readonly_info['legacy_scope']['value'])
+        self.assertIn('extract_identities() uses identity_extractor_model', readonly_info['transition_note']['value'])
 
     def test_get_section_readonly_info_summary_model_exposes_prompt_transport_and_benchmark_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('summary_model')
@@ -228,6 +239,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         expected_non_empty = {
             'main_model',
             'arbiter_model',
+            'identity_extractor_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',

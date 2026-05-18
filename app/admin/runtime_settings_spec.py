@@ -7,6 +7,7 @@ from typing import Any
 SECTION_NAMES: tuple[str, ...] = (
     'main_model',
     'arbiter_model',
+    'identity_extractor_model',
     'memory_arbiter_model',
     'summary_model',
     'web_reformulation_model',
@@ -102,6 +103,16 @@ SECTION_SPECS: dict[str, SectionSpec] = {
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.0),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
             FieldSpec('timeout_s', 'int', env_var='ARBITER_TIMEOUT_S'),
+        ),
+    ),
+    'identity_extractor_model': SectionSpec(
+        name='identity_extractor_model',
+        fields=(
+            FieldSpec('model', 'text', env_var='IDENTITY_EXTRACTOR_MODEL'),
+            FieldSpec('temperature', 'float', env_var='IDENTITY_EXTRACTOR_TEMPERATURE'),
+            FieldSpec('top_p', 'float', env_var='IDENTITY_EXTRACTOR_TOP_P'),
+            FieldSpec('max_tokens', 'int', env_var='IDENTITY_EXTRACTOR_MAX_TOKENS'),
+            FieldSpec('timeout_s', 'int', env_var='IDENTITY_EXTRACTOR_TIMEOUT_S'),
         ),
     ),
     'memory_arbiter_model': SectionSpec(
