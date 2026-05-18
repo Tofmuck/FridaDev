@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS
-from benchmark.suites.arbiter import adapter, scorer
+from benchmark.suites.arbiter import adapter, scorer, tournament
 
 
 class ArbiterBenchmarkSuiteTests(unittest.TestCase):
@@ -60,6 +60,21 @@ class ArbiterBenchmarkSuiteTests(unittest.TestCase):
             candidate_ids = {candidate["candidate_id"] for candidate in case["candidates"]}
             self.assertTrue(set(case.get("expected_keep_ids", [])).issubset(candidate_ids))
             self.assertTrue(case.get("why"))
+
+    def test_tournament_fixtures_are_reserved_and_have_expected_composition(self) -> None:
+        round1 = adapter.load_cases(REPO_ROOT, fixture_set="tournament_round1")
+        final = adapter.load_cases(REPO_ROOT, fixture_set="tournament_final")
+        self.assertEqual(len(round1), 40)
+        self.assertEqual(len(final), 60)
+        self.assertEqual(sum(1 for case in round1 if case["origin"] == "real_anonymized"), 24)
+        self.assertEqual(sum(1 for case in round1 if case["origin"] == "artificial_hard"), 16)
+        self.assertEqual(sum(1 for case in final if case["origin"] == "real_anonymized"), 40)
+        self.assertEqual(sum(1 for case in final if case["origin"] == "artificial_hard"), 20)
+        self.assertFalse({case["id"] for case in round1} & {case["id"] for case in final})
+
+    def test_tournament_round1_models_are_exact(self) -> None:
+        self.assertEqual(tournament.ROUND1_MODELS, DEFAULT_ARBITER_MODELS)
+        self.assertNotIn("openai/gpt-5.4-nano", tournament.ROUND1_MODELS)
 
     def test_payload_uses_production_prompt_and_fixed_arbiter_params(self) -> None:
         cases = adapter.load_cases(REPO_ROOT)
@@ -112,6 +127,7 @@ class ArbiterBenchmarkSuiteTests(unittest.TestCase):
         self.assertTrue(result["schema_valid"])
         self.assertEqual(result["false_positives"], ["expected-drop"])
         self.assertEqual(result["false_negatives"], ["expected-keep"])
+        self.assertEqual(result["weighted_penalty"], 3)
         self.assertEqual(result["score"], 0.0)
 
     def test_scorer_rejects_non_schema_json(self) -> None:
@@ -120,6 +136,16 @@ class ArbiterBenchmarkSuiteTests(unittest.TestCase):
         self.assertTrue(result["json_valid"])
         self.assertFalse(result["schema_valid"])
         self.assertEqual(result["score"], 0.0)
+        self.assertEqual(result["weighted_score"], 0.0)
+
+    def test_provider_error_gets_no_keep_drop_credit(self) -> None:
+        case = {"candidates": [{"candidate_id": "drop-me"}], "expected_keep_ids": []}
+        result = scorer.score_response(case, None, "Provider returned error")
+        self.assertFalse(result["json_valid"])
+        self.assertFalse(result["schema_valid"])
+        self.assertEqual(result["score"], 0.0)
+        self.assertEqual(result["weighted_score"], 0.0)
+        self.assertEqual(result["weighted_penalty"], result["max_weighted_penalty"])
 
     def test_campaign_verdict_keeps_runtime_unchanged_until_decoupling_lot(self) -> None:
         verdict = scorer.campaign_verdict(

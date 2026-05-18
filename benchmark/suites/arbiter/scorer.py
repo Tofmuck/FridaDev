@@ -48,6 +48,18 @@ def score_response(case: dict[str, Any], raw_text: str | None, provider_error: s
     true_negatives = sorted((set(candidate_ids) - expected_keep) - predicted_keep)
     total = len(candidate_ids)
     accuracy = ((len(true_positives) + len(true_negatives)) / total) if total else 0.0
+    weighted_penalty = (2 * len(false_positives)) + len(false_negatives)
+    max_weighted_penalty = (2 * (total - len(expected_keep))) + len(expected_keep)
+    weighted_score = (
+        max(0.0, 100.0 * (1.0 - (weighted_penalty / max_weighted_penalty)))
+        if max_weighted_penalty
+        else 100.0
+    )
+    score = accuracy * 100.0
+    if not schema_valid:
+        weighted_penalty = max_weighted_penalty
+        weighted_score = 0.0
+        score = 0.0
     return {
         "json_valid": True,
         "schema_valid": schema_valid,
@@ -59,7 +71,10 @@ def score_response(case: dict[str, Any], raw_text: str | None, provider_error: s
         "false_positives": false_positives,
         "false_negatives": false_negatives,
         "accuracy": accuracy,
-        "score": (accuracy * 100.0) if schema_valid else min(accuracy * 100.0, 50.0),
+        "weighted_penalty": weighted_penalty,
+        "max_weighted_penalty": max_weighted_penalty,
+        "weighted_score": weighted_score,
+        "score": score,
         "error": None if schema_valid else "schema_error",
     }
 
@@ -72,11 +87,30 @@ def summarize_model(model: str, calls: list[dict[str, Any]]) -> dict[str, Any]:
     false_positives = sum(len(call["score"].get("false_positives") or []) for call in calls)
     false_negatives = sum(len(call["score"].get("false_negatives") or []) for call in calls)
     candidate_count = sum(int(call["score"].get("candidate_count") or 0) for call in calls)
+    weighted_penalty = sum(int(call["score"].get("weighted_penalty") or 0) for call in calls)
+    max_weighted_penalty = sum(int(call["score"].get("max_weighted_penalty") or 0) for call in calls)
+    hard_calls = [
+        call
+        for call in calls
+        if call.get("case_difficulty") == "hard" or "hard" in set(call.get("case_tags") or [])
+    ]
+    hard_weighted_penalty = sum(int(call["score"].get("weighted_penalty") or 0) for call in hard_calls)
+    hard_max_weighted_penalty = sum(int(call["score"].get("max_weighted_penalty") or 0) for call in hard_calls)
     correct = sum(
         len(call["score"].get("true_positives") or []) + len(call["score"].get("true_negatives") or [])
         for call in calls
     )
     score = (correct / candidate_count * 100.0) if candidate_count else 0.0
+    weighted_score = (
+        max(0.0, 100.0 * (1.0 - (weighted_penalty / max_weighted_penalty)))
+        if max_weighted_penalty
+        else 0.0
+    )
+    hard_weighted_score = (
+        max(0.0, 100.0 * (1.0 - (hard_weighted_penalty / hard_max_weighted_penalty)))
+        if hard_max_weighted_penalty
+        else weighted_score
+    )
     avg_latency = sum(float(call["provider"].get("elapsed_ms") or 0.0) for call in calls) / count
     costs = [call["provider"].get("cost_estimate_usd") for call in calls]
     numeric_costs = [float(cost) for cost in costs if isinstance(cost, (int, float))]
@@ -85,11 +119,15 @@ def summarize_model(model: str, calls: list[dict[str, Any]]) -> dict[str, Any]:
     json_rate = json_valid / count
     schema_rate = schema_valid / count
     provider_error_rate = provider_errors / count
-    verdict = _verdict(score, schema_rate, provider_error_rate, false_positives, false_negatives)
+    verdict = _verdict(weighted_score, schema_rate, provider_error_rate, false_positives, false_negatives)
     notes = _notes(false_positives, false_negatives, provider_errors, schema_rate)
     return {
         "model": model,
         "score": round(score, 3),
+        "weighted_score": round(weighted_score, 3),
+        "hard_weighted_score": round(hard_weighted_score, 3),
+        "weighted_penalty": weighted_penalty,
+        "max_weighted_penalty": max_weighted_penalty,
         "json_valid_rate": json_rate,
         "schema_valid_rate": schema_rate,
         "false_positives": false_positives,
@@ -100,6 +138,32 @@ def summarize_model(model: str, calls: list[dict[str, Any]]) -> dict[str, Any]:
         "verdict": verdict,
         "notes": notes,
     }
+
+
+def rank_summaries(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        summaries,
+        key=lambda item: (
+            -float(item.get("weighted_score") or 0.0),
+            int(item.get("false_positives") or 0),
+            int(item.get("false_negatives") or 0),
+            float(item.get("avg_latency_ms") or 999999.0),
+            float(item.get("cost_estimate_usd") if item.get("cost_estimate_usd") is not None else 999999.0),
+        ),
+    )
+
+
+def value_rank_summaries(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        summaries,
+        key=lambda item: (
+            -float(item.get("weighted_score") or 0.0),
+            float(item.get("cost_estimate_usd") if item.get("cost_estimate_usd") is not None else 999999.0),
+            float(item.get("avg_latency_ms") or 999999.0),
+            int(item.get("false_positives") or 0),
+            int(item.get("false_negatives") or 0),
+        ),
+    )
 
 
 def campaign_verdict(results: list[dict[str, Any]]) -> dict[str, str]:
@@ -181,6 +245,9 @@ def _empty_score(
         "false_positives": [],
         "false_negatives": sorted(expected_keep),
         "accuracy": 0.0,
+        "max_weighted_penalty": (2 * (len(candidate_ids) - len(expected_keep))) + len(expected_keep),
+        "weighted_penalty": (2 * (len(candidate_ids) - len(expected_keep))) + len(expected_keep),
+        "weighted_score": 0.0,
         "score": 0.0,
         "error": provider_error,
     }

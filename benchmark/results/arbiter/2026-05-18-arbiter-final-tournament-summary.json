@@ -1,0 +1,940 @@
+{
+  "campaign_id": "2026-05-18-arbiter-final-tournament",
+  "round1_case_count": 40,
+  "final_case_count": 60,
+  "round1_origin_counts": {
+    "real_anonymized": 24,
+    "artificial_hard": 16
+  },
+  "final_origin_counts": {
+    "real_anonymized": 40,
+    "artificial_hard": 20
+  },
+  "finalists": [
+    "mistralai/mistral-small-2603",
+    "google/gemini-3.1-flash-lite"
+  ],
+  "round1_ranking": [
+    {
+      "model": "mistralai/mistral-small-2603",
+      "score": 96.25,
+      "weighted_score": 95.161,
+      "hard_weighted_score": 94.0,
+      "weighted_penalty": 6,
+      "max_weighted_penalty": 124,
+      "json_valid_rate": 0.975,
+      "schema_valid_rate": 0.975,
+      "false_positives": 1,
+      "false_negatives": 2,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 2032.742,
+      "cost_estimate_usd": 0.00713085,
+      "verdict": "tester plus",
+      "notes": "schema issues, 1 FP, 2 FN"
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "score": 95.0,
+      "weighted_score": 93.548,
+      "hard_weighted_score": 92.0,
+      "weighted_penalty": 8,
+      "max_weighted_penalty": 124,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 4,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1361.94,
+      "cost_estimate_usd": 0.02261275,
+      "verdict": "tester plus",
+      "notes": "4 FP"
+    },
+    {
+      "model": "openai/gpt-5.4-mini",
+      "score": 95.0,
+      "weighted_score": 93.548,
+      "hard_weighted_score": 92.0,
+      "weighted_penalty": 8,
+      "max_weighted_penalty": 124,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 4,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1835.673,
+      "cost_estimate_usd": 0.0487995,
+      "verdict": "tester plus",
+      "notes": "4 FP"
+    },
+    {
+      "model": "qwen/qwen3.6-flash",
+      "score": 55.0,
+      "weighted_score": 0.0,
+      "hard_weighted_score": 0.0,
+      "weighted_penalty": 124,
+      "max_weighted_penalty": 124,
+      "json_valid_rate": 0.0,
+      "schema_valid_rate": 0.0,
+      "false_positives": 0,
+      "false_negatives": 36,
+      "provider_error_rate": 1.0,
+      "avg_latency_ms": 307.516,
+      "cost_estimate_usd": null,
+      "verdict": "exclure",
+      "notes": "40 provider error(s), schema issues, 36 FN"
+    }
+  ],
+  "final_ranking": [
+    {
+      "model": "mistralai/mistral-small-2603",
+      "score": 99.167,
+      "weighted_score": 98.913,
+      "hard_weighted_score": 98.701,
+      "weighted_penalty": 2,
+      "max_weighted_penalty": 184,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 1,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1037.207,
+      "cost_estimate_usd": 0.00783817,
+      "verdict": "garder",
+      "notes": "1 FP"
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "score": 96.667,
+      "weighted_score": 95.652,
+      "hard_weighted_score": 94.805,
+      "weighted_penalty": 8,
+      "max_weighted_penalty": 184,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 4,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1305.177,
+      "cost_estimate_usd": 0.03356075,
+      "verdict": "tester plus",
+      "notes": "4 FP"
+    }
+  ],
+  "value_ranking": [
+    {
+      "model": "mistralai/mistral-small-2603",
+      "score": 99.167,
+      "weighted_score": 98.913,
+      "hard_weighted_score": 98.701,
+      "weighted_penalty": 2,
+      "max_weighted_penalty": 184,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 1,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1037.207,
+      "cost_estimate_usd": 0.00783817,
+      "verdict": "garder",
+      "notes": "1 FP"
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "score": 96.667,
+      "weighted_score": 95.652,
+      "hard_weighted_score": 94.805,
+      "weighted_penalty": 8,
+      "max_weighted_penalty": 184,
+      "json_valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "false_positives": 4,
+      "false_negatives": 0,
+      "provider_error_rate": 0.0,
+      "avg_latency_ms": 1305.177,
+      "cost_estimate_usd": 0.03356075,
+      "verdict": "tester plus",
+      "notes": "4 FP"
+    }
+  ],
+  "pure_relevance_winner": "mistralai/mistral-small-2603",
+  "value_winner": "mistralai/mistral-small-2603",
+  "baseline_comparison": "Baseline openai/gpt-5.4-mini did not reach the final.",
+  "recommendation": "Basculer vers mistralai/mistral-small-2603 devient defendable au prochain lot de decouplage.",
+  "divergences": [
+    {
+      "case_id": "r1_real_01_admin_authelia",
+      "expected_keep_ids": [
+        "r1_real_01_admin_authelia_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_01_admin_authelia_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_01_admin_authelia_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_01_admin_authelia_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_02_delta_t_temporel",
+      "expected_keep_ids": [
+        "r1_real_02_delta_t_temporel_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_02_delta_t_temporel_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_02_delta_t_temporel_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_02_delta_t_temporel_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_03_resume_date_locale",
+      "expected_keep_ids": [
+        "r1_real_03_resume_date_locale_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_03_resume_date_locale_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_03_resume_date_locale_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_03_resume_date_locale_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_04_lane_web_locale",
+      "expected_keep_ids": [
+        "r1_real_04_lane_web_locale_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_04_lane_web_locale_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_04_lane_web_locale_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_04_lane_web_locale_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_05_validation_agent",
+      "expected_keep_ids": [
+        "r1_real_05_validation_agent_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_05_validation_agent_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_05_validation_agent_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": []
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_06_arbitre_memoire_temporel",
+      "expected_keep_ids": [
+        "r1_real_06_arbitre_memoire_temporel_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_06_arbitre_memoire_temporel_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_06_arbitre_memoire_temporel_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_06_arbitre_memoire_temporel_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_07_identity_temporelle_faible",
+      "expected_keep_ids": [
+        "r1_real_07_identity_temporelle_faible_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_07_identity_temporelle_faible_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_07_identity_temporelle_faible_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_07_identity_temporelle_faible_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_08_stimmung_sans_gaps",
+      "expected_keep_ids": [
+        "r1_real_08_stimmung_sans_gaps_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_08_stimmung_sans_gaps_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_08_stimmung_sans_gaps_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_08_stimmung_sans_gaps_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_09_timestamp_invalide",
+      "expected_keep_ids": [
+        "r1_real_09_timestamp_invalide_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_09_timestamp_invalide_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_09_timestamp_invalide_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_09_timestamp_invalide_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_10_timezone_invalide",
+      "expected_keep_ids": [
+        "r1_real_10_timezone_invalide_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_10_timezone_invalide_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_10_timezone_invalide_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_10_timezone_invalide_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_11_contrat_prompt_temporel",
+      "expected_keep_ids": [
+        "r1_real_11_contrat_prompt_temporel_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_11_contrat_prompt_temporel_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_11_contrat_prompt_temporel_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_11_contrat_prompt_temporel_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_12_documents_actifs",
+      "expected_keep_ids": [
+        "r1_real_12_documents_actifs_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_12_documents_actifs_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_12_documents_actifs_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_12_documents_actifs_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_13_ocr_bornee",
+      "expected_keep_ids": [
+        "r1_real_13_ocr_bornee_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_13_ocr_bornee_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_13_ocr_bornee_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_13_ocr_bornee_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_14_frontiere_biblio",
+      "expected_keep_ids": [
+        "r1_real_14_frontiere_biblio_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_14_frontiere_biblio_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_14_frontiere_biblio_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_14_frontiere_biblio_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_15_runtime_settings_effectifs",
+      "expected_keep_ids": [
+        "r1_real_15_runtime_settings_effectifs_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_15_runtime_settings_effectifs_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_15_runtime_settings_effectifs_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_15_runtime_settings_effectifs_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_16_token_openrouter_partage",
+      "expected_keep_ids": [
+        "r1_real_16_token_openrouter_partage_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_16_token_openrouter_partage_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_16_token_openrouter_partage_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_16_token_openrouter_partage_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_17_catalogue_modeles",
+      "expected_keep_ids": [
+        "r1_real_17_catalogue_modeles_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_17_catalogue_modeles_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_17_catalogue_modeles_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_17_catalogue_modeles_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_18_atelier_benchmark",
+      "expected_keep_ids": [
+        "r1_real_18_atelier_benchmark_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_18_atelier_benchmark_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_18_atelier_benchmark_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_18_atelier_benchmark_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_19_prompt_arbitre",
+      "expected_keep_ids": [
+        "r1_real_19_prompt_arbitre_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_19_prompt_arbitre_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_19_prompt_arbitre_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_19_prompt_arbitre_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_20_arbitre_de_reponse",
+      "expected_keep_ids": [
+        "r1_real_20_arbitre_de_reponse_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_20_arbitre_de_reponse_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_20_arbitre_de_reponse_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_20_arbitre_de_reponse_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_21_identity_static_mutable",
+      "expected_keep_ids": [
+        "r1_real_21_identity_static_mutable_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_21_identity_static_mutable_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_21_identity_static_mutable_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_21_identity_static_mutable_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_22_dashboard_operateur",
+      "expected_keep_ids": [
+        "r1_real_22_dashboard_operateur_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_22_dashboard_operateur_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_22_dashboard_operateur_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_22_dashboard_operateur_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_23_export_markdown",
+      "expected_keep_ids": [
+        "r1_real_23_export_markdown_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_23_export_markdown_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_23_export_markdown_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_23_export_markdown_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_real_24_streaming_canonicalise",
+      "expected_keep_ids": [
+        "r1_real_24_streaming_canonicalise_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_real_24_streaming_canonicalise_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_real_24_streaming_canonicalise_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_real_24_streaming_canonicalise_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_01_memoire_seduisante_fausse",
+      "expected_keep_ids": [
+        "r1_art_01_memoire_seduisante_fausse_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_01_memoire_seduisante_fausse_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_01_memoire_seduisante_fausse_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_01_memoire_seduisante_fausse_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_02_memoire_vraie_sans_gain",
+      "expected_keep_ids": [
+        "r1_art_02_memoire_vraie_sans_gain_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_02_memoire_vraie_sans_gain_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_02_memoire_vraie_sans_gain_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_02_memoire_vraie_sans_gain_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_03_quasi_doublon",
+      "expected_keep_ids": [
+        "r1_art_03_quasi_doublon_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_03_quasi_doublon_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_03_quasi_doublon_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_03_quasi_doublon_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_04_affect_non_utile_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_04_affect_non_utile_none_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_04_affect_non_utile_none_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": []
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_05_identite_utile_vs_humeur",
+      "expected_keep_ids": [
+        "r1_art_05_identite_utile_vs_humeur_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_05_identite_utile_vs_humeur_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_05_identite_utile_vs_humeur_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_05_identite_utile_vs_humeur_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_06_piege_aujourd_hui",
+      "expected_keep_ids": [
+        "r1_art_06_piege_aujourd_hui_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_06_piege_aujourd_hui_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_06_piege_aujourd_hui_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_06_piege_aujourd_hui_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_07_contradiction_tour_courant",
+      "expected_keep_ids": [
+        "r1_art_07_contradiction_tour_courant_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_07_contradiction_tour_courant_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_07_contradiction_tour_courant_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_07_contradiction_tour_courant_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_08_derive_biblio_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_08_derive_biblio_none_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_08_derive_biblio_none_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": []
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_09_un_seul_candidat_utile",
+      "expected_keep_ids": [
+        "r1_art_09_un_seul_candidat_utile_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_09_un_seul_candidat_utile_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_09_un_seul_candidat_utile_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_09_un_seul_candidat_utile_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_10_francais_implicite",
+      "expected_keep_ids": [
+        "r1_art_10_francais_implicite_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_10_francais_implicite_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_10_francais_implicite_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_10_francais_implicite_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_11_preference_ancienne",
+      "expected_keep_ids": [
+        "r1_art_11_preference_ancienne_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_11_preference_ancienne_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_11_preference_ancienne_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_11_preference_ancienne_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_12_resume_parent_vague_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_12_resume_parent_vague_none_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_12_resume_parent_vague_none_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": []
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_13_outil_hors_sujet",
+      "expected_keep_ids": [
+        "r1_art_13_outil_hors_sujet_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_13_outil_hors_sujet_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_13_outil_hors_sujet_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_13_outil_hors_sujet_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_14_mauvais_acteur",
+      "expected_keep_ids": [
+        "r1_art_14_mauvais_acteur_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_14_mauvais_acteur_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_14_mauvais_acteur_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_14_mauvais_acteur_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_15_detail_prive_inutile",
+      "expected_keep_ids": [
+        "r1_art_15_detail_prive_inutile_keep"
+      ],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_15_detail_prive_inutile_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_15_detail_prive_inutile_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": []
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "r1_art_16_ambigu_avec_ancrage_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "openai/gpt-5.4-mini": [
+          "r1_art_16_ambigu_avec_ancrage_none_keep"
+        ],
+        "google/gemini-3.1-flash-lite": [
+          "r1_art_16_ambigu_avec_ancrage_none_keep"
+        ],
+        "qwen/qwen3.6-flash": [],
+        "mistralai/mistral-small-2603": [
+          "r1_art_16_ambigu_avec_ancrage_none_keep"
+        ]
+      },
+      "round": "round1"
+    },
+    {
+      "case_id": "final_art_05_operateur_vs_modele_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "mistralai/mistral-small-2603": [],
+        "google/gemini-3.1-flash-lite": [
+          "final_art_05_operateur_vs_modele_none_keep"
+        ]
+      },
+      "round": "final"
+    },
+    {
+      "case_id": "final_art_10_document_boundary_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "mistralai/mistral-small-2603": [],
+        "google/gemini-3.1-flash-lite": [
+          "final_art_10_document_boundary_none_keep"
+        ]
+      },
+      "round": "final"
+    },
+    {
+      "case_id": "final_art_15_web_source_fragile_none",
+      "expected_keep_ids": [],
+      "by_model": {
+        "mistralai/mistral-small-2603": [],
+        "google/gemini-3.1-flash-lite": [
+          "final_art_15_web_source_fragile_none_keep"
+        ]
+      },
+      "round": "final"
+    }
+  ]
+}

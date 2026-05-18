@@ -39,16 +39,19 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
     lines.append("")
     lines.append("## Summary")
     lines.append("")
-    lines.append("| Model | Score | JSON valid | Schema valid | FP | FN | Avg latency | Cost est. | Provider errors | Verdict | Notes |")
-    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |")
+    lines.append("| Model | Weighted score | Hard score | JSON valid | Schema valid | FP | FN | Avg latency | Cost est. | Provider errors | Verdict | Notes |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |")
     for result in campaign.get("results", []):
         summary = result["summary"]
+        weighted_score = float(summary.get("weighted_score", summary.get("score", 0.0)) or 0.0)
+        hard_score = float(summary.get("hard_weighted_score", weighted_score) or 0.0)
         lines.append(
             "| "
             + " | ".join(
                 [
                     f"`{result['model']}`",
-                    f"{summary['score']:.1f}",
+                    f"{weighted_score:.1f}",
+                    f"{hard_score:.1f}",
                     f"{summary['json_valid_rate']:.0%}",
                     f"{summary['schema_valid_rate']:.0%}",
                     str(summary["false_positives"]),
@@ -80,7 +83,6 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
     lines.append("- The fixture set is intentionally small and diagnostic.")
     lines.append("- It emphasizes French memory arbitration, redundancy, weak circumstantial memories and temporal claims.")
     lines.append("- A production switch still needs caller-by-caller review and a bounded decoupling lot.")
-    lines.append("")
     return "\n".join(lines) + "\n"
 
 

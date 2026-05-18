@@ -4,8 +4,8 @@
 FridaDev caller tasks before changing production runtime settings.
 
 The first implemented suite is `arbiter`, which evaluates the conversational
-memory arbiter with the production prompt, fixed generation parameters and a
-small diagnostic fixture set.
+memory arbiter with the production prompt, fixed generation parameters and
+separate fixture sets for diagnostic and tournament campaigns.
 
 ## Run the arbiter campaign
 
@@ -48,6 +48,38 @@ python3 benchmark/run_benchmark.py \
   --campaign-id dry-run-arbiter \
   --output-dir /tmp/fridadev-benchmark-dry-run
 ```
+
+## Arbiter tournament
+
+Use tournament mode when the diagnostic campaign is too easy to separate the
+models. It runs:
+
+- round 1: 40 reserved cases against the four configured arbiter models;
+- final: 60 distinct reserved cases against the two round-1 finalists.
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite arbiter \
+  --arbiter-tournament \
+  --campaign-id 2026-05-18-arbiter-final-tournament \
+  --output-dir benchmark/results/arbiter
+```
+
+Tournament scoring weights false positives more heavily than false negatives,
+because keeping a misleading or useless memory is worse for Frida than dropping
+a useful-but-optional memory. The scorer currently applies:
+
+- false positive: weight 2;
+- false negative: weight 1.
+
+The tournament writes six artifacts:
+
+- round-1 JSON and Markdown;
+- final JSON and Markdown;
+- tournament summary JSON and Markdown.
+
+The JSON artifacts retain per-case model decisions for divergence analysis. The
+Markdown summary keeps the human-facing ranking and recommendation.
 
 ## Scope
 

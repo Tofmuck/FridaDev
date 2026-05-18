@@ -14,6 +14,7 @@ from benchmark.core.openrouter import OpenRouterClient
 from benchmark.core.reporting import write_markdown_report
 from benchmark.suites.arbiter import adapter as arbiter_adapter
 from benchmark.suites.arbiter import scorer as arbiter_scorer
+from benchmark.suites.arbiter import tournament as arbiter_tournament
 
 
 DEFAULT_ARBITER_MODELS = [
@@ -30,6 +31,8 @@ def main() -> int:
     parser.add_argument("--models", nargs="*", default=DEFAULT_ARBITER_MODELS)
     parser.add_argument("--campaign-id", required=True)
     parser.add_argument("--output-dir", default="benchmark/results/arbiter")
+    parser.add_argument("--fixture-set", default="diagnostic")
+    parser.add_argument("--arbiter-tournament", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout-s", type=int, default=90)
     parser.add_argument("--base-url", default=None)
@@ -57,12 +60,25 @@ def main() -> int:
         title="FridaDev/Benchmark/Arbiter",
     )
 
+    if args.arbiter_tournament:
+        tournament = arbiter_tournament.run_tournament(
+            campaign_id=args.campaign_id,
+            repo_root=repo_root,
+            output_dir=config.output_dir,
+            dry_run=config.dry_run,
+            timeout_s=config.timeout_s,
+            client=client,
+        )
+        arbiter_tournament.write_tournament_artifacts(config.output_dir, args.campaign_id, tournament)
+        print(f"wrote tournament artifacts under {config.output_dir}")
+        return 0
+
     campaign = run_model_campaign(
         config=config,
         prompt_path=arbiter_adapter.prompt_path(repo_root),
-        fixture_path=arbiter_adapter.fixture_path(repo_root),
+        fixture_path=arbiter_adapter.fixture_path(repo_root, fixture_set=args.fixture_set),
         generation_params=arbiter_adapter.GENERATION_PARAMS,
-        cases=arbiter_adapter.load_cases(repo_root),
+        cases=arbiter_adapter.load_cases(repo_root, fixture_set=args.fixture_set),
         build_payload=arbiter_adapter.build_payload,
         score_response=arbiter_scorer.score_response,
         summarize_model=arbiter_scorer.summarize_model,

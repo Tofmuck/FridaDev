@@ -41,6 +41,7 @@ Source de verite de depart:
 ## Ordre de progression
 
 - [x] Benchmark arbitre memoire.
+- [x] Campagne finale bornee arbitre memoire avant decouplage.
 - [x] Decision arbitre memoire: garder, tester plus, exclure ou decoupler.
 - [ ] Decouplage propre de l'arbitre memoire: point d'appel, modele et parametres locaux.
 - [ ] Benchmark resume conversationnel.
@@ -89,6 +90,31 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Utiliser `max_tokens=600`.
 - [x] Utiliser le meme token et le meme projet OpenRouter.
 - [x] Ne faire varier que le modele.
+
+## Constat apres campagne diagnostique arbitre memoire
+
+- [x] Requalifier la premiere campagne comme examen de passage initial.
+- [x] Constater qu'elle ne suffit pas comme examen final: 8 cas, 12 candidats, quatre modeles a 100%.
+- [x] Ne pas decider le decouplage arbitre sur cette seule campagne trop facile.
+
+## Campagne finale bornee - arbitre memoire
+
+- [x] Manche 1: 40 cas distincts, quatre modeles, 160 appels maximum.
+- [x] Manche 1: 24 cas reels anonymises ou reformules.
+- [x] Manche 1: 16 cas artificiels durs.
+- [x] Finale: 60 cas reserves distincts de la manche 1.
+- [x] Finale: deux finalistes seulement, 120 appels maximum.
+- [x] Finale: 40 cas reels anonymises ou reformules.
+- [x] Finale: 20 cas artificiels durs.
+- [x] Garder le meme prompt, les memes fixtures par manche et les memes parametres: `temperature=0`, `top_p=1.0`, `max_tokens=600`.
+- [x] Donner plus de poids aux faux positifs memoire qu'aux faux negatifs: faux positif poids 2, faux negatif poids 1.
+- [x] Produire un classement de pertinence pure.
+- [x] Produire un classement rapport pertinence / cout / latence.
+- [x] Produire une analyse des divergences entre modeles.
+- [x] Produire une recommandation documentee sans changer la production.
+- [x] Resultat de campagne: `mistralai/mistral-small-2603` gagne la finale en pertinence pure et en rapport pertinence / cout / latence.
+- [x] Comparaison baseline: `openai/gpt-5.4-mini` ne passe pas en finale.
+- [x] Recommandation: basculer vers `mistralai/mistral-small-2603` devient defendable au prochain lot de decouplage, sans changement prod dans ce lot.
 
 ## Fixtures attendues pour l'arbitre memoire
 
@@ -141,7 +167,8 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Les scorers arbitre memoire mesurent schema, keep/drop, faux positifs, faux negatifs, latence et cout.
 - [x] Les quatre modeles de la premiere campagne ont ete executes avec les memes parametres.
 - [x] Un rapport Markdown de campagne existe.
-- [x] Un verdict caller est documente.
+- [x] La campagne finale de departage a ete executee: manche 1 `40 x 4`, finale `60 x 2`.
+- [x] Un verdict caller est documente avec classement de pertinence, classement valeur, divergences et recommandation.
 - [ ] Le lot suivant borne individualise l'arbitre memoire avant de passer au resume conversationnel: point d'appel clair, modele propre, parametres propres et contrat runtime propre.
 
 ## Definition de fin globale

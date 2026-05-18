@@ -11,22 +11,39 @@ GENERATION_PARAMS = {
     "max_tokens": 600,
 }
 
+_FIXTURE_FILES = {
+    "diagnostic": "arbiter_memory_cases.json",
+    "tournament_round1": "arbiter_tournament_round1.jsonl",
+    "tournament_final": "arbiter_tournament_final.jsonl",
+}
+
 
 def prompt_path(repo_root: Path) -> Path:
     return repo_root / "app" / "prompts" / "arbiter.txt"
 
 
-def fixture_path(repo_root: Path) -> Path:
-    return repo_root / "benchmark" / "suites" / "arbiter" / "fixtures" / "arbiter_memory_cases.json"
+def fixture_path(repo_root: Path, fixture_set: str = "diagnostic") -> Path:
+    filename = _FIXTURE_FILES.get(fixture_set)
+    if not filename:
+        raise ValueError(f"unknown arbiter fixture set: {fixture_set}")
+    return repo_root / "benchmark" / "suites" / "arbiter" / "fixtures" / filename
 
 
-def load_cases(repo_root: Path) -> list[dict[str, Any]]:
-    path = fixture_path(repo_root)
-    data = json.loads(path.read_text(encoding="utf-8"))
+def load_cases(repo_root: Path, fixture_set: str = "diagnostic") -> list[dict[str, Any]]:
+    path = fixture_path(repo_root, fixture_set=fixture_set)
+    if path.suffix == ".jsonl":
+        data = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+    else:
+        data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise ValueError("arbiter fixtures must be a JSON list")
-    _validate_cases(data)
-    return data
+        raise ValueError("arbiter fixtures must be a JSON list or JSONL sequence")
+    normalized = [_normalize_case(case, index) for index, case in enumerate(data)]
+    _validate_cases(normalized)
+    return normalized
 
 
 def build_payload(case: dict[str, Any], model: str, prompt_text: str) -> dict[str, Any]:
@@ -62,6 +79,41 @@ def _format_recent_turn(turn: dict[str, Any]) -> str:
     label = str(turn.get("temporal_label") or "").strip()
     prefix = f"[{label}] " if label else ""
     return f"{prefix}{role}: {content}"
+
+
+def _normalize_case(case: dict[str, Any], index: int) -> dict[str, Any]:
+    if not isinstance(case, dict):
+        raise ValueError(f"fixture case #{index} must be an object")
+    normalized = dict(case)
+    normalized.setdefault("origin", "artificial_hard")
+    normalized.setdefault("difficulty", "hard" if "hard" in normalized.get("tags", []) else "standard")
+    if "recent_turn" in normalized and "recent_turns" not in normalized:
+        normalized["recent_turns"] = [
+            {
+                "role": "user",
+                "content": normalized.pop("recent_turn"),
+                "temporal_label": normalized.pop(
+                    "recent_temporal_label",
+                    "lundi 18 mai 2026 à 14h Europe/Paris — aujourd'hui",
+                ),
+            }
+        ]
+    normalized.setdefault("recent_turns", [])
+    normalized.setdefault("expected_keep_ids", [])
+
+    candidates = []
+    for candidate_index, candidate in enumerate(normalized.get("candidates") or []):
+        item = dict(candidate)
+        item.setdefault("source_kind", "trace")
+        item.setdefault("source_lane", "global")
+        item.setdefault("role", "user")
+        item.setdefault("timestamp_iso", f"2026-05-{(candidate_index % 18) + 1:02d}T10:00:00Z")
+        item.setdefault("retrieval_score", 0.78)
+        item.setdefault("semantic_score", 0.74)
+        item.setdefault("temporal_label", "date anonymisee — contexte de benchmark")
+        candidates.append(item)
+    normalized["candidates"] = candidates
+    return normalized
 
 
 def _validate_cases(cases: list[dict[str, Any]]) -> None:

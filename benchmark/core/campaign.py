@@ -91,6 +91,9 @@ def run_model_campaign(
                 {
                     "case_id": case["id"],
                     "case_tags": list(case.get("tags") or []),
+                    "case_origin": str(case.get("origin") or "unknown"),
+                    "case_difficulty": str(case.get("difficulty") or "standard"),
+                    "case_why": str(case.get("why") or ""),
                     "expected_keep_ids": sorted(case.get("expected_keep_ids") or []),
                     "provider": provider,
                     "request_signature": request_signature,
