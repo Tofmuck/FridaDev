@@ -28,19 +28,57 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._timezone_patcher.stop()
 
-    def test_delta_t_label_core_relative_forms(self) -> None:
+    def test_delta_t_label_core_absolute_and_relative_forms(self) -> None:
         now_iso = "2026-03-28T12:00:00Z"
 
-        self.assertEqual(conv_store.delta_t_label("2026-03-28T11:59:30Z", now_iso), "à l'instant")
-        self.assertEqual(conv_store.delta_t_label("2026-03-28T11:58:00Z", now_iso), "il y a 2 minutes")
-        self.assertEqual(conv_store.delta_t_label("2026-03-28T08:00:00Z", now_iso), "aujourd'hui à 9h")
-        self.assertEqual(conv_store.delta_t_label("2026-03-27T20:30:00Z", now_iso), "hier à 21h30")
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-28T11:59:30Z", now_iso),
+            "samedi 28 mars 2026 à 12h59 Europe/Paris — à l'instant",
+        )
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-28T11:58:00Z", now_iso),
+            "samedi 28 mars 2026 à 12h58 Europe/Paris — il y a 2 minutes",
+        )
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-28T08:00:00Z", now_iso),
+            "samedi 28 mars 2026 à 9h Europe/Paris — aujourd'hui",
+        )
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-27T20:30:00Z", now_iso),
+            "vendredi 27 mars 2026 à 21h30 Europe/Paris — hier",
+        )
+
+    def test_delta_t_label_distinguishes_today_and_yesterday_same_clock_time(self) -> None:
+        now_iso = "2026-05-18T20:00:00Z"
+
+        today_label = conv_store.delta_t_label("2026-05-18T17:27:00Z", now_iso)
+        yesterday_label = conv_store.delta_t_label("2026-05-17T17:27:00Z", now_iso)
+
+        self.assertEqual(today_label, "lundi 18 mai 2026 à 19h27 Europe/Paris — aujourd'hui")
+        self.assertEqual(yesterday_label, "dimanche 17 mai 2026 à 19h27 Europe/Paris — hier")
+        self.assertIn("19h27 Europe/Paris", today_label)
+        self.assertIn("19h27 Europe/Paris", yesterday_label)
+
+    def test_delta_t_label_keeps_absolute_date_across_midnight(self) -> None:
+        now_iso = "2026-05-17T22:05:00Z"
+
+        today_label = conv_store.delta_t_label("2026-05-17T22:02:00Z", now_iso)
+        yesterday_label = conv_store.delta_t_label("2026-05-17T21:57:00Z", now_iso)
+
+        self.assertEqual(today_label, "lundi 18 mai 2026 à 0h02 Europe/Paris — il y a 3 minutes")
+        self.assertEqual(yesterday_label, "dimanche 17 mai 2026 à 23h57 Europe/Paris — il y a 8 minutes")
 
     def test_delta_t_label_days_and_weeks_forms(self) -> None:
         now_iso = "2026-03-28T12:00:00Z"
 
-        self.assertEqual(conv_store.delta_t_label("2026-03-25T12:00:00Z", now_iso), "il y a 3 jours")
-        self.assertEqual(conv_store.delta_t_label("2026-03-14T12:00:00Z", now_iso), "il y a 2 semaines")
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-25T12:00:00Z", now_iso),
+            "mercredi 25 mars 2026 à 13h Europe/Paris — il y a 3 jours",
+        )
+        self.assertEqual(
+            conv_store.delta_t_label("2026-03-14T12:00:00Z", now_iso),
+            "samedi 14 mars 2026 à 13h Europe/Paris — il y a 2 semaines",
+        )
 
     def test_silence_label_core_forms(self) -> None:
         self.assertEqual(
@@ -94,8 +132,16 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
         assistant_messages = [msg for msg in result if msg.get("role") == "assistant"]
         self.assertTrue(user_messages)
         self.assertTrue(assistant_messages)
-        self.assertTrue(user_messages[0]["content"].startswith("[à l'instant] "))
-        self.assertTrue(assistant_messages[0]["content"].startswith("[à l'instant] "))
+        self.assertTrue(
+            user_messages[0]["content"].startswith(
+                "[samedi 28 mars 2026 à 12h59 Europe/Paris — à l'instant] "
+            )
+        )
+        self.assertTrue(
+            assistant_messages[0]["content"].startswith(
+                "[samedi 28 mars 2026 à 12h59 Europe/Paris — à l'instant] "
+            )
+        )
 
         silence_idx = contents.index("[— silence de quelques secondes —]")
         assistant_idx = next(i for i, msg in enumerate(result) if msg.get("role") == "assistant")
@@ -138,7 +184,10 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
             result,
             [
                 {"role": "system", "content": "SYSTEM"},
-                {"role": "user", "content": "[à l'instant] Salut"},
+                {
+                    "role": "user",
+                    "content": "[samedi 28 mars 2026 à 12h59 Europe/Paris — à l'instant] Salut",
+                },
             ],
         )
 

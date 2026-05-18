@@ -103,9 +103,11 @@ class ChatPromptContextTests(unittest.TestCase):
         )
         self.assertIn("NOW: 2026-01-15T09:15:00+01:00", augmented_system)
         self.assertIn("TIMEZONE: Europe/Paris", augmented_system)
+        self.assertIn("Nous sommes le jeudi 15 janvier 2026 à 9h15.", augmented_system)
         self.assertIn("09:15", augmented_system)
         self.assertNotIn("heure de Paris", augmented_system)
         self.assertIn("n'affirme jamais que tu n'y as pas acces", augmented_system)
+        self.assertIn("date locale absolue", augmented_system)
         self.assertIn("ce matin, cet apres-midi, ce soir, cette nuit", augmented_system)
         self.assertIn("privilegie le relatif puis ajoute un absolu court", augmented_system)
 

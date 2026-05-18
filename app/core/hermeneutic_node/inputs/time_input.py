@@ -16,6 +16,29 @@ _WEEKDAY_NAMES = (
     "saturday",
     "sunday",
 )
+_WEEKDAY_NAMES_FR = (
+    "lundi",
+    "mardi",
+    "mercredi",
+    "jeudi",
+    "vendredi",
+    "samedi",
+    "dimanche",
+)
+_MONTH_NAMES_FR = (
+    "janvier",
+    "fevrier",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "aout",
+    "septembre",
+    "octobre",
+    "novembre",
+    "decembre",
+)
 
 
 def _parse_iso_datetime(raw: str) -> datetime:
@@ -47,6 +70,43 @@ def _format_local_hour(local_dt: datetime) -> str:
     return f"{local_dt.hour}h" + (f"{local_dt.minute:02d}" if local_dt.minute else "")
 
 
+def _format_local_date_fr(local_dt: datetime) -> str:
+    weekday = _WEEKDAY_NAMES_FR[local_dt.weekday()]
+    month = _MONTH_NAMES_FR[local_dt.month - 1]
+    return f"{weekday} {local_dt.day} {month} {local_dt.year}"
+
+
+def _format_local_datetime_fr(local_dt: datetime, *, timezone_name: str | None = None) -> str:
+    rendered = f"{_format_local_date_fr(local_dt)} à {_format_local_hour(local_dt)}"
+    if timezone_name:
+        return f"{rendered} {timezone_name}"
+    return rendered
+
+
+def _delta_payload(
+    *,
+    delta_seconds: int | None,
+    delta_class: str,
+    delta_human: str,
+    local_msg: datetime | None = None,
+    timezone_name: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "delta_seconds": delta_seconds,
+        "delta_class": delta_class,
+        "delta_human": delta_human,
+        "delta_label": delta_human,
+    }
+    if local_msg is None or not timezone_name:
+        return payload
+
+    absolute_human = _format_local_datetime_fr(local_msg, timezone_name=timezone_name)
+    payload["delta_absolute_human"] = absolute_human
+    payload["delta_relative_human"] = delta_human
+    payload["delta_label"] = f"{absolute_human} — {delta_human}" if delta_human else absolute_human
+    return payload
+
+
 def build_time_input(*, now_utc_iso: str, timezone_name: str) -> dict[str, str]:
     now_utc = _parse_iso_datetime(now_utc_iso).astimezone(timezone.utc)
     timezone_ref = _resolve_timezone(timezone_name)
@@ -67,13 +127,14 @@ def build_time_input(*, now_utc_iso: str, timezone_name: str) -> dict[str, str]:
 
 def build_time_reference_block(time_input_payload: Mapping[str, Any]) -> str:
     now_local = _parse_iso_datetime(str(time_input_payload["now_local_iso"]))
-    now_human = now_local.strftime("%A %d %B %Y à %H:%M")
+    now_human = _format_local_datetime_fr(now_local)
     return (
         "[RÉFÉRENCE TEMPORELLE]\n"
         f"NOW: {time_input_payload['now_local_iso']}\n"
         f"TIMEZONE: {time_input_payload['timezone']}\n\n"
         f"Nous sommes le {now_human}. C'est ton 'maintenant'.\n"
-        "Les messages ci-dessous sont horodatés relativement à ce maintenant (ex : 'il y a 2 jours').\n"
+        "Les labels Delta-T des messages ci-dessous portent une date locale absolue, "
+        "l'heure locale, la timezone et un relatif lisible par rapport à ce maintenant.\n"
         "Les marqueurs [— silence de X —] indiquent une interruption de la conversation. "
         "Tu n'as pas à les mentionner, mais tu peux en tenir compte dans ton ton si c'est pertinent.\n"
         "Ne mentionne jamais spontanément la date ou l'heure dans tes réponses, "
@@ -96,71 +157,86 @@ def build_delta_info(
         dt_msg = _parse_iso_datetime(ts_msg)
         dt_now = _parse_iso_datetime(ts_now)
         delta_seconds = int((dt_now - dt_msg).total_seconds())
-
-        if delta_seconds < 60:
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "just_now",
-                "delta_human": "à l'instant",
-            }
-        if delta_seconds < 3600:
-            minutes = delta_seconds // 60
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "minutes",
-                "delta_human": f"il y a {minutes} minute{'s' if minutes > 1 else ''}",
-            }
-
         timezone_ref = _resolve_timezone(timezone_name)
         local_msg = dt_msg.astimezone(timezone_ref)
         local_now = dt_now.astimezone(timezone_ref)
-        local_hour = _format_local_hour(local_msg)
+        local_day_delta = (local_now.date() - local_msg.date()).days
+        elapsed_local_days = local_day_delta if local_day_delta > 0 else max(delta_seconds // 86400, 0)
+
+        if delta_seconds < 60:
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="just_now",
+                delta_human="à l'instant",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
+        if delta_seconds < 3600:
+            minutes = delta_seconds // 60
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="minutes",
+                delta_human=f"il y a {minutes} minute{'s' if minutes > 1 else ''}",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
 
         if local_msg.date() == local_now.date():
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "same_day",
-                "delta_human": f"aujourd'hui à {local_hour}",
-            }
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="same_day",
+                delta_human="aujourd'hui",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
         if local_msg.date() == (local_now - timedelta(days=1)).date():
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "yesterday",
-                "delta_human": f"hier à {local_hour}",
-            }
-        if delta_seconds < 86400 * 7:
-            days = delta_seconds // 86400
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "days",
-                "delta_human": f"il y a {days} jour{'s' if days > 1 else ''}",
-            }
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="yesterday",
+                delta_human="hier",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
+        if 2 <= local_day_delta < 7:
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="days",
+                delta_human=f"il y a {local_day_delta} jours",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
         if delta_seconds < 86400 * 30:
-            weeks = delta_seconds // (86400 * 7)
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "weeks",
-                "delta_human": f"il y a {weeks} semaine{'s' if weeks > 1 else ''}",
-            }
+            weeks = max(1, elapsed_local_days // 7)
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="weeks",
+                delta_human=f"il y a {weeks} semaine{'s' if weeks > 1 else ''}",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
         if delta_seconds < 86400 * 365:
-            months = delta_seconds // (86400 * 30)
-            return {
-                "delta_seconds": delta_seconds,
-                "delta_class": "months",
-                "delta_human": f"il y a {months} mois",
-            }
-        years = delta_seconds // (86400 * 365)
-        return {
-            "delta_seconds": delta_seconds,
-            "delta_class": "years",
-            "delta_human": f"il y a {years} an{'s' if years > 1 else ''}",
-        }
+            months = max(1, elapsed_local_days // 30)
+            return _delta_payload(
+                delta_seconds=delta_seconds,
+                delta_class="months",
+                delta_human=f"il y a {months} mois",
+                local_msg=local_msg,
+                timezone_name=timezone_name,
+            )
+        years = max(1, elapsed_local_days // 365)
+        return _delta_payload(
+            delta_seconds=delta_seconds,
+            delta_class="years",
+            delta_human=f"il y a {years} an{'s' if years > 1 else ''}",
+            local_msg=local_msg,
+            timezone_name=timezone_name,
+        )
     except Exception:
-        return {
-            "delta_seconds": None,
-            "delta_class": "unknown",
-            "delta_human": "",
-        }
+        return _delta_payload(
+            delta_seconds=None,
+            delta_class="unknown",
+            delta_human="",
+        )
 
 
 def render_delta_label(ts_msg: str, ts_now: str, *, timezone_name: str) -> str:
@@ -169,7 +245,8 @@ def render_delta_label(ts_msg: str, ts_now: str, *, timezone_name: str) -> str:
             ts_msg,
             ts_now,
             timezone_name=timezone_name,
-        )["delta_human"]
+        ).get("delta_label")
+        or ""
     )
 
 

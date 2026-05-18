@@ -7,7 +7,7 @@ Fixer un cadrage normatif court pour le grounding temporel du chat, a partir de 
 Ce qui existe deja dans le code:
 - `app/core/chat_prompt_context.py` injecte une brique `[RÉFÉRENCE TEMPORELLE]` avec un `maintenant` explicite et timezone.
 - `app/core/chat_service.py` fixe deja un `now` de tour (timestamp canonique de message utilisateur) et le propage a la construction du prompt.
-- `app/core/conv_store.py` porte deja des labels relatifs (`delta_t_label`) et des marqueurs de silence (`_silence_label`) injectes dans les messages de prompt.
+- `app/core/conv_store.py` porte deja des labels Delta-T (`delta_t_label`) et des marqueurs de silence (`_silence_label`) injectes dans les messages de prompt.
 - `app/prompts/main_hermeneutical.txt` formalise deja l'interpretation du repere temporel, des deltas et des silences.
 - resume actif, souvenirs et indices contextuels sont deja situes en partie relativement au temps de tour.
 - Contradiction principale initiale (desormais resolue dans le code courant):
@@ -16,7 +16,7 @@ Ce qui existe deja dans le code:
   - la source de verite du `NOW` de tour est donc unique a l'echelle du pipeline prompt + labels relatifs.
 
 Ce que cela permet deja:
-- situer une partie du dialogue dans une temporalite relative lisible;
+- situer une partie du dialogue avec une ancre locale absolue et une temporalite relative lisible;
 - maintenir une continuite minimale entre reprises de conversation et contextes memoriels.
 
 Ce que cela ne garantit pas encore:
@@ -35,8 +35,8 @@ Ce que cela ne garantit pas encore:
   - statut: `partiellement contractuel` (socle structurel canonique + prose secondaire).
 - `conv_store.build_prompt_messages(..., now=...)` + `conv_store.delta_t_label`
   - role: calcul des labels relatifs par message depuis le `NOW` de tour.
-  - forme injectee: prefixes `[à l'instant]`, `[aujourd'hui ...]`, `[hier ...]`, `[il y a ...]`.
-  - statut: `derive` (source canonique) + `narratif` (sortie humaine).
+  - forme injectee: prefixes `[lundi 18 mai 2026 à 19h27 Europe/Paris — aujourd'hui]`, `[dimanche 17 mai 2026 à 19h27 Europe/Paris — hier]`, `[vendredi 15 mai 2026 à 19h27 Europe/Paris — il y a 3 jours]`.
+  - statut: `derive` (source canonique) + `ancre absolue locale visible` + `relatif narratif`.
 - `conv_store._silence_label`
   - role: marquer les ruptures temporelles entre messages consecutifs.
   - forme injectee: `[— silence de X —]`.
@@ -60,7 +60,7 @@ Ce que cela ne garantit pas encore:
 
 ### Zones encore trop narratives (lot 1)
 - La phrase humaine du bloc `[RÉFÉRENCE TEMPORELLE]` reste en prose naturelle (lisible, mais moins stable qu'un champ strict).
-- `delta_t_label` encode des classes temporelles en langue naturelle (`hier`, `aujourd'hui`, `il y a ...`), pas en schema strict.
+- `delta_t_label` encode une ancre absolue locale visible (`jour date heure timezone`) et un relatif humain (`hier`, `aujourd'hui`, `il y a ...`). La classe stable reste interne au payload de calcul.
 - Les marqueurs de silence sont narratifs (`silence de ...`) et non normalises en code contractuel.
 - Les contenus injectes de resume/souvenirs/indices restent textuels metier (necessaire pour le dialogue, mais non contractuels).
 
@@ -78,6 +78,7 @@ Si le systeme injecte un `NOW` de tour, le modele ne doit pas pretendre qu'il es
 ## 3) Invariants produit
 - Chaque tour doit avoir un `NOW` canonique, autoritaire, explicite, timezone incluse.
 - Les messages injectes dans le prompt doivent rester situables relativement a ce `NOW`.
+- Les labels Delta-T visibles sur les messages doivent aussi porter la date locale absolue, l'heure locale et la timezone afin d'eviter toute reconstruction fragile du jour a partir d'une heure correcte.
 - Le systeme doit permettre des reponses temporellement situees aux questions du type:
   - "quand est-ce qu'on a parle la derniere fois ?"
   - en forme relative et/ou absolue selon le besoin.
@@ -112,15 +113,15 @@ Lien avec les lots suivants:
 
 ## 3 ter) Contrat DELTA-NOW et marqueurs de silence (lot 3)
 Audit bref de l'existant (`app/core/conv_store.py`):
-- `delta_t_label` rend aujourd'hui les classes suivantes:
-  - `a l'instant`
-  - `il y a X minute(s)`
-  - `aujourd'hui a HhMM`
-  - `hier a HhMM`
-  - `il y a X jour(s)`
-  - `il y a X semaine(s)`
-  - `il y a X mois`
-  - `il y a X an(s)`
+- `delta_t_label` rend aujourd'hui une ancre absolue locale suivie d'un relatif:
+  - `jour D mois YYYY à HhMM TIMEZONE — à l'instant`
+  - `jour D mois YYYY à HhMM TIMEZONE — il y a X minute(s)`
+  - `jour D mois YYYY à HhMM TIMEZONE — aujourd'hui`
+  - `jour D mois YYYY à HhMM TIMEZONE — hier`
+  - `jour D mois YYYY à HhMM TIMEZONE — il y a X jour(s)`
+  - `jour D mois YYYY à HhMM TIMEZONE — il y a X semaine(s)`
+  - `jour D mois YYYY à HhMM TIMEZONE — il y a X mois`
+  - `jour D mois YYYY à HhMM TIMEZONE — il y a X an(s)`
 - `_silence_label` rend aujourd'hui:
   - `[— silence de quelques secondes —]`
   - `[— silence de X minute(s) —]`
@@ -132,10 +133,11 @@ Audit bref de l'existant (`app/core/conv_store.py`):
 
 Decision normative:
 - `DELTA-NOW` reste lisible humainement dans le prompt.
-- `DELTA-NOW` doit aussi porter une categorie stable testable (contrat), distincte du wording humain.
+- `DELTA-NOW` doit aussi porter une ancre locale absolue visible pour chaque message pertinent.
+- `DELTA-NOW` doit porter une categorie stable testable (contrat), distincte du wording humain.
 - Le contrat cible est donc a deux niveaux:
-  - `delta_class` (stable): `instant`, `minutes`, `today_clock`, `yesterday_clock`, `days`, `weeks`, `months`, `years`
-  - `delta_human` (lisible): rendu naturel derive de la classe et de la valeur
+  - `delta_class` (stable): `just_now`, `minutes`, `same_day`, `yesterday`, `days`, `weeks`, `months`, `years`
+  - `delta_label` (visible): rendu `date locale absolue + heure locale + timezone — relatif lisible`
 - Seuils contractuels attendus (coherents avec l'existant):
   - `instant`: < 60 s
   - `minutes`: [60 s, 3600 s[

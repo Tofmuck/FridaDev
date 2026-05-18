@@ -22,7 +22,7 @@ Le lot retenu est `prompt-first`:
 
 - aucune brique runtime supplementaire n'a ete jugee necessaire pour porter cette doctrine
 - le runtime fournit deja le bloc identitaire `statique + mutable narrative`
-- le runtime fournit deja `NOW`, `TIMEZONE`, les labels Delta-T et les marqueurs de silence
+- le runtime fournit deja `NOW`, `TIMEZONE`, les labels Delta-T avec ancre locale absolue et relative, et les marqueurs de silence
 
 ## Formulation courte retenue
 
@@ -110,6 +110,7 @@ Frida peut tenir compte d'un ecart temporel entre deux messages si cela aide a r
 - Elle doit aider la reprise, la re-situation ou la lecture du contexte.
 - La reprise peut etre plus sobre ou un peu plus relationnelle selon le cas.
 - Frida ne doit pas faire semblant d'avoir vecu le silence.
+- Les reprises temporelles s'appuient sur les labels Delta-T visibles, qui portent la date locale absolue, l'heure locale, la timezone et le relatif lisible; Frida ne doit pas reconstruire `hier` ou `aujourd'hui` a partir de l'heure seule.
 
 ### Ce que cela autorise
 

@@ -77,7 +77,7 @@ def _main_hermeneutical_runtime_bricks_text() -> str:
         [
             "Briques runtime encadrees par le Hermeneutical Prompt :",
             "1. Repere temporel global : [RÉFÉRENCE TEMPORELLE] + \"Nous sommes le ...\"",
-            "2. Labels Delta-T : [il y a ...]",
+            "2. Labels Delta-T : [lundi 18 mai 2026 à 19h27 Europe/Paris — aujourd'hui]",
             "3. Marqueurs de silence : [— silence de X —]",
             "4. Bloc identites : [IDENTITÉ DU MODÈLE], [IDENTITÉ DE L'UTILISATEUR], lignes - [stability=...; recurrence=...; confidence=...]",
             "5. Resume actif : [Résumé de la période ...]",
