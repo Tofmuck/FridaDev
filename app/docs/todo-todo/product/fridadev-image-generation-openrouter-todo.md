@@ -159,7 +159,7 @@ Payload cible minimal:
   "metadata": {
     "frida_caller": "image_generator_nano_banana",
     "frida_slot": "image_generation_tool",
-    "frida_image_model": "google/gemini-3.1-flash-image-preview"
+    "frida_image_model": "google/gemini-2.5-flash-image"
   },
   "trace": {
     "trace_name": "FridaDev",
