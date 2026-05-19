@@ -20,6 +20,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
 
     def test_or_headers_uses_decrypted_db_api_key_when_available(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
+        original_view = llm_client.runtime_settings.get_main_model_settings
 
         def fake_get_runtime_secret_value(section: str, field: str):
             self.assertEqual((section, field), ('main_model', 'api_key'))
@@ -31,11 +32,21 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 source_reason='db_row',
             )
 
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.build_env_seed_bundle('main_model').payload,
+                source='env',
+                source_reason='test',
+            )
+
         llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
         try:
             headers = llm_client.or_headers(caller='arbiter')
         finally:
             llm_client.runtime_settings.get_runtime_secret_value = original
+            llm_client.runtime_settings.get_main_model_settings = original_view
 
         self.assertEqual(headers['Authorization'], 'Bearer sk-db-runtime-key')
         self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_ARBITER)
@@ -315,33 +326,29 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
 
     def test_provider_attribution_names_all_known_callers_without_user_field(self) -> None:
         expected = {
-            'llm': ('main_chat', 'main_model', config.OR_TITLE_LLM),
+            'llm': ('main_chat', 'main_model'),
             'web_reformulation': (
                 'web_reformulation',
                 'web_reformulation_model',
-                config.OR_TITLE_WEB_REFORMULATION,
             ),
-            'arbiter': ('memory_arbiter', 'memory_arbiter_model', config.OR_TITLE_ARBITER),
+            'arbiter': ('memory_arbiter', 'memory_arbiter_model'),
             'identity_extractor': (
                 'identity_extractor',
                 'identity_extractor_model',
-                config.OR_TITLE_IDENTITY_EXTRACTOR,
             ),
             'identity_periodic_agent': (
                 'identity_periodic',
                 'identity_periodic_model',
-                config.OR_TITLE_IDENTITY_PERIODIC,
             ),
-            'resumer': ('summary', 'summary_model', config.OR_TITLE_RESUMER),
-            'stimmung_agent': ('stimmung_agent', 'stimmung_agent_model', config.OR_TITLE_STIMMUNG_AGENT),
+            'resumer': ('summary', 'summary_model'),
+            'stimmung_agent': ('stimmung_agent', 'stimmung_agent_model'),
             'validation_agent': (
                 'validation_agent',
                 'validation_agent_model',
-                config.OR_TITLE_VALIDATION_AGENT,
             ),
         }
 
-        for caller, (frida_caller, frida_slot, generation_name) in expected.items():
+        for caller, (frida_caller, frida_slot) in expected.items():
             with self.subTest(caller=caller):
                 attribution = llm_client.provider_attribution(caller)
                 self.assertEqual(
@@ -350,7 +357,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     attribution['trace'],
-                    {'trace_name': 'FridaDev', 'generation_name': generation_name},
+                    {'trace_name': 'FridaDev', 'generation_name': llm_client.resolve_provider_title(caller)},
                 )
                 self.assertNotIn('user', attribution)
 
@@ -369,7 +376,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(payload['metadata']['frida_slot'], 'summary_model')
         self.assertEqual(payload['trace']['span'], 'existing')
         self.assertEqual(payload['trace']['trace_name'], 'FridaDev')
-        self.assertEqual(payload['trace']['generation_name'], config.OR_TITLE_RESUMER)
+        self.assertEqual(payload['trace']['generation_name'], llm_client.resolve_provider_title('resumer'))
         self.assertNotIn('user', payload)
 
     def test_resolve_provider_referer_prefers_component_field_and_falls_back_to_shared_then_seed(self) -> None:
@@ -642,6 +649,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
                         'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
+                        'title_identity_periodic': {'value': 'FridaDev/IdentityPeriodic', 'origin': 'db'},
                         'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
                         'title_stimmung_agent': {'value': 'FridaDev/StimmungAgent', 'origin': 'db'},
                         'title_validation_agent': {'value': 'FridaDev/ValidationAgent', 'origin': 'db'},

@@ -652,7 +652,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             proxy.post(
                 'https://openrouter.example/chat/completions',
                 json={'model': 'openrouter/runtime-main-model'},
-                headers={'X-OpenRouter-Title': 'FridaDev/LLM'},
+                headers={'X-OpenRouter-Title': 'FridaDev / Main Chat'},
                 timeout=30,
                 stream=False,
             )
@@ -667,7 +667,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('response_chars'), len('reponse finale'))
         self.assertEqual(payload.get('model'), 'openrouter/runtime-main-model')
         self.assertEqual(payload.get('provider_caller'), 'llm')
-        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev / Main Chat')
         self.assertEqual(payload.get('provider_generation_id'), 'gen-sync')
         self.assertEqual(payload.get('provider_prompt_tokens'), 12)
         self.assertEqual(payload.get('provider_completion_tokens'), 5)
@@ -711,7 +711,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             proxy.post(
                 'https://openrouter.example/chat/completions',
                 json={'model': 'openai/gpt-5.4-mini'},
-                headers={'X-Title': 'FridaDev/ValidationAgent'},
+                headers={'X-Title': 'FridaDev / Validation Agent'},
                 timeout=30,
                 stream=False,
             )
@@ -723,7 +723,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(len(llm_events), 1)
         payload = llm_events[0]['payload_json']
         self.assertEqual(payload.get('provider_caller'), 'validation_agent')
-        self.assertEqual(payload.get('provider_title'), 'FridaDev/ValidationAgent')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev / Validation Agent')
         self.assertEqual(payload.get('provider_generation_id'), 'gen-validation')
         self.assertEqual(payload.get('provider_total_tokens'), 12)
 
@@ -822,7 +822,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 json={'model': 'openai/gpt-5.4-mini'},
                 headers={
                     self.server.llm.INTERNAL_PROVIDER_CALLER_HEADER: 'stimmung_agent',
-                    'X-Title': 'FridaDev/StimmungAgent',
+                    'X-Title': 'FridaDev / Stimmung',
                 },
                 timeout=30,
                 stream=False,
@@ -836,7 +836,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(len(llm_events), 1)
         payload = llm_events[0]['payload_json']
         self.assertEqual(payload.get('provider_caller'), 'stimmung_agent')
-        self.assertEqual(payload.get('provider_title'), 'FridaDev/StimmungAgent')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev / Stimmung')
 
     def test_api_chat_stream_emits_llm_call_with_final_response_chars(self) -> None:
         observed: list[dict[str, object]] = []
@@ -855,14 +855,14 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                 },
             )
             self.server.chat_turn_logger.set_state(
                 'llm_provider_response_meta',
                 {
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                     'provider_generation_id': 'gen-stream',
                     'provider_model': 'openrouter/runtime-main-model',
                     'provider_prompt_tokens': 40,
@@ -913,7 +913,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('response_chars'), 6)
         self.assertEqual(payload.get('stream_chunks'), 2)
         self.assertEqual(payload.get('provider_caller'), 'llm')
-        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev / Main Chat')
         self.assertEqual(payload.get('provider_generation_id'), 'gen-stream')
         self.assertEqual(payload.get('provider_prompt_tokens'), 40)
         self.assertEqual(payload.get('provider_completion_tokens'), 2)
@@ -996,7 +996,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                 },
             )
 
@@ -1041,7 +1041,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('response_chars'), 5)
         self.assertEqual(payload.get('stream_chunks'), 2)
         self.assertEqual(payload.get('provider_caller'), 'llm')
-        self.assertEqual(payload.get('provider_title'), 'FridaDev/LLM')
+        self.assertEqual(payload.get('provider_title'), 'FridaDev / Main Chat')
         self.assertNotIn('content', payload)
         self.assertNotIn('response_text', payload)
 
@@ -1062,7 +1062,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                 },
             )
 
@@ -1133,7 +1133,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                 },
             )
 
@@ -1204,7 +1204,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                     'timeout_s': 45,
                     'started_at': self.server.time.perf_counter() - 0.01,
                     'provider_caller': 'llm',
-                    'provider_title': 'FridaDev/LLM',
+                    'provider_title': 'FridaDev / Main Chat',
                 },
             )
 
