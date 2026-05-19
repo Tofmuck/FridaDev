@@ -27,7 +27,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         runtime_settings.invalidate_runtime_settings_cache()
 
     def test_reformulate_uses_runtime_web_reformulation_model_from_db_when_present(self) -> None:
-        observed = {'model': None, 'temperature': None, 'max_tokens': None, 'timeout': None}
+        observed = {'model': None, 'temperature': None, 'max_tokens': None, 'timeout': None, 'metadata': None, 'trace': None}
         original_get_settings = web_search.web_reformulation_settings.runtime_settings.get_web_reformulation_model_settings
         original_post = web_search.requests.post
 
@@ -58,6 +58,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             observed['model'] = json['model']
             observed['temperature'] = json['temperature']
             observed['max_tokens'] = json['max_tokens']
+            observed['metadata'] = dict(json['metadata'])
+            observed['trace'] = dict(json['trace'])
             observed['timeout'] = timeout
             return FakeResponse()
 
@@ -73,6 +75,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed['model'], 'openai/gpt-5.4-mini')
         self.assertEqual(observed['temperature'], 0.2)
         self.assertEqual(observed['max_tokens'], 40)
+        self.assertEqual(observed['metadata']['frida_caller'], 'web_reformulation')
+        self.assertEqual(observed['metadata']['frida_slot'], 'web_reformulation_model')
+        self.assertEqual(observed['trace']['trace_name'], 'FridaDev')
         self.assertEqual(observed['timeout'], 10)
 
     def test_reformulate_default_is_not_coupled_to_runtime_main_model(self) -> None:
@@ -140,6 +145,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             observed['headers'] = dict(headers)
             observed['timeout'] = timeout
             observed['model'] = json['model']
+            observed['metadata'] = dict(json['metadata'])
+            observed['trace'] = dict(json['trace'])
             return FakeResponse()
 
         def fake_or_headers(*, caller='llm'):
@@ -155,6 +162,11 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         fake_llm_module = SimpleNamespace(
             or_chat_completions_url=lambda: 'https://openrouter.example/chat/completions',
             or_headers=fake_or_headers,
+            with_provider_attribution=lambda payload, *, caller='llm': {
+                **payload,
+                'metadata': {'frida_caller': caller, 'frida_slot': 'web_reformulation_model'},
+                'trace': {'trace_name': 'FridaDev', 'generation_name': 'FridaDev/WebReformulation'},
+            },
             read_openrouter_response_payload=lambda response: response.json(),
             extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
         )
@@ -171,6 +183,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed['caller'], 'web_reformulation')
         self.assertEqual(observed['headers']['X-Frida-Caller'], 'web_reformulation')
         self.assertEqual(observed['headers']['X-Title'], 'FridaDev/WebReformulation')
+        self.assertEqual(observed['metadata']['frida_caller'], 'web_reformulation')
+        self.assertEqual(observed['metadata']['frida_slot'], 'web_reformulation_model')
+        self.assertEqual(observed['trace']['trace_name'], 'FridaDev')
 
     def test_reformulate_uses_frida_local_date_around_midnight(self) -> None:
         observed = {'system_prompt': ''}

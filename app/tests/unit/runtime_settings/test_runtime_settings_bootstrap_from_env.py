@@ -202,12 +202,14 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
                 payload = dict(payload)
                 payload.pop('response_max_tokens', None)
                 payload.pop('referer_llm', None)
+                payload.pop('referer_web_reformulation', None)
                 payload.pop('referer_arbiter', None)
                 payload.pop('referer_identity_extractor', None)
                 payload.pop('referer_identity_periodic', None)
                 payload.pop('referer_resumer', None)
                 payload.pop('referer_stimmung_agent', None)
                 payload.pop('referer_validation_agent', None)
+                payload.pop('title_web_reformulation', None)
                 payload.pop('title_identity_periodic', None)
             if section == 'summary_model':
                 payload = dict(payload)
@@ -264,12 +266,14 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
             result['updated_fields'],
             (
                 'main_model.referer_llm',
+                'main_model.referer_web_reformulation',
                 'main_model.referer_arbiter',
                 'main_model.referer_identity_extractor',
                 'main_model.referer_identity_periodic',
                 'main_model.referer_resumer',
                 'main_model.referer_stimmung_agent',
                 'main_model.referer_validation_agent',
+                'main_model.title_web_reformulation',
                 'main_model.title_identity_periodic',
                 'main_model.response_max_tokens',
                 'summary_model.max_tokens',
@@ -285,6 +289,11 @@ class RuntimeSettingsBootstrapFromEnvTests(unittest.TestCase):
         self.assertEqual(len(updated_payloads), 2)
         self.assertEqual(updated_payloads[0]['referer_llm']['value'], config.OR_REFERER_LLM)
         self.assertEqual(updated_payloads[0]['referer_llm']['origin'], 'db_seed')
+        self.assertEqual(
+            updated_payloads[0]['referer_web_reformulation']['value'],
+            config.OR_REFERER_WEB_REFORMULATION,
+        )
+        self.assertEqual(updated_payloads[0]['title_web_reformulation']['value'], config.OR_TITLE_WEB_REFORMULATION)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['value'], 8192)
         self.assertEqual(updated_payloads[0]['response_max_tokens']['origin'], 'db_seed')
         self.assertEqual(updated_payloads[1]['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)

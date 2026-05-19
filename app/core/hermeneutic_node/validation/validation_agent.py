@@ -998,15 +998,19 @@ def _call_model(
         top_p=top_p,
         max_tokens=max_tokens,
     )
-    response = requests_module.post(
-        llm_client.or_chat_completions_url(),
-        json={
+    payload = llm_client.with_provider_attribution(
+        {
             "model": model,
             "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": _bounded_response_max_tokens(max_tokens),
         },
+        caller="validation_agent",
+    )
+    response = requests_module.post(
+        llm_client.or_chat_completions_url(),
+        json=payload,
         headers=llm_client.or_headers(caller="validation_agent"),
         timeout=timeout_s,
     )

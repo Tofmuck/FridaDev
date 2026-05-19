@@ -591,6 +591,13 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         self.assertEqual(observed_payloads[2]['temperature'], 0.0)
         self.assertEqual(observed_payloads[2]['top_p'], 1.0)
         self.assertEqual(observed_payloads[2]['max_tokens'], 1400)
+        self.assertEqual(observed_payloads[0]['metadata']['frida_caller'], 'memory_arbiter')
+        self.assertEqual(observed_payloads[0]['metadata']['frida_slot'], 'memory_arbiter_model')
+        self.assertEqual(observed_payloads[1]['metadata']['frida_caller'], 'identity_extractor')
+        self.assertEqual(observed_payloads[1]['metadata']['frida_slot'], 'identity_extractor_model')
+        self.assertEqual(observed_payloads[2]['metadata']['frida_caller'], 'identity_periodic')
+        self.assertEqual(observed_payloads[2]['metadata']['frida_slot'], 'identity_periodic_model')
+        self.assertEqual(observed_payloads[2]['trace']['trace_name'], 'FridaDev')
         self.assertEqual(observed_timeouts[2], 45)
         self.assertEqual(
             observed_headers,

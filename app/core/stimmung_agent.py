@@ -330,15 +330,19 @@ def _call_model(
         timeout_s=timeout_s,
         context_window_turns=CONTEXT_WINDOW_TURNS,
     )
-    response = requests_module.post(
-        llm_client.or_chat_completions_url(),
-        json={
+    payload = llm_client.with_provider_attribution(
+        {
             'model': model,
             'messages': messages,
             'temperature': temperature,
             'top_p': top_p,
             'max_tokens': max_tokens,
         },
+        caller='stimmung_agent',
+    )
+    response = requests_module.post(
+        llm_client.or_chat_completions_url(),
+        json=payload,
         headers=llm_client.or_headers(caller='stimmung_agent'),
         timeout=timeout_s,
     )

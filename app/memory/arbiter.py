@@ -462,6 +462,7 @@ def filter_traces_with_diagnostics(
         'top_p': float(arbiter_settings['top_p']),
         'max_tokens': int(arbiter_settings['max_tokens']),
     }
+    payload = llm_client.with_provider_attribution(payload, caller='arbiter')
 
     try:
         response = requests.post(
@@ -718,6 +719,7 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         'top_p': float(identity_settings['top_p']),
         'max_tokens': int(identity_settings['max_tokens']),
     }
+    payload = llm_client.with_provider_attribution(payload, caller='identity_extractor')
 
     try:
         response = requests.post(
@@ -855,6 +857,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
         'top_p': periodic_settings['top_p'],
         'max_tokens': periodic_settings['max_tokens'],
     }
+    payload = llm_client.with_provider_attribution(payload, caller='identity_periodic_agent')
 
     try:
         response = requests.post(

@@ -688,6 +688,9 @@ def reformulate(
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        with_attribution = getattr(llm_module, 'with_provider_attribution', None)
+        if callable(with_attribution):
+            payload = with_attribution(payload, caller='web_reformulation')
         _emit_web_reformulation_prompt_prepared(
             model=model,
             system_prompt=system_prompt,

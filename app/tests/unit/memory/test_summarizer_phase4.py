@@ -222,6 +222,9 @@ class SummarizerPhase4ModelTests(unittest.TestCase):
         self.assertEqual(observed['payload']['temperature'], 0.42)
         self.assertEqual(observed['payload']['top_p'], 0.77)
         self.assertEqual(observed['payload']['max_tokens'], 1234)
+        self.assertEqual(observed['payload']['metadata']['frida_caller'], 'summary')
+        self.assertEqual(observed['payload']['metadata']['frida_slot'], 'summary_model')
+        self.assertEqual(observed['payload']['trace']['trace_name'], 'FridaDev')
         self.assertEqual(
             observed['provider_logs'],
             [

@@ -426,6 +426,9 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module.calls[0]["json"]["model"],
             validation_agent.PRIMARY_MODEL,
         )
+        self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_caller"], "validation_agent")
+        self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
+        self.assertEqual(requests_module.calls[0]["json"]["trace"]["trace_name"], "FridaDev")
         self.assertEqual(
             requests_module.calls[0]["headers"],
             {"Authorization": "caller=validation_agent"},
@@ -636,6 +639,8 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]["json"]["temperature"], 0.2)
         self.assertEqual(requests_module.calls[0]["json"]["top_p"], 0.88)
         self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 64)
+        self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_caller"], "validation_agent")
+        self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
         self.assertEqual(requests_module.calls[0]["timeout"], 14)
 
     def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:

@@ -77,6 +77,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         checks = {check['name']: check for check in result['checks']}
         self.assertTrue(checks['model']['ok'])
         self.assertTrue(checks['referer_llm']['ok'])
+        self.assertTrue(checks['referer_web_reformulation']['ok'])
         self.assertTrue(checks['referer_validation_agent']['ok'])
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
@@ -111,6 +112,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
                 {
                     'referer': {'value': 'https://shared.example/'},
                     'referer_llm': {'value': ''},
+                    'referer_web_reformulation': {'value': ''},
                     'referer_arbiter': {'value': ''},
                     'referer_identity_extractor': {'value': ''},
                     'referer_resumer': {'value': ''},

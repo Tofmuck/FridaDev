@@ -17,7 +17,7 @@ _KNOWN_PROVIDER_CALLERS = (
 )
 _PROVIDER_TITLE_FIELD_MAP = {
     'llm': 'title_llm',
-    'web_reformulation': '',
+    'web_reformulation': 'title_web_reformulation',
     'arbiter': 'title_arbiter',
     'identity_extractor': 'title_identity_extractor',
     'identity_periodic_agent': 'title_identity_periodic',
@@ -37,7 +37,7 @@ _PROVIDER_DEFAULT_TITLE_MAP = {
 }
 _PROVIDER_REFERER_FIELD_MAP = {
     'llm': 'referer_llm',
-    'web_reformulation': '',
+    'web_reformulation': 'referer_web_reformulation',
     'arbiter': 'referer_arbiter',
     'identity_extractor': 'referer_identity_extractor',
     'identity_periodic_agent': 'referer_identity_periodic',
@@ -54,6 +54,16 @@ _PROVIDER_DEFAULT_REFERER_MAP = {
     'resumer': config.OR_REFERER_RESUMER,
     'stimmung_agent': config.OR_REFERER_STIMMUNG_AGENT,
     'validation_agent': config.OR_REFERER_VALIDATION_AGENT,
+}
+_PROVIDER_ATTRIBUTION_MAP = {
+    'llm': ('main_chat', 'main_model'),
+    'web_reformulation': ('web_reformulation', 'web_reformulation_model'),
+    'arbiter': ('memory_arbiter', 'memory_arbiter_model'),
+    'identity_extractor': ('identity_extractor', 'identity_extractor_model'),
+    'identity_periodic_agent': ('identity_periodic', 'identity_periodic_model'),
+    'resumer': ('summary', 'summary_model'),
+    'stimmung_agent': ('stimmung_agent', 'stimmung_agent_model'),
+    'validation_agent': ('validation_agent', 'validation_agent_model'),
 }
 
 
@@ -180,6 +190,37 @@ def or_headers(caller: str = "llm") -> dict:
 
 def or_chat_completions_url() -> str:
     return f"{_runtime_main_base_url()}/chat/completions"
+
+
+def provider_attribution(caller: str = "llm") -> dict[str, dict[str, str]]:
+    caller_key = normalize_provider_caller(caller)
+    frida_caller, frida_slot = _PROVIDER_ATTRIBUTION_MAP.get(
+        caller_key,
+        _PROVIDER_ATTRIBUTION_MAP['llm'],
+    )
+    title = resolve_provider_title(caller_key)
+    return {
+        'metadata': {
+            'frida_caller': frida_caller,
+            'frida_slot': frida_slot,
+        },
+        'trace': {
+            'trace_name': 'FridaDev',
+            'generation_name': title,
+        },
+    }
+
+
+def with_provider_attribution(payload: Mapping[str, Any], *, caller: str = "llm") -> dict[str, Any]:
+    enriched = dict(payload)
+    attribution = provider_attribution(caller)
+    metadata = dict(_mapping(enriched.get('metadata')))
+    metadata.update(attribution['metadata'])
+    trace = dict(_mapping(enriched.get('trace')))
+    trace.update(attribution['trace'])
+    enriched['metadata'] = metadata
+    enriched['trace'] = trace
+    return enriched
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -330,4 +371,4 @@ def build_payload(messages: list, temperature: float, top_p: float,
     if stream:
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}
-    return payload
+    return with_provider_attribution(payload, caller='llm')

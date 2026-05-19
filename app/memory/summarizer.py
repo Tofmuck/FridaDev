@@ -77,6 +77,7 @@ def summarize_conversation(turns: list[dict[str, Any]]) -> str:
         "top_p": float(summary_settings['top_p']),
         "max_tokens": int(summary_settings['max_tokens']),
     }
+    payload = llm_client.with_provider_attribution(payload, caller='resumer')
     r = requests.post(
         llm_client.or_chat_completions_url(),
         json=payload,

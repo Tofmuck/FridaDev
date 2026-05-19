@@ -567,6 +567,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         source = (APP_DIR / "web" / "admin_settings_catalog.js").read_text(encoding="utf-8")
 
         self.assertIn('key: "referer_llm"', source)
+        self.assertIn('key: "referer_web_reformulation"', source)
         self.assertIn('key: "referer_arbiter"', source)
         self.assertIn('key: "referer_identity_extractor"', source)
         self.assertIn('key: "referer_identity_periodic"', source)
@@ -574,6 +575,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('key: "referer_stimmung_agent"', source)
         self.assertIn('key: "referer_validation_agent"', source)
         self.assertIn('label: "Referer LLM"', source)
+        self.assertIn('label: "Referer reformulation web"', source)
         self.assertIn('label: "Referer arbitre"', source)
         self.assertIn('label: "Referer extracteur d\'identite"', source)
         self.assertIn('label: "Referer periodic identity"', source)

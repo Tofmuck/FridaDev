@@ -112,6 +112,7 @@ Valeurs d'`origin` retenues :
 | `api_key` | `text` | oui | `OPENROUTER_API_KEY` |
 | `referer` | `text` | non | `OPENROUTER_REFERER` |
 | `referer_llm` | `text` | non | `OPENROUTER_REFERER_LLM` |
+| `referer_web_reformulation` | `text` | non | `OPENROUTER_REFERER_WEB_REFORMULATION` |
 | `referer_arbiter` | `text` | non | `OPENROUTER_REFERER_ARBITER` |
 | `referer_identity_extractor` | `text` | non | `OPENROUTER_REFERER_IDENTITY_EXTRACTOR` |
 | `referer_identity_periodic` | `text` | non | `OPENROUTER_REFERER_IDENTITY_PERIODIC` |
@@ -120,6 +121,7 @@ Valeurs d'`origin` retenues :
 | `referer_validation_agent` | `text` | non | `OPENROUTER_REFERER_VALIDATION_AGENT` |
 | `app_name` | `text` | non | `OPENROUTER_APP_NAME` |
 | `title_llm` | `text` | non | `OPENROUTER_TITLE_LLM` |
+| `title_web_reformulation` | `text` | non | `OPENROUTER_TITLE_WEB_REFORMULATION` |
 | `title_arbiter` | `text` | non | `OPENROUTER_TITLE_ARBITER` |
 | `title_identity_extractor` | `text` | non | `OPENROUTER_TITLE_IDENTITY_EXTRACTOR` |
 | `title_identity_periodic` | `text` | non | `OPENROUTER_TITLE_IDENTITY_PERIODIC` |
@@ -135,6 +137,7 @@ Notes:
 - Pour la surface chat principale first-party (`/`), `main_model.response_max_tokens` est la source de verite du budget de reponse.
 - Le frontend principal n'envoie plus de surcharge silencieuse `max_tokens`.
 - L'override `max_tokens` de `/api/chat` reste un contrat d'API de compatibilite pour les clients externes explicites.
+- Les champs `referer_*` et `title_*` nomment les callers OpenRouter via `HTTP-Referer`, `X-OpenRouter-Title` et `X-Title` compat. Les payloads runtime ajoutent aussi `metadata.frida_caller`, `metadata.frida_slot` et `trace.generation_name` sans utiliser le champ provider `user`.
 
 ### `arbiter_model`
 
@@ -209,7 +212,7 @@ Convention explicite:
 - cette section pilote uniquement la micro-tache `web_search.reformulate()`;
 - elle ne modifie ni le modele principal du chat, ni le prompt de reformulation web;
 - elle partage le transport OpenRouter de `main_model` (`base_url` et `api_key`);
-- les referer/title `web_reformulation` restent pour ce lot des constantes config-only (`OPENROUTER_REFERER_WEB_REFORMULATION`, `OPENROUTER_TITLE_WEB_REFORMULATION`) consommees par `llm_client`.
+- les referer/title `web_reformulation` sont portes par `main_model.referer_web_reformulation` et `main_model.title_web_reformulation`, semes depuis `OPENROUTER_REFERER_WEB_REFORMULATION` / `OPENROUTER_TITLE_WEB_REFORMULATION`.
 
 ### `stimmung_agent_model`
 

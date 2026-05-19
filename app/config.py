@@ -46,9 +46,22 @@ OR_BASE = os.environ.get('OPENROUTER_BASE', 'https://openrouter.ai/api/v1').rstr
 OR_MODEL = os.environ.get('OPENROUTER_MODEL', 'openai/gpt-5.1')
 OR_KEY = os.environ.get('OPENROUTER_API_KEY', '').strip()
 OR_REFERER = os.environ.get('OPENROUTER_REFERER', os.environ.get('OPENROUTER_SITE_URL', '')).strip()
+_OPENROUTER_COMPONENT_REFERER_DEFAULTS = {
+    'main-chat': 'https://fridadev.frida-system.fr/openrouter/main-chat',
+    'web-reformulation': 'https://fridadev.frida-system.fr/openrouter/web-reformulation',
+    'memory-arbiter': 'https://fridadev.frida-system.fr/openrouter/memory-arbiter',
+    'identity-extractor': 'https://fridadev.frida-system.fr/openrouter/identity-extractor',
+    'identity-periodic': 'https://fridadev.frida-system.fr/openrouter/identity-periodic',
+    'summary': 'https://fridadev.frida-system.fr/openrouter/summary',
+    'stimmung': 'https://fridadev.frida-system.fr/openrouter/stimmung',
+    'validation-agent': 'https://fridadev.frida-system.fr/openrouter/validation-agent',
+}
 
 
 def _default_openrouter_component_referer(component_slug: str) -> str:
+    mapped_default = _OPENROUTER_COMPONENT_REFERER_DEFAULTS.get(component_slug)
+    if mapped_default:
+        return mapped_default
     raw_base_referer = str(
         os.environ.get('OPENROUTER_REFERER', os.environ.get('OPENROUTER_SITE_URL', ''))
     ).strip()
@@ -64,16 +77,16 @@ def _default_openrouter_component_referer(component_slug: str) -> str:
 
 OR_REFERER_LLM = os.environ.get(
     'OPENROUTER_REFERER_LLM',
-    _default_openrouter_component_referer('llm'),
-).strip() or _default_openrouter_component_referer('llm')
+    _default_openrouter_component_referer('main-chat'),
+).strip() or _default_openrouter_component_referer('main-chat')
 OR_REFERER_WEB_REFORMULATION = os.environ.get(
     'OPENROUTER_REFERER_WEB_REFORMULATION',
     _default_openrouter_component_referer('web-reformulation'),
 ).strip() or _default_openrouter_component_referer('web-reformulation')
 OR_REFERER_ARBITER = os.environ.get(
     'OPENROUTER_REFERER_ARBITER',
-    _default_openrouter_component_referer('arbiter'),
-).strip() or _default_openrouter_component_referer('arbiter')
+    _default_openrouter_component_referer('memory-arbiter'),
+).strip() or _default_openrouter_component_referer('memory-arbiter')
 OR_REFERER_IDENTITY_EXTRACTOR = os.environ.get(
     'OPENROUTER_REFERER_IDENTITY_EXTRACTOR',
     _default_openrouter_component_referer('identity-extractor'),
@@ -84,40 +97,40 @@ OR_REFERER_IDENTITY_PERIODIC = os.environ.get(
 ).strip() or _default_openrouter_component_referer('identity-periodic')
 OR_REFERER_RESUMER = os.environ.get(
     'OPENROUTER_REFERER_RESUMER',
-    _default_openrouter_component_referer('resumer'),
-).strip() or _default_openrouter_component_referer('resumer')
+    _default_openrouter_component_referer('summary'),
+).strip() or _default_openrouter_component_referer('summary')
 OR_REFERER_STIMMUNG_AGENT = os.environ.get(
     'OPENROUTER_REFERER_STIMMUNG_AGENT',
-    _default_openrouter_component_referer('stimmung-agent'),
-).strip() or _default_openrouter_component_referer('stimmung-agent')
+    _default_openrouter_component_referer('stimmung'),
+).strip() or _default_openrouter_component_referer('stimmung')
 OR_REFERER_VALIDATION_AGENT = os.environ.get(
     'OPENROUTER_REFERER_VALIDATION_AGENT',
     _default_openrouter_component_referer('validation-agent'),
 ).strip() or _default_openrouter_component_referer('validation-agent')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
-OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE}/LLM').strip() or f'{OR_TITLE_BASE}/LLM'
+OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE} / Main Chat').strip() or f'{OR_TITLE_BASE} / Main Chat'
 OR_TITLE_WEB_REFORMULATION = os.environ.get(
     'OPENROUTER_TITLE_WEB_REFORMULATION',
-    f'{OR_TITLE_BASE}/WebReformulation',
-).strip() or f'{OR_TITLE_BASE}/WebReformulation'
-OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE}/Arbiter').strip() or f'{OR_TITLE_BASE}/Arbiter'
+    f'{OR_TITLE_BASE} / Web Reformulation',
+).strip() or f'{OR_TITLE_BASE} / Web Reformulation'
+OR_TITLE_ARBITER = os.environ.get('OPENROUTER_TITLE_ARBITER', f'{OR_TITLE_BASE} / Memory Arbiter').strip() or f'{OR_TITLE_BASE} / Memory Arbiter'
 OR_TITLE_IDENTITY_EXTRACTOR = os.environ.get(
     'OPENROUTER_TITLE_IDENTITY_EXTRACTOR',
-    f'{OR_TITLE_BASE}/IdentityExtractor',
-).strip() or f'{OR_TITLE_BASE}/IdentityExtractor'
+    f'{OR_TITLE_BASE} / Identity Extractor',
+).strip() or f'{OR_TITLE_BASE} / Identity Extractor'
 OR_TITLE_IDENTITY_PERIODIC = os.environ.get(
     'OPENROUTER_TITLE_IDENTITY_PERIODIC',
-    f'{OR_TITLE_BASE}/IdentityPeriodic',
-).strip() or f'{OR_TITLE_BASE}/IdentityPeriodic'
-OR_TITLE_RESUMER = os.environ.get('OPENROUTER_TITLE_RESUMER', f'{OR_TITLE_BASE}/Resumer').strip() or f'{OR_TITLE_BASE}/Resumer'
+    f'{OR_TITLE_BASE} / Identity Periodic',
+).strip() or f'{OR_TITLE_BASE} / Identity Periodic'
+OR_TITLE_RESUMER = os.environ.get('OPENROUTER_TITLE_RESUMER', f'{OR_TITLE_BASE} / Summary').strip() or f'{OR_TITLE_BASE} / Summary'
 OR_TITLE_STIMMUNG_AGENT = os.environ.get(
     'OPENROUTER_TITLE_STIMMUNG_AGENT',
-    f'{OR_TITLE_BASE}/StimmungAgent',
-).strip() or f'{OR_TITLE_BASE}/StimmungAgent'
+    f'{OR_TITLE_BASE} / Stimmung',
+).strip() or f'{OR_TITLE_BASE} / Stimmung'
 OR_TITLE_VALIDATION_AGENT = os.environ.get(
     'OPENROUTER_TITLE_VALIDATION_AGENT',
-    f'{OR_TITLE_BASE}/ValidationAgent',
-).strip() or f'{OR_TITLE_BASE}/ValidationAgent'
+    f'{OR_TITLE_BASE} / Validation Agent',
+).strip() or f'{OR_TITLE_BASE} / Validation Agent'
 OR_TITLE = OR_TITLE_LLM
 
 # Web reformulation model

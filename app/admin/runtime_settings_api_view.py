@@ -361,13 +361,12 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'shared_transport': {
                 'label': 'SHARED_OPENROUTER_TRANSPORT',
-                'value': (
-                    'Transport OpenRouter partage via main_model: base_url + api_key. '
-                    'Referer/title web restent config-only via '
-                    'OPENROUTER_REFERER_WEB_REFORMULATION / OPENROUTER_TITLE_WEB_REFORMULATION.'
+                'value': _shared_openrouter_transport_text(
+                    'main_model.title_web_reformulation',
+                    'main_model.referer_web_reformulation',
                 ),
                 'is_editable': False,
-                'source': 'runtime_contract',
+                'source': 'main_model_runtime_settings',
             },
         }
     if section == 'stimmung_agent_model':

@@ -226,7 +226,8 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
 
         self.assertEqual(readonly_info['prompt_path']['value'], runtime_settings.config.WEB_REFORMULATION_PROMPT_PATH)
         self.assertIn('main_model', readonly_info['shared_transport']['value'])
-        self.assertIn('OPENROUTER_TITLE_WEB_REFORMULATION', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.title_web_reformulation', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_web_reformulation', readonly_info['shared_transport']['value'])
         self.assertEqual(
             readonly_info['system_prompt']['label'],
             'web_reformulation_system_prompt',

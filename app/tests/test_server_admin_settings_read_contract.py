@@ -523,7 +523,8 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 40)
         self.assertIn('Nous sommes le {today}.', data['readonly_info']['system_prompt']['value'])
-        self.assertIn('OPENROUTER_TITLE_WEB_REFORMULATION', data['readonly_info']['shared_transport']['value'])
+        self.assertIn('main_model.title_web_reformulation', data['readonly_info']['shared_transport']['value'])
+        self.assertIn('main_model.referer_web_reformulation', data['readonly_info']['shared_transport']['value'])
 
     def test_get_admin_settings_stimmung_agent_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

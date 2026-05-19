@@ -67,6 +67,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
                         'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
+                        'referer_web_reformulation': {'value': 'https://web.frida-system.fr/', 'origin': 'db'},
                         'referer_arbiter': {'value': 'https://arbiter.frida-system.fr/', 'origin': 'db'},
                         'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'origin': 'db'},
                         'referer_identity_periodic': {'value': 'https://identity-periodic.frida-system.fr/', 'origin': 'db'},
@@ -75,6 +76,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'referer_validation_agent': {'value': 'https://validation-agent.frida-system.fr/', 'origin': 'db'},
                         'app_name': {'value': 'FridaDev', 'origin': 'db'},
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_web_reformulation': {'value': 'FridaDev/Web', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
                         'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
                         'title_identity_periodic': {'value': 'FridaDev/IdentityPeriodic', 'origin': 'db'},
@@ -210,7 +212,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             },
         )
 
-    def test_or_headers_uses_dedicated_web_reformulation_identity_without_runtime_field(self) -> None:
+    def test_or_headers_uses_dedicated_web_reformulation_runtime_fields(self) -> None:
         original_secret = llm_client.runtime_settings.get_runtime_secret_value
         original_view = llm_client.runtime_settings.get_main_model_settings
 
@@ -234,7 +236,9 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
                         'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
                         'referer': {'value': 'https://shared.frida-system.fr/', 'origin': 'db'},
+                        'referer_web_reformulation': {'value': 'https://web.frida-system.fr/', 'origin': 'db'},
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
+                        'title_web_reformulation': {'value': 'FridaDev/Web Reformulation', 'origin': 'db'},
                     },
                 ),
                 source='db',
@@ -250,9 +254,9 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             llm_client.runtime_settings.get_main_model_settings = original_view
 
         self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'web_reformulation')
-        self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_WEB_REFORMULATION)
-        self.assertEqual(headers['X-Title'], config.OR_TITLE_WEB_REFORMULATION)
-        self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_WEB_REFORMULATION)
+        self.assertEqual(headers['X-OpenRouter-Title'], 'FridaDev/Web Reformulation')
+        self.assertEqual(headers['X-Title'], 'FridaDev/Web Reformulation')
+        self.assertEqual(headers['HTTP-Referer'], 'https://web.frida-system.fr/')
 
     def test_or_headers_keeps_env_fallback_when_db_secret_is_missing(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
@@ -308,6 +312,65 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             ),
             {'X-Title': config.OR_TITLE_VALIDATION_AGENT},
         )
+
+    def test_provider_attribution_names_all_known_callers_without_user_field(self) -> None:
+        expected = {
+            'llm': ('main_chat', 'main_model', config.OR_TITLE_LLM),
+            'web_reformulation': (
+                'web_reformulation',
+                'web_reformulation_model',
+                config.OR_TITLE_WEB_REFORMULATION,
+            ),
+            'arbiter': ('memory_arbiter', 'memory_arbiter_model', config.OR_TITLE_ARBITER),
+            'identity_extractor': (
+                'identity_extractor',
+                'identity_extractor_model',
+                config.OR_TITLE_IDENTITY_EXTRACTOR,
+            ),
+            'identity_periodic_agent': (
+                'identity_periodic',
+                'identity_periodic_model',
+                config.OR_TITLE_IDENTITY_PERIODIC,
+            ),
+            'resumer': ('summary', 'summary_model', config.OR_TITLE_RESUMER),
+            'stimmung_agent': ('stimmung_agent', 'stimmung_agent_model', config.OR_TITLE_STIMMUNG_AGENT),
+            'validation_agent': (
+                'validation_agent',
+                'validation_agent_model',
+                config.OR_TITLE_VALIDATION_AGENT,
+            ),
+        }
+
+        for caller, (frida_caller, frida_slot, generation_name) in expected.items():
+            with self.subTest(caller=caller):
+                attribution = llm_client.provider_attribution(caller)
+                self.assertEqual(
+                    attribution['metadata'],
+                    {'frida_caller': frida_caller, 'frida_slot': frida_slot},
+                )
+                self.assertEqual(
+                    attribution['trace'],
+                    {'trace_name': 'FridaDev', 'generation_name': generation_name},
+                )
+                self.assertNotIn('user', attribution)
+
+    def test_with_provider_attribution_merges_existing_metadata_and_trace(self) -> None:
+        payload = llm_client.with_provider_attribution(
+            {
+                'model': 'test/model',
+                'metadata': {'campaign': 'unit'},
+                'trace': {'span': 'existing'},
+            },
+            caller='resumer',
+        )
+
+        self.assertEqual(payload['metadata']['campaign'], 'unit')
+        self.assertEqual(payload['metadata']['frida_caller'], 'summary')
+        self.assertEqual(payload['metadata']['frida_slot'], 'summary_model')
+        self.assertEqual(payload['trace']['span'], 'existing')
+        self.assertEqual(payload['trace']['trace_name'], 'FridaDev')
+        self.assertEqual(payload['trace']['generation_name'], config.OR_TITLE_RESUMER)
+        self.assertNotIn('user', payload)
 
     def test_resolve_provider_referer_prefers_component_field_and_falls_back_to_shared_then_seed(self) -> None:
         original_view = llm_client.runtime_settings.get_main_model_settings
@@ -416,6 +479,14 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(payload['temperature'], 0.7)
         self.assertEqual(payload['top_p'], 0.9)
         self.assertEqual(payload['max_tokens'], 512)
+        self.assertEqual(
+            payload['metadata'],
+            {'frida_caller': 'main_chat', 'frida_slot': 'main_model'},
+        )
+        self.assertEqual(
+            payload['trace'],
+            {'trace_name': 'FridaDev', 'generation_name': 'FridaDev/LLM'},
+        )
 
     def test_build_payload_keeps_env_fallback_when_db_row_is_missing(self) -> None:
         original = llm_client.runtime_settings.get_main_model_settings
@@ -440,6 +511,8 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             llm_client.runtime_settings.get_main_model_settings = original
 
         self.assertEqual(payload['model'], config.OR_MODEL)
+        self.assertEqual(payload['metadata']['frida_caller'], 'main_chat')
+        self.assertEqual(payload['metadata']['frida_slot'], 'main_model')
 
     def test_extract_openrouter_provider_metadata_reads_post_call_usage_and_generation_id(self) -> None:
         metadata = llm_client.extract_openrouter_provider_metadata(

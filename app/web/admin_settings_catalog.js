@@ -91,6 +91,13 @@
       autocomplete: "url",
     },
     {
+      key: "referer_web_reformulation",
+      label: "Referer reformulation web",
+      hint: "Referer OpenRouter nominal du flux de reformulation web.",
+      inputType: "url",
+      autocomplete: "url",
+    },
+    {
       key: "referer_arbiter",
       label: "Referer arbitre",
       hint: "Referer OpenRouter nominal du flux arbitre.",
@@ -143,6 +150,13 @@
       key: "title_llm",
       label: "Titre LLM",
       hint: "Titre du flux principal cote provider.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "title_web_reformulation",
+      label: "Titre reformulation web",
+      hint: "Titre OpenRouter du flux de reformulation web.",
       inputType: "text",
       autocomplete: "off",
     },

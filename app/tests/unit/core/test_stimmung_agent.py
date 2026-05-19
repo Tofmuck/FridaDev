@@ -120,6 +120,9 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['dominant_tone'], 'frustration')
         self.assertEqual(result.signal['tones'][1], {'tone': 'confusion', 'strength': 4})
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
+        self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_caller'], 'stimmung_agent')
+        self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_slot'], 'stimmung_agent_model')
+        self.assertEqual(requests_module.calls[0]['json']['trace']['trace_name'], 'FridaDev')
         self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
         self.assertEqual(
             result.provider_metadata,
@@ -277,6 +280,8 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]['json']['temperature'], 0.6)
         self.assertEqual(requests_module.calls[0]['json']['top_p'], 0.77)
         self.assertEqual(requests_module.calls[0]['json']['max_tokens'], 333)
+        self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_caller'], 'stimmung_agent')
+        self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_slot'], 'stimmung_agent_model')
         self.assertEqual(requests_module.calls[0]['timeout'], 22)
         self.assertEqual(requests_module.calls[0]['headers'], {'Authorization': 'caller=stimmung_agent'})
 
