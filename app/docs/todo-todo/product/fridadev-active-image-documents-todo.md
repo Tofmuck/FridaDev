@@ -326,13 +326,25 @@ Lot 4 livre:
 
 ### Lot 5 - Smoke provider minimal
 
-- [ ] Faire un smoke OpenRouter avec image non sensible, sans committer l'image brute.
-- [ ] Tester non-stream.
-- [ ] Tester stream.
-- [ ] Tester image trop petite ou non traitable.
-- [ ] Tester une image nominale type PNG 32x32 ou fixture equivalente.
-- [ ] Conserver seulement une preuve compacte: modele, statut, finish reason, usage, reason compact.
-- [ ] Ne jamais conserver de base64 dans les artefacts.
+- [x] Faire un smoke OpenRouter avec image non sensible, sans committer l'image brute.
+- [x] Tester non-stream.
+- [x] Tester stream.
+- [x] Tester image trop petite ou non traitable.
+- [x] Tester une image nominale type PNG 32x32 ou fixture equivalente.
+- [x] Conserver seulement une preuve compacte: modele, statut, finish reason, usage, reason compact.
+- [x] Ne jamais conserver de base64 dans les artefacts.
+
+Lot 5 livre le 2026-05-19:
+
+- modele demande live: `anthropic/claude-sonnet-4.6`;
+- modele provider observe: `anthropic/claude-4.6-sonnet-20260217`;
+- image nominale: PNG non sensible generee en memoire, `32 x 32 px`, `102 bytes`, `sha256_12=e8b1ef09769d`;
+- ordre payload verifie avant appel: `content[0].type=text`, puis `content[1].type=image_url`;
+- non-stream: HTTP `200`, `finish_reason=stop`, latence `2601.2 ms`, usage `prompt_tokens=38`, `completion_tokens=33`, `total_tokens=71`, cout observe `0.000609`;
+- non-stream: reponse courte correcte, le modele identifie une dominante bleue et une forme carree;
+- stream: HTTP `200`, terminal `[DONE]` observe, `13` chunks texte, latence `3894.8 ms`, usage identique quand renvoye par OpenRouter;
+- image trop petite: PNG `1 x 1 px`, `70 bytes`, `sha256_12=49e1dad481e9`, refusee par le garde V0 avant provider avec `status=too_small`, `reason_code=image_too_small_for_provider`;
+- aucun secret, aucune image brute, aucune data URL et aucun base64 de smoke ne sont conserves ou committes.
 
 ## 7. Tests attendus
 

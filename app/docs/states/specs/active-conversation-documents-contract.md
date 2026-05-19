@@ -304,6 +304,17 @@ Preuves Lot 4:
 - l'observabilite content-free couvre les cas image `injected` et `excluded` avec decision, reason code, media kind, MIME, bytes, dimensions, hash court, provider model et payload order;
 - logs, read-models et dashboard ne transportent ni base64, ni data URL, ni bytes image, ni prompt utilisateur complet.
 
+Preuve provider Lot 5:
+
+- smoke OpenRouter reel realise le 2026-05-19 sur le modele live `anthropic/claude-sonnet-4.6`;
+- provider model observe: `anthropic/claude-4.6-sonnet-20260217`;
+- fixture nominale: PNG non sensible generee en memoire, `32 x 32 px`, `102 bytes`, `sha256_12=e8b1ef09769d`;
+- payload confirme en ordre `text_then_image_url`;
+- non-stream: HTTP `200`, `finish_reason=stop`, usage `38/33/71` tokens, cout observe `0.000609`, reponse correcte sur dominante bleue et forme carree;
+- stream: HTTP `200`, terminal `[DONE]`, `13` chunks texte, usage renvoye et coherent;
+- PNG trop petite `1 x 1 px` refusee avant provider par le garde V0 avec `reason_code=image_too_small_for_provider`;
+- aucune image brute, aucune data URL, aucun base64 de smoke et aucun secret ne sont conserves dans le depot.
+
 Formats image:
 
 - OpenRouter documente `image/png`, `image/jpeg`, `image/webp`, `image/gif`;
