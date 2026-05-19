@@ -113,6 +113,10 @@ class ImageGenerationToolTests(unittest.TestCase):
             image_generation.IMAGE_GENERATORS['image_generator_nano_banana'].openrouter_model_id,
             'google/gemini-2.5-flash-image',
         )
+        self.assertEqual(
+            image_generation.IMAGE_GENERATORS['image_generator_nano_banana'].supported_image_sizes,
+            ('1K', '2K'),
+        )
         self.assertNotIn('openrouter/auto', {spec.openrouter_model_id for spec in image_generation.IMAGE_GENERATORS.values()})
 
     def test_invalid_generator_is_rejected_without_provider_call(self) -> None:
@@ -149,7 +153,7 @@ class ImageGenerationToolTests(unittest.TestCase):
         requests_module = FakeRequests(FakeResponse(_provider_payload()))
         cases = [
             (_valid_payload(aspect_ratio='4:1'), 'invalid_aspect_ratio'),
-            (_valid_payload(image_size='8K'), 'invalid_image_size'),
+            (_valid_payload(image_size='4K'), 'invalid_image_size'),
         ]
         for request_payload, expected_error in cases:
             with self.subTest(expected_error=expected_error):

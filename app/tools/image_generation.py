@@ -78,7 +78,7 @@ IMAGE_GENERATORS: dict[str, ImageGeneratorSpec] = {
             '16:9',
             '21:9',
         ),
-        supported_image_sizes=('1K', '2K', '4K'),
+        supported_image_sizes=('1K', '2K'),
         pricing_label='prix API observe: image 0.0000003 / prompt 0.0000003 / completion 0.0000025',
         pricing_source='API modeles + smoke cout observe',
         is_preview=False,
