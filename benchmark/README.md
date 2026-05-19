@@ -19,6 +19,11 @@ The fourth implemented suite is `identity_periodic`, a targeted smoke run for
 the periodic identity agent on a simulated 15-pair buffer. It is not a model
 tournament and does not change production runtime settings.
 
+The fifth implemented suite is `stimmung`, which compares the primary
+Stimmung agent on short French diagnostic scenes. It checks strict JSON/schema
+validity and gives a qualitative reading of local affect without benchmarking
+the fallback.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -292,6 +297,53 @@ evidence. Keep the compact decision pair instead:
 
 Those files preserve operation counts, provider metadata and the selected
 runtime slot without retaining the full simulated payload and raw model dumps.
+
+## Stimmung primary benchmark
+
+The Stimmung suite compares only the primary `stimmung_agent` model. It uses
+the production prompt `app/prompts/stimmung_agent.txt`, the same local recent
+window shape as the runtime, and artificial French diagnostic cases designed to
+test affective restraint.
+
+Default Stimmung models:
+
+- `openai/gpt-5.4-mini`
+- `anthropic/claude-haiku-4.5`
+- `google/gemini-3.1-flash-lite`
+- `mistralai/mistral-small-2603`
+
+Fixed Stimmung parameters:
+
+- `temperature=0.1`
+- `top_p=1.0`
+- `max_tokens=220`
+- `timeout_s=10`
+
+Dry run:
+
+```bash
+python3 benchmark/run_benchmark.py stimmung --dry-run
+```
+
+Example live run:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite stimmung \
+  --campaign-id 2026-05-19-stimmung-primary-benchmark \
+  --timeout-s 10 \
+  --output-dir benchmark/results/stimmung
+```
+
+The runner writes:
+
+- one structured JSON artifact;
+- one Markdown report with technical metrics, case notes, model divergences and
+  a provisional qualitative reading.
+
+The report is a decision aid, not an automatic production verdict. It must not
+be used to change `stimmung_agent_model` without a separate decision and
+runtime settings lot.
 
 ## Scope
 

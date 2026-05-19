@@ -1,0 +1,330 @@
+[
+  {
+    "id": "neutral_command_short",
+    "current_user_message": "OK, c'est pousse. Tu peux me rappeler la prochaine commande a lancer ?",
+    "recent_turns": [],
+    "tags": ["neutral", "neutral_probe", "french"],
+    "design_note": "Tour operatoire simple: ne pas inventer anxiete ou enthousiasme.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "curiosite"],
+      "tones": ["neutralite", "curiosite"],
+      "avoid_tones": ["anxiete", "decouragement", "colere"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "curiosity_real",
+    "current_user_message": "Attends, ca m'intrigue: pourquoi le validateur voit une tension ici alors que le prompt principal a l'air clair ?",
+    "recent_turns": [],
+    "tags": ["curiosite", "marked_affect", "french"],
+    "design_note": "Curiosite analytique explicite, sans frustration forte.",
+    "expected_acceptables": {
+      "dominant_tones": ["curiosite"],
+      "tones": ["curiosite", "confusion"],
+      "avoid_tones": ["colere", "decouragement"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "confusion_process",
+    "current_user_message": "La je ne comprends plus: on a coche le lot, mais le read-model raconte encore l'ancien etat.",
+    "recent_turns": [],
+    "tags": ["confusion", "marked_affect", "french"],
+    "design_note": "Confusion de suivi, possiblement teintee de frustration mais pas colere.",
+    "expected_acceptables": {
+      "dominant_tones": ["confusion", "frustration"],
+      "tones": ["confusion", "frustration"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "frustration_tooling",
+    "current_user_message": "Non, ca recommence: le test passe en local et se casse dans le conteneur, c'est franchement usant.",
+    "recent_turns": [],
+    "tags": ["frustration", "marked_affect", "french"],
+    "design_note": "Frustration explicite, mais pas attaque personnelle.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration"],
+      "tones": ["frustration", "decouragement"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 5
+    }
+  },
+  {
+    "id": "anger_explicit",
+    "current_user_message": "La je suis en colere: on avait dit pas de refactor opportuniste, et le patch vient de tout melanger.",
+    "recent_turns": [],
+    "tags": ["colere", "marked_affect", "french"],
+    "design_note": "Colere nommee explicitement; le modele doit oser la classer sans dramatiser.",
+    "expected_acceptables": {
+      "dominant_tones": ["colere", "frustration"],
+      "tones": ["colere", "frustration"],
+      "avoid_tones": ["apaisement", "enthousiasme"],
+      "min_strength": 6
+    }
+  },
+  {
+    "id": "anxiety_deadline",
+    "current_user_message": "Je commence a stresser: si on casse l'admin maintenant, je ne pourrai pas suivre demain.",
+    "recent_turns": [],
+    "tags": ["anxiete", "marked_affect", "french"],
+    "design_note": "Anxiete locale explicite, sans la transformer en trait durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["anxiete"],
+      "tones": ["anxiete", "frustration"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 5
+    }
+  },
+  {
+    "id": "discouragement_soft",
+    "current_user_message": "J'avoue, la je baisse un peu les bras. On nettoie un truc et deux autres ressortent.",
+    "recent_turns": [],
+    "tags": ["decouragement", "marked_affect", "french"],
+    "design_note": "Decouragement local explicite, pas depression ni psychologie profonde.",
+    "expected_acceptables": {
+      "dominant_tones": ["decouragement", "frustration"],
+      "tones": ["decouragement", "frustration"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 5
+    }
+  },
+  {
+    "id": "enthusiasm_clean",
+    "current_user_message": "Ah oui, la c'est propre. On voit enfin la frontiere du module, ca me plait beaucoup.",
+    "recent_turns": [],
+    "tags": ["enthousiasme", "marked_affect", "french"],
+    "design_note": "Enthousiasme positif mais professionnel.",
+    "expected_acceptables": {
+      "dominant_tones": ["enthousiasme", "apaisement"],
+      "tones": ["enthousiasme", "apaisement"],
+      "avoid_tones": ["anxiete", "decouragement", "colere"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "appeasement_after_fix",
+    "current_user_message": "Merci, la je respire. Le rapport est clair et je vois exactement ce qui reste ouvert.",
+    "recent_turns": [],
+    "tags": ["apaisement", "marked_affect", "french"],
+    "design_note": "Soulagement/apaisement local.",
+    "expected_acceptables": {
+      "dominant_tones": ["apaisement"],
+      "tones": ["apaisement", "enthousiasme"],
+      "avoid_tones": ["anxiete", "colere"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "light_irony",
+    "current_user_message": "Magnifique, encore une variable legacy qui faisait semblant de servir. Quelle surprise.",
+    "recent_turns": [],
+    "tags": ["ironie", "frustration", "marked_affect", "french"],
+    "design_note": "Ironie legere avec agacement; ne pas lire joie litterale.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration"],
+      "tones": ["frustration", "colere"],
+      "avoid_tones": ["enthousiasme", "apaisement"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "playful_annoyance",
+    "current_user_message": "Bon, le petit piege etait vilain, mais je te l'accorde: joli rattrapage.",
+    "recent_turns": [],
+    "tags": ["agacement_joueur", "frustration", "apaisement", "french"],
+    "design_note": "Agacement joueur et detente: eviter colere forte.",
+    "expected_acceptables": {
+      "dominant_tones": ["apaisement", "frustration"],
+      "tones": ["apaisement", "frustration"],
+      "avoid_tones": ["colere", "anxiete"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "role_play_boundary",
+    "current_user_message": "Imagine que je sois un tyran de QA qui refuse tout patch sans preuve; dans ce role, je te dis non.",
+    "recent_turns": [],
+    "tags": ["role_play", "neutral_probe", "french"],
+    "design_note": "Role joue; ne pas conclure colere reelle forte.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "frustration"],
+      "tones": ["neutralite", "frustration"],
+      "avoid_tones": ["colere", "anxiete"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "strong_tension_calm_request",
+    "current_user_message": "Je suis tendu, oui, mais je veux qu'on reste calmes: explique juste la cause racine et rien de plus.",
+    "recent_turns": [],
+    "tags": ["tension", "anxiete", "apaisement", "marked_affect", "french"],
+    "design_note": "Tension explicite avec demande de calme: anxiete/frustration possible, pas escalation.",
+    "expected_acceptables": {
+      "dominant_tones": ["anxiete", "frustration", "apaisement"],
+      "tones": ["anxiete", "frustration", "apaisement"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "temporal_today_not_durable",
+    "current_user_message": "Aujourd'hui je suis un peu a plat, mais pour ce ticket donne-moi juste le diff utile.",
+    "recent_turns": [],
+    "tags": ["temporal", "aujourd_hui", "decouragement", "french"],
+    "design_note": "Etat local temporel: decouragement faible possible, pas humeur durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["decouragement", "neutralite"],
+      "tones": ["decouragement", "neutralite"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "temporal_hier_resolved",
+    "current_user_message": "Hier ca m'a vraiment agace, mais la c'est regle; passons au prochain caller.",
+    "recent_turns": [],
+    "tags": ["temporal", "hier", "apaisement", "neutral_probe", "french"],
+    "design_note": "Le mot hier porte l'affect passe; le tour courant est plutot resolu.",
+    "expected_acceptables": {
+      "dominant_tones": ["apaisement", "neutralite"],
+      "tones": ["apaisement", "neutralite"],
+      "avoid_tones": ["colere", "anxiete"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "temporal_en_ce_moment",
+    "current_user_message": "En ce moment je doute un peu de cette piste, donc je veux une preuve courte avant d'aller plus loin.",
+    "recent_turns": [],
+    "tags": ["temporal", "en_ce_moment", "anxiete", "curiosite", "french"],
+    "design_note": "Doute local: anxiete legere ou curiosite prudente, pas decouragement durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["anxiete", "curiosite", "confusion"],
+      "tones": ["anxiete", "curiosite", "confusion"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "recent_context_misleading_current_calm",
+    "current_user_message": "OK, on a compris. Maintenant donne-moi juste la commande de verification.",
+    "recent_turns": [
+      {
+        "turn_status": "complete",
+        "messages": [
+          {"role": "user", "content": "Je suis furieux, ce dashboard me ment encore."},
+          {"role": "assistant", "content": "Je vais remonter jusqu'aux evenements sources."}
+        ]
+      }
+    ],
+    "tags": ["recent_context_trap", "neutral_probe", "french"],
+    "design_note": "Le contexte precedent est charge, mais le tour courant est calme et operatoire.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "apaisement"],
+      "tones": ["neutralite", "apaisement"],
+      "avoid_tones": ["colere", "anxiete"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "recent_context_old_calm_current_frustrated",
+    "current_user_message": "Non, justement, ce n'est pas ca que je demandais. Tu es reparti sur l'audit global.",
+    "recent_turns": [
+      {
+        "turn_status": "complete",
+        "messages": [
+          {"role": "user", "content": "Parfait, ca me rassure."},
+          {"role": "assistant", "content": "Je garde le patch borne."}
+        ]
+      }
+    ],
+    "tags": ["recent_context_trap", "frustration", "marked_affect", "french"],
+    "design_note": "Le contexte etait apaise, mais le tour courant exprime une correction frustree.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration"],
+      "tones": ["frustration", "confusion"],
+      "avoid_tones": ["apaisement", "enthousiasme"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "oral_dictation_noisy",
+    "current_user_message": "Euh attends non non, je reprends: le truc c'est pas le modele, c'est le slot qui raconte n'importe quoi dans l'admin.",
+    "recent_turns": [],
+    "tags": ["oral_dicte", "confusion", "frustration", "french"],
+    "design_note": "Francais oral dicte, reprise et correction: confusion/frustration moderee.",
+    "expected_acceptables": {
+      "dominant_tones": ["confusion", "frustration"],
+      "tones": ["confusion", "frustration"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "factual_test_report",
+    "current_user_message": "Les 52 tests passent, le conteneur est healthy et /admin renvoie bien vers Authelia.",
+    "recent_turns": [],
+    "tags": ["neutral", "neutral_probe", "french"],
+    "design_note": "Rapport factuel positif, pas forcement enthousiasme.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "apaisement"],
+      "tones": ["neutralite", "apaisement"],
+      "avoid_tones": ["anxiete", "colere", "decouragement"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "skeptical_but_open",
+    "current_user_message": "Je ne suis pas convaincu, mais montre-moi la preuve et on verra.",
+    "recent_turns": [],
+    "tags": ["curiosite", "frustration", "confusion", "french"],
+    "design_note": "Scepticisme ouvert: curiosite prudente ou frustration basse, pas rejet colerique.",
+    "expected_acceptables": {
+      "dominant_tones": ["curiosite", "frustration", "confusion"],
+      "tones": ["curiosite", "frustration", "confusion"],
+      "avoid_tones": ["colere", "decouragement"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "explicit_calm_boundary",
+    "current_user_message": "Stop. On arrete ce mouvement, tu me donnes l'etat exact et tu attends.",
+    "recent_turns": [],
+    "tags": ["tension", "frustration", "french"],
+    "design_note": "Ordre ferme et borne: frustration/tension possible, pas colere obligatoire.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration", "neutralite"],
+      "tones": ["frustration", "neutralite"],
+      "avoid_tones": ["enthousiasme", "apaisement"],
+      "max_strength": 7
+    }
+  },
+  {
+    "id": "strong_pressure_no_psychology",
+    "current_user_message": "C'est critique: si on se trompe la-dessus, l'operateur va voir une fausse verite modele.",
+    "recent_turns": [],
+    "tags": ["anxiete", "tension", "marked_affect", "french"],
+    "design_note": "Pression forte sur le risque, a lire localement sans psychologie personnelle.",
+    "expected_acceptables": {
+      "dominant_tones": ["anxiete", "frustration"],
+      "tones": ["anxiete", "frustration"],
+      "avoid_tones": ["colere", "decouragement"],
+      "min_strength": 5
+    }
+  },
+  {
+    "id": "meta_no_affect",
+    "current_user_message": "Note simplement que ce point reste hors scope jusqu'au lot suivant.",
+    "recent_turns": [],
+    "tags": ["neutral", "neutral_probe", "french"],
+    "design_note": "Meta-commande neutre; ne pas y lire rigidite ou anxiete.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite"],
+      "tones": ["neutralite"],
+      "avoid_tones": ["colere", "anxiete", "frustration"],
+      "max_strength": 4
+    }
+  }
+]

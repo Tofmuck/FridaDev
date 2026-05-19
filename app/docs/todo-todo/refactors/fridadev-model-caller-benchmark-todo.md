@@ -267,7 +267,28 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Requalifier `arbiter_model` comme slot legacy sans caller actif.
 - [x] Retirer les sorties brutes des trois smokes apres lecture humaine et decision.
 - [x] Conserver la preuve compacte: `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md` et `.json`.
-- [ ] Prochain caller apres periodic identity: `stimmung_agent` primaire.
+## Campagne benchmark - `stimmung_agent` primaire
+
+- [x] Caller cible: agent primaire du Stimmung, implemente dans `app/core/stimmung_agent.py`.
+- [x] Prompt cible exact: `app/prompts/stimmung_agent.txt`, sans version benchmark simplifiee.
+- [x] Benchmarker uniquement le primaire, pas le fallback.
+- [x] Comparer exactement `openai/gpt-5.4-mini`, baseline actuelle.
+- [x] Comparer exactement `anthropic/claude-haiku-4.5`.
+- [x] Comparer exactement `google/gemini-3.1-flash-lite`.
+- [x] Comparer exactement `mistralai/mistral-small-2603`.
+- [x] Utiliser le meme prompt et le meme jeu de cas pour tous les modeles.
+- [x] Utiliser `temperature=0.1`.
+- [x] Utiliser `top_p=1.0`.
+- [x] Utiliser `max_tokens=220`.
+- [x] Utiliser `timeout_s=10`.
+- [x] Construire des scenes courtes en francais couvrant neutralite, curiosite, confusion, frustration, colere, anxiete, decouragement, enthousiasme, apaisement, ironie, agacement joueur, role joue, tension forte, claims temporels faibles, contexte recent trompeur et francais oral dicte.
+- [x] Produire un rapport technique avec JSON valide, schema valide, tons autorises, coherences `dominant_tone` / `tones`, erreurs provider, latence, cout, completion tokens et finish reason si disponible.
+- [x] Produire une lecture hermeneutique: psychologisation excessive, platitude, confusion ironie/agacement/frustration, neutralite bien tenue et verdict provisoire.
+- [x] Ne pas proclamer de vainqueur de production.
+- [x] Ne pas modifier `stimmung_agent_model`.
+- [ ] Decision modele `stimmung_agent` primaire apres lecture humaine de Tof.
+- [ ] Decouplage runtime du `stimmung_agent` primaire seulement apres decision explicite.
+- [x] Fallback Stimmung hors priorite pour ce chantier.
 
 ## Definition de fin globale
 
