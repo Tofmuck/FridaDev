@@ -48,6 +48,7 @@ Le composant doit sembler natif dans FridaDev:
 Sources:
 - Documentation: `https://openrouter.ai/docs/guides/overview/multimodal/image-generation`
 - API modele: `https://openrouter.ai/api/v1/models?output_modalities=image`
+- API rejouee en Lot 0 le 2026-05-19: 29 modeles retournes avec `output_modalities=image`.
 
 Contrat observe:
 - Endpoint recommande pour V0 FridaDev: `POST /api/v1/chat/completions`, via le transport OpenRouter existant.
@@ -68,21 +69,33 @@ Consequence V0:
 - confirmer chaque modele retenu par un smoke minimal avant exposition UI;
 - ne pas pretendre decouvrir automatiquement toutes les contraintes de format depuis l'API modeles.
 
-## 4. Modeles candidats V0
+## 4. Modeles V0 definitifs apres Lot 0
 
-Ne pas chercher le modele "le plus permissif". Le choix V0 doit couvrir des usages distincts, avec une allowlist courte.
+Ne pas chercher le modele "le plus permissif". Le choix V0 couvre des usages distincts, avec une allowlist courte.
 
-| Usage | Generator key | Id OpenRouter | Nom API | Modalites input -> output | Parametres API utiles observes | Formats / tailles | Prix API observe | Pricing label UI cible | Attribution cible | Raison de selection | Limite connue |
+### Confirmation API
+
+| Usage | Generator key | Id OpenRouter | Nom API | Modalites input -> output | Parametres API utiles observes | Prix API observe | Smoke Lot 0 | Limite connue |
+|---|---|---|---|---|---|---|---|---|
+| Meilleur rendu general | `image_generator_openai` | `openai/gpt-5.4-image-2` | OpenAI: GPT-5.4 Image 2 | image,text,file -> image,text | `max_tokens`, `seed`, `response_format`, `temperature` non listee | prompt `0.000008`, completion `0.000015`; pas de prix image dedie dans l'API | OK: image PNG, `finish_reason=stop`, cout observe `0.224556`, latence `163008 ms` | cher/lent meme sur prompt minimal; contraintes image par ratio non detaillees par l'API |
+| Rapide / economique | `image_generator_nano_banana` | `google/gemini-2.5-flash-image` | Google: Nano Banana (Gemini 2.5 Flash Image) | image,text -> image,text | `temperature`, `top_p`, `seed`, `max_tokens`, `response_format`, `structured_outputs`, `stop` | image `0.0000003`, prompt `0.0000003`, completion `0.0000025` | OK: image PNG, `finish_reason=stop`, cout observe `0.038706`, latence `4205 ms` | Gemini 3.1 preview non retenu: smoke `1K` sans image puis `0.5K` en erreur provider 400 |
+| Illustration / design / style | `image_generator_recraft` | `recraft/recraft-v4.1` | Recraft: Recraft V4.1 | text,image -> image | aucun `supported_parameters` declare dans l'API | API indique prompt `0`, completion `0`; prix image non explicite | OK: image WEBP, `finish_reason=stop`, cout observe `0.04`, latence `7130 ms` | pricing et formats precis non exposes par l'API modeles; pas de sortie texte |
+| Option experimentale image-only | `image_generator_flux` | `black-forest-labs/flux.2-pro` | Black Forest Labs: FLUX.2 Pro | text,image -> image | `seed` | API indique prompt `0`, completion `0`; prix image non explicite | OK: image PNG, `finish_reason=stop`, cout observe `0.075`, latence `16485 ms` | reponse base64 volumineuse; pas de sortie texte; contraintes cout/format a verifier hors API modeles |
+
+### Table V0 figee
+
+| generator_key | display_name | openrouter_model_id | openrouter_title | openrouter_referer | modalities | supported_aspect_ratios | supported_image_sizes | pricing_label | pricing_source | is_preview | notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Meilleur rendu general | `image_generator_openai` | `openai/gpt-5.4-image-2` | OpenAI: GPT-5.4 Image 2 | image,text,file -> image,text | `max_tokens`, `seed`, `response_format`, `temperature` non listee | A verifier en Lot 0; commencer par `1:1`, `16:9`, `9:16` seulement si smoke OK | prompt `0.000008`, completion `0.000015`; pas de prix image dedie dans l'API | `prix API observe: prompt 0.000008 / completion 0.000015; prix image non expose` | `FridaDev / Image Generator / OpenAI` | option generale haut de gamme, large contexte, multimodale | probablement plus couteux; contraintes image par ratio non detaillees par l'API |
-| Rapide / economique | `image_generator_nano_banana` | `google/gemini-3.1-flash-image-preview` | Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview) | image,text -> image,text | `temperature`, `top_p`, `seed`, `max_tokens` | ratios globaux + ratios etendus documentes; `0.5K`, `1K`, `2K`, `4K` documentes | prompt `0.0000005`, completion `0.000003`; pas de prix image dedie dans l'API | `prix API observe: prompt 0.0000005 / completion 0.000003; prix image non expose` | `FridaDev / Image Generator / Nano Banana` | bon candidat par defaut V0: rapide, flexible, support formats etendus documente | modele preview; verifier stabilite et reponse image sur FridaDev |
-| Illustration / design / style | `image_generator_recraft` | `recraft/recraft-v4.1` | Recraft: Recraft V4.1 | text,image -> image | aucun `supported_parameters` declare dans l'API | description API: ~1K et multiples aspect ratios; table exacte a maintenir apres smoke | API indique prompt `0`, completion `0`; prix image non explicite | `prix image non expose par l'API modeles` | `FridaDev / Image Generator / Recraft` | orientation design / esthetique, utile pour illustrations et assets | pricing et formats precis non exposes par l'API modeles; pas de sortie texte |
-| Option experimentale image-only | `image_generator_flux` | `black-forest-labs/flux.2-pro` | Black Forest Labs: FLUX.2 Pro | text,image -> image | `seed` | A verifier en Lot 0; table FridaDev requise | API indique prompt `0`, completion `0`; prix image non explicite | `prix image non expose par l'API modeles` | `FridaDev / Image Generator / Flux` | image-only haute qualite, bon contrepoint aux modeles texte+image | pas de texte; contraintes cout/format a verifier hors API modeles |
+| `image_generator_openai` | OpenAI Image | `openai/gpt-5.4-image-2` | `FridaDev / Image Generator / OpenAI` | `https://fridadev.frida-system.fr/openrouter/image-generation/openai` | `["image","text"]` | `1:1`, `16:9`, `9:16` en V0 prudente | `1K` en V0 prudente | `prix API observe: prompt 0.000008 / completion 0.000015; prix image non expose` | API modeles + smoke cout observe | non | rendu general; cout observe eleve au smoke |
+| `image_generator_nano_banana` | Nano Banana | `google/gemini-2.5-flash-image` | `FridaDev / Image Generator / Nano Banana` | `https://fridadev.frida-system.fr/openrouter/image-generation/nano-banana` | `["image","text"]` | `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9` | `1K`, `2K`, `4K` | `prix API observe: image 0.0000003 / prompt 0.0000003 / completion 0.0000025` | API modeles + smoke cout observe | non | candidat rapide/economique; remplace Gemini 3.1 preview non concluant |
+| `image_generator_recraft` | Recraft | `recraft/recraft-v4.1` | `FridaDev / Image Generator / Recraft` | `https://fridadev.frida-system.fr/openrouter/image-generation/recraft` | `["image"]` | `1:1`, `16:9`, `9:16` en V0 prudente | `1K` en V0 prudente | `prix image non expose par l'API modeles` | API modeles incomplete + smoke cout observe | non | illustration/design; sortie WEBP observee |
+| `image_generator_flux` | Flux | `black-forest-labs/flux.2-pro` | `FridaDev / Image Generator / Flux` | `https://fridadev.frida-system.fr/openrouter/image-generation/flux` | `["image"]` | `1:1`, `16:9`, `9:16` en V0 prudente | `1K` en V0 prudente | `prix image non expose par l'API modeles` | API modeles incomplete + smoke cout observe | non | option experimentale; sortie PNG volumineuse observee |
 
 Notes:
 - `openrouter/auto` ne doit pas etre expose en V0: il rend les comparaisons et l'observabilite moins reproductibles.
-- Les modeles preview doivent etre marques comme tels dans le menu si exposes.
+- Aucun modele preview n'est retenu dans la table V0 apres Lot 0.
 - Si un prix image/request n'est pas disponible dans l'API modeles, l'UI V0 ne doit pas afficher un cout previsionnel trompeur.
+- Les smokes ont utilise un prompt non sensible et n'ont conserve ni image brute ni base64.
 
 ## 5. Prix et affichage UI
 
@@ -236,13 +249,13 @@ Interdits de log:
 
 ### Lot 0 - Decouverte OpenRouter finale
 
-- [ ] Rejouer `curl -s "https://openrouter.ai/api/v1/models?output_modalities=image"` avant implementation.
-- [ ] Confirmer les 3 ou 4 modeles V0 definitifs.
-- [ ] Confirmer pour chaque modele: `modalities`, `image_config.aspect_ratio`, `image_config.image_size`, pricing utile et limites.
-- [ ] Faire un smoke technique minimal hors UI avec un prompt non sensible.
-- [ ] Figer la table V0 des formats/aspect ratios par modele.
-- [ ] Figer les `pricing_label` et `pricing_source` affiches par l'UI.
-- [ ] Figer l'attribution OpenRouter par generateur.
+- [x] Rejouer `curl -s "https://openrouter.ai/api/v1/models?output_modalities=image"` avant implementation.
+- [x] Confirmer les 3 ou 4 modeles V0 definitifs.
+- [x] Confirmer pour chaque modele: `modalities`, `image_config.aspect_ratio`, `image_config.image_size`, pricing utile et limites.
+- [x] Faire un smoke technique minimal hors UI avec un prompt non sensible.
+- [x] Figer la table V0 des formats/aspect ratios par modele.
+- [x] Figer les `pricing_label` et `pricing_source` affiches par l'UI.
+- [x] Figer l'attribution OpenRouter par generateur.
 
 ### Lot 1 - Backend minimal
 
