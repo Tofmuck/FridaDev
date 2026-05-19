@@ -21,6 +21,7 @@ from benchmark.suites.identity_periodic import campaign as identity_periodic_cam
 from benchmark.suites.stimmung import campaign as stimmung_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
+from benchmark.suites.validation_agent import campaign as validation_agent_campaign
 
 
 DEFAULT_ARBITER_MODELS = [
@@ -57,10 +58,24 @@ DEFAULT_STIMMUNG_MODELS = [
     "mistralai/mistral-small-2603",
 ]
 
+DEFAULT_VALIDATION_AGENT_MODELS = [
+    "openai/gpt-5.4-mini",
+    "google/gemini-3.1-flash-lite",
+    "mistralai/mistral-small-2603",
+    "anthropic/claude-haiku-4.5",
+]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run FridaDev model caller benchmarks.")
-    suite_choices = ["arbiter", "summary", "identity_extractor", "identity_periodic", "stimmung"]
+    suite_choices = [
+        "arbiter",
+        "summary",
+        "identity_extractor",
+        "identity_periodic",
+        "stimmung",
+        "validation_agent",
+    ]
     parser.add_argument("suite_positional", nargs="?", choices=suite_choices)
     parser.add_argument("--suite", choices=suite_choices, default=None)
     parser.add_argument("--models", nargs="*", default=None)
@@ -92,6 +107,8 @@ def main() -> int:
         default_models = DEFAULT_IDENTITY_PERIODIC_MODELS
     elif suite == "stimmung":
         default_models = DEFAULT_STIMMUNG_MODELS
+    elif suite == "validation_agent":
+        default_models = DEFAULT_VALIDATION_AGENT_MODELS
     else:
         default_models = DEFAULT_ARBITER_MODELS
     if args.models is None:
@@ -169,6 +186,15 @@ def main() -> int:
             config=config,
             client=client,
             fixture_set=args.fixture_set,
+        )
+        print(f"wrote {result['json_path']}")
+        print(f"wrote {result['markdown_path']}")
+        return 0
+
+    if suite == "validation_agent":
+        result = validation_agent_campaign.run_validation_agent_campaign(
+            config=config,
+            client=client,
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")

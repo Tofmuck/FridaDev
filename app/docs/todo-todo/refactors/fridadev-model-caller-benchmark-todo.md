@@ -35,7 +35,7 @@ Source de verite de depart:
 - [x] Extracteur identity.
 - [x] Agent periodic identity.
 - [x] Stimmung agent primaire.
-- [ ] Validation agent primaire.
+- [x] Validation agent primaire.
 - [ ] Fallback stimmung: hors priorite pour l'instant.
 
 ## Ordre de progression
@@ -56,7 +56,7 @@ Source de verite de depart:
 - [x] Benchmark stimmung agent primaire.
 - [x] Decision stimmung agent primaire: bascule primaire vers `google/gemini-3.1-flash-lite`.
 - [x] Decouplage propre du stimmung agent primaire: `stimmung_agent_model` pilote deja primary/fallback/temp/top_p/max_tokens/timeout.
-- [ ] Benchmark validation agent primaire.
+- [x] Benchmark validation agent primaire.
 - [ ] Decision validation agent primaire.
 - [ ] Decouplage propre du validation agent primaire.
 
@@ -295,6 +295,30 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Conserver la preuve compacte de decision: `benchmark/results/stimmung/2026-05-19-stimmung-primary-decision.md` et `.json`.
 - [x] Decouplage runtime du `stimmung_agent` primaire: le slot `stimmung_agent_model` existait deja et reste la source runtime effective de `primary_model`, `fallback_model`, `temperature`, `top_p`, `max_tokens` et `timeout_s`.
 - [x] Fallback Stimmung hors priorite pour ce chantier.
+
+## Campagne benchmark - `validation_agent` primaire
+
+- [x] Distinguer clairement `primary_node` deterministe et `validation_agent` primaire OpenRouter.
+- [x] Caller cible: `app/core/hermeneutic_node/validation/validation_agent.py`.
+- [x] Prompt cible exact: `app/prompts/validation_agent.txt`, sans version benchmark simplifiee.
+- [x] Benchmarker uniquement le primaire, pas le fallback.
+- [x] Comparer exactement `openai/gpt-5.4-mini`, baseline actuelle.
+- [x] Comparer exactement `google/gemini-3.1-flash-lite`.
+- [x] Comparer exactement `mistralai/mistral-small-2603`.
+- [x] Comparer exactement `anthropic/claude-haiku-4.5`.
+- [x] Utiliser le meme prompt et le meme jeu de cas pour tous les modeles.
+- [x] Utiliser `temperature=0.0`.
+- [x] Utiliser `top_p=1.0`.
+- [x] Utiliser `max_tokens=80`.
+- [x] Utiliser `timeout_s=10`.
+- [x] Construire une suite durable `benchmark/suites/validation_agent/`.
+- [x] Construire des cas courts issus majoritairement des tests existants: answer/simple, clarification reelle, hard guards, conflit de sources, temps, tension affective et primary trop prudent ou trop permissif.
+- [x] Produire un rapport technique avec JSON valide, schema valide, posture/regime attendus, erreurs provider, latence, cout, completion tokens et finish reason si disponible.
+- [x] Produire une lecture hermeneutique concise: clarification excessive, suspension excessive, meta inutile, permissivite dangereuse et sobriete.
+- [x] Ne pas proclamer de vainqueur de production.
+- [x] Ne pas modifier `validation_agent_model`.
+- [ ] Decision modele `validation_agent` primaire.
+- [ ] Decouplage propre du `validation_agent` primaire apres decision si necessaire.
 
 ## Definition de fin globale
 

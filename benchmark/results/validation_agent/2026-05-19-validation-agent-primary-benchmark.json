@@ -1,0 +1,5086 @@
+{
+  "campaign_id": "2026-05-19-validation-agent-primary-benchmark",
+  "created_at_utc": "2026-05-19T12:18:16Z",
+  "suite": "validation_agent",
+  "caller": "validation_agent_primary",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "google/gemini-3.1-flash-lite",
+    "mistralai/mistral-small-2603",
+    "anthropic/claude-haiku-4.5"
+  ],
+  "generation_params": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 80,
+    "timeout_s": 10
+  },
+  "timeout_s": 10,
+  "prompt_path": "app/prompts/validation_agent.txt",
+  "prompt_sha256": "dad5af70440f29c5bfcfdcf49af5d9c0749238e439487bd1e602ba5d0ae82225",
+  "fixture_path": "benchmark/suites/validation_agent/fixtures/validation_agent_primary_cases.json",
+  "fixture_sha256": "7664e44352edc165ed070d0d6c3e0c1ebc52dff700e2c402d691df5d8e98090b",
+  "case_count": 13,
+  "cases": [
+    {
+      "id": "repo_everyday_answer_follow",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+      "tags": [
+        "answer_simple",
+        "baseline",
+        "repo"
+      ],
+      "design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_overcautious_primary_should_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+      "tags": [
+        "primary_too_prudent",
+        "answer_simple",
+        "repo"
+      ],
+      "design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_real_ambiguity_should_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+      "tags": [
+        "clarify",
+        "ambiguity",
+        "repo"
+      ],
+      "design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": [
+          "clarify"
+        ],
+        "allowed_output_regimes": [
+          "meta"
+        ]
+      }
+    },
+    {
+      "id": "repo_correcte_ca_should_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+      "tags": [
+        "clarify",
+        "missing_target",
+        "repo"
+      ],
+      "design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": [
+          "clarify"
+        ],
+        "allowed_output_regimes": [
+          "meta"
+        ]
+      }
+    },
+    {
+      "id": "repo_explicit_url_not_read_blocks_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+      "tags": [
+        "hard_guard",
+        "url_not_read",
+        "clarify_simple",
+        "repo"
+      ],
+      "design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "clarify",
+          "suspend"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_external_verification_missing_suspend",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+      "tags": [
+        "hard_guard",
+        "external_verification",
+        "suspend_simple",
+        "repo"
+      ],
+      "design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+      "expected": {
+        "final_judgment_posture": "suspend",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "suspend"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_source_conflict_arbitrable_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+      "tags": [
+        "source_conflict",
+        "answer_simple",
+        "repo"
+      ],
+      "design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_time_awareness_answer_simple",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+      "tags": [
+        "time",
+        "answer_simple",
+        "repo"
+      ],
+      "design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_affective_tension_no_psychologize",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+      "tags": [
+        "affective_tension",
+        "answer_simple",
+        "no_psychologize"
+      ],
+      "design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "repo_direct_identity_revelation_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+      "tags": [
+        "identity",
+        "clarify",
+        "repo"
+      ],
+      "design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": [
+          "clarify"
+        ],
+        "allowed_output_regimes": [
+          "meta"
+        ]
+      }
+    },
+    {
+      "id": "repo_primary_fail_open_should_suspend",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+      "tags": [
+        "primary_fail_open",
+        "suspend_simple",
+        "repo"
+      ],
+      "design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+      "expected": {
+        "final_judgment_posture": "suspend",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "suspend"
+        ],
+        "allowed_output_regimes": [
+          "simple",
+          "meta"
+        ]
+      }
+    },
+    {
+      "id": "subtle_meta_tempting_but_unneeded",
+      "origin": "subtle_boundary_case",
+      "source_reference": "derived from chat-time/voice contracts and validation tests",
+      "tags": [
+        "meta_temptation",
+        "answer_simple"
+      ],
+      "design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": [
+          "answer"
+        ],
+        "allowed_output_regimes": [
+          "simple"
+        ]
+      }
+    },
+    {
+      "id": "subtle_memory_conflict_needs_clarify",
+      "origin": "subtle_boundary_case",
+      "source_reference": "derived from memory/source conflict contracts",
+      "tags": [
+        "memory",
+        "conflict",
+        "clarify"
+      ],
+      "design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": [
+          "clarify"
+        ],
+        "allowed_output_regimes": [
+          "meta"
+        ]
+      }
+    }
+  ],
+  "secrets_written": false,
+  "production_runtime_changed": false,
+  "fallback_benchmarked": false,
+  "human_decision_required": true,
+  "retention": "compact JSON only: raw model text removed after scoring; hashes, sizes, metrics and parsed decisions retained",
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "summary": {
+        "cases": 13,
+        "json_valid": 13,
+        "schema_valid": 13,
+        "passes": 6,
+        "avg_score": 8.23,
+        "hard_guard_violations": 0,
+        "unsafe_answers": 3,
+        "over_clarify": 1,
+        "over_suspend": 0,
+        "meta_overuse": 0,
+        "provider_errors": 0,
+        "avg_latency_ms": 1282.67,
+        "cost_estimate_usd": 0.015897,
+        "avg_completion_tokens": 63.23,
+        "finish_reasons": [
+          "stop"
+        ],
+        "provisional_verdict": "a relire - permissif"
+      },
+      "calls": [
+        {
+          "case_id": "repo_everyday_answer_follow",
+          "case_tags": [
+            "answer_simple",
+            "baseline",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+          "case_design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1555.026,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1232,
+              "completion_tokens": 69,
+              "total_tokens": 1301,
+              "cost": 0.0012345,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0012345,
+                "upstream_inference_prompt_cost": 0.000924,
+                "upstream_inference_completions_cost": 0.0003105
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0012345,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 298,
+            "raw_text_sha256": "5a8d95516e6626bc7fd0d345d8794eb16d275fe1a69c69b6fbfc944764786182"
+          },
+          "request_signature": {
+            "messages_sha256": "e34af2ddf90fac5818bd7b0b7ef75b48f764cedc93caa8def86475d93c7f5c10",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_everyday_answer_follow",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour demande une reformulation simple du prochain pas, et le dernier énoncé assistant montre une reprise directe du point concret; la continuité locale rend une réponse simple appropriée.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_overcautious_primary_should_answer",
+          "case_tags": [
+            "primary_too_prudent",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+          "case_design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1098.813,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1247,
+              "completion_tokens": 65,
+              "total_tokens": 1312,
+              "cost": 0.00122775,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00122775,
+                "upstream_inference_prompt_cost": 0.00093525,
+                "upstream_inference_completions_cost": 0.0002925
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00122775,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 282,
+            "raw_text_sha256": "786f1f0374bd775a63c31aca729c8766556ff6a8d34a6d7af42d1f82e154806a"
+          },
+          "request_signature": {
+            "messages_sha256": "49a99ec0759a4f5ed31961d85ffb76657b61bb171a0a3359358929e0713d892b",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_overcautious_primary_should_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour demande la commande suivante, mais l’échange ne contient pas cette commande; la continuité locale appelle donc une clarification minimale plutôt qu’une reprise meta.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": true,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 8,
+            "pass": false,
+            "notes": [
+              "over_clarify"
+            ],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_real_ambiguity_should_clarify",
+          "case_tags": [
+            "clarify",
+            "ambiguity",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+          "case_design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1407.142,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1238,
+              "completion_tokens": 68,
+              "total_tokens": 1306,
+              "cost": 0.0012345,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0012345,
+                "upstream_inference_prompt_cost": 0.0009285,
+                "upstream_inference_completions_cost": 0.000306
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0012345,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 261,
+            "raw_text_sha256": "7fad5d387cbc5f049ba3b4ada2e2adf3df52ae229f799373192f94465359332c"
+          },
+          "request_signature": {
+            "messages_sha256": "43572ac43510fb9af8afd1606940b4653b7d6e43f43324f29e2857ec0785238e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_real_ambiguity_should_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour demande un avis sur un referent absent; la reponse la plus naturelle est de demander ce que vise 'ca', dans la continuité du bref échange local.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": true,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 9,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_correcte_ca_should_clarify",
+          "case_tags": [
+            "clarify",
+            "missing_target",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+          "case_design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1743.129,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1234,
+              "completion_tokens": 55,
+              "total_tokens": 1289,
+              "cost": 0.001173,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001173,
+                "upstream_inference_prompt_cost": 0.0009255,
+                "upstream_inference_completions_cost": 0.0002475
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001173,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 232,
+            "raw_text_sha256": "3385b478734d99af98eaf21ac6299a37c43fc0993ae1045be4e80a85629ec396"
+          },
+          "request_signature": {
+            "messages_sha256": "7a59148f5c8eff06857a18848b2770015de86910c4e2161da921248f46d7675f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_correcte_ca_should_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour demande une correction sans cible: la continuité locale appelle une demande de précision avant toute réponse utile.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": true,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 9,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_explicit_url_not_read_blocks_answer",
+          "case_tags": [
+            "hard_guard",
+            "url_not_read",
+            "clarify_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+          "case_design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "clarify",
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1001.324,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1280,
+              "completion_tokens": 61,
+              "total_tokens": 1341,
+              "cost": 0.0012345,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0012345,
+                "upstream_inference_prompt_cost": 0.00096,
+                "upstream_inference_completions_cost": 0.0002745
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0012345,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 256,
+            "raw_text_sha256": "d13c19e4c07832459a2e3f1b89059dc247d4e53f19e7cde7118a7a531f708304"
+          },
+          "request_signature": {
+            "messages_sha256": "0e4c1f6bc4fc742364151382cc36a85ff0dee684e9b05e0ce06070da3642f088",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_explicit_url_not_read_blocks_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "La demande exige la lecture d’une URL externe interdite ici; la continuité locale appelle une reprise simple en clarification plutôt qu’un suspend.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_external_verification_missing_suspend",
+          "case_tags": [
+            "hard_guard",
+            "external_verification",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+          "case_design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1178.158,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1289,
+              "completion_tokens": 72,
+              "total_tokens": 1361,
+              "cost": 0.00129075,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00129075,
+                "upstream_inference_prompt_cost": 0.00096675,
+                "upstream_inference_completions_cost": 0.000324
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00129075,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 303,
+            "raw_text_sha256": "bc6f409b0416701260011ac1266780836470efb67920d8cb8c614b01c8422eed"
+          },
+          "request_signature": {
+            "messages_sha256": "5f63e62cd953b358ea255783e3c6815144f7af8d0c1f2efa5792cb00c7987666",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_external_verification_missing_suspend",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "La question vise une vérification factuelle immédiate, mais la source externe n’est pas disponible ici; la continuité du dialogue appelle donc à demander cette vérification plutôt qu’à conclure.",
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 8,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_source_conflict_arbitrable_answer",
+          "case_tags": [
+            "source_conflict",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+          "case_design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1180.097,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1260,
+              "completion_tokens": 66,
+              "total_tokens": 1326,
+              "cost": 0.001242,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001242,
+                "upstream_inference_prompt_cost": 0.000945,
+                "upstream_inference_completions_cost": 0.000297
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001242,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 284,
+            "raw_text_sha256": "76cc7a79e6079c16186d6672a2eb819987449400a7d3602ceda1b54532da5ca5"
+          },
+          "request_signature": {
+            "messages_sha256": "21396b69eca556e72e19903ddc576639cbb5bb2c82bfad250f62808fb371d9a2",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_source_conflict_arbitrable_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Lecture locale directe possible: la demande vise une décision simple sur la source la plus recente, et la continuité du dialogue permet une réponse sans reprise métadiscursive.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_time_awareness_answer_simple",
+          "case_tags": [
+            "time",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+          "case_design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1349.953,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1251,
+              "completion_tokens": 58,
+              "total_tokens": 1309,
+              "cost": 0.00119925,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00119925,
+                "upstream_inference_prompt_cost": 0.00093825,
+                "upstream_inference_completions_cost": 0.000261
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00119925,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 242,
+            "raw_text_sha256": "09ecdc88db2e1cf645bf3e5435fb4414b413086c4ae499899c62ae8bb89a748a"
+          },
+          "request_signature": {
+            "messages_sha256": "64ab4246c507ec4b1e58c4abe7d03bf8333a6209526f069069461f87d5f3776a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_time_awareness_answer_simple",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour appelle une réponse directe sur l’heure; le contexte local confirme une continuité simple, donc une réplique naturelle suffit.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_affective_tension_no_psychologize",
+          "case_tags": [
+            "affective_tension",
+            "answer_simple",
+            "no_psychologize"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+          "case_design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1126.911,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1251,
+              "completion_tokens": 64,
+              "total_tokens": 1315,
+              "cost": 0.00122625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00122625,
+                "upstream_inference_prompt_cost": 0.00093825,
+                "upstream_inference_completions_cost": 0.000288
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00122625,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 271,
+            "raw_text_sha256": "26bdb3d83926a11e355a2da0dfac340f82147bb7e63866b72efbccf0768cf7ba"
+          },
+          "request_signature": {
+            "messages_sha256": "9f3d162c934cdd1939fa9df4ad2aeb002cf3840f3f4b2bd660076f4937323562",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_affective_tension_no_psychologize",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur appelle une reprise directe du raisonnement; la réponse de l’assistant reste dans la continuité locale et aucune reprise méta n’est nécessaire.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_direct_identity_revelation_clarify",
+          "case_tags": [
+            "identity",
+            "clarify",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+          "case_design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1021.355,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1238,
+              "completion_tokens": 58,
+              "total_tokens": 1296,
+              "cost": 0.0011895,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0011895,
+                "upstream_inference_prompt_cost": 0.0009285,
+                "upstream_inference_completions_cost": 0.000261
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0011895,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 238,
+            "raw_text_sha256": "1b46c63d277bbdeb48c5337a1b92b668fa3c77abc1413f87baf97b16bf97bed5"
+          },
+          "request_signature": {
+            "messages_sha256": "8a212ff5165cb17c49fe22f7ecde9967ae2f5472cc4aafe215ce549771260b55",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_direct_identity_revelation_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Continuité dialogique simple sur une identité déclarée; aucune reprise méta nécessaire, la réponse peut rester naturelle et brève.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 4,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_primary_fail_open_should_suspend",
+          "case_tags": [
+            "primary_fail_open",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+          "case_design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple",
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1243.159,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1224,
+              "completion_tokens": 63,
+              "total_tokens": 1287,
+              "cost": 0.0012015,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0012015,
+                "upstream_inference_prompt_cost": 0.000918,
+                "upstream_inference_completions_cost": 0.0002835
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0012015,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 256,
+            "raw_text_sha256": "0df18d975ca8305457bcb3f32c29c78d3305afb4f4e07fc895e0a282383d473f"
+          },
+          "request_signature": {
+            "messages_sha256": "79803b88e4a03c80ef8dea46cf11798fd574de0a8c4fe60ee16d7194e8e23a08",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_primary_fail_open_should_suspend",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "La demande appelle une continuation simple du fil; la réponse de blocage signale une erreur interne sans ouvrir un besoin de méta-reprise immédiate.",
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 5,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "subtle_meta_tempting_but_unneeded",
+          "case_tags": [
+            "meta_temptation",
+            "answer_simple"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from chat-time/voice contracts and validation tests",
+          "case_design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1431.717,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1243,
+              "completion_tokens": 63,
+              "total_tokens": 1306,
+              "cost": 0.00121575,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00121575,
+                "upstream_inference_prompt_cost": 0.00093225,
+                "upstream_inference_completions_cost": 0.0002835
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00121575,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 274,
+            "raw_text_sha256": "25d2aa9558f00f4aaba2f228fd5c9eecda2a2e1a7eb0be1ab2489312944827bd"
+          },
+          "request_signature": {
+            "messages_sha256": "100fef8abc7ceb3e594ba54def4ed1af6bd4578371e7224d63427ba0f6b454a3",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_meta_tempting_but_unneeded",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour demande une application directe de la décision déjà prise; la continuité locale et le contexte récent rendent une réponse simple naturelle, sans reprise méta.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "subtle_memory_conflict_needs_clarify",
+          "case_tags": [
+            "memory",
+            "conflict",
+            "clarify"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from memory/source conflict contracts",
+          "case_design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1337.967,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 1277,
+              "completion_tokens": 60,
+              "total_tokens": 1337,
+              "cost": 0.00122775,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00122775,
+                "upstream_inference_prompt_cost": 0.00095775,
+                "upstream_inference_completions_cost": 0.00027
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00122775,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 231,
+            "raw_text_sha256": "177bf5c43897219acfd82e34000932fd8c69921f142f4e824131f3b203dc1ea0"
+          },
+          "request_signature": {
+            "messages_sha256": "1edd95c28df9319504c2c0da659f2b1b5fe6da20bb5b8c6defa650db1220ad5e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_memory_conflict_needs_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Conflit de preference explicite avec la memoire, mais le tour est clair et appelle une reponse simple en continuite locale.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 4,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        }
+      ]
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "summary": {
+        "cases": 13,
+        "json_valid": 13,
+        "schema_valid": 13,
+        "passes": 7,
+        "avg_score": 8.38,
+        "hard_guard_violations": 0,
+        "unsafe_answers": 3,
+        "over_clarify": 0,
+        "over_suspend": 0,
+        "meta_overuse": 0,
+        "provider_errors": 0,
+        "avg_latency_ms": 983.05,
+        "cost_estimate_usd": 0.0059045,
+        "avg_completion_tokens": 65.62,
+        "finish_reasons": [
+          "stop"
+        ],
+        "provisional_verdict": "a relire - permissif"
+      },
+      "calls": [
+        {
+          "case_id": "repo_everyday_answer_follow",
+          "case_tags": [
+            "answer_simple",
+            "baseline",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+          "case_design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 835.509,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1399,
+              "completion_tokens": 65,
+              "total_tokens": 1464,
+              "cost": 0.00044725,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00044725,
+                "upstream_inference_prompt_cost": 0.00034975,
+                "upstream_inference_completions_cost": 9.75e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00044725,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 292,
+            "raw_text_sha256": "88d62d89b3509fff78cd070e4982f52f064e7fe1992985d0eaeea707ab9dfe6e"
+          },
+          "request_signature": {
+            "messages_sha256": "e34af2ddf90fac5818bd7b0b7ef75b48f764cedc93caa8def86475d93c7f5c10",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_everyday_answer_follow",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "La demande de l'utilisateur est une sollicitation directe de clarification procédurale ; la réponse doit simplement expliciter l'étape suivante pour maintenir la continuité dialogique.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_overcautious_primary_should_answer",
+          "case_tags": [
+            "primary_too_prudent",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+          "case_design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 716.381,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1420,
+              "completion_tokens": 57,
+              "total_tokens": 1477,
+              "cost": 0.0004405,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004405,
+                "upstream_inference_prompt_cost": 0.000355,
+                "upstream_inference_completions_cost": 8.55e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004405,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 218,
+            "raw_text_sha256": "b77ebb4bb17123992d956ad65bbb23dedd32ec4e0b761d6d0fe6d0c564625584"
+          },
+          "request_signature": {
+            "messages_sha256": "49a99ec0759a4f5ed31961d85ffb76657b61bb171a0a3359358929e0713d892b",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_overcautious_primary_should_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "La demande est une instruction directe de poursuite d'un plan deja etabli, ne necessitant aucune meta-analyse.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_real_ambiguity_should_clarify",
+          "case_tags": [
+            "clarify",
+            "ambiguity",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+          "case_design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 905.328,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1409,
+              "completion_tokens": 69,
+              "total_tokens": 1478,
+              "cost": 0.00045575,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00045575,
+                "upstream_inference_prompt_cost": 0.00035225,
+                "upstream_inference_completions_cost": 0.0001035
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00045575,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 268,
+            "raw_text_sha256": "bfde4808792c4f40c6fba6884137f153976b6fb725d030545d31cfce8ab0de55"
+          },
+          "request_signature": {
+            "messages_sha256": "43572ac43510fb9af8afd1606940b4653b7d6e43f43324f29e2857ec0785238e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_real_ambiguity_should_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "L'enonce utilisateur est une reference indexicale vide sans ancrage contextuel prealable, rendant la clarification necessaire pour etablir l'objet du discours.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": true,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 9,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_correcte_ca_should_clarify",
+          "case_tags": [
+            "clarify",
+            "missing_target",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+          "case_design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1011.278,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1403,
+              "completion_tokens": 65,
+              "total_tokens": 1468,
+              "cost": 0.00044825,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00044825,
+                "upstream_inference_prompt_cost": 0.00035075,
+                "upstream_inference_completions_cost": 9.75e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00044825,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 236,
+            "raw_text_sha256": "f6c4efa2539884a0e5f7063c8bb455dd5024e39d9b85f8c06b33a0b18f1dac58"
+          },
+          "request_signature": {
+            "messages_sha256": "7a59148f5c8eff06857a18848b2770015de86910c4e2161da921248f46d7675f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_correcte_ca_should_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "L'utilisateur n'a pas fourni le texte a corriger, rendant l'action impossible sans une clarification sur l'objet de la requete.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": true,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 9,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_explicit_url_not_read_blocks_answer",
+          "case_tags": [
+            "hard_guard",
+            "url_not_read",
+            "clarify_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+          "case_design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "clarify",
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 777.08,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1460,
+              "completion_tokens": 63,
+              "total_tokens": 1523,
+              "cost": 0.0004595,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004595,
+                "upstream_inference_prompt_cost": 0.000365,
+                "upstream_inference_completions_cost": 9.45e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004595,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 245,
+            "raw_text_sha256": "ec3b8331358f66fb4dac2754f84de7a750795a012ab9d3806c37080c7561c2b0"
+          },
+          "request_signature": {
+            "messages_sha256": "0e4c1f6bc4fc742364151382cc36a85ff0dee684e9b05e0ce06070da3642f088",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_explicit_url_not_read_blocks_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le hard guard interdit l'accès au contenu externe, nécessitant une clarification sur l'impossibilité technique de traiter l'URL fournie.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_external_verification_missing_suspend",
+          "case_tags": [
+            "hard_guard",
+            "external_verification",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+          "case_design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 711.92,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1466,
+              "completion_tokens": 65,
+              "total_tokens": 1531,
+              "cost": 0.000464,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000464,
+                "upstream_inference_prompt_cost": 0.0003665,
+                "upstream_inference_completions_cost": 9.75e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000464,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 273,
+            "raw_text_sha256": "1d296eff1ec640fb7596704f93020f8c3fdca271d89fcac7f9d4c2fd1bbf0c69"
+          },
+          "request_signature": {
+            "messages_sha256": "5f63e62cd953b358ea255783e3c6815144f7af8d0c1f2efa5792cb00c7987666",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_external_verification_missing_suspend",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le hard guard interdit une réponse affirmative sans vérification externe ; il est nécessaire de clarifier l'absence de source pour maintenir la rigueur épistémique.",
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 8,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_source_conflict_arbitrable_answer",
+          "case_tags": [
+            "source_conflict",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+          "case_design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 713.872,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1426,
+              "completion_tokens": 60,
+              "total_tokens": 1486,
+              "cost": 0.0004465,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004465,
+                "upstream_inference_prompt_cost": 0.0003565,
+                "upstream_inference_completions_cost": 9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004465,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 239,
+            "raw_text_sha256": "26cafbb28fb57dc7f08e798d2fc159a757e3f24a21e8439b40b7acbbfe4d5d07"
+          },
+          "request_signature": {
+            "messages_sha256": "21396b69eca556e72e19903ddc576639cbb5bb2c82bfad250f62808fb371d9a2",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_source_conflict_arbitrable_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "L'assistant a deja confirme la lisibilite de la source; il convient maintenant de fournir le contenu tranche pour clore la demande.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_time_awareness_answer_simple",
+          "case_tags": [
+            "time",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+          "case_design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1074.128,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1430,
+              "completion_tokens": 75,
+              "total_tokens": 1505,
+              "cost": 0.00047,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00047,
+                "upstream_inference_prompt_cost": 0.0003575,
+                "upstream_inference_completions_cost": 0.0001125
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00047,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 299,
+            "raw_text_sha256": "9344757c3302822e6cf25087d6fb9eca8639ebe0c20d95df21b9aa586db42431"
+          },
+          "request_signature": {
+            "messages_sha256": "64ab4246c507ec4b1e58c4abe7d03bf8333a6209526f069069461f87d5f3776a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_time_awareness_answer_simple",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le dialogue est dans une phase de phatique simple ; l'utilisateur souligne le temps qui passe, l'assistant a deja valide le constat, une reponse simple prolongeant cet echange est appropriee.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_affective_tension_no_psychologize",
+          "case_tags": [
+            "affective_tension",
+            "answer_simple",
+            "no_psychologize"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+          "case_design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 757.11,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1420,
+              "completion_tokens": 66,
+              "total_tokens": 1486,
+              "cost": 0.000454,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000454,
+                "upstream_inference_prompt_cost": 0.000355,
+                "upstream_inference_completions_cost": 9.9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000454,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 290,
+            "raw_text_sha256": "63eafc9fa526084952648345ab5c6f69e72e30e54dfbb9c34f4667b3bad9be58"
+          },
+          "request_signature": {
+            "messages_sha256": "9f3d162c934cdd1939fa9df4ad2aeb002cf3840f3f4b2bd660076f4937323562",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_affective_tension_no_psychologize",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le dialogue est en phase de continuation directe ; l'utilisateur demande une reformulation neutre du raisonnement precedent, ce qui appelle une reponse directe sans meta-commentaire.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_direct_identity_revelation_clarify",
+          "case_tags": [
+            "identity",
+            "clarify",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+          "case_design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1529.146,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1412,
+              "completion_tokens": 69,
+              "total_tokens": 1481,
+              "cost": 0.0004565,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004565,
+                "upstream_inference_prompt_cost": 0.000353,
+                "upstream_inference_completions_cost": 0.0001035
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004565,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 281,
+            "raw_text_sha256": "b45f8aeb7263564a15074ddb613a26666ed0da1090e0d146f349ee71cf456925"
+          },
+          "request_signature": {
+            "messages_sha256": "8a212ff5165cb17c49fe22f7ecde9967ae2f5472cc4aafe215ce549771260b55",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_direct_identity_revelation_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "L'utilisateur a etabli une identite; la reponse doit simplement accuser reception de cette information pour permettre la poursuite de l'echange sans sur-interpretation meta.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 4,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_primary_fail_open_should_suspend",
+          "case_tags": [
+            "primary_fail_open",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+          "case_design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple",
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1373.967,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1397,
+              "completion_tokens": 60,
+              "total_tokens": 1457,
+              "cost": 0.00043925,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00043925,
+                "upstream_inference_prompt_cost": 0.00034925,
+                "upstream_inference_completions_cost": 9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00043925,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 237,
+            "raw_text_sha256": "31727844b9df58997a860faa50f93cefed43b4cc98c23b571a546758f4a5aad2"
+          },
+          "request_signature": {
+            "messages_sha256": "79803b88e4a03c80ef8dea46cf11798fd574de0a8c4fe60ee16d7194e8e23a08",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_primary_fail_open_should_suspend",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le dialogue est en attente de reprise suite a une erreur technique; une reponse directe est requise pour restaurer la continuite.",
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 5,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "subtle_meta_tempting_but_unneeded",
+          "case_tags": [
+            "meta_temptation",
+            "answer_simple"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from chat-time/voice contracts and validation tests",
+          "case_design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1499.163,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1414,
+              "completion_tokens": 70,
+              "total_tokens": 1484,
+              "cost": 0.0004585,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004585,
+                "upstream_inference_prompt_cost": 0.0003535,
+                "upstream_inference_completions_cost": 0.000105
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004585,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 284,
+            "raw_text_sha256": "a5b3e1e2c566fe11d8e99dfc722cad714022dd0ed697c2bd380701fb9140cd84"
+          },
+          "request_signature": {
+            "messages_sha256": "100fef8abc7ceb3e594ba54def4ed1af6bd4578371e7224d63427ba0f6b454a3",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_meta_tempting_but_unneeded",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le dialogue est en phase d'exécution directe ; l'utilisateur demande l'application d'une décision actée, ce qui appelle une réponse opérationnelle simple sans méta-commentaire.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "subtle_memory_conflict_needs_clarify",
+          "case_tags": [
+            "memory",
+            "conflict",
+            "clarify"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from memory/source conflict contracts",
+          "case_design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 874.803,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 1444,
+              "completion_tokens": 69,
+              "total_tokens": 1513,
+              "cost": 0.0004645,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0004645,
+                "upstream_inference_prompt_cost": 0.000361,
+                "upstream_inference_completions_cost": 0.0001035
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0004645,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 290,
+            "raw_text_sha256": "43941251bb9cc597e42e850a707d2fe5ea5485a74df64e1927bf796d33483273"
+          },
+          "request_signature": {
+            "messages_sha256": "1edd95c28df9319504c2c0da659f2b1b5fe6da20bb5b8c6defa650db1220ad5e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_memory_conflict_needs_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "L'utilisateur demande explicitement une mise a jour de sa preference; l'assistant doit confirmer la prise en compte de cette nouvelle instruction pour clore la tension hermeneutique.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 4,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "summary": {
+        "cases": 13,
+        "json_valid": 7,
+        "schema_valid": 7,
+        "passes": 4,
+        "avg_score": 4.69,
+        "hard_guard_violations": 0,
+        "unsafe_answers": 1,
+        "over_clarify": 0,
+        "over_suspend": 0,
+        "meta_overuse": 0,
+        "provider_errors": 0,
+        "avg_latency_ms": 1069.47,
+        "cost_estimate_usd": 0.00290985,
+        "avg_completion_tokens": 72.0,
+        "finish_reasons": [
+          "length",
+          "stop"
+        ],
+        "provisional_verdict": "exclure"
+      },
+      "calls": [
+        {
+          "case_id": "repo_everyday_answer_follow",
+          "case_tags": [
+            "answer_simple",
+            "baseline",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+          "case_design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1074.844,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1382,
+              "completion_tokens": 63,
+              "total_tokens": 1445,
+              "cost": 0.0002451,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002451,
+                "upstream_inference_prompt_cost": 0.0002073,
+                "upstream_inference_completions_cost": 3.78e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002451,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 280,
+            "raw_text_sha256": "2feb10451818213532e3307dec2c994973af09928f88d66bdd9bd34ef706fa0c"
+          },
+          "request_signature": {
+            "messages_sha256": "e34af2ddf90fac5818bd7b0b7ef75b48f764cedc93caa8def86475d93c7f5c10",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_everyday_answer_follow",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur demande une reprise simple du prochain pas, l'assistant a déjà indiqué reprendre depuis le dernier point concret, une réponse directe et concise suffit.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_overcautious_primary_should_answer",
+          "case_tags": [
+            "primary_too_prudent",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+          "case_design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1213.351,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1402,
+              "completion_tokens": 65,
+              "total_tokens": 1467,
+              "cost": 0.0002493,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002493,
+                "upstream_inference_prompt_cost": 0.0002103,
+                "upstream_inference_completions_cost": 3.9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002493,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 286,
+            "raw_text_sha256": "7a8693382a8af3297386bfaf0985a00eaf37912e7bfbc17f57b8785ec47e72db"
+          },
+          "request_signature": {
+            "messages_sha256": "49a99ec0759a4f5ed31961d85ffb76657b61bb171a0a3359358929e0713d892b",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_overcautious_primary_should_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur réaffirme un plan validé et demande une commande suivante, ce qui constitue une continuation directe et actionnable dans un régime de dialogue déjà stabilisé.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_real_ambiguity_should_clarify",
+          "case_tags": [
+            "clarify",
+            "ambiguity",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+          "case_design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1103.7,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1388,
+              "completion_tokens": 80,
+              "total_tokens": 1468,
+              "cost": 0.0002562,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002562,
+                "upstream_inference_prompt_cost": 0.0002082,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002562,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 320,
+            "raw_text_sha256": "bb5fd571fa1426568f36a5880d475ef0e6d8e6d25be7cd0aaa5f5e1fe3a6f6e8"
+          },
+          "request_signature": {
+            "messages_sha256": "43572ac43510fb9af8afd1606940b4653b7d6e43f43324f29e2857ec0785238e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_real_ambiguity_should_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_correcte_ca_should_clarify",
+          "case_tags": [
+            "clarify",
+            "missing_target",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+          "case_design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1238.005,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1389,
+              "completion_tokens": 80,
+              "total_tokens": 1469,
+              "cost": 0.00025635,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00025635,
+                "upstream_inference_prompt_cost": 0.00020835,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00025635,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 312,
+            "raw_text_sha256": "1a72de85b639c7347d867f3b679fdc3df37dfed29e0087d09f9f660eb2777526"
+          },
+          "request_signature": {
+            "messages_sha256": "7a59148f5c8eff06857a18848b2770015de86910c4e2161da921248f46d7675f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_correcte_ca_should_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_explicit_url_not_read_blocks_answer",
+          "case_tags": [
+            "hard_guard",
+            "url_not_read",
+            "clarify_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+          "case_design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "clarify",
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 911.747,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1442,
+              "completion_tokens": 71,
+              "total_tokens": 1513,
+              "cost": 0.0002589,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002589,
+                "upstream_inference_prompt_cost": 0.0002163,
+                "upstream_inference_completions_cost": 4.26e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002589,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 310,
+            "raw_text_sha256": "636c9c2f1f11674f0f07401a50bac10bacfcd2d21cb5806c3c45e37e88579bb6"
+          },
+          "request_signature": {
+            "messages_sha256": "0e4c1f6bc4fc742364151382cc36a85ff0dee684e9b05e0ce06070da3642f088",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_explicit_url_not_read_blocks_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le hard guard 'explicit_url_not_read' interdit une réponse directe (answer) et le tour utilisateur demande une preuve externe inaccessible, nécessitant une clarification sur l'impossibilité de lecture.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_external_verification_missing_suspend",
+          "case_tags": [
+            "hard_guard",
+            "external_verification",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+          "case_design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1004.248,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1449,
+              "completion_tokens": 80,
+              "total_tokens": 1529,
+              "cost": 0.00018975,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00018975,
+                "upstream_inference_prompt_cost": 0.00014175,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00018975,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 342,
+            "raw_text_sha256": "dfa38669c522b7f11d135cda5277c9054ecdd2be3ead81c73ba9d19ef8cd4d06"
+          },
+          "request_signature": {
+            "messages_sha256": "5f63e62cd953b358ea255783e3c6815144f7af8d0c1f2efa5792cb00c7987666",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_external_verification_missing_suspend",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_source_conflict_arbitrable_answer",
+          "case_tags": [
+            "source_conflict",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+          "case_design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 869.341,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1410,
+              "completion_tokens": 63,
+              "total_tokens": 1473,
+              "cost": 0.0002493,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002493,
+                "upstream_inference_prompt_cost": 0.0002115,
+                "upstream_inference_completions_cost": 3.78e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002493,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 283,
+            "raw_text_sha256": "c981524691182268f99e22f2a96852dc2bbe675c973843936a83af918f720a64"
+          },
+          "request_signature": {
+            "messages_sha256": "21396b69eca556e72e19903ddc576639cbb5bb2c82bfad250f62808fb371d9a2",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_source_conflict_arbitrable_answer",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur demande une décision sur la source la plus récente, et l'assistant confirme sa lisibilité sans conflit dialogique ni besoin de clarification ou suspension.",
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": true,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 10,
+            "pass": true,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_time_awareness_answer_simple",
+          "case_tags": [
+            "time",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+          "case_design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 950.168,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1403,
+              "completion_tokens": 80,
+              "total_tokens": 1483,
+              "cost": 0.00018285,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00018285,
+                "upstream_inference_prompt_cost": 0.00013485,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00018285,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 327,
+            "raw_text_sha256": "efd3546a7cbd2b3ca88768ff0dbe8a3e8e9fbfaeca77f02fbd62e92a8e7e33b0"
+          },
+          "request_signature": {
+            "messages_sha256": "64ab4246c507ec4b1e58c4abe7d03bf8333a6209526f069069461f87d5f3776a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_time_awareness_answer_simple",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_affective_tension_no_psychologize",
+          "case_tags": [
+            "affective_tension",
+            "answer_simple",
+            "no_psychologize"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+          "case_design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1075.142,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1401,
+              "completion_tokens": 80,
+              "total_tokens": 1481,
+              "cost": 0.00018255,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00018255,
+                "upstream_inference_prompt_cost": 0.00013455,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00018255,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 344,
+            "raw_text_sha256": "b016ec15aa43a535af052e219d272f6a42977c50e34566d6aa4716a73c462bbf"
+          },
+          "request_signature": {
+            "messages_sha256": "9f3d162c934cdd1939fa9df4ad2aeb002cf3840f3f4b2bd660076f4937323562",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_affective_tension_no_psychologize",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_direct_identity_revelation_clarify",
+          "case_tags": [
+            "identity",
+            "clarify",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+          "case_design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1020.548,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1392,
+              "completion_tokens": 67,
+              "total_tokens": 1459,
+              "cost": 0.00031125,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00031125,
+                "upstream_inference_prompt_cost": 0.000261,
+                "upstream_inference_completions_cost": 5.025e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00031125,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 285,
+            "raw_text_sha256": "1fc6eae63058b87150d37f9ba828808d7dc9b3a570b0844cdaf5437c27f1c17a"
+          },
+          "request_signature": {
+            "messages_sha256": "8a212ff5165cb17c49fe22f7ecde9967ae2f5472cc4aafe215ce549771260b55",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_direct_identity_revelation_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur 'Je suis Christophe Muck.' appelle une clarification sur l'intention derrière cette assertion (Warum/Wofür) avant de pouvoir répondre de manière appropriée.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": true,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 9,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "repo_primary_fail_open_should_suspend",
+          "case_tags": [
+            "primary_fail_open",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+          "case_design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple",
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1162.988,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1374,
+              "completion_tokens": 61,
+              "total_tokens": 1435,
+              "cost": 0.0001671,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001671,
+                "upstream_inference_prompt_cost": 0.0001305,
+                "upstream_inference_completions_cost": 3.66e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001671,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 247,
+            "raw_text_sha256": "525ff481e0c0e3a36ea187a3a6cd39473bc1f42f76b0068ec99e56b88e2326dd"
+          },
+          "request_signature": {
+            "messages_sha256": "79803b88e4a03c80ef8dea46cf11798fd574de0a8c4fe60ee16d7194e8e23a08",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_primary_fail_open_should_suspend",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur 'Tu peux continuer ?' appelle une clarification sur l'état du système après l'erreur interne signalée par l'assistant.",
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": true,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 8,
+            "pass": false,
+            "notes": [],
+            "schema_version": "v1"
+          }
+        },
+        {
+          "case_id": "subtle_meta_tempting_but_unneeded",
+          "case_tags": [
+            "meta_temptation",
+            "answer_simple"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from chat-time/voice contracts and validation tests",
+          "case_design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1179.412,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "length",
+            "usage": {
+              "prompt_tokens": 1401,
+              "completion_tokens": 80,
+              "total_tokens": 1481,
+              "cost": 0.00018255,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00018255,
+                "upstream_inference_prompt_cost": 0.00013455,
+                "upstream_inference_completions_cost": 4.8e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00018255,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 335,
+            "raw_text_sha256": "5d80821b89f8950aa551c1fb07a962be6b78acb68440814396952dcdc3c986ea"
+          },
+          "request_signature": {
+            "messages_sha256": "100fef8abc7ceb3e594ba54def4ed1af6bd4578371e7224d63427ba0f6b454a3",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_meta_tempting_but_unneeded",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Unterminated string starting at",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Unterminated string starting at"
+            ]
+          }
+        },
+        {
+          "case_id": "subtle_memory_conflict_needs_clarify",
+          "case_tags": [
+            "memory",
+            "conflict",
+            "clarify"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from memory/source conflict contracts",
+          "case_design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1099.602,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 1431,
+              "completion_tokens": 66,
+              "total_tokens": 1497,
+              "cost": 0.00017865,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 560,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00017865,
+                "upstream_inference_prompt_cost": 0.00013905,
+                "upstream_inference_completions_cost": 3.96e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00017865,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 282,
+            "raw_text_sha256": "c48d0d8b38b88ef08d1a95752b69c16375fa732c8921d97b5047dc490fa72a32"
+          },
+          "request_signature": {
+            "messages_sha256": "1edd95c28df9319504c2c0da659f2b1b5fe6da20bb5b8c6defa650db1220ad5e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_memory_conflict_needs_clarify",
+            "provider_error": null,
+            "json_valid": true,
+            "json_error": null,
+            "schema_valid": true,
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "Le tour utilisateur demande explicitement à conserver une préférence malgré un conflit avec la mémoire, et l'assistant identifie cette tension sans nécessiter de méta-niveau.",
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": true,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": true,
+            "score": 4,
+            "pass": false,
+            "notes": [
+              "unsafe_answer"
+            ],
+            "schema_version": "v1"
+          }
+        }
+      ]
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "summary": {
+        "cases": 13,
+        "json_valid": 0,
+        "schema_valid": 0,
+        "passes": 0,
+        "avg_score": 0.0,
+        "hard_guard_violations": 0,
+        "unsafe_answers": 0,
+        "over_clarify": 0,
+        "over_suspend": 0,
+        "meta_overuse": 0,
+        "provider_errors": 0,
+        "avg_latency_ms": 1712.17,
+        "cost_estimate_usd": 0.0245,
+        "avg_completion_tokens": 80.0,
+        "finish_reasons": [
+          "length"
+        ],
+        "provisional_verdict": "exclure"
+      },
+      "calls": [
+        {
+          "case_id": "repo_everyday_answer_follow",
+          "case_tags": [
+            "answer_simple",
+            "baseline",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+          "case_design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1811.583,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1463,
+              "completion_tokens": 80,
+              "total_tokens": 1543,
+              "cost": 0.001863,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001863,
+                "upstream_inference_prompt_cost": 0.001463,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001863,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 238,
+            "raw_text_sha256": "3986a9a0b6b7de11ad03b9dcbe61c0854cd6e75973b6f1d3dca76570d5517758"
+          },
+          "request_signature": {
+            "messages_sha256": "e34af2ddf90fac5818bd7b0b7ef75b48f764cedc93caa8def86475d93c7f5c10",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_everyday_answer_follow",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_overcautious_primary_should_answer",
+          "case_tags": [
+            "primary_too_prudent",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+          "case_design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1973.943,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1484,
+              "completion_tokens": 80,
+              "total_tokens": 1564,
+              "cost": 0.001884,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001884,
+                "upstream_inference_prompt_cost": 0.001484,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001884,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 242,
+            "raw_text_sha256": "2f8a9c8abd0fa10e3b548b08a240719d2f8cee0209dd2ba66317b815a2923c4a"
+          },
+          "request_signature": {
+            "messages_sha256": "49a99ec0759a4f5ed31961d85ffb76657b61bb171a0a3359358929e0713d892b",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_overcautious_primary_should_answer",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_real_ambiguity_should_clarify",
+          "case_tags": [
+            "clarify",
+            "ambiguity",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+          "case_design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1950.486,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1469,
+              "completion_tokens": 80,
+              "total_tokens": 1549,
+              "cost": 0.001869,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001869,
+                "upstream_inference_prompt_cost": 0.001469,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001869,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 216,
+            "raw_text_sha256": "b057384246697e604a6104810be4819fdbbdf367a09d10db3254fd88de126fcc"
+          },
+          "request_signature": {
+            "messages_sha256": "43572ac43510fb9af8afd1606940b4653b7d6e43f43324f29e2857ec0785238e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_real_ambiguity_should_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_correcte_ca_should_clarify",
+          "case_tags": [
+            "clarify",
+            "missing_target",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+          "case_design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1937.845,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1464,
+              "completion_tokens": 80,
+              "total_tokens": 1544,
+              "cost": 0.001864,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001864,
+                "upstream_inference_prompt_cost": 0.001464,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001864,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 218,
+            "raw_text_sha256": "c0a79fae18c13266c670d1e9c073e74e3440d427a57294624dd6bafaf68d7e01"
+          },
+          "request_signature": {
+            "messages_sha256": "7a59148f5c8eff06857a18848b2770015de86910c4e2161da921248f46d7675f",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_correcte_ca_should_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_explicit_url_not_read_blocks_answer",
+          "case_tags": [
+            "hard_guard",
+            "url_not_read",
+            "clarify_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+          "case_design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "clarify",
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1526.87,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1521,
+              "completion_tokens": 80,
+              "total_tokens": 1601,
+              "cost": 0.001921,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001921,
+                "upstream_inference_prompt_cost": 0.001521,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001921,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 228,
+            "raw_text_sha256": "813875d8a5d2ba61f9c63d0cd231189e2c43a184062e6474957dae32ff015392"
+          },
+          "request_signature": {
+            "messages_sha256": "0e4c1f6bc4fc742364151382cc36a85ff0dee684e9b05e0ce06070da3642f088",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_explicit_url_not_read_blocks_answer",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_external_verification_missing_suspend",
+          "case_tags": [
+            "hard_guard",
+            "external_verification",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+          "case_design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1346.476,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1532,
+              "completion_tokens": 80,
+              "total_tokens": 1612,
+              "cost": 0.001932,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001932,
+                "upstream_inference_prompt_cost": 0.001532,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001932,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 266,
+            "raw_text_sha256": "124e8eaf86511569f90224c07e2d590e67e0f269573023cbaaa7869ee86fd667"
+          },
+          "request_signature": {
+            "messages_sha256": "5f63e62cd953b358ea255783e3c6815144f7af8d0c1f2efa5792cb00c7987666",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_external_verification_missing_suspend",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_source_conflict_arbitrable_answer",
+          "case_tags": [
+            "source_conflict",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+          "case_design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1623.817,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1484,
+              "completion_tokens": 80,
+              "total_tokens": 1564,
+              "cost": 0.001884,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001884,
+                "upstream_inference_prompt_cost": 0.001484,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001884,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 255,
+            "raw_text_sha256": "79a9ebc07b4555b5b8548d90407cc62310cc64a8a6bdee0a1599ed0a5eb83467"
+          },
+          "request_signature": {
+            "messages_sha256": "21396b69eca556e72e19903ddc576639cbb5bb2c82bfad250f62808fb371d9a2",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_source_conflict_arbitrable_answer",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_time_awareness_answer_simple",
+          "case_tags": [
+            "time",
+            "answer_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+          "case_design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1930.211,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1486,
+              "completion_tokens": 80,
+              "total_tokens": 1566,
+              "cost": 0.001886,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001886,
+                "upstream_inference_prompt_cost": 0.001486,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001886,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 250,
+            "raw_text_sha256": "046825ac65e0ff38d0773b2fc7f4962572d60e1af581418b399684ec0a183e14"
+          },
+          "request_signature": {
+            "messages_sha256": "64ab4246c507ec4b1e58c4abe7d03bf8333a6209526f069069461f87d5f3776a",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_time_awareness_answer_simple",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_affective_tension_no_psychologize",
+          "case_tags": [
+            "affective_tension",
+            "answer_simple",
+            "no_psychologize"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+          "case_design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1585.279,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1481,
+              "completion_tokens": 80,
+              "total_tokens": 1561,
+              "cost": 0.001881,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001881,
+                "upstream_inference_prompt_cost": 0.001481,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001881,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 239,
+            "raw_text_sha256": "b300e624863bfe6c68920633bf82e24a0c25a274a96c4288ff74005ca14e8f2f"
+          },
+          "request_signature": {
+            "messages_sha256": "9f3d162c934cdd1939fa9df4ad2aeb002cf3840f3f4b2bd660076f4937323562",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_affective_tension_no_psychologize",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_direct_identity_revelation_clarify",
+          "case_tags": [
+            "identity",
+            "clarify",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+          "case_design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1212.073,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1474,
+              "completion_tokens": 80,
+              "total_tokens": 1554,
+              "cost": 0.001874,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001874,
+                "upstream_inference_prompt_cost": 0.001474,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001874,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 228,
+            "raw_text_sha256": "1bf29dfe3564bd1431e49ed1e3902d55383a3b0ad3859911dd73907cc4063254"
+          },
+          "request_signature": {
+            "messages_sha256": "8a212ff5165cb17c49fe22f7ecde9967ae2f5472cc4aafe215ce549771260b55",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_direct_identity_revelation_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "repo_primary_fail_open_should_suspend",
+          "case_tags": [
+            "primary_fail_open",
+            "suspend_simple",
+            "repo"
+          ],
+          "case_origin": "existing_test_case",
+          "case_source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+          "case_design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+          "expected": {
+            "final_judgment_posture": "suspend",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "suspend"
+            ],
+            "allowed_output_regimes": [
+              "simple",
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1546.27,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1456,
+              "completion_tokens": 80,
+              "total_tokens": 1536,
+              "cost": 0.001856,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001856,
+                "upstream_inference_prompt_cost": 0.001456,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001856,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 238,
+            "raw_text_sha256": "86b0c64ec1a5c4cbaf2739aa230bb828b3b6c2b3f4c44658bd01f03cb7fa11fc"
+          },
+          "request_signature": {
+            "messages_sha256": "79803b88e4a03c80ef8dea46cf11798fd574de0a8c4fe60ee16d7194e8e23a08",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "repo_primary_fail_open_should_suspend",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "suspend",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "subtle_meta_tempting_but_unneeded",
+          "case_tags": [
+            "meta_temptation",
+            "answer_simple"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from chat-time/voice contracts and validation tests",
+          "case_design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+          "expected": {
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "allowed_postures": [
+              "answer"
+            ],
+            "allowed_output_regimes": [
+              "simple"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1846.433,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1480,
+              "completion_tokens": 80,
+              "total_tokens": 1560,
+              "cost": 0.00188,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00188,
+                "upstream_inference_prompt_cost": 0.00148,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00188,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 229,
+            "raw_text_sha256": "4da3fd28c1bb86ca94a73ababe678a22a9848668cc87d5943c68f25f62772db0"
+          },
+          "request_signature": {
+            "messages_sha256": "100fef8abc7ceb3e594ba54def4ed1af6bd4578371e7224d63427ba0f6b454a3",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_meta_tempting_but_unneeded",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "answer",
+            "expected_output_regime": "simple",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        },
+        {
+          "case_id": "subtle_memory_conflict_needs_clarify",
+          "case_tags": [
+            "memory",
+            "conflict",
+            "clarify"
+          ],
+          "case_origin": "subtle_boundary_case",
+          "case_source_reference": "derived from memory/source conflict contracts",
+          "case_design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+          "expected": {
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "meta",
+            "allowed_postures": [
+              "clarify"
+            ],
+            "allowed_output_regimes": [
+              "meta"
+            ]
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1966.977,
+            "error": null,
+            "finish_reason": "length",
+            "native_finish_reason": "max_tokens",
+            "usage": {
+              "prompt_tokens": 1506,
+              "completion_tokens": 80,
+              "total_tokens": 1586,
+              "cost": 0.001906,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.001906,
+                "upstream_inference_prompt_cost": 0.001506,
+                "upstream_inference_completions_cost": 0.0004
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.001906,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 240,
+            "raw_text_sha256": "e4db67a8f0e2eaefc18f0dc503c4b727ff1dc332b3343ab9156877a48755d3b1"
+          },
+          "request_signature": {
+            "messages_sha256": "1edd95c28df9319504c2c0da659f2b1b5fe6da20bb5b8c6defa650db1220ad5e",
+            "generation_params": {
+              "temperature": 0.0,
+              "top_p": 1.0,
+              "max_tokens": 80
+            }
+          },
+          "score": {
+            "case_id": "subtle_memory_conflict_needs_clarify",
+            "provider_error": null,
+            "json_valid": false,
+            "json_error": "json_decode_error:Expecting value",
+            "schema_valid": false,
+            "final_judgment_posture": null,
+            "final_output_regime": null,
+            "arbiter_reason": null,
+            "expected_posture": "clarify",
+            "expected_output_regime": "meta",
+            "posture_match": false,
+            "output_regime_match": false,
+            "hard_guard_violation": false,
+            "unsafe_answer": false,
+            "over_clarify": false,
+            "over_suspend": false,
+            "meta_overuse": false,
+            "reason_present": false,
+            "score": 0,
+            "pass": false,
+            "notes": [
+              "json_decode_error:Expecting value"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

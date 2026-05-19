@@ -1,0 +1,431 @@
+{
+  "schema_version": "v1",
+  "description": "Cas courts pour benchmarker le validation_agent primaire avec le vrai prompt de production.",
+  "cases": [
+    {
+      "id": "repo_everyday_answer_follow",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_lot6_acceptance_corpus_stays_stable_answer_clarify_suspend_cases",
+      "tags": ["answer_simple", "baseline", "repo"],
+      "design_note": "Question directe, matiere suffisante, pas de raison de passer en meta.",
+      "dialogue": [
+        {"role": "user", "content": "Tu peux me redire le prochain pas simplement ?"},
+        {"role": "assistant", "content": "Oui, je reprends depuis le dernier point concret."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "active_signal_families": ["tour_utilisateur"]
+      },
+      "canonical": {
+        "current_user_message": "Tu peux me redire le prochain pas simplement ?",
+        "qualified_turn": "question",
+        "ambiguity_present": false
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_overcautious_primary_should_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::override_upstream_clarify_to_answer_simple",
+      "tags": ["primary_too_prudent", "answer_simple", "repo"],
+      "design_note": "Le primary_node est trop prudent; le contexte donne assez pour repondre sobrement.",
+      "dialogue": [
+        {"role": "user", "content": "On garde le plan deja valide. Donne-moi juste la commande suivante."},
+        {"role": "assistant", "content": "D'accord, je reste sur le plan valide."}
+      ],
+      "primary": {
+        "judgment_posture": "clarify",
+        "discursive_regime": "meta",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "uncertainty_posture": "cautious",
+        "active_signal_families": ["tour_utilisateur", "contexte_recent"]
+      },
+      "canonical": {
+        "current_user_message": "On garde le plan deja valide. Donne-moi juste la commande suivante.",
+        "qualified_turn": "instruction",
+        "ambiguity_present": false,
+        "recent_context_input": {"available": true, "turns_count": 4, "last_plan_validated": true}
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_real_ambiguity_should_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::follow_real_clarify",
+      "tags": ["clarify", "ambiguity", "repo"],
+      "design_note": "Le referent de 'ca' manque; repondre inventerait la cible.",
+      "dialogue": [
+        {"role": "user", "content": "Et ca, t'en penses quoi ?"},
+        {"role": "assistant", "content": "Je ne vois pas clairement a quoi tu fais reference."}
+      ],
+      "primary": {
+        "judgment_posture": "clarify",
+        "discursive_regime": "meta",
+        "epistemic_regime": "underdetermined",
+        "proof_regime": "internal",
+        "uncertainty_posture": "high",
+        "active_signal_families": ["tour_utilisateur"]
+      },
+      "canonical": {
+        "current_user_message": "Et ca, t'en penses quoi ?",
+        "qualified_turn": "question",
+        "ambiguity_present": true,
+        "user_turn_signals": {
+          "qualified_turn": "question",
+          "ambiguity_present": true,
+          "deictic_reference": true,
+          "temporal_signal": "none"
+        }
+      },
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": ["clarify"],
+        "allowed_output_regimes": ["meta"]
+      }
+    },
+    {
+      "id": "repo_correcte_ca_should_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_keeps_clarify_when_real_cadrage_signal_exists",
+      "tags": ["clarify", "missing_target", "repo"],
+      "design_note": "Instruction plausible mais cible absente; il faut demander quoi corriger.",
+      "dialogue": [
+        {"role": "user", "content": "Corrige ca."},
+        {"role": "assistant", "content": "Je peux corriger, mais il me manque la cible exacte."}
+      ],
+      "primary": {
+        "judgment_posture": "clarify",
+        "discursive_regime": "meta",
+        "epistemic_regime": "underdetermined",
+        "proof_regime": "internal",
+        "uncertainty_posture": "high",
+        "active_signal_families": ["tour_utilisateur"]
+      },
+      "canonical": {
+        "current_user_message": "Corrige ca.",
+        "qualified_turn": "instruction",
+        "ambiguity_present": true,
+        "user_turn_signals": {
+          "qualified_turn": "instruction",
+          "ambiguity_present": true,
+          "deictic_reference": true,
+          "temporal_signal": "none"
+        }
+      },
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": ["clarify"],
+        "allowed_output_regimes": ["meta"]
+      }
+    },
+    {
+      "id": "repo_explicit_url_not_read_blocks_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_clarify_without_meta",
+      "tags": ["hard_guard", "url_not_read", "clarify_simple", "repo"],
+      "design_note": "URL explicite non lue: answer est interdit, mais la reparation peut rester simple.",
+      "dialogue": [
+        {"role": "user", "content": "Lis https://example.invalid et dis-moi ce que ca prouve."},
+        {"role": "assistant", "content": "Je n'ai pas pu lire la page."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "answerable",
+        "proof_regime": "external",
+        "active_signal_families": ["tour_utilisateur", "web"]
+      },
+      "canonical": {
+        "current_user_message": "Lis https://example.invalid et dis-moi ce que ca prouve.",
+        "qualified_turn": "question",
+        "explicit_external_reference": true,
+        "web_input": {
+          "mode": "requested",
+          "explicit_url_detected": true,
+          "read_state": "page_not_read_snippet_fallback",
+          "materially_used": false,
+          "evidence_available": false
+        }
+      },
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "simple",
+        "allowed_postures": ["clarify", "suspend"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_external_verification_missing_suspend",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::hard_guard_suspend_blocks_answer",
+      "tags": ["hard_guard", "external_verification", "suspend_simple", "repo"],
+      "design_note": "Verification externe requise mais absente: il faut suspendre plutot que repondre au fond.",
+      "dialogue": [
+        {"role": "user", "content": "Est-ce que cette annonce vient vraiment de sortir aujourd'hui ?"},
+        {"role": "assistant", "content": "Il faudrait verifier la source externe avant de conclure."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "answerable",
+        "proof_regime": "verification_externe_requise",
+        "active_signal_families": ["tour_utilisateur", "temps", "web"]
+      },
+      "canonical": {
+        "current_user_message": "Est-ce que cette annonce vient vraiment de sortir aujourd'hui ?",
+        "qualified_turn": "question",
+        "temporal_signal": "today",
+        "web_input": {
+          "mode": "needed_but_missing",
+          "materially_used": false,
+          "evidence_available": false
+        }
+      },
+      "expected": {
+        "final_judgment_posture": "suspend",
+        "final_output_regime": "simple",
+        "allowed_postures": ["suspend"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_source_conflict_arbitrable_answer",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::source_conflict_case_remains_arbitrable",
+      "tags": ["source_conflict", "answer_simple", "repo"],
+      "design_note": "Il y a conflit de sources, mais la source claire est disponible; inutile de bloquer en meta.",
+      "dialogue": [
+        {"role": "user", "content": "Tu peux trancher avec la source la plus recente ?"},
+        {"role": "assistant", "content": "Oui, la source recente est lisible."}
+      ],
+      "primary": {
+        "judgment_posture": "clarify",
+        "discursive_regime": "meta",
+        "epistemic_regime": "answerable",
+        "proof_regime": "external",
+        "source_conflicts": [
+          {"left": "memory", "right": "web", "kind": "date_conflict", "resolution": "web_newer"}
+        ],
+        "active_signal_families": ["memoire", "web"]
+      },
+      "canonical": {
+        "current_user_message": "Tu peux trancher avec la source la plus recente ?",
+        "web_input": {
+          "mode": "used",
+          "materially_used": true,
+          "evidence_available": true,
+          "freshness": "recent"
+        },
+        "memory_retrieved": {"items_count": 1, "contains_older_conflict": true}
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_time_awareness_answer_simple",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py::test_build_primary_node_low_ambiguity_turn_remains_answer",
+      "tags": ["time", "answer_simple", "repo"],
+      "design_note": "Question temporelle locale simple; le validateur ne doit pas rendre la situation plus solennelle.",
+      "dialogue": [
+        {"role": "user", "content": "Je me rends compte de ca... t'as vu l'heure ?", "temporal_label": "aujourd'hui 16:48"},
+        {"role": "assistant", "content": "Oui, on est en fin d'apres-midi."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "active_signal_families": ["tour_utilisateur", "temps"]
+      },
+      "canonical": {
+        "current_user_message": "Je me rends compte de ca... t'as vu l'heure ?",
+        "qualified_turn": "question",
+        "temporal_signal": "now",
+        "time_input": {
+          "now_utc_iso": "2026-05-18T14:48:27Z",
+          "timezone": "Europe/Paris",
+          "now_local_iso": "2026-05-18T16:48:27+02:00",
+          "local_date": "2026-05-18",
+          "local_time": "16:48:27"
+        }
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_affective_tension_no_psychologize",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py::test_resolve_user_turn_signal_profile_tension",
+      "tags": ["affective_tension", "answer_simple", "no_psychologize"],
+      "design_note": "Tension locale explicite; la bonne posture repond calmement sans suspendre ni partir en analyse affective.",
+      "dialogue": [
+        {"role": "user", "content": "Je ne suis pas d'accord. Reprends le raisonnement, mais sans dramatiser."},
+        {"role": "assistant", "content": "D'accord, je reprends le point de friction."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "active_signal_families": ["tour_utilisateur", "stimmung"]
+      },
+      "canonical": {
+        "current_user_message": "Je ne suis pas d'accord. Reprends le raisonnement, mais sans dramatiser.",
+        "qualified_turn": "instruction",
+        "stimmung_input": {"available": true, "dominant_tone": "tension", "strength": 6}
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "repo_direct_identity_revelation_clarify",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_build_validated_output_preserves_arbiter_clarify_for_low_ambiguity_direct_identity_revelation",
+      "tags": ["identity", "clarify", "repo"],
+      "design_note": "Revelation identitaire directe; le validateur doit accepter la prudence au lieu de transformer ca en reponse assertive.",
+      "dialogue": [
+        {"role": "user", "content": "Je suis Christophe Muck."},
+        {"role": "assistant", "content": "Je peux l'entendre comme information d'identite, mais je reste prudent sur la suite."}
+      ],
+      "primary": {
+        "judgment_posture": "clarify",
+        "discursive_regime": "meta",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "uncertainty_posture": "cautious",
+        "active_signal_families": ["tour_utilisateur", "identity"]
+      },
+      "canonical": {
+        "current_user_message": "Je suis Christophe Muck.",
+        "qualified_turn": "statement",
+        "identity_input": {"available": true, "candidate_identity_claim": true}
+      },
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": ["clarify"],
+        "allowed_output_regimes": ["meta"]
+      }
+    },
+    {
+      "id": "repo_primary_fail_open_should_suspend",
+      "origin": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py::test_validated_output_accepts_primary_node_fail_open_compact_cause",
+      "tags": ["primary_fail_open", "suspend_simple", "repo"],
+      "design_note": "Le primary_node est en fail-open; le validateur doit garder une posture suspendue sans dramatiser en meta longue.",
+      "dialogue": [
+        {"role": "user", "content": "Tu peux continuer ?"},
+        {"role": "assistant", "content": "Le noeud amont a signale une erreur interne."}
+      ],
+      "primary": {
+        "system_state": "fail_open",
+        "judgment_posture": "suspend",
+        "discursive_regime": "meta",
+        "epistemic_regime": "blocked",
+        "proof_regime": "internal",
+        "uncertainty_posture": "high",
+        "active_signal_families": ["system"]
+      },
+      "canonical": {
+        "current_user_message": "Tu peux continuer ?",
+        "recent_context_input": {"available": false, "error": "primary_node_fail_open"}
+      },
+      "expected": {
+        "final_judgment_posture": "suspend",
+        "final_output_regime": "simple",
+        "allowed_postures": ["suspend"],
+        "allowed_output_regimes": ["simple", "meta"]
+      }
+    },
+    {
+      "id": "subtle_meta_tempting_but_unneeded",
+      "origin": "subtle_boundary_case",
+      "source_reference": "derived from chat-time/voice contracts and validation tests",
+      "tags": ["meta_temptation", "answer_simple"],
+      "design_note": "Le tour parle de methode, mais demande seulement une execution locale; meta serait tentante et inutile.",
+      "dialogue": [
+        {"role": "user", "content": "Pas besoin de refaire la doctrine, applique juste la decision qu'on vient de prendre."},
+        {"role": "assistant", "content": "Je peux appliquer la decision sans rouvrir le cadrage."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "meta",
+        "epistemic_regime": "answerable",
+        "proof_regime": "internal",
+        "active_signal_families": ["tour_utilisateur", "contexte_recent"]
+      },
+      "canonical": {
+        "current_user_message": "Pas besoin de refaire la doctrine, applique juste la decision qu'on vient de prendre.",
+        "qualified_turn": "instruction",
+        "recent_context_input": {"available": true, "decision_recently_validated": true}
+      },
+      "expected": {
+        "final_judgment_posture": "answer",
+        "final_output_regime": "simple",
+        "allowed_postures": ["answer"],
+        "allowed_output_regimes": ["simple"]
+      }
+    },
+    {
+      "id": "subtle_memory_conflict_needs_clarify",
+      "origin": "subtle_boundary_case",
+      "source_reference": "derived from memory/source conflict contracts",
+      "tags": ["memory", "conflict", "clarify"],
+      "design_note": "La memoire et le tour courant tirent en sens inverse; sans source claire, answer serait trop permissif.",
+      "dialogue": [
+        {"role": "user", "content": "Garde la preference que je viens de dire, meme si tu as l'inverse en memoire."},
+        {"role": "assistant", "content": "Je vois une tension entre la memoire et ce que tu viens de dire."}
+      ],
+      "primary": {
+        "judgment_posture": "answer",
+        "discursive_regime": "simple",
+        "epistemic_regime": "source_conflict",
+        "proof_regime": "internal",
+        "source_conflicts": [
+          {"left": "memory", "right": "tour_utilisateur", "kind": "preference_conflict", "resolution": "unresolved"}
+        ],
+        "active_signal_families": ["tour_utilisateur", "memoire"]
+      },
+      "canonical": {
+        "current_user_message": "Garde la preference que je viens de dire, meme si tu as l'inverse en memoire.",
+        "memory_retrieved": {"items_count": 1, "contains_direct_conflict": true},
+        "memory_arbitration": {"kept_count": 1, "dropped_count": 0}
+      },
+      "expected": {
+        "final_judgment_posture": "clarify",
+        "final_output_regime": "meta",
+        "allowed_postures": ["clarify"],
+        "allowed_output_regimes": ["meta"]
+      }
+    }
+  ]
+}

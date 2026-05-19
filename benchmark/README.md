@@ -24,6 +24,11 @@ Stimmung agent on short French diagnostic scenes. It checks strict JSON/schema
 validity and gives a qualitative reading of local affect without benchmarking
 the fallback.
 
+The sixth implemented suite is `validation_agent`, which compares only the
+primary OpenRouter validation caller. It checks the final hermeneutic posture
+contract (`answer|clarify|suspend`, `simple|meta`) without touching the
+deterministic `primary_node` or the production runtime settings.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -360,6 +365,56 @@ state without retaining raw model outputs.
 
 The report is a decision aid, not an automatic production verdict. It must not
 be used to change `stimmung_agent_model` without a separate decision and
+runtime settings lot.
+
+## Validation agent primary benchmark
+
+The validation suite compares only the primary `validation_agent` model. It
+uses the production prompt `app/prompts/validation_agent.txt` and compact
+fixtures derived mostly from existing validation/primary-node tests.
+
+Default validation agent models:
+
+- `openai/gpt-5.4-mini`
+- `google/gemini-3.1-flash-lite`
+- `mistralai/mistral-small-2603`
+- `anthropic/claude-haiku-4.5`
+
+Fixed validation agent parameters:
+
+- `temperature=0.0`
+- `top_p=1.0`
+- `max_tokens=80`
+- `timeout_s=10`
+
+Dry run:
+
+```bash
+python3 benchmark/run_benchmark.py validation_agent --dry-run
+```
+
+Example live run:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --campaign-id 2026-05-19-validation-agent-primary-benchmark \
+  --timeout-s 10 \
+  --output-dir benchmark/results/validation_agent
+```
+
+The runner writes:
+
+- one compact structured JSON artifact;
+- one Markdown report with technical metrics, case notes, posture divergences
+  and a provisional hermeneutic reading.
+
+Validation JSON artifacts do not retain raw model text. They keep parsed
+decisions, provider metadata, output hashes and output sizes so the campaign
+remains auditable without versioning response dumps.
+
+The report is a decision aid, not an automatic production verdict. It must not
+be used to change `validation_agent_model` without a separate decision and
 runtime settings lot.
 
 ## Scope
