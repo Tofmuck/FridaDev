@@ -303,17 +303,23 @@ Note de dette volontaire:
 
 ### Lot 3 - Tests et preuves
 
-- [ ] Tests unitaires backend avec fake OpenRouter response.
-- [ ] Test absence d'image en reponse.
-- [ ] Test refus modele hors allowlist.
-- [ ] Test refus aspect ratio incompatible.
-- [ ] Test affichage pricing sans promettre un cout exact quand l'API ne donne pas de prix image.
-- [ ] Test attribution OpenRouter distincte par generateur.
-- [ ] Test absence de secret et absence de base64 dans logs.
+- [x] Tests unitaires backend avec fake OpenRouter response.
+- [x] Test absence d'image en reponse.
+- [x] Test refus modele hors allowlist.
+- [x] Test refus aspect ratio incompatible.
+- [x] Test affichage pricing sans promettre un cout exact quand l'API ne donne pas de prix image.
+- [x] Test attribution OpenRouter distincte par generateur.
+- [x] Test absence de secret et absence de base64 dans logs.
 - [x] Test garde d'acces de `/api/tools/image-generation`: loopback autorise, proxy Authelia autorise, pair non fiable refuse sans appel provider.
-- [ ] Test frontend du panneau avec Playwright ou equivalent.
-- [ ] Verification responsive desktop/mobile.
-- [ ] Verification telechargement navigateur.
+- [x] Test frontend du panneau avec Playwright ou equivalent.
+- [x] Verification responsive desktop/mobile.
+- [x] Verification telechargement navigateur.
+
+Preuves executees en Lot 3:
+- `app.tests.unit.tools.test_image_generation`: fake OpenRouter, allowlist, formats, absence d'image, data URL invalide, attribution headers/metadata/trace, logs content-free;
+- `app.tests.test_server_image_generation`: route dediee, erreurs normalisees sans secret, garde d'acces avant appel provider;
+- `app/tests/unit/frontend_chat/test_image_generation_module.js`: table V0, absence de `4K`, pricing labels prudents, metadonnees UI content-free, nom de telechargement;
+- `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`: panneau image Playwright, route `/api/tools/image-generation`, absence de POST `/api/chat`, preview, erreur backend, telechargement local, desktop/mobile sans casse du composer.
 
 ### Lot 4 - Polish et cloture V0
 

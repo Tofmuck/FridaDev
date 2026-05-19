@@ -213,6 +213,11 @@ test('image generation tool opens, validates, calls its own route and keeps chat
     await assertTextContains(page.locator('#imageGenerationMeta'), 'Nano Banana');
     assert.equal(await page.locator('#imageGenerationDownload').isEnabled(), true);
 
+    const imageDownloadPromise = page.waitForEvent('download');
+    await page.click('#imageGenerationDownload');
+    const imageDownload = await imageDownloadPromise;
+    assert.match(imageDownload.suggestedFilename(), /^fridadev-image-\d{8}-\d{6}\.svg$/);
+
     const imageRequests = await page.evaluate(() => window.__fridaBrowserState.imageRequests);
     assert.equal(imageRequests.length, 1);
     assert.deepEqual(imageRequests[0], {
@@ -227,6 +232,71 @@ test('image generation tool opens, validates, calls its own route and keeps chat
     assert.equal(fetchCalls.some((call) => call.method === 'POST' && call.path === '/api/chat'), false);
     assert.equal(await page.locator('.msg-wrapper').count(), 0);
   });
+});
+
+test('image generation panel stays usable on desktop and mobile viewports', async () => {
+  for (const viewport of [
+    { width: 1440, height: 900, name: 'desktop' },
+    { width: 390, height: 780, name: 'mobile' },
+  ]) {
+    await openBrowserPage({
+      mockScript: chatMockScript({ streamMode: 'done' }),
+      afterPage: (page) => page.setViewportSize({ width: viewport.width, height: viewport.height }),
+    }, async (page) => {
+      await page.waitForSelector('#message:not([disabled])');
+      await page.click('#btnImageGeneration');
+      await page.fill('#imageGenerationPrompt', 'cercle bleu sur fond blanc');
+      await page.click('#imageGenerationSubmit');
+      await page.waitForSelector('#imageGenerationPreview:not([hidden])');
+      await page.waitForFunction(() => {
+        const img = document.querySelector('#imageGenerationPreview');
+        return img && img.complete && img.naturalWidth > 0;
+      });
+
+      const layout = await page.evaluate(() => {
+        const rect = (selector) => {
+          const box = document.querySelector(selector).getBoundingClientRect();
+          return {
+            top: box.top,
+            right: box.right,
+            bottom: box.bottom,
+            left: box.left,
+            width: box.width,
+            height: box.height,
+          };
+        };
+        const panel = document.querySelector('#imageGenerationPanel');
+        const panelBox = panel.getBoundingClientRect();
+        const ask = rect('#ask');
+        const submit = rect('#imageGenerationSubmit');
+        const preview = rect('#imageGenerationPreview');
+        panel.scrollTop = panel.scrollHeight;
+        const download = rect('#imageGenerationDownload');
+        return {
+          panel: rect('#imageGenerationPanel'),
+          ask,
+          submit,
+          preview,
+          download,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          scrollHeight: panel.scrollHeight,
+          clientHeight: panel.clientHeight,
+          scrollable: panel.scrollHeight >= panel.clientHeight,
+          panelBeforeScrollBottom: panelBox.bottom,
+        };
+      });
+
+      assert.ok(layout.panel.left >= 0, `${viewport.name} panel should stay inside left viewport edge`);
+      assert.ok(layout.panel.right <= layout.viewportWidth + 1, `${viewport.name} panel should stay inside right viewport edge`);
+      assert.ok(layout.panel.top >= 0, `${viewport.name} panel should stay below top viewport edge`);
+      assert.ok(layout.panelBeforeScrollBottom <= layout.ask.top + 1, `${viewport.name} panel should stay above composer`);
+      assert.ok(layout.submit.left >= layout.panel.left && layout.submit.right <= layout.panel.right + 1, `${viewport.name} submit should stay inside panel`);
+      assert.ok(layout.preview.width <= layout.panel.width + 1, `${viewport.name} preview should be constrained by panel`);
+      assert.ok(layout.preview.height <= 200, `${viewport.name} preview should stay compact`);
+      assert.ok(layout.download.top >= layout.panel.top && layout.download.bottom <= layout.panel.bottom + 1, `${viewport.name} download should be reachable by panel scroll`);
+    });
+  }
 });
 
 test('image generation tool displays backend errors without chat side effects', async () => {

@@ -66,3 +66,11 @@ test('compactResultMeta remains content-free and includes observed cost only', (
   assert.equal(meta.includes('SHOULD NOT APPEAR'), false);
   assert.equal(meta, 'Nano Banana · 1:1 · 1K · coût observé 0.01');
 });
+
+test('pricing labels avoid pretending unknown image pricing is free', () => {
+  for (const key of ['image_generator_recraft', 'image_generator_flux']) {
+    const label = imageGeneration.IMAGE_GENERATORS[key].pricing_label;
+    assert.match(label, /prix image non exposé/);
+    assert.equal(/gratuit|free/i.test(label), false);
+  }
+});
