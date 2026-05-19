@@ -579,3 +579,50 @@ parametres:
 
 Ces artefacts comparent explicitement la sortie ontologique avec le smoke
 precedent `2026-05-19-haiku-smoke`.
+
+## Note post-audit - precision du registre ontologique
+
+Le smoke ontologique a reduit la canonisation (`user`: 9 `add` puis 7 `add`),
+mais Haiku a encore transforme des preferences operatoires en propositions
+identitaires. Le prompt a donc ete resserre une seconde fois: le test
+`subject is Y` / `subject est Y` est necessaire, mais non suffisant.
+
+La precision ajoutee dit que le test ontologique est un test de registre. Il ne
+suffit pas de convertir une demande, une methode de chantier ou une preference
+de format en adjectif identitaire. Si `Y` decrit surtout une regle operatoire,
+une methode de projet, une consigne au systeme, une doctrine de chantier, une
+preference liee a FridaDev seulement, une procedure de decision ou un protocole
+d'interruption, la proposition appartient au mauvais registre et doit produire
+`no_change`.
+
+Le prompt inclut des contre-exemples explicites:
+
+- `user wants benchmark, decision, then decoupling`: methode de workflow, pas
+  identite;
+- `user asks for readable benchmark artifacts`: methode d'evaluation ou
+  preference operateur, pas identite;
+- `user says stop must interrupt the current action`: protocole de controle, pas
+  identite;
+- `user wants dense UI for FridaDev`: preference produit/design, pas identite
+  sauf generalisation durable hors contexte projet.
+
+Un troisieme smoke Haiku a ete lance sur le meme fixture et les memes
+parametres:
+
+- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.md`
+- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.json`
+
+Ces artefacts comparent explicitement le nouveau run au smoke initial et au
+smoke ontologique precedent.
+
+Resultat mesure du smoke registre:
+
+- smoke initial: `user` = 9 `add`;
+- smoke ontologique `subject est Y`: `user` = 7 `add`;
+- smoke ontologique + registre: `user` = 3 `add`.
+
+Lecture provisoire: la precision de registre corrige nettement la tendance a
+canoniser les regles operatoires, sans rendre l'agent muet. Il reste toutefois
+des propositions encore proches de preferences de travail ou de pilotage; la
+decision modele/prompt doit donc rester une lecture humaine, pas une conclusion
+automatique tiree du seul schema JSON.

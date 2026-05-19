@@ -260,6 +260,9 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Resserrer le prompt periodic avec la regle ontologique `subject is Y` / `subject est Y`.
 - [x] Relancer le meme smoke Haiku avec le contrat ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.md`.
 - [x] Conserver l'artefact JSON ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.json`.
+- [x] Preciser le registre ontologique: `subject is Y` est necessaire mais non suffisant.
+- [x] Relancer le meme smoke Haiku avec le contrat ontologique + registre: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.md`.
+- [x] Conserver l'artefact JSON ontologique + registre: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.json`.
 - [ ] Decision modele `identity_periodic_agent` apres lecture humaine.
 - [ ] Decouplage runtime `identity_periodic_model` apres decision explicite.
 - [ ] Prochain caller apres periodic identity: `stimmung_agent` primaire.

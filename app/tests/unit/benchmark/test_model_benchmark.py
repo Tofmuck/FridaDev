@@ -539,6 +539,58 @@ class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
                 ["Tof préfère les artefacts relisibles."],
             )
 
+    def test_periodic_comparisons_include_initial_and_ontological_runs(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            initial = {
+                "validated_response": {
+                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
+                    "user": {
+                        "operations": [
+                            {"kind": "add", "proposition": "workflow method", "reason": "x"},
+                            {"kind": "add", "proposition": "readable artifacts", "reason": "x"},
+                        ]
+                    },
+                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
+                }
+            }
+            ontological = {
+                "validated_response": {
+                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
+                    "user": {"operations": [{"kind": "add", "proposition": "readable artifacts", "reason": "x"}]},
+                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
+                }
+            }
+            (tmp_path / "2026-05-19-haiku-smoke.json").write_text(
+                json.dumps(initial, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (tmp_path / "2026-05-19-haiku-smoke-ontological.json").write_text(
+                json.dumps(ontological, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            current = {
+                "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
+                "user": {"operations": []},
+                "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
+            }
+
+            comparisons = periodic_campaign._comparisons_with_previous(
+                output_dir=tmp_path,
+                repo_root=REPO_ROOT,
+                campaign_id="2026-05-19-haiku-smoke-ontological-register",
+                current_validated=current,
+            )
+
+            self.assertEqual(
+                [item["previous_campaign_id"] for item in comparisons],
+                ["2026-05-19-haiku-smoke", "2026-05-19-haiku-smoke-ontological"],
+            )
+            self.assertEqual(comparisons[0]["operation_count_delta"], -2)
+            self.assertEqual(comparisons[1]["operation_count_delta"], -1)
+
 
 if __name__ == "__main__":
     unittest.main()

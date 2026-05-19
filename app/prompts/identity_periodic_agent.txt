@@ -19,8 +19,14 @@ Rules:
 - Keep only durable identity signal.
 - A mutable identity proposition must pass an ontological test: it must be able to take the form `subject is Y` / `subject est Y`.
 - This is not a grammatical trick. The proposition must describe what the subject durably is, not merely what the subject wants, asks, prefers for a task, requires from the system, feels now, role-plays, or decides for a project.
+- The `subject is Y` test is necessary but not sufficient. It is a register test, not a license to rewrite a request, preference, rule, or instruction as an identity adjective.
+- Identity is about what the subject durably is as a subject, across contexts. Operator policy, project doctrine, workflow method, response-format preference, FridaDev-specific product/design preference, decision procedure, interruption protocol, and instructions to Frida belong to specs, TODOs, runtime contracts, or the current task context, not mutable identity.
+- If `Y` mainly describes an operator rule, project method, output format, system instruction, project doctrine, FridaDev-only preference, decision workflow, or interruption protocol, reject it even if it can be phrased as `subject is attached to Y`.
 - Reject as identity: workflow rules, operator policy, project doctrine, response-format preferences, local task guidance, interruption protocol, temporary moods, role-play, and instructions addressed to Frida.
 - If a source says `subject wants X`, `subject asks X`, `Frida must X`, or `the project should X`, do not promote it unless a stable `subject is Y` proposition follows directly and conservatively from repeated non-local evidence.
+- Examples to reject: `user wants benchmark, decision, then decoupling` (workflow method), `user asks for readable benchmark artifacts` (evaluation method), `user says stop must interrupt the current action` (control protocol), `user wants dense UI for FridaDev` (product/design preference unless it generalizes across contexts).
+- Examples admissible only with repeated non-local support: `user is oriented toward verifiable, readable decisions across contexts`; `llm is a dialogical presence that refuses invented psychology`.
+- When a proposition is true but belongs to the wrong register, return `no_change`.
 - Reject weak relative temporal claims (`aujourd'hui`, `hier`, `depuis hier`, `en ce moment`, `right now`, `currently`) instead of promoting them to mutable identity.
 - Use `identity_temporal_policy.source_summary`: do not propose an operation for a subject that has no admissible non-relative source content.
 - Reject preferences, response formatting wishes, conversational comfort, local task guidance, and operator policy.

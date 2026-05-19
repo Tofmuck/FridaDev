@@ -84,7 +84,7 @@ def build_identity_periodic_smoke_campaign(
             target_pairs=target_pairs,
         )
     reading = _quick_reading(parsed, validated, validation_error, payload_for_model)
-    comparison = _comparison_with_previous(
+    comparisons = _comparisons_with_previous(
         output_dir=config.output_dir,
         repo_root=config.repo_root,
         campaign_id=config.campaign_id,
@@ -121,7 +121,8 @@ def build_identity_periodic_smoke_campaign(
         "schema_error": validation_error,
         "validated_response": validated,
         "quick_reading": reading,
-        "comparison_with_previous": comparison,
+        "comparison_with_previous": comparisons[0] if comparisons else None,
+        "comparisons_with_previous": comparisons,
         "secrets_written": False,
         "production_runtime_changed": False,
         "human_judgment_required": True,
@@ -199,40 +200,52 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
 
 
 def render_comparison_section(campaign: dict[str, Any]) -> list[str]:
-    comparison = campaign.get("comparison_with_previous")
-    if not isinstance(comparison, dict) or not comparison.get("previous_campaign_id"):
+    comparisons = campaign.get("comparisons_with_previous")
+    if isinstance(comparisons, list):
+        comparison_items = [item for item in comparisons if isinstance(item, dict) and item.get("previous_campaign_id")]
+    else:
+        comparison = campaign.get("comparison_with_previous")
+        comparison_items = [comparison] if isinstance(comparison, dict) and comparison.get("previous_campaign_id") else []
+    if not comparison_items:
         return []
-    removed = comparison.get("removed_propositions") or []
-    added = comparison.get("added_propositions") or []
     lines = [
-        "## Comparaison avec le smoke precedent",
-        "",
-        f"- Artefact precedent: `{comparison.get('previous_artifact')}`",
-        f"- Operations avant: `{comparison.get('previous_operation_count')}`",
-        f"- Operations apres: `{comparison.get('current_operation_count')}`",
-        f"- Delta: `{comparison.get('operation_count_delta')}`",
-        f"- Operations `add` avant: `{comparison.get('previous_add_count')}`",
-        f"- Operations `add` apres: `{comparison.get('current_add_count')}`",
-        "",
-        "### Propositions disparues",
+        "## Comparaison avec les smokes precedents",
         "",
     ]
-    if removed:
-        lines.extend([f"- {item}" for item in removed])
-    else:
-        lines.append("- Aucune proposition precedente n'a disparu.")
-    lines.extend(["", "### Propositions nouvelles", ""])
-    if added:
-        lines.extend([f"- {item}" for item in added])
-    else:
-        lines.append("- Aucune proposition nouvelle.")
+    for comparison in comparison_items:
+        removed = comparison.get("removed_propositions") or []
+        added = comparison.get("added_propositions") or []
+        lines.extend(
+            [
+                f"### Depuis `{comparison.get('previous_campaign_id')}`",
+                "",
+                f"- Artefact precedent: `{comparison.get('previous_artifact')}`",
+                f"- Operations avant: `{comparison.get('previous_operation_count')}`",
+                f"- Operations maintenant: `{comparison.get('current_operation_count')}`",
+                f"- Delta: `{comparison.get('operation_count_delta')}`",
+                f"- Operations `add` avant: `{comparison.get('previous_add_count')}`",
+                f"- Operations `add` maintenant: `{comparison.get('current_add_count')}`",
+                "",
+                "#### Propositions disparues",
+                "",
+            ]
+        )
+        if removed:
+            lines.extend([f"- {item}" for item in removed])
+        else:
+            lines.append("- Aucune proposition precedente n'a disparu.")
+        lines.extend(["", "#### Propositions nouvelles", ""])
+        if added:
+            lines.extend([f"- {item}" for item in added])
+        else:
+            lines.append("- Aucune proposition nouvelle.")
+        lines.extend(["", f"Lecture comparative: {comparison.get('reading')}", ""])
     lines.extend(
         [
-            "",
             "Note: cette comparaison de propositions est textuelle. Une proposition reformulée par le modèle peut donc apparaître comme disparue puis nouvelle même si le thème reste proche.",
         ]
     )
-    lines.extend(["", f"Lecture comparative: {comparison.get('reading')}", ""])
+    lines.append("")
     return lines
 
 
@@ -301,7 +314,23 @@ def _quick_reading(
     user_kinds = ", ".join(op.get("kind", "") for op in user_ops) or "none"
     llm_kinds = ", ".join(op.get("kind", "") for op in llm_ops) or "none"
     user_add_count = sum(1 for op in user_ops if op.get("kind") == "add")
-    operatorish_terms = ("benchmark", "documentation", "ui", "preuves", "découplage", "stop")
+    operatorish_terms = (
+        "artifact",
+        "artefact",
+        "benchmark",
+        "decision",
+        "décision",
+        "decoupling",
+        "découplage",
+        "documentation",
+        "evidence",
+        "fridadev",
+        "interrupt",
+        "preuve",
+        "stop",
+        "ui",
+        "workflow",
+    )
     operatorish_count = sum(
         1
         for op in user_ops
@@ -337,14 +366,41 @@ def _quick_reading(
     )
 
 
+def _comparisons_with_previous(
+    *,
+    output_dir: Path,
+    repo_root: Path,
+    campaign_id: str,
+    current_validated: Any | None,
+) -> list[dict[str, Any]]:
+    previous_ids = [
+        "2026-05-19-haiku-smoke",
+        "2026-05-19-haiku-smoke-ontological",
+    ]
+    comparisons: list[dict[str, Any]] = []
+    for previous_id in previous_ids:
+        if campaign_id == previous_id:
+            continue
+        comparison = _comparison_with_previous(
+            output_dir=output_dir,
+            repo_root=repo_root,
+            campaign_id=campaign_id,
+            previous_id=previous_id,
+            current_validated=current_validated,
+        )
+        if comparison:
+            comparisons.append(comparison)
+    return comparisons
+
+
 def _comparison_with_previous(
     *,
     output_dir: Path,
     repo_root: Path,
     campaign_id: str,
     current_validated: Any | None,
+    previous_id: str = "2026-05-19-haiku-smoke",
 ) -> dict[str, Any] | None:
-    previous_id = "2026-05-19-haiku-smoke"
     if campaign_id == previous_id:
         return None
     previous_path = output_dir / f"{previous_id}.json"
@@ -374,7 +430,7 @@ def _comparison_with_previous(
     elif current_count < previous_count:
         reading = (
             "Le contrat ontologique reduit la canonisation; lire les propositions restantes pour verifier "
-            "si elles ont vraiment atteint le niveau `subject est Y`."
+            "si elles ont vraiment atteint le bon registre identitaire."
         )
     elif current_count == previous_count:
         reading = (
