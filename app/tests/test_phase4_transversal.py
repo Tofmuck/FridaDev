@@ -23,6 +23,7 @@ class Phase4TransversalTests(unittest.TestCase):
         main_model = runtime_settings.get_main_model_settings(fetcher=lambda: {})
         arbiter_model = runtime_settings.get_arbiter_model_settings(fetcher=lambda: {})
         identity_extractor_model = runtime_settings.get_identity_extractor_model_settings(fetcher=lambda: {})
+        identity_periodic_model = runtime_settings.get_identity_periodic_model_settings(fetcher=lambda: {})
         memory_arbiter_model = runtime_settings.get_memory_arbiter_model_settings(fetcher=lambda: {})
         summary_model = runtime_settings.get_summary_model_settings(fetcher=lambda: {})
         web_reformulation_model = runtime_settings.get_web_reformulation_model_settings(fetcher=lambda: {})
@@ -39,6 +40,8 @@ class Phase4TransversalTests(unittest.TestCase):
             identity_extractor_model.payload['max_tokens']['value'],
             config.IDENTITY_EXTRACTOR_MAX_TOKENS,
         )
+        self.assertEqual(identity_periodic_model.payload['model']['value'], config.IDENTITY_PERIODIC_MODEL)
+        self.assertEqual(identity_periodic_model.payload['max_tokens']['value'], config.IDENTITY_PERIODIC_MAX_TOKENS)
         self.assertEqual(memory_arbiter_model.payload['model']['value'], config.MEMORY_ARBITER_MODEL)
         self.assertEqual(summary_model.payload['model']['value'], config.SUMMARY_MODEL)
         self.assertEqual(summary_model.payload['max_tokens']['value'], config.SUMMARY_TARGET_TOKENS)

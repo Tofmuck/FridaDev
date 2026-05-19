@@ -208,10 +208,12 @@ Le payload envoye au modele contient:
 - `mutable_budget`;
 - `identity_temporal_policy`.
 
-Le smoke test Haiku conserve un exemple complet de cette forme dans:
+Le smoke test Haiku a temporairement conserve un exemple complet de cette
+forme. Apres decision, les dumps complets ont ete retires et la preuve compacte
+vit dans:
 
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.md`;
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.json`.
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`;
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`.
 
 ### `identities`
 
@@ -470,10 +472,10 @@ Il ne dit pas non plus:
 
 ## Lecture du smoke test Haiku
 
-Artefact:
+Artefact initialement lu puis remplace apres decision par:
 
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.md`
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.json`
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`
 
 Resultat technique:
 
@@ -572,13 +574,8 @@ operation ou tres peu d'operations; une longue liste de `add` devient un signal
 d'alerte, pas une bonne recolte.
 
 Un nouveau smoke test Haiku a ete lance sur le meme fixture et les memes
-parametres:
-
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.md`
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.json`
-
-Ces artefacts comparent explicitement la sortie ontologique avec le smoke
-precedent `2026-05-19-haiku-smoke`.
+parametres. Ses dumps bruts ont ete remplaces apres decision par la preuve
+compacte `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`.
 
 ## Note post-audit - precision du registre ontologique
 
@@ -607,13 +604,9 @@ Le prompt inclut des contre-exemples explicites:
   sauf generalisation durable hors contexte projet.
 
 Un troisieme smoke Haiku a ete lance sur le meme fixture et les memes
-parametres:
-
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.md`
-- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.json`
-
-Ces artefacts comparent explicitement le nouveau run au smoke initial et au
-smoke ontologique precedent.
+parametres. Ses dumps bruts ont ete retires apres decision; la comparaison des
+trois runs est conservee dans
+`benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`.
 
 Resultat mesure du smoke registre:
 
@@ -626,3 +619,33 @@ canoniser les regles operatoires, sans rendre l'agent muet. Il reste toutefois
 des propositions encore proches de preferences de travail ou de pilotage; la
 decision modele/prompt doit donc rester une lecture humaine, pas une conclusion
 automatique tiree du seul schema JSON.
+
+## Note de decision - Haiku et slot runtime dedie
+
+Decision humaine de Tof apres lecture du smoke `ontological-register`:
+
+- `identity_periodic_agent` passe sur `anthropic/claude-haiku-4.5`;
+- le prompt ontologique + registre est juge suffisamment bon pour ce lot;
+- la sortie finale est acceptee parce que `llm` reste en `no_change` et que les
+  operations conservees cote `user` decrivent des dispositions stables de Tof au
+  dialogue, pas une auto-identite de Frida.
+
+Doctrine retenue:
+
+- l'identite `llm` doit venir de ce que Frida porte ou dit durablement d'elle-
+  meme;
+- une attente durable de Tof envers Frida peut rester cote `user` quand elle
+  exprime une disposition stable de Tof au dialogue.
+
+Le caller est individualise par le slot runtime `identity_periodic_model`:
+
+- `model=anthropic/claude-haiku-4.5`;
+- `temperature=0.0`;
+- `top_p=1.0`;
+- `max_tokens=1400`;
+- `timeout_s=10`.
+
+Les artefacts bruts des trois smokes ont ete remplaces par une preuve compacte:
+
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`;
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`.

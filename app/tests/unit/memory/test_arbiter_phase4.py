@@ -337,16 +337,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_identity_periodic_agent_rejects_weak_relative_temporal_operations(self) -> None:
         observed = {'user_content': ''}
-        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
+        original_get_periodic_settings = arbiter.runtime_settings.get_identity_periodic_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_headers = arbiter.llm_client.or_headers
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_identity_periodic_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -375,7 +375,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
             observed['user_content'] = json['messages'][1]['content']
             return FakeResponse()
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
+        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
         arbiter.llm_client.or_headers = lambda caller='identity_periodic_agent': {'Authorization': f'caller={caller}'}
@@ -394,7 +394,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
+            arbiter.runtime_settings.get_identity_periodic_model_settings = original_get_periodic_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
             arbiter.llm_client.or_headers = original_or_headers
@@ -414,10 +414,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_arbiter_calls_use_runtime_model_from_db_when_present(self) -> None:
         observed_models = []
+        observed_payloads = []
         observed_headers = []
+        observed_timeouts = []
         observed_provider_logs = []
-        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
         original_get_identity_extractor_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
+        original_get_periodic_settings = arbiter.runtime_settings.get_identity_periodic_model_settings
         original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
@@ -425,15 +427,16 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         original_or_url = arbiter.llm_client.or_chat_completions_url
         original_log_provider_metadata = arbiter.llm_client.log_provider_metadata
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_identity_periodic_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
+                section='identity_periodic_model',
                 payload=runtime_settings.normalize_stored_payload(
-                    'arbiter_model',
+                    'identity_periodic_model',
                     {
-                        'model': {'value': 'openai/gpt-5.4-mini-periodic-legacy', 'origin': 'db'},
+                        'model': {'value': 'anthropic/claude-haiku-4.5-periodic', 'origin': 'db'},
                         'temperature': {'value': 0.0, 'origin': 'db'},
                         'top_p': {'value': 1.0, 'origin': 'db'},
+                        'max_tokens': {'value': 1400, 'origin': 'db'},
                         'timeout_s': {'value': 45, 'origin': 'db'},
                     },
                 ),
@@ -494,7 +497,9 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
         def fake_post(url, json, headers, timeout):
             observed_models.append(json['model'])
+            observed_payloads.append(dict(json))
             observed_headers.append(dict(headers))
+            observed_timeouts.append(timeout)
             if len(observed_models) == 1:
                 return FakeResponse(
                     '{"decisions":[{"candidate_id":"0","keep":false,"semantic_relevance":0.1,"contextual_gain":0.1,"redundant_with_recent":false,"reason":"noop"}]}',
@@ -508,11 +513,11 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 '"user":{"operations":[{"kind":"no_change","proposition":"","reason":"no update"}]},'
                 '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}',
                 generation_id='gen-3',
-                model='openai/gpt-5.4-mini-periodic-legacy',
+                model='anthropic/claude-haiku-4.5-periodic',
             )
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
+        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
@@ -547,8 +552,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
             arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_extractor_settings
+            arbiter.runtime_settings.get_identity_periodic_model_settings = original_get_periodic_settings
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
@@ -581,8 +586,12 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
         )
         self.assertEqual(
             observed_models,
-            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'openai/gpt-5.4-mini-periodic-legacy'],
+            ['mistralai/mistral-small-2603', 'openai/gpt-5.4-mini', 'anthropic/claude-haiku-4.5-periodic'],
         )
+        self.assertEqual(observed_payloads[2]['temperature'], 0.0)
+        self.assertEqual(observed_payloads[2]['top_p'], 1.0)
+        self.assertEqual(observed_payloads[2]['max_tokens'], 1400)
+        self.assertEqual(observed_timeouts[2], 45)
         self.assertEqual(
             observed_headers,
             [
@@ -618,7 +627,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                     'identity_periodic_agent_provider_response',
                     {
                         'provider_generation_id': 'gen-3',
-                        'provider_model': 'openai/gpt-5.4-mini-periodic-legacy',
+                        'provider_model': 'anthropic/claude-haiku-4.5-periodic',
                         'provider_prompt_tokens': 10,
                         'provider_completion_tokens': 3,
                         'provider_total_tokens': 13,
@@ -629,17 +638,17 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
     def test_arbiter_calls_keep_env_fallback_when_db_row_is_missing(self) -> None:
         observed_models = []
-        original_get_identity_settings = arbiter.runtime_settings.get_arbiter_model_settings
         original_get_identity_extractor_settings = arbiter.runtime_settings.get_identity_extractor_model_settings
+        original_get_periodic_settings = arbiter.runtime_settings.get_identity_periodic_model_settings
         original_get_memory_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
         original_or_url = arbiter.llm_client.or_chat_completions_url
 
-        def fake_get_arbiter_model_settings():
+        def fake_get_identity_periodic_model_settings():
             return runtime_settings.RuntimeSectionView(
-                section='arbiter_model',
-                payload=runtime_settings.build_env_seed_bundle('arbiter_model').payload,
+                section='identity_periodic_model',
+                payload=runtime_settings.build_env_seed_bundle('identity_periodic_model').payload,
                 source='env',
                 source_reason='empty_table',
             )
@@ -684,8 +693,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 '"meta":{"execution_status":"complete","buffer_pairs_count":15,"window_complete":true}}'
             )
 
-        arbiter.runtime_settings.get_arbiter_model_settings = fake_get_arbiter_model_settings
         arbiter.runtime_settings.get_identity_extractor_model_settings = fake_get_identity_extractor_model_settings
+        arbiter.runtime_settings.get_identity_periodic_model_settings = fake_get_identity_periodic_model_settings
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda path, label: 'prompt'
         arbiter.requests.post = fake_post
@@ -716,8 +725,8 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
                 }
             )
         finally:
-            arbiter.runtime_settings.get_arbiter_model_settings = original_get_identity_settings
             arbiter.runtime_settings.get_identity_extractor_model_settings = original_get_identity_extractor_settings
+            arbiter.runtime_settings.get_identity_periodic_model_settings = original_get_periodic_settings
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_get_memory_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
@@ -725,7 +734,7 @@ class ArbiterPhase4ModelTests(unittest.TestCase):
 
         self.assertEqual(
             observed_models,
-            [config.MEMORY_ARBITER_MODEL, config.IDENTITY_EXTRACTOR_MODEL, config.ARBITER_MODEL],
+            [config.MEMORY_ARBITER_MODEL, config.IDENTITY_EXTRACTOR_MODEL, config.IDENTITY_PERIODIC_MODEL],
         )
 
 

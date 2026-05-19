@@ -195,6 +195,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
                 "/api/admin/settings/arbiter-model/validate",
                 "/api/admin/settings/identity-extractor-model",
                 "/api/admin/settings/identity-extractor-model/validate",
+                "/api/admin/settings/identity-periodic-model",
+                "/api/admin/settings/identity-periodic-model/validate",
                 "/api/admin/settings/memory-arbiter-model",
                 "/api/admin/settings/memory-arbiter-model/validate",
                 "/api/admin/settings/summary-model",
@@ -217,10 +219,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertNotIn("frida.adminToken", admin_api_source)
         self.assertNotIn("X-Admin-Token", admin_api_source)
         self.assertIn('title_identity_extractor', catalog_source)
+        self.assertIn('title_identity_periodic', catalog_source)
         self.assertIn('referer_identity_extractor', catalog_source)
+        self.assertIn('referer_identity_periodic', catalog_source)
         self.assertIn('referer_validation_agent', catalog_source)
         self.assertIn("Titre extracteur d'identite", catalog_source)
+        self.assertIn("Titre periodic identity", catalog_source)
         self.assertIn("Referer extracteur d'identite", catalog_source)
+        self.assertIn("Referer periodic identity", catalog_source)
         self.assertIn("Referer validation", catalog_source)
 
         dom_hook_ids = set(re.findall(r'document\.getElementById\("([^"]+)"\)', source_all))
@@ -563,12 +569,14 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('key: "referer_llm"', source)
         self.assertIn('key: "referer_arbiter"', source)
         self.assertIn('key: "referer_identity_extractor"', source)
+        self.assertIn('key: "referer_identity_periodic"', source)
         self.assertIn('key: "referer_resumer"', source)
         self.assertIn('key: "referer_stimmung_agent"', source)
         self.assertIn('key: "referer_validation_agent"', source)
         self.assertIn('label: "Referer LLM"', source)
         self.assertIn('label: "Referer arbitre"', source)
         self.assertIn('label: "Referer extracteur d\'identite"', source)
+        self.assertIn('label: "Referer periodic identity"', source)
         self.assertIn('label: "Referer validation"', source)
 
     def test_admin_state_module_uses_plain_object_slices_without_store_framework(self) -> None:
@@ -824,6 +832,8 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn("/api/admin/settings/memory-arbiter-model/validate", source)
         self.assertIn("/api/admin/settings/identity-extractor-model", source)
         self.assertIn("/api/admin/settings/identity-extractor-model/validate", source)
+        self.assertIn("/api/admin/settings/identity-periodic-model", source)
+        self.assertIn("/api/admin/settings/identity-periodic-model/validate", source)
         self.assertIn("/api/admin/settings/summary-model", source)
         self.assertIn("/api/admin/settings/summary-model/validate", source)
         self.assertIn("/api/admin/settings/stimmung-agent-model", source)

@@ -257,6 +257,7 @@ function adminStatusPayload() {
     'main_model',
     'arbiter_model',
     'identity_extractor_model',
+    'identity_periodic_model',
     'memory_arbiter_model',
     'summary_model',
     'stimmung_agent_model',
@@ -304,6 +305,7 @@ function sectionPayload(route) {
         referer_llm: settingField('https://fridadev.frida-system.fr/llm'),
         referer_arbiter: settingField('https://fridadev.frida-system.fr/arbiter'),
         referer_identity_extractor: settingField('https://fridadev.frida-system.fr/identity'),
+        referer_identity_periodic: settingField('https://fridadev.frida-system.fr/identity-periodic'),
         referer_resumer: settingField('https://fridadev.frida-system.fr/resumer'),
         referer_stimmung_agent: settingField('https://fridadev.frida-system.fr/stimmung'),
         referer_validation_agent: settingField('https://fridadev.frida-system.fr/validation'),
@@ -311,6 +313,7 @@ function sectionPayload(route) {
         title_llm: settingField('Frida LLM'),
         title_arbiter: settingField('Frida Arbiter'),
         title_identity_extractor: settingField('Frida Identity'),
+        title_identity_periodic: settingField('Frida Periodic Identity'),
         title_resumer: settingField('Frida Resumer'),
         title_stimmung_agent: settingField('Frida Stimmung'),
         title_validation_agent: settingField('Frida Validation'),
@@ -340,6 +343,18 @@ function sectionPayload(route) {
         temperature: settingField(0),
         top_p: settingField(1),
         max_tokens: settingField(700),
+        timeout_s: settingField(10),
+      },
+    };
+  }
+  if (route === 'identity-periodic-model') {
+    return {
+      ...common,
+      payload: {
+        model: settingField('anthropic/claude-haiku-4.5'),
+        temperature: settingField(0),
+        top_p: settingField(1),
+        max_tokens: settingField(1400),
         timeout_s: settingField(10),
       },
     };
@@ -451,6 +466,7 @@ function adminMockScript() {
         'main-model': sectionPayload('main-model'),
         'arbiter-model': sectionPayload('arbiter-model'),
         'identity-extractor-model': sectionPayload('identity-extractor-model'),
+        'identity-periodic-model': sectionPayload('identity-periodic-model'),
         'memory-arbiter-model': sectionPayload('memory-arbiter-model'),
         'summary-model': sectionPayload('summary-model'),
         'stimmung-agent-model': sectionPayload('stimmung-agent-model'),

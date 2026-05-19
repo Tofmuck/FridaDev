@@ -35,6 +35,7 @@ class RuntimeSettingsSchemaTests(unittest.TestCase):
                 'main_model',
                 'arbiter_model',
                 'identity_extractor_model',
+                'identity_periodic_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',

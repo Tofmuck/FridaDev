@@ -10,8 +10,8 @@ Il complete `app/docs/states/specs/admin-implementation-spec.md` et reste aligne
 
 - La table primaire est `runtime_settings`.
 - La granularite retenue est `une ligne par section JSONB`.
-- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
-- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
+- Les sections V1 actuellement implementees sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`.
+- Les sections exposees par `PATCH /api/admin/settings/<section>` sont: `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`.
 - `identity_governance` est une section runtime mais n'est pas exposee par `/api/admin/settings/<section>`; sa surface produit reste `/api/admin/identity/governance` et `/hermeneutic-admin`.
 - `runtime_settings_history` est present des la V1.
 - Les secrets sont stockes chiffres via `pgcrypto`.
@@ -37,7 +37,7 @@ Colonnes cibles :
 
 Contraintes cibles :
 
-- `section` appartient strictement a : `main_model`, `arbiter_model`, `identity_extractor_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
+- `section` appartient strictement a : `main_model`, `arbiter_model`, `identity_extractor_model`, `identity_periodic_model`, `memory_arbiter_model`, `summary_model`, `web_reformulation_model`, `stimmung_agent_model`, `validation_agent_model`, `embedding`, `database`, `services`, `resources`, `identity_governance`
 - une seule ligne par section
 
 ## Table `runtime_settings_history`
@@ -114,6 +114,7 @@ Valeurs d'`origin` retenues :
 | `referer_llm` | `text` | non | `OPENROUTER_REFERER_LLM` |
 | `referer_arbiter` | `text` | non | `OPENROUTER_REFERER_ARBITER` |
 | `referer_identity_extractor` | `text` | non | `OPENROUTER_REFERER_IDENTITY_EXTRACTOR` |
+| `referer_identity_periodic` | `text` | non | `OPENROUTER_REFERER_IDENTITY_PERIODIC` |
 | `referer_resumer` | `text` | non | `OPENROUTER_REFERER_RESUMER` |
 | `referer_stimmung_agent` | `text` | non | `OPENROUTER_REFERER_STIMMUNG_AGENT` |
 | `referer_validation_agent` | `text` | non | `OPENROUTER_REFERER_VALIDATION_AGENT` |
@@ -121,6 +122,7 @@ Valeurs d'`origin` retenues :
 | `title_llm` | `text` | non | `OPENROUTER_TITLE_LLM` |
 | `title_arbiter` | `text` | non | `OPENROUTER_TITLE_ARBITER` |
 | `title_identity_extractor` | `text` | non | `OPENROUTER_TITLE_IDENTITY_EXTRACTOR` |
+| `title_identity_periodic` | `text` | non | `OPENROUTER_TITLE_IDENTITY_PERIODIC` |
 | `title_resumer` | `text` | non | `OPENROUTER_TITLE_RESUMER` |
 | `title_stimmung_agent` | `text` | non | `OPENROUTER_TITLE_STIMMUNG_AGENT` |
 | `title_validation_agent` | `text` | non | `OPENROUTER_TITLE_VALIDATION_AGENT` |
@@ -136,16 +138,14 @@ Notes:
 
 ### `arbiter_model`
 
-Slot legacy temporaire conserve pour `run_identity_periodic_agent()` jusqu'a son propre benchmark/decouplage. L'arbitre memoire et l'extracteur identity au tour n'utilisent plus cette section.
-
-Attention operateur: pour le caller periodic identity courant, seul `model` est effectivement lu depuis `arbiter_model`. Les champs `temperature`, `top_p` et `timeout_s` restent presents dans le schema legacy/admin, mais le payload periodic actuel garde `temperature=0.0`, `top_p=1.0`, `max_tokens=1400` et `timeout_s=config.ARBITER_TIMEOUT_S` dans le caller.
+Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `arbiter_model` comme source effective: l'arbitre memoire utilise `memory_arbiter_model`, l'extracteur identity utilise `identity_extractor_model`, et le periodic identity utilise `identity_periodic_model`.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `model` | `text` | non | source effective de `run_identity_periodic_agent()`; seed `ARBITER_MODEL` |
-| `temperature` | `float` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel |
-| `top_p` | `float` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel |
-| `timeout_s` | `int` | non | champ legacy stocke/admin; non consomme par le payload periodic actuel, qui utilise `config.ARBITER_TIMEOUT_S` |
+| `model` | `text` | non | champ legacy stocke/admin; non consomme par un caller actif |
+| `temperature` | `float` | non | champ legacy stocke/admin; non consomme par un caller actif |
+| `top_p` | `float` | non | champ legacy stocke/admin; non consomme par un caller actif |
+| `timeout_s` | `int` | non | champ legacy stocke/admin; non consomme par un caller actif |
 
 ### `identity_extractor_model`
 
@@ -158,6 +158,18 @@ Slot individualise de l'extracteur identity au tour (`extract_identities()`). Il
 | `top_p` | `float` | non | `IDENTITY_EXTRACTOR_TOP_P`, defaut `1.0` |
 | `max_tokens` | `int` | non | `IDENTITY_EXTRACTOR_MAX_TOKENS`, defaut `700` |
 | `timeout_s` | `int` | non | `IDENTITY_EXTRACTOR_TIMEOUT_S`, defaut `10` |
+
+### `identity_periodic_model`
+
+Slot individualise de `identity_periodic_agent` (`run_identity_periodic_agent()`). Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_periodic`, `title_identity_periodic`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-19 passe ce caller a `anthropic/claude-haiku-4.5` apres validation du prompt ontologique + registre.
+
+| Champ | Type | Secret | Source actuelle |
+| --- | --- | --- | --- |
+| `model` | `text` | non | `IDENTITY_PERIODIC_MODEL`, defaut `anthropic/claude-haiku-4.5` |
+| `temperature` | `float` | non | `IDENTITY_PERIODIC_TEMPERATURE`, defaut `0.0` |
+| `top_p` | `float` | non | `IDENTITY_PERIODIC_TOP_P`, defaut `1.0` |
+| `max_tokens` | `int` | non | `IDENTITY_PERIODIC_MAX_TOKENS`, defaut `1400` |
+| `timeout_s` | `int` | non | `IDENTITY_PERIODIC_TIMEOUT_S`, defaut `10` |
 
 ### `memory_arbiter_model`
 

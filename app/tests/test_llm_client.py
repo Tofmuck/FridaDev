@@ -69,6 +69,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'referer_llm': {'value': 'https://llm.frida-system.fr/', 'origin': 'db'},
                         'referer_arbiter': {'value': 'https://arbiter.frida-system.fr/', 'origin': 'db'},
                         'referer_identity_extractor': {'value': 'https://identity-extractor.frida-system.fr/', 'origin': 'db'},
+                        'referer_identity_periodic': {'value': 'https://identity-periodic.frida-system.fr/', 'origin': 'db'},
                         'referer_resumer': {'value': 'https://resumer.frida-system.fr/', 'origin': 'db'},
                         'referer_stimmung_agent': {'value': 'https://stimmung-agent.frida-system.fr/', 'origin': 'db'},
                         'referer_validation_agent': {'value': 'https://validation-agent.frida-system.fr/', 'origin': 'db'},
@@ -76,6 +77,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
                         'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
+                        'title_identity_periodic': {'value': 'FridaDev/IdentityPeriodic', 'origin': 'db'},
                         'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
                         'title_stimmung_agent': {'value': 'FridaDev/StimmungAgent', 'origin': 'db'},
                         'title_validation_agent': {'value': 'FridaDev/ValidationAgent', 'origin': 'db'},
@@ -99,6 +101,51 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['X-Title'], 'FridaDev/IdentityExtractor')
         self.assertEqual(headers['HTTP-Referer'], 'https://identity-extractor.frida-system.fr/')
 
+    def test_or_headers_uses_distinct_identity_periodic_title(self) -> None:
+        original_secret = llm_client.runtime_settings.get_runtime_secret_value
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('main_model', 'api_key'))
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-db-runtime-key',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.normalize_stored_payload(
+                    'main_model',
+                    {
+                        'base_url': {'value': 'https://openrouter.ai/api/v1', 'origin': 'db'},
+                        'model': {'value': 'openai/gpt-5.4', 'origin': 'db'},
+                        'api_key': {'value_encrypted': 'ciphertext', 'origin': 'db'},
+                        'referer': {'value': 'https://frida-system.fr', 'origin': 'db'},
+                        'referer_identity_periodic': {'value': 'https://identity-periodic.frida-system.fr/', 'origin': 'db'},
+                        'title_identity_periodic': {'value': 'FridaDev/IdentityPeriodic', 'origin': 'db'},
+                    },
+                ),
+                source='db',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            headers = llm_client.or_headers(caller='identity_periodic_agent')
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original_secret
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+        self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'identity_periodic_agent')
+        self.assertEqual(headers['X-OpenRouter-Title'], 'FridaDev/IdentityPeriodic')
+        self.assertEqual(headers['X-Title'], 'FridaDev/IdentityPeriodic')
+        self.assertEqual(headers['HTTP-Referer'], 'https://identity-periodic.frida-system.fr/')
+
     def test_or_headers_keeps_internal_caller_marker_local(self) -> None:
         headers = llm_client.or_headers(caller='validation_agent')
 
@@ -108,18 +155,46 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_VALIDATION_AGENT)
 
     def test_or_headers_uses_distinct_component_referers_for_all_known_callers(self) -> None:
-        observed = {
-            caller: llm_client.or_headers(caller=caller)['HTTP-Referer']
-            for caller in (
-                'llm',
-                'web_reformulation',
-                'arbiter',
-                'identity_extractor',
-                'resumer',
-                'stimmung_agent',
-                'validation_agent',
+        original_secret = llm_client.runtime_settings.get_runtime_secret_value
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('main_model', 'api_key'))
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-db-runtime-key',
+                source='env',
+                source_reason='test',
             )
-        }
+
+        def fake_get_main_model_settings():
+            return runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload=runtime_settings.build_env_seed_bundle('main_model').payload,
+                source='env',
+                source_reason='test',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        llm_client.runtime_settings.get_main_model_settings = fake_get_main_model_settings
+        try:
+            observed = {
+                caller: llm_client.or_headers(caller=caller)['HTTP-Referer']
+                for caller in (
+                    'llm',
+                    'web_reformulation',
+                    'arbiter',
+                    'identity_extractor',
+                    'identity_periodic_agent',
+                    'resumer',
+                    'stimmung_agent',
+                    'validation_agent',
+                )
+            }
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original_secret
+            llm_client.runtime_settings.get_main_model_settings = original_view
 
         self.assertEqual(
             observed,
@@ -128,6 +203,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 'web_reformulation': config.OR_REFERER_WEB_REFORMULATION,
                 'arbiter': config.OR_REFERER_ARBITER,
                 'identity_extractor': config.OR_REFERER_IDENTITY_EXTRACTOR,
+                'identity_periodic_agent': config.OR_REFERER_IDENTITY_PERIODIC,
                 'resumer': config.OR_REFERER_RESUMER,
                 'stimmung_agent': config.OR_REFERER_STIMMUNG_AGENT,
                 'validation_agent': config.OR_REFERER_VALIDATION_AGENT,
@@ -216,6 +292,12 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                 {'X-Title': config.OR_TITLE_VALIDATION_AGENT}
             ),
             'validation_agent',
+        )
+        self.assertEqual(
+            llm_client.resolve_provider_caller_from_headers(
+                {'X-Title': config.OR_TITLE_IDENTITY_PERIODIC}
+            ),
+            'identity_periodic_agent',
         )
         self.assertEqual(
             llm_client.strip_internal_provider_headers(
@@ -435,6 +517,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                         'title_llm': {'value': 'FridaDev/LLM', 'origin': 'db'},
                         'title_arbiter': {'value': 'FridaDev/Arbiter', 'origin': 'db'},
                         'title_identity_extractor': {'value': 'FridaDev/IdentityExtractor', 'origin': 'db'},
+                        'title_identity_periodic': {'value': 'FridaDev/IdentityPeriodic', 'origin': 'db'},
                         'title_resumer': {'value': 'FridaDev/Resumer', 'origin': 'db'},
                         'title_stimmung_agent': {'value': 'FridaDev/StimmungAgent', 'origin': 'db'},
                         'title_validation_agent': {'value': 'FridaDev/ValidationAgent', 'origin': 'db'},
@@ -501,8 +584,8 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         try:
             llm_client.log_provider_metadata(
                 type('Logger', (), {'info': lambda self, msg, *args: observed.append(args)})(),
-                'validation_agent_provider_response',
-                {'provider_model': 'openai/gpt-5.4-mini'},
+                'identity_periodic_agent_provider_response',
+                {'provider_model': 'anthropic/claude-haiku-4.5'},
             )
         finally:
             llm_client.runtime_settings.get_main_model_settings = original_view
@@ -511,11 +594,11 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             observed,
             [
                 (
-                    'validation_agent_provider_response',
-                    'validation_agent',
-                    'FridaDev/ValidationAgent',
+                    'identity_periodic_agent_provider_response',
+                    'identity_periodic_agent',
+                    'FridaDev/IdentityPeriodic',
                     '',
-                    'openai/gpt-5.4-mini',
+                    'anthropic/claude-haiku-4.5',
                     None,
                     None,
                     None,

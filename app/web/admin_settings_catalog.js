@@ -7,13 +7,18 @@
     },
     {
       key: "arbiter_model",
-      title: "Periodic identity legacy",
-      description: "Slot transitoire: seul model pilote le periodic; temperature/top_p/timeout restent caller-local.",
+      title: "Legacy model slot",
+      description: "Compatibilite sans caller actif: les appels modeles individualises ont leurs propres sections.",
     },
     {
       key: "identity_extractor_model",
       title: "Extracteur identity",
       description: "Extraction identity au tour individualisee, modele benchmarke et reglages propres.",
+    },
+    {
+      key: "identity_periodic_model",
+      title: "Periodic identity",
+      description: "Consolidation identity periodique individualisee, modele Haiku et reglages propres.",
     },
     {
       key: "memory_arbiter_model",
@@ -100,6 +105,13 @@
       autocomplete: "url",
     },
     {
+      key: "referer_identity_periodic",
+      label: "Referer periodic identity",
+      hint: "Referer OpenRouter nominal du flux periodic identity.",
+      inputType: "url",
+      autocomplete: "url",
+    },
+    {
       key: "referer_resumer",
       label: "Referer resumeur",
       hint: "Referer OpenRouter nominal du flux resume.",
@@ -145,6 +157,13 @@
       key: "title_identity_extractor",
       label: "Titre extracteur d'identite",
       hint: "Titre OpenRouter du flux d'extraction d'identite.",
+      inputType: "text",
+      autocomplete: "off",
+    },
+    {
+      key: "title_identity_periodic",
+      label: "Titre periodic identity",
+      hint: "Titre OpenRouter du flux periodic identity.",
       inputType: "text",
       autocomplete: "off",
     },

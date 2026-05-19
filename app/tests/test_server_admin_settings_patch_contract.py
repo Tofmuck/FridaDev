@@ -698,6 +698,56 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
         self.assertEqual(data['payload']['model']['value'], 'openai/gpt-5.4-mini')
         self.assertEqual(data['payload']['max_tokens']['value'], 700)
 
+    def test_patch_admin_settings_identity_periodic_model_updates_section(self) -> None:
+        observed = {'section': None, 'payload': None, 'updated_by': None}
+        original_update = self.server.runtime_settings.update_runtime_section
+
+        def fake_update_runtime_section(section, patch_payload, *, updated_by='admin_api', fetcher=None):
+            observed['section'] = section
+            observed['payload'] = patch_payload
+            observed['updated_by'] = updated_by
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'anthropic/claude-haiku-4.5', 'is_secret': False, 'origin': 'admin_ui'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'admin_ui'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'admin_ui'},
+                    'max_tokens': {'value': 1400, 'is_secret': False, 'origin': 'admin_ui'},
+                    'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'admin_ui'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.update_runtime_section = fake_update_runtime_section
+        try:
+            response = self.client.patch(
+                '/api/admin/settings/identity-periodic-model',
+                json={
+                    'updated_by': 'phase5-admin',
+                    'payload': {
+                        'model': {'value': 'anthropic/claude-haiku-4.5'},
+                        'temperature': {'value': 0.0},
+                        'top_p': {'value': 1.0},
+                        'max_tokens': {'value': 1400},
+                        'timeout_s': {'value': 10},
+                    },
+                },
+            )
+        finally:
+            self.server.runtime_settings.update_runtime_section = original_update
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['section'], 'identity_periodic_model')
+        self.assertEqual(observed['updated_by'], 'phase5-admin')
+        self.assertEqual(observed['payload']['model']['value'], 'anthropic/claude-haiku-4.5')
+        self.assertEqual(observed['payload']['max_tokens']['value'], 1400)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'identity_periodic_model')
+        self.assertEqual(data['payload']['model']['value'], 'anthropic/claude-haiku-4.5')
+        self.assertEqual(data['payload']['max_tokens']['value'], 1400)
+
     def test_patch_admin_settings_summary_model_updates_section(self) -> None:
         observed = {'section': None, 'payload': None, 'updated_by': None}
         original_update = self.server.runtime_settings.update_runtime_section

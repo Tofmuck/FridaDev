@@ -158,6 +158,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'referer_llm'): config.OR_REFERER_LLM,
         ('main_model', 'referer_arbiter'): config.OR_REFERER_ARBITER,
         ('main_model', 'referer_identity_extractor'): config.OR_REFERER_IDENTITY_EXTRACTOR,
+        ('main_model', 'referer_identity_periodic'): config.OR_REFERER_IDENTITY_PERIODIC,
         ('main_model', 'referer_resumer'): config.OR_REFERER_RESUMER,
         ('main_model', 'referer_stimmung_agent'): config.OR_REFERER_STIMMUNG_AGENT,
         ('main_model', 'referer_validation_agent'): config.OR_REFERER_VALIDATION_AGENT,
@@ -165,6 +166,7 @@ def _seed_value(section: str, field: str) -> Any:
         ('main_model', 'title_llm'): config.OR_TITLE_LLM,
         ('main_model', 'title_arbiter'): config.OR_TITLE_ARBITER,
         ('main_model', 'title_identity_extractor'): config.OR_TITLE_IDENTITY_EXTRACTOR,
+        ('main_model', 'title_identity_periodic'): config.OR_TITLE_IDENTITY_PERIODIC,
         ('main_model', 'title_resumer'): config.OR_TITLE_RESUMER,
         ('main_model', 'title_stimmung_agent'): config.OR_TITLE_STIMMUNG_AGENT,
         ('main_model', 'title_validation_agent'): config.OR_TITLE_VALIDATION_AGENT,
@@ -180,6 +182,11 @@ def _seed_value(section: str, field: str) -> Any:
         ('identity_extractor_model', 'top_p'): config.IDENTITY_EXTRACTOR_TOP_P,
         ('identity_extractor_model', 'max_tokens'): config.IDENTITY_EXTRACTOR_MAX_TOKENS,
         ('identity_extractor_model', 'timeout_s'): config.IDENTITY_EXTRACTOR_TIMEOUT_S,
+        ('identity_periodic_model', 'model'): config.IDENTITY_PERIODIC_MODEL,
+        ('identity_periodic_model', 'temperature'): config.IDENTITY_PERIODIC_TEMPERATURE,
+        ('identity_periodic_model', 'top_p'): config.IDENTITY_PERIODIC_TOP_P,
+        ('identity_periodic_model', 'max_tokens'): config.IDENTITY_PERIODIC_MAX_TOKENS,
+        ('identity_periodic_model', 'timeout_s'): config.IDENTITY_PERIODIC_TIMEOUT_S,
         ('memory_arbiter_model', 'model'): config.MEMORY_ARBITER_MODEL,
         ('memory_arbiter_model', 'temperature'): config.MEMORY_ARBITER_TEMPERATURE,
         ('memory_arbiter_model', 'top_p'): config.MEMORY_ARBITER_TOP_P,
@@ -451,6 +458,13 @@ def get_identity_extractor_model_settings(
     fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
 ) -> RuntimeSectionView:
     return get_runtime_section('identity_extractor_model', fetcher=fetcher)
+
+
+def get_identity_periodic_model_settings(
+    *,
+    fetcher: Callable[[], dict[str, dict[str, dict[str, Any]]]] | None = None,
+) -> RuntimeSectionView:
+    return get_runtime_section('identity_periodic_model', fetcher=fetcher)
 
 
 def get_memory_arbiter_model_settings(

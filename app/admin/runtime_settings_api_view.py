@@ -222,7 +222,54 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'label': 'IDENTITY_EXTRACTOR_DECOUPLING',
                 'value': (
                     'extract_identities() uses identity_extractor_model. '
-                    'arbiter_model remains legacy for identity_periodic_agent until its own benchmarked lot.'
+                    'identity_periodic_agent uses identity_periodic_model; arbiter_model is no longer an '
+                    'effective source for active model callers.'
+                ),
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+        }
+    if section == 'identity_periodic_model':
+        return {
+            'prompt_path': {
+                'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+                'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
+                'is_editable': False,
+                'source': 'config_py',
+            },
+            'prompt_loader': {
+                'label': 'IDENTITY_PERIODIC_PROMPT_RUNTIME_SOURCE',
+                'value': 'memory.arbiter._load_prompt(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH, "identity_periodic_agent")',
+                'is_editable': False,
+                'source': 'backend_loader',
+            },
+            'system_prompt': {
+                'label': 'identity_periodic_agent_prompt',
+                'value': prompt_loader.read_prompt_text(str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH)),
+                'is_editable': False,
+                'source': 'app_prompt_file',
+            },
+            'shared_transport': {
+                'label': 'OPENROUTER_SHARED_TRANSPORT',
+                'value': _shared_openrouter_transport_text(
+                    'main_model.title_identity_periodic',
+                    'main_model.referer_identity_periodic',
+                ),
+                'is_editable': False,
+                'source': 'main_model_runtime_settings',
+            },
+            'benchmark_decision': {
+                'label': 'IDENTITY_PERIODIC_BENCHMARK_DECISION',
+                'value': 'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
+                'is_editable': False,
+                'source': 'benchmark_artifact',
+            },
+            'doctrine': {
+                'label': 'IDENTITY_PERIODIC_DOCTRINE',
+                'value': (
+                    'llm identity is what Frida durably says/carries of herself. '
+                    'A durable Tof expectation toward Frida may remain user identity when it describes '
+                    "Tof's stable disposition toward dialogue, not Frida's self-identity."
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',
@@ -233,41 +280,27 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             'operator_warning': {
                 'label': 'ARBITER_MODEL_TRANSITION_WARNING',
                 'value': (
-                    'Transitional identity periodic slot: only model is currently read by '
-                    'identity_periodic_agent. temperature, top_p and timeout_s stored here do not '
-                    'drive the current periodic payload before its dedicated lot.'
+                    'Legacy compatibility slot: no active model caller now reads arbiter_model as its '
+                    'source of truth. memory arbitration, identity extraction and periodic identity '
+                    'all use dedicated runtime sections.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',
             },
-            'identity_periodic_agent_effective_parameters': {
-                'label': 'IDENTITY_PERIODIC_AGENT_EFFECTIVE_PARAMETERS',
+            'active_replacements': {
+                'label': 'ARBITER_MODEL_ACTIVE_REPLACEMENTS',
                 'value': (
-                    'model=arbiter_model.model; temperature=0.0 caller-local; '
-                    'top_p=1.0 caller-local; max_tokens=1400 caller-local; '
-                    f'timeout_s=config.ARBITER_TIMEOUT_S ({config.ARBITER_TIMEOUT_S})'
+                    'memory_arbiter_model drives memory arbitration; identity_extractor_model drives '
+                    'per-turn identity extraction; identity_periodic_model drives periodic identity.'
                 ),
                 'is_editable': False,
-                'source': 'memory_arbiter_py',
-            },
-            'identity_periodic_agent_max_tokens': {
-                'label': 'identity_periodic_agent_max_tokens',
-                'value': 1400,
-                'is_editable': False,
-                'source': 'memory_arbiter_py',
-            },
-            'identity_periodic_agent_prompt_path': {
-                'label': 'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
-                'value': str(config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH),
-                'is_editable': False,
-                'source': 'config_py',
+                'source': 'runtime_contract',
             },
             'legacy_scope': {
                 'label': 'ARBITER_MODEL_LEGACY_SCOPE',
                 'value': (
-                    'Legacy identity periodic slot. It no longer sources extract_identities(); '
-                    'per-turn extraction uses identity_extractor_model. For periodic identity today, '
-                    'only model is an effective runtime setting from this section.'
+                    'Retained only for compatibility/backfill while older rows or clients may still '
+                    'reference the section. It is not an effective source for current model payloads.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

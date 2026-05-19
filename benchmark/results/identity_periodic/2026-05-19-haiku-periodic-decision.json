@@ -1,0 +1,80 @@
+{
+  "campaign_family": "identity_periodic_haiku_smoke",
+  "decision_date": "2026-05-19",
+  "decision": {
+    "model": "anthropic/claude-haiku-4.5",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 1400,
+    "timeout_s": 10
+  },
+  "runtime_slot": "identity_periodic_model",
+  "production_runtime_changed_by_this_decision_artifact": false,
+  "doctrine": {
+    "llm_identity": "what Frida durably says or carries of herself",
+    "user_identity_boundary": "a durable Tof expectation toward Frida may remain user-side when it describes Tof's stable disposition toward dialogue"
+  },
+  "runs": [
+    {
+      "campaign_id": "2026-05-19-haiku-smoke",
+      "prompt_contract": "initial",
+      "model": "anthropic/claude-haiku-4.5",
+      "latency_ms": 6445.029,
+      "prompt_tokens": 3500,
+      "completion_tokens": 746,
+      "total_tokens": 4246,
+      "cost_usd": 0.00723,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "json_valid": true,
+      "schema_valid": true,
+      "llm_operations": {"no_change": 1, "add": 0},
+      "user_operations": {"add": 9},
+      "reading": "too canonizing"
+    },
+    {
+      "campaign_id": "2026-05-19-haiku-smoke-ontological",
+      "prompt_contract": "subject is Y",
+      "model": "anthropic/claude-haiku-4.5",
+      "latency_ms": 4908.006,
+      "prompt_tokens": 3720,
+      "completion_tokens": 522,
+      "total_tokens": 4242,
+      "cost_usd": 0.00633,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "json_valid": true,
+      "schema_valid": true,
+      "llm_operations": {"no_change": 1, "add": 0},
+      "user_operations": {"add": 7},
+      "reading": "better but still too operational"
+    },
+    {
+      "campaign_id": "2026-05-19-haiku-smoke-ontological-register",
+      "prompt_contract": "subject is Y plus ontological register",
+      "model": "anthropic/claude-haiku-4.5",
+      "latency_ms": 4189.117,
+      "prompt_tokens": 4031,
+      "completion_tokens": 328,
+      "total_tokens": 4359,
+      "cost_usd": 0.005671,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "json_valid": true,
+      "schema_valid": true,
+      "llm_operations": {"no_change": 1, "add": 0},
+      "user_operations": {"add": 3},
+      "reading": "accepted by human decision"
+    }
+  ],
+  "raw_outputs_retained": false,
+  "raw_output_artifacts_removed": [
+    "2026-05-19-haiku-smoke.md",
+    "2026-05-19-haiku-smoke.json",
+    "2026-05-19-haiku-smoke-ontological.md",
+    "2026-05-19-haiku-smoke-ontological.json",
+    "2026-05-19-haiku-smoke-ontological-register.md",
+    "2026-05-19-haiku-smoke-ontological-register.json"
+  ],
+  "fixture_retained": "benchmark/suites/identity_periodic/fixtures/haiku_smoke_buffer.json"
+}

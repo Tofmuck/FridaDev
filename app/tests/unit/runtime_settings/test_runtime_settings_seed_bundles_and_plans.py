@@ -146,6 +146,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'identity_extractor_model',
+                'identity_periodic_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -165,6 +166,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'identity_extractor_model',
+                'identity_periodic_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -183,6 +185,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             (
                 'arbiter_model',
                 'identity_extractor_model',
+                'identity_periodic_model',
                 'memory_arbiter_model',
                 'summary_model',
                 'web_reformulation_model',
@@ -194,7 +197,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
             ),
         )
         self.assertEqual(plan[0].payload['model']['origin'], 'db_seed')
-        self.assertEqual(plan[7].payload['backend']['origin'], 'db_seed')
+        self.assertEqual(plan[8].payload['backend']['origin'], 'db_seed')
 
 
 if __name__ == '__main__':

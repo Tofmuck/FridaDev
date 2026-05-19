@@ -177,7 +177,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Seeder et exposer `model`, `temperature`, `top_p`, `max_tokens`, `timeout_s`.
 - [x] Definir le modele initial a partir du tournoi final: `mistralai/mistral-small-2603`.
 - [x] Brancher `filter_traces_with_diagnostics()` sur `memory_arbiter_model`.
-- [x] Laisser `arbiter_model` comme slot legacy identity jusqu'au lot `periodic identity`; l'extracteur identity est maintenant sorti de ce slot.
+- [x] Laisser `arbiter_model` comme slot legacy identity jusqu'au lot `periodic identity`; ce lot periodic est maintenant livre et `arbiter_model` ne pilote plus de caller actif.
 - [x] Mettre a jour API/admin/read-models/audit pour que l'arbitre memoire apparaisse comme caller individualise.
 - [x] Conserver le meme token et le meme projet OpenRouter partages via `main_model`.
 - [x] Ne changer aucun autre caller modele dans ce lot.
@@ -191,7 +191,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Benchmark lecture humaine extracteur identity produit avec le vrai prompt de production.
 - [x] Lecture humaine de Tof et decision extracteur identity: conserver `openai/gpt-5.4-mini`.
 - [x] Decouplage propre de l'extracteur identity apres decision.
-- [ ] Prochain caller: `identity_periodic_agent`, sans benchmark ni choix modele lance avant GO explicite.
+- [x] Prochain caller traite apres GO explicite: `identity_periodic_agent`.
 
 ## Campagne de lecture humaine - resume conversationnel
 
@@ -241,7 +241,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Decision modele extracteur identity: conserver `openai/gpt-5.4-mini`.
 - [x] Decoupler l'extracteur identity apres decision via le slot runtime dedie `identity_extractor_model`.
 - [x] Brancher uniquement `extract_identities()` sur `identity_extractor_model`.
-- [x] Laisser `identity_periodic_agent` inchange sur `arbiter_model` legacy jusqu'a son propre lot.
+- [x] Laisser `identity_periodic_agent` inchange sur `arbiter_model` legacy jusqu'a son propre lot, maintenant livre via `identity_periodic_model`.
 - [x] Ne pas benchmarker ni choisir `identity_periodic_agent` dans ce lot.
 - [x] Retirer les sorties brutes completes des 4 modeles apres lecture humaine et decision.
 - [x] Conserver une preuve compacte: rapport technique, rapport hermeneutique scrubbe et JSON sans dumps complets.
@@ -254,17 +254,19 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Utiliser le vrai prompt `app/prompts/identity_periodic_agent.txt`.
 - [x] Tester uniquement `anthropic/claude-haiku-4.5`.
 - [x] Utiliser les parametres periodic actuels: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`.
-- [x] Produire une sortie complete lisible pour Tof dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.md`.
-- [x] Conserver un artefact JSON structure dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.json`.
+- [x] Produire une sortie complete lisible pour Tof dans le smoke initial, puis la retirer apres decision.
+- [x] Conserver d'abord un artefact JSON structure, puis le remplacer par une preuve compacte apres decision.
 - [x] Auditer le contrat courant apres smoke trop canonisant: `app/docs/states/audits/identity-periodic-current-contract-audit-2026-05-19.md`.
 - [x] Resserrer le prompt periodic avec la regle ontologique `subject is Y` / `subject est Y`.
-- [x] Relancer le meme smoke Haiku avec le contrat ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.md`.
-- [x] Conserver l'artefact JSON ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.json`.
+- [x] Relancer le meme smoke Haiku avec le contrat ontologique, puis retirer les dumps bruts apres decision.
 - [x] Preciser le registre ontologique: `subject is Y` est necessaire mais non suffisant.
-- [x] Relancer le meme smoke Haiku avec le contrat ontologique + registre: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.md`.
-- [x] Conserver l'artefact JSON ontologique + registre: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological-register.json`.
-- [ ] Decision modele `identity_periodic_agent` apres lecture humaine.
-- [ ] Decouplage runtime `identity_periodic_model` apres decision explicite.
+- [x] Relancer le meme smoke Haiku avec le contrat ontologique + registre.
+- [x] Decision modele `identity_periodic_agent`: passer a `anthropic/claude-haiku-4.5`.
+- [x] Decouplage runtime `identity_periodic_model` apres decision explicite.
+- [x] Brancher uniquement `run_identity_periodic_agent()` sur `identity_periodic_model`.
+- [x] Requalifier `arbiter_model` comme slot legacy sans caller actif.
+- [x] Retirer les sorties brutes des trois smokes apres lecture humaine et decision.
+- [x] Conserver la preuve compacte: `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md` et `.json`.
 - [ ] Prochain caller apres periodic identity: `stimmung_agent` primaire.
 
 ## Definition de fin globale

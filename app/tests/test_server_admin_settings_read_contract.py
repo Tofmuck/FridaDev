@@ -127,8 +127,12 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['sections']['identity_extractor_model']['readonly_info']['benchmark_decision']['value'],
             'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
+        self.assertEqual(
+            data['sections']['identity_periodic_model']['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
+        )
         self.assertIn(
-            'identity_extractor_model',
+            'not an effective source',
             data['sections']['arbiter_model']['readonly_info']['legacy_scope']['value'],
         )
         self.assertEqual(
@@ -219,6 +223,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'main_model',
             'arbiter_model',
             'identity_extractor_model',
+            'identity_periodic_model',
             'memory_arbiter_model',
             'summary_model',
             'web_reformulation_model',
@@ -360,6 +365,48 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             'identity_extractor_model',
             data['readonly_info']['transition_note']['value'],
         )
+        self.assertIn(
+            'identity_periodic_agent uses identity_periodic_model',
+            data['readonly_info']['transition_note']['value'],
+        )
+
+    def test_get_admin_settings_identity_periodic_model_returns_single_section(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'identity_periodic_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'model': {'value': 'anthropic/claude-haiku-4.5', 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 1400, 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 10, 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/identity-periodic-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['section'], 'identity_periodic_model')
+        self.assertEqual(data['payload']['model']['value'], 'anthropic/claude-haiku-4.5')
+        self.assertEqual(data['payload']['max_tokens']['value'], 1400)
+        self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/identity_periodic_agent.txt')
+        self.assertIn('You are a periodic identity agent.', data['readonly_info']['system_prompt']['value'])
+        self.assertIn('main_model.title_identity_periodic', data['readonly_info']['shared_transport']['value'])
+        self.assertIn(
+            '2026-05-19-haiku-periodic-decision.md',
+            data['readonly_info']['benchmark_decision']['value'],
+        )
 
     def test_get_admin_settings_arbiter_model_returns_legacy_identity_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api
@@ -388,23 +435,12 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['section'], 'arbiter_model')
         self.assertEqual(data['payload']['model']['value'], 'openrouter/arbiter-route')
         self.assertEqual(data['payload']['timeout_s']['value'], 12)
-        self.assertIn('only model is currently read', data['readonly_info']['operator_warning']['value'])
+        self.assertIn('no active model caller', data['readonly_info']['operator_warning']['value'])
         self.assertIn(
-            'model=arbiter_model.model',
-            data['readonly_info']['identity_periodic_agent_effective_parameters']['value'],
+            'identity_periodic_model drives periodic identity',
+            data['readonly_info']['active_replacements']['value'],
         )
-        self.assertIn(
-            'temperature=0.0 caller-local',
-            data['readonly_info']['identity_periodic_agent_effective_parameters']['value'],
-        )
-        self.assertEqual(data['readonly_info']['identity_periodic_agent_max_tokens']['value'], 1400)
-        self.assertEqual(
-            data['readonly_info']['identity_periodic_agent_prompt_path']['value'],
-            'prompts/identity_periodic_agent.txt',
-        )
-        self.assertIn('Legacy identity periodic slot', data['readonly_info']['legacy_scope']['value'])
-        self.assertIn('identity_extractor_model', data['readonly_info']['legacy_scope']['value'])
-        self.assertIn('only model is an effective runtime setting', data['readonly_info']['legacy_scope']['value'])
+        self.assertIn('not an effective source', data['readonly_info']['legacy_scope']['value'])
 
     def test_get_admin_settings_summary_model_returns_single_section(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

@@ -78,6 +78,10 @@ OR_REFERER_IDENTITY_EXTRACTOR = os.environ.get(
     'OPENROUTER_REFERER_IDENTITY_EXTRACTOR',
     _default_openrouter_component_referer('identity-extractor'),
 ).strip() or _default_openrouter_component_referer('identity-extractor')
+OR_REFERER_IDENTITY_PERIODIC = os.environ.get(
+    'OPENROUTER_REFERER_IDENTITY_PERIODIC',
+    _default_openrouter_component_referer('identity-periodic'),
+).strip() or _default_openrouter_component_referer('identity-periodic')
 OR_REFERER_RESUMER = os.environ.get(
     'OPENROUTER_REFERER_RESUMER',
     _default_openrouter_component_referer('resumer'),
@@ -101,6 +105,10 @@ OR_TITLE_IDENTITY_EXTRACTOR = os.environ.get(
     'OPENROUTER_TITLE_IDENTITY_EXTRACTOR',
     f'{OR_TITLE_BASE}/IdentityExtractor',
 ).strip() or f'{OR_TITLE_BASE}/IdentityExtractor'
+OR_TITLE_IDENTITY_PERIODIC = os.environ.get(
+    'OPENROUTER_TITLE_IDENTITY_PERIODIC',
+    f'{OR_TITLE_BASE}/IdentityPeriodic',
+).strip() or f'{OR_TITLE_BASE}/IdentityPeriodic'
 OR_TITLE_RESUMER = os.environ.get('OPENROUTER_TITLE_RESUMER', f'{OR_TITLE_BASE}/Resumer').strip() or f'{OR_TITLE_BASE}/Resumer'
 OR_TITLE_STIMMUNG_AGENT = os.environ.get(
     'OPENROUTER_TITLE_STIMMUNG_AGENT',
@@ -220,7 +228,7 @@ IDENTITY_EXTRACTOR_TOP_P = _env_float('IDENTITY_EXTRACTOR_TOP_P', 1.0)
 IDENTITY_EXTRACTOR_MAX_TOKENS = _env_int('IDENTITY_EXTRACTOR_MAX_TOKENS', 700)
 IDENTITY_EXTRACTOR_TIMEOUT_S = _env_int('IDENTITY_EXTRACTOR_TIMEOUT_S', 10)
 
-# Legacy identity periodic model slot, kept until that caller gets its own benchmarked slot.
+# Legacy model slot, kept for compatibility only; active callers use their own sections.
 ARBITER_MODEL = os.environ.get('ARBITER_MODEL', 'openai/gpt-5.4-mini')
 ARBITER_TIMEOUT_S = _env_int('ARBITER_TIMEOUT_S', 10)
 ARBITER_PROMPT_PATH = os.environ.get('ARBITER_PROMPT_PATH', 'prompts/arbiter.txt')
@@ -234,6 +242,14 @@ IDENTITY_PERIODIC_AGENT_PROMPT_PATH = os.environ.get(
     'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
     'prompts/identity_periodic_agent.txt',
 )
+IDENTITY_PERIODIC_MODEL = os.environ.get(
+    'IDENTITY_PERIODIC_MODEL',
+    'anthropic/claude-haiku-4.5',
+).strip() or 'anthropic/claude-haiku-4.5'
+IDENTITY_PERIODIC_TEMPERATURE = _env_float('IDENTITY_PERIODIC_TEMPERATURE', 0.0)
+IDENTITY_PERIODIC_TOP_P = _env_float('IDENTITY_PERIODIC_TOP_P', 1.0)
+IDENTITY_PERIODIC_MAX_TOKENS = _env_int('IDENTITY_PERIODIC_MAX_TOKENS', 1400)
+IDENTITY_PERIODIC_TIMEOUT_S = _env_int('IDENTITY_PERIODIC_TIMEOUT_S', 10)
 IDENTITY_MUTABLE_TARGET_CHARS = _env_int('IDENTITY_MUTABLE_TARGET_CHARS', 3000)
 IDENTITY_MUTABLE_MAX_CHARS = _env_int('IDENTITY_MUTABLE_MAX_CHARS', 3300)
 

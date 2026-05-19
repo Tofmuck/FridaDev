@@ -88,6 +88,7 @@ def validate_runtime_section(
         referer_llm = _runtime_text_value(view, 'referer_llm')
         referer_arbiter = _runtime_text_value(view, 'referer_arbiter')
         referer_identity_extractor = _runtime_text_value(view, 'referer_identity_extractor')
+        referer_identity_periodic = _runtime_text_value(view, 'referer_identity_periodic')
         referer_resumer = _runtime_text_value(view, 'referer_resumer')
         referer_stimmung_agent = _runtime_text_value(view, 'referer_stimmung_agent')
         referer_validation_agent = _runtime_text_value(view, 'referer_validation_agent')
@@ -128,6 +129,14 @@ def validate_runtime_section(
                     ),
                 ),
                 _validation_check(
+                    'referer_identity_periodic',
+                    _component_referer_valid_or_shared_fallback(referer_identity_periodic, referer),
+                    (
+                        'referer_identity_periodic='
+                        f'{referer_identity_periodic or "missing"}; shared_referer={referer or "missing"}'
+                    ),
+                ),
+                _validation_check(
                     'referer_resumer',
                     _component_referer_valid_or_shared_fallback(referer_resumer, referer),
                     f'referer_resumer={referer_resumer or "missing"}; shared_referer={referer or "missing"}',
@@ -161,7 +170,7 @@ def validate_runtime_section(
                 _validation_check('api_key_runtime', api_key_ok, api_key_detail),
             )
         )
-    elif section in {'memory_arbiter_model', 'identity_extractor_model'}:
+    elif section in {'memory_arbiter_model', 'identity_extractor_model', 'identity_periodic_model'}:
         model = _runtime_text_value(view, 'model')
         timeout_s = _runtime_int_value(view, 'timeout_s')
         temperature = _runtime_float_value(view, 'temperature')

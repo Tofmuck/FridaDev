@@ -284,6 +284,15 @@ proposition changes against those earlier runs.
 This suite is a targeted smoke test, not a production change. It must not be
 used as a hidden runtime slot for `identity_periodic_agent`.
 
+After human decision, raw periodic smoke outputs are not kept as durable
+evidence. Keep the compact decision pair instead:
+
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`
+
+Those files preserve operation counts, provider metadata and the selected
+runtime slot without retaining the full simulated payload and raw model dumps.
+
 ## Scope
 
 This workspace is outside the nominal chat runtime. It must not change

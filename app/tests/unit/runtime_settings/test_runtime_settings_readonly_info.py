@@ -116,29 +116,12 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
     def test_get_section_readonly_info_arbiter_model_documents_identity_legacy_scope(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('arbiter_model')
 
-        self.assertIn('only model is currently read', readonly_info['operator_warning']['value'])
-        self.assertIn('temperature, top_p and timeout_s', readonly_info['operator_warning']['value'])
+        self.assertIn('no active model caller', readonly_info['operator_warning']['value'])
         self.assertIn(
-            'model=arbiter_model.model',
-            readonly_info['identity_periodic_agent_effective_parameters']['value'],
+            'identity_periodic_model drives periodic identity',
+            readonly_info['active_replacements']['value'],
         )
-        self.assertIn(
-            'temperature=0.0 caller-local',
-            readonly_info['identity_periodic_agent_effective_parameters']['value'],
-        )
-        self.assertIn(
-            f'timeout_s=config.ARBITER_TIMEOUT_S ({config.ARBITER_TIMEOUT_S})',
-            readonly_info['identity_periodic_agent_effective_parameters']['value'],
-        )
-        self.assertEqual(readonly_info['identity_periodic_agent_max_tokens']['value'], 1400)
-        self.assertFalse(readonly_info['identity_periodic_agent_max_tokens']['is_editable'])
-        self.assertEqual(
-            readonly_info['identity_periodic_agent_prompt_path']['label'],
-            'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
-        )
-        self.assertIn('Legacy identity periodic slot', readonly_info['legacy_scope']['value'])
-        self.assertIn('identity_extractor_model', readonly_info['legacy_scope']['value'])
-        self.assertIn('only model is an effective runtime setting', readonly_info['legacy_scope']['value'])
+        self.assertIn('not an effective source', readonly_info['legacy_scope']['value'])
 
     def test_get_section_readonly_info_identity_extractor_model_exposes_prompt_transport_and_benchmark(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_extractor_model')
@@ -156,6 +139,24 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
         self.assertIn('extract_identities() uses identity_extractor_model', readonly_info['transition_note']['value'])
+        self.assertIn('identity_periodic_agent uses identity_periodic_model', readonly_info['transition_note']['value'])
+
+    def test_get_section_readonly_info_identity_periodic_model_exposes_prompt_transport_and_decision(self) -> None:
+        readonly_info = runtime_settings.get_section_readonly_info('identity_periodic_model')
+
+        self.assertEqual(
+            readonly_info['prompt_path']['label'],
+            'IDENTITY_PERIODIC_AGENT_PROMPT_PATH',
+        )
+        self.assertEqual(readonly_info['prompt_path']['value'], config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH)
+        self.assertIn('You are a periodic identity agent.', readonly_info['system_prompt']['value'])
+        self.assertIn('main_model.title_identity_periodic', readonly_info['shared_transport']['value'])
+        self.assertIn('main_model.referer_identity_periodic', readonly_info['shared_transport']['value'])
+        self.assertEqual(
+            readonly_info['benchmark_decision']['value'],
+            'benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md',
+        )
+        self.assertIn('llm identity is what Frida durably says/carries', readonly_info['doctrine']['value'])
 
     def test_get_section_readonly_info_summary_model_exposes_prompt_transport_and_benchmark_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('summary_model')

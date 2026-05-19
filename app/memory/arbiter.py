@@ -17,11 +17,6 @@ from memory import identity_temporal_guard
 logger = logging.getLogger('frida.arbiter')
 
 
-def _runtime_arbiter_model_name() -> str:
-    view = runtime_settings.get_arbiter_model_settings()
-    return str(view.payload['model']['value'])
-
-
 def _runtime_payload_value(payload: Mapping[str, Any], field: str, default: Any) -> Any:
     field_payload = payload.get(field)
     if not isinstance(field_payload, Mapping):
@@ -56,6 +51,19 @@ def _runtime_identity_extractor_settings() -> dict[str, Any]:
         'top_p': float(_runtime_payload_value(payload, 'top_p', config.IDENTITY_EXTRACTOR_TOP_P)),
         'max_tokens': int(_runtime_payload_value(payload, 'max_tokens', config.IDENTITY_EXTRACTOR_MAX_TOKENS)),
         'timeout_s': int(_runtime_payload_value(payload, 'timeout_s', config.IDENTITY_EXTRACTOR_TIMEOUT_S)),
+    }
+
+
+def _runtime_identity_periodic_settings() -> dict[str, Any]:
+    view = runtime_settings.get_identity_periodic_model_settings()
+    payload = view.payload
+    return {
+        'model': str(_runtime_payload_value(payload, 'model', config.IDENTITY_PERIODIC_MODEL)).strip()
+        or config.IDENTITY_PERIODIC_MODEL,
+        'temperature': float(_runtime_payload_value(payload, 'temperature', config.IDENTITY_PERIODIC_TEMPERATURE)),
+        'top_p': float(_runtime_payload_value(payload, 'top_p', config.IDENTITY_PERIODIC_TOP_P)),
+        'max_tokens': int(_runtime_payload_value(payload, 'max_tokens', config.IDENTITY_PERIODIC_MAX_TOKENS)),
+        'timeout_s': int(_runtime_payload_value(payload, 'timeout_s', config.IDENTITY_PERIODIC_TIMEOUT_S)),
     }
 
 
@@ -810,7 +818,8 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
     if not isinstance(payload_input, dict):
         return None
 
-    arbiter_model = _runtime_arbiter_model_name()
+    periodic_settings = _runtime_identity_periodic_settings()
+    periodic_model = periodic_settings['model']
     system_prompt = _load_prompt(
         config.IDENTITY_PERIODIC_AGENT_PROMPT_PATH,
         'identity_periodic_agent',
@@ -834,7 +843,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
     }
 
     payload = {
-        'model': arbiter_model,
+        'model': periodic_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {
@@ -842,17 +851,17 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
                 'content': json.dumps(payload_for_model, ensure_ascii=False, indent=2),
             },
         ],
-        'temperature': 0.0,
-        'top_p': 1.0,
-        'max_tokens': 1400,
+        'temperature': periodic_settings['temperature'],
+        'top_p': periodic_settings['top_p'],
+        'max_tokens': periodic_settings['max_tokens'],
     }
 
     try:
         response = requests.post(
-            f'{config.OR_BASE}/chat/completions',
+            llm_client.or_chat_completions_url(),
             json=payload,
             headers=llm_client.or_headers(caller='identity_periodic_agent'),
-            timeout=config.ARBITER_TIMEOUT_S,
+            timeout=periodic_settings['timeout_s'],
         )
         response.raise_for_status()
         response_payload = llm_client.read_openrouter_response_payload(response)
@@ -861,7 +870,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
             'identity_periodic_agent_provider_response',
             llm_client.extract_openrouter_provider_metadata(
                 response_payload,
-                requested_model=arbiter_model,
+                requested_model=periodic_model,
             ),
         )
         raw = llm_client.extract_openrouter_text(response_payload)
@@ -872,7 +881,7 @@ def run_identity_periodic_agent(payload_input: Dict[str, Any]) -> Dict[str, Any]
         logger.info('identity_periodic_agent_result keys=%s', sorted(result.keys()))
         return result
     except requests.exceptions.Timeout:
-        logger.warning('identity_periodic_agent_timeout model=%s', arbiter_model)
+        logger.warning('identity_periodic_agent_timeout model=%s', periodic_model)
         return None
     except Exception as exc:
         parse_count = _inc_metric('identity_periodic_agent_parse_error_count')
