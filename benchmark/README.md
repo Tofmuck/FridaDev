@@ -15,6 +15,10 @@ The third implemented suite is `identity_extractor`, which sends ten short
 user/LLM messages to the production identity extractor prompt and writes
 complete outputs for temporary human hermeneutic reading.
 
+The fourth implemented suite is `identity_periodic`, a targeted smoke run for
+the periodic identity agent on a simulated 15-pair buffer. It is not a model
+tournament and does not change production runtime settings.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -80,6 +84,17 @@ python3 benchmark/run_benchmark.py \
   --dry-run \
   --campaign-id dry-run-identity-extractor \
   --output-dir /tmp/fridadev-identity-extractor-dry-run
+```
+
+The identity periodic suite runs one simulated threshold window against the
+production periodic prompt. It can also be checked without provider calls:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite identity_periodic \
+  --dry-run \
+  --campaign-id dry-run-identity-periodic \
+  --output-dir /tmp/fridadev-identity-periodic-dry-run
 ```
 
 ## Arbiter tournament
@@ -227,6 +242,42 @@ and inline raw dumps in the hermeneutic report are temporary review artefacts.
 Once the human decision is made, remove the raw outputs from the repo and keep
 only compact technical/hermeneutic reports plus JSON metadata with hashes,
 metrics and retention flags.
+
+## Identity periodic Haiku smoke
+
+The identity periodic suite verifies the gesture of
+`identity_periodic_agent` on a simulated buffer at the real runtime threshold.
+It uses the production prompt `app/prompts/identity_periodic_agent.txt` and
+constructs the same kind of payload that the runtime sends after applying the
+identity temporal guard.
+
+Default identity periodic model:
+
+- `anthropic/claude-haiku-4.5`
+
+Fixed identity periodic parameters:
+
+- `temperature=0.0`
+- `top_p=1.0`
+- `max_tokens=1400`
+
+Example live smoke run:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite identity_periodic \
+  --campaign-id 2026-05-19-haiku-smoke \
+  --output-dir benchmark/results/identity_periodic
+```
+
+The runner writes:
+
+- one structured JSON artifact;
+- one Markdown report with the simulated payload, the full model response,
+  JSON/schema validity, metadata and a short technical reading.
+
+This suite is a targeted smoke test, not a production change. It must not be
+used as a hidden runtime slot for `identity_periodic_agent`.
 
 ## Scope
 

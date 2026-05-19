@@ -16,6 +16,8 @@ from benchmark.suites.arbiter import adapter as arbiter_adapter
 from benchmark.suites.arbiter import scorer as arbiter_scorer
 from benchmark.suites.arbiter import tournament as arbiter_tournament
 from benchmark.suites.identity_extractor import campaign as identity_campaign
+from benchmark.suites.identity_periodic import adapter as identity_periodic_adapter
+from benchmark.suites.identity_periodic import campaign as identity_periodic_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 
@@ -43,10 +45,14 @@ DEFAULT_IDENTITY_EXTRACTOR_MODELS = [
     "mistralai/mistral-small-2603",
 ]
 
+DEFAULT_IDENTITY_PERIODIC_MODELS = [
+    "anthropic/claude-haiku-4.5",
+]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run FridaDev model caller benchmarks.")
-    parser.add_argument("--suite", choices=["arbiter", "summary", "identity_extractor"], default="arbiter")
+    parser.add_argument("--suite", choices=["arbiter", "summary", "identity_extractor", "identity_periodic"], default="arbiter")
     parser.add_argument("--models", nargs="*", default=None)
     parser.add_argument("--campaign-id", required=True)
     parser.add_argument("--output-dir", default=None)
@@ -64,6 +70,8 @@ def main() -> int:
         default_models = DEFAULT_SUMMARY_MODELS
     elif args.suite == "identity_extractor":
         default_models = DEFAULT_IDENTITY_EXTRACTOR_MODELS
+    elif args.suite == "identity_periodic":
+        default_models = DEFAULT_IDENTITY_PERIODIC_MODELS
     else:
         default_models = DEFAULT_ARBITER_MODELS
     if args.models is None:
@@ -119,6 +127,21 @@ def main() -> int:
         print(f"wrote {result['hermeneutic_path']}")
         for output_file in result.get("output_files") or []:
             print(f"wrote {output_file}")
+        return 0
+
+    if args.suite == "identity_periodic":
+        result = identity_periodic_campaign.run_identity_periodic_smoke_campaign(
+            config=config,
+            client=client,
+            fixture_set=args.fixture_set,
+        )
+        print(f"wrote {result['json_path']}")
+        print(f"wrote {result['markdown_path']}")
+        print(
+            "threshold "
+            f"BUFFER_TARGET_PAIRS={identity_periodic_adapter.buffer_target_pairs(repo_root)} "
+            "(complete user/assistant buffer pairs)"
+        )
         return 0
 
     if args.arbiter_tournament:

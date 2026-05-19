@@ -17,12 +17,19 @@ REPO_ROOT = _repo_root()
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from benchmark.run_benchmark import DEFAULT_ARBITER_MODELS, DEFAULT_IDENTITY_EXTRACTOR_MODELS, DEFAULT_SUMMARY_MODELS
+from benchmark.run_benchmark import (
+    DEFAULT_ARBITER_MODELS,
+    DEFAULT_IDENTITY_EXTRACTOR_MODELS,
+    DEFAULT_IDENTITY_PERIODIC_MODELS,
+    DEFAULT_SUMMARY_MODELS,
+)
 from benchmark.core import openrouter
 from benchmark.suites.arbiter import adapter, scorer, tournament
 from benchmark.suites.identity_extractor import adapter as identity_adapter
 from benchmark.suites.identity_extractor import campaign as identity_campaign
 from benchmark.suites.identity_extractor import scorer as identity_scorer
+from benchmark.suites.identity_periodic import adapter as periodic_adapter
+from benchmark.suites.identity_periodic import campaign as periodic_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 
@@ -415,6 +422,75 @@ class IdentityExtractorBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("Sorties completes par cas", hermeneutic)
             output_file = tmp_path / "results" / "identity-dry__openai__gpt-5.4-mini.md"
             self.assertTrue(output_file.exists())
+
+
+class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
+    def test_default_identity_periodic_model_is_haiku_only(self) -> None:
+        self.assertEqual(DEFAULT_IDENTITY_PERIODIC_MODELS, ["anthropic/claude-haiku-4.5"])
+
+    def test_periodic_threshold_is_read_from_runtime_source(self) -> None:
+        self.assertEqual(periodic_adapter.buffer_target_pairs(REPO_ROOT), 15)
+
+    def test_periodic_fixture_is_exactly_fifteen_complete_pairs(self) -> None:
+        fixture = periodic_adapter.load_fixture(REPO_ROOT)
+        self.assertEqual(len(fixture["buffer_pairs"]), 15)
+        for pair in fixture["buffer_pairs"]:
+            self.assertIn("user", pair)
+            self.assertIn("assistant", pair)
+            self.assertTrue(pair["user"]["content"])
+            self.assertTrue(pair["assistant"]["content"])
+
+    def test_periodic_payload_uses_production_prompt_shape_and_temporal_guard(self) -> None:
+        fixture = periodic_adapter.load_fixture(REPO_ROOT)
+        prompt = periodic_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
+        payload_for_model = periodic_adapter.build_payload_for_model(fixture, repo_root=REPO_ROOT)
+        payload = periodic_adapter.build_payload(
+            model="anthropic/claude-haiku-4.5",
+            prompt_text=prompt,
+            payload_for_model=payload_for_model,
+        )
+
+        self.assertEqual(payload["temperature"], 0.0)
+        self.assertEqual(payload["top_p"], 1.0)
+        self.assertEqual(payload["max_tokens"], 1400)
+        self.assertEqual(payload["messages"][0]["content"], prompt)
+        self.assertEqual(payload["model"], "anthropic/claude-haiku-4.5")
+        self.assertEqual(payload_for_model["buffer_pairs_count"], 15)
+        self.assertEqual(payload_for_model["buffer_target_pairs"], 15)
+        source_summary = payload_for_model["identity_temporal_policy"]["source_summary"]
+        self.assertGreater(source_summary["user"]["weak_relative_source_count"], 0)
+        self.assertIn("temporal_source_guard", json.dumps(payload_for_model, ensure_ascii=False))
+
+    def test_periodic_parser_matches_runtime_fenced_json_tolerance(self) -> None:
+        parsed, error = periodic_campaign._parse_json('```json\n{"llm": {}, "user": {}, "meta": {}}\n```')
+        self.assertIsNone(error)
+        self.assertEqual(set(parsed.keys()), {"llm", "user", "meta"})
+
+    def test_periodic_smoke_dry_run_writes_artifacts(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            config = periodic_campaign.CampaignConfig(
+                campaign_id="identity-periodic-dry",
+                suite="identity_periodic",
+                repo_root=REPO_ROOT,
+                output_dir=tmp_path / "results",
+                models=["anthropic/claude-haiku-4.5"],
+                dry_run=True,
+                timeout_s=1,
+            )
+
+            result = periodic_campaign.run_identity_periodic_smoke_campaign(config=config, client=None)
+
+            json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
+            markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
+            self.assertFalse(json_payload["production_runtime_changed"])
+            self.assertEqual(json_payload["threshold"]["value"], 15)
+            self.assertTrue(json_payload["json_valid"])
+            self.assertTrue(json_payload["schema_valid"])
+            self.assertIn("Seuil réel vérifié", markdown)
+            self.assertIn("Réponse complète de Haiku", markdown)
 
 
 if __name__ == "__main__":

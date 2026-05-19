@@ -245,7 +245,20 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Ne pas benchmarker ni choisir `identity_periodic_agent` dans ce lot.
 - [x] Retirer les sorties brutes completes des 4 modeles apres lecture humaine et decision.
 - [x] Conserver une preuve compacte: rapport technique, rapport hermeneutique scrubbe et JSON sans dumps complets.
-- [ ] Prochain caller: `identity_periodic_agent`.
+
+## Test cible - `identity_periodic_agent`
+
+- [x] Verifier le seuil runtime reel avant simulation: `BUFFER_TARGET_PAIRS = 15`.
+- [x] Interpreter le seuil comme 15 paires completes `user` / `assistant`, pas 15 messages isoles.
+- [x] Construire un buffer simule de 15 paires avec preferences recurrentes, traits temporaires, ironie, role joue, tensions et claims temporels faibles.
+- [x] Utiliser le vrai prompt `app/prompts/identity_periodic_agent.txt`.
+- [x] Tester uniquement `anthropic/claude-haiku-4.5`.
+- [x] Utiliser les parametres periodic actuels: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`.
+- [x] Produire une sortie complete lisible pour Tof dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.md`.
+- [x] Conserver un artefact JSON structure dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.json`.
+- [ ] Decision modele `identity_periodic_agent` apres lecture humaine.
+- [ ] Decouplage runtime `identity_periodic_model` apres decision explicite.
+- [ ] Prochain caller apres periodic identity: `stimmung_agent` primaire.
 
 ## Definition de fin globale
 
