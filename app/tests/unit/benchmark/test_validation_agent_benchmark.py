@@ -68,7 +68,7 @@ class ValidationAgentBenchmarkSuiteTests(unittest.TestCase):
 
         self.assertEqual(payload_a["temperature"], 0.0)
         self.assertEqual(payload_a["top_p"], 1.0)
-        self.assertEqual(payload_a["max_tokens"], 80)
+        self.assertEqual(payload_a["max_tokens"], 140)
         self.assertEqual(payload_a["messages"], payload_b["messages"])
         self.assertEqual(payload_a["messages"][0]["content"], prompt)
         self.assertIn("validation_dialogue_context", payload_a["messages"][1]["content"])

@@ -564,9 +564,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section=section,
                 payload={
-                    'primary_model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'db'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite', 'is_secret': False, 'origin': 'db'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
-                    'max_tokens': {'value': 80, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 140, 'is_secret': False, 'origin': 'db'},
                 },
                 source='db',
                 source_reason='db_row',
@@ -582,9 +582,13 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'validation_agent_model')
-        self.assertEqual(data['payload']['primary_model']['value'], 'openai/gpt-5.4-mini')
-        self.assertEqual(data['payload']['max_tokens']['value'], 80)
+        self.assertEqual(data['payload']['primary_model']['value'], 'google/gemini-3.1-flash-lite')
+        self.assertEqual(data['payload']['max_tokens']['value'], 140)
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/validation_agent.txt')
+        self.assertEqual(
+            data['readonly_info']['benchmark_decision']['value'],
+            'benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md',
+        )
         self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('final_output_regime', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', data['readonly_info']['validated_output_contract']['value'])

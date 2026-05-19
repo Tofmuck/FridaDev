@@ -19,11 +19,11 @@ from . import hard_guards
 logger = logging.getLogger('frida.validation_agent')
 
 SCHEMA_VERSION = "v1"
-PRIMARY_MODEL = "openai/gpt-5.4-mini"
+PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 PROMPT_PATH = "prompts/validation_agent.txt"
 REQUEST_TIMEOUT_S = 10
-MAX_RESPONSE_TOKENS = 80
+MAX_RESPONSE_TOKENS = 140
 MAX_VALIDATION_CONTEXT_MESSAGES = canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES
 MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = 420
 MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200

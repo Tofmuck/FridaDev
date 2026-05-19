@@ -384,7 +384,7 @@ Fixed validation agent parameters:
 
 - `temperature=0.0`
 - `top_p=1.0`
-- `max_tokens=80`
+- `max_tokens=140`
 - `timeout_s=10`
 
 Dry run:
@@ -398,21 +398,28 @@ Example live run:
 ```bash
 OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --suite validation_agent \
-  --campaign-id 2026-05-19-validation-agent-primary-benchmark \
+  --campaign-id <date>-validation-agent-primary-benchmark \
   --timeout-s 10 \
   --output-dir benchmark/results/validation_agent
 ```
 
-If the strict production budget appears to truncate candidates, run a compact
-comparison with a higher output cap while keeping the same prompt, fixtures and
-models:
+The 2026-05-19 decision was made after an exploratory run at `max_tokens=80`
+and a compact comparison at `max_tokens=140`. Those full run artifacts were
+removed after decision; the retained proof is:
+
+- `benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md`
+- `benchmark/results/validation_agent/2026-05-19-validation-agent-decision.json`
+
+If a future strict production budget appears to truncate candidates, run a
+compact comparison with a higher output cap while keeping the same prompt,
+fixtures and models:
 
 ```bash
 OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --suite validation_agent \
-  --campaign-id 2026-05-19-validation-agent-primary-max140 \
+  --campaign-id <date>-validation-agent-primary-maxN \
   --validation-agent-max-tokens 140 \
-  --validation-agent-compare-with benchmark/results/validation_agent/2026-05-19-validation-agent-primary-benchmark.json \
+  --validation-agent-compare-with <baseline-json> \
   --timeout-s 10 \
   --output-dir benchmark/results/validation_agent
 ```

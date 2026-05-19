@@ -11,7 +11,7 @@ FIXTURE_PATH = Path("benchmark/suites/validation_agent/fixtures/validation_agent
 
 TEMPERATURE = 0.0
 TOP_P = 1.0
-MAX_TOKENS = 80
+MAX_TOKENS = 140
 TIMEOUT_S = 10
 
 MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200

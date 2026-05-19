@@ -222,7 +222,7 @@ class _FakeResponse:
     def json(self):
         return {
             "id": "gen-validation",
-            "model": "openai/gpt-5.4-mini",
+            "model": validation_agent.PRIMARY_MODEL,
             "usage": {"prompt_tokens": 18, "completion_tokens": 4, "total_tokens": 22},
             "choices": [{"message": {"content": self._content}}],
         }
@@ -253,7 +253,7 @@ class ValidationAgentTests(unittest.TestCase):
                 "timeout_s": {"value": 10},
                 "temperature": {"value": 0.0},
                 "top_p": {"value": 1.0},
-                "max_tokens": {"value": 80},
+                "max_tokens": {"value": validation_agent.MAX_RESPONSE_TOKENS},
             }
         )
 
@@ -401,7 +401,7 @@ class ValidationAgentTests(unittest.TestCase):
             result.provider_metadata,
             {
                 "provider_generation_id": "gen-validation",
-                "provider_model": "openai/gpt-5.4-mini",
+                "provider_model": validation_agent.PRIMARY_MODEL,
                 "provider_prompt_tokens": 18,
                 "provider_completion_tokens": 4,
                 "provider_total_tokens": 22,
@@ -437,7 +437,7 @@ class ValidationAgentTests(unittest.TestCase):
                     "validation_agent_provider_response",
                     {
                         "provider_generation_id": "gen-validation",
-                        "provider_model": "openai/gpt-5.4-mini",
+                        "provider_model": validation_agent.PRIMARY_MODEL,
                         "provider_prompt_tokens": 18,
                         "provider_completion_tokens": 4,
                         "provider_total_tokens": 22,

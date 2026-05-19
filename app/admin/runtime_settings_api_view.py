@@ -447,6 +447,12 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'is_editable': False,
                 'source': 'runtime_contract',
             },
+            'benchmark_decision': {
+                'label': 'VALIDATION_AGENT_BENCHMARK_DECISION',
+                'value': 'benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md',
+                'is_editable': False,
+                'source': 'benchmark_artifact',
+            },
             'validation_context_messages_cap': {
                 'label': 'VALIDATION_CONTEXT_MESSAGES_CAP',
                 'value': canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES,

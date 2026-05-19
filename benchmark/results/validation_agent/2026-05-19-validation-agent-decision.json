@@ -1,0 +1,122 @@
+{
+  "decision_date": "2026-05-19",
+  "caller": "validation_agent_primary",
+  "decision": {
+    "primary_model": "google/gemini-3.1-flash-lite",
+    "fallback_model": "openai/gpt-5.4-nano",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 140,
+    "timeout_s": 10,
+    "production_runtime_changed_by_decision": true
+  },
+  "transport": {
+    "provider": "OpenRouter",
+    "credentials": "shared via main_model",
+    "secrets_written": false
+  },
+  "runs_compared": [
+    {
+      "campaign_id": "2026-05-19-validation-agent-primary-benchmark",
+      "max_tokens": 80,
+      "models": {
+        "openai/gpt-5.4-mini": {
+          "json_valid": "13/13",
+          "schema_valid": "13/13",
+          "passes": "6/13",
+          "unsafe_answers": 3,
+          "avg_latency_ms": 1282.67,
+          "cost_estimate_usd": 0.015897,
+          "finish_reasons": ["stop"]
+        },
+        "google/gemini-3.1-flash-lite": {
+          "json_valid": "13/13",
+          "schema_valid": "13/13",
+          "passes": "7/13",
+          "unsafe_answers": 3,
+          "avg_latency_ms": 983.05,
+          "cost_estimate_usd": 0.0059045,
+          "finish_reasons": ["stop"]
+        },
+        "mistralai/mistral-small-2603": {
+          "json_valid": "7/13",
+          "schema_valid": "7/13",
+          "passes": "4/13",
+          "unsafe_answers": 1,
+          "avg_latency_ms": 1069.47,
+          "cost_estimate_usd": 0.00290985,
+          "finish_reasons": ["length", "stop"]
+        },
+        "anthropic/claude-haiku-4.5": {
+          "json_valid": "0/13",
+          "schema_valid": "0/13",
+          "passes": "0/13",
+          "unsafe_answers": 0,
+          "avg_latency_ms": 1712.17,
+          "cost_estimate_usd": 0.0245,
+          "finish_reasons": ["length"]
+        }
+      }
+    },
+    {
+      "campaign_id": "2026-05-19-validation-agent-primary-max140",
+      "max_tokens": 140,
+      "models": {
+        "openai/gpt-5.4-mini": {
+          "json_valid": "13/13",
+          "schema_valid": "13/13",
+          "passes": "6/13",
+          "unsafe_answers": 3,
+          "avg_latency_ms": 1162.56,
+          "cost_estimate_usd": 0.0160545,
+          "finish_reasons": ["stop"]
+        },
+        "google/gemini-3.1-flash-lite": {
+          "json_valid": "13/13",
+          "schema_valid": "13/13",
+          "passes": "7/13",
+          "unsafe_answers": 3,
+          "avg_latency_ms": 881.03,
+          "cost_estimate_usd": 0.005908,
+          "finish_reasons": ["stop"]
+        },
+        "mistralai/mistral-small-2603": {
+          "json_valid": "11/13",
+          "schema_valid": "11/13",
+          "passes": "6/13",
+          "unsafe_answers": 1,
+          "avg_latency_ms": 1532.81,
+          "cost_estimate_usd": 0.00327263,
+          "finish_reasons": ["length", "stop"]
+        },
+        "anthropic/claude-haiku-4.5": {
+          "json_valid": "0/13",
+          "schema_valid": "0/13",
+          "passes": "0/13",
+          "unsafe_answers": 0,
+          "avg_latency_ms": 2723.92,
+          "cost_estimate_usd": 0.0284,
+          "finish_reasons": ["length"]
+        }
+      }
+    }
+  ],
+  "decision_reason": [
+    "Gemini keeps valid JSON and schema across both runs.",
+    "Gemini has the best pass count in both runs.",
+    "Gemini remains lower latency and lower cost than the OpenAI baseline.",
+    "Mistral improves at max_tokens=140 but remains partially length-fragile.",
+    "Haiku remains outside the strict short JSON contract."
+  ],
+  "retention": {
+    "raw_model_outputs_retained": false,
+    "full_run_artifacts_retained": false,
+    "compact_decision_artifacts_retained": true,
+    "removed_artifacts": [
+      "benchmark/results/validation_agent/2026-05-19-validation-agent-primary-benchmark.md",
+      "benchmark/results/validation_agent/2026-05-19-validation-agent-primary-benchmark.json",
+      "benchmark/results/validation_agent/2026-05-19-validation-agent-primary-max140.md",
+      "benchmark/results/validation_agent/2026-05-19-validation-agent-primary-max140.json"
+    ]
+  }
+}

@@ -212,12 +212,12 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
                     'timeout_s': {'value': 9},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
-                    'max_tokens': {'value': 80},
+                    'max_tokens': {'value': 140},
                 },
                 fetcher=lambda: {},
             )
@@ -352,19 +352,19 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             over_cap_result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
                     'timeout_s': {'value': 9},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
-                    'max_tokens': {'value': 96},
+                    'max_tokens': {'value': 141},
                 },
                 fetcher=lambda: {},
             )
             probe_result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
                     'timeout_s': {'value': 9},
                     'temperature': {'value': 0.0},
@@ -379,13 +379,13 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertFalse(over_cap_result['valid'])
         over_cap_checks = {check['name']: check for check in over_cap_result['checks']}
         self.assertFalse(over_cap_checks['max_tokens']['ok'])
-        self.assertIn('max_allowed=80', over_cap_checks['max_tokens']['detail'])
+        self.assertIn('max_allowed=140', over_cap_checks['max_tokens']['detail'])
 
         self.assertFalse(probe_result['valid'])
         probe_checks = {check['name']: check for check in probe_result['checks']}
         self.assertFalse(probe_checks['max_tokens']['ok'])
         self.assertIn('max_tokens=2000', probe_checks['max_tokens']['detail'])
-        self.assertIn('max_allowed=80', probe_checks['max_tokens']['detail'])
+        self.assertIn('max_allowed=140', probe_checks['max_tokens']['detail'])
 
     def test_validate_runtime_section_accepts_candidate_embedding_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value

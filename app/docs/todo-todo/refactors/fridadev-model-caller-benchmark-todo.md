@@ -1,6 +1,6 @@
 # FridaDev - benchmark et organisation progressive des callers modeles - TODO
 
-Statut: actif.
+Statut: actif; callers OpenRouter principaux clos au 2026-05-19, fallback stimmung hors priorite.
 
 Source de verite de depart:
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
@@ -18,9 +18,9 @@ Source de verite de depart:
 
 ## Horizon global
 
-- [ ] Organiser progressivement les appels OpenRouter de Frida, caller par caller, a partir de benchmarks concrets.
-- [ ] Individualiser chaque caller important avec son propre point d'appel ou module, son modele, ses parametres et son contrat runtime.
-- [ ] Repercuter les resultats des campagnes dans les settings runtime ou dans la documentation de contrat, caller par caller.
+- [x] Organiser progressivement les appels OpenRouter principaux de Frida, caller par caller, a partir de benchmarks concrets.
+- [x] Individualiser chaque caller principal avec son propre point d'appel ou module, son modele, ses parametres et son contrat runtime.
+- [x] Repercuter les resultats des campagnes dans les settings runtime ou dans la documentation de contrat, caller par caller.
 - [x] Conserver un atelier de benchmark durable dans le repo, reutilisable au lieu de scripts jetables.
 
 ## Deja traite hors de ce TODO
@@ -57,8 +57,8 @@ Source de verite de depart:
 - [x] Decision stimmung agent primaire: bascule primaire vers `google/gemini-3.1-flash-lite`.
 - [x] Decouplage propre du stimmung agent primaire: `stimmung_agent_model` pilote deja primary/fallback/temp/top_p/max_tokens/timeout.
 - [x] Benchmark validation agent primaire.
-- [ ] Decision validation agent primaire.
-- [ ] Decouplage propre du validation agent primaire.
+- [x] Decision validation agent primaire: bascule primaire vers `google/gemini-3.1-flash-lite`, `max_tokens=140`, fallback inchange.
+- [x] Decouplage propre du validation agent primaire: `validation_agent_model` pilote deja primary/fallback/temp/top_p/max_tokens/timeout.
 
 On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance benchmark -> decision -> decouplage caller par caller, puis caller suivant.
 
@@ -317,10 +317,12 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Produire une lecture hermeneutique concise: clarification excessive, suspension excessive, meta inutile, permissivite dangereuse et sobriete.
 - [x] Relancer une comparaison compacte a `max_tokens=140` apres le premier run a `max_tokens=80`, pour separer recuperation JSON et qualite reelle de posture.
 - [x] Ne pas proclamer de vainqueur de production.
-- [x] Ne pas modifier `validation_agent_model`.
-- [ ] Decision modele `validation_agent` primaire.
-- [ ] Decouplage propre du `validation_agent` primaire apres decision si necessaire.
+- [x] Ne pas modifier `validation_agent_model` pendant les campagnes benchmark.
+- [x] Decision modele `validation_agent` primaire: `google/gemini-3.1-flash-lite`.
+- [x] Deploiement runtime: `validation_agent_model.primary_model=google/gemini-3.1-flash-lite`, `max_tokens=140`, fallback `openai/gpt-5.4-nano` inchange.
+- [x] Artefacts benchmark lourds ranges; preuve compacte conservee sous `benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md`.
+- [x] Le chantier des callers OpenRouter principaux est clos; seul le fallback Stimmung reste explicitement hors priorite et non bloquant pour cette cloture principale.
 
 ## Definition de fin globale
 
-- [ ] Le chantier global d'organisation des modeles ne pourra pas etre considere comme acheve tant que les resultats des benchmarks n'auront pas ete repercutes caller par caller et que chaque appel modele important n'aura pas ete individualise avec son propre point d'appel ou module, son modele propre, ses parametres propres et son contrat runtime propre - tout en pouvant continuer a partager le meme token / projet OpenRouter.
+- [x] Pour les callers principaux traites dans ce chantier, les resultats des benchmarks ont ete repercutes caller par caller et chaque appel modele important a ete individualise avec son propre point d'appel ou module, son modele propre, ses parametres propres et son contrat runtime propre - tout en continuant a pouvoir partager le meme token / projet OpenRouter.
