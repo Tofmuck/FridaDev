@@ -16,6 +16,10 @@
   if (!chatCopyExport) {
     throw new Error("FridaChatCopyExport module missing");
   }
+  const imageGeneration = window.FridaImageGeneration;
+  if (!imageGeneration) {
+    throw new Error("FridaImageGeneration module missing");
+  }
   const {
     STREAMING_UI_STATE_INTERRUPTED,
     STREAMING_UI_EVENT_REQUEST_STARTED,
@@ -42,6 +46,7 @@
   const message = $("#message");
   const btnMic = $("#btnMic");
   const btnActiveDocument = $("#btnActiveDocument");
+  const btnImageGeneration = $("#btnImageGeneration");
   const btnExportConversation = $("#btnExportConversation");
   const activeDocumentFileInput = $("#activeDocumentFileInput");
   const activeDocumentsBar = $("#activeDocumentsBar");
@@ -49,6 +54,20 @@
   const activeDocumentsStatus = $("#activeDocumentsStatus");
   const btnWebSearch = $("#btnWebSearch");
   const dictationStatus = $("#dictationStatus");
+  const imageGenerationPanel = $("#imageGenerationPanel");
+  const imageGenerationClose = $("#imageGenerationClose");
+  const imageGenerationForm = $("#imageGenerationForm");
+  const imageGenerationPrompt = $("#imageGenerationPrompt");
+  const imageGenerationModel = $("#imageGenerationModel");
+  const imageGenerationAspectRatio = $("#imageGenerationAspectRatio");
+  const imageGenerationSize = $("#imageGenerationSize");
+  const imageGenerationPricing = $("#imageGenerationPricing");
+  const imageGenerationStatus = $("#imageGenerationStatus");
+  const imageGenerationSubmit = $("#imageGenerationSubmit");
+  const imageGenerationResult = $("#imageGenerationResult");
+  const imageGenerationPreview = $("#imageGenerationPreview");
+  const imageGenerationMeta = $("#imageGenerationMeta");
+  const imageGenerationDownload = $("#imageGenerationDownload");
   const newChatBtn = $("#newChat");
   const threadsUl = $("#threads");
   // Mobile sidebar
@@ -317,6 +336,26 @@
   });
 
   const refreshActiveDocuments = (options = {}) => activeDocumentsController.refresh(options);
+
+  imageGeneration.createImageGenerationController({
+    buttonEl: btnImageGeneration,
+    panelEl: imageGenerationPanel,
+    closeButtonEl: imageGenerationClose,
+    formEl: imageGenerationForm,
+    promptEl: imageGenerationPrompt,
+    modelSelectEl: imageGenerationModel,
+    aspectRatioSelectEl: imageGenerationAspectRatio,
+    imageSizeSelectEl: imageGenerationSize,
+    pricingEl: imageGenerationPricing,
+    statusEl: imageGenerationStatus,
+    submitButtonEl: imageGenerationSubmit,
+    previewEl: imageGenerationPreview,
+    resultEl: imageGenerationResult,
+    metaEl: imageGenerationMeta,
+    downloadButtonEl: imageGenerationDownload,
+    fetchFn: fetch,
+    consoleObj: console,
+  });
 
   // ---- Nouveau chat
   newChatBtn.addEventListener("click", async () => {

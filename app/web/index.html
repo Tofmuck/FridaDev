@@ -102,6 +102,13 @@
             <path d="M21.44 11.05 12 20.49a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
           </svg>
         </button>
+        <button type="button" id="btnImageGeneration" class="btn-image-generation" title="Générer une image" aria-label="Générer une image" aria-expanded="false" aria-controls="imageGenerationPanel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="m21 15-5-5L5 21"/>
+          </svg>
+        </button>
         <button type="button" id="btnMic" class="btn-dictation" title="Lancer la dictée" aria-label="Lancer la dictée" aria-pressed="false">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 1 0 6 0V6a3 3 0 0 0-3-3z"/>
@@ -128,11 +135,53 @@
     </main>
   </div>
 
+  <section id="imageGenerationPanel" class="image-generation-panel hidden" role="dialog" aria-modal="false" aria-labelledby="imageGenerationTitle">
+    <div class="image-generation-header">
+      <h3 id="imageGenerationTitle">Image</h3>
+      <button type="button" id="imageGenerationClose" class="image-generation-close" title="Fermer" aria-label="Fermer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <form id="imageGenerationForm" class="image-generation-form">
+      <label for="imageGenerationPrompt">Prompt</label>
+      <textarea id="imageGenerationPrompt" rows="4" maxlength="2000" placeholder="Décris l'image…"></textarea>
+
+      <div class="image-generation-controls">
+        <label>
+          <span>Modèle</span>
+          <select id="imageGenerationModel"></select>
+        </label>
+        <label>
+          <span>Ratio</span>
+          <select id="imageGenerationAspectRatio"></select>
+        </label>
+        <label>
+          <span>Taille</span>
+          <select id="imageGenerationSize"></select>
+        </label>
+      </div>
+
+      <div id="imageGenerationPricing" class="image-generation-pricing"></div>
+      <div id="imageGenerationStatus" class="image-generation-status" aria-live="polite"></div>
+      <button type="submit" id="imageGenerationSubmit" class="primary">Générer</button>
+
+      <div id="imageGenerationResult" class="image-generation-result" hidden>
+        <img id="imageGenerationPreview" class="image-generation-preview" alt="Image générée" hidden />
+        <div id="imageGenerationMeta" class="image-generation-meta"></div>
+        <button type="button" id="imageGenerationDownload" class="image-generation-secondary" disabled>Télécharger</button>
+      </div>
+    </form>
+  </section>
+
   <script src="whisper/whisper_dictation.js"></script>
   <script src="chat_streaming.js"></script>
   <script src="chat_threads_sidebar.js"></script>
   <script src="chat_active_documents.js"></script>
   <script src="chat_copy_export.js"></script>
+  <script src="chat_image_generation.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

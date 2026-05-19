@@ -280,14 +280,25 @@ Contrat livre en Lot 1:
 
 ### Lot 2 - Frontend integre Frida
 
-- [ ] Ajouter le bouton outil image dans l'interface existante.
-- [ ] Ajouter un panneau/modal natif FridaDev.
-- [ ] Ajouter prompt, modele, aspect ratio, taille et bouton generer.
-- [ ] Afficher le prix ou `prix image non expose par l'API modeles` dans le select/description modele.
-- [ ] Afficher l'image dans un conteneur contraint et responsive.
-- [ ] Ajouter telechargement navigateur.
-- [ ] Reutiliser les styles existants; aucun style autonome.
-- [ ] Gerer loading, error, success et annulation/fermeture.
+- [x] Ajouter le bouton outil image dans l'interface existante.
+- [x] Ajouter un panneau/modal natif FridaDev.
+- [x] Ajouter prompt, modele, aspect ratio, taille et bouton generer.
+- [x] Afficher le prix ou `prix image non expose par l'API modeles` dans le select/description modele.
+- [x] Afficher l'image dans un conteneur contraint et responsive.
+- [x] Ajouter telechargement navigateur.
+- [x] Reutiliser les styles existants; aucun style autonome.
+- [x] Gerer loading, error, success et annulation/fermeture.
+
+Contrat livre en Lot 2:
+- module frontend dedie `app/web/chat_image_generation.js`;
+- bouton outil image dans le composer, sans modifier `/api/chat`;
+- panneau lateral natif FridaDev avec prompt, modele, ratio, taille, prix, generation, preview et telechargement;
+- table frontend V0 alignee sur le backend, sans `4K` pour Nano Banana;
+- image conservee uniquement dans le panneau et telechargee localement depuis la data URL;
+- aucune injection dans le dialogue, la memoire, identity, summary, active documents ou Biblio.
+
+Note de dette volontaire:
+- la table modeles est dupliquee en V0 entre backend et frontend; un lot ulterieur pourra exposer une route metadata si l'outil devient administrable.
 
 ### Lot 3 - Tests et preuves
 

@@ -11,7 +11,7 @@ const {
 
 const STREAM_CONTROL_PREFIX = '\x1e';
 
-function chatMockScript({ streamMode }) {
+function chatMockScript({ streamMode, imageMode = 'success' }) {
   const nominalTerminal = `${STREAM_CONTROL_PREFIX}${JSON.stringify({
     kind: 'frida-stream-control',
     event: 'done',
@@ -43,6 +43,8 @@ function chatMockScript({ streamMode }) {
         lastUserMessage: "",
         clipboardWrites: [],
         fetchCalls: [],
+        imageMode: ${JSON.stringify(imageMode)},
+        imageRequests: [],
         conversationFetches: 0,
         messageFetches: 0,
       };
@@ -58,11 +60,12 @@ function chatMockScript({ streamMode }) {
       window.fetch = async (input, init = {}) => {
         const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
         const method = String(init.method || "GET").toUpperCase();
+        const body = typeof init.body === "string" ? init.body : "";
         state.fetchCalls.push({
           method,
           path: url.pathname,
           search: url.search,
-          body: typeof init.body === "string" ? init.body : "",
+          body,
         });
 
         if (url.pathname === "/api/conversations" && method === "GET") {
@@ -116,6 +119,42 @@ function chatMockScript({ streamMode }) {
           });
         }
 
+        if (url.pathname === "/api/tools/image-generation" && method === "POST") {
+          let requestPayload = {};
+          try {
+            requestPayload = JSON.parse(body || "{}");
+          } catch {
+            requestPayload = {};
+          }
+          state.imageRequests.push(requestPayload);
+          if (state.imageMode === "error") {
+            return new Response(JSON.stringify({
+              ok: false,
+              error_code: "provider_error",
+              message: "Génération indisponible.",
+            }), {
+              status: 502,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({
+            ok: true,
+            generator_key: requestPayload.generator_key,
+            model: "google/gemini-2.5-flash-image",
+            display_name: "Nano Banana",
+            pricing_label: "prix API observé",
+            aspect_ratio: requestPayload.aspect_ratio,
+            image_size: requestPayload.image_size,
+            image_data_url: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiNmOGY2ZjMiLz48Y2lyY2xlIGN4PSIzMjAiIGN5PSIxODAiIHI9IjkwIiBmaWxsPSIjN2JhN2ZmIi8+PC9zdmc+",
+            mime_type: "image/svg+xml",
+            provider_model: "google/gemini-2.5-flash-image",
+            usage: { cost: 0.01 },
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (url.pathname === "/api/chat" && method === "POST") {
           state.chatSubmitted = true;
           try {
@@ -141,6 +180,72 @@ function chatMockScript({ streamMode }) {
     })();
   `;
 }
+
+test('image generation tool opens, validates, calls its own route and keeps chat untouched', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 1440, height: 900 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.click('#btnImageGeneration');
+    await page.waitForSelector('#imageGenerationPanel:not(.hidden)');
+
+    assert.equal(await page.locator('#imageGenerationModel').inputValue(), 'image_generator_nano_banana');
+    await assertTextContains(page.locator('#imageGenerationPricing'), 'image 0.0000003');
+
+    const sizeOptions = await page.locator('#imageGenerationSize option').evaluateAll((nodes) =>
+      nodes.map((node) => node.value));
+    assert.deepEqual(sizeOptions, ['1K', '2K']);
+    assert.equal(sizeOptions.includes('4K'), false);
+
+    await page.click('#imageGenerationSubmit');
+    await assertTextContains(page.locator('#imageGenerationStatus'), 'Prompt requis.');
+    assert.equal((await page.evaluate(() => window.__fridaBrowserState.imageRequests)).length, 0);
+
+    await page.fill('#imageGenerationPrompt', 'cercle bleu sur fond blanc');
+    await page.click('#imageGenerationSubmit');
+    await page.waitForSelector('#imageGenerationPreview:not([hidden])');
+    await page.waitForFunction(() => {
+      const img = document.querySelector('#imageGenerationPreview');
+      return img && img.complete && img.naturalWidth > 0;
+    });
+    await assertTextContains(page.locator('#imageGenerationStatus'), 'Image générée.');
+    await assertTextContains(page.locator('#imageGenerationMeta'), 'Nano Banana');
+    assert.equal(await page.locator('#imageGenerationDownload').isEnabled(), true);
+
+    const imageRequests = await page.evaluate(() => window.__fridaBrowserState.imageRequests);
+    assert.equal(imageRequests.length, 1);
+    assert.deepEqual(imageRequests[0], {
+      generator_key: 'image_generator_nano_banana',
+      prompt: 'cercle bleu sur fond blanc',
+      aspect_ratio: '1:1',
+      image_size: '1K',
+    });
+
+    const fetchCalls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+    assert.equal(fetchCalls.some((call) => call.method === 'POST' && call.path === '/api/tools/image-generation'), true);
+    assert.equal(fetchCalls.some((call) => call.method === 'POST' && call.path === '/api/chat'), false);
+    assert.equal(await page.locator('.msg-wrapper').count(), 0);
+  });
+});
+
+test('image generation tool displays backend errors without chat side effects', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done', imageMode: 'error' }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.click('#btnImageGeneration');
+    await page.fill('#imageGenerationPrompt', 'cercle bleu sur fond blanc');
+    await page.click('#imageGenerationSubmit');
+
+    await page.waitForFunction(() =>
+      document.querySelector('#imageGenerationStatus')?.textContent.includes('Génération indisponible.'));
+    await assertTextContains(page.locator('#imageGenerationStatus'), 'Génération indisponible.');
+    assert.equal(await page.locator('#imageGenerationPreview:not([hidden])').count(), 0);
+    const fetchCalls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+    assert.equal(fetchCalls.some((call) => call.method === 'POST' && call.path === '/api/chat'), false);
+  });
+});
 
 test('chat stream nominal handles done terminal, assistant bubble, timestamp and refresh', async () => {
   await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'done' }) }, async (page) => {
@@ -197,6 +302,7 @@ test('chat composer keeps desktop textarea wide without overlapping controls', a
 
     const layout = await page.evaluate(() => {
       const message = document.querySelector('#message').getBoundingClientRect();
+      const imageGeneration = document.querySelector('#btnImageGeneration').getBoundingClientRect();
       const mic = document.querySelector('#btnMic').getBoundingClientRect();
       const webSearch = document.querySelector('#btnWebSearch').getBoundingClientRect();
       const submit = document.querySelector('#ask button[type="submit"]').getBoundingClientRect();
@@ -206,6 +312,8 @@ test('chat composer keeps desktop textarea wide without overlapping controls', a
         askRight: ask.right,
         messageWidth: message.width,
         messageRight: message.right,
+        imageGenerationLeft: imageGeneration.left,
+        imageGenerationRight: imageGeneration.right,
         micLeft: mic.left,
         micRight: mic.right,
         webSearchLeft: webSearch.left,
@@ -216,7 +324,8 @@ test('chat composer keeps desktop textarea wide without overlapping controls', a
     });
 
     assert.ok(layout.messageWidth >= 800, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
-    assert.ok(layout.messageRight <= layout.micLeft, 'textarea should not overlap the mic button');
+    assert.ok(layout.messageRight <= layout.imageGenerationLeft, 'textarea should not overlap the image button');
+    assert.ok(layout.imageGenerationRight <= layout.micLeft, 'image button should not overlap the mic button');
     assert.ok(layout.micRight <= layout.webSearchLeft, 'mic button should not overlap the web-search button');
     assert.ok(layout.webSearchRight <= layout.submitLeft, 'web-search button should not overlap the submit button');
     assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
