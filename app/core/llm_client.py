@@ -188,6 +188,29 @@ def or_headers(caller: str = "llm") -> dict:
     return h
 
 
+def or_headers_custom(*, caller: str, referer: str, title: str) -> dict:
+    """Build OpenRouter headers for tool callers with explicit attribution.
+
+    This keeps the shared main_model secret/base URL while allowing lateral tools
+    such as image generators to use stable OpenRouter names outside the LLM
+    caller normalization table.
+    """
+    caller_key = str(caller or '').strip() or 'llm'
+    h = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {_runtime_main_api_key()}",
+        INTERNAL_PROVIDER_CALLER_HEADER: caller_key,
+    }
+    referer_value = str(referer or '').strip()
+    if referer_value:
+        h["HTTP-Referer"] = referer_value
+    title_value = str(title or '').strip()
+    if title_value:
+        h["X-OpenRouter-Title"] = title_value
+        h["X-Title"] = title_value
+    return h
+
+
 def or_chat_completions_url() -> str:
     return f"{_runtime_main_base_url()}/chat/completions"
 

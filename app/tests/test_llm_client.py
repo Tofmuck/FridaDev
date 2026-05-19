@@ -167,6 +167,38 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['X-Title'], config.OR_TITLE_VALIDATION_AGENT)
         self.assertEqual(headers['HTTP-Referer'], config.OR_REFERER_VALIDATION_AGENT)
 
+    def test_or_headers_custom_keeps_explicit_tool_attribution(self) -> None:
+        original = llm_client.runtime_settings.get_runtime_secret_value
+
+        def fake_get_runtime_secret_value(section: str, field: str):
+            self.assertEqual((section, field), ('main_model', 'api_key'))
+            return runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='sk-db-runtime-key',
+                source='db_encrypted',
+                source_reason='db_row',
+            )
+
+        llm_client.runtime_settings.get_runtime_secret_value = fake_get_runtime_secret_value
+        try:
+            headers = llm_client.or_headers_custom(
+                caller='image_generator_nano_banana',
+                referer='https://fridadev.frida-system.fr/openrouter/image-generation/nano-banana',
+                title='FridaDev / Image Generator / Nano Banana',
+            )
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original
+
+        self.assertEqual(headers['Authorization'], 'Bearer sk-db-runtime-key')
+        self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'image_generator_nano_banana')
+        self.assertEqual(
+            headers['HTTP-Referer'],
+            'https://fridadev.frida-system.fr/openrouter/image-generation/nano-banana',
+        )
+        self.assertEqual(headers['X-OpenRouter-Title'], 'FridaDev / Image Generator / Nano Banana')
+        self.assertEqual(headers['X-Title'], 'FridaDev / Image Generator / Nano Banana')
+
     def test_or_headers_uses_distinct_component_referers_for_all_known_callers(self) -> None:
         original_secret = llm_client.runtime_settings.get_runtime_secret_value
         original_view = llm_client.runtime_settings.get_main_model_settings

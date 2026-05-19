@@ -259,15 +259,24 @@ Interdits de log:
 
 ### Lot 1 - Backend minimal
 
-- [ ] Creer `app/tools/image_generation.py`.
-- [ ] Ajouter `POST /api/tools/image-generation`.
-- [ ] Utiliser le transport OpenRouter partage via `main_model`.
-- [ ] Ajouter l'attribution OpenRouter distincte par generateur.
-- [ ] Valider prompt, modele, aspect ratio, taille et timeout.
-- [ ] Extraire la premiere image depuis `choices[0].message.images[0].image_url.url`.
-- [ ] Retourner une erreur propre si aucune image n'est renvoyee.
-- [ ] Ajouter logs content-free sans prompt brut ni base64.
-- [ ] Retourner au frontend le `pricing_label` et l'usage/cout observe si disponible.
+- [x] Creer `app/tools/image_generation.py`.
+- [x] Ajouter `POST /api/tools/image-generation`.
+- [x] Utiliser le transport OpenRouter partage via `main_model`.
+- [x] Ajouter l'attribution OpenRouter distincte par generateur.
+- [x] Valider prompt, modele, aspect ratio, taille et timeout.
+- [x] Extraire la premiere image depuis `choices[0].message.images[0].image_url.url`.
+- [x] Retourner une erreur propre si aucune image n'est renvoyee.
+- [x] Ajouter logs content-free sans prompt brut ni base64.
+- [x] Retourner au frontend le `pricing_label` et l'usage/cout observe si disponible.
+
+Contrat livre en Lot 1:
+- route `POST /api/tools/image-generation`;
+- payload frontend: `generator_key`, `prompt`, `aspect_ratio`, `image_size`;
+- succes: `ok`, generateur, modele, `pricing_label`, format demande, `image_data_url`, `mime_type`, `provider_model`, `usage`;
+- erreurs normalisees: `invalid_generator`, `invalid_prompt`, `invalid_aspect_ratio`, `invalid_image_size`, `provider_error`, `no_image`, `invalid_image_data_url`, `timeout`;
+- timeout backend dedie: 180 s, pour ne pas couper les generateurs lents observes au smoke Lot 0;
+- plafond data URL: 6 000 000 caracteres, garde anti-reponse absurde sans casser les images V0 observees;
+- logs uniquement content-free: generateur, modele, format, statut, erreur, latence, usage/cout si disponible, type mime et taille de data URL.
 
 ### Lot 2 - Frontend integre Frida
 

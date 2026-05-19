@@ -18,6 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory, stream
 import config
 from core import llm_client as llm
 from core import prompt_loader
+from tools import image_generation
 from tools import web_search as ws
 from core import assistant_turn_state
 from core import chat_stream_control
@@ -834,6 +835,13 @@ def api_chat():
         response.headers[key] = value
     _finish_chat_turn_and_refresh_dashboard(turn_token, final_status=final_status)
     return response
+
+
+@app.post('/api/tools/image-generation')
+def api_tools_image_generation():
+    data = request.get_json(force=True, silent=True) or {}
+    payload, status = image_generation.generate_image_response(data)
+    return jsonify(payload), status
 
 
 # ── /api/admin/* ──────────────────────────────────────────────────────────────
