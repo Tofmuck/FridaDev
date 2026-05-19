@@ -151,6 +151,15 @@ class ServerChatActiveImageDocumentsContractTests(unittest.TestCase):
         persisted = json.dumps(conversation["messages"], ensure_ascii=False)
         self.assertNotIn("data:image", persisted)
         self.assertNotIn("aW1hZ2UtYnl0ZXM=", persisted)
+        self.assertNotIn("image_url", persisted)
+        self.assertNotIn("image_content", persisted)
+        self.assertNotIn("binary_content", persisted)
+        trace_payload = json.dumps(observed_state["save_new_traces_calls"], ensure_ascii=False)
+        self.assertNotIn("data:image", trace_payload)
+        self.assertNotIn("aW1hZ2UtYnl0ZXM=", trace_payload)
+        self.assertNotIn("image_url", trace_payload)
+        self.assertNotIn("image_content", trace_payload)
+        self.assertNotIn("binary_content", trace_payload)
         self.assertEqual(observed["excluded"], [])
         self.assertEqual(len(observed["injected"]), 1)
 
@@ -272,6 +281,13 @@ class ServerChatActiveImageDocumentsContractTests(unittest.TestCase):
         self.assertNotIn("data:image", provider_payload_json)
         self.assertNotIn("image_url", provider_payload_json)
         self.assertFalse(any(isinstance(message.get("content"), list) for message in observed_state["payload_messages"]))
+        persisted = json.dumps(conversation["messages"], ensure_ascii=False)
+        trace_payload = json.dumps(observed_state["save_new_traces_calls"], ensure_ascii=False)
+        for payload in (persisted, trace_payload):
+            self.assertNotIn("data:image", payload)
+            self.assertNotIn("image_url", payload)
+            self.assertNotIn("image_content", payload)
+            self.assertNotIn("binary_content", payload)
 
         active_events = [event for event in observed["events"] if event["stage"] == "active_documents"]
         self.assertEqual(len(active_events), 1)

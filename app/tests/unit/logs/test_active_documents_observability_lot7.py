@@ -154,6 +154,56 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertNotIn('image_content', encoded)
         self.assertNotIn('data:image', encoded)
 
+    def test_image_prompt_decision_payload_records_exclusion_without_base64(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='img-large',
+                    filename='capture-large.webp',
+                    media_type='image/webp',
+                    source_extension='.webp',
+                    byte_size=9 * 1024 * 1024,
+                    text_chars=0,
+                    token_estimate=0,
+                    text_sha256_12='',
+                    media_kind='image',
+                    content_sha256_12='abcdef123456',
+                    image_width=2400,
+                    image_height=1600,
+                    injected=False,
+                    reason_code='image_too_large_for_provider_payload',
+                    payload_order='',
+                    provider_model='anthropic/claude-sonnet-4.6',
+                    image_content=b'RAW LARGE IMAGE BYTES MUST NOT LEAK',
+                ),
+            )
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(payload['status'], 'partial')
+        self.assertEqual(payload['active_count'], 1)
+        self.assertEqual(payload['injected_count'], 0)
+        self.assertEqual(payload['not_injected_count'], 1)
+        self.assertEqual(payload['reason_code_counts'], {'image_too_large_for_provider_payload': 1})
+        document = payload['documents'][0]
+        self.assertEqual(document['decision'], 'excluded')
+        self.assertEqual(document['reason_code'], 'image_too_large_for_provider_payload')
+        self.assertEqual(document['media_kind'], 'image')
+        self.assertEqual(document['media_type'], 'image/webp')
+        self.assertEqual(document['byte_size'], 9 * 1024 * 1024)
+        self.assertEqual(document['image_width'], 2400)
+        self.assertEqual(document['image_height'], 1600)
+        self.assertEqual(document['content_sha256_12'], 'abcdef123456')
+        self.assertEqual(document['provider_model'], 'anthropic/claude-sonnet-4.6')
+        self.assertEqual(document['payload_order'], '')
+        self.assertNotIn('RAW LARGE IMAGE BYTES MUST NOT LEAK', encoded)
+        self.assertNotIn('image_content', encoded)
+        self.assertNotIn('binary_content', encoded)
+        self.assertNotIn('data:image', encoded)
+        self.assertNotIn('base64', encoded)
+
     def test_prompt_read_error_event_is_content_free_and_distinct_from_empty(self) -> None:
         events: list[dict[str, object]] = []
         lane = SimpleNamespace(

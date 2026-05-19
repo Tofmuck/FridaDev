@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from core import chat_llm_flow
 from core import chat_memory_flow
+from memory import memory_traces_summaries
 from memory import summarizer
 
 
@@ -209,7 +211,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             ["user", "assistant", "user", "assistant"],
         )
 
-    def test_active_image_payload_is_not_persisted_as_memory_trace_or_identity_candidate(self):
+    def test_active_image_payload_is_not_persisted_as_memory_identity_or_summary_input(self):
         prompt_messages = [
             {
                 "role": "user",
@@ -229,7 +231,11 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
         conversation = {
             "id": "conv-active-image-barrier",
             "created_at": "2026-05-19T12:00:00Z",
-            "messages": [{"role": "user", "content": "Question courte", "timestamp": "2026-05-19T12:00:00Z"}],
+            "messages": [
+                {"role": "user", "content": "Ancienne question", "timestamp": "2026-05-19T11:55:00Z"},
+                {"role": "assistant", "content": "Ancienne reponse", "timestamp": "2026-05-19T11:56:00Z"},
+                {"role": "user", "content": "Question courte", "timestamp": "2026-05-19T12:00:00Z"},
+            ],
         }
         observed: dict[str, object] = {}
 
@@ -311,13 +317,124 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
         )
 
         self.assertEqual(result["status"], 200)
-        self.assertIn(ACTIVE_IMAGE_DATA_URL, _joined_contents(observed["llm_messages"]))
-        self.assertNotIn(ACTIVE_IMAGE_DATA_URL, _joined_contents(observed["memory_trace_messages"]))
-        self.assertNotIn(ACTIVE_IMAGE_DATA_URL, _joined_contents(observed["identity_turn_pair"]))
+        llm_payload = _encoded(observed["llm_messages"])
+        memory_payload = _encoded(observed["memory_trace_messages"])
+        identity_payload = _encoded(observed["identity_turn_pair"])
+        persisted_payload = _encoded(conversation["messages"])
+        self.assertIn(ACTIVE_IMAGE_DATA_URL, llm_payload)
+        for forbidden in ("data:image", ACTIVE_IMAGE_DATA_URL, "image_url", "image_content", "binary_content"):
+            self.assertNotIn(forbidden, memory_payload)
+            self.assertNotIn(forbidden, identity_payload)
+            self.assertNotIn(forbidden, persisted_payload)
+
+        def fake_estimate_tokens(messages, _model):
+            observed["summary_threshold_messages"] = [dict(message) for message in messages]
+            return 999
+
+        def fake_summarize_conversation(turns):
+            observed["summary_turns"] = [dict(turn) for turn in turns]
+            return "resume compact"
+
+        with (
+            mock.patch.object(summarizer.config, "SUMMARY_THRESHOLD_TOKENS", 10),
+            mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
+            mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
+            mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
+            mock.patch("memory.memory_store.save_summary", return_value=None),
+            mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
+        ):
+            self.assertTrue(summarizer.maybe_summarize(conversation, "model-test"))
+
+        summary_payload = _encoded(observed["summary_threshold_messages"]) + "\n" + _encoded(observed["summary_turns"])
+        for forbidden in ("data:image", ACTIVE_IMAGE_DATA_URL, "image_url", "image_content", "binary_content"):
+            self.assertNotIn(forbidden, summary_payload)
+
+    def test_embedding_trace_writer_receives_only_persisted_dialogue_not_active_image_payload(self):
+        conversation = {
+            "id": "conv-active-image-embedding-barrier",
+            "messages": [
+                {"role": "user", "content": "Question courte", "timestamp": "2026-05-19T12:00:00Z"},
+                {"role": "assistant", "content": "Reponse assistant", "timestamp": "2026-05-19T12:01:00Z"},
+            ],
+        }
+        observed: dict[str, object] = {"embedded_texts": [], "inserted_rows": []}
+
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, query, params=None):
+                sql = " ".join(str(query).split())
+                if "SELECT 1" in sql:
+                    self._row = None
+                    return
+                if "INSERT INTO traces" in sql:
+                    observed["inserted_rows"].append(tuple(params or ()))
+
+            def fetchone(self):
+                return getattr(self, "_row", None)
+
+        class Conn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return Cursor()
+
+            def commit(self):
+                return None
+
+        def fake_embed(text, **_kwargs):
+            observed["embedded_texts"].append(str(text))
+            return [0.1, 0.2, 0.3]
+
+        memory_traces_summaries.save_new_traces(
+            conversation,
+            conn_factory=lambda: Conn(),
+            embed_fn=fake_embed,
+            logger=SimpleNamespace(
+                info=lambda *_args, **_kwargs: None,
+                warning=lambda *_args, **_kwargs: None,
+                error=lambda *_args, **_kwargs: None,
+            ),
+        )
+
+        embedded_payload = _encoded(observed["embedded_texts"]) + "\n" + _encoded(observed["inserted_rows"])
+        self.assertEqual(observed["embedded_texts"], ["Question courte", "Reponse assistant"])
+        for forbidden in ("data:image", ACTIVE_IMAGE_DATA_URL, "image_url", "image_content", "binary_content"):
+            self.assertNotIn(forbidden, embedded_payload)
+
+    def test_active_image_documents_have_no_biblio_catalogue_wiring(self):
+        repo_root = Path(__file__).resolve().parents[3]
+        runtime_sources = "\n".join(
+            (repo_root / path).read_text(encoding="utf-8")
+            for path in (
+                "core/chat_service.py",
+                "core/chat_llm_flow.py",
+                "core/active_document_prompt_lane.py",
+            )
+        )
+
+        self.assertNotIn("library_document", runtime_sources)
+        self.assertNotIn("catalogue_document", runtime_sources)
+        self.assertNotIn("passage_documentaire", runtime_sources)
+        self.assertNotIn("passage documentaire", runtime_sources)
 
 
 def _joined_contents(messages) -> str:
     return "\n".join(str(message.get("content") or "") for message in messages)
+
+
+def _encoded(value) -> str:
+    import json
+
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
 
 
 if __name__ == "__main__":

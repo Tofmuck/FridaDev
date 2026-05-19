@@ -293,6 +293,17 @@ Frontend Lot 3:
 - l'upload/retrait image ne poste pas vers `/api/chat`;
 - le reload navigateur relit l'etat actif depuis le serveur sans contenu brut image.
 
+Preuves Lot 4:
+
+- le payload multimodal image est autorise seulement dans `prompt_messages` au moment provider;
+- `conversation["messages"]`, le save conversationnel final et les traces memoire ne contiennent jamais `data:image`, `image_url`, `image_content` ou `binary_content`;
+- l'extracteur identity et l'agent periodic identity recoivent seulement le dernier couple user/assistant persistant, sans payload image;
+- le summary conversationnel lit uniquement le dialogue persistant, donc aucune data URL image;
+- les embeddings de traces sont produits depuis les messages persistants user/assistant, pas depuis le payload multimodal;
+- aucun wiring Biblio actif ne relie l'image active a `library_document`, `catalogue_document` ou `passage documentaire`;
+- l'observabilite content-free couvre les cas image `injected` et `excluded` avec decision, reason code, media kind, MIME, bytes, dimensions, hash court, provider model et payload order;
+- logs, read-models et dashboard ne transportent ni base64, ni data URL, ni bytes image, ni prompt utilisateur complet.
+
 Formats image:
 
 - OpenRouter documente `image/png`, `image/jpeg`, `image/webp`, `image/gif`;

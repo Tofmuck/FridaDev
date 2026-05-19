@@ -306,14 +306,23 @@ Lot 3 livre:
 
 ### Lot 4 - Tests de non-contamination et observabilite
 
-- [ ] Prouver qu'une image active n'alimente pas Memory/RAG.
-- [ ] Prouver qu'elle n'alimente pas Identity.
-- [ ] Prouver qu'elle n'alimente pas Summary.
-- [ ] Prouver qu'elle n'alimente pas Biblio.
-- [ ] Prouver qu'elle n'entre pas dans `conversation["messages"]` comme contenu persistant.
-- [ ] Prouver l'absence de base64 dans logs, dashboard, read-models et docs.
-- [ ] Prouver que les logs restent content-free.
-- [ ] Prouver l'injection entiere ou exclusion entiere par tour.
+- [x] Prouver qu'une image active n'alimente pas Memory/RAG.
+- [x] Prouver qu'elle n'alimente pas Identity.
+- [x] Prouver qu'elle n'alimente pas Summary.
+- [x] Prouver qu'elle n'alimente pas Biblio.
+- [x] Prouver qu'elle n'entre pas dans `conversation["messages"]` comme contenu persistant.
+- [x] Prouver l'absence de base64 dans logs, dashboard, read-models et docs.
+- [x] Prouver que les logs restent content-free.
+- [x] Prouver l'injection entiere ou exclusion entiere par tour.
+
+Lot 4 livre:
+
+- le stream chat prouve que l'image active peut etre envoyee au provider en payload multimodal sans entrer dans `conversation["messages"]`;
+- les chemins `save_new_traces()`, identity turn pair, summary et embeddings ne recoivent que le dialogue persistant, jamais `data:image`, `image_url`, `image_content` ou `binary_content`;
+- aucune surface runtime active image ne cable `library_document`, `catalogue_document` ou `passage documentaire`;
+- l'observabilite `active_documents` couvre les decisions `injected` et `excluded`, avec `media_kind`, MIME, bytes, dimensions, hash court, provider model, payload order et reason code;
+- les payloads de logs/read-models restent content-free: pas de base64, pas de data URL, pas de bytes image, pas de prompt utilisateur complet;
+- la preuve distingue explicitement image injectee et image exclue pour taille provider V0.
 
 ### Lot 5 - Smoke provider minimal
 
