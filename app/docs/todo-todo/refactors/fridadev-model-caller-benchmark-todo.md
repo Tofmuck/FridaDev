@@ -315,6 +315,7 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Construire des cas courts issus majoritairement des tests existants: answer/simple, clarification reelle, hard guards, conflit de sources, temps, tension affective et primary trop prudent ou trop permissif.
 - [x] Produire un rapport technique avec JSON valide, schema valide, posture/regime attendus, erreurs provider, latence, cout, completion tokens et finish reason si disponible.
 - [x] Produire une lecture hermeneutique concise: clarification excessive, suspension excessive, meta inutile, permissivite dangereuse et sobriete.
+- [x] Relancer une comparaison compacte a `max_tokens=140` apres le premier run a `max_tokens=80`, pour separer recuperation JSON et qualite reelle de posture.
 - [x] Ne pas proclamer de vainqueur de production.
 - [x] Ne pas modifier `validation_agent_model`.
 - [ ] Decision modele `validation_agent` primaire.

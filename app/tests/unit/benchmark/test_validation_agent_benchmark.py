@@ -77,6 +77,20 @@ class ValidationAgentBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(payload_a["model"], "openai/gpt-5.4-mini")
         self.assertEqual(payload_b["model"], "mistralai/mistral-small-2603")
 
+    def test_validation_agent_payload_can_raise_output_budget_for_comparison(self) -> None:
+        cases = validation_adapter.load_fixtures(REPO_ROOT / validation_adapter.FIXTURE_PATH)
+        prompt = (REPO_ROOT / validation_adapter.PROMPT_PATH).read_text(encoding="utf-8").strip()
+        payload = validation_adapter.build_payload(
+            cases[0],
+            "openai/gpt-5.4-mini",
+            prompt,
+            generation_settings=validation_adapter.generation_params(max_tokens=140),
+        )
+
+        self.assertEqual(payload["temperature"], 0.0)
+        self.assertEqual(payload["top_p"], 1.0)
+        self.assertEqual(payload["max_tokens"], 140)
+
     def test_validation_agent_scorer_flags_hard_guard_answer_violation(self) -> None:
         cases = validation_adapter.load_fixtures(REPO_ROOT / validation_adapter.FIXTURE_PATH)
         case = next(item for item in cases if item["id"] == "repo_explicit_url_not_read_blocks_answer")

@@ -21,6 +21,7 @@ from benchmark.suites.identity_periodic import campaign as identity_periodic_cam
 from benchmark.suites.stimmung import campaign as stimmung_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
+from benchmark.suites.validation_agent import adapter as validation_agent_adapter
 from benchmark.suites.validation_agent import campaign as validation_agent_campaign
 
 
@@ -85,6 +86,8 @@ def main() -> int:
     parser.add_argument("--arbiter-tournament", action="store_true")
     parser.add_argument("--summary-input-file", default=None)
     parser.add_argument("--summary-max-tokens", type=int, default=None)
+    parser.add_argument("--validation-agent-max-tokens", type=int, default=None)
+    parser.add_argument("--validation-agent-compare-with", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout-s", type=int, default=90)
     parser.add_argument("--base-url", default=None)
@@ -195,6 +198,10 @@ def main() -> int:
         result = validation_agent_campaign.run_validation_agent_campaign(
             config=config,
             client=client,
+            generation_params=validation_agent_adapter.generation_params(
+                max_tokens=args.validation_agent_max_tokens,
+            ),
+            comparison_path=(Path(args.validation_agent_compare_with) if args.validation_agent_compare_with else None),
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")

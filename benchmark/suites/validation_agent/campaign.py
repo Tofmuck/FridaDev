@@ -15,8 +15,15 @@ def run_validation_agent_campaign(
     *,
     config: CampaignConfig,
     client: OpenRouterClient | None,
+    generation_params: dict[str, Any] | None = None,
+    comparison_path: Path | None = None,
 ) -> dict[str, str]:
-    campaign = build_validation_agent_campaign(config=config, client=client)
+    campaign = build_validation_agent_campaign(
+        config=config,
+        client=client,
+        generation_params=generation_params,
+        comparison_path=comparison_path,
+    )
     config.output_dir.mkdir(parents=True, exist_ok=True)
     json_path = config.output_dir / f"{config.campaign_id}.json"
     markdown_path = config.output_dir / f"{config.campaign_id}.md"
@@ -29,17 +36,25 @@ def build_validation_agent_campaign(
     *,
     config: CampaignConfig,
     client: OpenRouterClient | None,
+    generation_params: dict[str, Any] | None = None,
+    comparison_path: Path | None = None,
 ) -> dict[str, Any]:
     prompt_path = config.repo_root / adapter.PROMPT_PATH
     fixture_path = config.repo_root / adapter.FIXTURE_PATH
     prompt_text = prompt_path.read_text(encoding="utf-8").strip()
     cases = adapter.load_fixtures(fixture_path)
+    generation_settings = generation_params or adapter.generation_params()
     results: list[dict[str, Any]] = []
 
     for model in config.models:
         calls: list[dict[str, Any]] = []
         for case in cases:
-            payload = adapter.build_payload(case, model, prompt_text)
+            payload = adapter.build_payload(
+                case,
+                model,
+                prompt_text,
+                generation_settings=generation_settings,
+            )
             request_signature = {
                 "messages_sha256": sha256_text(json.dumps(payload["messages"], ensure_ascii=False, sort_keys=True)),
                 "generation_params": {
@@ -82,7 +97,7 @@ def build_validation_agent_campaign(
         "caller": "validation_agent_primary",
         "dry_run": config.dry_run,
         "models": config.models,
-        "generation_params": adapter.generation_params(),
+        "generation_params": generation_settings,
         "timeout_s": config.timeout_s,
         "prompt_path": str(prompt_path.relative_to(config.repo_root)),
         "prompt_sha256": sha256_text(prompt_text),
@@ -95,6 +110,10 @@ def build_validation_agent_campaign(
         "fallback_benchmarked": False,
         "human_decision_required": True,
         "retention": "compact JSON only: raw model text removed after scoring; hashes, sizes, metrics and parsed decisions retained",
+        "comparison_baseline": _comparison_baseline(
+            comparison_path,
+            repo_root=config.repo_root,
+        ),
         "results": results,
     }
 
@@ -159,6 +178,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         )
 
     lines.extend(_overall_reading_lines(campaign))
+    lines.extend(_comparison_lines(campaign))
     lines.extend(["", "## Cas testes", ""])
     for case in campaign.get("cases", []):
         expected = case.get("expected") or {}
@@ -242,6 +262,29 @@ def _provider_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _comparison_baseline(path: Path | None, *, repo_root: Path) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    resolved = path if path.is_absolute() else repo_root / path
+    if not resolved.exists():
+        return {
+            "available": False,
+            "path": str(path),
+            "error": "baseline_not_found",
+        }
+    payload = json.loads(resolved.read_text(encoding="utf-8"))
+    return {
+        "available": True,
+        "path": str(resolved.relative_to(repo_root)) if resolved.is_relative_to(repo_root) else str(resolved),
+        "campaign_id": payload.get("campaign_id"),
+        "generation_params": dict(payload.get("generation_params") or {}),
+        "summaries": {
+            str(result.get("model")): dict(result.get("summary") or {})
+            for result in payload.get("results", [])
+        },
+    }
+
+
 def _public_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
@@ -284,6 +327,67 @@ def _overall_reading_lines(campaign: dict[str, Any]) -> list[str]:
         lines.append(f"- `{result.get('model')}`: {_qualitative_profile(result.get('summary') or {})}")
     lines.append("")
     return lines
+
+
+def _comparison_lines(campaign: dict[str, Any]) -> list[str]:
+    baseline = campaign.get("comparison_baseline") or {}
+    if not baseline.get("available"):
+        return []
+    current_by_model = {
+        str(result.get("model")): dict(result.get("summary") or {})
+        for result in campaign.get("results", [])
+    }
+    baseline_by_model = dict(baseline.get("summaries") or {})
+    baseline_params = baseline.get("generation_params") or {}
+    current_params = campaign.get("generation_params") or {}
+    lines = [
+        "",
+        "## Comparaison avec le run precedent",
+        "",
+        f"- Baseline: `{baseline.get('path')}`",
+        f"- max_tokens baseline: `{baseline_params.get('max_tokens')}`",
+        f"- max_tokens courant: `{current_params.get('max_tokens')}`",
+        "",
+        "| Modele | JSON | Schema | Pass | Unsafe answer | Finish | Lecture courte |",
+        "| --- | --- | --- | --- | ---: | --- | --- |",
+    ]
+    for model, current in current_by_model.items():
+        previous = baseline_by_model.get(model) or {}
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    f"`{model}`",
+                    _shift(previous, current, "json_valid", "cases"),
+                    _shift(previous, current, "schema_valid", "cases"),
+                    _shift(previous, current, "passes", "cases"),
+                    f"{previous.get('unsafe_answers', 0)} -> {current.get('unsafe_answers', 0)}",
+                    f"{', '.join(previous.get('finish_reasons') or []) or 'n/a'} -> {', '.join(current.get('finish_reasons') or []) or 'n/a'}",
+                    _comparison_reading(previous, current),
+                ]
+            )
+            + " |"
+        )
+    return lines
+
+
+def _shift(previous: dict[str, Any], current: dict[str, Any], key: str, total_key: str) -> str:
+    return (
+        f"{previous.get(key, 0)}/{previous.get(total_key, 0)}"
+        f" -> {current.get(key, 0)}/{current.get(total_key, 0)}"
+    )
+
+
+def _comparison_reading(previous: dict[str, Any], current: dict[str, Any]) -> str:
+    if current.get("json_valid") > previous.get("json_valid", 0):
+        return "validite JSON retrouvee partiellement ou totalement"
+    if current.get("passes") > previous.get("passes", 0):
+        return "posture mieux notee sans gain JSON"
+    if current.get("unsafe_answers", 0) > previous.get("unsafe_answers", 0):
+        return "plus permissif malgre plus de place"
+    if current.get("json_valid") == current.get("cases") == previous.get("json_valid"):
+        return "JSON deja stable, juger surtout la posture"
+    return "pas de gain net"
 
 
 def _model_reading_lines(result: dict[str, Any]) -> list[str]:

@@ -403,6 +403,20 @@ OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --output-dir benchmark/results/validation_agent
 ```
 
+If the strict production budget appears to truncate candidates, run a compact
+comparison with a higher output cap while keeping the same prompt, fixtures and
+models:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --campaign-id 2026-05-19-validation-agent-primary-max140 \
+  --validation-agent-max-tokens 140 \
+  --validation-agent-compare-with benchmark/results/validation_agent/2026-05-19-validation-agent-primary-benchmark.json \
+  --timeout-s 10 \
+  --output-dir benchmark/results/validation_agent
+```
+
 The runner writes:
 
 - one compact structured JSON artifact;

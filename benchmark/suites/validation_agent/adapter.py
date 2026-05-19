@@ -69,17 +69,24 @@ def validate_fixture(case: dict[str, Any]) -> None:
         raise ValueError(f"fixture {case['id']} invalid expected output regime: {regime}")
 
 
-def build_payload(case: dict[str, Any], model: str, prompt: str | None = None) -> dict[str, Any]:
+def build_payload(
+    case: dict[str, Any],
+    model: str,
+    prompt: str | None = None,
+    *,
+    generation_settings: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     prompt_text = prompt if prompt is not None else load_prompt()
+    settings = generation_settings or generation_params()
     return {
         "model": model,
         "messages": [
             {"role": "system", "content": prompt_text},
             {"role": "user", "content": build_user_content(case)},
         ],
-        "temperature": TEMPERATURE,
-        "top_p": TOP_P,
-        "max_tokens": MAX_TOKENS,
+        "temperature": settings["temperature"],
+        "top_p": settings["top_p"],
+        "max_tokens": settings["max_tokens"],
     }
 
 
@@ -345,10 +352,13 @@ def dry_run_response(case: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
 
-def generation_params() -> dict[str, Any]:
+def generation_params(*, max_tokens: int | None = None) -> dict[str, Any]:
+    resolved_max_tokens = MAX_TOKENS if max_tokens is None else int(max_tokens)
+    if resolved_max_tokens <= 0:
+        raise ValueError("validation_agent max_tokens must be positive")
     return {
         "temperature": TEMPERATURE,
         "top_p": TOP_P,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": resolved_max_tokens,
         "timeout_s": TIMEOUT_S,
     }
