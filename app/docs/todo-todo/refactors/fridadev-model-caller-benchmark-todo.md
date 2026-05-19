@@ -36,7 +36,7 @@ Source de verite de depart:
 - [x] Agent periodic identity.
 - [x] Stimmung agent primaire.
 - [x] Validation agent primaire.
-- [ ] Fallback stimmung: hors priorite pour l'instant.
+- [o] Fallback stimmung: hors priorite pour l'instant.
 
 ## Ordre de progression
 
