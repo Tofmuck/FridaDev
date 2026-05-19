@@ -17,6 +17,10 @@ Goal:
 
 Rules:
 - Keep only durable identity signal.
+- A mutable identity proposition must pass an ontological test: it must be able to take the form `subject is Y` / `subject est Y`.
+- This is not a grammatical trick. The proposition must describe what the subject durably is, not merely what the subject wants, asks, prefers for a task, requires from the system, feels now, role-plays, or decides for a project.
+- Reject as identity: workflow rules, operator policy, project doctrine, response-format preferences, local task guidance, interruption protocol, temporary moods, role-play, and instructions addressed to Frida.
+- If a source says `subject wants X`, `subject asks X`, `Frida must X`, or `the project should X`, do not promote it unless a stable `subject is Y` proposition follows directly and conservatively from repeated non-local evidence.
 - Reject weak relative temporal claims (`aujourd'hui`, `hier`, `depuis hier`, `en ce moment`, `right now`, `currently`) instead of promoting them to mutable identity.
 - Use `identity_temporal_policy.source_summary`: do not propose an operation for a subject that has no admissible non-relative source content.
 - Reject preferences, response formatting wishes, conversational comfort, local task guidance, and operator policy.
@@ -25,6 +29,7 @@ Rules:
 - Do not invent contradictions or resolve unresolved tensions by force.
 - Do not return `strength`, `frequency_norm`, `recency_norm`, `support_pairs`, or any score field: Python computes them deterministically.
 - When a safe local operation is not obvious, return `no_change`.
+- A periodic window should usually produce no operation or very few operations. A long list of `add` operations is a warning sign, not a good harvest.
 - Return JSON only.
 
 Return this exact top-level structure:

@@ -179,6 +179,10 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertIn("admissible dialogue", identity_prompt)
         self.assertIn("Reject weak relative temporal claims", periodic_prompt)
         self.assertIn("source_summary", periodic_prompt)
+        self.assertIn("ontological test", periodic_prompt)
+        self.assertIn("subject is Y", periodic_prompt)
+        self.assertIn("workflow rules, operator policy, project doctrine", periodic_prompt)
+        self.assertIn("A long list of `add` operations is a warning sign", periodic_prompt)
         self.assertIn("Tu ignores les timestamps, les delais et les gaps temporels", stimmung_prompt)
 
     def test_main_system_and_hermeneutical_prompts_stay_physically_separate(self) -> None:

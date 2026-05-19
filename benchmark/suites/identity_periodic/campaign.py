@@ -84,6 +84,12 @@ def build_identity_periodic_smoke_campaign(
             target_pairs=target_pairs,
         )
     reading = _quick_reading(parsed, validated, validation_error, payload_for_model)
+    comparison = _comparison_with_previous(
+        output_dir=config.output_dir,
+        repo_root=config.repo_root,
+        campaign_id=config.campaign_id,
+        current_validated=validated,
+    )
 
     return {
         "campaign_id": config.campaign_id,
@@ -115,6 +121,7 @@ def build_identity_periodic_smoke_campaign(
         "schema_error": validation_error,
         "validated_response": validated,
         "quick_reading": reading,
+        "comparison_with_previous": comparison,
         "secrets_written": False,
         "production_runtime_changed": False,
         "human_judgment_required": True,
@@ -155,6 +162,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         f"- Erreur provider: `{provider.get('error')}`",
         f"- Production runtime changed: `{campaign.get('production_runtime_changed')}`",
         "",
+        *render_comparison_section(campaign),
         "## Payload simulé",
         "",
         "Le buffer ci-dessous est artificiel, sans secret, et contient les 15 paires complètes requises. Le payload envoyé au modèle est le payload après garde temporel identity, comme dans le caller runtime.",
@@ -188,6 +196,44 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def render_comparison_section(campaign: dict[str, Any]) -> list[str]:
+    comparison = campaign.get("comparison_with_previous")
+    if not isinstance(comparison, dict) or not comparison.get("previous_campaign_id"):
+        return []
+    removed = comparison.get("removed_propositions") or []
+    added = comparison.get("added_propositions") or []
+    lines = [
+        "## Comparaison avec le smoke precedent",
+        "",
+        f"- Artefact precedent: `{comparison.get('previous_artifact')}`",
+        f"- Operations avant: `{comparison.get('previous_operation_count')}`",
+        f"- Operations apres: `{comparison.get('current_operation_count')}`",
+        f"- Delta: `{comparison.get('operation_count_delta')}`",
+        f"- Operations `add` avant: `{comparison.get('previous_add_count')}`",
+        f"- Operations `add` apres: `{comparison.get('current_add_count')}`",
+        "",
+        "### Propositions disparues",
+        "",
+    ]
+    if removed:
+        lines.extend([f"- {item}" for item in removed])
+    else:
+        lines.append("- Aucune proposition precedente n'a disparu.")
+    lines.extend(["", "### Propositions nouvelles", ""])
+    if added:
+        lines.extend([f"- {item}" for item in added])
+    else:
+        lines.append("- Aucune proposition nouvelle.")
+    lines.extend(
+        [
+            "",
+            "Note: cette comparaison de propositions est textuelle. Une proposition reformulée par le modèle peut donc apparaître comme disparue puis nouvelle même si le thème reste proche.",
+        ]
+    )
+    lines.extend(["", f"Lecture comparative: {comparison.get('reading')}", ""])
+    return lines
 
 
 def _dry_provider() -> dict[str, Any]:
@@ -289,3 +335,107 @@ def _quick_reading(
         "Lecture provisoire: bon respect formel et bon refus du temporel faible, mais profil probablement trop canonisant "
         "pour être adopté sans comparaison ou sans ajustement de contrat."
     )
+
+
+def _comparison_with_previous(
+    *,
+    output_dir: Path,
+    repo_root: Path,
+    campaign_id: str,
+    current_validated: Any | None,
+) -> dict[str, Any] | None:
+    previous_id = "2026-05-19-haiku-smoke"
+    if campaign_id == previous_id:
+        return None
+    previous_path = output_dir / f"{previous_id}.json"
+    if not previous_path.exists():
+        return None
+    try:
+        previous_payload = json.loads(previous_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {
+            "previous_campaign_id": previous_id,
+            "previous_artifact": str(previous_path),
+            "reading": "Artefact precedent trouve mais illisible; comparaison non disponible.",
+        }
+    previous_validated = previous_payload.get("validated_response")
+    previous_props = _operation_propositions(previous_validated)
+    current_props = _operation_propositions(current_validated)
+    previous_count = _operation_count(previous_validated)
+    current_count = _operation_count(current_validated)
+    previous_add_count = _operation_kind_count(previous_validated, "add")
+    current_add_count = _operation_kind_count(current_validated, "add")
+    removed = [item for item in previous_props if item not in set(current_props)]
+    added = [item for item in current_props if item not in set(previous_props)]
+    if current_count == 0:
+        reading = (
+            "Le contrat ontologique a rendu l'agent muet ou invalide; il faudra verifier si ce silence est trop strict."
+        )
+    elif current_count < previous_count:
+        reading = (
+            "Le contrat ontologique reduit la canonisation; lire les propositions restantes pour verifier "
+            "si elles ont vraiment atteint le niveau `subject est Y`."
+        )
+    elif current_count == previous_count:
+        reading = (
+            "Le contrat ontologique ne reduit pas le nombre d'operations; lire si leur nature a change."
+        )
+    else:
+        reading = (
+            "Le contrat ontologique augmente le nombre d'operations; il ne produit pas l'effet attendu."
+        )
+    return {
+        "previous_campaign_id": previous_id,
+        "previous_artifact": _path_for_report(previous_path, repo_root),
+        "previous_operation_count": previous_count,
+        "current_operation_count": current_count,
+        "operation_count_delta": current_count - previous_count,
+        "previous_add_count": previous_add_count,
+        "current_add_count": current_add_count,
+        "removed_propositions": removed,
+        "added_propositions": added,
+        "reading": reading,
+    }
+
+
+def _path_for_report(path: Path, repo_root: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(repo_root.resolve()))
+    except ValueError:
+        return str(path)
+
+
+def _operation_count(contract: Any | None) -> int:
+    return sum(len(_operations_for_subject(contract, subject)) for subject in ("llm", "user"))
+
+
+def _operation_kind_count(contract: Any | None, kind: str) -> int:
+    expected = str(kind or "").strip()
+    return sum(
+        1
+        for subject in ("llm", "user")
+        for operation in _operations_for_subject(contract, subject)
+        if str(operation.get("kind") or "") == expected
+    )
+
+
+def _operation_propositions(contract: Any | None) -> list[str]:
+    propositions: list[str] = []
+    for subject in ("llm", "user"):
+        for operation in _operations_for_subject(contract, subject):
+            proposition = str(operation.get("proposition") or "").strip()
+            if proposition:
+                propositions.append(proposition)
+    return propositions
+
+
+def _operations_for_subject(contract: Any | None, subject: str) -> list[dict[str, Any]]:
+    if not isinstance(contract, dict):
+        return []
+    subject_block = contract.get(subject)
+    if not isinstance(subject_block, dict):
+        return []
+    operations = subject_block.get("operations")
+    if not isinstance(operations, list):
+        return []
+    return [dict(item) for item in operations if isinstance(item, dict)]

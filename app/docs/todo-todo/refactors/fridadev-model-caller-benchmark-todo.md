@@ -256,6 +256,10 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Utiliser les parametres periodic actuels: `temperature=0.0`, `top_p=1.0`, `max_tokens=1400`.
 - [x] Produire une sortie complete lisible pour Tof dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.md`.
 - [x] Conserver un artefact JSON structure dans `benchmark/results/identity_periodic/2026-05-19-haiku-smoke.json`.
+- [x] Auditer le contrat courant apres smoke trop canonisant: `app/docs/states/audits/identity-periodic-current-contract-audit-2026-05-19.md`.
+- [x] Resserrer le prompt periodic avec la regle ontologique `subject is Y` / `subject est Y`.
+- [x] Relancer le meme smoke Haiku avec le contrat ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.md`.
+- [x] Conserver l'artefact JSON ontologique: `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.json`.
 - [ ] Decision modele `identity_periodic_agent` apres lecture humaine.
 - [ ] Decouplage runtime `identity_periodic_model` apres decision explicite.
 - [ ] Prochain caller apres periodic identity: `stimmung_agent` primaire.

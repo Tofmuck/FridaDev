@@ -492,6 +492,53 @@ class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("Seuil réel vérifié", markdown)
             self.assertIn("Réponse complète de Haiku", markdown)
 
+    def test_periodic_comparison_counts_removed_operations(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            previous = {
+                "validated_response": {
+                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
+                    "user": {
+                        "operations": [
+                            {"kind": "add", "proposition": "Tof préfère les artefacts relisibles.", "reason": "x"},
+                            {"kind": "add", "proposition": "Tof est attaché à une décision lisible.", "reason": "x"},
+                        ]
+                    },
+                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
+                }
+            }
+            (tmp_path / "2026-05-19-haiku-smoke.json").write_text(
+                json.dumps(previous, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            current = {
+                "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
+                "user": {
+                    "operations": [
+                        {"kind": "add", "proposition": "Tof est attaché à une décision lisible.", "reason": "x"}
+                    ]
+                },
+                "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
+            }
+
+            comparison = periodic_campaign._comparison_with_previous(
+                output_dir=tmp_path,
+                repo_root=REPO_ROOT,
+                campaign_id="2026-05-19-haiku-smoke-ontological",
+                current_validated=current,
+            )
+
+            self.assertEqual(comparison["previous_operation_count"], 3)
+            self.assertEqual(comparison["current_operation_count"], 2)
+            self.assertEqual(comparison["previous_add_count"], 2)
+            self.assertEqual(comparison["current_add_count"], 1)
+            self.assertEqual(
+                comparison["removed_propositions"],
+                ["Tof préfère les artefacts relisibles."],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

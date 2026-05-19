@@ -276,6 +276,10 @@ The runner writes:
 - one Markdown report with the simulated payload, the full model response,
   JSON/schema validity, metadata and a short technical reading.
 
+When the baseline `2026-05-19-haiku-smoke.json` is present in the same output
+directory, later smoke runs include a compact before/after comparison of
+operation counts and proposition changes.
+
 This suite is a targeted smoke test, not a production change. It must not be
 used as a hidden runtime slot for `identity_periodic_agent`.
 

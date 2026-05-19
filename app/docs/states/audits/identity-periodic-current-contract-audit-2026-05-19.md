@@ -542,3 +542,40 @@ est de decider si `identity_periodic_agent` doit consolider des preferences de
 collaboration de Tof, ou seulement des traits identitaires beaucoup plus rares
 et stables. Si on veut un periodic prudent, le prochain geste devrait d'abord
 resserrer cette frontiere dans le contrat, puis seulement juger le modele.
+
+## Note post-audit - contrat ontologique resserre
+
+Suite a cet audit, le prompt `app/prompts/identity_periodic_agent.txt` a ete
+resserre autour d'une regle canonique: une proposition d'identite mutable doit
+pouvoir etre reformulee comme une proposition ontologique stable:
+`subject is Y` / `subject est Y`.
+
+La regle ajoutee precise que ce n'est pas un truc grammatical. Elle demande au
+modele de decrire ce que le sujet est durablement, et non ce que le sujet veut,
+demande, prefere pour une tache, impose au systeme, ressent maintenant, joue
+comme role ou decide pour un projet.
+
+Le contrat resserre rejette explicitement comme identite:
+
+- regles de workflow;
+- politique operateur;
+- doctrine projet;
+- preferences de format de reponse;
+- guidage local de tache;
+- protocole d'interruption;
+- humeur temporaire;
+- role-play;
+- instructions adressees a Frida.
+
+Il ajoute aussi qu'une fenetre periodic devrait normalement produire aucune
+operation ou tres peu d'operations; une longue liste de `add` devient un signal
+d'alerte, pas une bonne recolte.
+
+Un nouveau smoke test Haiku a ete lance sur le meme fixture et les memes
+parametres:
+
+- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.md`
+- `benchmark/results/identity_periodic/2026-05-19-haiku-smoke-ontological.json`
+
+Ces artefacts comparent explicitement la sortie ontologique avec le smoke
+precedent `2026-05-19-haiku-smoke`.
