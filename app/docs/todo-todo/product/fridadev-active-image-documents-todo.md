@@ -48,6 +48,7 @@ Preuve technique prealable du 2026-05-19:
 - l'API modeles declare `input_modalities = text, image, file` et `output_modalities = text`;
 - le payload teste utilise `POST /api/v1/chat/completions`;
 - le message teste transporte `content` comme tableau avec une part `text` et une part `image_url`;
+- la doc OpenRouter recommande d'envoyer le texte avant les images dans le tableau `messages[].content`;
 - appel non-stream OK avec une image PNG 32x32 non sensible;
 - appel stream OK avec la meme structure multimodale;
 - une image PNG 1x1 a echoue avec `Could not process image`;
@@ -99,14 +100,47 @@ Implications pour les images:
 
 - pas de troncature silencieuse;
 - pas de downscale silencieux presente comme image originale;
-- pas de base64 dans prompt texte;
+- pas de base64 dans le prompt texte;
+- la data URL base64 est autorisee uniquement dans `image_url.url` au moment de l'appel provider;
+- jamais de base64 dans les logs;
+- jamais de base64 dans l'historique conversationnel;
+- jamais de base64 dans les read-models/dashboard;
+- jamais de base64 dans les docs ou artefacts de preuve;
 - pas de conversion automatique en description texte en V0;
 - pas de chunking visuel;
 - pas de resume image de substitution;
 - l'image est transmise comme contenu multimodal au modele principal;
+- l'ordre obligatoire V0 dans le tableau multimodal est `text` puis `image_url`;
+- ne pas envoyer l'image avant le texte sauf decision future tres explicite;
 - si l'image ne peut pas etre transmise, elle est entierement exclue;
 - si elle est exclue, Frida recoit un signal compact d'exclusion avec reason code;
 - Frida ne doit jamais pretendre avoir vu l'image si elle n'a pas ete injectee.
+
+Payload minimal OpenRouter brut attendu pour `/api/v1/chat/completions`:
+
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "text",
+      "text": "Décris cette image."
+    },
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "data:image/png;base64,..."
+      }
+    }
+  ]
+}
+```
+
+Regle de nommage:
+
+- dans le JSON brut OpenAI-compatible envoye a OpenRouter, utiliser `image_url`;
+- ne pas utiliser `imageUrl` dans notre payload brut;
+- `imageUrl` peut apparaitre dans certains exemples SDK, mais ne doit pas devenir la forme JSON runtime de FridaDev.
 
 Reason codes probables a stabiliser:
 
@@ -192,14 +226,17 @@ Objectif:
 - [ ] Graver que l'image prolonge `active_document`.
 - [ ] Graver la frontiere avec generation d'images OpenRouter V0.
 - [ ] Graver la frontiere Memory/RAG/Identity/Summary/Biblio.
-- [ ] Graver la regle pas de base64 dans logs/docs/read-models.
+- [ ] Graver la regle: base64 autorisee seulement dans `image_url.url`, jamais logs/docs/read-models/dashboard/historique.
+- [ ] Graver l'ordre OpenRouter V0: `text` puis `image_url`.
 - [ ] Graver les reason codes image initiaux.
 - [ ] Graver les limites V0: pas de stockage durable, pas de description/OCR automatique, pas d'agent vision separe.
 
 ### Lot 1 - Upload image actif et validation
 
 - [ ] Accepter les images seulement dans le chemin documents actifs de conversation.
-- [ ] Autoriser une courte allowlist MIME, probablement `image/png`, `image/jpeg`, `image/webp`.
+- [ ] Documenter que OpenRouter supporte `image/png`, `image/jpeg`, `image/webp`, `image/gif`.
+- [ ] Autoriser une courte allowlist V0 FridaDev, probablement `image/png`, `image/jpeg`, `image/webp`.
+- [ ] Garder `image/gif` hors V0 sauf decision explicite, afin d'eviter animations, poids, comportement provider variable et surface de tests plus large.
 - [ ] Valider extension, MIME, taille bytes et dimensions.
 - [ ] Refuser proprement image vide, trop petite, trop lourde ou type non supporte.
 - [ ] Stocker seulement l'etat court necessaire a la reinjection active.
@@ -211,6 +248,9 @@ Objectif:
 
 - [ ] Etendre la lane documents actifs pour produire des messages multimodaux quand une image est active et injectable.
 - [ ] Transporter l'image comme part OpenRouter `image_url`, pas comme texte base64.
+- [ ] Produire le tableau multimodal dans l'ordre exact `text` puis `image_url`.
+- [ ] Tester explicitement l'ordre exact du tableau multimodal.
+- [ ] Utiliser `image_url` dans le JSON brut, pas `imageUrl`.
 - [ ] Conserver le contrat systeme des documents actifs.
 - [ ] Ajouter un signal compact si le modele/provider courant ne supporte pas l'image.
 - [ ] Verifier que `anthropic/claude-sonnet-4.6` reste compatible avant appel.
@@ -268,6 +308,8 @@ Preuves minimales du chantier:
 - aucune injection Biblio;
 - aucun RAG / embedding;
 - payload multimodal correct;
+- payload multimodal dans l'ordre exact `text` puis `image_url`;
+- payload brut avec `image_url`, pas `imageUrl`;
 - fallback exclusion propre si modele/provider non compatible;
 - stream toujours OK;
 - frontend responsive;
