@@ -226,26 +226,60 @@ Regles produit obligatoires:
 Stockage V0:
 
 - le serveur conserve seulement l'etat court necessaire a la piece active: nom, MIME/dimensions sniffes, extension, taille, hash court et bytes image conversation-scoped;
-- les bytes image servent uniquement au futur Lot 2 d'injection multimodale;
+- les bytes image servent uniquement a l'injection multimodale du tour courant quand l'image active est injectable;
 - le retrait manuel d'une image active efface immediatement les bytes image et conserve seulement les metadonnees content-free;
 - les projections ordinaires, logs, read-models, dashboard et reponses HTTP restent content-free;
 - aucune base64 n'est stockee ni exposee dans les logs, docs, read-models, dashboard ou historique conversationnel.
 
 Politique base64:
 
-- la data URL base64 est autorisee uniquement plus tard, au moment de l'appel provider, dans `image_url.url`;
+- la data URL base64 est autorisee uniquement au moment de l'appel provider, dans `image_url.url`;
 - elle est interdite dans le prompt texte;
 - elle est interdite dans les logs;
 - elle est interdite dans les read-models/dashboard;
 - elle est interdite dans les docs et artefacts de preuve.
 
-Contrat OpenRouter futur:
+Contrat OpenRouter:
 
-- l'image sera envoyee comme contenu multimodal au modele principal seulement au Lot 2;
+- l'image est envoyee comme contenu multimodal au modele principal seulement si le modele courant est compatible;
 - l'ordre V0 obligatoire dans `messages[].content` est `text` puis `image_url`;
 - le JSON runtime brut utilise `image_url`, jamais `imageUrl`;
-- si le modele/provider ne peut pas traiter l'image, le tour doit recevoir un signal compact d'exclusion;
+- la V0 allowliste le modele principal verifie `anthropic/claude-sonnet-4.6` pour l'injection image;
+- si le modele/provider ne peut pas traiter l'image, le tour recoit un signal compact d'exclusion;
 - Frida ne doit jamais pretendre avoir vu une image qui n'a pas ete injectee.
+
+Exemple brut minimal du message provider:
+
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "text",
+      "text": "Image active injectee 1: capture.png"
+    },
+    {
+      "type": "image_url",
+      "image_url": {
+        "url": "data:image/png;base64,..."
+      }
+    }
+  ]
+}
+```
+
+Reason codes Lot 2:
+
+- `image_model_unsupported` si le modele principal courant n'est pas compatible image;
+- `image_bytes_missing` si l'etat actif image existe mais que les bytes ne sont plus disponibles;
+- `document_too_large_for_turn` reste reserve aux documents texte exclus par budget prompt.
+
+Observabilite Lot 2:
+
+- l'evenement de tour `active_documents` indique si chaque image a ete `injected` ou `excluded`;
+- le `conversation_id` et le `turn_id` sont portes par l'evenement de tour;
+- le payload document contient `document_id`, `media_kind=image`, `media_type`, `byte_size`, `image_width`, `image_height`, `content_sha256_12`, `provider_model`, `payload_order=text_then_image_url` et `reason_code` si exclusion;
+- le payload ne contient ni base64, ni data URL, ni contenu visuel, ni prompt utilisateur brut.
 
 Formats image:
 

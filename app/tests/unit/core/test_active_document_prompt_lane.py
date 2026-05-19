@@ -35,6 +35,34 @@ def _doc(
     }
 
 
+def _image_doc(
+    document_id: str = "img-1",
+    *,
+    image_content: bytes = b"\x89PNG\r\n\x1a\nminimal",
+    media_type: str = "image/png",
+    created_at: str = "2026-05-16T12:00:00Z",
+) -> dict[str, object]:
+    return {
+        "document_id": document_id,
+        "conversation_id": "11111111-1111-1111-1111-111111111111",
+        "filename": "capture.png",
+        "media_type": media_type,
+        "source_extension": "png",
+        "byte_size": len(image_content),
+        "text_chars": 0,
+        "text_sha256_12": "",
+        "media_kind": "image",
+        "content_sha256_12": "123456abcdef",
+        "image_width": 80,
+        "image_height": 64,
+        "token_estimate": 0,
+        "status": "active",
+        "active": True,
+        "created_at": created_at,
+        "image_content": image_content,
+    }
+
+
 class ActiveDocumentPromptLaneTest(unittest.TestCase):
     def test_document_that_fits_is_injected_in_full_with_interpretation_contract(self):
         full_text = "Texte complet du document actif.\nDeuxieme ligne intacte."
@@ -302,6 +330,85 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertEqual(lane.not_injected_count, 0)
         self.assertNotIn(full_text, lane.message["content"])
         self.assertIn(full_text, lane.content_message["content"])
+
+    def test_active_image_builds_openrouter_multimodal_payload_text_then_image_url(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire la capture ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_image_doc(image_content=b"image-bytes")],
+            model="anthropic/claude-sonnet-4.6",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(lane.decisions[0].media_kind, "image")
+        self.assertEqual(lane.decisions[0].payload_order, "text_then_image_url")
+        self.assertEqual(lane.decisions[0].provider_model, "anthropic/claude-sonnet-4.6")
+        content_message = lane.content_message
+        self.assertIsInstance(content_message["content"], list)
+        content = content_message["content"]
+        self.assertEqual(content[0]["type"], "text")
+        self.assertEqual(content[1]["type"], "image_url")
+        self.assertNotIn("data:image", content[0]["text"])
+        self.assertIn("payload_order: text_then_image_url", content[0]["text"])
+        self.assertEqual(content[1]["image_url"]["url"], "data:image/png;base64,aW1hZ2UtYnl0ZXM=")
+        self.assertNotIn("imageUrl", str(content))
+
+    def test_active_image_is_excluded_when_main_model_is_not_image_capable(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire la capture ?"},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_image_doc(image_content=b"image-bytes")],
+            model="openai/text-only-model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "image_model_unsupported")
+        serialized_prompt = str(prompt_messages)
+        self.assertIn("reason_code=image_model_unsupported", serialized_prompt)
+        self.assertIn("ne pretends jamais l'avoir lu", serialized_prompt)
+        self.assertNotIn("data:image", serialized_prompt)
+
+    def test_text_budget_count_does_not_include_active_image_base64(self):
+        seen_contents: list[str] = []
+
+        def count_tokens(messages, _model):
+            seen_contents.append("\n".join(str(message.get("content") or "") for message in messages))
+            return 1
+
+        lane = prompt_lane.build_active_document_prompt_lane(
+            [
+                _image_doc(image_content=b"image-bytes"),
+                _doc(
+                    "doc-1",
+                    "note.txt",
+                    "Texte complet du document actif.",
+                    created_at="2026-05-16T12:01:00Z",
+                ),
+            ],
+            model="anthropic/claude-sonnet-4.6",
+            base_messages=[{"role": "system", "content": "SYSTEM"}],
+            count_tokens_func=count_tokens,
+            max_tokens=5000,
+        )
+
+        self.assertEqual(lane.injected_count, 2)
+        self.assertTrue(seen_contents)
+        self.assertNotIn("data:image", seen_contents[-1])
+        self.assertIn("[image active multimodale]", seen_contents[-1])
 
 
 if __name__ == "__main__":

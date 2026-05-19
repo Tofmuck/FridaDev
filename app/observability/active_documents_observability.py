@@ -120,7 +120,10 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
             {
                 'active': True,
                 'injected': injected,
+                'decision': 'injected' if injected else 'excluded',
                 'reason_code': reason_code,
+                'provider_model': _text(getattr(decision, 'provider_model', ''), max_chars=160),
+                'payload_order': _text(getattr(decision, 'payload_order', ''), max_chars=80),
             }
         )
         documents.append(metadata)

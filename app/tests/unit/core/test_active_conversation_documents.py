@@ -65,7 +65,6 @@ class FakeCursor:
                     row
                     and self._is_active(row)
                     and row["conversation_id"] == conv_id
-                    and (not include_text or row.get("media_kind") == active_docs.MEDIA_KIND_TEXT)
                 ):
                     self._one = self._project(row, include_text=include_text)
                 return
@@ -74,7 +73,6 @@ class FakeCursor:
                 self._project(row, include_text=include_text)
                 for row in self.conn.rows.values()
                 if self._is_active(row) and row["conversation_id"] == conv_id
-                and (not include_text or row.get("media_kind") == active_docs.MEDIA_KIND_TEXT)
             ]
             rows.sort(key=lambda row: (row["created_at"], row["filename"]))
             self._many = rows
@@ -176,6 +174,7 @@ class FakeCursor:
         }
         if include_text:
             projected["text_content"] = row["text_content"]
+            projected["binary_content"] = row["binary_content"]
         return projected
 
     def _insert_row(self, params):
@@ -342,7 +341,7 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.assertEqual(prompt_doc["ocr_engine"], "stirling-pdf")
         self.assertEqual(prompt_doc["text_content"], "texte OCRise")
 
-    def test_active_image_metadata_is_content_free_and_not_in_prompt_until_multimodal_lane(self):
+    def test_active_image_metadata_is_content_free_and_available_only_to_prompt_lane(self):
         raw_image = b"\x89PNG\r\n\x1a\nminimal-image-bytes"
         metadata = active_docs.activate_image_document(
             CONV_A,
@@ -373,14 +372,20 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.assertEqual(visible_metadata[0]["media_kind"], "image")
         self.assertNotIn("binary_content", visible_metadata[0])
 
-        self.assertEqual(active_docs.list_active_documents_for_prompt(CONV_A, conn_factory=self.conn_factory), [])
-        self.assertIsNone(
-            active_docs.get_active_document_for_prompt(
-                CONV_A,
-                DOC_A,
-                conn_factory=self.conn_factory,
-            )
+        prompt_docs = active_docs.list_active_documents_for_prompt(CONV_A, conn_factory=self.conn_factory)
+        self.assertEqual(len(prompt_docs), 1)
+        self.assertEqual(prompt_docs[0]["media_kind"], "image")
+        self.assertEqual(prompt_docs[0]["image_content"], raw_image)
+        self.assertNotIn("binary_content", prompt_docs[0])
+
+        prompt_doc = active_docs.get_active_document_for_prompt(
+            CONV_A,
+            DOC_A,
+            conn_factory=self.conn_factory,
         )
+        self.assertIsNotNone(prompt_doc)
+        self.assertEqual(prompt_doc["media_kind"], active_docs.MEDIA_KIND_IMAGE)
+        self.assertEqual(prompt_doc["image_content"], raw_image)
 
     def test_manual_remove_hides_document_from_following_turns(self):
         self.activate()

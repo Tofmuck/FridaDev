@@ -94,10 +94,14 @@ class ActiveDocumentMetadata:
 class ActiveDocumentPromptPayload:
     metadata: ActiveDocumentMetadata
     text_content: str
+    image_content: bytes = b""
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.metadata.to_dict()
-        payload["text_content"] = self.text_content
+        if self.metadata.media_kind == MEDIA_KIND_IMAGE:
+            payload["image_content"] = bytes(self.image_content or b"")
+        else:
+            payload["text_content"] = self.text_content
         return payload
 
 
@@ -202,9 +206,17 @@ def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
 
 
 def _prompt_payload_from_row(row: dict[str, Any]) -> ActiveDocumentPromptPayload:
+    raw_image = row.get("binary_content")
+    if isinstance(raw_image, memoryview):
+        image_content = raw_image.tobytes()
+    elif isinstance(raw_image, (bytes, bytearray)):
+        image_content = bytes(raw_image)
+    else:
+        image_content = b""
     return ActiveDocumentPromptPayload(
         metadata=_metadata_from_row(row),
         text_content=str(row.get("text_content") or ""),
+        image_content=image_content,
     )
 
 
@@ -535,7 +547,12 @@ def list_active_documents_for_prompt(
     *,
     conn_factory: Optional[Callable[[], Any]] = None,
 ) -> list[dict[str, Any]]:
-    """Return active documents with text for prompt construction only."""
+    """Return active documents with prompt-only payload for provider construction.
+
+    Text content and image bytes returned by this function are internal to the
+    current turn. They must not be exposed by read models or persisted into
+    conversation messages.
+    """
 
     conv_id = _normalize_uuid(conversation_id)
     if not conv_id:
@@ -579,6 +596,7 @@ def get_active_document_for_prompt(
                     token_estimate,
                     status,
                     text_content,
+                    binary_content,
                     created_at,
                     deactivated_at,
                     last_injected_turn_id,
@@ -593,7 +611,6 @@ def get_active_document_for_prompt(
                   AND document_id = %s::uuid
                   AND status = 'active'
                   AND deactivated_at IS NULL
-                  AND media_kind = 'text'
                 """,
                 (conv_id, doc_id),
             )
@@ -778,7 +795,7 @@ def _read_active_document_rows(
     include_text: bool,
     conn_factory: Optional[Callable[[], Any]] = None,
 ) -> list[dict[str, Any]]:
-    text_column = ", text_content" if include_text else ""
+    prompt_columns = ", text_content, binary_content" if include_text else ""
     get_conn = conn_factory or _db_conn
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -798,7 +815,7 @@ def _read_active_document_rows(
                     image_width,
                     image_height,
                     token_estimate,
-                    status{text_column},
+                    status{prompt_columns},
                     created_at,
                     deactivated_at,
                     last_injected_turn_id,
@@ -812,7 +829,6 @@ def _read_active_document_rows(
                 WHERE conversation_id = %s::uuid
                   AND status = 'active'
                   AND deactivated_at IS NULL
-                  {"AND media_kind = 'text'" if include_text else ""}
                 ORDER BY created_at ASC, filename ASC
                 """,
                 (conversation_id,),

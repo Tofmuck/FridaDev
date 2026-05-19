@@ -258,18 +258,28 @@ Limites V0 livrees:
 
 ### Lot 2 - Lane multimodale vers modele principal
 
-- [ ] Etendre la lane documents actifs pour produire des messages multimodaux quand une image est active et injectable.
-- [ ] Transporter l'image comme part OpenRouter `image_url`, pas comme texte base64.
-- [ ] Produire le tableau multimodal dans l'ordre exact `text` puis `image_url`.
-- [ ] Tester explicitement l'ordre exact du tableau multimodal.
-- [ ] Utiliser `image_url` dans le JSON brut, pas `imageUrl`.
-- [ ] Conserver le contrat systeme des documents actifs.
-- [ ] Ajouter un signal compact si le modele/provider courant ne supporte pas l'image.
-- [ ] Verifier que `anthropic/claude-sonnet-4.6` reste compatible avant appel.
-- [ ] Conserver le mode stream.
-- [ ] Tester payload multimodal exact.
-- [ ] Tester exclusion propre si capability absente.
-- [ ] Tester que Frida ne pretend pas avoir vu l'image exclue.
+- [x] Etendre la lane documents actifs pour produire des messages multimodaux quand une image est active et injectable.
+- [x] Transporter l'image comme part OpenRouter `image_url`, pas comme texte base64.
+- [x] Produire le tableau multimodal dans l'ordre exact `text` puis `image_url`.
+- [x] Tester explicitement l'ordre exact du tableau multimodal.
+- [x] Utiliser `image_url` dans le JSON brut, pas `imageUrl`.
+- [x] Conserver le contrat systeme des documents actifs.
+- [x] Ajouter un signal compact si le modele/provider courant ne supporte pas l'image.
+- [x] Verifier que `anthropic/claude-sonnet-4.6` reste compatible avant appel.
+- [x] Conserver le mode stream.
+- [x] Tester payload multimodal exact.
+- [x] Tester exclusion propre si capability absente.
+- [x] Tester que Frida ne pretend pas avoir vu l'image exclue.
+
+Lot 2 livre:
+
+- les images actives restent injectees au meme point que les autres documents actifs, apres les signaux amont/validation et avant l'appel OpenRouter principal;
+- elles ne sont jamais ajoutees a `conversation["messages"]`;
+- le message provider contient un tableau multimodal `content[0]=text`, puis `content[1]=image_url`;
+- la compatibilite V0 est allowlistee sur le modele principal verifie `anthropic/claude-sonnet-4.6`;
+- si le modele courant n'est pas compatible, l'image est exclue entierement avec `reason_code=image_model_unsupported`;
+- si les bytes actifs manquent, l'image est exclue entierement avec `reason_code=image_bytes_missing`;
+- l'evenement `active_documents` reste content-free et indique `decision`, `media_kind`, dimensions, hash court, `provider_model` et `payload_order`.
 
 ### Lot 3 - Frontend integre dans l'UI documents actifs
 

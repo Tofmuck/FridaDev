@@ -114,6 +114,46 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertEqual(events[0]['status'], 'ok')
         self.assertEqual(events[0]['payload']['injected_count'], 1)
 
+    def test_image_prompt_decision_payload_records_injection_without_base64(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='img-1',
+                    filename='capture.png',
+                    media_type='image/png',
+                    source_extension='.png',
+                    byte_size=1234,
+                    text_chars=0,
+                    token_estimate=0,
+                    text_sha256_12='',
+                    media_kind='image',
+                    content_sha256_12='123456abcdef',
+                    image_width=80,
+                    image_height=64,
+                    injected=True,
+                    reason_code='',
+                    payload_order='text_then_image_url',
+                    provider_model='anthropic/claude-sonnet-4.6',
+                    image_content=b'RAW IMAGE BYTES MUST NOT LEAK',
+                ),
+            )
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        document = payload['documents'][0]
+        self.assertEqual(document['media_kind'], 'image')
+        self.assertEqual(document['image_width'], 80)
+        self.assertEqual(document['image_height'], 64)
+        self.assertEqual(document['content_sha256_12'], '123456abcdef')
+        self.assertEqual(document['decision'], 'injected')
+        self.assertEqual(document['payload_order'], 'text_then_image_url')
+        self.assertEqual(document['provider_model'], 'anthropic/claude-sonnet-4.6')
+        self.assertNotIn('RAW IMAGE BYTES MUST NOT LEAK', encoded)
+        self.assertNotIn('image_content', encoded)
+        self.assertNotIn('data:image', encoded)
+
     def test_prompt_read_error_event_is_content_free_and_distinct_from_empty(self) -> None:
         events: list[dict[str, object]] = []
         lane = SimpleNamespace(

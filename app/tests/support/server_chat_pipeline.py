@@ -19,6 +19,7 @@ def patch_server_chat_pipeline(
     save_conversation_result: Any | Callable[..., Any] = None,
     conversation_path: str = 'conv/conv-test-chat.json',
     runtime_api_key: str = 'sk-test-chat',
+    runtime_model: str = 'openrouter/runtime-main-model',
 ):
     """Patch the shared baseline /api/chat seam and return observations plus restore."""
 
@@ -48,7 +49,7 @@ def patch_server_chat_pipeline(
         lambda: runtime_settings.RuntimeSectionView(
             section='main_model',
             payload={
-                'model': {'value': 'openrouter/runtime-main-model', 'origin': 'db'},
+                'model': {'value': runtime_model, 'origin': 'db'},
                 'temperature': {'value': 0.4, 'origin': 'db'},
                 'top_p': {'value': 1.0, 'origin': 'db'},
                 'response_max_tokens': {'value': 2048, 'origin': 'db_seed'},
@@ -196,7 +197,7 @@ def patch_server_chat_pipeline(
     def fake_build_payload(_messages, _temperature, _top_p, max_tokens, stream=False):
         observed['payload_messages'] = [dict(message) for message in _messages]
         return {
-            'model': 'openrouter/runtime-main-model',
+            'model': runtime_model,
             'messages': list(_messages),
             'max_tokens': max_tokens,
             'stream': stream,
