@@ -341,6 +341,14 @@ The runner writes:
 - one Markdown report with technical metrics, case notes, model divergences and
   a provisional qualitative reading.
 
+Stimmung JSON artifacts do not retain raw model text. They keep provider
+metadata, output hashes and output sizes so a campaign remains auditable without
+versioning complete response dumps.
+
+After an exploratory Stimmung run, keep only compact evidence. A broad
+artificial campaign can be requalified as exploratory and have its structured
+JSON removed once a shorter final campaign exists.
+
 The report is a decision aid, not an automatic production verdict. It must not
 be used to change `stimmung_agent_model` without a separate decision and
 runtime settings lot.

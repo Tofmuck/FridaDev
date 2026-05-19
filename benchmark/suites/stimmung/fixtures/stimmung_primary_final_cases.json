@@ -1,0 +1,160 @@
+[
+  {
+    "id": "repo_stimmung_frustration_confusion",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/test_stimmung_agent.py:112",
+    "current_user_message": "C'est agaçant et je suis perdu",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "frustration", "confusion", "marked_affect", "french"],
+    "design_note": "Message deja utilise pour prouver le caller primaire; affect local attendu sans psychologie durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration", "confusion"],
+      "tones": ["frustration", "confusion"],
+      "avoid_tones": ["enthousiasme", "apaisement"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "repo_stimmung_temporal_confusion",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/test_stimmung_agent.py:386",
+    "current_user_message": "Je suis perdu depuis hier",
+    "recent_turns": [
+      {
+        "turn_status": "complete",
+        "messages": [
+          {"role": "user", "content": "Avant"},
+          {"role": "assistant", "content": "Reponse avant"}
+        ]
+      }
+    ],
+    "tags": ["repo_test_fixture", "temporal", "hier", "confusion", "french"],
+    "design_note": "Contrat temporel du Stimmung: le claim relatif reste local, pas humeur durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["confusion", "decouragement", "anxiete"],
+      "tones": ["confusion", "decouragement", "anxiete"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "max_strength": 7
+    }
+  },
+  {
+    "id": "repo_chat_bonjour_neutral",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/test_stimmung_agent.py:461",
+    "current_user_message": "Bonjour",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "neutral_probe", "french"],
+    "design_note": "Salutation minimale deja presente dans les tests; ne pas inventer d'affect.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite"],
+      "tones": ["neutralite"],
+      "avoid_tones": ["anxiete", "frustration", "colere"],
+      "max_strength": 4
+    }
+  },
+  {
+    "id": "repo_stimmung_fail_open_confusion",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/test_stimmung_agent.py:485",
+    "current_user_message": "Je ne comprends rien",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "confusion", "marked_affect", "french"],
+    "design_note": "Message de fail-open runtime; la lecture affective utile est confusion, pas colere.",
+    "expected_acceptables": {
+      "dominant_tones": ["confusion", "frustration"],
+      "tones": ["confusion", "frustration"],
+      "avoid_tones": ["colere", "enthousiasme"],
+      "min_strength": 4
+    }
+  },
+  {
+    "id": "repo_runtime_backed_request",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/test_stimmung_agent.py:271",
+    "current_user_message": "Je veux un test runtime-backed",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "neutral_probe", "curiosite", "french"],
+    "design_note": "Demande technique simple; neutralite ou curiosite basse, pas stress.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "curiosite"],
+      "tones": ["neutralite", "curiosite"],
+      "avoid_tones": ["anxiete", "colere", "decouragement"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "repo_user_turn_disagreement",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:94",
+    "current_user_message": "Je ne suis pas d'accord",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "frustration", "neutral_probe", "french"],
+    "design_note": "Desaccord sobre: tension/frustration basse, pas colere forte.",
+    "expected_acceptables": {
+      "dominant_tones": ["frustration", "neutralite"],
+      "tones": ["frustration", "neutralite"],
+      "avoid_tones": ["colere", "anxiete"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "repo_user_turn_method_tomorrow",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:269",
+    "current_user_message": "Je pense qu il faudrait revoir la methode de travail demain",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "temporal", "curiosite", "neutral_probe", "french"],
+    "design_note": "Projection methodologique temporelle: ne pas surcoder en anxiete.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "curiosite"],
+      "tones": ["neutralite", "curiosite"],
+      "avoid_tones": ["anxiete", "colere", "decouragement"],
+      "max_strength": 5
+    }
+  },
+  {
+    "id": "repo_user_turn_time_awareness",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:289",
+    "current_user_message": "Je me rends compte de ça... t'as vu l'heure ?",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "curiosite", "confusion", "temporal", "french"],
+    "design_note": "Prise de conscience temporelle; curiosite/confusion, pas conclusion affective durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["curiosite", "confusion", "neutralite"],
+      "tones": ["curiosite", "confusion", "neutralite"],
+      "avoid_tones": ["colere", "decouragement"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "repo_user_turn_since_yesterday_clarify",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:321",
+    "current_user_message": "Je pense à ça depuis hier, tu peux clarifier ?",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "temporal", "hier", "curiosite", "confusion", "french"],
+    "design_note": "Question relative temporelle: le besoin de clarification prime sur un affect durable.",
+    "expected_acceptables": {
+      "dominant_tones": ["curiosite", "confusion", "neutralite"],
+      "tones": ["curiosite", "confusion", "neutralite"],
+      "avoid_tones": ["colere", "decouragement"],
+      "max_strength": 6
+    }
+  },
+  {
+    "id": "repo_validation_reception_neutral",
+    "provenance": "existing_test_case",
+    "source_reference": "app/tests/test_server_chat_web_runtime_contract.py:371",
+    "current_user_message": "Merci de confirmer la reception.",
+    "recent_turns": [],
+    "tags": ["repo_test_fixture", "neutral_probe", "french"],
+    "design_note": "Demande polie de confirmation; neutralite, eventuellement apaisement tres bas.",
+    "expected_acceptables": {
+      "dominant_tones": ["neutralite", "apaisement"],
+      "tones": ["neutralite", "apaisement"],
+      "avoid_tones": ["anxiete", "frustration", "colere"],
+      "max_strength": 4
+    }
+  }
+]

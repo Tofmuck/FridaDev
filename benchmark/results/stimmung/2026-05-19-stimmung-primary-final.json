@@ -1,0 +1,3302 @@
+{
+  "campaign_id": "2026-05-19-stimmung-primary-final",
+  "created_at_utc": "2026-05-19T11:21:36Z",
+  "suite": "stimmung",
+  "caller": "stimmung_agent_primary",
+  "dry_run": false,
+  "models": [
+    "openai/gpt-5.4-mini",
+    "mistralai/mistral-small-2603",
+    "google/gemini-3.1-flash-lite"
+  ],
+  "generation_params": {
+    "temperature": 0.1,
+    "top_p": 1.0,
+    "max_tokens": 220
+  },
+  "timeout_s": 10,
+  "prompt_path": "app/prompts/stimmung_agent.txt",
+  "prompt_sha256": "7a9b1f4f811584fbfd15444524952b9c87f569b6d53abed93465a415bd84ba85",
+  "fixture_path": "benchmark/suites/stimmung/fixtures/stimmung_primary_final_cases.json",
+  "fixture_sha256": "f0d38f2acf1f8674ac82e2f0e9314118ee5ae14e9c225279f0a051b5876ab047",
+  "case_count": 10,
+  "cases": [
+    {
+      "id": "repo_stimmung_frustration_confusion",
+      "current_user_message": "C'est agaçant et je suis perdu",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "frustration",
+        "confusion",
+        "marked_affect",
+        "french"
+      ],
+      "design_note": "Message deja utilise pour prouver le caller primaire; affect local attendu sans psychologie durable.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/test_stimmung_agent.py:112",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "frustration",
+          "confusion"
+        ],
+        "tones": [
+          "frustration",
+          "confusion"
+        ],
+        "avoid_tones": [
+          "enthousiasme",
+          "apaisement"
+        ],
+        "min_strength": 4
+      }
+    },
+    {
+      "id": "repo_stimmung_temporal_confusion",
+      "current_user_message": "Je suis perdu depuis hier",
+      "recent_turns": [
+        {
+          "turn_status": "complete",
+          "messages": [
+            {
+              "role": "user",
+              "content": "Avant"
+            },
+            {
+              "role": "assistant",
+              "content": "Reponse avant"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "repo_test_fixture",
+        "temporal",
+        "hier",
+        "confusion",
+        "french"
+      ],
+      "design_note": "Contrat temporel du Stimmung: le claim relatif reste local, pas humeur durable.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/test_stimmung_agent.py:386",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "confusion",
+          "decouragement",
+          "anxiete"
+        ],
+        "tones": [
+          "confusion",
+          "decouragement",
+          "anxiete"
+        ],
+        "avoid_tones": [
+          "colere",
+          "enthousiasme"
+        ],
+        "max_strength": 7
+      }
+    },
+    {
+      "id": "repo_chat_bonjour_neutral",
+      "current_user_message": "Bonjour",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "neutral_probe",
+        "french"
+      ],
+      "design_note": "Salutation minimale deja presente dans les tests; ne pas inventer d'affect.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/test_stimmung_agent.py:461",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "neutralite"
+        ],
+        "tones": [
+          "neutralite"
+        ],
+        "avoid_tones": [
+          "anxiete",
+          "frustration",
+          "colere"
+        ],
+        "max_strength": 4
+      }
+    },
+    {
+      "id": "repo_stimmung_fail_open_confusion",
+      "current_user_message": "Je ne comprends rien",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "confusion",
+        "marked_affect",
+        "french"
+      ],
+      "design_note": "Message de fail-open runtime; la lecture affective utile est confusion, pas colere.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/test_stimmung_agent.py:485",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "confusion",
+          "frustration"
+        ],
+        "tones": [
+          "confusion",
+          "frustration"
+        ],
+        "avoid_tones": [
+          "colere",
+          "enthousiasme"
+        ],
+        "min_strength": 4
+      }
+    },
+    {
+      "id": "repo_runtime_backed_request",
+      "current_user_message": "Je veux un test runtime-backed",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "neutral_probe",
+        "curiosite",
+        "french"
+      ],
+      "design_note": "Demande technique simple; neutralite ou curiosite basse, pas stress.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/test_stimmung_agent.py:271",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "neutralite",
+          "curiosite"
+        ],
+        "tones": [
+          "neutralite",
+          "curiosite"
+        ],
+        "avoid_tones": [
+          "anxiete",
+          "colere",
+          "decouragement"
+        ],
+        "max_strength": 5
+      }
+    },
+    {
+      "id": "repo_user_turn_disagreement",
+      "current_user_message": "Je ne suis pas d'accord",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "frustration",
+        "neutral_probe",
+        "french"
+      ],
+      "design_note": "Desaccord sobre: tension/frustration basse, pas colere forte.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:94",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "frustration",
+          "neutralite"
+        ],
+        "tones": [
+          "frustration",
+          "neutralite"
+        ],
+        "avoid_tones": [
+          "colere",
+          "anxiete"
+        ],
+        "max_strength": 6
+      }
+    },
+    {
+      "id": "repo_user_turn_method_tomorrow",
+      "current_user_message": "Je pense qu il faudrait revoir la methode de travail demain",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "temporal",
+        "curiosite",
+        "neutral_probe",
+        "french"
+      ],
+      "design_note": "Projection methodologique temporelle: ne pas surcoder en anxiete.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:269",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "neutralite",
+          "curiosite"
+        ],
+        "tones": [
+          "neutralite",
+          "curiosite"
+        ],
+        "avoid_tones": [
+          "anxiete",
+          "colere",
+          "decouragement"
+        ],
+        "max_strength": 5
+      }
+    },
+    {
+      "id": "repo_user_turn_time_awareness",
+      "current_user_message": "Je me rends compte de ça... t'as vu l'heure ?",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "curiosite",
+        "confusion",
+        "temporal",
+        "french"
+      ],
+      "design_note": "Prise de conscience temporelle; curiosite/confusion, pas conclusion affective durable.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:289",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "curiosite",
+          "confusion",
+          "neutralite"
+        ],
+        "tones": [
+          "curiosite",
+          "confusion",
+          "neutralite"
+        ],
+        "avoid_tones": [
+          "colere",
+          "decouragement"
+        ],
+        "max_strength": 6
+      }
+    },
+    {
+      "id": "repo_user_turn_since_yesterday_clarify",
+      "current_user_message": "Je pense à ça depuis hier, tu peux clarifier ?",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "temporal",
+        "hier",
+        "curiosite",
+        "confusion",
+        "french"
+      ],
+      "design_note": "Question relative temporelle: le besoin de clarification prime sur un affect durable.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/unit/core/hermeneutic_node/inputs/test_user_turn_input.py:321",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "curiosite",
+          "confusion",
+          "neutralite"
+        ],
+        "tones": [
+          "curiosite",
+          "confusion",
+          "neutralite"
+        ],
+        "avoid_tones": [
+          "colere",
+          "decouragement"
+        ],
+        "max_strength": 6
+      }
+    },
+    {
+      "id": "repo_validation_reception_neutral",
+      "current_user_message": "Merci de confirmer la reception.",
+      "recent_turns": [],
+      "tags": [
+        "repo_test_fixture",
+        "neutral_probe",
+        "french"
+      ],
+      "design_note": "Demande polie de confirmation; neutralite, eventuellement apaisement tres bas.",
+      "provenance": "existing_test_case",
+      "source_reference": "app/tests/test_server_chat_web_runtime_contract.py:371",
+      "expected_acceptables": {
+        "dominant_tones": [
+          "neutralite",
+          "apaisement"
+        ],
+        "tones": [
+          "neutralite",
+          "apaisement"
+        ],
+        "avoid_tones": [
+          "anxiete",
+          "frustration",
+          "colere"
+        ],
+        "max_strength": 4
+      }
+    }
+  ],
+  "secrets_written": false,
+  "production_runtime_changed": false,
+  "fallback_benchmarked": false,
+  "human_decision_required": true,
+  "results": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "summary": {
+        "model": "openai/gpt-5.4-mini",
+        "provider_error_rate": 0.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "hard_pass_rate": 0.7,
+        "hard_pass_count": 7,
+        "avoid_hit_count": 1,
+        "neutral_overcoded_count": 2,
+        "flat_miss_count": 0,
+        "avg_latency_ms": 1151.513,
+        "cost_estimate_usd": 0.00555225,
+        "avg_completion_tokens": 48.5,
+        "finish_reasons": [
+          "stop"
+        ],
+        "dominant_counts": {
+          "frustration": 2,
+          "confusion": 2,
+          "neutralite": 3,
+          "curiosite": 3
+        },
+        "provisional_verdict": "tester plus",
+        "notes": "1 avoid tone hit(s), 2 neutral overcoding case(s)"
+      },
+      "calls": [
+        {
+          "case_id": "repo_stimmung_frustration_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message deja utilise pour prouver le caller primaire; affect local attendu sans psychologie durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "confusion"
+            ],
+            "tones": [
+              "frustration",
+              "confusion"
+            ],
+            "avoid_tones": [
+              "enthousiasme",
+              "apaisement"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1644.536,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 448,
+              "completion_tokens": 53,
+              "total_tokens": 501,
+              "cost": 0.0005745,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0005745,
+                "upstream_inference_prompt_cost": 0.000336,
+                "upstream_inference_completions_cost": 0.0002385
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0005745,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 166,
+            "raw_text_sha256": "d5b7e3495b614ebe4b2e8f30b1b084e36a83ca66f5b90d3e74a97d3f6de313c1"
+          },
+          "request_signature": {
+            "messages_sha256": "4611d0f6a2d8ddf8af521f4e328b47476951b16f018a0492da9a982550d79a25",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 8
+              },
+              {
+                "tone": "confusion",
+                "strength": 7
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_temporal_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Contrat temporel du Stimmung: le claim relatif reste local, pas humeur durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "max_strength": 7
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 955.39,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 466,
+              "completion_tokens": 42,
+              "total_tokens": 508,
+              "cost": 0.0005385,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0005385,
+                "upstream_inference_prompt_cost": 0.0003495,
+                "upstream_inference_completions_cost": 0.000189
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0005385,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 128,
+            "raw_text_sha256": "bbb32e147eb77b12ed39644d0e11bd3e970b3ddc8eae36fd449ebb3376434407"
+          },
+          "request_signature": {
+            "messages_sha256": "46523745da0f156f3db011a26ce7f336e27f77d631e692ecda14bc51b672eb48",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 8
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.96,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": true,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_chat_bonjour_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Salutation minimale deja presente dans les tests; ne pas inventer d'affect.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite"
+            ],
+            "tones": [
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 949.41,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 441,
+              "completion_tokens": 42,
+              "total_tokens": 483,
+              "cost": 0.00051975,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00051975,
+                "upstream_inference_prompt_cost": 0.00033075,
+                "upstream_inference_completions_cost": 0.000189
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00051975,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 130,
+            "raw_text_sha256": "d963a52b216ec001764f30ca9b7f34c25c13377fcae4b060ae6868200b4dea7c"
+          },
+          "request_signature": {
+            "messages_sha256": "65af8d88583a4c89dc8c4f40aaf27486f3baa42db8a4b5075f5ca175c0fa6b53",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 2
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.98,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_fail_open_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message de fail-open runtime; la lecture affective utile est confusion, pas colere.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "frustration"
+            ],
+            "tones": [
+              "confusion",
+              "frustration"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 876.444,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 444,
+              "completion_tokens": 42,
+              "total_tokens": 486,
+              "cost": 0.000522,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000522,
+                "upstream_inference_prompt_cost": 0.000333,
+                "upstream_inference_completions_cost": 0.000189
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000522,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 128,
+            "raw_text_sha256": "8f6d7072f0dc270e1ffab7e6eddde602ce9f5175b6212229e0f46570ad2ab1ce"
+          },
+          "request_signature": {
+            "messages_sha256": "e516e4184fe75650d4436ea8c3e0e55552e4cc24820af7979226ffee1a89a9ca",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 9
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.98,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_runtime_backed_request",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "curiosite",
+            "french"
+          ],
+          "case_design_note": "Demande technique simple; neutralite ou curiosite basse, pas stress.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 977.447,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 446,
+              "completion_tokens": 53,
+              "total_tokens": 499,
+              "cost": 0.000573,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000573,
+                "upstream_inference_prompt_cost": 0.0003345,
+                "upstream_inference_completions_cost": 0.0002385
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000573,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 163,
+            "raw_text_sha256": "fef8db6fcb0ce6c2c85ced322dd9e3b98215b46afc0f5c1eda5a119e9d7de3bc"
+          },
+          "request_signature": {
+            "messages_sha256": "7e48da55631888aef22c709718465737c93fa08e8d42075b39152839a2419382",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 4
+              },
+              {
+                "tone": "neutralite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.73,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_disagreement",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Desaccord sobre: tension/frustration basse, pas colere forte.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "anxiete"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1580.591,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 446,
+              "completion_tokens": 53,
+              "total_tokens": 499,
+              "cost": 0.000573,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000573,
+                "upstream_inference_prompt_cost": 0.0003345,
+                "upstream_inference_completions_cost": 0.0002385
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000573,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 163,
+            "raw_text_sha256": "17ef080ddeae7e590545e11603ea66ca08d9c26c43a763e2c4dec978681109f6"
+          },
+          "request_signature": {
+            "messages_sha256": "adedbdb032069618b04c307a2f0870abd9019081bdb62ec9f22e2d26a92b5967",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 4
+              },
+              {
+                "tone": "colere",
+                "strength": 2
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.78,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [
+              "colere"
+            ],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_method_tomorrow",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "curiosite",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Projection methodologique temporelle: ne pas surcoder en anxiete.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1543.051,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 451,
+              "completion_tokens": 52,
+              "total_tokens": 503,
+              "cost": 0.00057225,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00057225,
+                "upstream_inference_prompt_cost": 0.00033825,
+                "upstream_inference_completions_cost": 0.000234
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00057225,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 164,
+            "raw_text_sha256": "1b1b671ba62539e3bcd12df7be8c7f69f16e9737edc5f2a46135ad103142a652"
+          },
+          "request_signature": {
+            "messages_sha256": "5e84641ee61b60274b064c3414101a82207677d4295b65f1dd720feb934037c2",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 4
+              },
+              {
+                "tone": "curiosite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.79,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_time_awareness",
+          "case_tags": [
+            "repo_test_fixture",
+            "curiosite",
+            "confusion",
+            "temporal",
+            "french"
+          ],
+          "case_design_note": "Prise de conscience temporelle; curiosite/confusion, pas conclusion affective durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1039.489,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 453,
+              "completion_tokens": 53,
+              "total_tokens": 506,
+              "cost": 0.00057825,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00057825,
+                "upstream_inference_prompt_cost": 0.00033975,
+                "upstream_inference_completions_cost": 0.0002385
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00057825,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 163,
+            "raw_text_sha256": "f78987c867e6c23026091e3aaa245131aefa5c13a4341c50abba694544e0fe7a"
+          },
+          "request_signature": {
+            "messages_sha256": "f61d495b7789c4689ad246d9b275a17e4bd4efbd1b0860dffb0d2863891e4305",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 4
+              },
+              {
+                "tone": "neutralite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.66,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_since_yesterday_clarify",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "curiosite",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Question relative temporelle: le besoin de clarification prime sur un affect durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 969.368,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 452,
+              "completion_tokens": 53,
+              "total_tokens": 505,
+              "cost": 0.0005775,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0005775,
+                "upstream_inference_prompt_cost": 0.000339,
+                "upstream_inference_completions_cost": 0.0002385
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0005775,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 162,
+            "raw_text_sha256": "506b5b81089129671538e169f046fac9f31f7b85a8f56ee7166a75ca0d90c073"
+          },
+          "request_signature": {
+            "messages_sha256": "c342a5933fe9fd409352e2dca4c70c601687e58ff9fe1bc0989305bf0b30b332",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 6
+              },
+              {
+                "tone": "confusion",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.86,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_validation_reception_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Demande polie de confirmation; neutralite, eventuellement apaisement tres bas.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 979.408,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "completed",
+            "usage": {
+              "prompt_tokens": 446,
+              "completion_tokens": 42,
+              "total_tokens": 488,
+              "cost": 0.0005235,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0005235,
+                "upstream_inference_prompt_cost": 0.0003345,
+                "upstream_inference_completions_cost": 0.000189
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0005235,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 130,
+            "raw_text_sha256": "ed2d0f1cc9f0b4e63d5d9cf2ed446589124405816134085cae352f4db0553a02"
+          },
+          "request_signature": {
+            "messages_sha256": "c6322a21be27f6ad35dba004c5937dcee4c73f3bddfa7bd300705b95946238b1",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.93,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "summary": {
+        "model": "mistralai/mistral-small-2603",
+        "provider_error_rate": 0.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "hard_pass_rate": 0.7,
+        "hard_pass_count": 7,
+        "avoid_hit_count": 1,
+        "neutral_overcoded_count": 2,
+        "flat_miss_count": 0,
+        "avg_latency_ms": 768.56,
+        "cost_estimate_usd": 0.00101307,
+        "avg_completion_tokens": 60.0,
+        "finish_reasons": [
+          "stop"
+        ],
+        "dominant_counts": {
+          "frustration": 2,
+          "confusion": 2,
+          "neutralite": 3,
+          "curiosite": 2,
+          "anxiete": 1
+        },
+        "provisional_verdict": "tester plus",
+        "notes": "1 avoid tone hit(s), 2 neutral overcoding case(s)"
+      },
+      "calls": [
+        {
+          "case_id": "repo_stimmung_frustration_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message deja utilise pour prouver le caller primaire; affect local attendu sans psychologie durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "confusion"
+            ],
+            "tones": [
+              "frustration",
+              "confusion"
+            ],
+            "avoid_tones": [
+              "enthousiasme",
+              "apaisement"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 735.328,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 474,
+              "completion_tokens": 68,
+              "total_tokens": 542,
+              "cost": 0.0001119,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001119,
+                "upstream_inference_prompt_cost": 7.11e-05,
+                "upstream_inference_completions_cost": 4.08e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001119,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 181,
+            "raw_text_sha256": "5ee0da697c4607615b9fdbd1c1ca933cc177748fd02184fef3374409183ea35d"
+          },
+          "request_signature": {
+            "messages_sha256": "4611d0f6a2d8ddf8af521f4e328b47476951b16f018a0492da9a982550d79a25",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 7
+              },
+              {
+                "tone": "confusion",
+                "strength": 6
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.9,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_temporal_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Contrat temporel du Stimmung: le claim relatif reste local, pas humeur durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "max_strength": 7
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 756.633,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 492,
+              "completion_tokens": 69,
+              "total_tokens": 561,
+              "cost": 0.0001152,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001152,
+                "upstream_inference_prompt_cost": 7.38e-05,
+                "upstream_inference_completions_cost": 4.14e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001152,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 175,
+            "raw_text_sha256": "e0ee57c97f67464d2d02278757b62e3d037beaa2e3e091ac67cceae5b9861d15"
+          },
+          "request_signature": {
+            "messages_sha256": "46523745da0f156f3db011a26ce7f336e27f77d631e692ecda14bc51b672eb48",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 7
+              },
+              {
+                "tone": "anxiete",
+                "strength": 5
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.9,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_chat_bonjour_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Salutation minimale deja presente dans les tests; ne pas inventer d'affect.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite"
+            ],
+            "tones": [
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 610.879,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 468,
+              "completion_tokens": 53,
+              "total_tokens": 521,
+              "cost": 0.000102,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000102,
+                "upstream_inference_prompt_cost": 7.02e-05,
+                "upstream_inference_completions_cost": 3.18e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000102,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 141,
+            "raw_text_sha256": "3a62f298d8599ce79df3e04a3381a1f6c9d88a988af71fd0a87cef39ec1ba198"
+          },
+          "request_signature": {
+            "messages_sha256": "65af8d88583a4c89dc8c4f40aaf27486f3baa42db8a4b5075f5ca175c0fa6b53",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.9,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_fail_open_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message de fail-open runtime; la lecture affective utile est confusion, pas colere.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "frustration"
+            ],
+            "tones": [
+              "confusion",
+              "frustration"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 892.14,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 470,
+              "completion_tokens": 54,
+              "total_tokens": 524,
+              "cost": 0.0001029,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001029,
+                "upstream_inference_prompt_cost": 7.05e-05,
+                "upstream_inference_completions_cost": 3.24e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001029,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 140,
+            "raw_text_sha256": "a3c6798b02beca1ca7fb4f1dff26de9d469dc21b321d3e747199a22a3990a251"
+          },
+          "request_signature": {
+            "messages_sha256": "e516e4184fe75650d4436ea8c3e0e55552e4cc24820af7979226ffee1a89a9ca",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 8
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_runtime_backed_request",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "curiosite",
+            "french"
+          ],
+          "case_design_note": "Demande technique simple; neutralite ou curiosite basse, pas stress.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 825.747,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 472,
+              "completion_tokens": 56,
+              "total_tokens": 528,
+              "cost": 0.0001044,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001044,
+                "upstream_inference_prompt_cost": 7.08e-05,
+                "upstream_inference_completions_cost": 3.36e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001044,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 140,
+            "raw_text_sha256": "7d1bfa48c23942eea69b5323b1d0f62799c5a67f380bbb3b441dad52f46f58aa"
+          },
+          "request_signature": {
+            "messages_sha256": "7e48da55631888aef22c709718465737c93fa08e8d42075b39152839a2419382",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 5
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_disagreement",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Desaccord sobre: tension/frustration basse, pas colere forte.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "anxiete"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 810.557,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 472,
+              "completion_tokens": 68,
+              "total_tokens": 540,
+              "cost": 0.0001116,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001116,
+                "upstream_inference_prompt_cost": 7.08e-05,
+                "upstream_inference_completions_cost": 4.08e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001116,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 178,
+            "raw_text_sha256": "e32cf56280869de53d38d19e4bbf40cd9e9a52229df83ffb227d911e417bb9fc"
+          },
+          "request_signature": {
+            "messages_sha256": "adedbdb032069618b04c307a2f0870abd9019081bdb62ec9f22e2d26a92b5967",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 7
+              },
+              {
+                "tone": "colere",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.9,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [
+              "colere"
+            ],
+            "max_strength_exceeded": true,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_method_tomorrow",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "curiosite",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Projection methodologique temporelle: ne pas surcoder en anxiete.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 712.622,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 478,
+              "completion_tokens": 53,
+              "total_tokens": 531,
+              "cost": 0.0001035,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001035,
+                "upstream_inference_prompt_cost": 7.17e-05,
+                "upstream_inference_completions_cost": 3.18e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001035,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 141,
+            "raw_text_sha256": "273a4cc15871e9a5b230613db8e2065c87b9bd553beb8ee0483cf85cd4c0cec2"
+          },
+          "request_signature": {
+            "messages_sha256": "5e84641ee61b60274b064c3414101a82207677d4295b65f1dd720feb934037c2",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.8,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_time_awareness",
+          "case_tags": [
+            "repo_test_fixture",
+            "curiosite",
+            "confusion",
+            "temporal",
+            "french"
+          ],
+          "case_design_note": "Prise de conscience temporelle; curiosite/confusion, pas conclusion affective durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 915.074,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 479,
+              "completion_tokens": 70,
+              "total_tokens": 549,
+              "cost": 0.00011385,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00011385,
+                "upstream_inference_prompt_cost": 7.185e-05,
+                "upstream_inference_completions_cost": 4.2e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00011385,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 174,
+            "raw_text_sha256": "5bee8c23b47a577478e2e20a7cf9c7eba1dd3ecfddaf8e5c6189642ee0e21544"
+          },
+          "request_signature": {
+            "messages_sha256": "f61d495b7789c4689ad246d9b275a17e4bd4efbd1b0860dffb0d2863891e4305",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 2
+              },
+              {
+                "tone": "anxiete",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "anxiete",
+            "confidence": 0.8,
+            "dominant_match": false,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_since_yesterday_clarify",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "curiosite",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Question relative temporelle: le besoin de clarification prime sur un affect durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 716.542,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 478,
+              "completion_tokens": 56,
+              "total_tokens": 534,
+              "cost": 4.482e-05,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 448,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 4.482e-05,
+                "upstream_inference_prompt_cost": 1.122e-05,
+                "upstream_inference_completions_cost": 3.36e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 4.482e-05,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 140,
+            "raw_text_sha256": "42b515748757c69a563dcf53570b9d3fd560e3fb174a0f244384d07ba407fbf3"
+          },
+          "request_signature": {
+            "messages_sha256": "c342a5933fe9fd409352e2dca4c70c601687e58ff9fe1bc0989305bf0b30b332",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_validation_reception_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Demande polie de confirmation; neutralite, eventuellement apaisement tres bas.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 710.082,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "stop",
+            "usage": {
+              "prompt_tokens": 474,
+              "completion_tokens": 53,
+              "total_tokens": 527,
+              "cost": 0.0001029,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0001029,
+                "upstream_inference_prompt_cost": 7.11e-05,
+                "upstream_inference_completions_cost": 3.18e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0001029,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 141,
+            "raw_text_sha256": "3a62f298d8599ce79df3e04a3381a1f6c9d88a988af71fd0a87cef39ec1ba198"
+          },
+          "request_signature": {
+            "messages_sha256": "c6322a21be27f6ad35dba004c5937dcee4c73f3bddfa7bd300705b95946238b1",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.9,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        }
+      ]
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "summary": {
+        "model": "google/gemini-3.1-flash-lite",
+        "provider_error_rate": 0.0,
+        "json_valid_rate": 1.0,
+        "schema_valid_rate": 1.0,
+        "hard_pass_rate": 0.7,
+        "hard_pass_count": 7,
+        "avoid_hit_count": 0,
+        "neutral_overcoded_count": 2,
+        "flat_miss_count": 0,
+        "avg_latency_ms": 1113.411,
+        "cost_estimate_usd": 0.00231325,
+        "avg_completion_tokens": 74.9,
+        "finish_reasons": [
+          "stop"
+        ],
+        "dominant_counts": {
+          "frustration": 2,
+          "confusion": 3,
+          "neutralite": 3,
+          "curiosite": 2
+        },
+        "provisional_verdict": "tester plus",
+        "notes": "2 neutral overcoding case(s)"
+      },
+      "calls": [
+        {
+          "case_id": "repo_stimmung_frustration_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message deja utilise pour prouver le caller primaire; affect local attendu sans psychologie durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "confusion"
+            ],
+            "tones": [
+              "frustration",
+              "confusion"
+            ],
+            "avoid_tones": [
+              "enthousiasme",
+              "apaisement"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 978.181,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 475,
+              "completion_tokens": 80,
+              "total_tokens": 555,
+              "cost": 0.00023875,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00023875,
+                "upstream_inference_prompt_cost": 0.00011875,
+                "upstream_inference_completions_cost": 0.00012
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00023875,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 206,
+            "raw_text_sha256": "bba1220badfa5f8b2b23e086b83649486e4102b6403058f98a1df8a23eb7a636"
+          },
+          "request_signature": {
+            "messages_sha256": "4611d0f6a2d8ddf8af521f4e328b47476951b16f018a0492da9a982550d79a25",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 8
+              },
+              {
+                "tone": "confusion",
+                "strength": 7
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_temporal_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Contrat temporel du Stimmung: le claim relatif reste local, pas humeur durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "tones": [
+              "confusion",
+              "decouragement",
+              "anxiete"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "max_strength": 7
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 683.134,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 496,
+              "completion_tokens": 80,
+              "total_tokens": 576,
+              "cost": 0.000244,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000244,
+                "upstream_inference_prompt_cost": 0.000124,
+                "upstream_inference_completions_cost": 0.00012
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000244,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 206,
+            "raw_text_sha256": "3fed356ab0d408ededf7546d5b05e98e604d268b9bfdd9e07226618a33ccf560"
+          },
+          "request_signature": {
+            "messages_sha256": "46523745da0f156f3db011a26ce7f336e27f77d631e692ecda14bc51b672eb48",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 8
+              },
+              {
+                "tone": "decouragement",
+                "strength": 5
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": true,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_chat_bonjour_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Salutation minimale deja presente dans les tests; ne pas inventer d'affect.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite"
+            ],
+            "tones": [
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1569.973,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 466,
+              "completion_tokens": 66,
+              "total_tokens": 532,
+              "cost": 0.0002155,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002155,
+                "upstream_inference_prompt_cost": 0.0001165,
+                "upstream_inference_completions_cost": 9.9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002155,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 162,
+            "raw_text_sha256": "162e034218e81df1f8f034351a4bc9baef369b56a493b661da829df0d9af4ca0"
+          },
+          "request_signature": {
+            "messages_sha256": "65af8d88583a4c89dc8c4f40aaf27486f3baa42db8a4b5075f5ca175c0fa6b53",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 2
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_stimmung_fail_open_confusion",
+          "case_tags": [
+            "repo_test_fixture",
+            "confusion",
+            "marked_affect",
+            "french"
+          ],
+          "case_design_note": "Message de fail-open runtime; la lecture affective utile est confusion, pas colere.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "confusion",
+              "frustration"
+            ],
+            "tones": [
+              "confusion",
+              "frustration"
+            ],
+            "avoid_tones": [
+              "colere",
+              "enthousiasme"
+            ],
+            "min_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 677.667,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 471,
+              "completion_tokens": 79,
+              "total_tokens": 550,
+              "cost": 0.00023625,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00023625,
+                "upstream_inference_prompt_cost": 0.00011775,
+                "upstream_inference_completions_cost": 0.0001185
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00023625,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 204,
+            "raw_text_sha256": "f1a30902fe5b438389cf4d143c0b4c24c514de9686ba86d5c63c414567825ca2"
+          },
+          "request_signature": {
+            "messages_sha256": "e516e4184fe75650d4436ea8c3e0e55552e4cc24820af7979226ffee1a89a9ca",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 9
+              },
+              {
+                "tone": "frustration",
+                "strength": 6
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_runtime_backed_request",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "curiosite",
+            "french"
+          ],
+          "case_design_note": "Demande technique simple; neutralite ou curiosite basse, pas stress.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 2230.26,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 472,
+              "completion_tokens": 68,
+              "total_tokens": 540,
+              "cost": 0.00022,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00022,
+                "upstream_inference_prompt_cost": 0.000118,
+                "upstream_inference_completions_cost": 0.000102
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00022,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 160,
+            "raw_text_sha256": "3bac6a999f6ea714a7b7f118bf73073276a68ae64bfd33a9acf9837d82cd2f98"
+          },
+          "request_signature": {
+            "messages_sha256": "7e48da55631888aef22c709718465737c93fa08e8d42075b39152839a2419382",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_disagreement",
+          "case_tags": [
+            "repo_test_fixture",
+            "frustration",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Desaccord sobre: tension/frustration basse, pas colere forte.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "tones": [
+              "frustration",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "anxiete"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 804.358,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 472,
+              "completion_tokens": 66,
+              "total_tokens": 538,
+              "cost": 0.000217,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.000217,
+                "upstream_inference_prompt_cost": 0.000118,
+                "upstream_inference_completions_cost": 9.9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.000217,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 164,
+            "raw_text_sha256": "43de55ccc99505495ec02a214b1b0749da26497c0c68fe9e3842c34abfa7e235"
+          },
+          "request_signature": {
+            "messages_sha256": "adedbdb032069618b04c307a2f0870abd9019081bdb62ec9f22e2d26a92b5967",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "frustration",
+                "strength": 5
+              }
+            ],
+            "dominant_tone": "frustration",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": true,
+            "flat_miss": false,
+            "hard_pass": false,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_method_tomorrow",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "curiosite",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Projection methodologique temporelle: ne pas surcoder en anxiete.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "tones": [
+              "neutralite",
+              "curiosite"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 5
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 1648.603,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 478,
+              "completion_tokens": 82,
+              "total_tokens": 560,
+              "cost": 0.0002425,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.0002425,
+                "upstream_inference_prompt_cost": 0.0001195,
+                "upstream_inference_completions_cost": 0.000123
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.0002425,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 204,
+            "raw_text_sha256": "3183a4d7c52ff7eb6ee34241bc79fa616b0c262266324e2dd6092b3447f43dd6"
+          },
+          "request_signature": {
+            "messages_sha256": "5e84641ee61b60274b064c3414101a82207677d4295b65f1dd720feb934037c2",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 4
+              },
+              {
+                "tone": "curiosite",
+                "strength": 2
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_time_awareness",
+          "case_tags": [
+            "repo_test_fixture",
+            "curiosite",
+            "confusion",
+            "temporal",
+            "french"
+          ],
+          "case_design_note": "Prise de conscience temporelle; curiosite/confusion, pas conclusion affective durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 787.726,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 481,
+              "completion_tokens": 80,
+              "total_tokens": 561,
+              "cost": 0.00024025,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00024025,
+                "upstream_inference_prompt_cost": 0.00012025,
+                "upstream_inference_completions_cost": 0.00012
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00024025,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 200,
+            "raw_text_sha256": "2fd5cf58611755fac0da83982cfc991ef1b5c4a3baeb46e86b93d152d0a961e6"
+          },
+          "request_signature": {
+            "messages_sha256": "f61d495b7789c4689ad246d9b275a17e4bd4efbd1b0860dffb0d2863891e4305",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "confusion",
+                "strength": 4
+              },
+              {
+                "tone": "anxiete",
+                "strength": 3
+              }
+            ],
+            "dominant_tone": "confusion",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_user_turn_since_yesterday_clarify",
+          "case_tags": [
+            "repo_test_fixture",
+            "temporal",
+            "hier",
+            "curiosite",
+            "confusion",
+            "french"
+          ],
+          "case_design_note": "Question relative temporelle: le besoin de clarification prime sur un affect durable.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "tones": [
+              "curiosite",
+              "confusion",
+              "neutralite"
+            ],
+            "avoid_tones": [
+              "colere",
+              "decouragement"
+            ],
+            "max_strength": 6
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 852.568,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 477,
+              "completion_tokens": 82,
+              "total_tokens": 559,
+              "cost": 0.00024225,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00024225,
+                "upstream_inference_prompt_cost": 0.00011925,
+                "upstream_inference_completions_cost": 0.000123
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00024225,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 202,
+            "raw_text_sha256": "77b59faf484a90d062dade30ab0eabf3a336010ffd527a8cc7c64d234898910d"
+          },
+          "request_signature": {
+            "messages_sha256": "c342a5933fe9fd409352e2dca4c70c601687e58ff9fe1bc0989305bf0b30b332",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "curiosite",
+                "strength": 6
+              },
+              {
+                "tone": "confusion",
+                "strength": 4
+              }
+            ],
+            "dominant_tone": "curiosite",
+            "confidence": 0.85,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        },
+        {
+          "case_id": "repo_validation_reception_neutral",
+          "case_tags": [
+            "repo_test_fixture",
+            "neutral_probe",
+            "french"
+          ],
+          "case_design_note": "Demande polie de confirmation; neutralite, eventuellement apaisement tres bas.",
+          "expected_acceptables": {
+            "dominant_tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "tones": [
+              "neutralite",
+              "apaisement"
+            ],
+            "avoid_tones": [
+              "anxiete",
+              "frustration",
+              "colere"
+            ],
+            "max_strength": 4
+          },
+          "provider": {
+            "ok": true,
+            "status_code": 200,
+            "elapsed_ms": 901.64,
+            "error": null,
+            "finish_reason": "stop",
+            "native_finish_reason": "STOP",
+            "usage": {
+              "prompt_tokens": 471,
+              "completion_tokens": 66,
+              "total_tokens": 537,
+              "cost": 0.00021675,
+              "is_byok": false,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "audio_tokens": 0,
+                "video_tokens": 0
+              },
+              "cost_details": {
+                "upstream_inference_cost": 0.00021675,
+                "upstream_inference_prompt_cost": 0.00011775,
+                "upstream_inference_completions_cost": 9.9e-05
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "image_tokens": 0,
+                "audio_tokens": 0
+              }
+            },
+            "cost_estimate_usd": 0.00021675,
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_text_retained": false,
+            "raw_text_chars": 162,
+            "raw_text_sha256": "162e034218e81df1f8f034351a4bc9baef369b56a493b661da829df0d9af4ca0"
+          },
+          "request_signature": {
+            "messages_sha256": "c6322a21be27f6ad35dba004c5937dcee4c73f3bddfa7bd300705b95946238b1",
+            "generation_params": {
+              "temperature": 0.1,
+              "top_p": 1.0,
+              "max_tokens": 220
+            }
+          },
+          "score": {
+            "json_valid": true,
+            "schema_valid": true,
+            "schema_errors": [],
+            "present": true,
+            "tones": [
+              {
+                "tone": "neutralite",
+                "strength": 2
+              }
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.95,
+            "dominant_match": true,
+            "tone_overlap": true,
+            "avoid_hits": [],
+            "max_strength_exceeded": false,
+            "min_strength_missed": false,
+            "neutral_overcoded": false,
+            "flat_miss": false,
+            "hard_pass": true,
+            "error": null
+          }
+        }
+      ]
+    }
+  ]
+}

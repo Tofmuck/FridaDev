@@ -18,6 +18,8 @@ MAX_CURRENT_TURN_CHARS = 600
 _FIXTURE_FILES = {
     "primary": "stimmung_primary_cases.json",
     "diagnostic": "stimmung_primary_cases.json",
+    "final": "stimmung_primary_final_cases.json",
+    "real_final": "stimmung_primary_final_cases.json",
 }
 
 
@@ -38,7 +40,7 @@ def load_cases(repo_root: Path, fixture_set: str = "primary") -> list[dict[str, 
     if not isinstance(data, list):
         raise ValueError("stimmung fixtures must be a JSON list")
     cases = [_normalize_case(case, index) for index, case in enumerate(data)]
-    _validate_cases(cases)
+    _validate_cases(cases, fixture_set=fixture_set)
     return cases
 
 
@@ -126,7 +128,7 @@ def _normalize_case(case: Any, index: int) -> dict[str, Any]:
     return normalized
 
 
-def _validate_cases(cases: list[dict[str, Any]]) -> None:
+def _validate_cases(cases: list[dict[str, Any]], *, fixture_set: str) -> None:
     seen_ids: set[str] = set()
     for case in cases:
         case_id = str(case.get("id") or "").strip()
@@ -148,5 +150,6 @@ def _validate_cases(cases: list[dict[str, Any]]) -> None:
         if not expected.get("dominant_tones"):
             raise ValueError(f"stimmung fixture {case_id} must define expected dominant_tones")
 
-    if len(cases) != 24:
-        raise ValueError(f"stimmung primary campaign expects 24 cases, got {len(cases)}")
+    expected_count = 10 if fixture_set in {"final", "real_final"} else 24
+    if len(cases) != expected_count:
+        raise ValueError(f"stimmung {fixture_set} campaign expects {expected_count} cases, got {len(cases)}")

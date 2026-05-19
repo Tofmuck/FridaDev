@@ -63,6 +63,13 @@ class StimmungBenchmarkSuiteTests(unittest.TestCase):
             self.assertTrue(case.get("design_note"))
             self.assertTrue((case.get("expected_acceptables") or {}).get("dominant_tones"))
 
+    def test_stimmung_final_fixtures_are_repo_sourced_and_short(self) -> None:
+        cases = stimmung_adapter.load_cases(REPO_ROOT, fixture_set="final")
+        self.assertEqual(len(cases), 10)
+        self.assertTrue(all(case["provenance"] == "existing_test_case" for case in cases))
+        self.assertTrue(all(case["source_reference"].startswith("app/tests/") for case in cases))
+        self.assertTrue(all("repo_test_fixture" in case.get("tags", []) for case in cases))
+
     def test_stimmung_payload_uses_production_prompt_shape_and_fixed_params(self) -> None:
         cases = stimmung_adapter.load_cases(REPO_ROOT)
         prompt = stimmung_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
@@ -140,6 +147,10 @@ class StimmungBenchmarkSuiteTests(unittest.TestCase):
             self.assertFalse(json_payload["fallback_benchmarked"])
             self.assertTrue(json_payload["human_decision_required"])
             self.assertEqual(json_payload["case_count"], 24)
+            provider = json_payload["results"][0]["calls"][0]["provider"]
+            self.assertNotIn("raw_text", provider)
+            self.assertFalse(provider["raw_text_retained"])
+            self.assertTrue(provider["raw_text_sha256"])
             self.assertIn("Lecture hermeneutique par modele", markdown)
 
 

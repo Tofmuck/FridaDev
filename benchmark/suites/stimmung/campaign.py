@@ -58,6 +58,7 @@ def build_stimmung_primary_campaign(
                     raise RuntimeError("client is required outside dry-run mode")
                 provider = client.chat_completion(payload, caller="stimmung_agent", timeout_s=config.timeout_s)
                 score = scorer.score_response(case, provider.get("raw_text"), provider.get("error"))
+            stored_provider = _compact_provider(provider)
 
             calls.append(
                 {
@@ -65,7 +66,7 @@ def build_stimmung_primary_campaign(
                     "case_tags": list(case.get("tags") or []),
                     "case_design_note": str(case.get("design_note") or ""),
                     "expected_acceptables": dict(case.get("expected_acceptables") or {}),
-                    "provider": provider,
+                    "provider": stored_provider,
                     "request_signature": request_signature,
                     "score": score,
                 }
@@ -110,6 +111,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         f"- timeout_s: `{campaign.get('timeout_s')}`",
         f"- Production runtime changed: `{campaign.get('production_runtime_changed')}`",
         f"- Fallback benchmarked: `{campaign.get('fallback_benchmarked')}`",
+        "- Retention: raw model text is not retained in JSON; only output hashes, sizes and metrics are kept.",
         "",
         "## Ce que cette campagne mesure",
         "",
@@ -121,7 +123,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "- Elle ne choisit pas automatiquement le modele de production.",
         "- Elle ne benchmarke pas le fallback.",
         "- Elle ne teste pas le noeud hermeneutique complet.",
-        "- Les cas sont artificiels et diagnostiques, pas un replay de conversations privees.",
+        f"- {_case_source_limit(campaign)}",
         "",
         "## Synthese technique",
         "",
@@ -163,6 +165,8 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
                 f"> {case['current_user_message']}",
                 "",
                 f"- Tags: `{', '.join(case.get('tags') or [])}`",
+                f"- Provenance: `{case.get('provenance') or 'unknown'}`"
+                + (f" - `{case.get('source_reference')}`" if case.get("source_reference") else ""),
                 f"- Attendus souples: dominant parmi `{', '.join(expected.get('dominant_tones') or [])}`",
                 f"- Note: {case['design_note']}",
                 "",
@@ -216,6 +220,20 @@ def _dry_provider(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _case_source_limit(campaign: dict[str, Any]) -> str:
+    provenances = {
+        str(case.get("provenance") or "").strip()
+        for case in campaign.get("cases", [])
+        if str(case.get("provenance") or "").strip()
+    }
+    if provenances and provenances <= {"existing_test_case"}:
+        return (
+            "Les cas sont des ressources courtes deja presentes dans les tests du repo; "
+            "ce n'est pas un replay de conversations privees."
+        )
+    return "Les cas sont artificiels et diagnostiques, pas un replay de conversations privees."
+
+
 def _public_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
@@ -224,10 +242,21 @@ def _public_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "recent_turns": case.get("recent_turns") or [],
             "tags": list(case.get("tags") or []),
             "design_note": str(case.get("design_note") or ""),
+            "provenance": str(case.get("provenance") or case.get("origin") or ""),
+            "source_reference": str(case.get("source_reference") or ""),
             "expected_acceptables": dict(case.get("expected_acceptables") or {}),
         }
         for case in cases
     ]
+
+
+def _compact_provider(provider: dict[str, Any]) -> dict[str, Any]:
+    compact = dict(provider)
+    raw_text = str(compact.pop("raw_text", "") or "")
+    compact["raw_text_retained"] = False
+    compact["raw_text_chars"] = len(raw_text)
+    compact["raw_text_sha256"] = sha256_text(raw_text) if raw_text else ""
+    return compact
 
 
 def _model_reading_lines(result: dict[str, Any]) -> list[str]:

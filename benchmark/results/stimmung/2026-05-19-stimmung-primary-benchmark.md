@@ -10,6 +10,7 @@
 - timeout_s: `10`
 - Production runtime changed: `False`
 - Fallback benchmarked: `False`
+- Retention: exploratory artificial campaign. The heavy structured JSON artifact and raw model outputs were removed after review; this Markdown file is kept as compact provisional evidence only.
 
 ## Ce que cette campagne mesure
 

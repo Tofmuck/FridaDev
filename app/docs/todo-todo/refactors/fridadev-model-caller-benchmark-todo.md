@@ -34,7 +34,7 @@ Source de verite de depart:
 - [x] Resume conversationnel.
 - [x] Extracteur identity.
 - [x] Agent periodic identity.
-- [ ] Stimmung agent primaire.
+- [x] Stimmung agent primaire.
 - [ ] Validation agent primaire.
 - [ ] Fallback stimmung: hors priorite pour l'instant.
 
@@ -53,7 +53,7 @@ Source de verite de depart:
 - [x] Benchmark periodic identity.
 - [x] Decision periodic identity.
 - [x] Decouplage propre de periodic identity.
-- [ ] Benchmark stimmung agent primaire.
+- [x] Benchmark stimmung agent primaire.
 - [ ] Decision stimmung agent primaire.
 - [ ] Decouplage propre du stimmung agent primaire.
 - [ ] Benchmark validation agent primaire.
@@ -286,6 +286,11 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Produire une lecture hermeneutique: psychologisation excessive, platitude, confusion ironie/agacement/frustration, neutralite bien tenue et verdict provisoire.
 - [x] Ne pas proclamer de vainqueur de production.
 - [x] Ne pas modifier `stimmung_agent_model`.
+- [x] Requalifier la premiere campagne artificielle comme exploratoire.
+- [x] Retirer le JSON lourd de la campagne artificielle apres lecture provisoire.
+- [x] Preparer et lancer une finale courte sur 10 cas deja presents dans les tests du repo.
+- [x] Exclure `anthropic/claude-haiku-4.5` de la finale apres echec de schema strict dans la campagne exploratoire.
+- [x] Comparer en finale `openai/gpt-5.4-mini`, `mistralai/mistral-small-2603` et `google/gemini-3.1-flash-lite`.
 - [ ] Decision modele `stimmung_agent` primaire apres lecture humaine de Tof.
 - [ ] Decouplage runtime du `stimmung_agent` primaire seulement apres decision explicite.
 - [x] Fallback Stimmung hors priorite pour ce chantier.
