@@ -148,6 +148,7 @@ logger.info(
 
 _TRUSTED_ADMIN_PROXY_HOSTS = ('platform-caddy', 'caddy')
 _TRUSTED_ADMIN_IDENTITY_HEADERS = ('Remote-User',)
+_GUARDED_TOOLS_PATHS = {'/api/tools/image-generation'}
 
 
 def _admin_request_remote_addr() -> str:
@@ -187,6 +188,22 @@ def _has_trusted_admin_identity(identity: dict[str, str]) -> bool:
     return any(identity.values())
 
 
+def _trusted_operator_request_status() -> tuple[bool, str, int, str, dict[str, str]]:
+    client_ip = _admin_request_remote_addr()
+    if _is_loopback_ip(client_ip):
+        return True, 'loopback', 200, client_ip, {}
+
+    trusted_proxy_ips = _trusted_admin_proxy_ips()
+    if client_ip not in trusted_proxy_ips:
+        return False, 'untrusted_proxy_source', 403, client_ip, {}
+
+    identity = _trusted_admin_identity()
+    if not _has_trusted_admin_identity(identity):
+        return False, 'missing_proxy_identity', 401, client_ip, identity
+
+    return True, 'trusted_proxy_identity', 200, client_ip, identity
+
+
 def _admin_auth_error(reason: str, status_code: int, client_ip: str, identity: dict[str, str] | None = None):
     payload = {
         'reason': reason,
@@ -202,22 +219,45 @@ def _admin_auth_error(reason: str, status_code: int, client_ip: str, identity: d
     return jsonify({'ok': False, 'error': 'admin access denied'}), status_code
 
 
+def _tools_auth_error(reason: str, client_ip: str, identity: dict[str, str] | None = None):
+    payload = {
+        'reason': reason,
+        'path': request.path,
+        'method': request.method,
+        'client_ip': client_ip,
+    }
+    if identity:
+        for header, value in identity.items():
+            if value:
+                payload[header.lower().replace('-', '_')] = value
+    admin_logs.log_event('tools_access_denied', level='WARN', **payload)
+    return jsonify({
+        'ok': False,
+        'error_code': 'forbidden',
+        'message': 'tool access denied',
+    }), 403
+
+
 @app.before_request
 def enforce_admin_guard():
     if not request.path.startswith('/api/admin/'):
         return None
 
-    client_ip = _admin_request_remote_addr()
-    if _is_loopback_ip(client_ip):
+    allowed, reason, status_code, client_ip, identity = _trusted_operator_request_status()
+    if not allowed:
+        return _admin_auth_error(reason, status_code, client_ip, identity=identity)
+
+    return None
+
+
+@app.before_request
+def enforce_guarded_tools_access():
+    if request.path not in _GUARDED_TOOLS_PATHS:
         return None
 
-    trusted_proxy_ips = _trusted_admin_proxy_ips()
-    if client_ip not in trusted_proxy_ips:
-        return _admin_auth_error('untrusted_proxy_source', 403, client_ip)
-
-    identity = _trusted_admin_identity()
-    if not _has_trusted_admin_identity(identity):
-        return _admin_auth_error('missing_proxy_identity', 401, client_ip, identity=identity)
+    allowed, reason, _status_code, client_ip, identity = _trusted_operator_request_status()
+    if not allowed:
+        return _tools_auth_error(reason, client_ip, identity=identity)
 
     return None
 

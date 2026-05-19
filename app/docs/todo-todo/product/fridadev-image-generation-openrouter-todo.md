@@ -276,7 +276,8 @@ Contrat livre en Lot 1:
 - erreurs normalisees: `invalid_generator`, `invalid_prompt`, `invalid_aspect_ratio`, `invalid_image_size`, `provider_error`, `no_image`, `invalid_image_data_url`, `timeout`;
 - timeout backend dedie: 180 s, pour ne pas couper les generateurs lents observes au smoke Lot 0;
 - plafond data URL: 6 000 000 caracteres, garde anti-reponse absurde sans casser les images V0 observees;
-- logs uniquement content-free: generateur, modele, format, statut, erreur, latence, usage/cout si disponible, type mime et taille de data URL.
+- logs uniquement content-free: generateur, modele, format, statut, erreur, latence, usage/cout si disponible, type mime et taille de data URL;
+- garde d'acces applicatif sur la route couteuse: loopback in-container autorise pour tests/proofs; requetes proxifiees Caddy/Authelia avec identite `Remote-User` autorisees; appels lateraux directs non proxifies refuses avant appel OpenRouter.
 
 ### Lot 2 - Frontend integre Frida
 
@@ -309,6 +310,7 @@ Note de dette volontaire:
 - [ ] Test affichage pricing sans promettre un cout exact quand l'API ne donne pas de prix image.
 - [ ] Test attribution OpenRouter distincte par generateur.
 - [ ] Test absence de secret et absence de base64 dans logs.
+- [x] Test garde d'acces de `/api/tools/image-generation`: loopback autorise, proxy Authelia autorise, pair non fiable refuse sans appel provider.
 - [ ] Test frontend du panneau avec Playwright ou equivalent.
 - [ ] Verification responsive desktop/mobile.
 - [ ] Verification telechargement navigateur.

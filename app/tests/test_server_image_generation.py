@@ -58,6 +58,116 @@ class ServerImageGenerationRouteTests(unittest.TestCase):
         self.assertEqual(observed['payload']['prompt'], 'blue circle')
         self.assertTrue(response.get_json()['ok'])
 
+    def test_api_tools_image_generation_rejects_untrusted_peer_before_tool_call(self) -> None:
+        original_generate = self.server.image_generation.generate_image_response
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        observed = {'called': False}
+
+        def fake_generate_image_response(payload):
+            observed['called'] = True
+            return {'ok': True}, 200
+
+        self.server.image_generation.generate_image_response = fake_generate_image_response
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.post(
+                '/api/tools/image-generation',
+                json={
+                    'generator_key': 'image_generator_nano_banana',
+                    'prompt': 'blue circle',
+                    'aspect_ratio': '1:1',
+                    'image_size': '1K',
+                },
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.20.0.5'},
+            )
+        finally:
+            self.server.image_generation.generate_image_response = original_generate
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(observed['called'])
+        body = response.get_json()
+        self.assertEqual(body['error_code'], 'forbidden')
+        self.assertNotIn('Authorization', body)
+        self.assertNotIn('api_key', body)
+
+    def test_api_tools_image_generation_rejects_trusted_proxy_without_identity(self) -> None:
+        original_generate = self.server.image_generation.generate_image_response
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+        observed = {'called': False}
+
+        def fake_generate_image_response(payload):
+            observed['called'] = True
+            return {'ok': True}, 200
+
+        self.server.image_generation.generate_image_response = fake_generate_image_response
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.post(
+                '/api/tools/image-generation',
+                json={
+                    'generator_key': 'image_generator_nano_banana',
+                    'prompt': 'blue circle',
+                    'aspect_ratio': '1:1',
+                    'image_size': '1K',
+                },
+                environ_overrides={'REMOTE_ADDR': '172.20.0.19'},
+            )
+        finally:
+            self.server.image_generation.generate_image_response = original_generate
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(observed['called'])
+        self.assertEqual(response.get_json()['error_code'], 'forbidden')
+
+    def test_api_tools_image_generation_accepts_trusted_proxy_identity(self) -> None:
+        observed = {}
+        original_generate = self.server.image_generation.generate_image_response
+        original_trusted_proxy_ips = self.server._trusted_admin_proxy_ips
+
+        def fake_generate_image_response(payload):
+            observed['payload'] = payload
+            return (
+                {
+                    'ok': True,
+                    'generator_key': 'image_generator_nano_banana',
+                    'model': 'google/gemini-2.5-flash-image',
+                    'display_name': 'Nano Banana',
+                    'pricing_label': 'prix API observe',
+                    'aspect_ratio': '1:1',
+                    'image_size': '1K',
+                    'image_data_url': 'data:image/png;base64,AAAA',
+                    'mime_type': 'image/png',
+                    'provider_model': 'google/gemini-2.5-flash-image',
+                    'usage': {},
+                },
+                200,
+            )
+
+        self.server.image_generation.generate_image_response = fake_generate_image_response
+        self.server._trusted_admin_proxy_ips = lambda: {'172.20.0.19'}
+        try:
+            response = self.client.post(
+                '/api/tools/image-generation',
+                json={
+                    'generator_key': 'image_generator_nano_banana',
+                    'prompt': 'blue circle',
+                    'aspect_ratio': '1:1',
+                    'image_size': '1K',
+                },
+                headers={'Remote-User': 'operator'},
+                environ_overrides={'REMOTE_ADDR': '172.20.0.19'},
+            )
+        finally:
+            self.server.image_generation.generate_image_response = original_generate
+            self.server._trusted_admin_proxy_ips = original_trusted_proxy_ips
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(observed['payload']['prompt'], 'blue circle')
+        self.assertTrue(response.get_json()['ok'])
+
     def test_api_tools_image_generation_returns_normalized_errors_without_secret(self) -> None:
         original = self.server.image_generation.generate_image_response
 
