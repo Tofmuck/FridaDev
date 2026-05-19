@@ -1,8 +1,8 @@
 # FridaDev - generation d'images OpenRouter - TODO
 
-Statut: actif
+Statut: clos le 2026-05-19.
 Date de creation: 2026-05-19
-Classement: `app/docs/todo-todo/product/`
+Classement: `app/docs/todo-done/product/`
 Portee: outil autonome de generation d'images dans le frontend FridaDev
 Hors-scope du commit de creation: code runtime, route API, frontend, CSS, persistence, memoire, identity, documents actifs, Biblio, rebuild
 
@@ -323,10 +323,35 @@ Preuves executees en Lot 3:
 
 ### Lot 4 - Polish et cloture V0
 
-- [ ] Documenter le modele par defaut recommande.
-- [ ] Documenter les limites V0: pas de persistence, pas d'edition, pas de memoire.
-- [ ] Ajouter captures/preuves UI si demandees.
-- [ ] Archiver ce TODO si l'outil V0 est livre, teste et documente.
+- [x] Documenter le modele par defaut recommande.
+- [x] Documenter les limites V0: pas de persistence, pas d'edition, pas de memoire.
+- [x] Ajouter captures/preuves UI si demandees.
+- [x] Archiver ce TODO si l'outil V0 est livre, teste et documente.
+
+## Cloture
+
+V0 livree le 2026-05-19.
+
+Modele par defaut recommande:
+- `image_generator_nano_banana` / Nano Banana / `google/gemini-2.5-flash-image`;
+- raison: meilleur compromis V0 observe entre cout, latence et largeur de formats; OpenAI reste disponible pour rendu general plus cher, Recraft pour illustration/design, Flux comme option experimentale.
+
+Limites V0 volontaires:
+- pas de persistence serveur des images;
+- pas d'edition d'images;
+- pas de lecture d'images;
+- pas de galerie;
+- pas de memoire;
+- pas d'injection dans conversation/history;
+- pas d'integration au pipeline Frida, a `/api/chat`, a identity, summary, active documents, Biblio, RAG, web search, Stimmung, validation agent ou arbitre memoire;
+- pas de slot runtime DB dedie: l'outil utilise l'allowlist code V0 et le transport OpenRouter partage via `main_model`;
+- pas de quotas/rate-limit avances au-dela du garde d'acces applicatif de la route couteuse.
+
+Preuves conservees dans ce document:
+- discovery OpenRouter Lot 0, table modeles V0 et smoke technique sans image brute conservee;
+- contrat backend Lot 1, garde d'acces de la route couteuse et logs content-free;
+- contrat frontend Lot 2, panneau natif FridaDev et telechargement navigateur local;
+- preuves Lot 3: backend fake provider, garde d'acces, attribution OpenRouter, absence de secret/base64 dans logs, Playwright desktop/mobile et absence de POST `/api/chat`.
 
 ## 10. Hors scope
 
