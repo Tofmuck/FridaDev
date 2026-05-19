@@ -11,18 +11,25 @@
 
 ## Synthese technique
 
-| Modele | Provider OK | JSON valide | Schema valide | Entrees | Taille sortie | Latence moyenne | Cout estime | Finish reason(s) | Sorties completes | Notes |
+| Modele | Provider OK | JSON valide | Schema valide | Entrees | Taille sortie | Latence moyenne | Cout estime | Finish reason(s) | Retention sorties completes | Notes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| `openai/gpt-5.4-mini` | 100% | 100% | 100% | 13 | 3866 chars | 1318 ms | $0.007422 | stop | `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__openai__gpt-5.4-mini.md` | 13 extracted entrie(s) |
-| `anthropic/claude-haiku-4.5` | 100% | 100% | 100% | 11 | 5188 chars | 1900 ms | $0.012776 | stop | `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__anthropic__claude-haiku-4.5.md` | 11 extracted entrie(s) |
-| `google/gemini-3.1-flash-lite` | 100% | 100% | 100% | 13 | 4942 chars | 1438 ms | $0.003410 | stop | `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__google__gemini-3.1-flash-lite.md` | 13 extracted entrie(s) |
-| `mistralai/mistral-small-2603` | 100% | 100% | 100% | 2 | 977 chars | 632 ms | $0.000635 | stop | `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__mistralai__mistral-small-2603.md` | 2 extracted entrie(s) |
+| `openai/gpt-5.4-mini` | 100% | 100% | 100% | 13 | 3866 chars | 1318 ms | $0.007422 | stop | retirees apres lecture humaine | 13 extracted entrie(s) |
+| `anthropic/claude-haiku-4.5` | 100% | 100% | 100% | 11 | 5188 chars | 1900 ms | $0.012776 | stop | retirees apres lecture humaine | 11 extracted entrie(s) |
+| `google/gemini-3.1-flash-lite` | 100% | 100% | 100% | 13 | 4942 chars | 1438 ms | $0.003410 | stop | retirees apres lecture humaine | 13 extracted entrie(s) |
+| `mistralai/mistral-small-2603` | 100% | 100% | 100% | 2 | 977 chars | 632 ms | $0.000635 | stop | retirees apres lecture humaine | 2 extracted entrie(s) |
+
+## Retention apres decision
+
+- Decision humaine: conserver `openai/gpt-5.4-mini` pour `identity_extractor_model`.
+- Les sorties completes par modele ont ete retirees du depot apres lecture humaine et decision.
+- Le JSON conserve les metriques, hashes et tailles utiles, avec `raw_output_retained=false`.
+- Ce rapport reste la preuve compacte technique de la campagne.
 
 ## Ce que cette campagne mesure
 
 - La capacite de chaque modele a respecter le prompt de production `identity_extractor`.
 - La validite JSON, le respect du schema, la latence, le cout et les erreurs provider.
-- La matiere complete necessaire a une lecture humaine de discernement identitaire.
+- La matiere complete necessaire a une lecture humaine de discernement identitaire pendant la campagne initiale; cette matiere brute n'est plus conservee apres decision.
 
 ## Ce que cette campagne ne prouve pas
 

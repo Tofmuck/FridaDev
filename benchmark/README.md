@@ -12,8 +12,8 @@ conversation summaries from one real Frida material sample for human reading.
 It intentionally does not score summary quality automatically.
 
 The third implemented suite is `identity_extractor`, which sends ten short
-user/LLM messages to the production identity extractor prompt and preserves the
-complete outputs for human hermeneutic reading.
+user/LLM messages to the production identity extractor prompt and writes
+complete outputs for temporary human hermeneutic reading.
 
 ## Run the arbiter campaign
 
@@ -221,6 +221,12 @@ The runner writes:
 The cases are artificial and designed for human diagnosis of durable identity,
 temporary state, irony, projection, role play, technical limitations and mixed
 evidence. They are not a private conversation dump.
+
+For identity extractor human-reading campaigns, the per-model Markdown outputs
+and inline raw dumps in the hermeneutic report are temporary review artefacts.
+Once the human decision is made, remove the raw outputs from the repo and keep
+only compact technical/hermeneutic reports plus JSON metadata with hashes,
+metrics and retention flags.
 
 ## Scope
 

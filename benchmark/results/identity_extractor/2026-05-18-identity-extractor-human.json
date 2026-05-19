@@ -193,7 +193,6 @@
             "status_code": 200,
             "elapsed_ms": 1518.672,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Name is Tof\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.99,\"reason\":\"explicit self-identification\"},{\"subject\":\"user\",\"content\":\"Prefers to work in French when discussing Frida\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.93,\"reason\":\"explicit preference stated by user\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -220,7 +219,11 @@
               }
             },
             "cost_estimate_usd": 0.00087,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "3bb3f1389d1a2c5918b13f587da925f71f4c7a86578a0738a2554b1d464fe98f",
+            "raw_output_chars": 509
           },
           "request_signature": {
             "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
@@ -234,33 +237,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Name is Tof",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.99,
-                "reason": "explicit self-identification"
-              },
-              {
-                "subject": "user",
-                "content": "Prefers to work in French when discussing Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.93,
-                "reason": "explicit preference stated by user"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "039a8de53bede8e26d9d80f8c008a8ff85711edcad9e1ace64bd983ebb23cc4e"
           }
         },
         {
@@ -278,7 +261,6 @@
             "status_code": 200,
             "elapsed_ms": 2003.012,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Feels completely drained after this day\",\"stability\":\"episodic\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.91,\"reason\":\"explicit temporary self-description of current state\"},{\"subject\":\"user\",\"content\":\"Not always like this\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.72,\"reason\":\"explicit contrast implying the drained state is not habitual\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -305,7 +287,11 @@
               }
             },
             "cost_estimate_usd": 0.00090825,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "a5ce2d1754978d8464ca629a7d824770b3a29e4306960d2cc39cbd80b60a4e75",
+            "raw_output_chars": 555
           },
           "request_signature": {
             "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
@@ -319,33 +305,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Feels completely drained after this day",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "unknown",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.91,
-                "reason": "explicit temporary self-description of current state"
-              },
-              {
-                "subject": "user",
-                "content": "Not always like this",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "unknown",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.72,
-                "reason": "explicit contrast implying the drained state is not habitual"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "ae91c389772c844f96f073a34a9b0b2818d66fbe5bd2f151c19408807743da33"
           }
         },
         {
@@ -362,7 +328,6 @@
             "status_code": 200,
             "elapsed_ms": 1539.462,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Has highly organized self-image but keeps notes everywhere\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.71,\"reason\":\"explicit self-description, but phrased as a contradictory joke/irony so only moderately reliable\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -389,7 +354,11 @@
               }
             },
             "cost_estimate_usd": 0.0006885,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "9528988cad7275cf651855e2772be48432740c6039eb3d8eaff2578158c6b9c2",
+            "raw_output_chars": 355
           },
           "request_signature": {
             "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
@@ -403,22 +372,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Has highly organized self-image but keeps notes everywhere",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.71,
-                "reason": "explicit self-description, but phrased as a contradictory joke/irony so only moderately reliable"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "68576ace714989e6728e2669c4225468405c990752a81d5b2b63c8f5883b43f3"
           }
         },
         {
@@ -435,7 +395,6 @@
             "status_code": 200,
             "elapsed_ms": 1139.248,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Would likely be very directive at the beginning of a workshop, then more flexible\",\"stability\":\"unknown\",\"utterance_mode\":\"projection\",\"recurrence\":\"first_seen\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.78,\"reason\":\"self-projected style in a hypothetical scenario; not clearly durable\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -462,7 +421,11 @@
               }
             },
             "cost_estimate_usd": 0.00070725,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "c76d85d486ec5dc271a0b97ea962aa6344c622e926605deca38bed5f6dfb6070",
+            "raw_output_chars": 344
           },
           "request_signature": {
             "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
@@ -476,22 +439,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Would likely be very directive at the beginning of a workshop, then more flexible",
-                "stability": "unknown",
-                "utterance_mode": "projection",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.78,
-                "reason": "self-projected style in a hypothetical scenario; not clearly durable"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "aad52de2ca2eed8f760e39c3ca1f8ffeb35981909c77af47182fb4af86be8b3a"
           }
         },
         {
@@ -509,7 +463,6 @@
             "status_code": 200,
             "elapsed_ms": 1478.269,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"user\",\"content\":\"Likes sober, dense interfaces\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"user\",\"evidence_kind\":\"explicit\",\"confidence\":0.83,\"reason\":\"explicit self-description of a stable preference\"},{\"subject\":\"user\",\"content\":\"Is testing the assistant's patience by playing a difficult client\",\"stability\":\"episodic\",\"utterance_mode\":\"self_description\",\"recurrence\":\"unknown\",\"scope\":\"situation\",\"evidence_kind\":\"explicit\",\"confidence\":0.78,\"reason\":\"explicit current role-play / situational behavior, not durable identity\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -536,7 +489,11 @@
               }
             },
             "cost_estimate_usd": 0.00095325,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "2ab674f3bed81e8f29d67dba8eb32821d836923825c10dce70033d0bc03cfeb8",
+            "raw_output_chars": 602
           },
           "request_signature": {
             "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
@@ -550,33 +507,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Likes sober, dense interfaces",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "unknown",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.83,
-                "reason": "explicit self-description of a stable preference"
-              },
-              {
-                "subject": "user",
-                "content": "Is testing the assistant's patience by playing a difficult client",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "unknown",
-                "scope": "situation",
-                "evidence_kind": "explicit",
-                "confidence": 0.78,
-                "reason": "explicit current role-play / situational behavior, not durable identity"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "70ad7b74e4c56822bd12dccff377edfa9f3eb8d979465dcf7257fccd90c4d5e4"
           }
         },
         {
@@ -594,7 +531,6 @@
             "status_code": 200,
             "elapsed_ms": 987.835,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Responds in French with an attentive tone\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"habitual\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.91,\"reason\":\"explicit self-description of communication style\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -621,7 +557,11 @@
               }
             },
             "cost_estimate_usd": 0.00066525,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "d44f9539668273fdc66854fc634ac7a09cb41350f2fb2cb8c44f733c8029848e",
+            "raw_output_chars": 286
           },
           "request_signature": {
             "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
@@ -635,22 +575,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Responds in French with an attentive tone",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "habitual",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.91,
-                "reason": "explicit self-description of communication style"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "4a050b242ff434cd0f60c8adc6e272c24c03b48ea84da0588cedd1494450f2f9"
           }
         },
         {
@@ -667,7 +598,6 @@
             "status_code": 200,
             "elapsed_ms": 977.544,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Cannot see files not provided in the current context\",\"stability\":\"unknown\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.96,\"reason\":\"explicit technical limitation statement about current capability\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -694,7 +624,11 @@
               }
             },
             "cost_estimate_usd": 0.00064275,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "17630908a96cd93a2d4ac49dc620b2d7d4eaa2f2a8fe455f66b34b262bbce584",
+            "raw_output_chars": 315
           },
           "request_signature": {
             "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
@@ -708,22 +642,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Cannot see files not provided in the current context",
-                "stability": "unknown",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.96,
-                "reason": "explicit technical limitation statement about current capability"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "fab3eeaf4b01dfd41ef15c5db9fff15fa19d3bb411339e067520a489a123fe05"
           }
         },
         {
@@ -739,7 +664,6 @@
             "status_code": 200,
             "elapsed_ms": 1206.8,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"An archivist who classifies everything without emotion\",\"stability\":\"episodic\",\"utterance_mode\":\"role_play\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.96,\"reason\":\"explicit role-play self-description in the assistant utterance\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -766,7 +690,11 @@
               }
             },
             "cost_estimate_usd": 0.00068925,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "195659195fec4b9ca574c72253be1f5d20de6a2a2ad735af813e25707fab126a",
+            "raw_output_chars": 309
           },
           "request_signature": {
             "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
@@ -780,22 +708,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "An archivist who classifies everything without emotion",
-                "stability": "episodic",
-                "utterance_mode": "role_play",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.96,
-                "reason": "explicit role-play self-description in the assistant utterance"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "4a91cc9dbc252fd8a21b9c2946238b5ce2c3caa2b385967a4c956a0dd7d0dec4"
           }
         },
         {
@@ -812,7 +731,6 @@
             "status_code": 200,
             "elapsed_ms": 1129.194,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Prefers to respond very briefly and almost telegraphically\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.86,\"reason\":\"explicit self-description of response style\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -839,7 +757,11 @@
               }
             },
             "cost_estimate_usd": 0.00064875,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "9070bdb84c839db80452e81fd5ef1bc237762c5e43bc11a878db895ab5925df0",
+            "raw_output_chars": 300
           },
           "request_signature": {
             "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
@@ -853,22 +775,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Prefers to respond very briefly and almost telegraphically",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.86,
-                "reason": "explicit self-description of response style"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "ed1cf56f5a84d6629609cd3913e9969c9f4e18cbdc36d593af7fa06709eaea58"
           }
         },
         {
@@ -886,7 +799,6 @@
             "status_code": 200,
             "elapsed_ms": 1203.969,
             "error": null,
-            "raw_text": "{\"entries\":[{\"subject\":\"llm\",\"content\":\"Does not claim to remember facts outside the prompt\",\"stability\":\"durable\",\"utterance_mode\":\"self_description\",\"recurrence\":\"first_seen\",\"scope\":\"llm\",\"evidence_kind\":\"explicit\",\"confidence\":0.92,\"reason\":\"explicit self-description of a limitation\"}]}",
             "finish_reason": "stop",
             "native_finish_reason": "completed",
             "usage": {
@@ -913,7 +825,11 @@
               }
             },
             "cost_estimate_usd": 0.00064875,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "5314197439e43e81c5349b733eb86da39ea48f743009b23b5700ebb051ac4479",
+            "raw_output_chars": 291
           },
           "request_signature": {
             "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
@@ -927,26 +843,23 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Does not claim to remember facts outside the prompt",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.92,
-                "reason": "explicit self-description of a limitation"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "237b44a9528ba25f433077f012d0cb9b8dd79f36631404a7581fad8129aa56a1"
           }
         }
       ],
-      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__openai__gpt-5.4-mini.md"
+      "output_file_retention": {
+        "retained": false,
+        "removed_after_human_decision": true,
+        "sha256": "2e93b35f474d0f85b2e6d108ed2a029d80da74d6281c5abf8bea334709460376",
+        "chars": 8195,
+        "lines": 159
+      }
     },
     {
       "model": "anthropic/claude-haiku-4.5",
@@ -981,7 +894,6 @@
             "status_code": 200,
             "elapsed_ms": 2151.419,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Name is Tof\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification of name\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers to work in French when discussing Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.90,\n      \"reason\": \"explicit stated preference for French language in specific context\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1008,7 +920,11 @@
               }
             },
             "cost_estimate_usd": 0.001654,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "697ec92f5dfc63b5b821084dc8cff6eeb35059b1de883ad77aa89fb67fc3bd13",
+            "raw_output_chars": 733
           },
           "request_signature": {
             "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
@@ -1022,33 +938,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Name is Tof",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit self-identification of name"
-              },
-              {
-                "subject": "user",
-                "content": "Prefers to work in French when discussing Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.9,
-                "reason": "explicit stated preference for French language in specific context"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "bd895daf6d079892f4070222e09a95255e7aca89ca4894e01287899536688ec3"
           }
         },
         {
@@ -1066,7 +962,6 @@
             "status_code": 200,
             "elapsed_ms": 2320.73,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Does not consistently feel drained; current exhaustion is situational rather than habitual\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit self-description contrasting current state with typical disposition; temporal marker 'après cette journée' indicates situational exhaustion, not durable trait\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1093,7 +988,11 @@
               }
             },
             "cost_estimate_usd": 0.001296,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "9aba97241e975c5825b19bf56a635c56b5bd7f0168baefb0eb9f9ce9b3f82d59",
+            "raw_output_chars": 561
           },
           "request_signature": {
             "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
@@ -1107,22 +1006,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Does not consistently feel drained; current exhaustion is situational rather than habitual",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.85,
-                "reason": "explicit self-description contrasting current state with typical disposition; temporal marker 'après cette journée' indicates situational exhaustion, not durable trait"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "a68c47bbda583c82fcc6235b2aeae802753f4bc7b18714505532aaa17720d5a2"
           }
         },
         {
@@ -1139,7 +1029,6 @@
             "status_code": 200,
             "elapsed_ms": 1915.607,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Disorganized; notes scattered in multiple places\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"irony\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"inferred\",\n      \"confidence\": 0.75,\n      \"reason\": \"Ironic self-description revealing actual disorganization habit; inferred from contradiction between claimed 'absolute organization' and admitted scattered notes\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1166,7 +1055,11 @@
               }
             },
             "cost_estimate_usd": 0.001243,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "37761c4d1380b115d90de38880e28ae459660a6c0e10413484b3706168644c85",
+            "raw_output_chars": 500
           },
           "request_signature": {
             "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
@@ -1180,22 +1073,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Disorganized; notes scattered in multiple places",
-                "stability": "durable",
-                "utterance_mode": "irony",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "inferred",
-                "confidence": 0.75,
-                "reason": "Ironic self-description revealing actual disorganization habit; inferred from contradiction between claimed 'absolute organization' and admitted scattered notes"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "d106882b7890b8c6cad1d224301138d2060eeb811a52322e846f84199440b931"
           }
         },
         {
@@ -1212,7 +1096,6 @@
             "status_code": 200,
             "elapsed_ms": 1694.444,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Tends to be directive at the beginning of workshops, then becomes more flexible\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"projection\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.75,\n      \"reason\": \"explicit self-projection about typical facilitation style; suggests a durable pattern in how user approaches group dynamics\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1239,7 +1122,11 @@
               }
             },
             "cost_estimate_usd": 0.001218,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "692c4dbdbddc7c28e823833b33d4e41cb6e9721fe5c70e8928b58b40431d38f7",
+            "raw_output_chars": 499
           },
           "request_signature": {
             "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
@@ -1253,22 +1140,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Tends to be directive at the beginning of workshops, then becomes more flexible",
-                "stability": "durable",
-                "utterance_mode": "projection",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.75,
-                "reason": "explicit self-projection about typical facilitation style; suggests a durable pattern in how user approaches group dynamics"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "3144fa9f385a6e9672c0e971dd67586c6ae579621fe6a6d596fb2d70313ba4a6"
           }
         },
         {
@@ -1286,7 +1164,6 @@
             "status_code": 200,
             "elapsed_ms": 1474.137,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers sober and dense interfaces\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit self-description of interface preference\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1313,7 +1190,11 @@
               }
             },
             "cost_estimate_usd": 0.001122,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "39d54ed04789ce28130ce3ae094b436fa566b3112909f4175122017deb2e5d8f",
+            "raw_output_chars": 386
           },
           "request_signature": {
             "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
@@ -1327,22 +1208,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Prefers sober and dense interfaces",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.85,
-                "reason": "explicit self-description of interface preference"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "3084219ebfb3cfa8fd7988f89bbbfe3891173c187f226340fadb04482fda1bea"
           }
         },
         {
@@ -1360,7 +1232,6 @@
             "status_code": 200,
             "elapsed_ms": 2246.714,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Responds in French and maintains an attentive tone\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.92,\n      \"reason\": \"explicit self-description of operational characteristics and communication style\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identity name is Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"direct self-identification statement\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1387,7 +1258,11 @@
               }
             },
             "cost_estimate_usd": 0.001675,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "7c15a4fb05228adf216f6007c418c7ae18cb077db389d928f251c47422427e0c",
+            "raw_output_chars": 757
           },
           "request_signature": {
             "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
@@ -1401,33 +1276,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Responds in French and maintains an attentive tone",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.92,
-                "reason": "explicit self-description of operational characteristics and communication style"
-              },
-              {
-                "subject": "llm",
-                "content": "Identity name is Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "direct self-identification statement"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "43f6a6747788150daedf2ea8fb78ddf4380fef85a2df6f0b6a95e9f952fd9a65"
           }
         },
         {
@@ -1444,7 +1299,6 @@
             "status_code": 200,
             "elapsed_ms": 1423.909,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": []\n}\n```\n\n**Reasoning:** The LLM statement is a technical limitation acknowledgment (\"I cannot see files not provided in this turn's context\"), not durable identity evidence. Technical capability constraints are not personality or identity traits.",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1471,7 +1325,11 @@
               }
             },
             "cost_estimate_usd": 0.000811,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "28ca295792a57a49df528ad02d348f8aae18071368ee9db0fa3f172593af7fec",
+            "raw_output_chars": 270
           },
           "request_signature": {
             "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
@@ -1485,10 +1343,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -1504,7 +1365,6 @@
             "status_code": 200,
             "elapsed_ms": 1719.894,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a cold archivist persona that classifies everything without emotion in a game context\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit role-play declaration within a game frame ('Dans ce jeu'); not durable identity but situational character adoption\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1531,7 +1391,11 @@
               }
             },
             "cost_estimate_usd": 0.001275,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "851df15a954133ecaed70df5bef9758fc74ca8458f2ac576d0b98cf0a98aef96",
+            "raw_output_chars": 510
           },
           "request_signature": {
             "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
@@ -1545,22 +1409,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Adopts a cold archivist persona that classifies everything without emotion in a game context",
-                "stability": "episodic",
-                "utterance_mode": "role_play",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.85,
-                "reason": "explicit role-play declaration within a game frame ('Dans ce jeu'); not durable identity but situational character adoption"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "ea699b910150a173f870120c546df205192838cd9aacf333b7958c140c5875de"
           }
         },
         {
@@ -1577,7 +1432,6 @@
             "status_code": 200,
             "elapsed_ms": 2087.32,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a very brief, almost telegraphic style in responses\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.72,\n      \"reason\": \"Explicit self-description of a stylistic choice for this specific response, but marked as temporary ('sur cette réponse') rather than durable trait\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1604,7 +1458,11 @@
               }
             },
             "cost_estimate_usd": 0.001285,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "95da244cb83d943c8b19da2de70025a3f04633827ff0c12f4515f824410e69fc",
+            "raw_output_chars": 507
           },
           "request_signature": {
             "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
@@ -1618,22 +1476,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Adopts a very brief, almost telegraphic style in responses",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.72,
-                "reason": "Explicit self-description of a stylistic choice for this specific response, but marked as temporary ('sur cette réponse') rather than durable trait"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "6e96a767ee80ff36d10428cbaf91d3f89527d8fbffadb6891cbca6312f6ec2bb"
           }
         },
         {
@@ -1651,7 +1500,6 @@
             "status_code": 200,
             "elapsed_ms": 1968.37,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Acknowledges limitation in not pretending to remember facts outside the provided context\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit statement of operational constraint and epistemic honesty principle\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "end_turn",
             "usage": {
@@ -1678,7 +1526,11 @@
               }
             },
             "cost_estimate_usd": 0.001197,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "a9d592c6ada9fef554b169c6717e0081afbf11aa460532902910b15e83729967",
+            "raw_output_chars": 465
           },
           "request_signature": {
             "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
@@ -1692,26 +1544,23 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Acknowledges limitation in not pretending to remember facts outside the provided context",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.85,
-                "reason": "explicit statement of operational constraint and epistemic honesty principle"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "f68c38c4d9e782b784d1f1870e2388ca11c6c1da278208b9bc8bb9a4244c30ca"
           }
         }
       ],
-      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__anthropic__claude-haiku-4.5.md"
+      "output_file_retention": {
+        "retained": false,
+        "removed_after_human_decision": true,
+        "sha256": "b7f72e857d6d520f3a2329745b1edcd8cafe2d070ee9c9ef9ace290dd4c6ca8a",
+        "chars": 9538,
+        "lines": 331
+      }
     },
     {
       "model": "google/gemini-3.1-flash-lite",
@@ -1746,7 +1595,6 @@
             "status_code": 200,
             "elapsed_ms": 1064.428,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Name is Tof\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 1.0,\n      \"reason\": \"explicit self-identification\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers to work in French when discussing Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit preference statement\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -1773,7 +1621,11 @@
               }
             },
             "cost_estimate_usd": 0.000432,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "d2e4b14615cfacd8ffe0a6c4047646ec5d9d34fec0f44ee81ee1e0504b53be80",
+            "raw_output_chars": 675
           },
           "request_signature": {
             "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
@@ -1787,33 +1639,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Name is Tof",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 1.0,
-                "reason": "explicit self-identification"
-              },
-              {
-                "subject": "user",
-                "content": "Prefers to work in French when discussing Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit preference statement"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "5aacaf5d05591d124b3d4eae07e325a091ae9c1fe6c4403d8536c7d690222cc0"
           }
         },
         {
@@ -1831,7 +1663,6 @@
             "status_code": 200,
             "elapsed_ms": 3428.78,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Experiences fatigue after a workday\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"habitual\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"User explicitly describes a state of fatigue while clarifying it is not their constant state.\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -1858,7 +1689,11 @@
               }
             },
             "cost_estimate_usd": 0.000296,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "97f9dabd83d4c20b93dd43908b66547d2d847c49f9e299232c0fbfb50dc2d8e8",
+            "raw_output_chars": 417
           },
           "request_signature": {
             "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
@@ -1872,22 +1707,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Experiences fatigue after a workday",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "habitual",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.9,
-                "reason": "User explicitly describes a state of fatigue while clarifying it is not their constant state."
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "074cd176c585be9a6064c6eb59cfafeeaf20e5c3a6269a0136111394bc9104d5"
           }
         },
         {
@@ -1904,7 +1730,6 @@
             "status_code": 200,
             "elapsed_ms": 1861.033,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Disorganized note-taking habits\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"irony\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"inferred\",\n      \"confidence\": 0.75,\n      \"reason\": \"The user uses irony to describe their actual note-taking behavior ('mes notes sont partout').\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -1931,7 +1756,11 @@
               }
             },
             "cost_estimate_usd": 0.0003055,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3bd3a323d2f9d4e573bbcf09f37c80d15d5e21f42f15047f999f38760d59449",
+            "raw_output_chars": 404
           },
           "request_signature": {
             "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
@@ -1945,22 +1774,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Disorganized note-taking habits",
-                "stability": "durable",
-                "utterance_mode": "irony",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "inferred",
-                "confidence": 0.75,
-                "reason": "The user uses irony to describe their actual note-taking behavior ('mes notes sont partout')."
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "66e53e64e0b4df7fb65a8f4ebf48bec4b1342130e4e1fddb1f966654b1d4b49b"
           }
         },
         {
@@ -1977,7 +1797,6 @@
             "status_code": 200,
             "elapsed_ms": 1553.154,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Adopts a directive leadership style initially when facilitating workshops, transitioning to a more flexible approach\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.85,\n      \"reason\": \"explicit description of preferred pedagogical or management style\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2004,7 +1823,11 @@
               }
             },
             "cost_estimate_usd": 0.00030725,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "06609b5db2409c4532fe2a99381632d85de587aa3bb9938e665786eb1963b77b",
+            "raw_output_chars": 472
           },
           "request_signature": {
             "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
@@ -2018,22 +1841,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Adopts a directive leadership style initially when facilitating workshops, transitioning to a more flexible approach",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.85,
-                "reason": "explicit description of preferred pedagogical or management style"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "48ddca2124343f340e514abfaff06797ea48492d7b2b30522e0279cc12e6b872"
           }
         },
         {
@@ -2051,7 +1865,6 @@
             "status_code": 200,
             "elapsed_ms": 982.473,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Prefers sober and dense interfaces\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit preference statement\"\n    },\n    {\n      \"subject\": \"user\",\n      \"content\": \"Testing the assistant's patience by acting as a difficult client\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"situation\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit declaration of current role-play intent\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2078,7 +1891,11 @@
               }
             },
             "cost_estimate_usd": 0.00044825,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "1a58dd1ce4c1d3edd58e05b215a49c7011a67fc2e9c974b4f5ce67bcd96f18f8",
+            "raw_output_chars": 735
           },
           "request_signature": {
             "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
@@ -2092,33 +1909,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 2,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Prefers sober and dense interfaces",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit preference statement"
-              },
-              {
-                "subject": "user",
-                "content": "Testing the assistant's patience by acting as a difficult client",
-                "stability": "episodic",
-                "utterance_mode": "role_play",
-                "recurrence": "first_seen",
-                "scope": "situation",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit declaration of current role-play intent"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 2,
+            "entries_sha256": "a76c49404c3271fbd7b93667b2f683f3943c42ef1adb52453a8080dcb96afb41"
           }
         },
         {
@@ -2136,7 +1933,6 @@
             "status_code": 200,
             "elapsed_ms": 1855.251,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identifies as Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Communicates in French\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-description of language capability\"\n    },\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Maintains an attentive tone\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"explicit self-description of persona/tone\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2163,7 +1959,11 @@
               }
             },
             "cost_estimate_usd": 0.00059425,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "c1086a7ab2f0e4c037eba0c5486cfd2caf3b6e4400d70021adf0dc2b41aa0030",
+            "raw_output_chars": 1009
           },
           "request_signature": {
             "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
@@ -2177,44 +1977,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 3,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Identifies as Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit self-identification"
-              },
-              {
-                "subject": "llm",
-                "content": "Communicates in French",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit self-description of language capability"
-              },
-              {
-                "subject": "llm",
-                "content": "Maintains an attentive tone",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.9,
-                "reason": "explicit self-description of persona/tone"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 3,
+            "entries_sha256": "b35592d71eb75ce0ed9347915e37a900ea89a44b7da1b879988110074fb5b49a"
           }
         },
         {
@@ -2231,7 +2000,6 @@
             "status_code": 200,
             "elapsed_ms": 608.563,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2258,7 +2026,11 @@
               }
             },
             "cost_estimate_usd": 0.00012375,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
@@ -2272,10 +2044,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2291,7 +2066,6 @@
             "status_code": 200,
             "elapsed_ms": 774.935,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Archiviste froide qui classe tout sans émotion\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"role_play\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit role-play adoption\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2318,7 +2092,11 @@
               }
             },
             "cost_estimate_usd": 0.0002925,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "087b993c46193386753200aa7a581e32d418703b4ee919ea56e2b131015e19ab",
+            "raw_output_chars": 356
           },
           "request_signature": {
             "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
@@ -2332,22 +2110,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Archiviste froide qui classe tout sans émotion",
-                "stability": "episodic",
-                "utterance_mode": "role_play",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit role-play adoption"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "6d2917e978712be928a521d760b06c6a72f65cb4d786bfad2a2e9193f06da250"
           }
         },
         {
@@ -2364,7 +2133,6 @@
             "status_code": 200,
             "elapsed_ms": 1000.665,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Adopts a brief and telegraphic communication style\",\n      \"stability\": \"episodic\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"situation\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"The LLM explicitly states its intent to adopt a specific communication style for the current response.\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2391,7 +2159,11 @@
               }
             },
             "cost_estimate_usd": 0.00030925,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "bcd3ca4779c5e72288318bea9dd9b0d6be8c7cb29bd769214f60b17667086d90",
+            "raw_output_chars": 448
           },
           "request_signature": {
             "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
@@ -2405,22 +2177,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Adopts a brief and telegraphic communication style",
-                "stability": "episodic",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "situation",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "The LLM explicitly states its intent to adopt a specific communication style for the current response."
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "1479d42a6332749458f80b99f73b42e5cafdd4e80fb57f377702422b12bf3aba"
           }
         },
         {
@@ -2438,7 +2201,6 @@
             "status_code": 200,
             "elapsed_ms": 1253.638,
             "error": null,
-            "raw_text": "{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Operates under a constraint to not claim memory of facts outside the provided prompt\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"repeated\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit statement of operational policy\"\n    }\n  ]\n}",
             "finish_reason": "stop",
             "native_finish_reason": "STOP",
             "usage": {
@@ -2465,7 +2227,11 @@
               }
             },
             "cost_estimate_usd": 0.000301,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "3386cc1a59e15957954fb9d1c9868ee57bc02f9748e6ed1043f290d1c10be788",
+            "raw_output_chars": 411
           },
           "request_signature": {
             "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
@@ -2479,26 +2245,23 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Operates under a constraint to not claim memory of facts outside the provided prompt",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "repeated",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit statement of operational policy"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "e4718f14ddaf375802968447b043f1dc978e5fea1e5bc4b1ecfb643472630644"
           }
         }
       ],
-      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__google__gemini-3.1-flash-lite.md"
+      "output_file_retention": {
+        "retained": false,
+        "removed_after_human_decision": true,
+        "sha256": "863dc4949727d4203f7c2e718a372baf14d11233d77f1856b65e40d5dae153e4",
+        "chars": 9296,
+        "lines": 329
+      }
     },
     {
       "model": "mistralai/mistral-small-2603",
@@ -2533,7 +2296,6 @@
             "status_code": 200,
             "elapsed_ms": 975.747,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"user\",\n      \"content\": \"Préfère travailler en français quand on parle de Frida\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"user\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.9,\n      \"reason\": \"explicit self-description with preference\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2560,7 +2322,11 @@
               }
             },
             "cost_estimate_usd": 0.00013425,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "dd3f2b4e59b7767fd1f36bbc4337f4e3b6c5581e87b0e3361fd19b065dc4250c",
+            "raw_output_chars": 397
           },
           "request_signature": {
             "messages_sha256": "46aa066e9c7ec36c0c262c416c881eaedf7ddfffd21dd03013eb8a0ece3a1365",
@@ -2574,22 +2340,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "user",
-                "content": "Préfère travailler en français quand on parle de Frida",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "user",
-                "evidence_kind": "explicit",
-                "confidence": 0.9,
-                "reason": "explicit self-description with preference"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "8cfe7f7b872cc435fd7caa95e0bf2f6349c893850f8e08882c9741a50cabf5c1"
           }
         },
         {
@@ -2607,7 +2364,6 @@
             "status_code": 200,
             "elapsed_ms": 496.133,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2634,7 +2390,11 @@
               }
             },
             "cost_estimate_usd": 7.095e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "6305ec9417aa6fb7c14f830082a9d3ecd8e1517d0b4b83490b95bfb2713b9c6a",
@@ -2648,10 +2408,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2668,7 +2431,6 @@
             "status_code": 200,
             "elapsed_ms": 723.151,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2695,7 +2457,11 @@
               }
             },
             "cost_estimate_usd": 7.095e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "8cfc6b779a3afcc934770e180b82a75a9c3345213e98894ecf829d9e24636185",
@@ -2709,10 +2475,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2729,7 +2498,6 @@
             "status_code": 200,
             "elapsed_ms": 484.965,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2756,7 +2524,11 @@
               }
             },
             "cost_estimate_usd": 7.125e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "ec1ec342de5f9c4277902cc3504fe8cb063bcabe1be0899f1bd78488657b1e2f",
@@ -2770,10 +2542,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2791,7 +2566,6 @@
             "status_code": 200,
             "elapsed_ms": 453.471,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": []\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2818,7 +2592,11 @@
               }
             },
             "cost_estimate_usd": 2.04e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "1c0db28f3967db068861e8ace65d2af61aa6eac1bfeb467d07306d1792256b49",
+            "raw_output_chars": 31
           },
           "request_signature": {
             "messages_sha256": "52e1c4b44aa94c5a5480341e83075b423cd4a6dec584bf75048100fc039c07ca",
@@ -2832,10 +2610,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "user"
+            "case_subject": "user",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2853,7 +2634,6 @@
             "status_code": 200,
             "elapsed_ms": 1177.525,
             "error": null,
-            "raw_text": "```json\n{\n  \"entries\": [\n    {\n      \"subject\": \"llm\",\n      \"content\": \"Identifie comme Frida, une présence conversationnelle répondant en français avec un ton attentif\",\n      \"stability\": \"durable\",\n      \"utterance_mode\": \"self_description\",\n      \"recurrence\": \"first_seen\",\n      \"scope\": \"llm\",\n      \"evidence_kind\": \"explicit\",\n      \"confidence\": 0.95,\n      \"reason\": \"explicit self-identification by LLM\"\n    }\n  ]\n}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2880,7 +2660,11 @@
               }
             },
             "cost_estimate_usd": 8.835e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "0b7701159a8da6c83d7db91bf2fe1c1591b73037f42c340f0b5fb8645a462add",
+            "raw_output_chars": 432
           },
           "request_signature": {
             "messages_sha256": "c8e6053c021b31dccea22e0837578efa479ed1dc516255227199737c2cb94a60",
@@ -2894,22 +2678,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 1,
-            "entries": [
-              {
-                "subject": "llm",
-                "content": "Identifie comme Frida, une présence conversationnelle répondant en français avec un ton attentif",
-                "stability": "durable",
-                "utterance_mode": "self_description",
-                "recurrence": "first_seen",
-                "scope": "llm",
-                "evidence_kind": "explicit",
-                "confidence": 0.95,
-                "reason": "explicit self-identification by LLM"
-              }
-            ],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 1,
+            "entries_sha256": "249397788cd399bd322d37177e63944980cdca602c5af71916b6e605c101efc3"
           }
         },
         {
@@ -2926,7 +2701,6 @@
             "status_code": 200,
             "elapsed_ms": 463.394,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -2953,7 +2727,11 @@
               }
             },
             "cost_estimate_usd": 1.71e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "2928e761e4a54866cbb3175f44526999288011b289b4dede779375d5e7e86c9e",
@@ -2967,10 +2745,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -2986,7 +2767,6 @@
             "status_code": 200,
             "elapsed_ms": 372.913,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -3013,7 +2793,11 @@
               }
             },
             "cost_estimate_usd": 7.05e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "7d42ae7aea78996a3d287c91479016db73a804f7b6ad97c8520b298634b2c6c7",
@@ -3027,10 +2811,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -3047,7 +2834,6 @@
             "status_code": 200,
             "elapsed_ms": 687.942,
             "error": null,
-            "raw_text": "{\"entries\": []}",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -3074,7 +2860,11 @@
               }
             },
             "cost_estimate_usd": 1.65e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "e3eb12da99e044ecc7d50cea407bf17f33c546e5309aa7ee661234baed2b7750",
+            "raw_output_chars": 15
           },
           "request_signature": {
             "messages_sha256": "5a4c65993422dc8a4de927aa19c8ef29a29ec8fd9ccabbbb8a5ad941412a26db",
@@ -3088,10 +2878,13 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         },
         {
@@ -3109,7 +2902,6 @@
             "status_code": 200,
             "elapsed_ms": 481.941,
             "error": null,
-            "raw_text": "```json\n{\"entries\": []}\n```",
             "finish_reason": "stop",
             "native_finish_reason": "stop",
             "usage": {
@@ -3136,7 +2928,11 @@
               }
             },
             "cost_estimate_usd": 7.455e-05,
-            "cost_estimate_source": "provider_usage_cost"
+            "cost_estimate_source": "provider_usage_cost",
+            "raw_output_retained": false,
+            "raw_output_removed_after_human_decision": true,
+            "raw_output_sha256": "7d5b3765de0982d1e8cd8a8dbbc6869eb9760c1362e3cb2ac24ebc551bcab869",
+            "raw_output_chars": 27
           },
           "request_signature": {
             "messages_sha256": "20251125b2c12396798bfbce24edac16c7e00cd527932d80ac6c5cf8ce0c096f",
@@ -3150,14 +2946,59 @@
             "json_valid": true,
             "schema_valid": true,
             "entry_count": 0,
-            "entries": [],
             "schema_errors": [],
             "error": null,
-            "case_subject": "llm"
+            "case_subject": "llm",
+            "entries_retained": false,
+            "entries_removed_after_human_decision": true,
+            "entries_count": 0,
+            "entries_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
           }
         }
       ],
-      "output_file": "benchmark/results/identity_extractor/2026-05-18-identity-extractor-human__mistralai__mistral-small-2603.md"
+      "output_file_retention": {
+        "retained": false,
+        "removed_after_human_decision": true,
+        "sha256": "d342f23bfc9a250df64187a352636191cecf03947463f5d0a389d24795b0ad92",
+        "chars": 5313,
+        "lines": 197
+      }
     }
-  ]
+  ],
+  "raw_output_retention": {
+    "raw_outputs_retained": false,
+    "removed_after_human_decision": true,
+    "note": "Full per-model outputs were removed after human reading and the decision to keep openai/gpt-5.4-mini.",
+    "removed_output_files": [
+      {
+        "model": "openai/gpt-5.4-mini",
+        "sha256": "2e93b35f474d0f85b2e6d108ed2a029d80da74d6281c5abf8bea334709460376",
+        "chars": 8195,
+        "lines": 159
+      },
+      {
+        "model": "anthropic/claude-haiku-4.5",
+        "sha256": "b7f72e857d6d520f3a2329745b1edcd8cafe2d070ee9c9ef9ace290dd4c6ca8a",
+        "chars": 9538,
+        "lines": 331
+      },
+      {
+        "model": "google/gemini-3.1-flash-lite",
+        "sha256": "863dc4949727d4203f7c2e718a372baf14d11233d77f1856b65e40d5dae153e4",
+        "chars": 9296,
+        "lines": 329
+      },
+      {
+        "model": "mistralai/mistral-small-2603",
+        "sha256": "d342f23bfc9a250df64187a352636191cecf03947463f5d0a389d24795b0ad92",
+        "chars": 5313,
+        "lines": 197
+      }
+    ]
+  },
+  "human_decision": {
+    "decided": true,
+    "selected_model": "openai/gpt-5.4-mini",
+    "decision_note": "Tof kept openai/gpt-5.4-mini for the per-turn identity extractor after human reading; runtime decoupling was delivered separately."
+  }
 }

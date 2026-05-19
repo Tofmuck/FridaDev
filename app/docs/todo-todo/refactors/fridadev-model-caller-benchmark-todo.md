@@ -243,6 +243,9 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Brancher uniquement `extract_identities()` sur `identity_extractor_model`.
 - [x] Laisser `identity_periodic_agent` inchange sur `arbiter_model` legacy jusqu'a son propre lot.
 - [x] Ne pas benchmarker ni choisir `identity_periodic_agent` dans ce lot.
+- [x] Retirer les sorties brutes completes des 4 modeles apres lecture humaine et decision.
+- [x] Conserver une preuve compacte: rapport technique, rapport hermeneutique scrubbe et JSON sans dumps complets.
+- [ ] Prochain caller: `identity_periodic_agent`.
 
 ## Definition de fin globale
 
