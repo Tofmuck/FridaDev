@@ -19,6 +19,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
+- Roadmap active lecture d'images comme documents actifs: `todo-todo/product/fridadev-active-image-documents-todo.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
@@ -86,6 +87,7 @@ Archives utiles:
 
 Lire d'abord:
 - `states/specs/active-conversation-documents-contract.md`
+- `todo-todo/product/fridadev-active-image-documents-todo.md` pour le chantier ouvert de lecture d'images comme pieces actives de conversation.
 - `todo-done/product/active-conversation-documents-audit-plan.md`
 - `todo-done/product/active-conversation-documents-todo.md`
 - `todo-done/product/active-conversation-documents-ocr-todo.md` pour l'archive de l'extension OCR bornee des PDF scannes.
