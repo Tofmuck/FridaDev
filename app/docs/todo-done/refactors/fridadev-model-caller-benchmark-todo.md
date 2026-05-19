@@ -1,6 +1,6 @@
 # FridaDev - benchmark et organisation progressive des callers modeles - TODO
 
-Statut: actif; callers OpenRouter principaux clos au 2026-05-19, fallback stimmung hors priorite.
+Statut: clos le 2026-05-19.
 
 Source de verite de depart:
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
@@ -326,3 +326,21 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 ## Definition de fin globale
 
 - [x] Pour les callers principaux traites dans ce chantier, les resultats des benchmarks ont ete repercutes caller par caller et chaque appel modele important a ete individualise avec son propre point d'appel ou module, son modele propre, ses parametres propres et son contrat runtime propre - tout en continuant a pouvoir partager le meme token / projet OpenRouter.
+
+## Cloture
+
+Callers principaux traites:
+- Chat principal: traite separement avant ce TODO; slot `main_model`.
+- Reformulation web: `web_reformulation_model`, `openai/gpt-5.4-mini`.
+- Arbitre memoire: `memory_arbiter_model`, `mistralai/mistral-small-2603`.
+- Resume conversationnel: `summary_model`, `openai/gpt-5.4-mini`.
+- Extracteur identity au tour: `identity_extractor_model`, `openai/gpt-5.4-mini`.
+- Agent periodic identity: `identity_periodic_model`, `anthropic/claude-haiku-4.5`.
+- Stimmung agent primaire: `stimmung_agent_model.primary_model`, `google/gemini-3.1-flash-lite`.
+- Validation agent primaire: `validation_agent_model.primary_model`, `google/gemini-3.1-flash-lite`, `max_tokens=140`.
+
+Le transport OpenRouter reste partage via `main_model` pour le token, le projet et le transport commun; chaque caller principal a cependant son propre modele, ses propres parametres runtime et son attribution OpenRouter par caller (`HTTP-Referer`, `X-OpenRouter-Title`, metadata/trace).
+
+Hors scope non bloquant:
+- Le fallback Stimmung reste hors priorite pour l'instant: il demeure documente et ne bloque pas la cloture du chantier principal.
+- `arbiter_model` reste un slot legacy de compatibilite sans caller actif; une suppression eventuelle releve d'une migration separee, pas de cette cloture.
