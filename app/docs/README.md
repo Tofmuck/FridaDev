@@ -24,6 +24,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Archive de cloture de la remediation de l'audit global: `todo-done/audits/fridadev-global-audit-remediation-todo.md`
+- Synthese francaise du pipeline complet FridaDev 2026-05-19: `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
 
@@ -68,6 +69,7 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
+- `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md` pour une synthese francaise lisible du pipeline complet, du navigateur aux derives apres reponse.
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
 - `todo-done/refactors/fridadev-model-caller-benchmark-todo.md` pour relire le chantier clos de benchmark, decision et decouplage caller par caller.
