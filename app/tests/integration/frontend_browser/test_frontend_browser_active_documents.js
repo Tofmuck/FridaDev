@@ -106,6 +106,7 @@ function activeDocumentsMockScript() {
           if (name === "scan.pdf") {
             await new Promise((resolve) => setTimeout(resolve, 180));
           }
+          const isImage = name.endsWith(".png");
           const docs = readActiveDocs();
           const item = {
             document_id: "doc-browser-" + String(docs.length + 1),
@@ -114,9 +115,13 @@ function activeDocumentsMockScript() {
             media_type: String(file && file.type || "text/plain"),
             source_extension: name.slice(name.lastIndexOf(".")),
             byte_size: Number(file && file.size || 0),
-            text_chars: 37,
-            text_sha256_12: "abc123def456",
-            token_estimate: 8,
+            text_chars: isImage ? 0 : 37,
+            text_sha256_12: isImage ? "" : "abc123def456",
+            media_kind: isImage ? "image" : "text",
+            content_sha256_12: isImage ? "img123abc456" : "abc123def456",
+            image_width: isImage ? 80 : 0,
+            image_height: isImage ? 64 : 0,
+            token_estimate: isImage ? 0 : 8,
             status: "active",
             active: true,
             created_at: "2026-05-03T09:01:00Z",
@@ -180,6 +185,20 @@ test('chat active conversation documents upload, OCR states, reload and remove w
     await page.waitForFunction(() =>
       document.querySelector('#activeDocumentsStatus')?.textContent.includes('Document actif retiré'));
     assert.equal((await page.locator('#activeDocumentsList').textContent()).includes('note.txt'), false);
+
+    await dropFile(page, 'capture.png', 'image/png', 'IMAGE BRUTE NE DOIT PAS APPARAITRE');
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsList')?.textContent.includes('capture.png'));
+    await assertTextContains(page.locator('#activeDocumentsBar'), '80 x 64 px');
+    const imageBarText = await page.locator('#activeDocumentsBar').textContent();
+    assert.equal(String(imageBarText || '').includes('IMAGE BRUTE NE DOIT PAS APPARAITRE'), false);
+    assert.equal(String(imageBarText || '').includes('data:image'), false);
+    assert.equal(String(imageBarText || '').includes('img123abc456'), false);
+
+    await page.click('#activeDocumentsList .active-document-remove');
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsStatus')?.textContent.includes('Document actif retiré'));
+    assert.equal((await page.locator('#activeDocumentsList').textContent()).includes('capture.png'), false);
 
     await dropFile(page, 'archive.bin', 'application/octet-stream', 'unsupported');
     await page.waitForFunction(() =>

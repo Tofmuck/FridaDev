@@ -106,6 +106,8 @@ class FakeCursor:
                 row["status"] = status
                 row["deactivated_at"] = deactivated_at
                 row["last_excluded_reason_code"] = reason_code
+                if row.get("media_kind") == active_docs.MEDIA_KIND_IMAGE:
+                    row["binary_content"] = None
                 self.rowcount = 1
             return
 
@@ -397,6 +399,43 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         row = self.conn.rows[DOC_A]
         self.assertEqual(row["status"], "inactive")
         self.assertEqual(row["last_excluded_reason_code"], "manual_remove")
+        self.assertEqual(row["text_content"], "texte entier du fichier")
+
+    def test_manual_remove_of_active_image_clears_bytes_but_keeps_content_free_metadata(self):
+        raw_image = b"\x89PNG\r\n\x1a\nprivate-image-bytes"
+        active_docs.activate_image_document(
+            CONV_A,
+            document_id=DOC_A,
+            filename="capture.png",
+            image_content=raw_image,
+            media_type="image/png",
+            source_extension=".png",
+            byte_size=len(raw_image),
+            image_width=80,
+            image_height=64,
+            content_sha256_12="123456abcdef",
+            conn_factory=self.conn_factory,
+            now_func=lambda: NOW,
+        )
+
+        self.assertEqual(self.conn.rows[DOC_A]["binary_content"], raw_image)
+        removed = active_docs.deactivate_document(
+            CONV_A,
+            DOC_A,
+            reason_code="manual_remove",
+            conn_factory=self.conn_factory,
+            now_func=lambda: LATER,
+        )
+
+        self.assertTrue(removed)
+        row = self.conn.rows[DOC_A]
+        self.assertEqual(row["status"], "inactive")
+        self.assertIsNone(row["binary_content"])
+        self.assertEqual(row["media_kind"], active_docs.MEDIA_KIND_IMAGE)
+        self.assertEqual(row["content_sha256_12"], "123456abcdef")
+        self.assertEqual(row["image_width"], 80)
+        self.assertEqual(row["image_height"], 64)
+        self.assertEqual(active_docs.list_active_documents(CONV_A, conn_factory=self.conn_factory), [])
 
     def test_conversation_scope_prevents_cross_conversation_reuse(self):
         self.activate(conversation_id=CONV_A, document_id=DOC_A, text="document A")

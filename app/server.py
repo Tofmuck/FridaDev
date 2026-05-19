@@ -1265,6 +1265,11 @@ def api_list_active_conversation_documents(conversation_id: str):
 
 @app.post('/api/conversations/<conversation_id>/active-documents')
 def api_upload_active_conversation_document(conversation_id: str):
+    body_guard = active_document_upload_service.upload_body_size_guard_response(request.content_length)
+    if body_guard:
+        payload, status = body_guard
+        return jsonify(payload), status
+
     payload, status = active_document_upload_service.upload_active_document_response(
         conversation_id,
         request.files,

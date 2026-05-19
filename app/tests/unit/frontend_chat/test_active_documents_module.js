@@ -72,6 +72,7 @@ test('OCR upload states use human labels without fake progress', () => {
   assert.equal(uploadErrorLabel('document_ocr_empty'), 'OCR sans texte lisible.');
   assert.equal(uploadErrorLabel('document_ocr_too_large'), "PDF trop volumineux pour l'OCR de conversation.");
   assert.equal(uploadErrorLabel('document_ocr_too_many_pages'), "PDF trop long pour l'OCR de conversation.");
+  assert.equal(uploadErrorLabel('active_document_upload_too_large'), 'Upload trop volumineux.');
   assert.equal(uploadErrorLabel('image_gif_unsupported_v0'), 'GIF hors V0 pour les images actives.');
   assert.equal(uploadErrorLabel('image_too_small_for_provider'), 'Image trop petite.');
   assert.equal(uploadErrorLabel('document_ocr_timeout').includes('document_ocr_timeout'), false);

@@ -237,7 +237,7 @@ Objectif:
 - [x] Documenter que OpenRouter supporte `image/png`, `image/jpeg`, `image/webp`, `image/gif`.
 - [x] Autoriser une courte allowlist V0 FridaDev: `image/png`, `image/jpeg`, `image/webp`.
 - [x] Garder `image/gif` hors V0 sauf decision explicite, afin d'eviter animations, poids, comportement provider variable et surface de tests plus large.
-- [x] Valider extension, MIME reel, taille bytes et dimensions.
+- [x] Valider extension, MIME/dimensions sniffes, taille bytes et dimensions.
 - [x] Refuser proprement image vide, trop petite, trop lourde ou type non supporte.
 - [x] Stocker seulement l'etat court necessaire a la reinjection active.
 - [x] Ne pas retourner de base64 dans les reponses ordinaires.
@@ -247,10 +247,13 @@ Objectif:
 Limites V0 livrees:
 
 - taille source maximale: `32 MiB` (`33554432` bytes);
+- taille maximale du body multipart avant parsing: `40 MiB` (`41943040` bytes);
 - dimensions minimales: `32 x 32 px`;
 - dimension maximale par cote: `16000 px`;
 - surface maximale: `100 megapixels`;
 - pas de downscale silencieux;
+- validation par sniff conteneur/dimensions, sans promettre le decodage provider futur;
+- retrait manuel d'une image active: effacement des bytes image, conservation des metadonnees content-free;
 - une image acceptee par l'upload reste non injectee dans le modele principal tant que le Lot 2 n'est pas livre.
 
 ### Lot 2 - Lane multimodale vers modele principal

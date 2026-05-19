@@ -225,8 +225,9 @@ Regles produit obligatoires:
 
 Stockage V0:
 
-- le serveur conserve seulement l'etat court necessaire a la piece active: nom, MIME reel, extension, taille, dimensions, hash court et bytes image conversation-scoped;
+- le serveur conserve seulement l'etat court necessaire a la piece active: nom, MIME/dimensions sniffes, extension, taille, hash court et bytes image conversation-scoped;
 - les bytes image servent uniquement au futur Lot 2 d'injection multimodale;
+- le retrait manuel d'une image active efface immediatement les bytes image et conserve seulement les metadonnees content-free;
 - les projections ordinaires, logs, read-models, dashboard et reponses HTTP restent content-free;
 - aucune base64 n'est stockee ni exposee dans les logs, docs, read-models, dashboard ou historique conversationnel.
 
@@ -255,10 +256,12 @@ Formats image:
 Limites source upload V0:
 
 - taille maximale source: `32 MiB` (`33554432` bytes);
+- taille maximale du body multipart active-documents avant parsing: `40 MiB` (`41943040` bytes);
 - dimensions minimales: `32 x 32 px`;
 - dimension maximale par cote: `16000 px`;
 - surface maximale: `100 megapixels`;
 - aucun downscale silencieux;
+- la validation V0 sniffe le type conteneur et les dimensions, mais ne garantit pas le decodage futur par le provider;
 - une image acceptee par l'upload n'est pas encore garantie injectable provider: le Lot 2 devra encore decider `injected` ou `excluded` par tour.
 
 Reason codes image initiaux:
@@ -273,6 +276,7 @@ Reason codes image initiaux:
 - `image_too_small_for_provider`;
 - `image_dimensions_unsupported`;
 - `image_runtime_unavailable`.
+- `active_document_upload_too_large`.
 
 Sortie metadata du parseur:
 

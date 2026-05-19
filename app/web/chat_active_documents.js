@@ -299,6 +299,7 @@ function uploadErrorLabel(reasonCode) {
     document_runtime_unavailable: 'Service documentaire indisponible.',
     document_too_large_for_turn: 'Trop gros pour ce tour.',
     document_file_missing: 'Fichier manquant.',
+    active_document_upload_too_large: 'Upload trop volumineux.',
     image_empty_file: 'Image vide.',
     image_type_unsupported: 'Format image non pris en charge.',
     image_gif_unsupported_v0: 'GIF hors V0 pour les images actives.',

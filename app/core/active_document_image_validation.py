@@ -5,6 +5,9 @@ from __future__ import annotations
 Lot 1 accepts images as conversation-scoped active document state only. It does
 not decide provider injection; that remains the responsibility of the future
 multimodal prompt lane.
+
+The checks below sniff container type and dimensions from bytes. They are guard
+rails, not a guarantee that every provider will decode the image later.
 """
 
 import hashlib

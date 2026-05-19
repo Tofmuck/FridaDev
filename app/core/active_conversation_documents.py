@@ -692,7 +692,11 @@ def deactivate_document(
                 UPDATE active_conversation_documents
                 SET status = %s,
                     deactivated_at = %s,
-                    last_excluded_reason_code = %s
+                    last_excluded_reason_code = %s,
+                    binary_content = CASE
+                        WHEN media_kind = 'image' THEN NULL
+                        ELSE binary_content
+                    END
                 WHERE conversation_id = %s::uuid
                   AND document_id = %s::uuid
                   AND status = 'active'

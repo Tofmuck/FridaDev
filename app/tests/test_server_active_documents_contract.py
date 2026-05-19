@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import io
 import json
+import binascii
 import sys
 import unittest
 import uuid
+import zlib
 from pathlib import Path
 from unittest import mock
 
@@ -23,13 +25,14 @@ RAW_DOCUMENT_TEXT = "texte exact du fichier qui ne doit pas revenir dans l API"
 
 
 def _png_bytes(width=64, height=48):
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + b"\x00\x00\x00\rIHDR"
-        + int(width).to_bytes(4, "big")
-        + int(height).to_bytes(4, "big")
-        + b"\x08\x02\x00\x00\x00"
-    )
+    def chunk(kind, payload):
+        crc = binascii.crc32(kind + payload) & 0xFFFFFFFF
+        return len(payload).to_bytes(4, "big") + kind + payload + crc.to_bytes(4, "big")
+
+    header = int(width).to_bytes(4, "big") + int(height).to_bytes(4, "big") + b"\x08\x02\x00\x00\x00"
+    row = b"\x00" + (b"\xff\xff\xff" * int(width))
+    image_data = zlib.compress(row * int(height))
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", image_data) + chunk(b"IEND", b"")
 
 
 def _jpeg_bytes(width=64, height=48):
@@ -74,9 +77,10 @@ class _FakeActiveDocuments:
         self.items = []
         self.activated_texts = []
         self.activated_images = []
+        self.deactivated = []
 
     def list_active_documents(self, conversation_id):
-        return [dict(item) for item in self.items if item["conversation_id"] == conversation_id]
+        return [_content_free_item(item) for item in self.items if item["conversation_id"] == conversation_id]
 
     def activate_document(self, conversation_id, **kwargs):
         self.activated_texts.append(kwargs.get("text_content") or "")
@@ -100,7 +104,7 @@ class _FakeActiveDocuments:
             "source": "active_conversation_documents",
         }
         self.items.append(item)
-        return dict(item)
+        return _content_free_item(item)
 
     def activate_image_document(self, conversation_id, **kwargs):
         self.activated_images.append(bytes(kwargs.get("image_content") or b""))
@@ -126,15 +130,19 @@ class _FakeActiveDocuments:
             "last_excluded_turn_id": "",
             "last_excluded_reason_code": "",
             "source": "active_conversation_documents",
+            "binary_content": bytes(kwargs.get("image_content") or b""),
         }
         self.items.append(item)
-        return dict(item)
+        return _content_free_item(item)
 
     def deactivate_document(self, conversation_id, document_id, *, reason_code):
         for item in list(self.items):
             if item["conversation_id"] == conversation_id and item["document_id"] == document_id:
                 self.items.remove(item)
                 item["last_excluded_reason_code"] = reason_code
+                if item.get("media_kind") == "image":
+                    item["binary_content"] = None
+                self.deactivated.append(item)
                 return True
         return False
 
@@ -145,6 +153,12 @@ class _FakeAdminLogs:
 
     def log_event(self, stage, **payload):
         self.events.append({"stage": stage, "payload": payload})
+
+
+def _content_free_item(item):
+    payload = dict(item)
+    payload.pop("binary_content", None)
+    return payload
 
 
 class ServerActiveDocumentsContractTests(unittest.TestCase):
@@ -233,6 +247,7 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
         delete_response = self.client.delete(f"/api/conversations/{CONV_ID}/active-documents/{DOC_ID}")
         self.assertEqual(delete_response.status_code, 200)
         self.assertTrue(delete_response.get_json()["ok"])
+        self.assertIsNone(self.fake_docs.deactivated[-1].get("binary_content"))
 
     def test_upload_jpeg_and_webp_active_images(self):
         cases = [
@@ -301,6 +316,37 @@ class ServerActiveDocumentsContractTests(unittest.TestCase):
                 payload = response.get_json()
                 self.assertEqual(payload["reason_code"], reason_code)
         self.assertEqual(self.fake_docs.activated_images, [])
+
+    def test_active_document_upload_rejects_oversized_body_before_file_read(self):
+        observed = {"called": False}
+
+        def fail_if_called(*_args, **_kwargs):
+            observed["called"] = True
+            raise AssertionError("upload parser should not be called for oversized body")
+
+        with (
+            self.server.app.test_request_context(
+                f"/api/conversations/{CONV_ID}/active-documents",
+                method="POST",
+                environ_overrides={
+                    "CONTENT_LENGTH": str(
+                        self.server.active_document_upload_service.ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH + 1
+                    )
+                },
+            ),
+            mock.patch.object(
+                self.server.active_document_upload_service,
+                "upload_active_document_response",
+                side_effect=fail_if_called,
+            ),
+        ):
+            response, status = self.server.api_upload_active_conversation_document(CONV_ID)
+
+        self.assertEqual(status, 413)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "active_document_upload_too_large")
+        self.assertFalse(observed["called"])
 
     def test_unsupported_upload_returns_visible_reason_without_activation(self):
         response = self.client.post(

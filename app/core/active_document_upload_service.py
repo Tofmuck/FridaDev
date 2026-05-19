@@ -17,6 +17,30 @@ from observability import active_documents_observability
 
 
 UPLOAD_FIELD = "file"
+ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH = 40 * 1024 * 1024
+REASON_UPLOAD_BODY_TOO_LARGE = "active_document_upload_too_large"
+
+
+def upload_body_size_guard_response(content_length: Any) -> Tuple[dict[str, Any], int] | None:
+    """Reject obviously oversized multipart bodies before Flask parses files."""
+
+    try:
+        body_size = int(content_length or 0)
+    except (TypeError, ValueError):
+        body_size = 0
+    if body_size <= ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH:
+        return None
+    return {
+        "ok": False,
+        "error": _human_upload_error(REASON_UPLOAD_BODY_TOO_LARGE),
+        "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
+        "document": {
+            "status": "too_large",
+            "reason_code": REASON_UPLOAD_BODY_TOO_LARGE,
+            "byte_size": body_size,
+            "max_body_bytes": ACTIVE_DOCUMENT_UPLOAD_MAX_CONTENT_LENGTH,
+        },
+    }, 413
 
 
 def list_active_documents_response(
@@ -390,6 +414,7 @@ def _human_upload_error(reason_code: str) -> str:
         "document_ocr_too_large": "PDF trop volumineux pour l'OCR de conversation",
         "document_ocr_too_many_pages": "PDF trop long pour l'OCR de conversation",
         "document_runtime_unavailable": "lecteur de fichier indisponible",
+        "active_document_upload_too_large": "upload trop volumineux",
         "image_empty_file": "image vide",
         "image_type_unsupported": "format image non pris en charge",
         "image_gif_unsupported_v0": "GIF hors V0 pour les images actives",
