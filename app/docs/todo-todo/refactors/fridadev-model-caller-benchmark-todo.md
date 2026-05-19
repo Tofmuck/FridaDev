@@ -33,7 +33,7 @@ Source de verite de depart:
 - [x] Arbitre memoire.
 - [x] Resume conversationnel.
 - [x] Extracteur identity.
-- [ ] Agent periodic identity.
+- [x] Agent periodic identity.
 - [ ] Stimmung agent primaire.
 - [ ] Validation agent primaire.
 - [ ] Fallback stimmung: hors priorite pour l'instant.
@@ -50,9 +50,9 @@ Source de verite de depart:
 - [x] Benchmark extracteur identity.
 - [x] Decision extracteur identity: conserver `openai/gpt-5.4-mini`, d'apres lecture humaine de Tof.
 - [x] Decouplage propre de l'extracteur identity: `identity_extractor_model` devient source runtime effective de model/temp/top_p/max_tokens/timeout.
-- [ ] Benchmark periodic identity.
-- [ ] Decision periodic identity.
-- [ ] Decouplage propre de periodic identity.
+- [x] Benchmark periodic identity.
+- [x] Decision periodic identity.
+- [x] Decouplage propre de periodic identity.
 - [ ] Benchmark stimmung agent primaire.
 - [ ] Decision stimmung agent primaire.
 - [ ] Decouplage propre du stimmung agent primaire.
