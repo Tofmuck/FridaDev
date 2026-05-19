@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   ACTIVE_DOCUMENT_ACCEPTED_EXTENSIONS,
@@ -13,6 +15,20 @@ const {
 
 test('active document module keeps the supported upload vocabulary narrow', () => {
   assert.deepEqual(ACTIVE_DOCUMENT_ACCEPTED_EXTENSIONS, ['.pdf', '.docx', '.odt', '.md', '.txt', '.png', '.jpg', '.jpeg', '.webp']);
+  assert.equal(ACTIVE_DOCUMENT_ACCEPTED_EXTENSIONS.includes('.gif'), false);
+});
+
+test('active document file input exposes V0 image types without GIF', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '../../../web/index.html'), 'utf8');
+  const inputMatch = indexHtml.match(/id="activeDocumentFileInput"[\s\S]*?accept="([^"]+)"/);
+  assert.ok(inputMatch, 'active document file input should declare accepted types');
+  const accept = inputMatch[1];
+
+  for (const expected of ['.png', '.jpg', '.jpeg', '.webp', 'image/png', 'image/jpeg', 'image/webp']) {
+    assert.ok(accept.includes(expected), `${expected} should be accepted`);
+  }
+  assert.equal(accept.includes('.gif'), false);
+  assert.equal(accept.includes('image/gif'), false);
 });
 
 test('active document metadata stays compact and content-free', () => {
@@ -43,9 +59,29 @@ test('active image metadata renders dimensions without raw image content', () =>
     binary_content: 'RAW SHOULD NOT RENDER',
   });
 
-  assert.equal(meta, 'PNG · 4 ko · 80 x 64 px · actif');
+  assert.equal(meta, 'PNG · 4 ko · 80 x 64 px · Image active');
   assert.equal(meta.includes('RAW SHOULD NOT RENDER'), false);
   assert.equal(meta.includes('123456abcdef'), false);
+});
+
+test('active image exclusion metadata is explicit and content-free', () => {
+  const meta = compactDocumentMeta({
+    filename: 'capture.webp',
+    source_extension: '.webp',
+    media_kind: 'image',
+    byte_size: 9 * 1024 * 1024,
+    text_chars: 0,
+    image_width: 2400,
+    image_height: 1600,
+    content_sha256_12: 'abcdef123456',
+    last_excluded_reason_code: 'image_too_large_for_provider_payload',
+    binary_content: 'RAW SHOULD NOT RENDER',
+  });
+
+  assert.equal(meta, 'WEBP · 9.0 Mo · 2400 x 1600 px · Image non injectée: Trop lourde pour ce tour.');
+  assert.equal(meta.includes('RAW SHOULD NOT RENDER'), false);
+  assert.equal(meta.includes('abcdef123456'), false);
+  assert.equal(meta.includes('image_too_large_for_provider_payload'), false);
 });
 
 test('active document warning states use human labels rather than raw reason codes', () => {
@@ -75,5 +111,8 @@ test('OCR upload states use human labels without fake progress', () => {
   assert.equal(uploadErrorLabel('active_document_upload_too_large'), 'Upload trop volumineux.');
   assert.equal(uploadErrorLabel('image_gif_unsupported_v0'), 'GIF hors V0 pour les images actives.');
   assert.equal(uploadErrorLabel('image_too_small_for_provider'), 'Image trop petite.');
+  assert.equal(uploadErrorLabel('image_model_unsupported'), 'Modèle actuel sans lecture image.');
+  assert.equal(uploadErrorLabel('image_bytes_missing'), 'Image indisponible.');
+  assert.equal(uploadErrorLabel('image_too_large_for_provider_payload'), 'Trop lourde pour ce tour.');
   assert.equal(uploadErrorLabel('document_ocr_timeout').includes('document_ocr_timeout'), false);
 });

@@ -285,14 +285,24 @@ Lot 2 livre:
 
 ### Lot 3 - Frontend integre dans l'UI documents actifs
 
-- [ ] Ajouter l'upload image dans le controle documents actifs existant.
-- [ ] Afficher nom, type, taille, dimensions, statut, retrait.
-- [ ] Afficher une preview locale ou metadata selon le moindre risque produit.
-- [ ] Garder le langage visuel FridaDev existant.
-- [ ] Ne pas creer de bouton "vision" autonome.
-- [ ] Ne pas injecter l'image dans le champ texte du chat.
-- [ ] Tester desktop/mobile.
-- [ ] Tester retrait et reload navigateur.
+- [x] Ajouter l'upload image dans le controle documents actifs existant.
+- [x] Afficher nom, type, taille, dimensions, statut, retrait.
+- [x] Afficher une preview locale ou metadata selon le moindre risque produit.
+- [x] Garder le langage visuel FridaDev existant.
+- [x] Ne pas creer de bouton "vision" autonome.
+- [x] Ne pas injecter l'image dans le champ texte du chat.
+- [x] Tester desktop/mobile.
+- [x] Tester retrait et reload navigateur.
+
+Lot 3 livre:
+
+- l'input documents actifs accepte `.png`, `.jpg`, `.jpeg`, `.webp` et ne propose pas `.gif`;
+- l'image reste dans la barre native des documents actifs, sans bouton vision autonome et sans mini-app separee;
+- l'UI affiche filename, extension/type, taille, dimensions et statut `Image active` ou `Image non injectee`;
+- la V0 retient le choix metadata-only plutot qu'une preview image, afin d'eviter toute URL/base64 persistante cote frontend;
+- le retrait utilise le mecanisme existant `DELETE /api/conversations/<id>/active-documents/<document_id>`;
+- un reload navigateur recharge l'etat actif depuis le serveur/mock de test, sans base64 frontend;
+- l'upload image seul ne poste rien vers `/api/chat` et ne modifie pas le champ texte.
 
 ### Lot 4 - Tests de non-contamination et observabilite
 

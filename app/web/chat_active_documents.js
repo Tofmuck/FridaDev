@@ -250,20 +250,22 @@ function hasFileDrag(dataTransfer) {
 
 function compactDocumentMeta(item) {
   const parts = [];
+  const isImage = item.media_kind === 'image';
   const ext = String(item.source_extension || '').replace(/^\./, '').toUpperCase();
   if (ext) parts.push(ext);
   const size = formatBytes(item.byte_size);
   if (size) parts.push(size);
   const chars = Number(item.text_chars || 0);
   if (chars > 0) parts.push(`${chars} caractères`);
-  if (item.media_kind === 'image' && item.image_width && item.image_height) {
+  if (isImage && item.image_width && item.image_height) {
     parts.push(`${Number(item.image_width)} x ${Number(item.image_height)} px`);
   }
   if (item.ocr_applied) parts.push('OCRisé');
   if (item.last_excluded_reason_code) {
-    parts.push(uploadErrorLabel(item.last_excluded_reason_code));
+    const label = uploadErrorLabel(item.last_excluded_reason_code) || 'Non injecté pour ce tour.';
+    parts.push(isImage ? `Image non injectée: ${label}` : label);
   } else {
-    parts.push('actif');
+    parts.push(isImage ? 'Image active' : 'actif');
   }
   return parts.join(' · ');
 }
@@ -310,6 +312,9 @@ function uploadErrorLabel(reasonCode) {
     image_too_small_for_provider: 'Image trop petite.',
     image_dimensions_unsupported: 'Dimensions image non prises en charge.',
     image_runtime_unavailable: 'Service image indisponible.',
+    image_model_unsupported: 'Modèle actuel sans lecture image.',
+    image_bytes_missing: 'Image indisponible.',
+    image_too_large_for_provider_payload: 'Trop lourde pour ce tour.',
   };
   return labels[String(reasonCode || '')] || '';
 }

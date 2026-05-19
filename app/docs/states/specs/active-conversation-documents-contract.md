@@ -282,6 +282,17 @@ Observabilite Lot 2:
 - le payload document contient `document_id`, `media_kind=image`, `media_type`, `byte_size`, `image_width`, `image_height`, `content_sha256_12`, `provider_model`, `payload_order=text_then_image_url` et `reason_code` si exclusion;
 - le payload ne contient ni base64, ni data URL, ni contenu visuel, ni prompt utilisateur brut.
 
+Frontend Lot 3:
+
+- l'upload image passe par le controle documents actifs existant, pas par un bouton vision autonome;
+- l'input V0 accepte `.png`, `.jpg`, `.jpeg`, `.webp` et ne propose pas `.gif`;
+- l'image apparait dans la liste native des documents actifs avec nom, type/extension, taille, dimensions et statut;
+- les statuts visibles restent sobres: `Image active` ou `Image non injectee` avec motif humain compact;
+- la V0 frontend n'affiche pas de preview image persistante: elle rend seulement des metadonnees content-free;
+- aucune data URL/base64 image n'est stockee dans le DOM durable, `localStorage`, `sessionStorage`, l'historique conversationnel ou le champ texte;
+- l'upload/retrait image ne poste pas vers `/api/chat`;
+- le reload navigateur relit l'etat actif depuis le serveur sans contenu brut image.
+
 Formats image:
 
 - OpenRouter documente `image/png`, `image/jpeg`, `image/webp`, `image/gif`;

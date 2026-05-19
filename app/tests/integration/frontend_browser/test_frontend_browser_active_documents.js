@@ -163,6 +163,12 @@ test('chat active conversation documents upload, OCR states, reload and remove w
     afterPage: (page) => page.setViewportSize({ width: 390, height: 760 }),
   }, async (page) => {
     await page.waitForSelector('#message:not([disabled])');
+    const accept = await page.locator('#activeDocumentFileInput').getAttribute('accept');
+    for (const expected of ['.png', '.jpg', '.jpeg', '.webp', 'image/png', 'image/jpeg', 'image/webp']) {
+      assert.ok(String(accept || '').includes(expected), `${expected} should be offered by the active document picker`);
+    }
+    assert.equal(String(accept || '').includes('.gif'), false);
+    assert.equal(String(accept || '').includes('image/gif'), false);
 
     await dropFile(page, 'note.txt', 'text/plain', 'CONTENU BRUT NE DOIT PAS APPARAITRE');
     await page.waitForFunction(() =>
@@ -190,10 +196,34 @@ test('chat active conversation documents upload, OCR states, reload and remove w
     await page.waitForFunction(() =>
       document.querySelector('#activeDocumentsList')?.textContent.includes('capture.png'));
     await assertTextContains(page.locator('#activeDocumentsBar'), '80 x 64 px');
+    await assertTextContains(page.locator('#activeDocumentsBar'), 'Image active');
     const imageBarText = await page.locator('#activeDocumentsBar').textContent();
     assert.equal(String(imageBarText || '').includes('IMAGE BRUTE NE DOIT PAS APPARAITRE'), false);
     assert.equal(String(imageBarText || '').includes('data:image'), false);
     assert.equal(String(imageBarText || '').includes('img123abc456'), false);
+    assert.equal((await page.locator('#message').inputValue()).includes('capture.png'), false);
+    assert.equal((await page.locator('#message').inputValue()).includes('data:image'), false);
+    const imageBarBox = await page.locator('#activeDocumentsBar').boundingBox();
+    assert.ok(
+      imageBarBox && imageBarBox.x >= 0 && imageBarBox.x + imageBarBox.width <= 390,
+      'active image bar should fit mobile viewport'
+    );
+
+    const callsAfterImageUpload = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+    assert.equal(
+      callsAfterImageUpload.some((call) => call.method === 'POST' && call.path === '/api/chat'),
+      false,
+      'uploading an active image should not submit chat'
+    );
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() =>
+      document.querySelector('#activeDocumentsList')?.textContent.includes('capture.png'));
+    await assertTextContains(page.locator('#activeDocumentsBar'), 'Image active');
+    await assertTextContains(page.locator('#activeDocumentsBar'), '80 x 64 px');
+    const reloadedImageBarText = await page.locator('#activeDocumentsBar').textContent();
+    assert.equal(String(reloadedImageBarText || '').includes('data:image'), false);
+    assert.equal(String(reloadedImageBarText || '').includes('IMAGE BRUTE NE DOIT PAS APPARAITRE'), false);
 
     await page.click('#activeDocumentsList .active-document-remove');
     await page.waitForFunction(() =>
