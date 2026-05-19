@@ -21,7 +21,14 @@ Ajouter une generation d'images comme outil autonome integre a l'interface Frida
 - aucun ajout automatique au dialogue Frida;
 - aucune memoire, identity, resume, document actif, Biblio ou artefact serveur persistant en V0.
 
-Ce n'est pas un nouveau pouvoir hermeneutique de Frida. C'est un outil utilisateur lateral, comparable a un outil frontend adosse a OpenRouter.
+Ce n'est pas un nouveau pouvoir hermeneutique de Frida. C'est un outil lateral de l'application web FridaDev, comparable a un outil frontend adosse a OpenRouter.
+
+Frontiere produit stricte:
+- le chantier ne touche pas au prompt principal;
+- il ne touche pas a la memoire, identity, summaries, active documents, Biblio, RAG, web search, Stimmung, validation agent, arbitre memoire, pipeline `/api/chat`, conversation history ou persistence conversationnelle;
+- il touche seulement: bouton frontend, panneau/modal, route backend outil, module `app/tools/image_generation.py`, transport OpenRouter partage, allowlist/config modeles et logs techniques content-free.
+
+Meme si les modeles image deviennent plus tard configurables en DB/runtime settings, l'outil reste lateral: pas d'injection dans le dialogue, pas de memoire, pas de persistence image serveur en V0.
 
 ## 2. Contraintes UI
 
@@ -65,19 +72,46 @@ Consequence V0:
 
 Ne pas chercher le modele "le plus permissif". Le choix V0 doit couvrir des usages distincts, avec une allowlist courte.
 
-| Usage | Id OpenRouter | Nom API | Modalites input -> output | Parametres API utiles observes | Formats / tailles | Prix API observe | Raison de selection | Limite connue |
-|---|---|---|---|---|---|---|---|---|
-| Meilleur rendu general | `openai/gpt-5.4-image-2` | OpenAI: GPT-5.4 Image 2 | image,text,file -> image,text | `max_tokens`, `seed`, `response_format`, `temperature` non listee | A verifier en Lot 0; commencer par `1:1`, `16:9`, `9:16` seulement si smoke OK | prompt `0.000008`, completion `0.000015`; pas de prix image dedie dans l'API | option generale haut de gamme, large contexte, multimodale | probablement plus couteux; contraintes image par ratio non detaillees par l'API |
-| Rapide / economique | `google/gemini-3.1-flash-image-preview` | Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview) | image,text -> image,text | `temperature`, `top_p`, `seed`, `max_tokens` | ratios globaux + ratios etendus documentes; `0.5K`, `1K`, `2K`, `4K` documentes | prompt `0.0000005`, completion `0.000003`; pas de prix image dedie dans l'API | bon candidat par defaut V0: rapide, flexible, support formats etendus documente | modele preview; verifier stabilite et reponse image sur FridaDev |
-| Illustration / design / style | `recraft/recraft-v4.1` | Recraft: Recraft V4.1 | text,image -> image | aucun `supported_parameters` declare dans l'API | description API: ~1K et multiples aspect ratios; table exacte a maintenir apres smoke | API indique prompt `0`, completion `0`; prix image non explicite | orientation design / esthetique, utile pour illustrations et assets | pricing et formats precis non exposes par l'API modeles; pas de sortie texte |
-| Option experimentale image-only | `black-forest-labs/flux.2-pro` | Black Forest Labs: FLUX.2 Pro | text,image -> image | `seed` | A verifier en Lot 0; table FridaDev requise | API indique prompt `0`, completion `0`; prix image non explicite | image-only haute qualite, bon contrepoint aux modeles texte+image | pas de texte; contraintes cout/format a verifier hors API modeles |
+| Usage | Generator key | Id OpenRouter | Nom API | Modalites input -> output | Parametres API utiles observes | Formats / tailles | Prix API observe | Pricing label UI cible | Attribution cible | Raison de selection | Limite connue |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Meilleur rendu general | `image_generator_openai` | `openai/gpt-5.4-image-2` | OpenAI: GPT-5.4 Image 2 | image,text,file -> image,text | `max_tokens`, `seed`, `response_format`, `temperature` non listee | A verifier en Lot 0; commencer par `1:1`, `16:9`, `9:16` seulement si smoke OK | prompt `0.000008`, completion `0.000015`; pas de prix image dedie dans l'API | `prix API observe: prompt 0.000008 / completion 0.000015; prix image non expose` | `FridaDev / Image Generator / OpenAI` | option generale haut de gamme, large contexte, multimodale | probablement plus couteux; contraintes image par ratio non detaillees par l'API |
+| Rapide / economique | `image_generator_nano_banana` | `google/gemini-3.1-flash-image-preview` | Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview) | image,text -> image,text | `temperature`, `top_p`, `seed`, `max_tokens` | ratios globaux + ratios etendus documentes; `0.5K`, `1K`, `2K`, `4K` documentes | prompt `0.0000005`, completion `0.000003`; pas de prix image dedie dans l'API | `prix API observe: prompt 0.0000005 / completion 0.000003; prix image non expose` | `FridaDev / Image Generator / Nano Banana` | bon candidat par defaut V0: rapide, flexible, support formats etendus documente | modele preview; verifier stabilite et reponse image sur FridaDev |
+| Illustration / design / style | `image_generator_recraft` | `recraft/recraft-v4.1` | Recraft: Recraft V4.1 | text,image -> image | aucun `supported_parameters` declare dans l'API | description API: ~1K et multiples aspect ratios; table exacte a maintenir apres smoke | API indique prompt `0`, completion `0`; prix image non explicite | `prix image non expose par l'API modeles` | `FridaDev / Image Generator / Recraft` | orientation design / esthetique, utile pour illustrations et assets | pricing et formats precis non exposes par l'API modeles; pas de sortie texte |
+| Option experimentale image-only | `image_generator_flux` | `black-forest-labs/flux.2-pro` | Black Forest Labs: FLUX.2 Pro | text,image -> image | `seed` | A verifier en Lot 0; table FridaDev requise | API indique prompt `0`, completion `0`; prix image non explicite | `prix image non expose par l'API modeles` | `FridaDev / Image Generator / Flux` | image-only haute qualite, bon contrepoint aux modeles texte+image | pas de texte; contraintes cout/format a verifier hors API modeles |
 
 Notes:
 - `openrouter/auto` ne doit pas etre expose en V0: il rend les comparaisons et l'observabilite moins reproductibles.
 - Les modeles preview doivent etre marques comme tels dans le menu si exposes.
 - Si un prix image/request n'est pas disponible dans l'API modeles, l'UI V0 ne doit pas afficher un cout previsionnel trompeur.
 
-## 5. Architecture cible
+## 5. Prix et affichage UI
+
+Le menu modele doit afficher un `pricing_label` quand l'information est exploitable:
+
+- si l'API OpenRouter expose un prix image/request clair, l'afficher comme prix API observe;
+- si l'API expose seulement `prompt=0` / `completion=0` sans prix image/request, ne pas afficher "gratuit";
+- afficher plutot: `prix image non expose par l'API modeles`;
+- ne pas promettre un cout exact avant generation;
+- si OpenRouter renvoie un cout/usage reel dans la reponse, l'afficher apres appel seulement comme information observee;
+- ne jamais logger le prompt brut ni la base64 pour calculer ou expliquer le cout.
+
+La future table code V0 doit porter au minimum:
+- `generator_key`;
+- `display_name`;
+- `openrouter_model_id`;
+- `openrouter_title`;
+- `openrouter_referer`;
+- `modalities`;
+- `supported_aspect_ratios`;
+- `supported_image_sizes`;
+- `pricing_label`;
+- `pricing_source`;
+- `is_preview`;
+- `notes`.
+
+Cette table doit etre confirmee en Lot 0 par API + smoke tests avant exposition UI.
+
+## 6. Architecture cible
 
 ### Backend
 
@@ -110,21 +144,31 @@ Payload cible minimal:
   },
   "stream": false,
   "metadata": {
-    "frida_caller": "image_generation",
-    "frida_slot": "image_generation_tool"
+    "frida_caller": "image_generator_nano_banana",
+    "frida_slot": "image_generation_tool",
+    "frida_image_model": "google/gemini-3.1-flash-image-preview"
   },
   "trace": {
     "trace_name": "FridaDev",
-    "generation_name": "FridaDev / Image Generation"
+    "generation_name": "FridaDev / Image Generator / Nano Banana"
   }
 }
 ```
 
-Attribution OpenRouter cible:
-- caller: `image_generation`;
-- title: `FridaDev / Image Generation`;
-- referer: `https://fridadev.frida-system.fr/openrouter/image-generation`;
-- metadata: `frida_caller=image_generation`, `frida_slot=image_generation_tool`.
+Attribution OpenRouter cible par generateur:
+
+| Generator key | Title OpenRouter | Referer OpenRouter | metadata.frida_caller |
+|---|---|---|---|
+| `image_generator_openai` | `FridaDev / Image Generator / OpenAI` | `https://fridadev.frida-system.fr/openrouter/image-generation/openai` | `image_generator_openai` |
+| `image_generator_nano_banana` | `FridaDev / Image Generator / Nano Banana` | `https://fridadev.frida-system.fr/openrouter/image-generation/nano-banana` | `image_generator_nano_banana` |
+| `image_generator_recraft` | `FridaDev / Image Generator / Recraft` | `https://fridadev.frida-system.fr/openrouter/image-generation/recraft` | `image_generator_recraft` |
+| `image_generator_flux` | `FridaDev / Image Generator / Flux` | `https://fridadev.frida-system.fr/openrouter/image-generation/flux` | `image_generator_flux` |
+
+Regles:
+- utiliser le meme token et le meme projet OpenRouter partages via `main_model`;
+- ne pas utiliser `user` pour nommer les generateurs;
+- garder `frida_slot=image_generation_tool` pour signaler que l'outil reste lateral;
+- ajouter `frida_image_model=<openrouter_model_id>` pour faciliter l'audit sans lire le prompt.
 
 Decision runtime V0:
 - ne pas creer de slot runtime DB dedie par defaut en V0;
@@ -151,7 +195,7 @@ Comportement:
 - bouton telecharger qui cree un fichier local depuis la data URL;
 - fermeture/reouverture sans injection dans le fil de chat.
 
-## 6. Observabilite
+## 7. Observabilite
 
 Logs content-free uniquement:
 - event `image_generation_requested`;
@@ -162,7 +206,9 @@ Logs content-free uniquement:
 - status;
 - error_code;
 - provider_model si disponible;
-- presence ou absence d'image en reponse.
+- presence ou absence d'image en reponse;
+- pricing_label affiche;
+- cout/usage reel seulement si OpenRouter le renvoie explicitement.
 
 Interdits de log:
 - prompt brut par defaut;
@@ -172,7 +218,7 @@ Interdits de log:
 - secret;
 - contenu utilisateur injecte dans metadata/trace.
 
-## 7. Securite et garde-fous
+## 8. Securite et garde-fous
 
 - prompt limite en longueur;
 - timeout dedie;
@@ -186,7 +232,7 @@ Interdits de log:
 - aucun secret expose au frontend;
 - erreurs provider normalisees et non verbatim si elles contiennent du contenu sensible.
 
-## 8. Lots
+## 9. Lots
 
 ### Lot 0 - Decouverte OpenRouter finale
 
@@ -195,23 +241,27 @@ Interdits de log:
 - [ ] Confirmer pour chaque modele: `modalities`, `image_config.aspect_ratio`, `image_config.image_size`, pricing utile et limites.
 - [ ] Faire un smoke technique minimal hors UI avec un prompt non sensible.
 - [ ] Figer la table V0 des formats/aspect ratios par modele.
+- [ ] Figer les `pricing_label` et `pricing_source` affiches par l'UI.
+- [ ] Figer l'attribution OpenRouter par generateur.
 
 ### Lot 1 - Backend minimal
 
 - [ ] Creer `app/tools/image_generation.py`.
 - [ ] Ajouter `POST /api/tools/image-generation`.
 - [ ] Utiliser le transport OpenRouter partage via `main_model`.
-- [ ] Ajouter l'attribution `FridaDev / Image Generation`.
+- [ ] Ajouter l'attribution OpenRouter distincte par generateur.
 - [ ] Valider prompt, modele, aspect ratio, taille et timeout.
 - [ ] Extraire la premiere image depuis `choices[0].message.images[0].image_url.url`.
 - [ ] Retourner une erreur propre si aucune image n'est renvoyee.
 - [ ] Ajouter logs content-free sans prompt brut ni base64.
+- [ ] Retourner au frontend le `pricing_label` et l'usage/cout observe si disponible.
 
 ### Lot 2 - Frontend integre Frida
 
 - [ ] Ajouter le bouton outil image dans l'interface existante.
 - [ ] Ajouter un panneau/modal natif FridaDev.
 - [ ] Ajouter prompt, modele, aspect ratio, taille et bouton generer.
+- [ ] Afficher le prix ou `prix image non expose par l'API modeles` dans le select/description modele.
 - [ ] Afficher l'image dans un conteneur contraint et responsive.
 - [ ] Ajouter telechargement navigateur.
 - [ ] Reutiliser les styles existants; aucun style autonome.
@@ -223,6 +273,8 @@ Interdits de log:
 - [ ] Test absence d'image en reponse.
 - [ ] Test refus modele hors allowlist.
 - [ ] Test refus aspect ratio incompatible.
+- [ ] Test affichage pricing sans promettre un cout exact quand l'API ne donne pas de prix image.
+- [ ] Test attribution OpenRouter distincte par generateur.
 - [ ] Test absence de secret et absence de base64 dans logs.
 - [ ] Test frontend du panneau avec Playwright ou equivalent.
 - [ ] Verification responsive desktop/mobile.
@@ -235,7 +287,7 @@ Interdits de log:
 - [ ] Ajouter captures/preuves UI si demandees.
 - [ ] Archiver ce TODO si l'outil V0 est livre, teste et documente.
 
-## 9. Hors scope
+## 10. Hors scope
 
 - lecture d'images;
 - edition d'images;
@@ -247,16 +299,22 @@ Interdits de log:
 - integration active documents;
 - integration Biblio;
 - generation depuis le LLM principal;
+- modification du prompt principal;
+- modification du pipeline `/api/chat`;
+- modification de la conversation history;
+- modification de web search, Stimmung, validation agent ou arbitre memoire;
 - prompt rewriting automatique par Frida;
 - moderation avancee beyond provider;
 - multi-image batch;
 - video.
 
-## 10. Definition de sortie V0
+## 11. Definition de sortie V0
 
 - Un utilisateur peut ouvrir l'outil image depuis l'UI FridaDev.
 - Il peut saisir un prompt, choisir un modele et un format compatible.
+- Le menu modele affiche un prix exploitable ou une mention prudente quand le prix image n'est pas expose.
 - Le backend appelle OpenRouter sans exposer de secret.
+- OpenRouter voit une attribution lisible et stable par generateur.
 - L'image est affichee et telechargeable.
 - Rien n'est injecte dans le dialogue, la memoire, identity, summary, active documents ou Biblio.
 - Les logs prouvent l'appel sans prompt brut ni base64.
