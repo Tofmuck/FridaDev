@@ -18,6 +18,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
+- TODO produit generation d'images OpenRouter: `todo-todo/product/fridadev-image-generation-openrouter-todo.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
