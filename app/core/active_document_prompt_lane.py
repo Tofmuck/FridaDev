@@ -16,6 +16,7 @@ REASON_EMPTY = "document_empty_text"
 REASON_READ_ERROR = "active_documents_read_error"
 REASON_IMAGE_MODEL_UNSUPPORTED = "image_model_unsupported"
 REASON_IMAGE_BYTES_MISSING = "image_bytes_missing"
+REASON_IMAGE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "image_too_large_for_provider_payload"
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
@@ -23,6 +24,7 @@ MEDIA_KIND_TEXT = "text"
 MEDIA_KIND_IMAGE = "image"
 IMAGE_PAYLOAD_ORDER = "text_then_image_url"
 IMAGE_CAPABLE_MAIN_MODELS = frozenset({"anthropic/claude-sonnet-4.6"})
+ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 8 * 1024 * 1024
 
 LANE_HEADER = "[DOCUMENTS ACTIFS DE CONVERSATION]"
 LANE_FOOTER = "[/DOCUMENTS ACTIFS DE CONVERSATION]"
@@ -138,6 +140,15 @@ def build_active_document_prompt_lane(
                 continue
             if not decision.image_content:
                 not_injected.append(_replace_decision(decision, reason_code=REASON_IMAGE_BYTES_MISSING))
+                continue
+            if _provider_payload_byte_size(decision) > ACTIVE_IMAGE_PROVIDER_MAX_BYTES:
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=REASON_IMAGE_TOO_LARGE_FOR_PROVIDER_PAYLOAD,
+                        provider_model=model,
+                    )
+                )
                 continue
             injected.append(
                 _replace_decision(
@@ -468,6 +479,10 @@ def _not_injected_document_line(decision: ActiveDocumentPromptDecision, *, index
 
 def _model_supports_active_images(model: str) -> bool:
     return _text(model) in IMAGE_CAPABLE_MAIN_MODELS
+
+
+def _provider_payload_byte_size(decision: ActiveDocumentPromptDecision) -> int:
+    return max(_safe_int(decision.byte_size), len(decision.image_content or b""))
 
 
 def _messages_for_token_count(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:

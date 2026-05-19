@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 from core import active_document_prompt_lane as prompt_lane
 
@@ -379,6 +380,34 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertEqual(lane.decisions[0].reason_code, "image_model_unsupported")
         serialized_prompt = str(prompt_messages)
         self.assertIn("reason_code=image_model_unsupported", serialized_prompt)
+        self.assertIn("ne pretends jamais l'avoir lu", serialized_prompt)
+        self.assertNotIn("data:image", serialized_prompt)
+
+    def test_active_image_over_provider_payload_cap_is_excluded_before_data_url(self):
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Peux-tu lire la capture ?"},
+        ]
+
+        with (
+            mock.patch.object(prompt_lane, "ACTIVE_IMAGE_PROVIDER_MAX_BYTES", 4),
+            mock.patch.object(prompt_lane, "_data_url", side_effect=AssertionError("_data_url must not run")),
+        ):
+            lane = prompt_lane.inject_active_document_prompt_lane(
+                prompt_messages,
+                [_image_doc(image_content=b"image-bytes")],
+                model="anthropic/claude-sonnet-4.6",
+                count_tokens_func=lambda _messages, _model: 1,
+                max_tokens=5000,
+            )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "image_too_large_for_provider_payload")
+        self.assertEqual(lane.decisions[0].provider_model, "anthropic/claude-sonnet-4.6")
+        self.assertEqual(lane.decisions[0].payload_order, "")
+        serialized_prompt = str(prompt_messages)
+        self.assertIn("reason_code=image_too_large_for_provider_payload", serialized_prompt)
         self.assertIn("ne pretends jamais l'avoir lu", serialized_prompt)
         self.assertNotIn("data:image", serialized_prompt)
 

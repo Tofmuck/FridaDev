@@ -272,6 +272,7 @@ Reason codes Lot 2:
 
 - `image_model_unsupported` si le modele principal courant n'est pas compatible image;
 - `image_bytes_missing` si l'etat actif image existe mais que les bytes ne sont plus disponibles;
+- `image_too_large_for_provider_payload` si l'image active depasse le plafond d'injection provider V0;
 - `document_too_large_for_turn` reste reserve aux documents texte exclus par budget prompt.
 
 Observabilite Lot 2:
@@ -296,7 +297,14 @@ Limites source upload V0:
 - surface maximale: `100 megapixels`;
 - aucun downscale silencieux;
 - la validation V0 sniffe le type conteneur et les dimensions, mais ne garantit pas le decodage futur par le provider;
-- une image acceptee par l'upload n'est pas encore garantie injectable provider: le Lot 2 devra encore decider `injected` ou `excluded` par tour.
+- une image acceptee par l'upload n'est pas automatiquement injectable provider: le Lot 2 decide `injected` ou `excluded` par tour.
+
+Limite d'injection provider V0:
+
+- taille maximale envoyee dans `image_url.url`: `8 MiB` (`8388608` bytes) avant encodage base64;
+- une image source acceptee entre `8 MiB` et `32 MiB` reste document actif mais est exclue du payload OpenRouter principal avec `reason_code=image_too_large_for_provider_payload`;
+- le chat continue sans l'image et avec un signal compact d'exclusion;
+- aucun downscale, compression, conversion ou URL temporaire n'est produit silencieusement en V0.
 
 Reason codes image initiaux:
 

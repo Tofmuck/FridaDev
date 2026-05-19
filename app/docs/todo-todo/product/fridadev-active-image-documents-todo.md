@@ -277,8 +277,10 @@ Lot 2 livre:
 - elles ne sont jamais ajoutees a `conversation["messages"]`;
 - le message provider contient un tableau multimodal `content[0]=text`, puis `content[1]=image_url`;
 - la compatibilite V0 est allowlistee sur le modele principal verifie `anthropic/claude-sonnet-4.6`;
+- l'upload actif accepte toujours les images source jusqu'a `32 MiB`, mais l'injection provider V0 est bornee a `8 MiB` pour eviter un JSON OpenRouter base64 geant;
 - si le modele courant n'est pas compatible, l'image est exclue entierement avec `reason_code=image_model_unsupported`;
 - si les bytes actifs manquent, l'image est exclue entierement avec `reason_code=image_bytes_missing`;
+- si l'image depasse le plafond d'injection provider, elle est exclue entierement avec `reason_code=image_too_large_for_provider_payload`;
 - l'evenement `active_documents` reste content-free et indique `decision`, `media_kind`, dimensions, hash court, `provider_model` et `payload_order`.
 
 ### Lot 3 - Frontend integre dans l'UI documents actifs
