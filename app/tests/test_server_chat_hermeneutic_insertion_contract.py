@@ -1921,7 +1921,7 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     'confidence': 0.82,
                 },
                 status='ok',
-                model='openai/gpt-5.4-mini',
+                model='google/gemini-3.1-flash-lite',
                 decision_source='primary',
                 reason_code=None,
             )
@@ -1961,7 +1961,7 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
             ],
         )
         self.assertEqual(payload['confidence'], 0.82)
-        self.assertEqual(payload['model'], 'openai/gpt-5.4-mini')
+        self.assertEqual(payload['model'], 'google/gemini-3.1-flash-lite')
         self.assertEqual(payload['decision_source'], 'primary')
         self.assertNotIn('user_msg', payload)
         self.assertNotIn('prompt', payload)

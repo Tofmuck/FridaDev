@@ -16,7 +16,7 @@ from observability import hermeneutic_node_logger
 logger = logging.getLogger('frida.stimmung_agent')
 
 SCHEMA_VERSION = 'v1'
-PRIMARY_MODEL = 'openai/gpt-5.4-mini'
+PRIMARY_MODEL = 'google/gemini-3.1-flash-lite'
 FALLBACK_MODEL = 'openai/gpt-5.4-nano'
 PROMPT_PATH = 'prompts/stimmung_agent.txt'
 REQUEST_TIMEOUT_S = 10

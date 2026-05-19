@@ -54,8 +54,8 @@ Source de verite de depart:
 - [x] Decision periodic identity.
 - [x] Decouplage propre de periodic identity.
 - [x] Benchmark stimmung agent primaire.
-- [ ] Decision stimmung agent primaire.
-- [ ] Decouplage propre du stimmung agent primaire.
+- [x] Decision stimmung agent primaire: bascule primaire vers `google/gemini-3.1-flash-lite`.
+- [x] Decouplage propre du stimmung agent primaire: `stimmung_agent_model` pilote deja primary/fallback/temp/top_p/max_tokens/timeout.
 - [ ] Benchmark validation agent primaire.
 - [ ] Decision validation agent primaire.
 - [ ] Decouplage propre du validation agent primaire.
@@ -291,8 +291,9 @@ On ne benchmarke pas tout d'abord pour decoupler tout plus tard: on avance bench
 - [x] Preparer et lancer une finale courte sur 10 cas deja presents dans les tests du repo.
 - [x] Exclure `anthropic/claude-haiku-4.5` de la finale apres echec de schema strict dans la campagne exploratoire.
 - [x] Comparer en finale `openai/gpt-5.4-mini`, `mistralai/mistral-small-2603` et `google/gemini-3.1-flash-lite`.
-- [ ] Decision modele `stimmung_agent` primaire apres lecture humaine de Tof.
-- [ ] Decouplage runtime du `stimmung_agent` primaire seulement apres decision explicite.
+- [x] Decision modele `stimmung_agent` primaire: `google/gemini-3.1-flash-lite`, retenu par Tof apres finale courte a egalite quantitative mais avec 0 `avoid_hits`, moins de nervosite que Mistral et cout inferieur a OpenAI.
+- [x] Conserver la preuve compacte de decision: `benchmark/results/stimmung/2026-05-19-stimmung-primary-decision.md` et `.json`.
+- [x] Decouplage runtime du `stimmung_agent` primaire: le slot `stimmung_agent_model` existait deja et reste la source runtime effective de `primary_model`, `fallback_model`, `temperature`, `top_p`, `max_tokens` et `timeout_s`.
 - [x] Fallback Stimmung hors priorite pour ce chantier.
 
 ## Definition de fin globale

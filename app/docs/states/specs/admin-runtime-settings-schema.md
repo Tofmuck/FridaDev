@@ -215,7 +215,7 @@ Convention explicite:
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `primary_model` | `text` | non | defaut runtime `openai/gpt-5.4-mini` |
+| `primary_model` | `text` | non | defaut runtime `google/gemini-3.1-flash-lite` |
 | `fallback_model` | `text` | non | defaut runtime `openai/gpt-5.4-nano` |
 | `timeout_s` | `int` | non | defaut runtime `10` |
 | `temperature` | `float` | non | defaut runtime `0.1` |

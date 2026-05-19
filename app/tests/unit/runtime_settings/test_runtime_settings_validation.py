@@ -182,7 +182,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             result = runtime_settings.validate_runtime_section(
                 'stimmung_agent_model',
                 {
-                    'primary_model': {'value': 'openai/gpt-5.4-mini'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
                     'timeout_s': {'value': 11},
                     'temperature': {'value': 0.2},

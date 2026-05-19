@@ -11,6 +11,9 @@
 - Production runtime changed: `False`
 - Fallback benchmarked: `False`
 - Retention: raw model text is not retained in JSON; only output hashes, sizes and metrics are kept.
+- Post-decision retention: the structured JSON run artifact was removed after
+  human decision; compact proof is kept in
+  `2026-05-19-stimmung-primary-decision.md` and `.json`.
 
 ## Ce que cette campagne mesure
 
@@ -171,4 +174,7 @@ Le meilleur signal quantitatif souple revient ici a `google/gemini-3.1-flash-lit
 
 ## Verdict provisoire
 
-Le verdict reste volontairement provisoire: cette campagne fournit une matiere comparative pour Tof, sans changement de production.
+Le verdict de campagne etait volontairement provisoire: cette campagne a fourni
+une matiere comparative pour Tof, sans changement de production au moment du
+run. La decision humaine ulterieure est conservee dans
+`2026-05-19-stimmung-primary-decision.md`.

@@ -1,0 +1,66 @@
+{
+  "campaign_id": "2026-05-19-stimmung-primary-final",
+  "decision_date": "2026-05-19",
+  "caller": "stimmung_agent_primary",
+  "selected_primary_model": "google/gemini-3.1-flash-lite",
+  "fallback_model_unchanged": "openai/gpt-5.4-nano",
+  "production_prompt_changed": false,
+  "production_fallback_changed": false,
+  "shared_transport": "main_model.api_key via OpenRouter",
+  "parameters": {
+    "temperature": 0.1,
+    "top_p": 1.0,
+    "max_tokens": 220,
+    "timeout_s": 10
+  },
+  "source_artifacts": {
+    "final_markdown_report": "benchmark/results/stimmung/2026-05-19-stimmung-primary-final.md",
+    "final_fixtures": "benchmark/suites/stimmung/fixtures/stimmung_primary_final_cases.json",
+    "prompt": "app/prompts/stimmung_agent.txt"
+  },
+  "finalists": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "soft_pass": "7/10",
+      "avoid_hits": 1,
+      "neutral_overcode": 2,
+      "avg_latency_ms": 1152,
+      "estimated_cost_usd": 0.005552,
+      "avg_completion_tokens": 48.5,
+      "finish_reason": "stop"
+    },
+    {
+      "model": "mistralai/mistral-small-2603",
+      "soft_pass": "7/10",
+      "avoid_hits": 1,
+      "neutral_overcode": 2,
+      "avg_latency_ms": 769,
+      "estimated_cost_usd": 0.001013,
+      "avg_completion_tokens": 60.0,
+      "finish_reason": "stop"
+    },
+    {
+      "model": "google/gemini-3.1-flash-lite",
+      "soft_pass": "7/10",
+      "avoid_hits": 0,
+      "neutral_overcode": 2,
+      "avg_latency_ms": 1113,
+      "estimated_cost_usd": 0.002313,
+      "avg_completion_tokens": 74.9,
+      "finish_reason": "stop"
+    }
+  ],
+  "decision_reasons": [
+    "Gemini is tied quantitatively at 7/10 with the other finalists.",
+    "Gemini is the only finalist with 0 avoid_hits.",
+    "Gemini is less nervous than Mistral on disagreement, time-awareness and tension cases.",
+    "Gemini is cheaper than openai/gpt-5.4-mini.",
+    "Mistral remains interesting but appears too reactive for an upstream affect sensor."
+  ],
+  "retention": {
+    "raw_model_outputs_retained": false,
+    "large_structured_final_json_retained": false,
+    "compact_decision_evidence_retained": true,
+    "notes": "No API key, bearer token, or raw private conversation content is stored in this decision artifact."
+  }
+}

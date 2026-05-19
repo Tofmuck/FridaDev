@@ -61,7 +61,7 @@ class _FakeResponse:
     def json(self):
         return {
             'id': 'gen-stimmung',
-            'model': 'openai/gpt-5.4-mini',
+            'model': stimmung_agent.PRIMARY_MODEL,
             'usage': {'prompt_tokens': 14, 'completion_tokens': 6, 'total_tokens': 20},
             'choices': [{'message': {'content': self._content}}],
         }
@@ -125,7 +125,7 @@ class StimmungAgentTests(unittest.TestCase):
             result.provider_metadata,
             {
                 'provider_generation_id': 'gen-stimmung',
-                'provider_model': 'openai/gpt-5.4-mini',
+                'provider_model': stimmung_agent.PRIMARY_MODEL,
                 'provider_prompt_tokens': 14,
                 'provider_completion_tokens': 6,
                 'provider_total_tokens': 20,
@@ -138,7 +138,7 @@ class StimmungAgentTests(unittest.TestCase):
                     'stimmung_agent_provider_response',
                     {
                         'provider_generation_id': 'gen-stimmung',
-                        'provider_model': 'openai/gpt-5.4-mini',
+                        'provider_model': stimmung_agent.PRIMARY_MODEL,
                         'provider_prompt_tokens': 14,
                         'provider_completion_tokens': 6,
                         'provider_total_tokens': 20,

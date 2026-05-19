@@ -105,6 +105,8 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         self.assertEqual(main_model_bundle.payload['referer_validation_agent']['origin'], 'env_seed')
 
         stimmung_bundle = runtime_settings.build_env_seed_bundle('stimmung_agent_model')
+        self.assertEqual(stimmung_bundle.payload['primary_model']['value'], 'google/gemini-3.1-flash-lite')
+        self.assertEqual(stimmung_bundle.payload['fallback_model']['value'], 'openai/gpt-5.4-nano')
         self.assertEqual(
             {field_name: field_payload['origin'] for field_name, field_payload in stimmung_bundle.payload.items()},
             {

@@ -349,6 +349,15 @@ After an exploratory Stimmung run, keep only compact evidence. A broad
 artificial campaign can be requalified as exploratory and have its structured
 JSON removed once a shorter final campaign exists.
 
+After the human decision is made, keep the compact decision pair instead of
+large structured run artifacts:
+
+- `benchmark/results/stimmung/2026-05-19-stimmung-primary-decision.md`
+- `benchmark/results/stimmung/2026-05-19-stimmung-primary-decision.json`
+
+Those files preserve the finalists, metrics, decision reasons and retention
+state without retaining raw model outputs.
+
 The report is a decision aid, not an automatic production verdict. It must not
 be used to change `stimmung_agent_model` without a separate decision and
 runtime settings lot.

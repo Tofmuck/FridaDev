@@ -533,7 +533,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section=section,
                 payload={
-                    'primary_model': {'value': 'openai/gpt-5.4-mini', 'is_secret': False, 'origin': 'db'},
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite', 'is_secret': False, 'origin': 'db'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
                     'timeout_s': {'value': 11, 'is_secret': False, 'origin': 'db'},
                 },
@@ -551,7 +551,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'stimmung_agent_model')
-        self.assertEqual(data['payload']['primary_model']['value'], 'openai/gpt-5.4-mini')
+        self.assertEqual(data['payload']['primary_model']['value'], 'google/gemini-3.1-flash-lite')
         self.assertEqual(data['payload']['timeout_s']['value'], 11)
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/stimmung_agent.txt')
         self.assertIn('main_model.title_stimmung_agent', data['readonly_info']['shared_transport']['value'])
