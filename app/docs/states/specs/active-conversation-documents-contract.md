@@ -200,6 +200,80 @@ Frontieres OCR:
 
 Le texte OCR brut peut seulement servir a produire le texte complet final du `active_document` si l'extracteur FridaDev conclut `complete`. Il ne doit pas etre expose par defaut.
 
+### 4.2 Extension image active V0
+
+L'image active est une extension stricte de `active_document`, pas une feature vision autonome.
+
+Nom technique stable:
+
+- `media_kind=image`.
+
+Regles produit obligatoires:
+
+- l'image est conversation-scoped;
+- elle est activee par action utilisateur dans le chemin documents actifs existant;
+- elle est retirable manuellement comme les autres documents actifs;
+- elle ne va pas en Memory/RAG;
+- elle ne va pas en Identity;
+- elle ne va pas en Summary;
+- elle ne va pas en Biblio;
+- elle ne cree aucun embedding;
+- elle ne cree aucun stockage serveur durable hors etat actif de conversation;
+- elle ne cree aucune description ou OCR automatique en V0;
+- elle ne cree aucun agent vision separe;
+- elle ne doit jamais etre ajoutee a `conversation["messages"]` comme contenu persistant.
+
+Stockage V0:
+
+- le serveur conserve seulement l'etat court necessaire a la piece active: nom, MIME reel, extension, taille, dimensions, hash court et bytes image conversation-scoped;
+- les bytes image servent uniquement au futur Lot 2 d'injection multimodale;
+- les projections ordinaires, logs, read-models, dashboard et reponses HTTP restent content-free;
+- aucune base64 n'est stockee ni exposee dans les logs, docs, read-models, dashboard ou historique conversationnel.
+
+Politique base64:
+
+- la data URL base64 est autorisee uniquement plus tard, au moment de l'appel provider, dans `image_url.url`;
+- elle est interdite dans le prompt texte;
+- elle est interdite dans les logs;
+- elle est interdite dans les read-models/dashboard;
+- elle est interdite dans les docs et artefacts de preuve.
+
+Contrat OpenRouter futur:
+
+- l'image sera envoyee comme contenu multimodal au modele principal seulement au Lot 2;
+- l'ordre V0 obligatoire dans `messages[].content` est `text` puis `image_url`;
+- le JSON runtime brut utilise `image_url`, jamais `imageUrl`;
+- si le modele/provider ne peut pas traiter l'image, le tour doit recevoir un signal compact d'exclusion;
+- Frida ne doit jamais pretendre avoir vu une image qui n'a pas ete injectee.
+
+Formats image:
+
+- OpenRouter documente `image/png`, `image/jpeg`, `image/webp`, `image/gif`;
+- la V0 FridaDev accepte seulement `image/png`, `image/jpeg`, `image/webp`;
+- `image/gif` reste hors V0 sauf decision explicite, pour eviter animations, poids, comportement provider variable et surface de tests plus large.
+
+Limites source upload V0:
+
+- taille maximale source: `32 MiB` (`33554432` bytes);
+- dimensions minimales: `32 x 32 px`;
+- dimension maximale par cote: `16000 px`;
+- surface maximale: `100 megapixels`;
+- aucun downscale silencieux;
+- une image acceptee par l'upload n'est pas encore garantie injectable provider: le Lot 2 devra encore decider `injected` ou `excluded` par tour.
+
+Reason codes image initiaux:
+
+- `image_empty_file`;
+- `image_type_unsupported`;
+- `image_gif_unsupported_v0`;
+- `image_extension_mismatch`;
+- `image_mime_mismatch`;
+- `image_parse_error`;
+- `image_too_large`;
+- `image_too_small_for_provider`;
+- `image_dimensions_unsupported`;
+- `image_runtime_unavailable`.
+
 Sortie metadata du parseur:
 
 - `text`;

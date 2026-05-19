@@ -221,28 +221,37 @@ Objectif:
 
 ### Lot 0 - Spec active documents image
 
-- [ ] Mettre a jour `app/docs/states/specs/active-conversation-documents-contract.md`.
-- [ ] Definir le vocabulaire stable: image active, media_kind image, injection multimodale, exclusion image.
-- [ ] Graver que l'image prolonge `active_document`.
-- [ ] Graver la frontiere avec generation d'images OpenRouter V0.
-- [ ] Graver la frontiere Memory/RAG/Identity/Summary/Biblio.
-- [ ] Graver la regle: base64 autorisee seulement dans `image_url.url`, jamais logs/docs/read-models/dashboard/historique.
-- [ ] Graver l'ordre OpenRouter V0: `text` puis `image_url`.
-- [ ] Graver les reason codes image initiaux.
-- [ ] Graver les limites V0: pas de stockage durable, pas de description/OCR automatique, pas d'agent vision separe.
+- [x] Mettre a jour `app/docs/states/specs/active-conversation-documents-contract.md`.
+- [x] Definir le vocabulaire stable: image active, media_kind image, injection multimodale, exclusion image.
+- [x] Graver que l'image prolonge `active_document`.
+- [x] Graver la frontiere avec generation d'images OpenRouter V0.
+- [x] Graver la frontiere Memory/RAG/Identity/Summary/Biblio.
+- [x] Graver la regle: base64 autorisee seulement dans `image_url.url`, jamais logs/docs/read-models/dashboard/historique.
+- [x] Graver l'ordre OpenRouter V0: `text` puis `image_url`.
+- [x] Graver les reason codes image initiaux.
+- [x] Graver les limites V0: pas de stockage durable, pas de description/OCR automatique, pas d'agent vision separe.
 
 ### Lot 1 - Upload image actif et validation
 
-- [ ] Accepter les images seulement dans le chemin documents actifs de conversation.
-- [ ] Documenter que OpenRouter supporte `image/png`, `image/jpeg`, `image/webp`, `image/gif`.
-- [ ] Autoriser une courte allowlist V0 FridaDev, probablement `image/png`, `image/jpeg`, `image/webp`.
-- [ ] Garder `image/gif` hors V0 sauf decision explicite, afin d'eviter animations, poids, comportement provider variable et surface de tests plus large.
-- [ ] Valider extension, MIME, taille bytes et dimensions.
-- [ ] Refuser proprement image vide, trop petite, trop lourde ou type non supporte.
-- [ ] Stocker seulement l'etat court necessaire a la reinjection active.
-- [ ] Ne pas retourner de base64 dans les reponses ordinaires.
-- [ ] Garder l'activation conversation-scoped et le retrait manuel.
-- [ ] Tester upload nominal, type refuse, image trop petite, image trop lourde, retrait.
+- [x] Accepter les images seulement dans le chemin documents actifs de conversation.
+- [x] Documenter que OpenRouter supporte `image/png`, `image/jpeg`, `image/webp`, `image/gif`.
+- [x] Autoriser une courte allowlist V0 FridaDev: `image/png`, `image/jpeg`, `image/webp`.
+- [x] Garder `image/gif` hors V0 sauf decision explicite, afin d'eviter animations, poids, comportement provider variable et surface de tests plus large.
+- [x] Valider extension, MIME reel, taille bytes et dimensions.
+- [x] Refuser proprement image vide, trop petite, trop lourde ou type non supporte.
+- [x] Stocker seulement l'etat court necessaire a la reinjection active.
+- [x] Ne pas retourner de base64 dans les reponses ordinaires.
+- [x] Garder l'activation conversation-scoped et le retrait manuel.
+- [x] Tester upload nominal, type refuse, image trop petite, image trop lourde, retrait.
+
+Limites V0 livrees:
+
+- taille source maximale: `32 MiB` (`33554432` bytes);
+- dimensions minimales: `32 x 32 px`;
+- dimension maximale par cote: `16000 px`;
+- surface maximale: `100 megapixels`;
+- pas de downscale silencieux;
+- une image acceptee par l'upload reste non injectee dans le modele principal tant que le Lot 2 n'est pas livre.
 
 ### Lot 2 - Lane multimodale vers modele principal
 

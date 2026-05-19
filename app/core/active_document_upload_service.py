@@ -10,6 +10,7 @@ stored server-side for the prompt lane, but never returned to the chat UI.
 from typing import Any, Mapping, Tuple
 
 from . import active_conversation_documents
+from . import active_document_image_validation
 from . import active_document_ocr_client
 from . import active_document_text_extraction
 from observability import active_documents_observability
@@ -81,6 +82,20 @@ def upload_active_document_response(
             },
         }, 400
 
+    image_validation = active_document_image_validation.validate_active_image_upload(
+        content,
+        filename=filename,
+        declared_media_type=media_type,
+    )
+    if image_validation.is_image_candidate:
+        return _upload_image_response(
+            conv_id,
+            content,
+            image_validation=image_validation,
+            active_documents_module=active_documents_module,
+            admin_logs_module=admin_logs_module,
+        )
+
     ocr_success_meta: dict[str, Any] = {}
     extraction = extractor_module.extract_active_document_text(
         content,
@@ -146,6 +161,54 @@ def upload_active_document_response(
         document=document,
     )
     return {"ok": True, "conversation_id": conv_id, "document": document}, 201
+
+
+def _upload_image_response(
+    conversation_id: str,
+    content: bytes,
+    *,
+    image_validation: Any,
+    active_documents_module: Any,
+    admin_logs_module: Any = None,
+) -> Tuple[dict[str, Any], int]:
+    image_meta = image_validation.to_dict()
+    if image_validation.status != active_document_image_validation.STATUS_COMPLETE:
+        active_documents_observability.log_activation_failure(
+            admin_logs_module,
+            conversation_id=conversation_id,
+            extraction=image_meta,
+        )
+        return {
+            "ok": False,
+            "error": _human_upload_error(image_validation.reason_code),
+            "reason_code": image_validation.reason_code,
+            "document": image_meta,
+        }, 422
+
+    document = active_documents_module.activate_image_document(
+        conversation_id,
+        filename=image_validation.filename,
+        image_content=content,
+        media_type=image_validation.media_type,
+        source_extension=image_validation.source_extension,
+        byte_size=image_validation.byte_size,
+        image_width=image_validation.image_width,
+        image_height=image_validation.image_height,
+        content_sha256_12=image_validation.content_sha256_12,
+    )
+    if not document:
+        return {
+            "ok": False,
+            "error": "activation de l'image impossible",
+            "reason_code": "image_runtime_unavailable",
+        }, 503
+
+    active_documents_observability.log_activation_success(
+        admin_logs_module,
+        conversation_id=conversation_id,
+        document=document,
+    )
+    return {"ok": True, "conversation_id": conversation_id, "document": document}, 201
 
 
 def remove_active_document_response(
@@ -327,5 +390,15 @@ def _human_upload_error(reason_code: str) -> str:
         "document_ocr_too_large": "PDF trop volumineux pour l'OCR de conversation",
         "document_ocr_too_many_pages": "PDF trop long pour l'OCR de conversation",
         "document_runtime_unavailable": "lecteur de fichier indisponible",
+        "image_empty_file": "image vide",
+        "image_type_unsupported": "format image non pris en charge",
+        "image_gif_unsupported_v0": "GIF hors V0 pour les images actives",
+        "image_extension_mismatch": "extension image incoherente",
+        "image_mime_mismatch": "type MIME image incoherent",
+        "image_parse_error": "image illisible",
+        "image_too_large": "image trop volumineuse",
+        "image_too_small_for_provider": "image trop petite",
+        "image_dimensions_unsupported": "dimensions image non prises en charge",
+        "image_runtime_unavailable": "lecteur image indisponible",
     }
     return labels.get(str(reason_code or ""), "document non activable")

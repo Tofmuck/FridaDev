@@ -49,28 +49,7 @@ class FakeCursor:
             return
 
         if compact.startswith("insert into active_conversation_documents"):
-            row = {
-                "document_id": params[0],
-                "conversation_id": params[1],
-                "filename": params[2],
-                "media_type": params[3],
-                "source_extension": params[4],
-                "byte_size": params[5],
-                "text_chars": params[6],
-                "text_sha256_12": params[7],
-                "token_estimate": params[8],
-                "status": params[9],
-                "text_content": params[10],
-                "created_at": params[11],
-                "deactivated_at": None,
-                "last_injected_turn_id": None,
-                "last_excluded_turn_id": None,
-                "last_excluded_reason_code": None,
-                "ocr_applied": params[12],
-                "ocr_engine": params[13],
-                "ocr_languages": params[14],
-                "ocr_duration_ms": params[15],
-            }
+            row = self._insert_row(params)
             self.conn.rows[row["document_id"]] = row
             self._one = self._project(row, include_text=False)
             self.rowcount = 1
@@ -82,7 +61,12 @@ class FakeCursor:
             if "and document_id = %s::uuid" in compact:
                 doc_id = params[1]
                 row = self.conn.rows.get(doc_id)
-                if row and self._is_active(row) and row["conversation_id"] == conv_id:
+                if (
+                    row
+                    and self._is_active(row)
+                    and row["conversation_id"] == conv_id
+                    and (not include_text or row.get("media_kind") == active_docs.MEDIA_KIND_TEXT)
+                ):
                     self._one = self._project(row, include_text=include_text)
                 return
 
@@ -90,6 +74,7 @@ class FakeCursor:
                 self._project(row, include_text=include_text)
                 for row in self.conn.rows.values()
                 if self._is_active(row) and row["conversation_id"] == conv_id
+                and (not include_text or row.get("media_kind") == active_docs.MEDIA_KIND_TEXT)
             ]
             rows.sort(key=lambda row: (row["created_at"], row["filename"]))
             self._many = rows
@@ -171,6 +156,10 @@ class FakeCursor:
             "byte_size": row["byte_size"],
             "text_chars": row["text_chars"],
             "text_sha256_12": row["text_sha256_12"],
+            "media_kind": row["media_kind"],
+            "content_sha256_12": row["content_sha256_12"],
+            "image_width": row["image_width"],
+            "image_height": row["image_height"],
             "token_estimate": row["token_estimate"],
             "status": row["status"],
             "created_at": row["created_at"],
@@ -186,6 +175,65 @@ class FakeCursor:
         if include_text:
             projected["text_content"] = row["text_content"]
         return projected
+
+    def _insert_row(self, params):
+        if len(params) == 21:
+            return {
+                "document_id": params[0],
+                "conversation_id": params[1],
+                "filename": params[2],
+                "media_type": params[3],
+                "source_extension": params[4],
+                "byte_size": params[5],
+                "text_chars": params[6],
+                "text_sha256_12": params[7],
+                "media_kind": params[8],
+                "content_sha256_12": params[9],
+                "image_width": params[10],
+                "image_height": params[11],
+                "token_estimate": params[12],
+                "status": params[13],
+                "text_content": params[14],
+                "binary_content": params[15],
+                "created_at": params[16],
+                "deactivated_at": None,
+                "last_injected_turn_id": None,
+                "last_excluded_turn_id": None,
+                "last_excluded_reason_code": None,
+                "ocr_applied": params[17],
+                "ocr_engine": params[18],
+                "ocr_languages": params[19],
+                "ocr_duration_ms": params[20],
+            }
+        if len(params) == 17:
+            return {
+                "document_id": params[0],
+                "conversation_id": params[1],
+                "filename": params[2],
+                "media_type": params[3],
+                "source_extension": params[4],
+                "byte_size": params[5],
+                "text_chars": params[6],
+                "text_sha256_12": params[7],
+                "media_kind": params[8],
+                "content_sha256_12": params[9],
+                "image_width": params[10],
+                "image_height": params[11],
+                "token_estimate": params[12],
+                "status": params[13],
+                "text_content": params[14],
+                "binary_content": params[15],
+                "created_at": params[16],
+                "deactivated_at": None,
+                "last_injected_turn_id": None,
+                "last_excluded_turn_id": None,
+                "last_excluded_reason_code": None,
+                "ocr_applied": False,
+                "ocr_engine": "",
+                "ocr_languages": "",
+                "ocr_duration_ms": 0,
+            }
+        raise AssertionError(f"Unexpected insert params length: {len(params)}")
 
     def _is_active(self, row):
         return row["status"] == active_docs.ACTIVE_STATUS and row["deactivated_at"] is None
@@ -291,6 +339,46 @@ class ActiveConversationDocumentsTest(unittest.TestCase):
         self.assertIs(prompt_doc["ocr_applied"], True)
         self.assertEqual(prompt_doc["ocr_engine"], "stirling-pdf")
         self.assertEqual(prompt_doc["text_content"], "texte OCRise")
+
+    def test_active_image_metadata_is_content_free_and_not_in_prompt_until_multimodal_lane(self):
+        raw_image = b"\x89PNG\r\n\x1a\nminimal-image-bytes"
+        metadata = active_docs.activate_image_document(
+            CONV_A,
+            document_id=DOC_A,
+            filename="capture.png",
+            image_content=raw_image,
+            media_type="image/png",
+            source_extension=".png",
+            byte_size=len(raw_image),
+            image_width=80,
+            image_height=64,
+            content_sha256_12="123456abcdef",
+            conn_factory=self.conn_factory,
+            now_func=lambda: NOW,
+        )
+
+        self.assertIsNotNone(metadata)
+        self.assertEqual(metadata["media_kind"], "image")
+        self.assertEqual(metadata["text_chars"], 0)
+        self.assertEqual(metadata["image_width"], 80)
+        self.assertEqual(metadata["image_height"], 64)
+        self.assertEqual(metadata["content_sha256_12"], "123456abcdef")
+        self.assertNotIn("text_content", metadata)
+        self.assertNotIn("binary_content", metadata)
+
+        visible_metadata = active_docs.list_active_documents(CONV_A, conn_factory=self.conn_factory)
+        self.assertEqual(len(visible_metadata), 1)
+        self.assertEqual(visible_metadata[0]["media_kind"], "image")
+        self.assertNotIn("binary_content", visible_metadata[0])
+
+        self.assertEqual(active_docs.list_active_documents_for_prompt(CONV_A, conn_factory=self.conn_factory), [])
+        self.assertIsNone(
+            active_docs.get_active_document_for_prompt(
+                CONV_A,
+                DOC_A,
+                conn_factory=self.conn_factory,
+            )
+        )
 
     def test_manual_remove_hides_document_from_following_turns(self):
         self.activate()

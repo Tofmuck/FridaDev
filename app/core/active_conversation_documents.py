@@ -28,6 +28,8 @@ ACTIVE_DOCUMENTS_SOURCE = "active_conversation_documents"
 ACTIVE_STATUS = "active"
 INACTIVE_STATUS = "inactive"
 DEFAULT_REMOVE_REASON = "manual_remove"
+MEDIA_KIND_TEXT = "text"
+MEDIA_KIND_IMAGE = "image"
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,10 @@ class ActiveDocumentMetadata:
     byte_size: int
     text_chars: int
     text_sha256_12: str
+    media_kind: str
+    content_sha256_12: str
+    image_width: int
+    image_height: int
     token_estimate: int
     status: str
     active: bool
@@ -64,6 +70,10 @@ class ActiveDocumentMetadata:
             "byte_size": self.byte_size,
             "text_chars": self.text_chars,
             "text_sha256_12": self.text_sha256_12,
+            "media_kind": self.media_kind,
+            "content_sha256_12": self.content_sha256_12,
+            "image_width": self.image_width,
+            "image_height": self.image_height,
             "token_estimate": self.token_estimate,
             "status": self.status,
             "active": self.active,
@@ -153,9 +163,16 @@ def _sha256_12(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
 
 
+def _bytes_sha256_12(value: bytes) -> str:
+    if not value:
+        return ""
+    return hashlib.sha256(value).hexdigest()[:12]
+
+
 def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
     status = str(row.get("status") or "").strip() or INACTIVE_STATUS
     deactivated_at = row.get("deactivated_at")
+    media_kind = str(row.get("media_kind") or MEDIA_KIND_TEXT).strip().lower() or MEDIA_KIND_TEXT
     return ActiveDocumentMetadata(
         document_id=str(row.get("document_id") or ""),
         conversation_id=str(row.get("conversation_id") or ""),
@@ -165,6 +182,10 @@ def _metadata_from_row(row: dict[str, Any]) -> ActiveDocumentMetadata:
         byte_size=_safe_int(row.get("byte_size")),
         text_chars=_safe_int(row.get("text_chars")),
         text_sha256_12=str(row.get("text_sha256_12") or ""),
+        media_kind=media_kind,
+        content_sha256_12=str(row.get("content_sha256_12") or ""),
+        image_width=_safe_int(row.get("image_width")),
+        image_height=_safe_int(row.get("image_height")),
         token_estimate=_safe_int(row.get("token_estimate")),
         status=status,
         active=status == ACTIVE_STATUS and not deactivated_at,
@@ -214,9 +235,14 @@ def init_db(
                         byte_size                  INTEGER NOT NULL DEFAULT 0,
                         text_chars                 INTEGER NOT NULL DEFAULT 0,
                         text_sha256_12             TEXT NOT NULL DEFAULT '',
+                        media_kind                 TEXT NOT NULL DEFAULT 'text',
+                        content_sha256_12          TEXT NOT NULL DEFAULT '',
+                        image_width                INTEGER NOT NULL DEFAULT 0,
+                        image_height               INTEGER NOT NULL DEFAULT 0,
                         token_estimate             INTEGER NOT NULL DEFAULT 0,
                         status                     TEXT NOT NULL DEFAULT 'active',
                         text_content               TEXT NOT NULL,
+                        binary_content             BYTEA,
                         created_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
                         deactivated_at             TIMESTAMPTZ,
                         last_injected_turn_id      TEXT,
@@ -235,9 +261,14 @@ def init_db(
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS byte_size INTEGER NOT NULL DEFAULT 0;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS text_chars INTEGER NOT NULL DEFAULT 0;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS text_sha256_12 TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS media_kind TEXT NOT NULL DEFAULT 'text';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS content_sha256_12 TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS image_width INTEGER NOT NULL DEFAULT 0;",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS image_height INTEGER NOT NULL DEFAULT 0;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS token_estimate INTEGER NOT NULL DEFAULT 0;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS text_content TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS binary_content BYTEA;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_injected_turn_id TEXT;",
                     "ALTER TABLE active_conversation_documents ADD COLUMN IF NOT EXISTS last_excluded_turn_id TEXT;",
@@ -293,6 +324,7 @@ def activate_document(
         return None
 
     text = str(text_content or "")
+    text_sha256_12 = _sha256_12(text)
     created_at = now_func()
     row_values = (
         doc_id,
@@ -302,10 +334,15 @@ def activate_document(
         _safe_text(source_extension, 40).lower(),
         _safe_int(byte_size),
         len(text),
-        _sha256_12(text),
+        text_sha256_12,
+        MEDIA_KIND_TEXT,
+        text_sha256_12,
+        0,
+        0,
         _safe_int(token_estimate),
         ACTIVE_STATUS,
         text,
+        None,
         created_at,
         _safe_bool(ocr_applied),
         _safe_text(ocr_engine, 120),
@@ -326,16 +363,21 @@ def activate_document(
                     byte_size,
                     text_chars,
                     text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
                     token_estimate,
                     status,
                     text_content,
+                    binary_content,
                     created_at,
                     ocr_applied,
                     ocr_engine,
                     ocr_languages,
                     ocr_duration_ms
                 )
-                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING
                     document_id::text AS document_id,
                     conversation_id::text AS conversation_id,
@@ -345,6 +387,112 @@ def activate_document(
                     byte_size,
                     text_chars,
                     text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
+                    token_estimate,
+                    status,
+                    created_at,
+                    deactivated_at,
+                    last_injected_turn_id,
+                    last_excluded_turn_id,
+                    last_excluded_reason_code,
+                    ocr_applied,
+                    ocr_engine,
+                    ocr_languages,
+                    ocr_duration_ms;
+                """,
+                row_values,
+            )
+            row = cur.fetchone()
+        conn.commit()
+    if not row:
+        return None
+    return _metadata_from_row(dict(row)).to_dict()
+
+
+def activate_image_document(
+    conversation_id: str,
+    *,
+    filename: str,
+    image_content: bytes,
+    media_type: str,
+    source_extension: str,
+    byte_size: int,
+    image_width: int,
+    image_height: int,
+    content_sha256_12: str = "",
+    document_id: Optional[str] = None,
+    conn_factory: Optional[Callable[[], Any]] = None,
+    now_func: Callable[[], datetime] = _now_utc,
+) -> Optional[dict[str, Any]]:
+    conv_id = _normalize_uuid(conversation_id)
+    if not conv_id:
+        return None
+    doc_id = _normalize_uuid(document_id) if document_id else str(uuid.uuid4())
+    if not doc_id:
+        return None
+
+    image_bytes = bytes(image_content or b"")
+    created_at = now_func()
+    row_values = (
+        doc_id,
+        conv_id,
+        _safe_text(filename, 500),
+        _safe_text(media_type, 120),
+        _safe_text(source_extension, 40).lower(),
+        _safe_int(byte_size),
+        0,
+        "",
+        MEDIA_KIND_IMAGE,
+        _safe_text(content_sha256_12, 12) or _bytes_sha256_12(image_bytes),
+        _safe_int(image_width),
+        _safe_int(image_height),
+        0,
+        ACTIVE_STATUS,
+        "",
+        image_bytes,
+        created_at,
+    )
+    get_conn = conn_factory or _db_conn
+    with get_conn() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                INSERT INTO active_conversation_documents (
+                    document_id,
+                    conversation_id,
+                    filename,
+                    media_type,
+                    source_extension,
+                    byte_size,
+                    text_chars,
+                    text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
+                    token_estimate,
+                    status,
+                    text_content,
+                    binary_content,
+                    created_at
+                )
+                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING
+                    document_id::text AS document_id,
+                    conversation_id::text AS conversation_id,
+                    filename,
+                    media_type,
+                    source_extension,
+                    byte_size,
+                    text_chars,
+                    text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
                     token_estimate,
                     status,
                     created_at,
@@ -424,6 +572,10 @@ def get_active_document_for_prompt(
                     byte_size,
                     text_chars,
                     text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
                     token_estimate,
                     status,
                     text_content,
@@ -441,6 +593,7 @@ def get_active_document_for_prompt(
                   AND document_id = %s::uuid
                   AND status = 'active'
                   AND deactivated_at IS NULL
+                  AND media_kind = 'text'
                 """,
                 (conv_id, doc_id),
             )
@@ -636,6 +789,10 @@ def _read_active_document_rows(
                     byte_size,
                     text_chars,
                     text_sha256_12,
+                    media_kind,
+                    content_sha256_12,
+                    image_width,
+                    image_height,
                     token_estimate,
                     status{text_column},
                     created_at,
@@ -651,6 +808,7 @@ def _read_active_document_rows(
                 WHERE conversation_id = %s::uuid
                   AND status = 'active'
                   AND deactivated_at IS NULL
+                  {"AND media_kind = 'text'" if include_text else ""}
                 ORDER BY created_at ASC, filename ASC
                 """,
                 (conversation_id,),

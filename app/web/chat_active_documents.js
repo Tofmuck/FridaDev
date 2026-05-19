@@ -1,6 +1,6 @@
 'use strict';
 
-const ACTIVE_DOCUMENT_ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.odt', '.md', '.txt'];
+const ACTIVE_DOCUMENT_ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.odt', '.md', '.txt', '.png', '.jpg', '.jpeg', '.webp'];
 
 function createActiveDocumentController({
   chatEl,
@@ -256,6 +256,9 @@ function compactDocumentMeta(item) {
   if (size) parts.push(size);
   const chars = Number(item.text_chars || 0);
   if (chars > 0) parts.push(`${chars} caractères`);
+  if (item.media_kind === 'image' && item.image_width && item.image_height) {
+    parts.push(`${Number(item.image_width)} x ${Number(item.image_height)} px`);
+  }
   if (item.ocr_applied) parts.push('OCRisé');
   if (item.last_excluded_reason_code) {
     parts.push(uploadErrorLabel(item.last_excluded_reason_code));
@@ -269,6 +272,8 @@ function uploadInProgressLabel(files) {
   const list = Array.from(files || []).filter(Boolean);
   const hasPdf = list.some((file) => String(file?.name || '').toLowerCase().endsWith('.pdf'));
   if (hasPdf) return 'Analyse du PDF, OCR si nécessaire…';
+  const hasImage = list.some((file) => ['.png', '.jpg', '.jpeg', '.webp'].some((ext) => String(file?.name || '').toLowerCase().endsWith(ext)));
+  if (hasImage) return "Activation de l'image active…";
   return 'Activation du document actif…';
 }
 
@@ -294,6 +299,16 @@ function uploadErrorLabel(reasonCode) {
     document_runtime_unavailable: 'Service documentaire indisponible.',
     document_too_large_for_turn: 'Trop gros pour ce tour.',
     document_file_missing: 'Fichier manquant.',
+    image_empty_file: 'Image vide.',
+    image_type_unsupported: 'Format image non pris en charge.',
+    image_gif_unsupported_v0: 'GIF hors V0 pour les images actives.',
+    image_extension_mismatch: 'Extension image incohérente.',
+    image_mime_mismatch: 'Type MIME image incohérent.',
+    image_parse_error: 'Image illisible.',
+    image_too_large: 'Image trop volumineuse.',
+    image_too_small_for_provider: 'Image trop petite.',
+    image_dimensions_unsupported: 'Dimensions image non prises en charge.',
+    image_runtime_unavailable: 'Service image indisponible.',
   };
   return labels[String(reasonCode || '')] || '';
 }
