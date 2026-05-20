@@ -263,7 +263,9 @@ suppression fichier -> non liste, non selectionnable, non injectable, bytes abse
 Suppression d'un repertoire:
 
 - confirmation forte si le repertoire contient fichiers ou conversations;
-- fichiers supprimes physiquement apres confirmation;
+- fichiers actifs supprimes physiquement apres confirmation, avant de presenter le repertoire comme supprime;
+- si la suppression de fichiers echoue partiellement ou totalement, l'operation doit retourner une erreur ou un statut partiel clair avec compteurs `requested`, `deleted`, `failed`;
+- un echec de suppression fichier ne doit pas etre masque par une suppression UI reussie du repertoire;
 - conversations non supprimees automatiquement;
 - conversations replacees hors repertoire;
 - selections liees aux fichiers du repertoire supprimees ou invalidees;
@@ -286,6 +288,7 @@ Premiere liste stable pour les futurs lots:
 - `workspace_file_not_selected`;
 - `workspace_folder_not_found`;
 - `workspace_folder_deleted`;
+- `workspace_folder_file_delete_failed`;
 - `workspace_selection_stale`;
 - `workspace_file_tombstone`;
 - `workspace_file_source_missing`.
@@ -350,6 +353,7 @@ Futurs lots fichiers:
 - listing par DB;
 - chemin interne absent des payloads UI;
 - suppression fichier -> non liste, non selectionnable, non injectable, bytes absents;
+- suppression repertoire avec fichiers -> fichiers actifs supprimes physiquement puis tombstone DB, ou echec explicite si suppression partielle;
 - incoherence DB presente/disque absent;
 - incoherence disque present/DB absente;
 - tombstone content-free.
@@ -437,7 +441,10 @@ Lot 2 livre le 2026-05-20:
 - listing par repertoire sans contenu brut, sans chemin physique, sans `storage_key`;
 - suppression utilisateur d'un fichier avec suppression physique des bytes puis tombstone DB content-free;
 - detection de l'incoherence DB presente / disque absent via statut de listing `disk_missing` et reason code `workspace_file_disk_missing`;
-- suppression d'un repertoire supprime aussi les fichiers actifs du repertoire, sans supprimer les conversations;
+- suppression d'un repertoire tente d'abord de supprimer tous les fichiers actifs du repertoire;
+- si tous les fichiers actifs sont supprimes, le repertoire est supprime et les conversations restent conservees / replacees hors repertoire;
+- si un fichier actif echoue, l'API retourne `workspace_folder_file_delete_failed` avec compteurs `requested`, `deleted`, `failed` et le repertoire n'est pas presente comme pleinement supprime;
+- observabilite content-free pour upload succes/echec, delete succes/echec, listing `disk_missing` et resume de suppression de repertoire;
 - UI minimale dans la sidebar: liste compacte des fichiers du repertoire, ajout explicite, suppression explicite.
 
 Decision Lot 2:
@@ -445,5 +452,6 @@ Decision Lot 2:
 - l'upload `active_document` de conversation reste l'action existante et continue a creer un document actif de conversation;
 - l'upload `workspace_file` est une action separee de repertoire et ne cree pas d'`active_document`;
 - aucun fichier de repertoire n'est selectionne, injecte, resume, memorise ou lu par le modele dans Lot 2;
+- les logs Lot 2 restent content-free: ids, types, MIME, taille, dimensions, hash court, statuts, reason codes et compteurs, sans contenu brut, bytes, chemin disque complet, `storage_key`, base64, secret ou prompt;
 - les PDF scannes peuvent etre conserves comme fichiers de repertoire avec statut `ocr_required` / reason code `workspace_file_ocr_required`; le derive `.ocr.md` reste Lot 4;
 - les fichiers de repertoire ne nourrissent ni memoire, ni identity, ni summary, ni Biblio, ni RAG documentaire par repertoire.

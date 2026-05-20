@@ -95,6 +95,8 @@ class _FakeWorkspaceFiles:
     def __init__(self):
         self.files = {}
         self.deleted_folder_ids = []
+        self.folder_delete_summary = None
+        self.events = []
 
     def normalize_workspace_file_id(self, value):
         try:
@@ -145,13 +147,18 @@ class _FakeWorkspaceFiles:
 
     def delete_workspace_files_for_folder(self, folder_id):
         self.deleted_folder_ids.append(folder_id)
+        if self.folder_delete_summary is not None:
+            return dict(self.folder_delete_summary)
         count = 0
         for item in self.files.get(folder_id, []):
             if not item.get("deleted_at"):
                 item["deleted_at"] = "2026-05-20T00:03:00Z"
                 item["status"] = "deleted"
                 count += 1
-        return count
+        return {"requested": count, "deleted": count, "failed": 0, "failed_file_ids": [], "reason_code": ""}
+
+    def log_content_free_event(self, event, **fields):
+        self.events.append((event, fields))
 
 
 class _FakeConvStore:
@@ -237,7 +244,10 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
 
         deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
         self.assertEqual(deleted.status_code, 200)
-        self.assertEqual(deleted.get_json()["folder"]["conversations_moved_out"], 1)
+        deleted_payload = deleted.get_json()
+        self.assertEqual(deleted_payload["folder"]["conversations_moved_out"], 1)
+        self.assertEqual(deleted_payload["folder"]["file_delete"]["requested"], 0)
+        self.assertEqual(deleted_payload["folder"]["file_delete"]["failed"], 0)
         self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
 
     def test_conversation_patch_attaches_and_detaches_nullable_workspace_folder(self) -> None:
@@ -303,6 +313,48 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         payload = uploaded.get_json()
         self.assertEqual(payload["reason_code"], "workspace_file_type_unsupported")
         self.assertEqual(self.fake_workspace_files.files, {})
+        self.assertEqual(self.fake_workspace_files.events[-1][0], "upload_failed")
+        self.assertNotIn("text_content", self.fake_workspace_files.events[-1][1])
+        self.assertNotIn("binary_content", self.fake_workspace_files.events[-1][1])
+
+    def test_workspace_folder_delete_removes_active_files_before_soft_delete(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {"id": "11111111-1111-4111-8111-111111111111", "deleted_at": None, "status": "active"},
+            {"id": "22222222-2222-4222-8222-222222222222", "deleted_at": None, "status": "active"},
+        ]
+
+        deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
+
+        self.assertEqual(deleted.status_code, 200)
+        payload = deleted.get_json()
+        self.assertEqual(payload["folder"]["file_delete"]["requested"], 2)
+        self.assertEqual(payload["folder"]["file_delete"]["deleted"], 2)
+        self.assertEqual(payload["folder"]["file_delete"]["failed"], 0)
+        self.assertEqual(payload["folder"]["files_deleted"], 2)
+        self.assertEqual(self.fake_workspace.folders[FOLDER_ID]["deleted_at"], "2026-05-20T00:01:00Z")
+        self.assertTrue(all(item["status"] == "deleted" for item in self.fake_workspace_files.files[FOLDER_ID]))
+
+    def test_workspace_folder_delete_does_not_mask_partial_file_failure(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace_files.folder_delete_summary = {
+            "requested": 2,
+            "deleted": 1,
+            "failed": 1,
+            "failed_file_ids": ["22222222-2222-4222-8222-222222222222"],
+            "reason_code": "workspace_folder_file_delete_failed",
+        }
+
+        deleted = self.client.delete(f"/api/workspace-folders/{FOLDER_ID}")
+
+        self.assertEqual(deleted.status_code, 409)
+        payload = deleted.get_json()
+        self.assertEqual(payload["reason_code"], "workspace_folder_file_delete_failed")
+        self.assertEqual(payload["file_delete"]["requested"], 2)
+        self.assertEqual(payload["file_delete"]["deleted"], 1)
+        self.assertEqual(payload["file_delete"]["failed"], 1)
+        self.assertIsNone(self.fake_workspace.folders[FOLDER_ID]["deleted_at"])
+        self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
 
 
 if __name__ == "__main__":

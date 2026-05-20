@@ -78,6 +78,14 @@ def upload_workspace_file_response(
     try:
         content = bytes(file_obj.read() or b"")
     except Exception:
+        _log_workspace_file_event(
+            workspace_files_module,
+            "upload_failed",
+            folder_id=normalized,
+            mime_type=media_type,
+            reason_code=REASON_UNREADABLE,
+            status="parse_error",
+        )
         return _workspace_file_failure(
             REASON_UNREADABLE,
             filename=filename,
@@ -87,6 +95,15 @@ def upload_workspace_file_response(
         )
 
     if len(content) > WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH:
+        _log_workspace_file_event(
+            workspace_files_module,
+            "upload_failed",
+            folder_id=normalized,
+            mime_type=media_type,
+            byte_size=len(content),
+            reason_code=REASON_TOO_LARGE,
+            status="too_large",
+        )
         return _workspace_file_failure(
             REASON_TOO_LARGE,
             filename=filename,
@@ -105,6 +122,17 @@ def upload_workspace_file_response(
         workspace_files_module=workspace_files_module,
     )
     if validation_error:
+        payload, _status = validation_error
+        file_meta = payload.get("file") if isinstance(payload, Mapping) else {}
+        _log_workspace_file_event(
+            workspace_files_module,
+            "upload_failed",
+            folder_id=normalized,
+            mime_type=file_meta.get("media_type") if isinstance(file_meta, Mapping) else media_type,
+            byte_size=file_meta.get("byte_size") if isinstance(file_meta, Mapping) else len(content),
+            reason_code=payload.get("reason_code") if isinstance(payload, Mapping) else "",
+            status=file_meta.get("status") if isinstance(file_meta, Mapping) else "",
+        )
         return validation_error
 
     stored = workspace_files_module.store_uploaded_file(
@@ -114,6 +142,17 @@ def upload_workspace_file_response(
         metadata=metadata,
     )
     if not stored:
+        _log_workspace_file_event(
+            workspace_files_module,
+            "upload_failed",
+            folder_id=normalized,
+            mime_type=metadata.get("mime_type"),
+            media_kind=metadata.get("media_kind"),
+            content_kind=metadata.get("content_kind"),
+            byte_size=len(content),
+            reason_code=REASON_RUNTIME_UNAVAILABLE,
+            status=metadata.get("status"),
+        )
         return {
             "ok": False,
             "error": _human_workspace_file_error(REASON_RUNTIME_UNAVAILABLE),
@@ -139,6 +178,12 @@ def delete_workspace_file_response(
     if deleted is None:
         return {"ok": False, "error": "fichier introuvable", "reason_code": REASON_FILE_MISSING}, 404
     return {"ok": True, "workspace_folder_id": normalized, "file": deleted}, 200
+
+
+def _log_workspace_file_event(workspace_files_module: Any, event: str, **fields: Any) -> None:
+    log_func = getattr(workspace_files_module, "log_content_free_event", None)
+    if callable(log_func):
+        log_func(event, **fields)
 
 
 def _resolve_existing_folder(

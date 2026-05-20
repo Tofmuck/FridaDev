@@ -393,7 +393,7 @@ Note Lot 1 livré le 2026-05-20: socle DB/API/UI minimal livré pour répertoire
 - [x] Ne pas exposer les chemins physiques à l'UI.
 - [x] Journaliser content-free.
 
-Note Lot 2 livré le 2026-05-20: stockage durable `workspace_files` livré avec DB + disque sous préfixe stable par identifiant de répertoire, routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`, UI minimale de listing/upload/suppression et réutilisation des validateurs documents actifs. L'upload document actif de conversation reste inchangé et séparé. Aucun fichier de répertoire n'est sélectionné, injecté, lu par le modèle, mémorisé, résumé, ajouté à identity/Biblio ou OCRisé en `.ocr.md` dans ce lot.
+Note Lot 2 livré le 2026-05-20: stockage durable `workspace_files` livré avec DB + disque sous préfixe stable par identifiant de répertoire, routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`, UI minimale de listing/upload/suppression et réutilisation des validateurs documents actifs. L'upload document actif de conversation reste inchangé et séparé. Aucun fichier de répertoire n'est sélectionné, injecté, lu par le modèle, mémorisé, résumé, ajouté à identity/Biblio ou OCRisé en `.ocr.md` dans ce lot. Correctif du même jour: la suppression de répertoire ne masque plus un échec partiel de suppression fichiers (`workspace_folder_file_delete_failed`) et l'observabilité content-free couvre upload succès/échec, delete succès/échec, listing `disk_missing` et résumé de suppression de répertoire, sans contenu brut, bytes, chemin disque, `storage_key`, base64, secret ou prompt.
 
 ### Lot 3 - Sélection/injection
 

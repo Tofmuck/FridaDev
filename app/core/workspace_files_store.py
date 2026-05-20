@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional
 
+from observability import workspace_files_observability
+
 try:  # pragma: no cover - local test hosts may stub psycopg.
     from psycopg.rows import dict_row
 except Exception:  # pragma: no cover
@@ -27,6 +29,8 @@ SOURCE_KIND_UPLOAD = "upload"
 
 REASON_WORKSPACE_FILE_DELETED = "workspace_file_deleted"
 REASON_WORKSPACE_FILE_DISK_MISSING = "workspace_file_disk_missing"
+REASON_WORKSPACE_FILE_DB_MISSING = "workspace_file_db_missing"
+REASON_WORKSPACE_FOLDER_FILE_DELETE_FAILED = "workspace_folder_file_delete_failed"
 
 
 def _cursor(conn: Any):
@@ -37,6 +41,14 @@ def _cursor(conn: Any):
 
 def collapse_ws(value: Any) -> str:
     return " ".join(str(value or "").strip().split())
+
+
+def content_free_log_fields(fields: Mapping[str, Any]) -> dict[str, str]:
+    return workspace_files_observability.content_free_log_fields(fields)
+
+
+def log_content_free_event(logger: Any, event: str, level: str = "info", **fields: Any) -> None:
+    workspace_files_observability.log_content_free_event(logger, event, level=level, **fields)
 
 
 def normalize_workspace_file_id(value: Optional[str]) -> Optional[str]:
@@ -235,7 +247,7 @@ def list_workspace_files(
                     (normalized,),
                 )
                 rows = cur.fetchall()
-        return [
+        items = [
             item
             for item in (
                 serialize_workspace_file_row(row, storage_root=storage_root, include_disk_status=True)
@@ -243,8 +255,27 @@ def list_workspace_files(
             )
             if item
         ]
+        missing_count = sum(1 for item in items if item.get("status") == STATUS_DISK_MISSING)
+        if missing_count:
+            log_content_free_event(
+                logger,
+                "list_disk_missing",
+                level="warning",
+                folder_id=normalized,
+                requested=len(items),
+                failed=missing_count,
+                reason_code=REASON_WORKSPACE_FILE_DISK_MISSING,
+            )
+        return items
     except Exception as exc:
-        logger.warning("workspace_files_list_failed folder_id=%s err=%s", normalized, exc)
+        log_content_free_event(
+            logger,
+            "list_failed",
+            level="warning",
+            folder_id=normalized,
+            reason_code=REASON_WORKSPACE_FILE_DB_MISSING,
+            error_type=type(exc).__name__,
+        )
         return []
 
 
@@ -296,7 +327,20 @@ def store_uploaded_file(
     try:
         write_file_bytes(storage_root, storage_key, data)
     except Exception as exc:
-        logger.warning("workspace_file_write_failed folder_id=%s err=%s", normalized_folder, exc)
+        log_content_free_event(
+            logger,
+            "upload_failed",
+            level="warning",
+            folder_id=normalized_folder,
+            file_id=normalized_file,
+            media_kind=metadata.get("media_kind"),
+            content_kind=metadata.get("content_kind"),
+            mime_type=metadata.get("mime_type"),
+            byte_size=len(data),
+            status=metadata.get("status"),
+            reason_code="workspace_file_unreadable",
+            error_type=type(exc).__name__,
+        )
         return None
 
     try:
@@ -326,13 +370,43 @@ def store_uploaded_file(
                 )
                 row = cur.fetchone()
             conn.commit()
-        return serialize_workspace_file_row(row, storage_root=storage_root, include_disk_status=True)
+        item = serialize_workspace_file_row(row, storage_root=storage_root, include_disk_status=True)
+        if item is not None:
+            log_content_free_event(
+                logger,
+                "upload_ok",
+                folder_id=normalized_folder,
+                file_id=normalized_file,
+                media_kind=item.get("media_kind"),
+                content_kind=item.get("content_kind"),
+                mime_type=item.get("mime_type"),
+                byte_size=item.get("byte_size"),
+                image_width=item.get("image_width"),
+                image_height=item.get("image_height"),
+                sha256_12=item.get("sha256_12"),
+                status=item.get("status"),
+                reason_code=item.get("reason_code"),
+            )
+        return item
     except Exception as exc:
         try:
             delete_file_bytes(storage_root, storage_key)
         except Exception:
             pass
-        logger.warning("workspace_file_insert_failed folder_id=%s err=%s", normalized_folder, exc)
+        log_content_free_event(
+            logger,
+            "upload_failed",
+            level="warning",
+            folder_id=normalized_folder,
+            file_id=normalized_file,
+            media_kind=metadata.get("media_kind"),
+            content_kind=metadata.get("content_kind"),
+            mime_type=metadata.get("mime_type"),
+            byte_size=len(data),
+            status=metadata.get("status"),
+            reason_code=REASON_WORKSPACE_FILE_DB_MISSING,
+            error_type=type(exc).__name__,
+        )
         return None
 
 
@@ -365,12 +439,28 @@ def delete_workspace_file(
                 )
                 row = cur.fetchone()
         if not row:
+            log_content_free_event(
+                logger,
+                "delete_missing",
+                level="warning",
+                folder_id=normalized_folder,
+                file_id=normalized_file,
+                reason_code="workspace_file_missing",
+            )
             return None
         raw_storage_key = row.get("storage_key") if isinstance(row, Mapping) else row[2]
         storage_key = str(raw_storage_key or "")
         delete_file_bytes(storage_root, storage_key)
     except Exception as exc:
-        logger.warning("workspace_file_disk_delete_failed file_id=%s err=%s", normalized_file, exc)
+        log_content_free_event(
+            logger,
+            "delete_failed",
+            level="warning",
+            folder_id=normalized_folder,
+            file_id=normalized_file,
+            reason_code=REASON_WORKSPACE_FILE_DISK_MISSING,
+            error_type=type(exc).__name__,
+        )
         return None
 
     try:
@@ -398,9 +488,32 @@ def delete_workspace_file(
         deleted = serialize_workspace_file_row(updated, storage_root=storage_root, include_disk_status=False)
         if deleted is not None:
             deleted["disk_deleted"] = True
+            log_content_free_event(
+                logger,
+                "delete_ok",
+                folder_id=normalized_folder,
+                file_id=normalized_file,
+                media_kind=deleted.get("media_kind"),
+                content_kind=deleted.get("content_kind"),
+                mime_type=deleted.get("mime_type"),
+                byte_size=deleted.get("byte_size"),
+                image_width=deleted.get("image_width"),
+                image_height=deleted.get("image_height"),
+                sha256_12=deleted.get("sha256_12"),
+                status=deleted.get("status"),
+                reason_code=deleted.get("reason_code"),
+            )
         return deleted
     except Exception as exc:
-        logger.warning("workspace_file_db_delete_failed file_id=%s err=%s", normalized_file, exc)
+        log_content_free_event(
+            logger,
+            "delete_failed",
+            level="warning",
+            folder_id=normalized_folder,
+            file_id=normalized_file,
+            reason_code=REASON_WORKSPACE_FILE_DB_MISSING,
+            error_type=type(exc).__name__,
+        )
         return None
 
 
@@ -410,10 +523,10 @@ def delete_workspace_files_for_folder(
     db_conn_func: Callable[[], Any],
     storage_root: Path,
     logger: Any,
-) -> int:
+) -> dict[str, Any]:
     normalized = normalize_workspace_folder_id(folder_id)
     if not normalized:
-        return 0
+        return {"requested": 0, "deleted": 0, "failed": 0, "failed_file_ids": [], "reason_code": ""}
     active_ids: list[str] = []
     try:
         with db_conn_func() as conn:
@@ -429,10 +542,27 @@ def delete_workspace_files_for_folder(
                 )
                 active_ids = [str(row[0]) for row in cur.fetchall()]
     except Exception as exc:
-        logger.warning("workspace_file_folder_delete_scan_failed folder_id=%s err=%s", normalized, exc)
-        return 0
+        log_content_free_event(
+            logger,
+            "folder_delete_scan_failed",
+            level="warning",
+            folder_id=normalized,
+            requested=0,
+            deleted=0,
+            failed=1,
+            reason_code=REASON_WORKSPACE_FILE_DB_MISSING,
+            error_type=type(exc).__name__,
+        )
+        return {
+            "requested": 0,
+            "deleted": 0,
+            "failed": 1,
+            "failed_file_ids": [],
+            "reason_code": REASON_WORKSPACE_FILE_DB_MISSING,
+        }
 
     deleted = 0
+    failed_ids: list[str] = []
     for file_id in active_ids:
         if delete_workspace_file(
             normalized,
@@ -442,4 +572,24 @@ def delete_workspace_files_for_folder(
             logger=logger,
         ):
             deleted += 1
-    return deleted
+        else:
+            failed_ids.append(file_id)
+    failed = len(failed_ids)
+    reason_code = "" if failed == 0 else REASON_WORKSPACE_FOLDER_FILE_DELETE_FAILED
+    log_content_free_event(
+        logger,
+        "folder_delete_summary",
+        level="warning" if failed else "info",
+        folder_id=normalized,
+        requested=len(active_ids),
+        deleted=deleted,
+        failed=failed,
+        reason_code=reason_code,
+    )
+    return {
+        "requested": len(active_ids),
+        "deleted": deleted,
+        "failed": failed,
+        "failed_file_ids": failed_ids,
+        "reason_code": reason_code,
+    }

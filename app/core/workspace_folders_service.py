@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Tuple
 
+REASON_FOLDER_FILE_DELETE_FAILED = "workspace_folder_file_delete_failed"
+
 
 def list_workspace_folders(
     _args: Mapping[str, Any],
@@ -90,9 +92,76 @@ def delete_workspace_folder(
     if not normalized:
         return {"ok": False, "error": "folder_id invalide", "reason_code": "workspace_folder_id_invalid"}, 400
 
+    existing = workspace_folders_module.get_workspace_folder(normalized)
+    if existing is None:
+        return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
+
+    file_delete = {"requested": 0, "deleted": 0, "failed": 0, "failed_file_ids": [], "reason_code": ""}
+    if workspace_files_module is not None:
+        try:
+            file_delete = _normalize_file_delete_summary(
+                workspace_files_module.delete_workspace_files_for_folder(normalized)
+            )
+        except Exception as exc:
+            file_delete = {
+                "requested": 0,
+                "deleted": 0,
+                "failed": 1,
+                "failed_file_ids": [],
+                "reason_code": REASON_FOLDER_FILE_DELETE_FAILED,
+            }
+            log_func = getattr(workspace_files_module, "log_content_free_event", None)
+            if callable(log_func):
+                log_func(
+                    "folder_delete_summary",
+                    level="warning",
+                    folder_id=normalized,
+                    requested=0,
+                    deleted=0,
+                    failed=1,
+                    reason_code=REASON_FOLDER_FILE_DELETE_FAILED,
+                    error_type=type(exc).__name__,
+                )
+        if int(file_delete.get("failed") or 0) > 0:
+            return {
+                "ok": False,
+                "error": "suppression des fichiers du repertoire incomplete",
+                "reason_code": REASON_FOLDER_FILE_DELETE_FAILED,
+                "workspace_folder_id": normalized,
+                "file_delete": file_delete,
+            }, 409
+
     folder = workspace_folders_module.soft_delete_workspace_folder(normalized)
     if folder is None:
         return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
-    if workspace_files_module is not None:
-        folder["files_deleted"] = workspace_files_module.delete_workspace_files_for_folder(normalized)
+    folder["file_delete"] = file_delete
+    folder["files_deleted"] = int(file_delete.get("deleted") or 0)
     return {"ok": True, "folder": folder}, 200
+
+
+def _normalize_file_delete_summary(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        requested = _safe_int(value.get("requested"))
+        deleted = _safe_int(value.get("deleted"))
+        failed = _safe_int(value.get("failed"))
+        failed_file_ids = [
+            str(item)
+            for item in value.get("failed_file_ids", [])
+            if str(item or "").strip()
+        ][:20]
+        return {
+            "requested": requested,
+            "deleted": deleted,
+            "failed": failed,
+            "failed_file_ids": failed_file_ids,
+            "reason_code": str(value.get("reason_code") or ""),
+        }
+    deleted = _safe_int(value)
+    return {"requested": deleted, "deleted": deleted, "failed": 0, "failed_file_ids": [], "reason_code": ""}
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0

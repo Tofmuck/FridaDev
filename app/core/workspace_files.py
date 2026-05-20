@@ -41,6 +41,10 @@ def sanitize_display_name(value: Any) -> str:
     return workspace_files_store.sanitize_display_name(value)
 
 
+def log_content_free_event(event: str, level: str = "info", **fields: Any) -> None:
+    workspace_files_store.log_content_free_event(logger, event, level=level, **fields)
+
+
 def list_workspace_files(folder_id: str) -> list[dict[str, Any]]:
     return workspace_files_store.list_workspace_files(
         folder_id,
@@ -78,7 +82,7 @@ def delete_workspace_file(folder_id: str, file_id: str) -> Optional[dict[str, An
     )
 
 
-def delete_workspace_files_for_folder(folder_id: str) -> int:
+def delete_workspace_files_for_folder(folder_id: str) -> dict[str, Any]:
     return workspace_files_store.delete_workspace_files_for_folder(
         folder_id,
         db_conn_func=_db_conn,
