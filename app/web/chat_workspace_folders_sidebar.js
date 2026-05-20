@@ -19,6 +19,9 @@ function createWorkspaceFolderSidebarRenderer({
   deleteWorkspaceFolderOnServer,
   uploadWorkspaceFileOnServer,
   deleteWorkspaceFileOnServer,
+  ocrWorkspaceFileOnServer,
+  readWorkspaceOcrMarkdownOnServer,
+  saveWorkspaceOcrMarkdownOnServer,
   getCurrentThread,
   getWorkspaceFileSelections,
   selectWorkspaceFileOnServer,
@@ -139,6 +142,102 @@ function createWorkspaceFolderSidebarRenderer({
       logger.warn('Suppression fichier répertoire échouée', err);
       setThreadStatus('Suppression du fichier impossible.', true);
     }
+  };
+
+  const requestOcrFile = async (folder, file) => {
+    if (typeof ocrWorkspaceFileOnServer !== 'function' || typeof refreshWorkspaceFiles !== 'function') {
+      setThreadStatus('OCR de répertoire indisponible.', true);
+      return;
+    }
+    try {
+      await ocrWorkspaceFileOnServer(folder.id, file.id);
+      await refreshWorkspaceFiles(folder.id);
+      renderThreads();
+      setThreadStatus('Markdown OCR créé dans le répertoire.');
+    } catch (err) {
+      logger.warn('OCR fichier répertoire échoué', err);
+      setThreadStatus('OCR du fichier impossible.', true);
+    }
+  };
+
+  const requestEditOcrMarkdown = async (folder, file) => {
+    if (
+      typeof readWorkspaceOcrMarkdownOnServer !== 'function'
+      || typeof saveWorkspaceOcrMarkdownOnServer !== 'function'
+      || typeof refreshWorkspaceFiles !== 'function'
+    ) {
+      setThreadStatus('Édition OCR indisponible.', true);
+      return;
+    }
+    try {
+      const payload = await readWorkspaceOcrMarkdownOnServer(folder.id, file.id);
+      openOcrMarkdownEditor({
+        folder,
+        file,
+        content: String(payload?.content || ''),
+      });
+    } catch (err) {
+      logger.warn('Lecture Markdown OCR échouée', err);
+      setThreadStatus('Ouverture du Markdown OCR impossible.', true);
+    }
+  };
+
+  const openOcrMarkdownEditor = ({ folder, file, content }) => {
+    if (typeof document === 'undefined') return;
+    const overlay = document.createElement('div');
+    overlay.className = 'workspace-ocr-editor-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'workspace-ocr-editor-panel';
+
+    const title = document.createElement('div');
+    title.className = 'workspace-ocr-editor-title';
+    title.textContent = file.display_name || 'OCR Markdown';
+    panel.appendChild(title);
+
+    const note = document.createElement('div');
+    note.className = 'workspace-ocr-editor-note';
+    note.textContent = 'Extraction OCR imparfaite, surtout pour le manuscrit.';
+    panel.appendChild(note);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'workspace-ocr-editor-textarea';
+    textarea.value = String(content || '');
+    textarea.spellcheck = true;
+    panel.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.className = 'workspace-ocr-editor-actions';
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Annuler';
+    cancel.addEventListener('click', () => overlay.remove());
+    actions.appendChild(cancel);
+
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'workspace-ocr-editor-save';
+    save.textContent = 'Enregistrer';
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      try {
+        await saveWorkspaceOcrMarkdownOnServer(folder.id, file.id, textarea.value);
+        await refreshWorkspaceFiles(folder.id);
+        overlay.remove();
+        renderThreads();
+        setThreadStatus('Markdown OCR enregistré.');
+      } catch (err) {
+        save.disabled = false;
+        logger.warn('Sauvegarde Markdown OCR échouée', err);
+        setThreadStatus('Sauvegarde du Markdown OCR impossible.', true);
+      }
+    });
+    actions.appendChild(save);
+    panel.appendChild(actions);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    textarea.focus();
   };
 
   const requestToggleSelection = async (folder, file, shouldSelect) => {
@@ -332,6 +431,32 @@ function createWorkspaceFolderSidebarRenderer({
         void requestDeleteFile(folder, file);
       });
       row.appendChild(del);
+
+      if (WorkspaceFolderUiHelpers?.canRunWorkspaceOcr?.(file)) {
+        const ocr = document.createElement('button');
+        ocr.type = 'button';
+        ocr.className = 'workspace-folder-file-ocr';
+        ocr.textContent = 'OCR';
+        ocr.title = 'Extraire le texte en Markdown';
+        ocr.addEventListener('click', (event) => {
+          event.stopPropagation();
+          void requestOcrFile(folder, file);
+        });
+        row.appendChild(ocr);
+      }
+
+      if (WorkspaceFolderUiHelpers?.canEditWorkspaceOcrMarkdown?.(file)) {
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'workspace-folder-file-edit';
+        edit.textContent = 'Md';
+        edit.title = 'Éditer le Markdown OCR';
+        edit.addEventListener('click', (event) => {
+          event.stopPropagation();
+          void requestEditOcrMarkdown(folder, file);
+        });
+        row.appendChild(edit);
+      }
       li.appendChild(row);
     });
     threadsUl.appendChild(li);

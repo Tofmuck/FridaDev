@@ -244,6 +244,36 @@ function createChatThreadsSidebar({
     return data.file || null;
   }
 
+  async function ocrWorkspaceFileOnServer(folderId, fileId) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr`,
+      { method: "POST" },
+    );
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
+  async function readWorkspaceOcrMarkdownOnServer(folderId, fileId) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr-markdown`,
+    );
+    const data = await parseServerResponse(res);
+    return data;
+  }
+
+  async function saveWorkspaceOcrMarkdownOnServer(folderId, fileId, content) {
+    const res = await httpFetch(
+      `/api/workspace-folders/${encodeURIComponent(folderId)}/files/${encodeURIComponent(fileId)}/ocr-markdown`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: String(content || "") }),
+      },
+    );
+    const data = await parseServerResponse(res);
+    return data.file || null;
+  }
+
   async function selectWorkspaceFileOnServer(conversationId, fileId) {
     const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`, {
       method: "POST",
@@ -389,6 +419,9 @@ function createChatThreadsSidebar({
     deleteWorkspaceFolderOnServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
+    ocrWorkspaceFileOnServer,
+    readWorkspaceOcrMarkdownOnServer,
+    saveWorkspaceOcrMarkdownOnServer,
     getCurrentThread: () => getThreadById(getCurrentId()),
     getWorkspaceFileSelections,
     selectWorkspaceFileOnServer,
@@ -760,6 +793,9 @@ function createChatThreadsSidebar({
     listWorkspaceFilesFromServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
+    ocrWorkspaceFileOnServer,
+    readWorkspaceOcrMarkdownOnServer,
+    saveWorkspaceOcrMarkdownOnServer,
     selectWorkspaceFileOnServer,
     deselectWorkspaceFileOnServer,
     renameConversationOnServer,

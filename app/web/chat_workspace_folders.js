@@ -93,6 +93,7 @@ function normalizeWorkspaceFileItem(item) {
     status: String(item?.status || 'active').trim(),
     reason_code: String(item?.reason_code || '').trim(),
     source_kind: String(item?.source_kind || 'upload').trim(),
+    source_file_id: item?.source_file_id ? String(item.source_file_id).trim() : null,
     created_at: item?.created_at || null,
     updated_at: item?.updated_at || item?.created_at || null,
     deleted_at: item?.deleted_at || null,
@@ -146,12 +147,32 @@ function compactWorkspaceFileMeta(item) {
   } else if (Number(item?.text_chars || 0) > 0) {
     parts.push(`${Number(item.text_chars)} caractères`);
   }
+  if (item?.source_kind === 'ocr_derived') {
+    parts.push('OCR Markdown');
+  }
   if (item?.status === 'ocr_required') {
     parts.push('OCR requis');
   } else if (item?.status === 'disk_missing') {
     parts.push('Fichier absent du disque');
   }
   return parts.join(' · ');
+}
+
+function canRunWorkspaceOcr(item) {
+  const mime = String(item?.mime_type || '').split(';', 1)[0].trim().toLowerCase();
+  const ext = String(item?.source_extension || '').trim().toLowerCase();
+  if (String(item?.status || '') === 'deleted' || String(item?.status || '') === 'disk_missing') return false;
+  if (String(item?.source_kind || '') === 'ocr_derived') return false;
+  if (String(item?.media_kind || '') === 'image' && ['image/png', 'image/jpeg', 'image/webp'].includes(mime)) {
+    return true;
+  }
+  return mime === 'application/pdf' || ext === '.pdf';
+}
+
+function canEditWorkspaceOcrMarkdown(item) {
+  return String(item?.source_kind || '') === 'ocr_derived'
+    && String(item?.source_extension || '').trim().toLowerCase() === '.md'
+    && String(item?.status || 'active') === 'active';
 }
 
 function groupThreadsByWorkspaceFolder(threads, folders) {
@@ -184,6 +205,8 @@ const FridaWorkspaceFolders = Object.freeze({
   normalizeWorkspaceFileSelectionsPayload,
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
+  canRunWorkspaceOcr,
+  canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
 });
 

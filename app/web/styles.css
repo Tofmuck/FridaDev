@@ -270,7 +270,7 @@ body {
 
 .workspace-folder-file {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto auto auto;
   gap: 2px 4px;
   align-items: center;
   padding: 3px 0;
@@ -316,10 +316,11 @@ body {
   font-size: 10px;
 }
 
-.workspace-folder-file-delete {
+.workspace-folder-file-delete,
+.workspace-folder-file-ocr,
+.workspace-folder-file-edit {
   grid-row: 1 / span 2;
-  grid-column: 4;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
   padding: 0;
   border: none;
@@ -327,9 +328,24 @@ body {
   background: transparent;
   color: var(--fg-subtle);
   cursor: pointer;
+  font-size: 10px;
 }
 
-.workspace-folder-file-delete:hover {
+.workspace-folder-file-delete {
+  grid-column: 4;
+}
+
+.workspace-folder-file-ocr {
+  grid-column: 5;
+}
+
+.workspace-folder-file-edit {
+  grid-column: 6;
+}
+
+.workspace-folder-file-delete:hover,
+.workspace-folder-file-ocr:hover,
+.workspace-folder-file-edit:hover {
   background: var(--surface-hover);
   color: var(--fg);
 }
@@ -337,6 +353,73 @@ body {
 .workspace-folder-file[data-status="ocr_required"] .workspace-folder-file-meta,
 .workspace-folder-file[data-status="disk_missing"] .workspace-folder-file-meta {
   color: #9a6a1f;
+}
+
+.workspace-ocr-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 22, 20, 0.32);
+}
+
+.workspace-ocr-editor-panel {
+  width: min(720px, 94vw);
+  max-height: min(760px, 92vh);
+  display: grid;
+  grid-template-rows: auto auto minmax(260px, 1fr) auto;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius);
+  background: var(--bg-base);
+  box-shadow: 0 16px 42px rgba(25, 23, 20, 0.18);
+}
+
+.workspace-ocr-editor-title {
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workspace-ocr-editor-note {
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+
+.workspace-ocr-editor-textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--fg);
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.workspace-ocr-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.workspace-ocr-editor-actions button {
+  min-width: 86px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.workspace-ocr-editor-save {
+  border-color: rgba(90, 120, 95, 0.38);
+  background: rgba(90, 120, 95, 0.12);
 }
 
 .workspace-folder-separator {

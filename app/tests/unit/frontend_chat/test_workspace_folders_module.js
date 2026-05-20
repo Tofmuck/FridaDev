@@ -9,6 +9,8 @@ const {
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
   compactWorkspaceFileMeta,
+  canRunWorkspaceOcr,
+  canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
 } = require("../../../web/chat_workspace_folders.js");
 
@@ -103,6 +105,67 @@ test("workspace files payload normalizer handles OCR-required metadata", () => {
 
   assert.equal(files.length, 1);
   assert.equal(compactWorkspaceFileMeta(files[0]), "PDF · 2 ko · OCR requis");
+  assert.equal(canRunWorkspaceOcr(files[0]), true);
+});
+
+test("workspace OCR markdown derivatives are editable metadata-only files", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "file-ocr-md",
+      workspace_folder_id: "folder-1",
+      display_name: "scan.ocr.md",
+      source_extension: ".md",
+      byte_size: 4096,
+      text_chars: 128,
+      status: "active",
+      source_kind: "ocr_derived",
+      source_file_id: "source-file",
+      text_content: "RAW OCR SHOULD NOT SURVIVE",
+    }],
+  });
+
+  assert.equal(files.length, 1);
+  assert.equal(files[0].source_file_id, "source-file");
+  assert.equal(files[0].text_content, undefined);
+  assert.equal(compactWorkspaceFileMeta(files[0]), "MD · 4 ko · 128 caractères · OCR Markdown");
+  assert.equal(canRunWorkspaceOcr(files[0]), false);
+  assert.equal(canEditWorkspaceOcrMarkdown(files[0]), true);
+});
+
+test("workspace OCR action is available for supported source images", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "image-1",
+      workspace_folder_id: "folder-1",
+      display_name: "photo.jpg",
+      media_kind: "image",
+      mime_type: "image/jpeg",
+      source_extension: ".jpg",
+      byte_size: 4096,
+      image_width: 1200,
+      image_height: 900,
+      status: "active",
+      source_kind: "upload",
+    }],
+  });
+
+  assert.equal(canRunWorkspaceOcr(files[0]), true);
+  assert.equal(canEditWorkspaceOcrMarkdown(files[0]), false);
+});
+
+test("workspace OCR action stays limited to supported source media", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "text-ocr",
+      workspace_folder_id: "folder-1",
+      display_name: "note.txt",
+      mime_type: "text/plain",
+      source_extension: ".txt",
+      status: "ocr_required",
+    }],
+  });
+
+  assert.equal(canRunWorkspaceOcr(files[0]), false);
 });
 
 test("workspace file selection payloads are conversation scoped and content-free", () => {

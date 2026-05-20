@@ -29,6 +29,7 @@ from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
 from core import workspace_files
+from core import workspace_file_ocr_service
 from core import workspace_files_service
 from core import workspace_file_selections
 from core import workspace_file_selections_service
@@ -1268,6 +1269,41 @@ def api_delete_workspace_folder_file(folder_id: str, file_id: str):
     payload, status = workspace_files_service.delete_workspace_file_response(
         folder_id,
         file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/files/<file_id>/ocr')
+def api_ocr_workspace_folder_file(folder_id: str, file_id: str):
+    payload, status = workspace_file_ocr_service.ocr_workspace_file_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.get('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
+def api_get_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
+    payload, status = workspace_file_ocr_service.get_ocr_markdown_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.patch('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
+def api_patch_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_file_ocr_service.patch_ocr_markdown_response(
+        folder_id,
+        file_id,
+        data,
         workspace_folders_module=workspace_folders,
         workspace_files_module=workspace_files,
     )

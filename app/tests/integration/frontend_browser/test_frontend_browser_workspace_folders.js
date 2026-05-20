@@ -47,12 +47,27 @@ function workspaceFoldersMockScript() {
           status: "active",
           reason_code: "",
           source_kind: "upload",
+        }, {
+          id: "file-ocr-source",
+          workspace_folder_id: "folder-1",
+          display_name: "scan.pdf",
+          original_filename: "scan.pdf",
+          content_kind: "document",
+          media_kind: "text",
+          mime_type: "application/pdf",
+          source_extension: ".pdf",
+          byte_size: 3072,
+          text_chars: 0,
+          status: "ocr_required",
+          reason_code: "workspace_file_ocr_required",
+          source_kind: "upload",
         }],
         selections: {},
         patchCalls: [],
         workspaceUploadCalls: [],
         activeDocumentUploadCalls: [],
         selectionCalls: [],
+        ocrCalls: [],
       };
       window.__fridaWorkspaceFolderState = state;
       window.fetch = async (input, init = {}) => {
@@ -101,6 +116,32 @@ function workspaceFoldersMockScript() {
               reason_code: "",
               source_kind: "upload",
             },
+          }), { status: 201, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/workspace-folders/folder-1/files/file-ocr-source/ocr" && method === "POST") {
+          state.ocrCalls.push({ pathname: url.pathname, method });
+          state.files.push({
+            id: "file-ocr-md",
+            workspace_folder_id: "folder-1",
+            display_name: "scan.ocr.md",
+            original_filename: "scan.ocr.md",
+            content_kind: "document",
+            media_kind: "text",
+            mime_type: "text/markdown",
+            source_extension: ".md",
+            byte_size: 128,
+            text_chars: 90,
+            status: "active",
+            reason_code: "",
+            source_kind: "ocr_derived",
+            source_file_id: "file-ocr-source",
+          });
+          return new Response(JSON.stringify({
+            ok: true,
+            workspace_folder_id: "folder-1",
+            source_file_id: "file-ocr-source",
+            file: state.files[state.files.length - 1],
           }), { status: 201, headers: { "Content-Type": "application/json" } });
         }
 
@@ -204,10 +245,12 @@ test('workspace folders render above outside conversations and move by select', 
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
     await assertTextContains(page.locator('.workspace-folder-files'), 'note.md');
     await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
+    await assertTextContains(page.locator('.workspace-folder-files'), 'scan.pdf');
+    await assertTextContains(page.locator('.workspace-folder-files'), 'OCR requis');
     await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
 
-    await page.locator('.workspace-folder-file-select').check();
+    await page.locator('.workspace-folder-file-select').first().check();
     await page.waitForFunction(() => window.__fridaWorkspaceFolderState.selectionCalls.length === 1);
     const selectionCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.selectionCalls);
     assert.deepEqual(selectionCalls, [{
@@ -241,5 +284,14 @@ test('workspace folders render above outside conversations and move by select', 
     }));
     assert.deepEqual(uploadState.workspace, [{ pathname: '/api/workspace-folders/folder-1/files', method: 'POST' }]);
     assert.deepEqual(uploadState.active, []);
+
+    await page.locator('.workspace-folder-file-ocr').first().click();
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.ocrCalls.length === 1);
+    const ocrCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.ocrCalls);
+    assert.deepEqual(ocrCalls, [{
+      pathname: '/api/workspace-folders/folder-1/files/file-ocr-source/ocr',
+      method: 'POST',
+    }]);
+    await assertTextContains(page.locator('.workspace-folder-files'), 'scan.ocr.md');
   });
 });

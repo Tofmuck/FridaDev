@@ -94,9 +94,11 @@ class _FakeWorkspaceFiles:
     CONTENT_KIND_DOCUMENT = "document"
     CONTENT_KIND_IMAGE = "image"
     SOURCE_KIND_UPLOAD = "upload"
+    SOURCE_KIND_OCR_DERIVED = "ocr_derived"
 
     def __init__(self):
         self.files = {}
+        self.file_bytes = {}
         self.deleted_folder_ids = []
         self.folder_delete_summary = None
         self.events = []
@@ -137,6 +139,7 @@ class _FakeWorkspaceFiles:
             "deleted_at": None,
         }
         self.files.setdefault(folder_id, []).append(item)
+        self.file_bytes[item["id"]] = bytes(content)
         return item
 
     def delete_workspace_file(self, folder_id, file_id):
@@ -146,6 +149,45 @@ class _FakeWorkspaceFiles:
                 item["status"] = "deleted"
                 item["disk_deleted"] = True
                 return item
+        return None
+
+    def get_workspace_file_storage_row(self, folder_id, file_id):
+        for item in self.files.get(folder_id, []):
+            if item["id"] == file_id and not item.get("deleted_at"):
+                return {
+                    **item,
+                    "storage_key": f"{folder_id}/{file_id}{item.get('source_extension') or ''}",
+                    "sha256": "full-hidden",
+                }
+        return None
+
+    def read_file_bytes(self, storage_key):
+        file_id = str(storage_key or "").split("/")[-1].split(".")[0]
+        for stored_id, content in self.file_bytes.items():
+            if stored_id == file_id or stored_id in str(storage_key or ""):
+                return content
+        raise FileNotFoundError(storage_key)
+
+    def find_ocr_derived_file(self, folder_id, source_file_id):
+        for item in self.files.get(folder_id, []):
+            if (
+                item.get("source_kind") == "ocr_derived"
+                and item.get("source_file_id") == source_file_id
+                and not item.get("deleted_at")
+            ):
+                return dict(item)
+        return None
+
+    def update_workspace_text_file(self, folder_id, file_id, *, content, metadata):
+        for item in self.files.get(folder_id, []):
+            if item["id"] == file_id and not item.get("deleted_at"):
+                self.file_bytes[file_id] = bytes(content)
+                item["byte_size"] = len(content)
+                item["text_chars"] = metadata.get("text_chars", 0)
+                item["text_sha256_12"] = metadata.get("text_sha256_12", "")
+                item["status"] = metadata.get("status", "active")
+                item["reason_code"] = metadata.get("reason_code", "")
+                return dict(item)
         return None
 
     def delete_workspace_files_for_folder(self, folder_id):
@@ -510,6 +552,77 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(payload["file_delete"]["failed"], 1)
         self.assertIsNone(self.fake_workspace.folders[FOLDER_ID]["deleted_at"])
         self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
+
+    def test_workspace_file_ocr_route_refuses_unsupported_type_without_content_leak(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {
+                "id": FILE_ID,
+                "workspace_folder_id": FOLDER_ID,
+                "display_name": "note.txt",
+                "original_filename": "note.txt",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "byte_size": 7,
+                "status": "active",
+                "reason_code": "",
+                "source_kind": "upload",
+                "source_file_id": None,
+                "deleted_at": None,
+            }
+        ]
+        self.fake_workspace_files.file_bytes[FILE_ID] = b"secret text"
+
+        response = self.client.post(f"/api/workspace-folders/{FOLDER_ID}/files/{FILE_ID}/ocr")
+
+        self.assertEqual(response.status_code, 422)
+        payload = response.get_json()
+        self.assertEqual(payload["reason_code"], "workspace_file_ocr_unsupported")
+        encoded = str(payload)
+        self.assertNotIn("secret text", encoded)
+        self.assertNotIn("storage_key", encoded)
+
+    def test_workspace_ocr_markdown_routes_read_and_save_only_derived_markdown(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        derived_id = "33333333-3333-4333-8333-333333333333"
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {
+                "id": derived_id,
+                "workspace_folder_id": FOLDER_ID,
+                "display_name": "scan.ocr.md",
+                "original_filename": "scan.ocr.md",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/markdown",
+                "source_extension": ".md",
+                "byte_size": 12,
+                "text_chars": 12,
+                "text_sha256_12": "text12345678",
+                "status": "active",
+                "reason_code": "",
+                "source_kind": "ocr_derived",
+                "source_file_id": FILE_ID,
+                "deleted_at": None,
+            }
+        ]
+        self.fake_workspace_files.file_bytes[derived_id] = b"# OCR\n\nancien"
+
+        read_response = self.client.get(f"/api/workspace-folders/{FOLDER_ID}/files/{derived_id}/ocr-markdown")
+        self.assertEqual(read_response.status_code, 200)
+        self.assertEqual(read_response.get_json()["content"], "# OCR\n\nancien")
+
+        patch_response = self.client.patch(
+            f"/api/workspace-folders/{FOLDER_ID}/files/{derived_id}/ocr-markdown",
+            json={"content": "# OCR\n\ncorrige"},
+        )
+
+        self.assertEqual(patch_response.status_code, 200)
+        self.assertEqual(self.fake_workspace_files.file_bytes[derived_id], b"# OCR\n\ncorrige")
+        payload = patch_response.get_json()
+        self.assertNotIn("storage_key", str(payload))
+        self.assertNotIn("# OCR", str(payload))
 
 
 if __name__ == "__main__":

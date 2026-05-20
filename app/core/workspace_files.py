@@ -9,6 +9,7 @@ import psycopg
 import config
 from admin import runtime_settings
 from . import runtime_db_bootstrap
+from . import workspace_file_ocr_store
 from . import workspace_files_store
 
 
@@ -23,6 +24,7 @@ MEDIA_KIND_IMAGE = workspace_files_store.MEDIA_KIND_IMAGE
 CONTENT_KIND_DOCUMENT = workspace_files_store.CONTENT_KIND_DOCUMENT
 CONTENT_KIND_IMAGE = workspace_files_store.CONTENT_KIND_IMAGE
 SOURCE_KIND_UPLOAD = workspace_files_store.SOURCE_KIND_UPLOAD
+SOURCE_KIND_OCR_DERIVED = workspace_files_store.SOURCE_KIND_OCR_DERIVED
 
 
 def _db_conn():
@@ -54,6 +56,27 @@ def list_workspace_files(folder_id: str) -> list[dict[str, Any]]:
     )
 
 
+def get_workspace_file_storage_row(folder_id: str, file_id: str) -> Optional[dict[str, Any]]:
+    return workspace_file_ocr_store.get_workspace_file_storage_row(
+        folder_id,
+        file_id,
+        db_conn_func=_db_conn,
+    )
+
+
+def find_ocr_derived_file(folder_id: str, source_file_id: str) -> Optional[dict[str, Any]]:
+    return workspace_file_ocr_store.find_ocr_derived_file(
+        folder_id,
+        source_file_id,
+        db_conn_func=_db_conn,
+        storage_root=_storage_root(),
+    )
+
+
+def read_file_bytes(storage_key: str) -> bytes:
+    return workspace_file_ocr_store.read_file_bytes(_storage_root(), storage_key)
+
+
 def store_uploaded_file(
     folder_id: str,
     *,
@@ -64,6 +87,24 @@ def store_uploaded_file(
     return workspace_files_store.store_uploaded_file(
         folder_id,
         original_filename=original_filename,
+        content=content,
+        metadata=metadata,
+        db_conn_func=_db_conn,
+        storage_root=_storage_root(),
+        logger=logger,
+    )
+
+
+def update_workspace_text_file(
+    folder_id: str,
+    file_id: str,
+    *,
+    content: bytes,
+    metadata: Mapping[str, Any],
+) -> Optional[dict[str, Any]]:
+    return workspace_file_ocr_store.update_workspace_text_file(
+        folder_id,
+        file_id,
         content=content,
         metadata=metadata,
         db_conn_func=_db_conn,

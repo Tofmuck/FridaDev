@@ -251,13 +251,24 @@ Le fichier `.ocr.md`:
 - garde un lien de provenance vers l'image ou le PDF source;
 - est visible dans le repertoire a cote de la source;
 - est selectionnable comme fichier texte;
-- peut etre ouvert par double-clic;
+- peut etre ouvert par double-clic ou action explicite;
 - s'ouvre dans une petite fenetre ou un panneau UI;
 - est editable;
 - propose une sauvegarde;
 - met a jour le Markdown et la reference DB a la sauvegarde.
 
 Le derive OCR peut suivre ensuite le chemin des documents textuels actifs, mais seulement s'il est explicitement selectionne dans la conversation.
+
+Implementation Lot 4 livree:
+
+- action OCR explicite sur fichier workspace compatible image PNG/JPEG/WEBP ou PDF;
+- reutilisation du client OCR existant: PDF OCR via Stirling et image -> PDF via Stirling avant OCR PDF;
+- creation ou mise a jour d'un vrai `workspace_file` derive en Markdown `.ocr.md`;
+- `source_kind=ocr_derived` et `source_file_id` vers le fichier source;
+- listing du derive dans le repertoire et selection possible par le chemin texte Lot 3, sans injection automatique;
+- ouverture/edition/sauvegarde du `.ocr.md` via panneau UI, avec mise a jour bytes disque + metadonnees DB/hash/taille/texte;
+- suppression du fichier source ne supprime pas automatiquement le derive: le Markdown OCR reste un fichier durable distinct avec provenance tombstonee/content-free;
+- observabilite content-free pour succes/echec OCR et edition, sans texte OCR brut, bytes, chemin disque, `storage_key`, base64, prompt, memoire, identity, summary, Biblio ou RAG.
 
 ## 10. Contrat suppression
 

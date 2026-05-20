@@ -26,6 +26,7 @@ MEDIA_KIND_IMAGE = "image"
 CONTENT_KIND_DOCUMENT = "document"
 CONTENT_KIND_IMAGE = "image"
 SOURCE_KIND_UPLOAD = "upload"
+SOURCE_KIND_OCR_DERIVED = "ocr_derived"
 
 REASON_WORKSPACE_FILE_DELETED = "workspace_file_deleted"
 REASON_WORKSPACE_FILE_DISK_MISSING = "workspace_file_disk_missing"

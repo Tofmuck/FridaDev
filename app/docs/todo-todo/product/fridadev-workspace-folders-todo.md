@@ -412,19 +412,21 @@ Note Lot 3 livré le 2026-05-20: sélection persistante `workspace_file_selectio
 
 ### Lot 4 - OCR images/PDF et fichiers Markdown dérivés
 
-- [ ] Définir action OCR manuelle ou semi-manuelle.
-- [ ] Couvrir les images en plus des PDF.
-- [ ] Garder l'OCR image hors automatique global.
-- [ ] Produire un fichier `.ocr.md` dérivé.
-- [ ] Stocker le lien de provenance vers le fichier source.
-- [ ] Afficher le fichier Markdown dérivé à côté de la source.
-- [ ] Rendre le `.ocr.md` sélectionnable comme fichier texte.
-- [ ] Ouvrir le `.ocr.md` par double-clic dans une petite fenêtre ou un panneau.
-- [ ] Permettre l'édition du texte OCR.
-- [ ] Ajouter bouton enregistrer.
-- [ ] Sauvegarder le Markdown et la référence DB.
-- [ ] Signaler que l'OCR est imparfait, surtout manuscrit.
-- [ ] Tester source image + dérivé Markdown + sélection explicite.
+- [x] Définir action OCR manuelle ou semi-manuelle.
+- [x] Couvrir les images en plus des PDF.
+- [x] Garder l'OCR image hors automatique global.
+- [x] Produire un fichier `.ocr.md` dérivé.
+- [x] Stocker le lien de provenance vers le fichier source.
+- [x] Afficher le fichier Markdown dérivé à côté de la source.
+- [x] Rendre le `.ocr.md` sélectionnable comme fichier texte.
+- [x] Ouvrir le `.ocr.md` par action explicite dans une petite fenêtre ou un panneau.
+- [x] Permettre l'édition du texte OCR.
+- [x] Ajouter bouton enregistrer.
+- [x] Sauvegarder le Markdown et la référence DB.
+- [x] Signaler que l'OCR est imparfait, surtout manuscrit.
+- [x] Tester source image + dérivé Markdown + sélection explicite.
+
+Note Lot 4 livré le 2026-05-20: OCR manuel workspace livré pour images PNG/JPEG/WEBP et PDF compatibles en réutilisant le client OCR existant (`active_document_ocr_client`). Les images sont converties en PDF par Stirling puis passent dans le même chemin OCR PDF; les PDF OCR-required suivent directement l'OCR PDF existant. Le résultat crée ou met à jour un vrai `workspace_file` Markdown `.ocr.md` avec `source_kind=ocr_derived` et `source_file_id`, visible dans le répertoire, éditable via panneau UI et sauvegardé sur disque + DB. Le dérivé n'est jamais injecté automatiquement: il devient lisible seulement s'il est coché dans la conversation, via le chemin texte Lot 3. Les logs restent content-free et ne contiennent pas de texte OCR brut. Lot 5/polish et Lot 6/preuves finales restent fermés.
 
 ### Lot 5 - UI sidebar/polish
 
