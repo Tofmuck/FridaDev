@@ -21,6 +21,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
+- Roadmap active atelier documentaire / répertoires de travail: `todo-todo/product/fridadev-workspace-folders-todo.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
@@ -93,6 +94,7 @@ Archives utiles:
 ### Documents actifs de conversation
 
 Lire d'abord:
+- `todo-todo/product/fridadev-workspace-folders-todo.md` pour le chantier actif atelier documentaire / répertoires de travail, qui organise fichiers persistants et conversations sans les injecter automatiquement.
 - `states/specs/active-conversation-documents-contract.md`
 - `todo-done/product/fridadev-active-image-documents-todo.md` pour l'archive de lecture d'images comme pieces actives de conversation.
 - `todo-done/product/active-conversation-documents-audit-plan.md`
