@@ -237,6 +237,40 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertEqual(events[0]['stage'], 'active_documents')
         self.assertEqual(events[0]['status'], 'error')
 
+    def test_prompt_read_error_with_injected_document_is_reported_as_partial(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='doc-injected',
+                    filename='note.txt',
+                    media_type='text/plain',
+                    source_extension='.txt',
+                    byte_size=42,
+                    text_chars=31,
+                    token_estimate=8,
+                    text_sha256_12='hashtext1234',
+                    injected=True,
+                    reason_code='',
+                    text_content='RAW DOCUMENT TEXT MUST NOT LEAK',
+                ),
+            ),
+            read_status='error',
+            read_reason_code='workspace_files_read_error',
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(payload['status'], 'partial')
+        self.assertEqual(payload['read_status'], 'error')
+        self.assertEqual(payload['read_reason_code'], 'workspace_files_read_error')
+        self.assertEqual(payload['active_count'], 1)
+        self.assertEqual(payload['injected_count'], 1)
+        self.assertEqual(payload['not_injected_count'], 0)
+        self.assertEqual(payload['reason_code_counts'], {'workspace_files_read_error': 1})
+        self.assertNotIn('RAW DOCUMENT TEXT MUST NOT LEAK', encoded)
+        self.assertNotIn('text_content', encoded)
+
     def test_admin_activation_and_remove_events_are_content_free(self) -> None:
         events: list[tuple[str, dict[str, object]]] = []
         admin_logs = SimpleNamespace(

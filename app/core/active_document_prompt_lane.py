@@ -111,8 +111,9 @@ def build_active_document_prompt_lane(
     read_reason_code: str = "",
 ) -> ActiveDocumentPromptLane:
     documents = _stable_documents(active_documents)
+    normalized_status = _read_status(read_status, documents)
+    normalized_reason = read_reason_code or (REASON_READ_ERROR if normalized_status == READ_STATUS_ERROR else "")
     if not documents:
-        normalized_status = _read_status(read_status, documents)
         if normalized_status == READ_STATUS_ERROR:
             return ActiveDocumentPromptLane(
                 contract_message=_contract_message_from_decisions(
@@ -206,8 +207,8 @@ def build_active_document_prompt_lane(
         candidate_lane_messages = _messages_from_decisions(
             [*injected, candidate_decision],
             not_injected,
-            read_status=READ_STATUS_OK,
-            read_reason_code="",
+            read_status=normalized_status,
+            read_reason_code=normalized_reason,
         )
         candidate_messages = [dict(message) for message in base_messages]
         candidate_messages.extend(candidate_lane_messages)
@@ -233,15 +234,15 @@ def build_active_document_prompt_lane(
     messages = _messages_from_decisions(
         injected,
         not_injected,
-        read_status=READ_STATUS_OK,
-        read_reason_code="",
+        read_status=normalized_status,
+        read_reason_code=normalized_reason,
     )
     return ActiveDocumentPromptLane(
         contract_message=messages[0] if messages else None,
         content_message=messages[1] if len(messages) > 1 else None,
         decisions=tuple([*injected, *not_injected]),
-        read_status=READ_STATUS_OK,
-        read_reason_code="",
+        read_status=normalized_status,
+        read_reason_code=normalized_reason,
     )
 
 
@@ -400,21 +401,6 @@ def _contract_message_from_decisions(
         "- Un document ou fichier liste comme non injecte est connu mais son contenu n'a pas ete envoye dans ce tour; ne pretends jamais l'avoir lu.",
     ]
 
-    if _read_status(read_status, ()) == READ_STATUS_ERROR:
-        lines.extend(
-            [
-                NOT_INJECTED_HEADER,
-                (
-                    "- active_documents_read_error: les documents actifs n'ont pas pu etre lus pour ce tour; "
-                    f"reason_code={read_reason_code or REASON_READ_ERROR}; "
-                    "ne pretends pas t'appuyer sur un document actif dans ce tour."
-                ),
-                NOT_INJECTED_FOOTER,
-            ]
-        )
-        lines.append(LANE_FOOTER)
-        return {"role": "system", "content": "\n".join(lines)}
-
     if injected:
         lines.append(f"- Documents actifs injectes dans un message utilisateur separe: {len(injected)}.")
     if any(decision.media_kind == MEDIA_KIND_IMAGE and decision.injected for decision in injected):
@@ -425,10 +411,21 @@ def _contract_message_from_decisions(
             ]
         )
 
-    if not_injected:
+    not_injected_lines: list[str] = []
+    if _read_status(read_status, ()) == READ_STATUS_ERROR:
+        not_injected_lines.append(
+            (
+                "- document_lane_read_error: une partie des documents selectionnes n'a pas pu etre lue "
+                f"pour ce tour; reason_code={read_reason_code or REASON_READ_ERROR}; "
+                "ne pretends pas t'appuyer sur un document actif ou fichier selectionne qui n'a pas ete injecte."
+            )
+        )
+    for index, decision in enumerate(not_injected, start=1):
+        not_injected_lines.append(_not_injected_document_line(decision, index=index))
+
+    if not_injected_lines:
         lines.append(NOT_INJECTED_HEADER)
-        for index, decision in enumerate(not_injected, start=1):
-            lines.append(_not_injected_document_line(decision, index=index))
+        lines.extend(not_injected_lines)
         lines.append(NOT_INJECTED_FOOTER)
 
     lines.append(LANE_FOOTER)

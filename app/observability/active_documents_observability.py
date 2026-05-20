@@ -146,12 +146,15 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
         if reason == 'document_empty_text':
             empty_count += 1
 
+    if read_status == 'error':
+        reason = read_reason_code or 'active_documents_read_error'
+        reason_counts[reason] = int(reason_counts.get(reason, 0)) + 1
+
     status = 'not_applicable'
     if documents:
-        status = 'partial' if not_injected_count else 'ok'
+        status = 'partial' if not_injected_count or read_status == 'error' else 'ok'
     elif read_status == 'error':
         status = 'error'
-        reason_counts[read_reason_code or 'active_documents_read_error'] = 1
     source_kinds = {
         _text(doc.get('source'), max_chars=120) or 'active_conversation_documents'
         for doc in documents

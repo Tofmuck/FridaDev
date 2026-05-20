@@ -249,6 +249,34 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertIn("ne pretends pas t'appuyer sur un document actif", prompt_text)
         self.assertIn("Travaille sur le document.", prompt_text)
 
+    def test_read_error_with_injected_documents_keeps_partial_error_signal(self):
+        raw_text = "Document actif lisible malgre une erreur workspace."
+        prompt_messages = [
+            {"role": "system", "content": "SYSTEM"},
+            {"role": "user", "content": "Travaille sur les fichiers selectionnes."},
+        ]
+
+        lane = prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [_doc("doc-1", "note.txt", raw_text)],
+            model="model",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=5000,
+            read_status="error",
+            read_reason_code="workspace_files_read_error",
+        )
+
+        self.assertEqual(lane.read_status, "error")
+        self.assertEqual(lane.read_reason_code, "workspace_files_read_error")
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(len(lane.messages), 2)
+        prompt_text = "\n".join(str(message.get("content") or "") for message in prompt_messages)
+        self.assertIn(raw_text, prompt_text)
+        self.assertIn("workspace_files_read_error", prompt_text)
+        self.assertIn("document_lane_read_error", prompt_text)
+        self.assertIn("ne pretends pas t'appuyer sur un document actif ou fichier selectionne", prompt_text)
+
     def test_empty_read_state_stays_distinct_from_error_without_prompt_noise(self):
         lane = prompt_lane.build_active_document_prompt_lane(
             [],

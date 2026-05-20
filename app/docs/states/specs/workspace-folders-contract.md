@@ -217,6 +217,7 @@ Implementation Lot 3 livree:
 - lecture des bytes depuis le stockage interne uniquement pendant la preparation du tour;
 - injection texte entiere ou exclusion entiere;
 - injection image multimodale `text` puis `image_url`;
+- si la lecture des fichiers selectionnes echoue alors que d'autres documents actifs restent injectables, la lane conserve les injections possibles mais signale explicitement `read_status=error` et le `reason_code` content-free;
 - aucune copie de contenu extrait dans `conversation_messages`, memoire, identity, summary, Biblio ou RAG;
 - observabilite content-free pour selection, decochage, injection, exclusion et stale/missing/deleted/disk_missing;
 - Lot 4 OCR `.ocr.md` reste ferme: un fichier `ocr_required` est exclu avec `workspace_file_ocr_required`.
