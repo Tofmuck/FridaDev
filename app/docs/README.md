@@ -22,6 +22,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Boussole produit finale des cinq derniers gros chantiers FridaDev: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Roadmap active atelier documentaire / répertoires de travail: `todo-todo/product/fridadev-workspace-folders-todo.md`
+- Contrat source-of-truth atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
@@ -40,6 +41,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat de surface `Memory Admin`: `states/specs/memory-admin-surface-contract.md`
 - Protocole streaming public: `states/specs/streaming-protocol.md`
 - Contrat des documents actifs de conversation: `states/specs/active-conversation-documents-contract.md`
+- Contrat atelier documentaire / répertoires de travail: `states/specs/workspace-folders-contract.md`
 - Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
@@ -94,6 +96,7 @@ Archives utiles:
 ### Documents actifs de conversation
 
 Lire d'abord:
+- `states/specs/workspace-folders-contract.md` pour le contrat source-of-truth de l'atelier documentaire / répertoires de travail, fichiers persistants, sélection conversation-scoped et non-contamination.
 - `todo-todo/product/fridadev-workspace-folders-todo.md` pour le chantier actif atelier documentaire / répertoires de travail, qui organise fichiers persistants et conversations sans les injecter automatiquement.
 - `states/specs/active-conversation-documents-contract.md`
 - `todo-done/product/fridadev-active-image-documents-todo.md` pour l'archive de lecture d'images comme pieces actives de conversation.

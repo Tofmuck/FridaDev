@@ -4,7 +4,9 @@ Statut: ouvert
 Date de creation: 2026-05-20
 Classement: `app/docs/todo-todo/product/`
 Boussole produit source: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
+Spec source-of-truth Lot 0: `app/docs/states/specs/workspace-folders-contract.md`
 Specs et archives sources:
+- `app/docs/states/specs/workspace-folders-contract.md`
 - `app/docs/states/specs/active-conversation-documents-contract.md`
 - `app/docs/todo-done/product/active-conversation-documents-todo.md`
 - `app/docs/todo-done/product/active-conversation-documents-ocr-todo.md`
@@ -345,19 +347,21 @@ Le chantier doit réaffirmer:
 
 ### Lot 0 - Audit/spec
 
-- [ ] Relire `app/core/active_conversation_documents.py`.
-- [ ] Relire `app/core/active_document_upload_service.py`.
-- [ ] Relire `app/core/active_document_prompt_lane.py`.
-- [ ] Relire `app/core/active_document_text_extraction.py`.
-- [ ] Relire `app/core/active_document_image_validation.py`.
-- [ ] Relire `app/core/active_document_ocr_client.py`.
-- [ ] Relire `app/core/conversations_service.py`, `app/core/conversations_store.py`, `app/core/conversations_maintenance.py`.
-- [ ] Relire `app/web/chat_threads_sidebar.js`, `app/web/chat_active_documents.js`, `app/web/app.js`, `app/web/index.html`, `app/web/styles.css`.
-- [ ] Relire `app/observability/active_documents_observability.py`.
-- [ ] Produire un contrat source-of-truth avant code.
-- [ ] Définir le modèle DB/disque.
-- [ ] Définir les reason codes.
-- [ ] Définir la stratégie de migration des conversations existantes hors répertoire.
+- [x] Relire `app/core/active_conversation_documents.py`.
+- [x] Relire `app/core/active_document_upload_service.py`.
+- [x] Relire `app/core/active_document_prompt_lane.py`.
+- [x] Relire `app/core/active_document_text_extraction.py`.
+- [x] Relire `app/core/active_document_image_validation.py`.
+- [x] Relire `app/core/active_document_ocr_client.py`.
+- [x] Relire `app/core/conversations_service.py`, `app/core/conversations_store.py`, `app/core/conversations_maintenance.py`.
+- [x] Relire `app/web/chat_threads_sidebar.js`, `app/web/chat_active_documents.js`, `app/web/app.js`, `app/web/index.html`, `app/web/styles.css`.
+- [x] Relire `app/observability/active_documents_observability.py`.
+- [x] Produire un contrat source-of-truth avant code: `app/docs/states/specs/workspace-folders-contract.md`.
+- [x] Définir le modèle DB/disque.
+- [x] Définir les reason codes.
+- [x] Définir la stratégie de migration des conversations existantes hors répertoire.
+
+Note Lot 0 livré le 2026-05-20: la spec `app/docs/states/specs/workspace-folders-contract.md` est créée comme source de vérité du chantier. Aucune implémentation runtime, DB, frontend, prompt ou provider n'a été faite.
 
 ### Lot 1 - Modèle répertoires + conversations
 
