@@ -262,7 +262,7 @@ Le derive OCR peut suivre ensuite le chemin des documents textuels actifs, mais 
 Implementation Lot 4 livree:
 
 - action OCR explicite sur fichier workspace compatible image PNG/JPEG/WEBP ou PDF;
-- reutilisation du client OCR existant: PDF OCR via Stirling et image -> PDF via Stirling avant OCR PDF;
+- reutilisation du client OCR existant: PDF OCR via Stirling et image -> PDF via Stirling (`ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL`, defaut `http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf`) avant OCR PDF;
 - creation ou mise a jour d'un vrai `workspace_file` derive en Markdown `.ocr.md`;
 - `source_kind=ocr_derived` et `source_file_id` vers le fichier source;
 - listing du derive dans le repertoire et selection possible par le chemin texte Lot 3, sans injection automatique;

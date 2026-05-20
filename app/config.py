@@ -189,6 +189,10 @@ ACTIVE_DOCUMENT_OCR_URL = os.environ.get(
     'ACTIVE_DOCUMENT_OCR_URL',
     'http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf',
 ).strip()
+ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL = os.environ.get(
+    'ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL',
+    'http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf',
+).strip()
 ACTIVE_DOCUMENT_OCR_TIMEOUT_S = _env_int('ACTIVE_DOCUMENT_OCR_TIMEOUT_S', 180)
 ACTIVE_DOCUMENT_OCR_LANGUAGES = os.environ.get('ACTIVE_DOCUMENT_OCR_LANGUAGES', 'fra+eng+deu').strip() or 'fra+eng+deu'
 ACTIVE_DOCUMENT_OCR_MAX_PAGES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_PAGES', 25)

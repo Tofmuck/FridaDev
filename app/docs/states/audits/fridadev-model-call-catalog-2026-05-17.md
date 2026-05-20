@@ -453,6 +453,7 @@ Constantes runtime `config.py` relevees dans le conteneur:
 - `WHISPER_API_TIMEOUT_S=120`;
 - `WHISPER_API_KEY` present;
 - `ACTIVE_DOCUMENT_OCR_URL='http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf'`;
+- `ACTIVE_DOCUMENT_IMAGE_TO_PDF_URL='http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf'`;
 - `ACTIVE_DOCUMENT_OCR_TIMEOUT_S=180`;
 - `ACTIVE_DOCUMENT_OCR_LANGUAGES='fra+eng+deu'`;
 - `ACTIVE_DOCUMENT_OCR_MAX_PAGES=25`;

@@ -13,8 +13,9 @@ class ActiveDocumentOcrClientTest(unittest.TestCase):
         config = ocr.get_active_document_ocr_config(SimpleNamespace())
 
         self.assertEqual(config.url, "http://platform-stirling-pdf:8080/pdf/api/v1/misc/ocr-pdf")
-        self.assertEqual(config.image_to_pdf_url, "http://platform-stirling-pdf:8080/api/v1/convert/img/pdf")
+        self.assertEqual(config.image_to_pdf_url, "http://platform-stirling-pdf:8080/pdf/api/v1/convert/img/pdf")
         self.assertIn("/pdf/api/v1/misc/ocr-pdf", config.url)
+        self.assertIn("/pdf/api/v1/convert/img/pdf", config.image_to_pdf_url)
         self.assertEqual(config.timeout_s, 180)
         self.assertEqual(config.languages, "fra+eng+deu")
         self.assertEqual(config.max_pages, 25)
