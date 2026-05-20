@@ -177,6 +177,10 @@ Les fichiers doivent exister:
 
 Contrat DB/disque à définir:
 
+- chaque répertoire de travail doit correspondre à un espace physique dédié côté serveur, ou à un préfixe disque stable réservé à ce répertoire;
+- ne pas utiliser les noms humains des répertoires ou fichiers comme chemins fiables;
+- utiliser un identifiant stable côté serveur pour construire l'espace disque ou le préfixe interne;
+- la DB garde le lien entre nom logique, répertoire, fichiers, identifiant stable et chemin interne;
 - chemin physique interne non exposé directement à l'UI;
 - nom logique affiché à l'utilisateur;
 - hash;
@@ -187,6 +191,8 @@ Contrat DB/disque à définir:
 - lien au répertoire;
 - état supprimé ou suppression réelle selon politique retenue;
 - stratégie d'incohérence DB/disque.
+
+Les chemins restent internes. L'UI ne doit jamais exposer le chemin physique ni l'identifiant disque complet: elle affiche seulement les noms logiques, états et métadonnées utiles.
 
 Types attendus:
 
@@ -222,7 +228,10 @@ Exigences:
 
 - sélection multi-fichiers;
 - fichiers non sélectionnés invisibles pour le modèle;
-- sélection probablement persistante jusqu'à décochage, comme les documents actifs actuels, à confirmer par audit d'implémentation;
+- un fichier du répertoire n'est jamais injecté par défaut;
+- une fois coché dans une conversation, il reste actif pour cette conversation jusqu'à décochage explicite, comme les documents actifs actuels;
+- la sélection est conversation-scoped, pas globale au répertoire;
+- une autre conversation du même répertoire ne reçoit pas automatiquement cette sélection;
 - intégration avec la lane `active_document`;
 - injection entière ou exclusion entière;
 - jamais de troncature silencieuse;
@@ -279,11 +288,23 @@ Lien avec l'existant:
 
 Suppression fichier:
 
-- supprimer ou marquer supprimée la ligne DB selon politique retenue;
-- supprimer le fichier physique serveur;
+- suppression utilisateur = le fichier n'est plus accessible, plus sélectionnable, plus injectable, et les bytes physiques sont supprimés;
+- supprimer les bytes physiques du serveur;
+- faire disparaître le fichier des listings actifs;
+- supprimer toute sélection active liée;
 - empêcher toute sélection ou injection future;
+- rendre le fichier non injectable après suppression, même si une ancienne référence existe encore;
+- conserver éventuellement une tombstone DB content-free si c'est utile pour audit ou cohérence;
+- ne jamais conserver une entrée active ambiguë;
+- ne jamais stocker dans la tombstone de contenu brut, base64 ou chemin exposé à l'UI;
 - gérer les erreurs DB/disque proprement;
 - journaliser en logs content-free.
+
+Test attendu plus tard:
+
+```text
+suppression fichier -> non listé, non sélectionnable, non injectable, bytes absents
+```
 
 Suppression répertoire:
 
