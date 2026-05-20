@@ -259,6 +259,19 @@ class _FakeConvStore:
         item["workspace_folder_id"] = folder_id
         return item
 
+    def list_conversations(self, *, limit=100, offset=0, include_deleted=False):
+        items = [
+            dict(item)
+            for item in self.conversations.values()
+            if include_deleted or not item.get("deleted_at")
+        ]
+        return {
+            "items": items[offset:offset + limit],
+            "total": len(items),
+            "limit": limit,
+            "offset": offset,
+        }
+
 
 class _FakeWorkspaceFileSelections:
     def __init__(self, conv_store, files_store):
@@ -385,6 +398,20 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(deleted_payload["folder"]["file_delete"]["requested"], 0)
         self.assertEqual(deleted_payload["folder"]["file_delete"]["failed"], 0)
         self.assertEqual(self.fake_workspace_files.deleted_folder_ids, [FOLDER_ID])
+
+    def test_conversation_list_keeps_existing_conversations_outside_workspace_by_default(self) -> None:
+        response = self.client.get("/api/conversations")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(
+            {item["id"]: item["workspace_folder_id"] for item in payload["items"]},
+            {
+                CONV_ID: None,
+                OTHER_CONV_ID: None,
+            },
+        )
 
     def test_conversation_patch_attaches_and_detaches_nullable_workspace_folder(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")

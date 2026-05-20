@@ -591,6 +591,18 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn(storage_key, encoded)
         self.assertNotIn(str(root), encoded)
 
+    def test_workspace_file_selection_prompt_returns_empty_without_explicit_selection(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        with tempfile.TemporaryDirectory() as tmp:
+            documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
+                conversation_id,
+                db_conn_func=lambda: _SelectionPromptConn([]),
+                storage_root=Path(tmp),
+                logger=_CaptureLogger(),
+            )
+
+        self.assertEqual(documents, [])
+
     def test_workspace_file_selection_prompt_reads_image_bytes_without_data_url(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"

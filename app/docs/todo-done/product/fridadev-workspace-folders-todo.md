@@ -1,8 +1,9 @@
 # FridaDev - atelier documentaire / répertoires de travail - TODO
 
-Statut: ouvert
+Statut: clos
 Date de creation: 2026-05-20
-Classement: `app/docs/todo-todo/product/`
+Date de cloture: 2026-05-20
+Classement: `app/docs/todo-done/product/`
 Boussole produit source: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
 Spec source-of-truth Lot 0: `app/docs/states/specs/workspace-folders-contract.md`
 Specs et archives sources:
@@ -445,21 +446,59 @@ Note Lot 5 livré le 2026-05-20: polish sidebar livré sans nouveau backend docu
 
 ### Lot 6 - Tests et preuves finales
 
-- [ ] Tests unitaires modèle DB répertoires.
-- [ ] Tests serveur routes répertoires.
-- [ ] Tests serveur routes fichiers.
-- [ ] Tests sélection/injection active documents.
-- [ ] Tests non-contamination.
-- [ ] Tests suppression DB/disque.
-- [ ] Tests incohérences DB/disque.
-- [ ] Tests OCR PDF.
-- [ ] Tests OCR image.
-- [ ] Tests UI sidebar.
-- [ ] Tests navigateur drag-and-drop si disponible.
-- [ ] Preuve migration conversations existantes hors répertoire.
-- [ ] Preuve absence base64 dans logs/read-models/historique.
+- [x] Tests unitaires modèle DB répertoires.
+- [x] Tests serveur routes répertoires.
+- [x] Tests serveur routes fichiers.
+- [x] Tests sélection/injection active documents.
+- [x] Tests non-contamination.
+- [x] Tests suppression DB/disque.
+- [x] Tests incohérences DB/disque.
+- [x] Tests OCR PDF.
+- [x] Tests OCR image.
+- [x] Tests UI sidebar.
+- [x] Tests navigateur drag-and-drop si disponible.
+- [x] Preuve migration conversations existantes hors répertoire.
+- [x] Preuve absence base64 dans logs/read-models/historique.
 
-## 13. Hors scope strict
+Note Lot 6 livré le 2026-05-20: preuves finales passées sur les suites Python conteneur, tests frontend Node, navigateur Playwright, grep sécurité et `git diff --check`. Deux preuves explicites ont été ajoutées avant clôture: les conversations existantes restent hors répertoire par défaut, et aucun fichier workspace durable ne produit d'item prompt-time sans sélection explicite. Les tests couvrent DB/migrations, routes répertoires/fichiers/sélections/OCR Markdown, suppression DB + disque, échec partiel de suppression répertoire, incohérence `disk_missing`, injection texte/image via lane active document, signal d'erreur partielle content-free, OCR PDF, OCR image via image -> PDF -> OCR PDF, édition/sauvegarde `.ocr.md`, non-contamination Memory/RAG/Identity/Summary/Biblio/historique, UI sidebar, upload workspace distinct de l'upload active document, sélection par checkbox, OCR UI, fallback select et glisser-déposer entrée/sortie de répertoire. Les hits du grep sécurité restants sont des fixtures/tests/docs contrôlés; aucune fuite UI/runtime nouvelle de `storage_key`, chemin disque, base64, secret ou contenu brut n'a été ajoutée.
+
+## 13. Cloture
+
+Le chantier atelier documentaire / répertoires de travail est clos en V0.
+
+Livré:
+
+- répertoires de travail en sidebar, au-dessus des conversations hors répertoire;
+- conversations attachables à zéro ou un répertoire, avec sortie hors répertoire;
+- conversations existantes conservées hors répertoire par défaut;
+- création, renommage, suppression, ordre manuel, icônes allowlistées et description UI-only;
+- fichiers persistants de répertoire stockés en DB + disque sous préfixe stable, jamais sous nom humain fiable;
+- upload workspace file distinct de l'upload active document de conversation;
+- listing/suppression fichier content-free, avec suppression physique des bytes et tombstone DB;
+- suppression répertoire avec suppression des fichiers actifs ou erreur 409 si échec partiel;
+- sélection de fichiers conversation-scoped, persistante jusqu'à décochage, jamais globale au répertoire;
+- injection uniquement sur sélection explicite via la lane `active_document`, entière ou exclue entière avec reason code;
+- images workspace sélectionnées injectées en multimodal `text` puis `image_url`;
+- OCR manuel workspace pour PDF et images PNG/JPEG/WEBP, produisant un `.ocr.md` durable;
+- édition/sauvegarde du Markdown OCR dérivé;
+- observabilité content-free;
+- UI sidebar polish, états vides/erreurs, fallback select et glisser-déposer;
+- preuves finales automatisées Lot 6.
+
+Non livré volontairement:
+
+- mémoire par répertoire;
+- RAG documentaire par répertoire;
+- Biblio native;
+- prompt ou personnalité de répertoire;
+- injection automatique des fichiers d'un répertoire;
+- OCR automatique global;
+- upload d'icône custom;
+- nommage automatique LLM des conversations.
+
+La spec vivante reste `app/docs/states/specs/workspace-folders-contract.md`. Les évolutions futures devront repartir de cette spec et ouvrir un nouveau TODO explicite, au lieu de regonfler silencieusement ce chantier clos.
+
+## 14. Hors scope strict
 
 Ne pas faire dans ce chantier initial:
 
@@ -480,7 +519,7 @@ Ne pas faire dans ce chantier initial:
 - upload de logo custom en V0;
 - prompt de répertoire.
 
-## 14. Risques à surveiller
+## 15. Risques à surveiller
 
 - Complexité DB/disque: une suppression partielle ou une incohérence peut laisser des fichiers orphelins ou des lignes DB fantômes.
 - Biblio déguisée: un répertoire de travail ne doit pas devenir un catalogue durable consulté automatiquement.

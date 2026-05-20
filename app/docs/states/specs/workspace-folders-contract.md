@@ -3,7 +3,7 @@
 Statut: spec vivante
 Date: 2026-05-20
 Classement: `app/docs/states/specs/`
-Roadmap active: `app/docs/todo-todo/product/fridadev-workspace-folders-todo.md`
+Roadmap archivee: `app/docs/todo-done/product/fridadev-workspace-folders-todo.md`
 Portee: atelier documentaire / repertoires de travail, conversations, fichiers persistants, ressources OCR derivees, selection explicite et injection via documents actifs.
 
 ## 1. Verdict
