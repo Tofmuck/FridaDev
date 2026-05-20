@@ -75,18 +75,26 @@ Un tour observe autour de `42641` tokens d'entree et `330` tokens de sortie cout
 
 ### 4. Bascule runtime settings
 
-- [ ] Verifier le snapshot non secret de `main_model`.
-- [ ] Modifier uniquement `main_model.model` vers `openai/gpt-5.1`.
-- [ ] Verifier que `base_url`, `api_key` present, `temperature`, `top_p`, `response_max_tokens`, `referer_llm` et `title_llm` restent inchanges.
-- [ ] Verifier que les petits agents ne changent pas.
+- [x] Verifier le snapshot non secret de `main_model`.
+- [x] Modifier uniquement `main_model.model` vers `openai/gpt-5.1`.
+- [x] Verifier que `base_url`, `api_key` present, `temperature`, `top_p`, `response_max_tokens`, `referer_llm` et `title_llm` restent inchanges.
+- [x] Verifier que les petits agents ne changent pas.
 
 ### 5. Smoke live
 
-- [ ] Rebuild/restart uniquement `fridadev`.
-- [ ] Verifier `/admin` via Authelia.
-- [ ] Verifier que `main_model.model` live vaut `openai/gpt-5.1`.
-- [ ] Verifier que l'allowlist images actives contient `openai/gpt-5.1`.
-- [ ] Verifier qu'aucun secret n'est affiche.
+- [x] Rebuild/restart uniquement `fridadev`.
+- [x] Verifier `/admin` via Authelia.
+- [x] Verifier que `main_model.model` live vaut `openai/gpt-5.1`.
+- [x] Verifier que l'allowlist images actives contient `openai/gpt-5.1`.
+- [x] Verifier qu'aucun secret n'est affiche.
+
+Execution OVH du 2026-05-20:
+
+- `main_model.model` live: `openai/gpt-5.1`;
+- `base_url`, `api_key` present, `temperature=0.7`, `top_p=1.0`, `response_max_tokens=8192`, `referer_llm` et `title_llm` conserves;
+- petits agents inchanges;
+- `/admin` repond `302` vers Authelia;
+- conteneur `platform-fridadev` healthy apres rebuild.
 
 ## Valeur runtime cible
 
