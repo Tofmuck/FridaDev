@@ -79,10 +79,34 @@ def init_catalog_db(
                 )
                 cur.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS workspace_file_selections (
+                        conversation_id           UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                        workspace_file_id         UUID        NOT NULL REFERENCES workspace_files(id) ON DELETE CASCADE,
+                        selected_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        deleted_at                TIMESTAMPTZ,
+                        last_injected_turn_id     TEXT        NOT NULL DEFAULT '',
+                        last_excluded_turn_id     TEXT        NOT NULL DEFAULT '',
+                        last_excluded_reason_code TEXT        NOT NULL DEFAULT '',
+                        PRIMARY KEY (conversation_id, workspace_file_id)
+                    );
+                    """
+                )
+                cur.execute(
+                    """
                     ALTER TABLE conversations
                     ADD COLUMN IF NOT EXISTS workspace_folder_id UUID;
                     """
                 )
+                for column_sql in (
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS selected_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_injected_turn_id TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_excluded_turn_id TEXT NOT NULL DEFAULT '';",
+                    "ALTER TABLE workspace_file_selections ADD COLUMN IF NOT EXISTS last_excluded_reason_code TEXT NOT NULL DEFAULT '';",
+                ):
+                    cur.execute(column_sql)
                 for column_sql in (
                     "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS original_filename TEXT NOT NULL DEFAULT '';",
                     "ALTER TABLE workspace_files ADD COLUMN IF NOT EXISTS storage_key TEXT NOT NULL DEFAULT '';",
@@ -152,6 +176,18 @@ def init_catalog_db(
                     """
                     CREATE INDEX IF NOT EXISTS workspace_files_source_file_idx
                     ON workspace_files (source_file_id);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_file_selections_conversation_active_idx
+                    ON workspace_file_selections (conversation_id, deleted_at, selected_at DESC);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_file_selections_file_active_idx
+                    ON workspace_file_selections (workspace_file_id, deleted_at);
                     """
                 )
                 cur.execute(

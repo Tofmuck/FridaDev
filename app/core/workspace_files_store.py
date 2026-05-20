@@ -484,6 +484,17 @@ def delete_workspace_file(
                     (STATUS_DELETED, REASON_WORKSPACE_FILE_DELETED, normalized_file, normalized_folder),
                 )
                 updated = cur.fetchone()
+                cur.execute(
+                    """
+                    UPDATE workspace_file_selections
+                    SET deleted_at = COALESCE(deleted_at, now()),
+                        updated_at = now(),
+                        last_excluded_reason_code = %s
+                    WHERE workspace_file_id = %s::uuid
+                      AND deleted_at IS NULL
+                    """,
+                    (REASON_WORKSPACE_FILE_DELETED, normalized_file),
+                )
             conn.commit()
         deleted = serialize_workspace_file_row(updated, storage_root=storage_root, include_disk_status=False)
         if deleted is not None:

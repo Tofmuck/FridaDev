@@ -7,8 +7,13 @@ from typing import Any, Mapping
 
 _LOG_FIELD_MAX_CHARS = 180
 _CONTENT_FREE_LOG_FIELDS = {
+    "conversation_id",
     "folder_id",
     "file_id",
+    "selection_count",
+    "selection_status",
+    "selected",
+    "injected",
     "media_kind",
     "content_kind",
     "mime_type",

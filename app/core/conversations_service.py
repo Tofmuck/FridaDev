@@ -104,6 +104,7 @@ def patch_conversation(
     *,
     conv_store_module: Any,
     workspace_folders_module: Any | None = None,
+    workspace_file_selections_module: Any | None = None,
 ) -> Tuple[Dict[str, Any], int]:
     conv_id = conv_store_module.normalize_conversation_id(conversation_id)
     if not conv_id:
@@ -137,6 +138,9 @@ def patch_conversation(
         summary = conv_store_module.set_conversation_workspace_folder(conv_id, folder_id)
         if summary is None:
             return {'ok': False, 'error': 'conversation introuvable'}, 404
+        clear_stale = getattr(workspace_file_selections_module, 'clear_stale_selections_for_conversation', None)
+        if callable(clear_stale):
+            clear_stale(conv_id, workspace_folder_id=summary.get('workspace_folder_id'))
 
     return {'ok': True, 'conversation': summary}, 200
 

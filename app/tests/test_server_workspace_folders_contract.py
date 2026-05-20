@@ -15,7 +15,10 @@ from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
 FOLDER_ID = "11111111-2222-4333-8444-555555555555"
+OTHER_FOLDER_ID = "22222222-2222-4222-8222-222222222222"
 CONV_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+OTHER_CONV_ID = "bbbbbbbb-bbbb-4ccc-8ddd-ffffffffffff"
+FILE_ID = "99999999-9999-4999-8999-999999999999"
 
 
 class _FakeWorkspaceFolders:
@@ -173,6 +176,16 @@ class _FakeConvStore:
                 "last_message_preview": "",
                 "workspace_folder_id": None,
                 "deleted_at": None,
+            },
+            OTHER_CONV_ID: {
+                "id": OTHER_CONV_ID,
+                "title": "Autre conversation",
+                "created_at": "2026-05-20T00:00:00Z",
+                "updated_at": "2026-05-20T00:00:00Z",
+                "message_count": 0,
+                "last_message_preview": "",
+                "workspace_folder_id": None,
+                "deleted_at": None,
             }
         }
 
@@ -189,12 +202,86 @@ class _FakeConvStore:
         item["title"] = title
         return item
 
+    def get_conversation_summary(self, conversation_id, include_deleted=False):
+        item = self.conversations.get(conversation_id)
+        if item is None:
+            return None
+        if item.get("deleted_at") and not include_deleted:
+            return None
+        return dict(item)
+
     def set_conversation_workspace_folder(self, conversation_id, folder_id):
         item = self.conversations.get(conversation_id)
         if item is None:
             return None
         item["workspace_folder_id"] = folder_id
         return item
+
+
+class _FakeWorkspaceFileSelections:
+    def __init__(self, conv_store, files_store):
+        self.conv_store = conv_store
+        self.files_store = files_store
+        self.selections = {}
+        self.prompt_reads = []
+        self.injected = []
+        self.excluded = []
+        self.cleared = []
+
+    def list_workspace_file_selections(self, conversation_id):
+        return [dict(item) for item in self.selections.get(conversation_id, {}).values()]
+
+    def select_workspace_file(self, conversation_id, file_id):
+        conversation = self.conv_store.conversations.get(conversation_id)
+        if not conversation or not conversation.get("workspace_folder_id"):
+            return {"ok": False, "reason_code": "workspace_selection_stale"}
+        folder_id = conversation["workspace_folder_id"]
+        file_item = next((item for item in self.files_store.files.get(folder_id, []) if item["id"] == file_id), None)
+        if file_item is None:
+            return {"ok": False, "reason_code": "workspace_file_missing"}
+        if file_item.get("deleted_at"):
+            return {"ok": False, "reason_code": "workspace_file_deleted"}
+        selection = {
+            "conversation_id": conversation_id,
+            "workspace_file_id": file_id,
+            "workspace_folder_id": folder_id,
+            "selected": True,
+            "selection_status": "selected",
+            "reason_code": "",
+            "file": dict(file_item),
+        }
+        self.selections.setdefault(conversation_id, {})[file_id] = selection
+        return {"ok": True, "selection": selection}
+
+    def deselect_workspace_file(self, conversation_id, file_id):
+        return self.selections.get(conversation_id, {}).pop(file_id, None) is not None
+
+    def clear_stale_selections_for_conversation(self, conversation_id, *, workspace_folder_id):
+        self.cleared.append((conversation_id, workspace_folder_id))
+        if not workspace_folder_id:
+            count = len(self.selections.get(conversation_id, {}))
+            self.selections[conversation_id] = {}
+            return count
+        kept = {
+            file_id: item
+            for file_id, item in self.selections.get(conversation_id, {}).items()
+            if item.get("workspace_folder_id") == workspace_folder_id
+        }
+        removed = len(self.selections.get(conversation_id, {})) - len(kept)
+        self.selections[conversation_id] = kept
+        return removed
+
+    def list_selected_files_for_prompt(self, conversation_id):
+        self.prompt_reads.append(conversation_id)
+        return []
+
+    def record_selection_injected(self, conversation_id, file_id, *, turn_id):
+        self.injected.append((conversation_id, file_id, turn_id))
+        return True
+
+    def record_selection_excluded(self, conversation_id, file_id, *, turn_id, reason_code):
+        self.excluded.append((conversation_id, file_id, turn_id, reason_code))
+        return True
 
 
 class ServerWorkspaceFoldersContractTests(unittest.TestCase):
@@ -206,17 +293,24 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
         self.client = self.server.app.test_client()
         self.original_workspace_folders = self.server.workspace_folders
         self.original_workspace_files = self.server.workspace_files
+        self.original_workspace_file_selections = self.server.workspace_file_selections
         self.original_conv_store = self.server.conv_store
         self.fake_workspace = _FakeWorkspaceFolders()
         self.fake_workspace_files = _FakeWorkspaceFiles()
         self.fake_conv_store = _FakeConvStore()
+        self.fake_workspace_file_selections = _FakeWorkspaceFileSelections(
+            self.fake_conv_store,
+            self.fake_workspace_files,
+        )
         self.server.workspace_folders = self.fake_workspace
         self.server.workspace_files = self.fake_workspace_files
+        self.server.workspace_file_selections = self.fake_workspace_file_selections
         self.server.conv_store = self.fake_conv_store
 
     def tearDown(self) -> None:
         self.server.workspace_folders = self.original_workspace_folders
         self.server.workspace_files = self.original_workspace_files
+        self.server.workspace_file_selections = self.original_workspace_file_selections
         self.server.conv_store = self.original_conv_store
 
     def test_workspace_folder_crud_routes_are_content_free_and_validate_icon_key(self) -> None:
@@ -266,6 +360,67 @@ class ServerWorkspaceFoldersContractTests(unittest.TestCase):
             json={"workspace_folder_id": "22222222-2222-4222-8222-222222222222"},
         )
         self.assertEqual(missing.status_code, 404)
+        self.assertIn((CONV_ID, FOLDER_ID), self.fake_workspace_file_selections.cleared)
+        self.assertIn((CONV_ID, None), self.fake_workspace_file_selections.cleared)
+
+    def test_workspace_file_selection_is_conversation_scoped_and_content_free(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_conv_store.set_conversation_workspace_folder(CONV_ID, FOLDER_ID)
+        self.fake_conv_store.set_conversation_workspace_folder(OTHER_CONV_ID, FOLDER_ID)
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {
+                "id": FILE_ID,
+                "workspace_folder_id": FOLDER_ID,
+                "display_name": "note.txt",
+                "content_kind": "document",
+                "media_kind": "text",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "byte_size": 7,
+                "status": "active",
+                "reason_code": "",
+                "deleted_at": None,
+            }
+        ]
+
+        selected = self.client.post(
+            f"/api/conversations/{CONV_ID}/workspace-file-selections",
+            json={"file_id": FILE_ID},
+        )
+        self.assertEqual(selected.status_code, 201)
+        payload = selected.get_json()
+        self.assertEqual(payload["selection"]["workspace_file_id"], FILE_ID)
+        self.assertEqual(payload["selection"]["conversation_id"], CONV_ID)
+        self.assertNotIn("storage_key", str(payload))
+        self.assertNotIn("text_content", str(payload))
+        self.assertNotIn("binary_content", str(payload))
+
+        listed = self.client.get(f"/api/conversations/{CONV_ID}/workspace-file-selections")
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(len(listed.get_json()["items"]), 1)
+
+        other = self.client.get(f"/api/conversations/{OTHER_CONV_ID}/workspace-file-selections")
+        self.assertEqual(other.status_code, 200)
+        self.assertEqual(other.get_json()["items"], [])
+
+        removed = self.client.delete(f"/api/conversations/{CONV_ID}/workspace-file-selections/{FILE_ID}")
+        self.assertEqual(removed.status_code, 200)
+        listed_after = self.client.get(f"/api/conversations/{CONV_ID}/workspace-file-selections")
+        self.assertEqual(listed_after.get_json()["items"], [])
+
+    def test_workspace_file_selection_refuses_conversation_outside_folder(self) -> None:
+        self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")
+        self.fake_workspace_files.files[FOLDER_ID] = [
+            {"id": FILE_ID, "workspace_folder_id": FOLDER_ID, "display_name": "note.txt", "deleted_at": None}
+        ]
+
+        selected = self.client.post(
+            f"/api/conversations/{CONV_ID}/workspace-file-selections",
+            json={"file_id": FILE_ID},
+        )
+
+        self.assertEqual(selected.status_code, 409)
+        self.assertEqual(selected.get_json()["reason_code"], "workspace_selection_stale")
 
     def test_workspace_file_routes_are_content_free_and_separate_from_active_documents(self) -> None:
         self.fake_workspace.create_workspace_folder(display_name="Projet", icon_key="folder", description="")

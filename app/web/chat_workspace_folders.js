@@ -104,6 +104,29 @@ function normalizeWorkspaceFilesPayload(payload) {
   return items.map(normalizeWorkspaceFileItem).filter(Boolean);
 }
 
+function normalizeWorkspaceFileSelectionItem(item) {
+  const file = normalizeWorkspaceFileItem(item?.file || item);
+  const fileId = String(item?.workspace_file_id || file?.id || item?.file_id || '').trim();
+  const conversationId = String(item?.conversation_id || '').trim();
+  if (!fileId) return null;
+  return {
+    conversation_id: conversationId || null,
+    workspace_file_id: fileId,
+    workspace_folder_id: normalizeWorkspaceFolderId(item?.workspace_folder_id || file?.workspace_folder_id),
+    selected: Boolean(item?.selected !== false),
+    selection_status: String(item?.selection_status || 'selected').trim(),
+    reason_code: String(item?.reason_code || '').trim(),
+    selected_at: item?.selected_at || null,
+    updated_at: item?.updated_at || item?.selected_at || null,
+    file,
+  };
+}
+
+function normalizeWorkspaceFileSelectionsPayload(payload) {
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return items.map(normalizeWorkspaceFileSelectionItem).filter(Boolean);
+}
+
 function formatWorkspaceFileBytes(value) {
   const bytes = Number(value || 0);
   if (!Number.isFinite(bytes) || bytes <= 0) return '';
@@ -157,6 +180,8 @@ const FridaWorkspaceFolders = Object.freeze({
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
   normalizeWorkspaceFilesPayload,
+  normalizeWorkspaceFileSelectionItem,
+  normalizeWorkspaceFileSelectionsPayload,
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
   groupThreadsByWorkspaceFolder,

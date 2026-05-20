@@ -61,6 +61,7 @@ def _metadata_from_mapping(item: Mapping[str, Any]) -> dict[str, Any]:
 
 def _metadata_from_decision(decision: Any) -> dict[str, Any]:
     document_id = _text(getattr(decision, 'document_id', ''), max_chars=120)
+    source = _text(getattr(decision, 'source', ''), max_chars=120) or 'active_conversation_documents'
     metadata = {
         'document_id': document_id,
         'document_ref': _sha256_12(document_id),
@@ -75,7 +76,9 @@ def _metadata_from_decision(decision: Any) -> dict[str, Any]:
         'image_height': _to_int(getattr(decision, 'image_height', 0)),
         'token_estimate': _to_int(getattr(decision, 'token_estimate', 0)),
         'text_sha256_12': _text(getattr(decision, 'text_sha256_12', ''), max_chars=12),
-        'source': 'active_conversation_documents',
+        'source': source,
+        'workspace_file_id': _text(getattr(decision, 'workspace_file_id', ''), max_chars=120),
+        'workspace_folder_id': _text(getattr(decision, 'workspace_folder_id', ''), max_chars=120),
         'raw_content_included': False,
     }
     metadata.update(
@@ -149,9 +152,18 @@ def build_prompt_decision_payload(lane: Any) -> dict[str, Any]:
     elif read_status == 'error':
         status = 'error'
         reason_counts[read_reason_code or 'active_documents_read_error'] = 1
+    source_kinds = {
+        _text(doc.get('source'), max_chars=120) or 'active_conversation_documents'
+        for doc in documents
+    }
+    source_kind = 'active_conversation_documents'
+    if source_kinds == {'workspace_file_selection'}:
+        source_kind = 'workspace_file_selections'
+    elif len(source_kinds) > 1:
+        source_kind = 'active_documents_and_workspace_file_selections'
     return {
         'kind': 'active_document_prompt_decisions',
-        'source_kind': 'active_conversation_documents',
+        'source_kind': source_kind,
         'status': status,
         'read_status': read_status,
         'read_reason_code': read_reason_code,

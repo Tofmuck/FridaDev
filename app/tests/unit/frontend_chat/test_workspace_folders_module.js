@@ -7,6 +7,7 @@ const {
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
   normalizeWorkspaceFilesPayload,
+  normalizeWorkspaceFileSelectionsPayload,
   compactWorkspaceFileMeta,
   groupThreadsByWorkspaceFolder,
 } = require("../../../web/chat_workspace_folders.js");
@@ -102,4 +103,33 @@ test("workspace files payload normalizer handles OCR-required metadata", () => {
 
   assert.equal(files.length, 1);
   assert.equal(compactWorkspaceFileMeta(files[0]), "PDF · 2 ko · OCR requis");
+});
+
+test("workspace file selection payloads are conversation scoped and content-free", () => {
+  const selections = normalizeWorkspaceFileSelectionsPayload({
+    items: [{
+      conversation_id: "conv-1",
+      workspace_file_id: "file-1",
+      workspace_folder_id: "folder-1",
+      selected: true,
+      selection_status: "selected",
+      reason_code: "",
+      file: {
+        id: "file-1",
+        workspace_folder_id: "folder-1",
+        display_name: "note.md",
+        source_extension: ".md",
+        byte_size: 12,
+        storage_key: "hidden/path",
+        text_content: "RAW",
+      },
+    }],
+  });
+
+  assert.equal(selections.length, 1);
+  assert.equal(selections[0].conversation_id, "conv-1");
+  assert.equal(selections[0].workspace_file_id, "file-1");
+  assert.equal(selections[0].selected, true);
+  assert.equal(selections[0].file.storage_key, undefined);
+  assert.equal(selections[0].file.text_content, undefined);
 });

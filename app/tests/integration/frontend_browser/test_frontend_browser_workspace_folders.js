@@ -48,9 +48,11 @@ function workspaceFoldersMockScript() {
           reason_code: "",
           source_kind: "upload",
         }],
+        selections: {},
         patchCalls: [],
         workspaceUploadCalls: [],
         activeDocumentUploadCalls: [],
+        selectionCalls: [],
       };
       window.__fridaWorkspaceFolderState = state;
       window.fetch = async (input, init = {}) => {
@@ -100,6 +102,50 @@ function workspaceFoldersMockScript() {
               source_kind: "upload",
             },
           }), { status: 201, headers: { "Content-Type": "application/json" } });
+        }
+
+        const selectionCollectionMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/workspace-file-selections$/);
+        if (selectionCollectionMatch && method === "GET") {
+          const conversationId = selectionCollectionMatch[1];
+          return new Response(JSON.stringify({
+            ok: true,
+            conversation_id: conversationId,
+            items: Object.values(state.selections[conversationId] || {}),
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (selectionCollectionMatch && method === "POST") {
+          const conversationId = selectionCollectionMatch[1];
+          const payload = JSON.parse(init.body || "{}");
+          state.selectionCalls.push({ conversationId, method, payload });
+          const file = state.files.find((item) => item.id === payload.file_id);
+          const selection = {
+            conversation_id: conversationId,
+            workspace_file_id: payload.file_id,
+            workspace_folder_id: "folder-1",
+            selected: true,
+            selection_status: "selected",
+            reason_code: "",
+            file,
+          };
+          state.selections[conversationId] = state.selections[conversationId] || {};
+          state.selections[conversationId][payload.file_id] = selection;
+          return new Response(JSON.stringify({ ok: true, conversation_id: conversationId, selection }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const selectionItemMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/workspace-file-selections\\/([^/]+)$/);
+        if (selectionItemMatch && method === "DELETE") {
+          const conversationId = selectionItemMatch[1];
+          const fileId = selectionItemMatch[2];
+          state.selectionCalls.push({ conversationId, method, fileId });
+          if (state.selections[conversationId]) delete state.selections[conversationId][fileId];
+          return new Response(JSON.stringify({ ok: true, conversation_id: conversationId, workspace_file_id: fileId }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
         if (url.pathname === "/api/conversations" && method === "GET") {
@@ -160,6 +206,15 @@ test('workspace folders render above outside conversations and move by select', 
     await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
     await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
+
+    await page.locator('.workspace-folder-file-select').check();
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.selectionCalls.length === 1);
+    const selectionCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.selectionCalls);
+    assert.deepEqual(selectionCalls, [{
+      conversationId: 'conv-in',
+      method: 'POST',
+      payload: { file_id: 'file-1' },
+    }]);
 
     const outsideSelect = page.locator('li', { hasText: 'Conversation dehors' }).locator('.thread-folder-select');
     await outsideSelect.selectOption('folder-1');

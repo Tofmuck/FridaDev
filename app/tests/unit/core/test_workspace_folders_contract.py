@@ -11,6 +11,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import conversations_maintenance
+from core import active_document_prompt_lane
+from core import chat_service
 from core import workspace_files_store
 from core import workspace_folders_store
 
@@ -108,6 +110,9 @@ class _WorkspaceFilesCursor:
             else:
                 self.result = None
             return
+        if "update workspace_file_selections" in normalized_sql:
+            self.result = None
+            return
         raise AssertionError(f"unexpected SQL: {normalized_sql}")
 
     def fetchall(self):
@@ -174,12 +179,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         sql = "\n".join(conn.queries).lower()
         self.assertIn("create table if not exists workspace_folders", sql)
         self.assertIn("create table if not exists workspace_files", sql)
+        self.assertIn("create table if not exists workspace_file_selections", sql)
         self.assertIn("add column if not exists workspace_folder_id uuid", sql)
         self.assertIn("conversations_workspace_folder_id_fkey", sql)
         self.assertIn("on delete set null", sql)
         self.assertIn("workspace_folders_active_sort_idx", sql)
         self.assertIn("workspace_files_folder_active_idx", sql)
         self.assertIn("workspace_files_storage_key_idx", sql)
+        self.assertIn("workspace_file_selections_conversation_active_idx", sql)
         self.assertEqual(conn.commits, 1)
 
     def test_folder_validation_keeps_allowlisted_icons_and_short_ui_metadata(self) -> None:
@@ -338,6 +345,153 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("contenu brut", logged)
         self.assertNotIn("data:image", logged)
         self.assertNotIn("base64", logged)
+
+    def test_workspace_file_prompt_lane_injects_text_without_active_document_persistence(self) -> None:
+        raw_text = "texte choisi explicitement"
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+
+        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [
+                {
+                    "source": "workspace_file_selection",
+                    "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "workspace_folder_id": "11111111-2222-4333-8444-555555555555",
+                    "filename": "note.txt",
+                    "media_type": "text/plain",
+                    "source_extension": ".txt",
+                    "byte_size": len(raw_text.encode("utf-8")),
+                    "text_chars": len(raw_text),
+                    "text_sha256_12": "abc123def456",
+                    "media_kind": "text",
+                    "text_content": raw_text,
+                    "injectable": True,
+                }
+            ],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 10,
+            max_tokens=1000,
+        )
+
+        joined = "\n".join(str(message.get("content") or "") for message in prompt_messages)
+        self.assertEqual(lane.injected_count, 1)
+        self.assertIn("Fichier de repertoire selectionne injecte", joined)
+        self.assertIn(raw_text, joined)
+        self.assertEqual(lane.decisions[0].source, "workspace_file_selection")
+
+    def test_workspace_file_prompt_lane_excludes_too_large_with_workspace_reason(self) -> None:
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+
+        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [
+                {
+                    "source": "workspace_file_selection",
+                    "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "filename": "note.txt",
+                    "media_type": "text/plain",
+                    "source_extension": ".txt",
+                    "byte_size": 10,
+                    "text_chars": 10,
+                    "media_kind": "text",
+                    "text_content": "trop long",
+                    "injectable": True,
+                }
+            ],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 9999,
+            max_tokens=10,
+        )
+
+        joined = "\n".join(str(message.get("content") or "") for message in prompt_messages)
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_too_large")
+        self.assertIn("workspace_file_too_large", joined)
+
+    def test_workspace_file_image_payload_uses_text_then_image_url(self) -> None:
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+
+        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [
+                {
+                    "source": "workspace_file_selection",
+                    "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "filename": "image.png",
+                    "media_type": "image/png",
+                    "source_extension": ".png",
+                    "byte_size": 8,
+                    "media_kind": "image",
+                    "content_sha256_12": "abc123def456",
+                    "image_width": 40,
+                    "image_height": 40,
+                    "image_content": b"pngbytes",
+                    "injectable": True,
+                }
+            ],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 10,
+            max_tokens=1000,
+        )
+
+        content = next(message["content"] for message in prompt_messages if isinstance(message.get("content"), list))
+        self.assertEqual(lane.injected_count, 1)
+        self.assertIsInstance(content, list)
+        self.assertEqual(content[0]["type"], "text")
+        self.assertEqual(content[1]["type"], "image_url")
+        self.assertNotIn("imageUrl", content[1])
+
+    def test_chat_decision_record_routes_workspace_files_to_selection_store(self) -> None:
+        class _SelectionStore:
+            def __init__(self):
+                self.injected = []
+                self.excluded = []
+
+            def record_selection_injected(self, conversation_id, file_id, *, turn_id):
+                self.injected.append((conversation_id, file_id, turn_id))
+                return True
+
+            def record_selection_excluded(self, conversation_id, file_id, *, turn_id, reason_code):
+                self.excluded.append((conversation_id, file_id, turn_id, reason_code))
+                return True
+
+        lane = active_document_prompt_lane.ActiveDocumentPromptLane(
+            contract_message=None,
+            content_message=None,
+            decisions=(
+                active_document_prompt_lane.ActiveDocumentPromptDecision(
+                    document_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    workspace_file_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    filename="note.txt",
+                    media_type="text/plain",
+                    source_extension=".txt",
+                    byte_size=4,
+                    text_chars=4,
+                    token_estimate=1,
+                    text_sha256_12="abc123def456",
+                    injected=True,
+                    source="workspace_file_selection",
+                ),
+            ),
+        )
+        selection_store = _SelectionStore()
+
+        chat_service._record_active_document_prompt_decisions(
+            conversation={"id": "11111111-2222-4333-8444-555555555555"},
+            lane=lane,
+            turn_id="turn-1",
+            active_documents_module=object(),
+            workspace_file_selections_module=selection_store,
+        )
+
+        self.assertEqual(
+            selection_store.injected,
+            [("11111111-2222-4333-8444-555555555555", "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", "turn-1")],
+        )
 
 
 if __name__ == "__main__":

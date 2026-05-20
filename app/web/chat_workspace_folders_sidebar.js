@@ -19,6 +19,11 @@ function createWorkspaceFolderSidebarRenderer({
   deleteWorkspaceFolderOnServer,
   uploadWorkspaceFileOnServer,
   deleteWorkspaceFileOnServer,
+  getCurrentThread,
+  getWorkspaceFileSelections,
+  selectWorkspaceFileOnServer,
+  deselectWorkspaceFileOnServer,
+  refreshWorkspaceFileSelections,
   consoleObj,
 } = {}) {
   const logger = consoleObj || (typeof console !== 'undefined' ? console : { warn() {} });
@@ -124,11 +129,46 @@ function createWorkspaceFolderSidebarRenderer({
     try {
       await deleteWorkspaceFileOnServer(folder.id, file.id);
       await refreshWorkspaceFiles(folder.id);
+      const current = typeof getCurrentThread === 'function' ? getCurrentThread() : null;
+      if (current?.id && typeof refreshWorkspaceFileSelections === 'function') {
+        await refreshWorkspaceFileSelections(current.id);
+      }
       renderThreads();
       setThreadStatus('Fichier supprimé du répertoire.');
     } catch (err) {
       logger.warn('Suppression fichier répertoire échouée', err);
       setThreadStatus('Suppression du fichier impossible.', true);
+    }
+  };
+
+  const requestToggleSelection = async (folder, file, shouldSelect) => {
+    const current = typeof getCurrentThread === 'function' ? getCurrentThread() : null;
+    if (!current?.id || current.workspace_folder_id !== folder.id) {
+      setThreadStatus('Sélection disponible seulement dans une conversation du répertoire.', true);
+      renderThreads();
+      return;
+    }
+    if (typeof selectWorkspaceFileOnServer !== 'function' || typeof deselectWorkspaceFileOnServer !== 'function') {
+      setThreadStatus('Sélection de fichiers indisponible.', true);
+      renderThreads();
+      return;
+    }
+    try {
+      if (shouldSelect) {
+        await selectWorkspaceFileOnServer(current.id, file.id);
+        setThreadStatus('Fichier sélectionné pour cette conversation.');
+      } else {
+        await deselectWorkspaceFileOnServer(current.id, file.id);
+        setThreadStatus('Fichier décoché pour cette conversation.');
+      }
+      if (typeof refreshWorkspaceFileSelections === 'function') {
+        await refreshWorkspaceFileSelections(current.id);
+      }
+      renderThreads();
+    } catch (err) {
+      logger.warn('Sélection fichier répertoire échouée', err);
+      setThreadStatus('Sélection du fichier impossible.', true);
+      renderThreads();
     }
   };
 
@@ -233,11 +273,35 @@ function createWorkspaceFolderSidebarRenderer({
     const li = document.createElement('li');
     li.className = 'workspace-folder-files';
     files.forEach((file) => {
+      const current = typeof getCurrentThread === 'function' ? getCurrentThread() : null;
+      const selections = typeof getWorkspaceFileSelections === 'function' && current?.id
+        ? getWorkspaceFileSelections(current.id)
+        : [];
+      const selection = selections.find((item) => item.workspace_file_id === file.id);
+      const selected = Boolean(selection?.selected && selection.selection_status !== 'stale');
+      const canSelect = Boolean(current?.id && current.workspace_folder_id === folder.id);
       const row = document.createElement('div');
       row.className = 'workspace-folder-file';
+      if (selected) row.classList.add('selected');
       if (file.status && file.status !== 'active') {
         row.dataset.status = file.status;
       }
+      if (selection?.selection_status === 'stale') {
+        row.dataset.selection = 'stale';
+      }
+
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.className = 'workspace-folder-file-select';
+      toggle.title = 'Sélectionner pour cette conversation';
+      toggle.checked = selected;
+      toggle.disabled = !canSelect || file.status === 'deleted' || file.status === 'disk_missing';
+      toggle.addEventListener('click', (event) => event.stopPropagation());
+      toggle.addEventListener('change', (event) => {
+        event.stopPropagation();
+        void requestToggleSelection(folder, file, toggle.checked);
+      });
+      row.appendChild(toggle);
 
       const name = document.createElement('span');
       name.className = 'workspace-folder-file-name';
@@ -250,6 +314,13 @@ function createWorkspaceFolderSidebarRenderer({
         ? WorkspaceFolderUiHelpers.compactWorkspaceFileMeta(file)
         : '';
       row.appendChild(meta);
+
+      if (selection?.selection_status === 'stale') {
+        const stale = document.createElement('span');
+        stale.className = 'workspace-folder-file-state';
+        stale.textContent = 'stale';
+        row.appendChild(stale);
+      }
 
       const del = document.createElement('button');
       del.type = 'button';

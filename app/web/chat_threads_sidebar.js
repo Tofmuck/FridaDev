@@ -50,6 +50,7 @@ function createChatThreadsSidebar({
   let threadsState = [];
   let foldersState = [];
   let workspaceFilesState = new Map();
+  let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
   const messageCache = new Map();
 
@@ -91,6 +92,8 @@ function createChatThreadsSidebar({
     foldersState = Array.isArray(arr) ? arr : [];
   };
   const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
+  const getWorkspaceFileSelections = (conversationId) =>
+    workspaceFileSelectionsState.get(String(conversationId || "")) || [];
   const saveWorkspaceFilesEntries = (entries) => {
     workspaceFilesState = new Map(Array.isArray(entries) ? entries : []);
   };
@@ -155,6 +158,12 @@ function createChatThreadsSidebar({
     const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}/files`);
     const data = await parseServerResponse(res);
     return WorkspaceFolders?.normalizeWorkspaceFilesPayload(data) || [];
+  }
+
+  async function listWorkspaceFileSelectionsFromServer(conversationId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`);
+    const data = await parseServerResponse(res);
+    return WorkspaceFolders?.normalizeWorkspaceFileSelectionsPayload(data) || [];
   }
 
   async function createConversationOnServer(title = "Nouvelle conversation") {
@@ -235,6 +244,25 @@ function createChatThreadsSidebar({
     return data.file || null;
   }
 
+  async function selectWorkspaceFileOnServer(conversationId, fileId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+    });
+    const data = await parseServerResponse(res);
+    return data.selection || null;
+  }
+
+  async function deselectWorkspaceFileOnServer(conversationId, fileId) {
+    const res = await httpFetch(
+      `/api/conversations/${encodeURIComponent(conversationId)}/workspace-file-selections/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" },
+    );
+    await parseServerResponse(res);
+    return true;
+  }
+
   async function deleteConversationOnServer(conversationId) {
     const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
       method: "DELETE",
@@ -300,6 +328,9 @@ function createChatThreadsSidebar({
       } else {
         setCurrentId(mapped[0]?.id || null);
       }
+      if (getCurrentId()) {
+        await refreshWorkspaceFileSelections(getCurrentId());
+      }
       setThreadStatus("");
       return true;
     } catch (err) {
@@ -313,6 +344,7 @@ function createChatThreadsSidebar({
     try {
       const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, folderId);
       if (updated) syncThreadFromServer(updated);
+      await refreshWorkspaceFileSelections(thread.id);
       await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
     } catch (err) {
@@ -330,6 +362,20 @@ function createChatThreadsSidebar({
     return files;
   };
 
+  const refreshWorkspaceFileSelections = async (conversationId) => {
+    const normalized = String(conversationId || "").trim();
+    if (!normalized) return [];
+    try {
+      const selections = await listWorkspaceFileSelectionsFromServer(normalized);
+      workspaceFileSelectionsState.set(normalized, selections);
+      return selections;
+    } catch (err) {
+      logger.warn("Impossible de charger les sélections de fichiers", err);
+      workspaceFileSelectionsState.set(normalized, []);
+      return [];
+    }
+  };
+
   const workspaceFolderRenderer = WorkspaceFoldersSidebar?.createWorkspaceFolderSidebarRenderer({
     threadsUl,
     getWorkspaceFolders,
@@ -343,6 +389,11 @@ function createChatThreadsSidebar({
     deleteWorkspaceFolderOnServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
+    getCurrentThread: () => getThreadById(getCurrentId()),
+    getWorkspaceFileSelections,
+    selectWorkspaceFileOnServer,
+    deselectWorkspaceFileOnServer,
+    refreshWorkspaceFileSelections,
     consoleObj: logger,
   });
 
@@ -643,6 +694,7 @@ function createChatThreadsSidebar({
 
     try {
       await hydrateThreadMessages(id);
+      await refreshWorkspaceFileSelections(id);
       setThreadStatus("");
     } catch (err) {
       logger.warn("Chargement conversation échoué", err);
@@ -692,6 +744,7 @@ function createChatThreadsSidebar({
     getWorkspaceFolders,
     saveWorkspaceFolders,
     getWorkspaceFiles,
+    getWorkspaceFileSelections,
     getCurrentId,
     setCurrentId,
     getThreadById,
@@ -699,6 +752,7 @@ function createChatThreadsSidebar({
     applyConversationTerminalMeta,
     listConversationsFromServer,
     listWorkspaceFoldersFromServer,
+    listWorkspaceFileSelectionsFromServer,
     createConversationOnServer,
     createWorkspaceFolderOnServer,
     updateWorkspaceFolderOnServer,
@@ -706,12 +760,15 @@ function createChatThreadsSidebar({
     listWorkspaceFilesFromServer,
     uploadWorkspaceFileOnServer,
     deleteWorkspaceFileOnServer,
+    selectWorkspaceFileOnServer,
+    deselectWorkspaceFileOnServer,
     renameConversationOnServer,
     moveConversationToWorkspaceFolderOnServer,
     deleteConversationOnServer,
     fetchConversationMessagesFromServer,
     syncThreadFromServer,
     refreshThreadsFromServer,
+    refreshWorkspaceFileSelections,
     renderThreads,
     startInlineRename,
     newThread,

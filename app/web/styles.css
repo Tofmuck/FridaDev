@@ -270,13 +270,28 @@ body {
 
 .workspace-folder-file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
   gap: 2px 4px;
   align-items: center;
   padding: 3px 0;
 }
 
+.workspace-folder-file.selected .workspace-folder-file-name {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.workspace-folder-file-select {
+  grid-row: 1 / span 2;
+  grid-column: 1;
+  width: 13px;
+  height: 13px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+
 .workspace-folder-file-name {
+  grid-column: 2;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -285,7 +300,7 @@ body {
 }
 
 .workspace-folder-file-meta {
-  grid-column: 1 / span 1;
+  grid-column: 2 / span 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -294,9 +309,16 @@ body {
   font-size: 10px;
 }
 
+.workspace-folder-file-state {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  color: #9a6a1f;
+  font-size: 10px;
+}
+
 .workspace-folder-file-delete {
   grid-row: 1 / span 2;
-  grid-column: 2;
+  grid-column: 4;
   width: 18px;
   height: 18px;
   padding: 0;

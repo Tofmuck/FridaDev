@@ -91,8 +91,10 @@ Relation conversations:
 - `conversation_id`;
 - `workspace_file_id`;
 - `selected_at`, `updated_at`;
-- etat selectionne ou decoché;
-- suppression automatique ou invalidation claire si le fichier est supprime.
+- `deleted_at` pour decochage/invalidation content-free;
+- `last_injected_turn_id`, `last_excluded_turn_id`, `last_excluded_reason_code`;
+- etat selectionne ou decoche;
+- suppression automatique ou invalidation claire si le fichier est supprime, si le repertoire est supprime ou si la conversation change de repertoire.
 
 La DB est la source applicative des listings, etats et metadonnees. Le disque stocke les bytes. Aucun chemin physique interne ne doit devenir une API utilisateur.
 
@@ -202,6 +204,22 @@ Regles normatives:
 Frida ne doit jamais pretendre avoir lu un fichier non selectionne, exclu, supprime, absent ou trop lourd pour le tour.
 
 La selection persistante doit survivre aux refresh UI et aux tours suivants de la meme conversation, puis disparaitre uniquement au decochage explicite, a la suppression du fichier, a la suppression du repertoire ou a une invalidation documentee.
+
+Implementation Lot 3 livree:
+
+- table `workspace_file_selections` conversation-scoped;
+- routes content-free `GET/POST/DELETE /api/conversations/<conversation_id>/workspace-file-selections`;
+- validation que le fichier appartient au repertoire de la conversation;
+- invalidation des selections si la conversation sort du repertoire ou change de repertoire;
+- suppression/invalidation des selections liees lorsqu'un fichier est supprime;
+- UI sidebar avec case par fichier, active seulement pour la conversation courante du repertoire;
+- conversion des fichiers selectionnes en items de la lane `active_document` au moment du prompt;
+- lecture des bytes depuis le stockage interne uniquement pendant la preparation du tour;
+- injection texte entiere ou exclusion entiere;
+- injection image multimodale `text` puis `image_url`;
+- aucune copie de contenu extrait dans `conversation_messages`, memoire, identity, summary, Biblio ou RAG;
+- observabilite content-free pour selection, decochage, injection, exclusion et stale/missing/deleted/disk_missing;
+- Lot 4 OCR `.ocr.md` reste ferme: un fichier `ocr_required` est exclu avec `workspace_file_ocr_required`.
 
 ## 9. Contrat OCR images/PDF
 

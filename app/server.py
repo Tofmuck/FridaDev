@@ -30,6 +30,8 @@ from core import conversations_prompt_window
 from core import conversations_service
 from core import workspace_files
 from core import workspace_files_service
+from core import workspace_file_selections
+from core import workspace_file_selections_service
 from core import workspace_folders
 from core import workspace_folders_service
 from core import whisper_transcription_service
@@ -723,6 +725,7 @@ def api_chat():
             web_search_module=ws,
             config_module=config,
             logger=logger,
+            workspace_file_selections_module=workspace_file_selections,
         )
     except Exception as exc:
         chat_turn_logger.emit_error(
@@ -1324,6 +1327,7 @@ def api_patch_conversation(conversation_id: str):
         data,
         conv_store_module=conv_store,
         workspace_folders_module=workspace_folders,
+        workspace_file_selections_module=workspace_file_selections,
     )
     return jsonify(payload), status
 
@@ -1333,6 +1337,41 @@ def api_delete_conversation(conversation_id: str):
     payload, status = conversations_service.delete_conversation(
         conversation_id,
         conv_store_module=conv_store,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/conversations/<id>/workspace-file-selections* ───────────────────────
+
+@app.get('/api/conversations/<conversation_id>/workspace-file-selections')
+def api_list_workspace_file_selections(conversation_id: str):
+    payload, status = workspace_file_selections_service.list_workspace_file_selections_response(
+        conversation_id,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/conversations/<conversation_id>/workspace-file-selections')
+def api_select_workspace_file(conversation_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_file_selections_service.select_workspace_file_response(
+        conversation_id,
+        data,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/conversations/<conversation_id>/workspace-file-selections/<file_id>')
+def api_deselect_workspace_file(conversation_id: str, file_id: str):
+    payload, status = workspace_file_selections_service.deselect_workspace_file_response(
+        conversation_id,
+        file_id,
+        conv_store_module=conv_store,
+        workspace_file_selections_module=workspace_file_selections,
     )
     return jsonify(payload), status
 

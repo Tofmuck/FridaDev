@@ -397,16 +397,18 @@ Note Lot 2 livré le 2026-05-20: stockage durable `workspace_files` livré avec 
 
 ### Lot 3 - Sélection/injection
 
-- [ ] Ajouter sélection multi-fichiers depuis un répertoire.
-- [ ] Garantir qu'aucun fichier n'est injecté par défaut.
-- [ ] Intégrer la sélection explicite au flux `active_document`.
-- [ ] Garder les fichiers non sélectionnés invisibles pour le modèle.
-- [ ] Conserver injection entière ou exclusion entière.
-- [ ] Conserver absence de troncature silencieuse.
-- [ ] Ajouter reason codes pour absent, supprimé, trop gros, non supporté, illisible.
-- [ ] Tester payload texte.
-- [ ] Tester payload image `text` puis `image_url`.
-- [ ] Tester non-contamination Memory/RAG/Identity/Summary/Biblio.
+- [x] Ajouter sélection multi-fichiers depuis un répertoire.
+- [x] Garantir qu'aucun fichier n'est injecté par défaut.
+- [x] Intégrer la sélection explicite au flux `active_document`.
+- [x] Garder les fichiers non sélectionnés invisibles pour le modèle.
+- [x] Conserver injection entière ou exclusion entière.
+- [x] Conserver absence de troncature silencieuse.
+- [x] Ajouter reason codes pour absent, supprimé, trop gros, non supporté, illisible.
+- [x] Tester payload texte.
+- [x] Tester payload image `text` puis `image_url`.
+- [x] Tester non-contamination Memory/RAG/Identity/Summary/Biblio.
+
+Note Lot 3 livré le 2026-05-20: sélection persistante `workspace_file_selections` livrée, conversation-scoped par `conversation_id + workspace_file_id`, avec routes `GET/POST/DELETE /api/conversations/<conversation_id>/workspace-file-selections`. Un fichier n'est jamais injecté par défaut: il devient lisible seulement s'il est coché dans la conversation courante, et cette sélection ne s'applique pas aux autres conversations du même répertoire. Au moment du prompt, les fichiers sélectionnés sont convertis en items compatibles avec la lane `active_document`, sans copie de contenu dans `conversation_messages`, mémoire, identity, summary, Biblio ou RAG. Les textes sont injectés en entier ou exclus en entier; les images suivent le payload multimodal `text` puis `image_url`; les exclusions utilisent des reason codes `workspace_*` (`workspace_file_deleted`, `workspace_file_disk_missing`, `workspace_file_too_large`, `workspace_file_type_unsupported`, `workspace_file_unreadable`, `workspace_file_ocr_required`, `workspace_file_model_unsupported`, `workspace_selection_stale`). L'observabilité reste content-free. Lot 4 OCR `.ocr.md` reste fermé.
 
 ### Lot 4 - OCR images/PDF et fichiers Markdown dérivés
 
