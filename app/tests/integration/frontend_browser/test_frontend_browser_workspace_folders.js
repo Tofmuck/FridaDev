@@ -64,6 +64,7 @@ function workspaceFoldersMockScript() {
         }],
         selections: {},
         patchCalls: [],
+        messageFetches: [],
         workspaceUploadCalls: [],
         activeDocumentUploadCalls: [],
         selectionCalls: [],
@@ -211,7 +212,12 @@ function workspaceFoldersMockScript() {
 
         const messagesMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/messages$/);
         if (messagesMatch && method === "GET") {
-          return new Response(JSON.stringify({ ok: true, messages: [] }), {
+          const conversationId = messagesMatch[1];
+          state.messageFetches.push(conversationId);
+          const messages = conversationId === "conv-in"
+            ? [{ role: "user", content: "Message du répertoire", timestamp: "2026-05-20T09:01:00Z" }]
+            : [{ role: "user", content: "Message hors répertoire", timestamp: "2026-05-20T10:01:00Z" }];
+          return new Response(JSON.stringify({ ok: true, messages }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -251,8 +257,20 @@ test('workspace folders render above outside conversations, collapse and move by
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.pdf');
     await assertTextContains(page.locator('.workspace-folder-files'), 'OCR requis');
     await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
+    const headingStyle = await page.locator('.workspace-folder-toolbar').evaluate((node) => getComputedStyle(node));
+    const separatorStyle = await page.locator('.workspace-folder-separator').evaluate((node) => getComputedStyle(node));
+    assert.equal(separatorStyle.fontSize, headingStyle.fontSize);
+    assert.equal(separatorStyle.textTransform, headingStyle.textTransform);
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
     assert.equal(await page.locator('.thread-folder-select').count(), 0);
+
+    await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).click();
+    await page.waitForFunction(() => document.querySelector('#log')?.textContent.includes('Message du répertoire'));
+    await page.locator('li', { hasText: 'Conversation dehors' }).click();
+    await page.waitForFunction(() => document.querySelector('#log')?.textContent.includes('Message hors répertoire'));
+    const messageFetches = await page.evaluate(() => window.__fridaWorkspaceFolderState.messageFetches);
+    assert.ok(messageFetches.includes('conv-in'));
+    assert.ok(messageFetches.includes('conv-out'));
 
     await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
     await page.waitForFunction(() => document.querySelector('.workspace-folder-row')?.classList.contains('workspace-folder-collapsed'));
@@ -262,6 +280,8 @@ test('workspace folders render above outside conversations, collapse and move by
     await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
     await page.waitForSelector('.workspace-folder-files');
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
+    await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).click();
+    await page.waitForFunction(() => document.querySelector('.workspace-folder-file-select')?.disabled === false);
 
     await page.locator('.workspace-folder-file-select').first().check();
     await page.waitForFunction(() => window.__fridaWorkspaceFolderState.selectionCalls.length === 1);
