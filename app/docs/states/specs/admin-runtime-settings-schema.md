@@ -134,6 +134,7 @@ Valeurs d'`origin` retenues :
 
 Notes:
 
+- Decision operateur du 2026-05-20: le modele principal quotidien cible est `openai/gpt-5.1`, en conservant `base_url`, `api_key`, `temperature=0.7`, `top_p=1.0`, `response_max_tokens=8192`, `referer_llm` et `title_llm`.
 - Pour la surface chat principale first-party (`/`), `main_model.response_max_tokens` est la source de verite du budget de reponse.
 - Le frontend principal n'envoie plus de surcharge silencieuse `max_tokens`.
 - L'override `max_tokens` de `/api/chat` reste un contrat d'API de compatibilite pour les clients externes explicites.

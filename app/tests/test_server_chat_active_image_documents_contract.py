@@ -29,7 +29,7 @@ from tests.support import server_chat_pipeline
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
-MAIN_IMAGE_MODEL = "anthropic/claude-sonnet-4.6"
+MAIN_IMAGE_MODEL = "openai/gpt-5.1"
 
 
 class ServerChatActiveImageDocumentsContractTests(unittest.TestCase):
@@ -80,7 +80,7 @@ class ServerChatActiveImageDocumentsContractTests(unittest.TestCase):
                 return None
 
             def iter_lines(self, decode_unicode=True, delimiter="\n"):
-                yield 'data: {"id":"gen-image","model":"anthropic/claude-sonnet-4.6","choices":[{"delta":{"content":"Vu"}}]}'
+                yield 'data: {"id":"gen-image","model":"openai/gpt-5.1","choices":[{"delta":{"content":"Vu"}}]}'
                 yield 'data: [DONE]'
 
         def fake_requests_post(_url, *, json, **kwargs):
@@ -212,7 +212,7 @@ class ServerChatActiveImageDocumentsContractTests(unittest.TestCase):
                 return None
 
             def iter_lines(self, decode_unicode=True, delimiter="\n"):
-                yield 'data: {"id":"gen-no-image","model":"anthropic/claude-sonnet-4.6","choices":[{"delta":{"content":"Je n\\u0027ai pas vu l\\u0027image."}}]}'
+                yield 'data: {"id":"gen-no-image","model":"openai/gpt-5.1","choices":[{"delta":{"content":"Je n\\u0027ai pas vu l\\u0027image."}}]}'
                 yield 'data: [DONE]'
 
         def fake_requests_post(_url, *, json, **kwargs):

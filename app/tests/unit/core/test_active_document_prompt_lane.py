@@ -333,33 +333,35 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertIn(full_text, lane.content_message["content"])
 
     def test_active_image_builds_openrouter_multimodal_payload_text_then_image_url(self):
-        prompt_messages = [
-            {"role": "system", "content": "SYSTEM"},
-            {"role": "user", "content": "Peux-tu lire la capture ?"},
-        ]
+        for model in ("anthropic/claude-sonnet-4.6", "openai/gpt-5.1"):
+            with self.subTest(model=model):
+                prompt_messages = [
+                    {"role": "system", "content": "SYSTEM"},
+                    {"role": "user", "content": "Peux-tu lire la capture ?"},
+                ]
 
-        lane = prompt_lane.inject_active_document_prompt_lane(
-            prompt_messages,
-            [_image_doc(image_content=b"image-bytes")],
-            model="anthropic/claude-sonnet-4.6",
-            count_tokens_func=lambda _messages, _model: 1,
-            max_tokens=5000,
-        )
+                lane = prompt_lane.inject_active_document_prompt_lane(
+                    prompt_messages,
+                    [_image_doc(image_content=b"image-bytes")],
+                    model=model,
+                    count_tokens_func=lambda _messages, _model: 1,
+                    max_tokens=5000,
+                )
 
-        self.assertEqual(lane.injected_count, 1)
-        self.assertEqual(lane.not_injected_count, 0)
-        self.assertEqual(lane.decisions[0].media_kind, "image")
-        self.assertEqual(lane.decisions[0].payload_order, "text_then_image_url")
-        self.assertEqual(lane.decisions[0].provider_model, "anthropic/claude-sonnet-4.6")
-        content_message = lane.content_message
-        self.assertIsInstance(content_message["content"], list)
-        content = content_message["content"]
-        self.assertEqual(content[0]["type"], "text")
-        self.assertEqual(content[1]["type"], "image_url")
-        self.assertNotIn("data:image", content[0]["text"])
-        self.assertIn("payload_order: text_then_image_url", content[0]["text"])
-        self.assertEqual(content[1]["image_url"]["url"], "data:image/png;base64,aW1hZ2UtYnl0ZXM=")
-        self.assertNotIn("imageUrl", str(content))
+                self.assertEqual(lane.injected_count, 1)
+                self.assertEqual(lane.not_injected_count, 0)
+                self.assertEqual(lane.decisions[0].media_kind, "image")
+                self.assertEqual(lane.decisions[0].payload_order, "text_then_image_url")
+                self.assertEqual(lane.decisions[0].provider_model, model)
+                content_message = lane.content_message
+                self.assertIsInstance(content_message["content"], list)
+                content = content_message["content"]
+                self.assertEqual(content[0]["type"], "text")
+                self.assertEqual(content[1]["type"], "image_url")
+                self.assertNotIn("data:image", content[0]["text"])
+                self.assertIn("payload_order: text_then_image_url", content[0]["text"])
+                self.assertEqual(content[1]["image_url"]["url"], "data:image/png;base64,aW1hZ2UtYnl0ZXM=")
+                self.assertNotIn("imageUrl", str(content))
 
     def test_active_image_is_excluded_when_main_model_is_not_image_capable(self):
         prompt_messages = [

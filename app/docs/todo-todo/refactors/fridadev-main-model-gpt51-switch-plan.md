@@ -1,6 +1,7 @@
 # Plan de bascule du modele principal vers GPT-5.1
 
-Statut: plan ouvert, docs-only, sans changement runtime.
+Statut: plan ouvert initial, maintenant complete par le TODO d'execution
+`app/docs/todo-todo/refactors/fridadev-main-model-gpt51-switch-todo.md`.
 
 Date: 2026-05-20.
 
@@ -19,7 +20,9 @@ Oui: le meilleur plan n'est pas une bascule immediate. Le plan le plus sur est:
 5. realiser un smoke live court;
 6. garder un rollback immediat vers le modele precedent.
 
-Ce document decrit ce plan. Il ne modifie ni la base runtime, ni le modele live, ni le code applicatif.
+Ce document decrit le plan initial. La decision operateur du 2026-05-20 avance vers
+une bascule effective dans la branche `feature/main-model-gpt51`, avec tests
+techniques cibles et sans matrice conversationnelle humaine prealable.
 
 ## Sources lues et constats principaux
 
@@ -49,7 +52,7 @@ Constats:
 - Le modele live OVH releve le 2026-05-20 est `anthropic/claude-sonnet-4.6`.
 - Les petits agents ne doivent pas etre touches par cette bascule: memory arbiter, identity extractor, identity periodic, summary, web reformulation, Stimmung et validation ont leurs slots propres.
 - Le transport OpenRouter partage le secret applicatif `main_model.api_key`; la bascule de modele ne demande pas de nouveau secret.
-- La V0 images actives contient actuellement une allowlist applicative stricte: `IMAGE_CAPABLE_MAIN_MODELS = {"anthropic/claude-sonnet-4.6"}`. Donc `openai/gpt-5.1` est compatible cote OpenRouter, mais serait exclu par FridaDev tant que cette allowlist n'est pas etendue dans un lot separe.
+- La V0 images actives utilisait une allowlist applicative stricte limitee a `anthropic/claude-sonnet-4.6`; le chantier `feature/main-model-gpt51` l'etend a `openai/gpt-5.1` tout en conservant Claude pour rollback.
 
 ## 1. Audit de l'etat actuel
 
@@ -97,7 +100,7 @@ Compatibilite attendue:
 - Usage/cost: a verifier dans `llm_provider_response` et dans la console OpenRouter.
 - Images actives: OpenRouter annonce `image` en input, mais FridaDev doit d'abord accepter `openai/gpt-5.1` dans la compatibilite applicative images. Le payload attendu reste un message `user` multimodal avec contenu `text` puis `image_url`.
 
-Conclusion compatibilite: GPT-5.1 est un candidat serieux pour le chat texte et documents texte. Pour "sans casser les images actives", le GO runtime est conditionne a un test ou mini-lot prealable sur l'allowlist images actives.
+Conclusion compatibilite: GPT-5.1 est un candidat serieux pour le chat texte et documents texte. Pour "sans casser les images actives", le chantier d'execution ajoute explicitement `openai/gpt-5.1` a l'allowlist images actives V0 et le prouve par tests techniques.
 
 ## 3. Mesure cout actuelle
 
@@ -216,8 +219,8 @@ Rebuild:
 
 Precondition images actives:
 
-- Si `openai/gpt-5.1` n'est pas encore ajoute et teste dans la compatibilite applicative images, ne pas lancer le GO general.
-- Le mini-lot prealable attendu serait borne: etendre la compatibilite image a GPT-5.1, prouver que le payload `text` puis `image_url` fonctionne en stream et non-stream, puis garder l'observabilite content-free existante.
+- `openai/gpt-5.1` doit etre ajoute et teste dans la compatibilite applicative images avant ou dans le meme lot que le GO runtime.
+- Le mini-lot attendu est borne: etendre la compatibilite image a GPT-5.1, prouver que le payload `text` puis `image_url` fonctionne, puis garder l'observabilite content-free existante.
 
 ## 6. Tests avant/apres bascule
 
@@ -322,7 +325,7 @@ Documentation de l'operation:
 - Voix moins bonne ou plus plate: GPT-5.1 peut etre efficace mais moins "presence" que Claude sur certains tours.
 - Reponses trop lapidaires: a surveiller avec les tours phatiques et sensibles.
 - Differences de vision: meme si OpenRouter annonce l'image en input, la lecture visuelle peut diverger de Claude.
-- Verrou applicatif images actives: tant que l'allowlist FridaDev n'inclut pas GPT-5.1, les images actives seront exclues avec `image_model_unsupported`.
+- Verrou applicatif images actives: si une regression retire GPT-5.1 de l'allowlist FridaDev, les images actives seront exclues avec `image_model_unsupported`.
 - Respect du prompt: verifier que GPT-5.1 suit bien les garde-fous temporels, documents actifs, web et jugement hermeneutique.
 - Latence: le cout baisse ne garantit pas une latence meilleure.
 - Cout image: la vision peut avoir une tarification effective differente selon provider/routage; mesurer, ne pas supposer.

@@ -23,7 +23,12 @@ READ_STATUS_ERROR = "error"
 MEDIA_KIND_TEXT = "text"
 MEDIA_KIND_IMAGE = "image"
 IMAGE_PAYLOAD_ORDER = "text_then_image_url"
-IMAGE_CAPABLE_MAIN_MODELS = frozenset({"anthropic/claude-sonnet-4.6"})
+IMAGE_CAPABLE_MAIN_MODELS = frozenset(
+    {
+        "anthropic/claude-sonnet-4.6",
+        "openai/gpt-5.1",
+    }
+)
 ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 8 * 1024 * 1024
 
 LANE_HEADER = "[DOCUMENTS ACTIFS DE CONVERSATION]"

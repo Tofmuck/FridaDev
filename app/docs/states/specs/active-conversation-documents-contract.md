@@ -244,7 +244,8 @@ Contrat OpenRouter:
 - l'image est envoyee comme contenu multimodal au modele principal seulement si le modele courant est compatible;
 - l'ordre V0 obligatoire dans `messages[].content` est `text` puis `image_url`;
 - le JSON runtime brut utilise `image_url`, jamais `imageUrl`;
-- la V0 allowliste le modele principal verifie `anthropic/claude-sonnet-4.6` pour l'injection image;
+- la V0 allowliste explicitement les modeles principaux verifies pour l'injection image:
+  `anthropic/claude-sonnet-4.6` et `openai/gpt-5.1`;
 - si le modele/provider ne peut pas traiter l'image, le tour recoit un signal compact d'exclusion;
 - Frida ne doit jamais pretendre avoir vu une image qui n'a pas ete injectee.
 
@@ -314,6 +315,13 @@ Preuve provider Lot 5:
 - stream: HTTP `200`, terminal `[DONE]`, `13` chunks texte, usage renvoye et coherent;
 - PNG trop petite `1 x 1 px` refusee avant provider par le garde V0 avec `reason_code=image_too_small_for_provider`;
 - aucune image brute, aucune data URL, aucun base64 de smoke et aucun secret ne sont conserves dans le depot.
+
+Extension GPT-5.1 du 2026-05-20:
+
+- `openai/gpt-5.1` est ajoute a l'allowlist image-capable V0 apres verification OpenRouter publique `text+image+file->text`;
+- les tests applicatifs prouvent que GPT-5.1 injecte une image active sous plafond provider avec payload `text_then_image_url`;
+- les modeles non allowlistes continuent de recevoir `image_model_unsupported`;
+- le smoke provider historique reste celui de Claude Sonnet 4.6; la qualite visuelle GPT-5.1 sera verifiee en usage reel par Tof.
 
 Formats image:
 

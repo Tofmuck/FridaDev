@@ -4,6 +4,8 @@
 
 Cet audit cartographie les appels modele et services d'inference reellement presents dans FridaDev au 2026-05-17, sur la working copy OVH `/opt/platform/fridadev` et le runtime vivant `platform-fridadev`.
 
+Mise a jour du 2026-05-20: le chantier `feature/main-model-gpt51` bascule le modele principal quotidien vers `openai/gpt-5.1`, en conservant les autres slots modeles et le transport OpenRouter. Les valeurs historiques Claude Sonnet 4.6 ci-dessous sont a lire comme etat pre-bascule quand elles sont explicitement marquees precedentes.
+
 Verdict court:
 
 - FridaDev expose **11 chemins fonctionnels d'inference**, correspondant a **13 slots modele/service** si l'on compte separement les modeles primaire/fallback du `stimmung_agent` et du `validation_agent`.
@@ -46,7 +48,7 @@ La table ci-dessous liste les **slots modele/service** observables. Les **11 che
 
 | # | Slot modele/service | Type | Caller / fichier principal | Modele ou service runtime OVH | Statut |
 |---|---|---|---|---|---|
-| 1 | Chat principal | OpenRouter chat completion | `app/core/chat_llm_flow.py` | `anthropic/claude-sonnet-4.6` | actif |
+| 1 | Chat principal | OpenRouter chat completion | `app/core/chat_llm_flow.py` | `openai/gpt-5.1` depuis la bascule 2026-05-20; precedent `anthropic/claude-sonnet-4.6` | actif |
 | 2 | Reformulation web | OpenRouter chat completion | `app/tools/web_search.py` | `openai/gpt-5.4-mini` | actif quand web active |
 | 3 | Arbitre memoire | OpenRouter chat completion | `app/memory/arbiter.py` | `mistralai/mistral-small-2603` | actif, individualise |
 | 4 | Resume conversationnel | OpenRouter chat completion | `app/memory/summarizer.py` | `openai/gpt-5.4-mini` | actif au seuil de summary |
@@ -72,7 +74,7 @@ Chemins explicitement absents ou retires:
 
 | Role | Caller / fichier | Prompt | Provider | Modele effectif runtime OVH | Defaut code / seed | Source config runtime | Token / auth source | Temperature | top_p | Max tokens | Timeout | Raisonnement | Stream | Output contract | Admin configurable | Observabilite |
 |---|---|---|---|---|---|---|---|---:|---:|---:|---:|---|---|---|---|---|
-| Chat principal | `chat_llm_flow.run_llm_exchange()` | `MAIN_SYSTEM_PROMPT_PATH`, `main_hermeneutical.txt`, prompt window runtime | OpenRouter | `anthropic/claude-sonnet-4.6` | `OPENROUTER_MODEL=openai/gpt-5.1` | `main_model.model` runtime DB | `main_model.api_key`, present origine `admin_ui`, resolu `db_encrypted`; header caller `llm` | `0.7` | `1.0` | `8192` par defaut, override request possible | `FRIDA_TIMEOUT=900` | aucun parametre `reasoning` envoye | oui, si `stream=true` | texte libre assistant, normalise puis persiste | oui: `main_model.model`, sampling, response max, headers; base_url runtime existe mais ce call utilise encore `config.OR_BASE` | `llm_payload`, `llm_call`, `llm_provider_response`, `AssistantText`, stream events |
+| Chat principal | `chat_llm_flow.run_llm_exchange()` | `MAIN_SYSTEM_PROMPT_PATH`, `main_hermeneutical.txt`, prompt window runtime | OpenRouter | `openai/gpt-5.1`; precedent `anthropic/claude-sonnet-4.6` | `OPENROUTER_MODEL=openai/gpt-5.1` | `main_model.model` runtime DB | `main_model.api_key`, present origine `admin_ui`, resolu `db_encrypted`; header caller `llm` | `0.7` | `1.0` | `8192` par defaut, override request possible | `FRIDA_TIMEOUT=900` | aucun parametre `reasoning` envoye | oui, si `stream=true` | texte libre assistant, normalise puis persiste | oui: `main_model.model`, sampling, response max, headers; base_url runtime existe mais ce call utilise encore `config.OR_BASE` | `llm_payload`, `llm_call`, `llm_provider_response`, `AssistantText`, stream events |
 | Reformulation web | `web_search.reformulate()` | `prompts/web_reformulation.txt` | OpenRouter | `openai/gpt-5.4-mini` | `WEB_REFORMULATION_MODEL=openai/gpt-5.4-mini` | `web_reformulation_model.model`; base via `llm_client.or_chat_completions_url()` | `main_model.api_key`, caller `web_reformulation` | `0.2` | non envoye | `40` | `10` | aucun | non | texte court, fallback vers message utilisateur si erreur | oui: `web_reformulation_model` pour model/temp/max/timeout; transport/token et referer/title partages via `main_model` | `web_reformulation_prompt_prepared`, `web_search` |
 | Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `mistralai/mistral-small-2603` | `MEMORY_ARBITER_MODEL=mistralai/mistral-small-2603` | `memory_arbiter_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `arbiter`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `600` | `10` | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | oui: section dediee `memory_arbiter_model`; benchmark final conserve sous `benchmark/results/arbiter/` | provider logs, metrics, `record_arbiter_decisions()` avec modele effectif |
 | Resume conversationnel | `summarizer.summarize_conversation()` | `prompts/summary_system.txt` | OpenRouter | `openai/gpt-5.4-mini` | `SUMMARY_MODEL=openai/gpt-5.4-mini` | `summary_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `resumer`, transport `llm_client.or_chat_completions_url()` | `0.3` | `1.0` | `2000` | `90` | aucun | non | texte libre de resume; persiste en summary actif | oui: section dediee `summary_model`; decision humaine conservee sous `benchmark/results/summary/` | provider metadata log; summary persistence |
@@ -384,7 +386,7 @@ Lecture assainie le 2026-05-17:
 | Section runtime | Champ | Valeur non secrete observee | Origine |
 |---|---|---|---|
 | `main_model` | `base_url` | `https://openrouter.ai/api/v1` | `admin_ui` |
-| `main_model` | `model` | `anthropic/claude-sonnet-4.6` | `admin_ui` |
+| `main_model` | `model` | `openai/gpt-5.1`; precedent `anthropic/claude-sonnet-4.6` | `admin_ui` |
 | `main_model` | `temperature` | `0.7` | `admin_ui` |
 | `main_model` | `top_p` | `1.0` | `db_seed` |
 | `main_model` | `response_max_tokens` | `8192` | `admin_ui` |
@@ -430,7 +432,7 @@ Lecture assainie le 2026-05-17:
 Constantes runtime `config.py` relevees dans le conteneur:
 
 - `OR_BASE='https://openrouter.ai/api/v1'`;
-- `OR_MODEL='openai/gpt-5.1'` comme seed/env, non modele principal effectif car runtime DB le remplace;
+- `OR_MODEL='openai/gpt-5.1'` comme seed/env; le modele principal effectif reste lu dans `main_model.model` runtime DB;
 - `WEB_REFORMULATION_MODEL='openai/gpt-5.4-mini'`;
 - `WEB_REFORMULATION_TEMPERATURE=0.2`;
 - `WEB_REFORMULATION_MAX_TOKENS=40`;
