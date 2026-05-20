@@ -1,0 +1,119 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+
+const {
+  assertTextContains,
+  openBrowserPage,
+} = require('./helpers/browser_test_helpers.js');
+
+function workspaceFoldersMockScript() {
+  return `
+    (() => {
+      const state = {
+        conversations: [
+          {
+            id: "conv-in",
+            conversation_id: "conv-in",
+            title: "Conversation dedans",
+            created_at: "2026-05-20T09:00:00Z",
+            updated_at: "2026-05-20T09:00:00Z",
+            message_count: 0,
+            last_message_preview: "",
+            workspace_folder_id: "folder-1",
+          },
+          {
+            id: "conv-out",
+            conversation_id: "conv-out",
+            title: "Conversation dehors",
+            created_at: "2026-05-20T10:00:00Z",
+            updated_at: "2026-05-20T10:00:00Z",
+            message_count: 0,
+            last_message_preview: "",
+            workspace_folder_id: null,
+          },
+        ],
+        patchCalls: [],
+      };
+      window.__fridaWorkspaceFolderState = state;
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+
+        if (url.pathname === "/api/workspace-folders" && method === "GET") {
+          return new Response(JSON.stringify({
+            ok: true,
+            items: [{
+              id: "folder-1",
+              display_name: "Projet Tulu",
+              icon_key: "folder",
+              description: "Description UI seulement",
+              sort_order: 1000,
+              created_at: "2026-05-20T08:00:00Z",
+              updated_at: "2026-05-20T08:00:00Z",
+              deleted_at: null,
+            }],
+          }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/conversations" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: state.conversations }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const patchMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)$/);
+        if (patchMatch && method === "PATCH") {
+          const conversationId = patchMatch[1];
+          const payload = JSON.parse(init.body || "{}");
+          state.patchCalls.push({ conversationId, payload });
+          const item = state.conversations.find((conversation) => conversation.id === conversationId);
+          if (item) item.workspace_folder_id = payload.workspace_folder_id || null;
+          return new Response(JSON.stringify({ ok: true, conversation: item }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const messagesMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/messages$/);
+        if (messagesMatch && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, messages: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const activeDocsMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/active-documents$/);
+        if (activeDocsMatch && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        throw new Error("Unexpected fetch " + method + " " + url.pathname + url.search);
+      };
+    })();
+  `;
+}
+
+test('workspace folders render above outside conversations and move by select', async () => {
+  await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
+    await page.waitForSelector('.workspace-folder-row');
+    await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
+    await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
+    await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
+
+    const outsideSelect = page.locator('li', { hasText: 'Conversation dehors' }).locator('.thread-folder-select');
+    await outsideSelect.selectOption('folder-1');
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 1);
+
+    const patchCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
+    assert.deepEqual(patchCalls, [{
+      conversationId: 'conv-out',
+      payload: { workspace_folder_id: 'folder-1' },
+    }]);
+  });
+});

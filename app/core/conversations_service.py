@@ -103,18 +103,41 @@ def patch_conversation(
     data: Mapping[str, Any],
     *,
     conv_store_module: Any,
+    workspace_folders_module: Any | None = None,
 ) -> Tuple[Dict[str, Any], int]:
     conv_id = conv_store_module.normalize_conversation_id(conversation_id)
     if not conv_id:
         return {'ok': False, 'error': 'conversation_id invalide'}, 400
 
-    title = str(data.get('title') or '').strip()
-    if not title:
-        return {'ok': False, 'error': 'title requis'}, 400
+    has_title = 'title' in data
+    has_workspace_folder = 'workspace_folder_id' in data
+    if not has_title and not has_workspace_folder:
+        return {'ok': False, 'error': 'champ modifiable requis'}, 400
 
-    summary = conv_store_module.rename_conversation(conv_id, title)
-    if summary is None:
-        return {'ok': False, 'error': 'conversation introuvable'}, 404
+    summary = None
+    if has_title:
+        title = str(data.get('title') or '').strip()
+        if not title:
+            return {'ok': False, 'error': 'title requis'}, 400
+        summary = conv_store_module.rename_conversation(conv_id, title)
+        if summary is None:
+            return {'ok': False, 'error': 'conversation introuvable'}, 404
+
+    if has_workspace_folder:
+        if workspace_folders_module is None:
+            return {'ok': False, 'error': 'workspace folders indisponibles'}, 500
+        raw_folder_id = data.get('workspace_folder_id')
+        folder_id = None
+        if raw_folder_id not in (None, ''):
+            folder_id = workspace_folders_module.normalize_workspace_folder_id(str(raw_folder_id))
+            if not folder_id:
+                return {'ok': False, 'error': 'workspace_folder_id invalide'}, 400
+            if workspace_folders_module.get_workspace_folder(folder_id) is None:
+                return {'ok': False, 'error': 'répertoire introuvable'}, 404
+        summary = conv_store_module.set_conversation_workspace_folder(conv_id, folder_id)
+        if summary is None:
+            return {'ok': False, 'error': 'conversation introuvable'}, 404
+
     return {'ok': True, 'conversation': summary}, 200
 
 

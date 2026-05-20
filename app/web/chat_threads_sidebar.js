@@ -1,5 +1,15 @@
 const THREADS_PAGE_SIZE = 200;
 const MAX_TITLE_LENGTH = 120;
+const WorkspaceFolders = (
+  typeof window !== "undefined" && window.FridaWorkspaceFolders
+    ? window.FridaWorkspaceFolders
+    : (typeof require !== "undefined" ? require("./chat_workspace_folders.js") : null)
+);
+const WorkspaceFoldersSidebar = (
+  typeof window !== "undefined" && window.FridaWorkspaceFoldersSidebar
+    ? window.FridaWorkspaceFoldersSidebar
+    : (typeof require !== "undefined" ? require("./chat_workspace_folders_sidebar.js") : null)
+);
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
   const normalized = String(value || "").replace(/\s+/g, " ").trim();
@@ -19,6 +29,7 @@ function normalizeThreadItem(item, cachedMessages = null) {
     updated_at: item?.updated_at || item?.created_at || null,
     message_count: Number(item?.message_count || 0),
     last_message_preview: String(item?.last_message_preview || ""),
+    workspace_folder_id: WorkspaceFolders?.normalizeWorkspaceFolderId(item?.workspace_folder_id) || null,
     deleted_at: item?.deleted_at || null,
   };
 }
@@ -37,6 +48,7 @@ function createChatThreadsSidebar({
   const logger = consoleObj || (typeof console !== "undefined" ? console : { warn() {} });
   let editingThreadId = null;
   let threadsState = [];
+  let foldersState = [];
   let currentThreadId = null;
   const messageCache = new Map();
 
@@ -72,6 +84,10 @@ function createChatThreadsSidebar({
   const getThreads = () => threadsState;
   const saveThreads = (arr) => {
     threadsState = Array.isArray(arr) ? arr : [];
+  };
+  const getWorkspaceFolders = () => foldersState;
+  const saveWorkspaceFolders = (arr) => {
+    foldersState = Array.isArray(arr) ? arr : [];
   };
   const getCurrentId = () => currentThreadId;
   const setCurrentId = (id) => {
@@ -124,6 +140,12 @@ function createChatThreadsSidebar({
     return Array.isArray(data.items) ? data.items : [];
   }
 
+  async function listWorkspaceFoldersFromServer() {
+    const res = await httpFetch("/api/workspace-folders");
+    const data = await parseServerResponse(res);
+    return WorkspaceFolders?.normalizeWorkspaceFoldersPayload(data) || [];
+  }
+
   async function createConversationOnServer(title = "Nouvelle conversation") {
     const res = await httpFetch("/api/conversations", {
       method: "POST",
@@ -142,6 +164,44 @@ function createChatThreadsSidebar({
     });
     const data = await parseServerResponse(res);
     return data.conversation || null;
+  }
+
+  async function moveConversationToWorkspaceFolderOnServer(conversationId, folderId) {
+    const res = await httpFetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspace_folder_id: folderId || null }),
+    });
+    const data = await parseServerResponse(res);
+    return data.conversation || null;
+  }
+
+  async function createWorkspaceFolderOnServer(displayName) {
+    const res = await httpFetch("/api/workspace-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: displayName, icon_key: "folder" }),
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
+  }
+
+  async function updateWorkspaceFolderOnServer(folderId, patch) {
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch || {}),
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
+  }
+
+  async function deleteWorkspaceFolderOnServer(folderId) {
+    const res = await httpFetch(`/api/workspace-folders/${encodeURIComponent(folderId)}`, {
+      method: "DELETE",
+    });
+    const data = await parseServerResponse(res);
+    return data.folder || null;
   }
 
   async function deleteConversationOnServer(conversationId) {
@@ -181,13 +241,20 @@ function createChatThreadsSidebar({
   const refreshThreadsFromServer = async ({ keepSelection = true } = {}) => {
     const previousCurrent = keepSelection ? getCurrentId() : null;
     try {
-      const items = await listConversationsFromServer();
+      const [items, folders] = await Promise.all([
+        listConversationsFromServer(),
+        listWorkspaceFoldersFromServer().catch((err) => {
+          logger.warn("Impossible de charger les répertoires", err);
+          return [];
+        }),
+      ]);
       const mapped = [];
       for (const item of items) {
         const normalized = normalizeThread(item);
         if (normalized) mapped.push(normalized);
       }
       saveThreads(mapped);
+      saveWorkspaceFolders(folders);
       if (previousCurrent && mapped.some((x) => x.id === previousCurrent)) {
         setCurrentId(previousCurrent);
       } else {
@@ -202,13 +269,41 @@ function createChatThreadsSidebar({
     }
   };
 
+  const moveThreadToWorkspaceFolder = async (thread, folderId) => {
+    try {
+      const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, folderId);
+      if (updated) syncThreadFromServer(updated);
+      await refreshThreadsFromServer({ keepSelection: true });
+      renderThreads();
+    } catch (err) {
+      logger.warn("Déplacement conversation échoué", err);
+      setThreadStatus("Déplacement non synchronisé.", true);
+      renderThreads();
+    }
+  };
+
+  const workspaceFolderRenderer = WorkspaceFoldersSidebar?.createWorkspaceFolderSidebarRenderer({
+    threadsUl,
+    getWorkspaceFolders,
+    refreshThreadsFromServer,
+    renderThreads: () => renderThreads(),
+    setThreadStatus,
+    createWorkspaceFolderOnServer,
+    updateWorkspaceFolderOnServer,
+    deleteWorkspaceFolderOnServer,
+    consoleObj: logger,
+  });
+
   const renderThreads = () => {
     threadsUl.innerHTML = "";
     const threads = getThreads();
+    const folders = getWorkspaceFolders();
     const current = getCurrentId();
+    const grouped = WorkspaceFolders?.groupThreadsByWorkspaceFolder(threads, folders) || { byFolder: new Map(), outside: threads };
 
-    threads.forEach((t) => {
+    const appendThreadRow = (t, nested = false) => {
       const li = document.createElement("li");
+      if (nested) li.classList.add("in-workspace-folder");
       if (t.id === current) li.classList.add("active");
       li.tabIndex = 0;
       li.setAttribute("role", "button");
@@ -276,6 +371,29 @@ function createChatThreadsSidebar({
 
       li.appendChild(main);
 
+      if (folders.length) {
+        const folderSelect = document.createElement("select");
+        folderSelect.className = "thread-folder-select";
+        folderSelect.title = "Déplacer la conversation";
+        const outsideOption = document.createElement("option");
+        outsideOption.value = "";
+        outsideOption.textContent = "Hors répertoire";
+        folderSelect.appendChild(outsideOption);
+        folders.forEach((folder) => {
+          const option = document.createElement("option");
+          option.value = folder.id;
+          option.textContent = folder.display_name;
+          folderSelect.appendChild(option);
+        });
+        folderSelect.value = t.workspace_folder_id || "";
+        folderSelect.addEventListener("click", (event) => event.stopPropagation());
+        folderSelect.addEventListener("change", (event) => {
+          event.stopPropagation();
+          void moveThreadToWorkspaceFolder(t, folderSelect.value || null);
+        });
+        li.appendChild(folderSelect);
+      }
+
       const ts = t.updated_at || t.created_at;
       if (ts) {
         const timeSpan = document.createElement("span");
@@ -298,7 +416,19 @@ function createChatThreadsSidebar({
       });
 
       threadsUl.appendChild(li);
+    };
+
+    workspaceFolderRenderer?.appendToolbar();
+    folders.forEach((folder, index) => {
+      workspaceFolderRenderer?.appendFolderRow(folder, grouped.byFolder.get(folder.id) || [], index, appendThreadRow);
     });
+    if (folders.length) {
+      const separator = document.createElement("li");
+      separator.className = "workspace-folder-separator";
+      separator.textContent = "Conversations hors répertoire";
+      threadsUl.appendChild(separator);
+    }
+    (grouped.outside || []).forEach((thread) => appendThreadRow(thread, false));
   };
 
   async function startInlineRename(li, threadId) {
@@ -507,14 +637,21 @@ function createChatThreadsSidebar({
   return Object.freeze({
     getThreads,
     saveThreads,
+    getWorkspaceFolders,
+    saveWorkspaceFolders,
     getCurrentId,
     setCurrentId,
     getThreadById,
     setThreadMeta,
     applyConversationTerminalMeta,
     listConversationsFromServer,
+    listWorkspaceFoldersFromServer,
     createConversationOnServer,
+    createWorkspaceFolderOnServer,
+    updateWorkspaceFolderOnServer,
+    deleteWorkspaceFolderOnServer,
     renameConversationOnServer,
+    moveConversationToWorkspaceFolderOnServer,
     deleteConversationOnServer,
     fetchConversationMessagesFromServer,
     syncThreadFromServer,

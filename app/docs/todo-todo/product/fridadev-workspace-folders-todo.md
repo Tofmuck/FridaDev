@@ -365,18 +365,20 @@ Note Lot 0 livré le 2026-05-20: la spec `app/docs/states/specs/workspace-folder
 
 ### Lot 1 - Modèle répertoires + conversations
 
-- [ ] Ajouter tables/migrations pour les répertoires de travail.
-- [ ] Ajouter création de répertoire.
-- [ ] Ajouter renommage de répertoire.
-- [ ] Ajouter suppression de répertoire avec confirmation forte côté UI.
-- [ ] Ajouter ordre manuel des répertoires.
-- [ ] Ajouter `icon_key` allowlisté.
-- [ ] Ajouter description courte non injectée.
-- [ ] Ajouter déplacement conversations -> répertoire.
-- [ ] Ajouter sortie de conversation vers hors répertoire.
-- [ ] Préserver conversations existantes hors répertoire.
-- [ ] Garantir qu'une conversation appartient à zéro ou un répertoire en V0.
-- [ ] Tester suppression de répertoire sans suppression automatique des conversations.
+- [x] Ajouter tables/migrations pour les répertoires de travail.
+- [x] Ajouter création de répertoire.
+- [x] Ajouter renommage de répertoire.
+- [x] Ajouter suppression de répertoire avec confirmation forte côté UI.
+- [x] Ajouter ordre manuel des répertoires.
+- [x] Ajouter `icon_key` allowlisté.
+- [x] Ajouter description courte non injectée.
+- [x] Ajouter déplacement conversations -> répertoire.
+- [x] Ajouter sortie de conversation vers hors répertoire.
+- [x] Préserver conversations existantes hors répertoire.
+- [x] Garantir qu'une conversation appartient à zéro ou un répertoire en V0.
+- [x] Tester suppression de répertoire sans suppression automatique des conversations.
+
+Note Lot 1 livré le 2026-05-20: socle DB/API/UI minimal livré pour répertoires + rattachement conversation. Le déplacement V0 utilise un select par conversation; le glisser-déposer reste ouvert en Lot 5 / polish pour éviter de fragiliser la sidebar. Aucun fichier persistant, stockage disque, sélection multi-fichiers, OCR `.ocr.md` ou injection documentaire n'a été ouvert.
 
 ### Lot 2 - Stockage fichiers de répertoire
 

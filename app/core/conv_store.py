@@ -51,6 +51,7 @@ __all__ = (
     "get_conversation_summary",
     "read_conversation",
     "rename_conversation",
+    "set_conversation_workspace_folder",
     "soft_delete_conversation",
     "delta_t_label",
     "build_prompt_messages",
@@ -440,6 +441,20 @@ def rename_conversation(conversation_id: str, title: str) -> Optional[dict[str, 
             preserve_deleted=preserve_deleted,
         ),
         now_iso_func=_now_iso,
+        db_conn_func=_db_conn,
+        serialize_catalog_row_func=_serialize_catalog_row,
+        logger=logger,
+    )
+
+
+def set_conversation_workspace_folder(
+    conversation_id: str,
+    workspace_folder_id: Optional[str],
+) -> Optional[dict[str, Any]]:
+    return conversations_store.set_conversation_workspace_folder(
+        conversation_id,
+        workspace_folder_id,
+        normalize_conversation_id_func=normalize_conversation_id,
         db_conn_func=_db_conn,
         serialize_catalog_row_func=_serialize_catalog_row,
         logger=logger,

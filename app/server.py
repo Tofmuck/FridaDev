@@ -28,6 +28,8 @@ from core import active_document_upload_service
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
+from core import workspace_folders
+from core import workspace_folders_service
 from core import whisper_transcription_service
 from admin import (
     admin_hermeneutics_routes,
@@ -1186,6 +1188,47 @@ admin_hermeneutics_routes.register_admin_hermeneutics_routes(
     config_module=config,
 )
 
+# ── /api/workspace-folders* ───────────────────────────────────────────────────
+
+@app.get('/api/workspace-folders')
+def api_list_workspace_folders():
+    payload = workspace_folders_service.list_workspace_folders(
+        request.args,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload)
+
+
+@app.post('/api/workspace-folders')
+def api_create_workspace_folder():
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folders_service.create_workspace_folder(
+        data,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload), status
+
+
+@app.patch('/api/workspace-folders/<folder_id>')
+def api_patch_workspace_folder(folder_id: str):
+    data = request.get_json(silent=True) or {}
+    payload, status = workspace_folders_service.patch_workspace_folder(
+        folder_id,
+        data,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/workspace-folders/<folder_id>')
+def api_delete_workspace_folder(folder_id: str):
+    payload, status = workspace_folders_service.delete_workspace_folder(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+    )
+    return jsonify(payload), status
+
+
 # ── /api/conversations* ───────────────────────────────────────────────────────
 
 @app.get('/api/conversations')
@@ -1238,6 +1281,7 @@ def api_patch_conversation(conversation_id: str):
         conversation_id,
         data,
         conv_store_module=conv_store,
+        workspace_folders_module=workspace_folders,
     )
     return jsonify(payload), status
 

@@ -29,8 +29,29 @@ def init_catalog_db(
                         updated_at           TIMESTAMPTZ NOT NULL,
                         message_count        INTEGER     NOT NULL DEFAULT 0,
                         last_message_preview TEXT        NOT NULL DEFAULT '',
+                        workspace_folder_id  UUID,
                         deleted_at           TIMESTAMPTZ
                     );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS workspace_folders (
+                        id           UUID PRIMARY KEY,
+                        display_name TEXT        NOT NULL,
+                        icon_key     TEXT        NOT NULL DEFAULT 'folder',
+                        description  TEXT        NOT NULL DEFAULT '',
+                        sort_order   INTEGER     NOT NULL DEFAULT 0,
+                        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        deleted_at   TIMESTAMPTZ
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE conversations
+                    ADD COLUMN IF NOT EXISTS workspace_folder_id UUID;
                     """
                 )
                 cur.execute(
@@ -43,6 +64,37 @@ def init_catalog_db(
                     """
                     CREATE INDEX IF NOT EXISTS conversations_deleted_idx
                     ON conversations (deleted_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS conversations_workspace_folder_idx
+                    ON conversations (workspace_folder_id);
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS workspace_folders_active_sort_idx
+                    ON workspace_folders (deleted_at, sort_order, created_at);
+                    """
+                )
+                cur.execute(
+                    """
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1
+                            FROM pg_constraint
+                            WHERE conname = 'conversations_workspace_folder_id_fkey'
+                        ) THEN
+                            ALTER TABLE conversations
+                            ADD CONSTRAINT conversations_workspace_folder_id_fkey
+                            FOREIGN KEY (workspace_folder_id)
+                            REFERENCES workspace_folders(id)
+                            ON DELETE SET NULL;
+                        END IF;
+                    END
+                    $$;
                     """
                 )
             conn.commit()

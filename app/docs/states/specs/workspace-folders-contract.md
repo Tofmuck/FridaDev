@@ -394,3 +394,26 @@ Biblio:
 - fonds/catalogue durable separe;
 - pas ouvert par ce chantier;
 - pas a confondre avec les fichiers de travail gardes a portee de main.
+
+## 16. Mise en oeuvre Lot 1
+
+Lot 1 livre le 2026-05-20:
+
+- table `workspace_folders`;
+- colonne nullable `conversations.workspace_folder_id`;
+- conversations existantes implicitement hors repertoire;
+- relation conversation -> repertoire en V0 zero ou un repertoire;
+- creation, renommage, suppression soft de repertoire;
+- suppression de repertoire sans suppression automatique des conversations;
+- remise hors repertoire des conversations rattachees lors de la suppression;
+- `icon_key` allowliste;
+- description courte persistante et non injectee;
+- `sort_order` manuel;
+- routes `GET/POST/PATCH/DELETE /api/workspace-folders`;
+- rattachement/sortie de conversation via `PATCH /api/conversations/<conversation_id>`;
+- sidebar V0 avec repertoires au-dessus, conversations hors repertoire sous separation fine, et deplacement par select.
+
+Decision Lot 1:
+
+- le glisser-deposer conversation -> repertoire reste au Lot 5 / polish;
+- aucun fichier persistant, stockage disque, selection multi-fichiers, OCR `.ocr.md` ou injection documentaire n'est ouvert par Lot 1.

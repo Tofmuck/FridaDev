@@ -173,6 +173,122 @@ body {
   font-weight: 500;
 }
 
+.workspace-folder-toolbar,
+.workspace-folder-row,
+.workspace-folder-separator,
+.workspace-folder-empty {
+  cursor: default;
+  border-left-color: transparent;
+}
+
+.workspace-folder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding: 6px 10px 4px;
+  color: var(--fg-subtle);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.workspace-folder-add,
+.workspace-folder-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-subtle);
+  cursor: pointer;
+  font: inherit;
+}
+
+.workspace-folder-add:hover,
+.workspace-folder-action:hover {
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.workspace-folder-action:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.workspace-folder-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-folder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-muted);
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.workspace-folder-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+}
+
+.workspace-folder-count {
+  min-width: 16px;
+  color: var(--fg-subtle);
+  text-align: right;
+  font-size: 11px;
+}
+
+.workspace-folder-empty {
+  padding: 3px 10px 6px 32px;
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+
+.workspace-folder-separator {
+  margin: 8px 10px 4px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border-muted);
+  border-radius: 0;
+  color: var(--fg-subtle);
+  font-size: 11px;
+}
+
+.threads li.in-workspace-folder {
+  margin-left: 12px;
+  padding-left: 8px;
+}
+
+.thread-folder-select {
+  display: block;
+  width: calc(100% - 18px);
+  margin: 4px 0 0 18px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
 /* Afficher les boutons au hover du li */
 .threads li:hover .thread-edit,
 .threads li:hover .thread-del {

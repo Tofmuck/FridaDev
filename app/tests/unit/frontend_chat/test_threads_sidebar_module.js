@@ -49,9 +49,20 @@ test("normalizeThreadItem keeps the stable sidebar shape and cached messages", (
       updated_at: "2026-05-03T10:00:00Z",
       message_count: 2,
       last_message_preview: "hello",
+      workspace_folder_id: null,
       deleted_at: null,
     },
   );
+});
+
+test("normalizeThreadItem keeps nullable workspace folder assignments", () => {
+  const normalized = normalizeThreadItem({
+    id: "conv-2",
+    title: "Dans dossier",
+    workspace_folder_id: "folder-1",
+  });
+
+  assert.equal(normalized.workspace_folder_id, "folder-1");
 });
 
 test("normalizeThreadItem rejects malformed conversation identifiers", () => {
