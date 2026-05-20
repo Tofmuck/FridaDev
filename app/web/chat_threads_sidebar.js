@@ -574,6 +574,13 @@ function createChatThreadsSidebar({
         startInlineRename(li, t.id);
       });
 
+      li.addEventListener("dblclick", (ev) => {
+        const interactiveTarget = ev.target?.closest?.("button, input, textarea, select, a");
+        if (interactiveTarget) return;
+        ev.stopPropagation();
+        startInlineRename(li, t.id);
+      });
+
       li.addEventListener("click", async () => {
         if (editingThreadId) return;
         setCurrentId(t.id);

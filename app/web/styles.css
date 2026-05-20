@@ -146,24 +146,27 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
 
 .threads li {
   position: relative;
-  padding: 7px 10px;
-  border-radius: var(--radius-lg);
+  padding: 4px 8px;
+  border-radius: var(--radius);
   cursor: pointer;
   color: var(--fg-muted);
-  font-size: 13px;
-  line-height: 1.4;
-  transition: background 120ms ease, color 120ms ease, opacity 180ms ease, transform 180ms ease;
+  font-size: 12px;
+  line-height: 1.18;
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.055);
+  transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 180ms ease, transform 180ms ease;
   border-left: 2px solid transparent;
 }
 
 .threads li:hover {
   background: var(--surface-hover);
   color: var(--fg);
+  box-shadow: inset 0 0 0 1px rgba(25, 23, 20, 0.075);
 }
 
 .threads li.active {
@@ -179,6 +182,8 @@ body {
 .workspace-folder-separator,
 .workspace-folder-empty,
 .workspace-folder-files {
+  background: transparent;
+  box-shadow: none;
   cursor: default;
   border-left-color: transparent;
 }
@@ -566,8 +571,23 @@ body {
 }
 
 .threads li.in-workspace-folder {
-  margin-left: 28px;
-  padding-left: 9px;
+  margin-left: 23px;
+  padding-left: 8px;
+}
+
+.thread-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.thread-main .title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
@@ -578,19 +598,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--fg-subtle);
-  opacity: 0;
-  transition: opacity 120ms ease, color 120ms ease;
+  opacity: 0.46;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
   border-radius: 3px;
   font-family: inherit;
 }
-.thread-edit:hover { color: var(--fg-muted); }
+.thread-edit:hover {
+  color: var(--fg-muted);
+  background: rgba(25, 23, 20, 0.055);
+}
+.threads li:hover .thread-edit,
+.threads li:focus-within .thread-edit,
+.threads li.active .thread-edit {
+  opacity: 0.78;
+}
 
 /* Bouton × (supprimer) */
 .thread-del {
@@ -598,25 +626,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--fg-subtle);
   opacity: 0;
-  transition: opacity 120ms ease, color 120ms ease;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
   border-radius: 3px;
   font-family: inherit;
 }
-.thread-del:hover { color: var(--fg); }
+.thread-del:hover {
+  color: var(--fg);
+  background: rgba(25, 23, 20, 0.055);
+}
+.threads li:hover .thread-del,
+.threads li:focus-within .thread-del,
+.threads li.active .thread-del {
+  opacity: 0.58;
+}
 
 /* Timestamp */
 .thread-time {
   display: block;
-  margin-top: 2px;
-  font-size: 11px;
+  margin-top: 1px;
+  font-size: 10px;
+  line-height: 1.1;
   color: var(--fg-subtle);
 }
 
@@ -629,7 +666,7 @@ body {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   padding: 0 0 1px;
   background: transparent;
   color: var(--fg);

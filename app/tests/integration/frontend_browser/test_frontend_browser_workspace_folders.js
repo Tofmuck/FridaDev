@@ -263,6 +263,23 @@ test('workspace folders render above outside conversations, collapse and move by
     assert.equal(separatorStyle.textTransform, headingStyle.textTransform);
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
     assert.equal(await page.locator('.thread-folder-select').count(), 0);
+    const compactConversationRow = await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).evaluate((node) => {
+      const style = getComputedStyle(node);
+      const edit = node.querySelector('.thread-edit');
+      return {
+        height: Math.round(node.getBoundingClientRect().height),
+        backgroundColor: style.backgroundColor,
+        editOpacity: Number(getComputedStyle(edit).opacity),
+      };
+    });
+    assert.ok(compactConversationRow.height <= 44, `conversation row should stay compact, got ${compactConversationRow.height}px`);
+    assert.notEqual(compactConversationRow.backgroundColor, 'rgba(0, 0, 0, 0)');
+    assert.ok(compactConversationRow.editOpacity > 0.3);
+
+    await page.locator('li.in-workspace-folder .thread-edit').first().click();
+    await page.waitForSelector('li.in-workspace-folder .rename-input');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('li.in-workspace-folder .rename-input'));
 
     await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).click();
     await page.waitForFunction(() => document.querySelector('#log')?.textContent.includes('Message du répertoire'));
