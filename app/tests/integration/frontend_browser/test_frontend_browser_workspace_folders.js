@@ -239,7 +239,7 @@ function workspaceFoldersMockScript() {
   `;
 }
 
-test('workspace folders render above outside conversations and move by select', async () => {
+test('workspace folders render above outside conversations, collapse and move by drag-and-drop', async () => {
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
@@ -252,6 +252,16 @@ test('workspace folders render above outside conversations and move by select', 
     await assertTextContains(page.locator('.workspace-folder-files'), 'OCR requis');
     await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
+    assert.equal(await page.locator('.thread-folder-select').count(), 0);
+
+    await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
+    await page.waitForFunction(() => document.querySelector('.workspace-folder-row')?.classList.contains('workspace-folder-collapsed'));
+    assert.equal(await page.locator('.workspace-folder-files').count(), 0);
+    assert.equal(await page.locator('li.in-workspace-folder').count(), 0);
+
+    await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
+    await page.waitForSelector('.workspace-folder-files');
+    await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
 
     await page.locator('.workspace-folder-file-select').first().check();
     await page.waitForFunction(() => window.__fridaWorkspaceFolderState.selectionCalls.length === 1);
@@ -262,38 +272,29 @@ test('workspace folders render above outside conversations and move by select', 
       payload: { file_id: 'file-1' },
     }]);
 
-    const outsideSelect = page.locator('li', { hasText: 'Conversation dehors' }).locator('.thread-folder-select');
-    await outsideSelect.selectOption('folder-1');
+    await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-row'), {
+      sourcePosition: { x: 12, y: 8 },
+      targetPosition: { x: 12, y: 8 },
+    });
     await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 1);
-
-    const patchCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
-    assert.deepEqual(patchCalls, [{
+    let dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
+    assert.deepEqual(dragCalls[0], {
       conversationId: 'conv-out',
       payload: { workspace_folder_id: 'folder-1' },
-    }]);
+    });
 
     await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-separator'), {
       sourcePosition: { x: 12, y: 8 },
       targetPosition: { x: 12, y: 8 },
     });
     await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 2);
-    let dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
+    dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
     assert.deepEqual(dragCalls[1], {
       conversationId: 'conv-out',
       payload: { workspace_folder_id: null },
     });
 
-    await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-row'), {
-      sourcePosition: { x: 12, y: 8 },
-      targetPosition: { x: 12, y: 8 },
-    });
-    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 3);
-    dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
-    assert.deepEqual(dragCalls[2], {
-      conversationId: 'conv-out',
-      payload: { workspace_folder_id: 'folder-1' },
-    });
-
+    await page.locator('.workspace-folder-row').hover();
     const chooserPromise = page.waitForEvent('filechooser');
     await page.locator('.workspace-folder-action[title="Ajouter un fichier au répertoire"]').click();
     const chooser = await chooserPromise;

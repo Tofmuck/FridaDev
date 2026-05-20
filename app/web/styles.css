@@ -197,6 +197,7 @@ body {
 }
 
 .workspace-folder-add,
+.workspace-folder-toggle,
 .workspace-folder-action {
   display: inline-flex;
   align-items: center;
@@ -213,6 +214,7 @@ body {
 }
 
 .workspace-folder-add:hover,
+.workspace-folder-toggle:hover,
 .workspace-folder-action:hover {
   background: var(--surface-hover);
   color: var(--fg);
@@ -224,10 +226,20 @@ body {
 }
 
 .workspace-folder-main {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 7px;
   min-width: 0;
+}
+
+.workspace-folder-toggle {
+  min-width: 15px;
+  width: 15px;
+  height: 20px;
+  padding: 0;
+  color: rgba(25, 23, 20, 0.34);
+  font-size: 10px;
 }
 
 .workspace-folder-row {
@@ -310,23 +322,33 @@ body {
   text-align: center;
   font-size: 10px;
   line-height: 18px;
+  transition: opacity 120ms ease;
 }
 
 .workspace-folder-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
   display: inline-flex;
   align-items: center;
   gap: 1px;
-  width: 0;
-  overflow: hidden;
+  padding-left: 8px;
+  background: linear-gradient(90deg, rgba(247, 245, 241, 0), var(--bg-sidebar) 24%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease, width 120ms ease;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+
+.workspace-folder-row:hover .workspace-folder-count,
+.workspace-folder-row:focus-within .workspace-folder-count,
+.workspace-folder-drop-target .workspace-folder-count {
+  opacity: 0;
 }
 
 .workspace-folder-row:hover .workspace-folder-actions,
 .workspace-folder-row:focus-within .workspace-folder-actions,
 .workspace-folder-drop-target .workspace-folder-actions {
-  width: auto;
   opacity: 1;
   pointer-events: auto;
 }
@@ -532,51 +554,7 @@ body {
   padding-left: 9px;
 }
 
-.thread-folder-select {
-  display: block;
-  width: calc(100% - 34px);
-  margin: 5px 0 0 34px;
-  border: 1px solid rgba(25, 23, 20, 0.07);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.46);
-  color: rgba(25, 23, 20, 0.48);
-  font: inherit;
-  font-size: 11px;
-  line-height: 1.2;
-  padding: 3px 6px;
-}
 
-/* Afficher les boutons au hover du li */
-.threads li:hover .thread-edit,
-.threads li:hover .thread-del {
-  opacity: 1;
-}
-
-/* ===== Thread main row: titre + actions ===== */
-.thread-main {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.thread-main .title {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.threads li:not(.active) .thread-folder-select {
-  opacity: 0.78;
-}
-
-.threads li:not(.active):not(:hover) .thread-folder-select {
-  background: transparent;
-  border-color: transparent;
-}
 
 /* Bouton crayon (renommer) */
 .thread-edit {

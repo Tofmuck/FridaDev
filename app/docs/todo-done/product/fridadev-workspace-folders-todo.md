@@ -91,8 +91,9 @@ Règles UX:
 - renommage de répertoire;
 - suppression de répertoire;
 - ordre manuel des répertoires;
-- déplacement de conversations dans un répertoire, idéalement par glisser-déposer;
-- possibilité de sortir une conversation d'un répertoire;
+- déplacement de conversations dans un répertoire par glisser-déposer;
+- possibilité de sortir une conversation d'un répertoire par glisser-déposer vers la séparation hors répertoire;
+- répertoires repliables/dépliables;
 - renommage manuel des conversations conservé;
 - nommage automatique des conversations à prévoir dans ce chantier ou dans un lot séparé proche.
 

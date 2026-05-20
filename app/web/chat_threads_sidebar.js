@@ -560,28 +560,6 @@ function createChatThreadsSidebar({
 
       li.appendChild(main);
 
-      if (folders.length) {
-        const folderSelect = document.createElement("select");
-        folderSelect.className = "thread-folder-select";
-        folderSelect.title = "Déplacer la conversation";
-        const outsideOption = document.createElement("option");
-        outsideOption.value = "";
-        outsideOption.textContent = "Hors répertoire";
-        folderSelect.appendChild(outsideOption);
-        folders.forEach((folder) => {
-          const option = document.createElement("option");
-          option.value = folder.id;
-          option.textContent = folder.display_name;
-          folderSelect.appendChild(option);
-        });
-        folderSelect.value = t.workspace_folder_id || "";
-        folderSelect.addEventListener("click", (event) => event.stopPropagation());
-        folderSelect.addEventListener("change", (event) => {
-          event.stopPropagation();
-          void moveThreadToWorkspaceFolder(t, folderSelect.value || null);
-        });
-        li.appendChild(folderSelect);
-      }
 
       const ts = t.updated_at || t.created_at;
       if (ts) {
@@ -604,7 +582,7 @@ function createChatThreadsSidebar({
         closeSidebar();
       });
       li.addEventListener("dragstart", (event) => {
-        const interactiveTarget = event.target?.closest?.("button, input");
+        const interactiveTarget = event.target?.closest?.("button, input, textarea, select, a");
         if (editingThreadId || interactiveTarget) {
           event.preventDefault();
           return;

@@ -148,7 +148,8 @@ Supprimer un repertoire ne supprime pas automatiquement les conversations. Les c
 Implementation Lot 5 livree:
 
 - les repertoires restent affiches au-dessus des conversations hors repertoire avec separation fine;
-- le select de deplacement conversation reste disponible comme fallback explicite;
+- les repertoires sont repliables/depliables depuis leur ligne;
+- le deplacement des conversations se fait par glisser-deposer, sans select de repertoire dans les conversations;
 - le glisser-deposer de conversations vers un repertoire est supporte;
 - le glisser-deposer vers la separation `Conversations hors repertoire` sort la conversation du repertoire;
 - les icones restent allowlistees (`icon_key`), rendues comme mini-repertoires SVG locaux, sans chargement externe ni upload d'icone custom;

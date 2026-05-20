@@ -33,6 +33,19 @@ function createWorkspaceFolderSidebarRenderer({
   const logger = consoleObj || (typeof console !== 'undefined' ? console : { warn() {} });
   const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
   const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
+  const collapsedFolderIds = new Set();
+
+  const isFolderCollapsed = (folderId) => collapsedFolderIds.has(String(folderId || ''));
+  const toggleFolderCollapsed = (folderId) => {
+    const normalized = String(folderId || '');
+    if (!normalized) return;
+    if (collapsedFolderIds.has(normalized)) {
+      collapsedFolderIds.delete(normalized);
+    } else {
+      collapsedFolderIds.add(normalized);
+    }
+    renderThreads();
+  };
 
   const syncAndRender = async () => {
     await refreshThreadsFromServer({ keepSelection: true });
@@ -328,11 +341,26 @@ function createWorkspaceFolderSidebarRenderer({
   const appendFolderRow = (folder, folderThreads, index, appendThreadRow) => {
     const folders = getWorkspaceFolders();
     const li = document.createElement('li');
+    const collapsed = isFolderCollapsed(folder.id);
     li.className = 'workspace-folder-row';
+    if (collapsed) li.classList.add('workspace-folder-collapsed');
     li.title = folder.description || folder.display_name;
+    li.dataset.workspaceFolderId = folder.id;
 
     const main = document.createElement('div');
     main.className = 'workspace-folder-main';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'workspace-folder-toggle';
+    toggle.title = collapsed ? 'Déplier le répertoire' : 'Replier le répertoire';
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    toggle.textContent = collapsed ? '▸' : '▾';
+    toggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleFolderCollapsed(folder.id);
+    });
+    main.appendChild(toggle);
 
     const icon = document.createElement('span');
     icon.className = 'workspace-folder-icon';
@@ -374,10 +402,16 @@ function createWorkspaceFolderSidebarRenderer({
     main.appendChild(actions);
 
     li.appendChild(main);
+    li.addEventListener('click', (event) => {
+      if (event.target?.closest?.('button, input, textarea, select, a')) return;
+      toggleFolderCollapsed(folder.id);
+    });
     if (typeof bindConversationDropTarget === 'function') {
       bindConversationDropTarget(li, folder.id);
     }
     threadsUl.appendChild(li);
+
+    if (collapsed) return;
 
     appendFileRows(folder);
 
