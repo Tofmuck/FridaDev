@@ -20,19 +20,29 @@ REASON_IMAGE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "image_too_large_for_provider_payl
 REASON_WORKSPACE_FILE_TOO_LARGE = "workspace_file_too_large"
 REASON_WORKSPACE_FILE_UNREADABLE = "workspace_file_unreadable"
 REASON_WORKSPACE_FILE_MODEL_UNSUPPORTED = "workspace_file_model_unsupported"
+REASON_FILE_MODEL_UNSUPPORTED = "file_model_unsupported"
+REASON_FILE_BYTES_MISSING = "file_bytes_missing"
+REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD = "file_too_large_for_provider_payload"
+REASON_WORKSPACE_FILE_PDF_VISUAL_MODEL_UNSUPPORTED = "workspace_file_pdf_visual_model_unsupported"
+REASON_WORKSPACE_FILE_PDF_VISUAL_BYTES_MISSING = "workspace_file_pdf_visual_bytes_missing"
+REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE = "workspace_file_pdf_visual_too_large"
 READ_STATUS_OK = "ok"
 READ_STATUS_EMPTY = "empty"
 READ_STATUS_ERROR = "error"
 MEDIA_KIND_TEXT = "text"
 MEDIA_KIND_IMAGE = "image"
+MEDIA_KIND_FILE = "file"
 IMAGE_PAYLOAD_ORDER = "text_then_image_url"
+FILE_PAYLOAD_ORDER = "text_then_file"
 IMAGE_CAPABLE_MAIN_MODELS = frozenset(
     {
         "anthropic/claude-sonnet-4.6",
         "openai/gpt-5.1",
     }
 )
+FILE_CAPABLE_MAIN_MODELS = IMAGE_CAPABLE_MAIN_MODELS
 ACTIVE_IMAGE_PROVIDER_MAX_BYTES = 8 * 1024 * 1024
+ACTIVE_FILE_PROVIDER_MAX_BYTES = ACTIVE_IMAGE_PROVIDER_MAX_BYTES
 
 LANE_HEADER = "[DOCUMENTS ACTIFS DE CONVERSATION]"
 LANE_FOOTER = "[/DOCUMENTS ACTIFS DE CONVERSATION]"
@@ -64,6 +74,7 @@ class ActiveDocumentPromptDecision:
     reason_code: str = ""
     text_content: str = ""
     image_content: bytes = field(default=b"", repr=False, compare=False)
+    file_content: bytes = field(default=b"", repr=False, compare=False)
     payload_order: str = ""
     provider_model: str = ""
     source: str = "active_conversation_documents"
@@ -190,6 +201,57 @@ def build_active_document_prompt_lane(
             )
             continue
 
+        if decision.media_kind == MEDIA_KIND_FILE:
+            if not _model_supports_active_files(model):
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=_source_reason(
+                            decision,
+                            active_reason=REASON_FILE_MODEL_UNSUPPORTED,
+                            workspace_reason=REASON_WORKSPACE_FILE_PDF_VISUAL_MODEL_UNSUPPORTED,
+                        ),
+                        provider_model=model,
+                    )
+                )
+                continue
+            if not decision.file_content:
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=_source_reason(
+                            decision,
+                            active_reason=REASON_FILE_BYTES_MISSING,
+                            workspace_reason=REASON_WORKSPACE_FILE_PDF_VISUAL_BYTES_MISSING,
+                        ),
+                        provider_model=model,
+                    )
+                )
+                continue
+            if _provider_payload_byte_size(decision) > ACTIVE_FILE_PROVIDER_MAX_BYTES:
+                not_injected.append(
+                    _replace_decision(
+                        decision,
+                        reason_code=_source_reason(
+                            decision,
+                            active_reason=REASON_FILE_TOO_LARGE_FOR_PROVIDER_PAYLOAD,
+                            workspace_reason=REASON_WORKSPACE_FILE_PDF_VISUAL_TOO_LARGE,
+                        ),
+                        provider_model=model,
+                    )
+                )
+                continue
+            injected.append(
+                _replace_decision(
+                    decision,
+                    injected=True,
+                    reason_code="",
+                    payload_order=FILE_PAYLOAD_ORDER,
+                    provider_model=model,
+                )
+            )
+            continue
+
         if not decision.text_content:
             not_injected.append(
                 _replace_decision(
@@ -292,13 +354,8 @@ def _first_dialogue_index(prompt_messages: Sequence[Mapping[str, Any]]) -> int:
 
 
 def _decision_from_document(document: Mapping[str, Any], *, injected: bool) -> ActiveDocumentPromptDecision:
-    raw_image = document.get("image_content")
-    if isinstance(raw_image, memoryview):
-        image_content = raw_image.tobytes()
-    elif isinstance(raw_image, (bytes, bytearray)):
-        image_content = bytes(raw_image)
-    else:
-        image_content = b""
+    image_content = _bytes_from_document(document.get("image_content"))
+    file_content = _bytes_from_document(document.get("file_content"))
     media_kind = _text(document.get("media_kind")).lower() or MEDIA_KIND_TEXT
     return ActiveDocumentPromptDecision(
         document_id=_text(document.get("document_id")),
@@ -321,6 +378,7 @@ def _decision_from_document(document: Mapping[str, Any], *, injected: bool) -> A
         reason_code=_text(document.get("reason_code")),
         text_content=str(document.get("text_content") or ""),
         image_content=image_content,
+        file_content=file_content,
         source=_text(document.get("source")) or "active_conversation_documents",
         workspace_file_id=_text(document.get("workspace_file_id")),
         workspace_folder_id=_text(document.get("workspace_folder_id")),
@@ -356,6 +414,7 @@ def _replace_decision(
         reason_code=decision.reason_code if reason_code is None else reason_code,
         text_content=decision.text_content,
         image_content=decision.image_content,
+        file_content=decision.file_content,
         payload_order=decision.payload_order if payload_order is None else payload_order,
         provider_model=decision.provider_model if provider_model is None else provider_model,
         source=decision.source,
@@ -410,6 +469,14 @@ def _contract_message_from_decisions(
                 "- Pour chaque image injectee, le contenu multimodal respecte l'ordre OpenRouter: text puis image_url.",
             ]
         )
+    if any(decision.media_kind == MEDIA_KIND_FILE and decision.injected for decision in injected):
+        lines.extend(
+            [
+                "- Les PDF visuels injectes sont envoyes au modele comme fichier multimodal, pas comme texte OCR garanti.",
+                "- Pour chaque PDF visuel injecte, le contenu multimodal respecte l'ordre OpenRouter: text puis file.",
+                "- Si tu t'appuies sur un PDF visuel, signale prudemment que la lecture depend de la perception/document parser du modele.",
+            ]
+        )
 
     not_injected_lines: list[str] = []
     if _read_status(read_status, ()) == READ_STATUS_ERROR:
@@ -433,8 +500,11 @@ def _contract_message_from_decisions(
 
 
 def _content_message_from_decisions(injected: Sequence[ActiveDocumentPromptDecision]) -> dict[str, Any]:
-    text_decisions = [decision for decision in injected if decision.media_kind != MEDIA_KIND_IMAGE]
+    text_decisions = [
+        decision for decision in injected if decision.media_kind not in {MEDIA_KIND_IMAGE, MEDIA_KIND_FILE}
+    ]
     image_decisions = [decision for decision in injected if decision.media_kind == MEDIA_KIND_IMAGE]
+    file_decisions = [decision for decision in injected if decision.media_kind == MEDIA_KIND_FILE]
     lines: list[str] = [
         INJECTED_HEADER,
         "Message utilisateur documentaire: contenu fourni par l'utilisateur pour analyse dans cette conversation.",
@@ -452,7 +522,17 @@ def _content_message_from_decisions(injected: Sequence[ActiveDocumentPromptDecis
         for index, decision in enumerate(image_decisions, start=1):
             lines.extend(_injected_image_lines(decision, index=index))
         lines.append("[/IMAGES INJECTEES]")
-        return {"role": "user", "content": _multimodal_content(lines, image_decisions)}
+    if file_decisions:
+        lines.append("[PDF VISUELS INJECTES]")
+        lines.append(
+            "PDF envoyes comme fichiers multimodaux dans ce message. "
+            "Ils sont disponibles dans ce tour, mais ne constituent pas un texte OCRise garanti."
+        )
+        for index, decision in enumerate(file_decisions, start=1):
+            lines.extend(_injected_file_lines(decision, index=index))
+        lines.append("[/PDF VISUELS INJECTES]")
+    if image_decisions or file_decisions:
+        return {"role": "user", "content": _multimodal_content(lines, image_decisions, file_decisions)}
     return {"role": "user", "content": "\n".join(lines)}
 
 
@@ -489,9 +569,23 @@ def _injected_image_lines(decision: ActiveDocumentPromptDecision, *, index: int)
     ]
 
 
+def _injected_file_lines(decision: ActiveDocumentPromptDecision, *, index: int) -> list[str]:
+    label = "PDF de repertoire selectionne injecte" if _is_workspace_decision(decision) else "Fichier actif injecte"
+    return [
+        f"{label} {index}:",
+        f"- filename: {decision.filename}",
+        f"- media_type: {decision.media_type or 'unknown'}",
+        f"- source_extension: {decision.source_extension or 'unknown'}",
+        f"- byte_size: {decision.byte_size}",
+        f"- content_sha256_12: {decision.content_sha256_12 or 'none'}",
+        f"- payload_order: {decision.payload_order or FILE_PAYLOAD_ORDER}",
+    ]
+
+
 def _multimodal_content(
     text_lines: Sequence[str],
     image_decisions: Sequence[ActiveDocumentPromptDecision],
+    file_decisions: Sequence[ActiveDocumentPromptDecision],
 ) -> list[dict[str, Any]]:
     content: list[dict[str, Any]] = [{"type": "text", "text": "\n".join(text_lines)}]
     for decision in image_decisions:
@@ -500,6 +594,16 @@ def _multimodal_content(
                 "type": "image_url",
                 "image_url": {
                     "url": _data_url(decision),
+                },
+            }
+        )
+    for decision in file_decisions:
+        content.append(
+            {
+                "type": "file",
+                "file": {
+                    "filename": decision.filename or "document.pdf",
+                    "file_data": _file_data_url(decision),
                 },
             }
         )
@@ -512,12 +616,24 @@ def _data_url(decision: ActiveDocumentPromptDecision) -> str:
     return f"data:{mime_type};base64,{encoded}"
 
 
+def _file_data_url(decision: ActiveDocumentPromptDecision) -> str:
+    mime_type = decision.media_type or "application/pdf"
+    encoded = base64.b64encode(decision.file_content).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
+
+
 def _not_injected_document_line(decision: ActiveDocumentPromptDecision, *, index: int) -> str:
     item_kind = "fichier_repertoire_non_injecte" if _is_workspace_decision(decision) else "document_actif_non_injecte"
     image_suffix = ""
     if decision.media_kind == MEDIA_KIND_IMAGE:
         image_suffix = (
             f" media_kind=image; image_width={decision.image_width}; image_height={decision.image_height}; "
+            f"content_sha256_12={decision.content_sha256_12 or 'none'};"
+        )
+    file_suffix = ""
+    if decision.media_kind == MEDIA_KIND_FILE:
+        file_suffix = (
+            f" media_kind=file; "
             f"content_sha256_12={decision.content_sha256_12 or 'none'};"
         )
     return (
@@ -527,13 +643,17 @@ def _not_injected_document_line(decision: ActiveDocumentPromptDecision, *, index
         f"byte_size={decision.byte_size}; text_chars={decision.text_chars}; "
         f"token_estimate={decision.token_estimate}; "
         f"text_sha256_12={decision.text_sha256_12 or 'none'}; "
-        f"{image_suffix} "
+        f"{image_suffix}{file_suffix} "
         f"reason_code={decision.reason_code or REASON_TOO_LARGE}"
     )
 
 
 def _model_supports_active_images(model: str) -> bool:
     return _text(model) in IMAGE_CAPABLE_MAIN_MODELS
+
+
+def _model_supports_active_files(model: str) -> bool:
+    return _text(model) in FILE_CAPABLE_MAIN_MODELS
 
 
 def _is_workspace_decision(decision: ActiveDocumentPromptDecision) -> bool:
@@ -550,7 +670,7 @@ def _source_reason(
 
 
 def _provider_payload_byte_size(decision: ActiveDocumentPromptDecision) -> int:
-    return max(_safe_int(decision.byte_size), len(decision.image_content or b""))
+    return max(_safe_int(decision.byte_size), len(decision.image_content or b""), len(decision.file_content or b""))
 
 
 def _messages_for_token_count(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -567,9 +687,19 @@ def _messages_for_token_count(messages: Sequence[Mapping[str, Any]]) -> list[dic
                     parts.append(str(part.get("text") or ""))
                 elif part.get("type") == "image_url":
                     parts.append("[image active multimodale]")
+                elif part.get("type") == "file":
+                    parts.append("[fichier PDF multimodal]")
             next_message["content"] = "\n".join(parts)
         sanitized.append(next_message)
     return sanitized
+
+
+def _bytes_from_document(value: Any) -> bytes:
+    if isinstance(value, memoryview):
+        return value.tobytes()
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    return b""
 
 
 def _text(value: Any) -> str:

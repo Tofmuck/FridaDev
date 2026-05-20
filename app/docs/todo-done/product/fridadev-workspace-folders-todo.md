@@ -481,6 +481,7 @@ Livré:
 - sélection de fichiers conversation-scoped, persistante jusqu'à décochage, jamais globale au répertoire;
 - injection uniquement sur sélection explicite via la lane `active_document`, entière ou exclue entière avec reason code;
 - images workspace sélectionnées injectées en multimodal `text` puis `image_url`;
+- correctif post-clôture: PDF workspace sélectionné en statut `ocr_required` tenté comme payload visuel `text` puis `file`, sous plafond/allowlist provider, sans OCR automatique ni lecture partielle déguisée;
 - OCR manuel workspace pour PDF et images PNG/JPEG/WEBP, produisant un `.ocr.md` durable;
 - édition/sauvegarde du Markdown OCR dérivé;
 - observabilité content-free;

@@ -32,6 +32,16 @@ def list_selected_files_for_prompt(
             _log_prompt_exclusion(logger, selection, reason_code=reason_code)
             continue
         if selections_store._text(row.get("file_status"), 80) == workspace_files_store.STATUS_OCR_REQUIRED:
+            if _is_pdf_visual_candidate(selection):
+                documents.append(
+                    _pdf_visual_prompt_document(
+                        row,
+                        selection=selection,
+                        storage_root=storage_root,
+                        logger=logger,
+                    )
+                )
+                continue
             documents.append(
                 _non_injectable_prompt_document(selection, reason_code=selections_store.REASON_OCR_REQUIRED)
             )
@@ -47,6 +57,46 @@ def list_selected_files_for_prompt(
             )
         )
     return documents
+
+
+def _pdf_visual_prompt_document(
+    row: Mapping[str, Any],
+    *,
+    selection: Mapping[str, Any],
+    storage_root: Path,
+    logger: Any,
+) -> dict[str, Any]:
+    file_item = dict(selection.get("file") or {})
+    storage_key = selections_store._text(row.get("storage_key"), 500)
+    try:
+        data = workspace_files_store.workspace_file_path(storage_root, storage_key).read_bytes()
+    except Exception:
+        _log_prompt_exclusion(logger, selection, reason_code=selections_store.REASON_DISK_MISSING)
+        return _non_injectable_prompt_document(selection, reason_code=selections_store.REASON_DISK_MISSING)
+
+    workspace_files_store.log_content_free_event(
+        logger,
+        "selection_prompt_pdf_visual_candidate",
+        conversation_id=selection.get("conversation_id"),
+        folder_id=selection.get("workspace_folder_id"),
+        file_id=selection.get("workspace_file_id"),
+        media_kind="file",
+        content_kind=file_item.get("content_kind"),
+        mime_type=file_item.get("mime_type"),
+        byte_size=file_item.get("byte_size"),
+        sha256_12=file_item.get("sha256_12"),
+        selection_status=selection.get("selection_status"),
+        reason_code=selections_store.REASON_OCR_REQUIRED,
+    )
+    return {
+        **_base_prompt_document(selection),
+        "media_kind": "file",
+        "content_sha256_12": selections_store._text(file_item.get("sha256_12"), 12),
+        "file_content": data,
+        "injectable": True,
+        "reason_code": "",
+        "visual_source_status": workspace_files_store.STATUS_OCR_REQUIRED,
+    }
 
 
 def _injectable_prompt_document(
@@ -105,6 +155,13 @@ def _map_extraction_reason(reason_code: str, *, extractor_module: Any) -> str:
     if reason == getattr(extractor_module, "REASON_UNSUPPORTED", "document_type_unsupported"):
         return selections_store.REASON_TYPE_UNSUPPORTED
     return selections_store.REASON_UNREADABLE
+
+
+def _is_pdf_visual_candidate(selection: Mapping[str, Any]) -> bool:
+    file_item = dict(selection.get("file") or {})
+    mime_type = selections_store._text(file_item.get("mime_type"), 120).lower()
+    extension = selections_store._text(file_item.get("source_extension"), 40).lower()
+    return mime_type == "application/pdf" or extension == ".pdf"
 
 
 def _base_prompt_document(selection: Mapping[str, Any]) -> dict[str, Any]:

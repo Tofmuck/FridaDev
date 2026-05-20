@@ -13,6 +13,7 @@ from memory import summarizer
 
 ACTIVE_DOC_TEXT = "CONTENU_DOCUMENT_ACTIF_NE_DOIT_PAS_CONTAMINER"
 ACTIVE_IMAGE_DATA_URL = "data:image/png;base64,aW1hZ2UtYnl0ZXM="
+ACTIVE_PDF_DATA_URL = "data:application/pdf;base64,JVBERiBzY2FubmVk"
 
 
 class _RuntimeSettings:
@@ -347,6 +348,144 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
 
         summary_payload = _encoded(observed["summary_threshold_messages"]) + "\n" + _encoded(observed["summary_turns"])
         for forbidden in ("data:image", ACTIVE_IMAGE_DATA_URL, "image_url", "image_content", "binary_content"):
+            self.assertNotIn(forbidden, summary_payload)
+
+    def test_active_pdf_file_payload_is_not_persisted_as_memory_identity_or_summary_input(self):
+        prompt_messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "[PDF VISUELS INJECTES]\nPDF de repertoire selectionne injecte 1.",
+                    },
+                    {
+                        "type": "file",
+                        "file": {"filename": "scan.pdf", "file_data": ACTIVE_PDF_DATA_URL},
+                    },
+                ],
+            },
+            {"role": "user", "content": "Question courte"},
+        ]
+        conversation = {
+            "id": "conv-active-pdf-barrier",
+            "created_at": "2026-05-20T12:00:00Z",
+            "messages": [
+                {"role": "user", "content": "Ancienne question", "timestamp": "2026-05-20T11:55:00Z"},
+                {"role": "assistant", "content": "Ancienne reponse", "timestamp": "2026-05-20T11:56:00Z"},
+                {"role": "user", "content": "Question courte", "timestamp": "2026-05-20T12:00:00Z"},
+            ],
+        }
+        observed: dict[str, object] = {}
+
+        def fake_post(_url, *, json, **_kwargs):
+            observed["llm_messages"] = list(json["messages"])
+            return SimpleNamespace(raise_for_status=lambda: None)
+
+        def fake_save_new_traces(saved_conversation):
+            observed["memory_trace_messages"] = [
+                dict(message) for message in saved_conversation.get("messages", [])
+            ]
+
+        def fake_record_identity_entries(_conversation_id, turn_pair, **_kwargs):
+            observed["identity_turn_pair"] = [dict(message) for message in turn_pair]
+
+        llm_module = SimpleNamespace(
+            or_headers=lambda caller="llm": {"X-Caller": caller},
+            build_payload=lambda messages, temperature, top_p, max_tokens, stream=False: {
+                "model": "model-test",
+                "messages": list(messages),
+                "temperature": temperature,
+                "top_p": top_p,
+                "max_tokens": max_tokens,
+                "stream": stream,
+            },
+            resolve_provider_title=lambda _caller: "test-provider",
+            read_openrouter_response_payload=lambda _response: {"ok": True},
+            extract_openrouter_provider_metadata=lambda _payload, requested_model=None: {
+                "requested_model": requested_model,
+            },
+            build_provider_observability_fields=lambda caller, provider_metadata: {
+                "provider_caller": caller,
+                "provider_title": "test-provider",
+                "provider_model": provider_metadata.get("requested_model", ""),
+            },
+            log_provider_metadata=lambda *_args, **_kwargs: None,
+            extract_openrouter_text=lambda _payload: "Reponse assistant",
+        )
+        conv_store_module = SimpleNamespace(
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv["messages"].append(
+                {"role": role, "content": content, "timestamp": timestamp}
+            ),
+            save_conversation=lambda *_args, **_kwargs: None,
+        )
+        memory_store_module = SimpleNamespace(
+            save_new_traces=fake_save_new_traces,
+            reactivate_identities=lambda _identity_ids: None,
+        )
+
+        result = chat_llm_flow.run_llm_exchange(
+            conversation=conversation,
+            prompt_messages=prompt_messages,
+            runtime_main_model="model-test",
+            temperature=0.1,
+            top_p=1.0,
+            max_tokens=200,
+            stream_req=False,
+            current_mode="shadow",
+            identity_ids=[],
+            runtime_settings_module=_RuntimeSettings(),
+            memory_store_module=memory_store_module,
+            conv_store_module=conv_store_module,
+            assistant_output_policy=None,
+            llm_module=llm_module,
+            requests_module=SimpleNamespace(
+                post=fake_post,
+                exceptions=SimpleNamespace(RequestException=Exception),
+            ),
+            token_utils_module=SimpleNamespace(estimate_tokens=lambda *_args, **_kwargs: 1),
+            admin_logs_module=_AdminLogs(),
+            config_module=SimpleNamespace(OR_BASE="https://example.invalid", TIMEOUT_S=10),
+            logger=SimpleNamespace(info=lambda *_args, **_kwargs: None, error=lambda *_args, **_kwargs: None),
+            arbiter_module=SimpleNamespace(),
+            web_input=None,
+            now_iso_func=lambda: "2026-05-20T12:01:00Z",
+            record_identity_entries_for_mode=fake_record_identity_entries,
+            mode_enforces_identity=lambda _mode: False,
+            conversation_headers_func=lambda _conversation, _updated_at: {},
+        )
+
+        self.assertEqual(result["status"], 200)
+        llm_payload = _encoded(observed["llm_messages"])
+        memory_payload = _encoded(observed["memory_trace_messages"])
+        identity_payload = _encoded(observed["identity_turn_pair"])
+        persisted_payload = _encoded(conversation["messages"])
+        self.assertIn(ACTIVE_PDF_DATA_URL, llm_payload)
+        for forbidden in ("data:application/pdf", ACTIVE_PDF_DATA_URL, "file_data", "file_content", "binary_content"):
+            self.assertNotIn(forbidden, memory_payload)
+            self.assertNotIn(forbidden, identity_payload)
+            self.assertNotIn(forbidden, persisted_payload)
+
+        def fake_estimate_tokens(messages, _model):
+            observed["summary_threshold_messages"] = [dict(message) for message in messages]
+            return 999
+
+        def fake_summarize_conversation(turns):
+            observed["summary_turns"] = [dict(turn) for turn in turns]
+            return "resume compact"
+
+        with (
+            mock.patch.object(summarizer.config, "SUMMARY_THRESHOLD_TOKENS", 10),
+            mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
+            mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
+            mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
+            mock.patch("memory.memory_store.save_summary", return_value=None),
+            mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
+        ):
+            self.assertTrue(summarizer.maybe_summarize(conversation, "model-test"))
+
+        summary_payload = _encoded(observed["summary_threshold_messages"]) + "\n" + _encoded(observed["summary_turns"])
+        for forbidden in ("data:application/pdf", ACTIVE_PDF_DATA_URL, "file_data", "file_content", "binary_content"):
             self.assertNotIn(forbidden, summary_payload)
 
     def test_embedding_trace_writer_receives_only_persisted_dialogue_not_active_image_payload(self):

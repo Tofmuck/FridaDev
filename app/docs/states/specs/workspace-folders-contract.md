@@ -232,10 +232,12 @@ Implementation Lot 3 livree:
 - lecture des bytes depuis le stockage interne uniquement pendant la preparation du tour;
 - injection texte entiere ou exclusion entiere;
 - injection image multimodale `text` puis `image_url`;
+- correction post-cloture: si un PDF de repertoire selectionne est en statut `ocr_required`, Frida tente une injection PDF visuelle multimodale `text` puis `file`, sous allowlist modele et plafond provider, sans OCR automatique;
+- si le PDF visuel est trop lourd, absent ou non supporte par le modele/provider, il est exclu entierement avec un reason code explicite;
 - si la lecture des fichiers selectionnes echoue alors que d'autres documents actifs restent injectables, la lane conserve les injections possibles mais signale explicitement `read_status=error` et le `reason_code` content-free;
 - aucune copie de contenu extrait dans `conversation_messages`, memoire, identity, summary, Biblio ou RAG;
 - observabilite content-free pour selection, decochage, injection, exclusion et stale/missing/deleted/disk_missing;
-- Lot 4 OCR `.ocr.md` reste ferme: un fichier `ocr_required` est exclu avec `workspace_file_ocr_required`.
+- le chemin OCR `.ocr.md` reste distinct: l'injection PDF visuelle ne cree pas de Markdown derive, ne stocke pas d'OCR et ne promet pas une lecture textuelle complete.
 
 ## 9. Contrat OCR images/PDF
 
@@ -329,6 +331,9 @@ Premiere liste stable pour les futurs lots:
 - `workspace_file_unreadable`;
 - `workspace_file_ocr_required`;
 - `workspace_file_ocr_failed`;
+- `workspace_file_pdf_visual_model_unsupported`;
+- `workspace_file_pdf_visual_bytes_missing`;
+- `workspace_file_pdf_visual_too_large`;
 - `workspace_file_runtime_unavailable`;
 - `workspace_file_not_selected`;
 - `workspace_folder_not_found`;
@@ -498,5 +503,6 @@ Decision Lot 2:
 - l'upload `workspace_file` est une action separee de repertoire et ne cree pas d'`active_document`;
 - aucun fichier de repertoire n'est selectionne, injecte, resume, memorise ou lu par le modele dans Lot 2;
 - les logs Lot 2 restent content-free: ids, types, MIME, taille, dimensions, hash court, statuts, reason codes et compteurs, sans contenu brut, bytes, chemin disque complet, `storage_key`, base64, secret ou prompt;
-- les PDF scannes peuvent etre conserves comme fichiers de repertoire avec statut `ocr_required` / reason code `workspace_file_ocr_required`; le derive `.ocr.md` reste Lot 4;
+- les PDF scannes peuvent etre conserves comme fichiers de repertoire avec statut `ocr_required` / reason code `workspace_file_ocr_required`; s'ils sont explicitement selectionnes, la preparation de tour peut tenter un payload visuel PDF `text` puis `file`;
+- le derive `.ocr.md` reste le chemin OCR durable separe: il n'est cree que par action OCR explicite et non par la selection du PDF;
 - les fichiers de repertoire ne nourrissent ni memoire, ni identity, ni summary, ni Biblio, ni RAG documentaire par repertoire.

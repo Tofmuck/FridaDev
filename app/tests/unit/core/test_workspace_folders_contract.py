@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 APP_DIR = Path(__file__).resolve().parents[3]
@@ -603,6 +604,31 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertEqual(documents, [])
 
+    def test_workspace_file_ocr_required_pdf_without_selection_produces_no_multimodal_payload(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        with tempfile.TemporaryDirectory() as tmp:
+            documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
+                conversation_id,
+                db_conn_func=lambda: _SelectionPromptConn([]),
+                storage_root=Path(tmp),
+                logger=_CaptureLogger(),
+            )
+
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            documents,
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 1,
+            max_tokens=1000,
+        )
+
+        self.assertEqual(documents, [])
+        self.assertEqual(lane.injected_count, 0)
+        self.assertFalse(any(isinstance(message.get("content"), list) for message in prompt_messages))
+        self.assertNotIn("file_data", str(prompt_messages))
+        self.assertNotIn("data:application/pdf", str(prompt_messages))
+
     def test_workspace_file_selection_prompt_reads_image_bytes_without_data_url(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
@@ -691,14 +717,15 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn(storage_key, logged)
         self.assertNotIn(str(root), logged)
 
-    def test_workspace_file_selection_prompt_excludes_ocr_required_without_running_lot4(self) -> None:
+    def test_workspace_file_selection_prompt_sends_ocr_required_pdf_as_visual_file(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"
         file_id = "33333333-3333-4333-8333-333333333333"
+        pdf_bytes = b"%PDF scanned"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             storage_key = workspace_files_store.storage_key_for(folder_id, file_id, ".pdf")
-            workspace_files_store.write_file_bytes(root, storage_key, b"%PDF scanned")
+            workspace_files_store.write_file_bytes(root, storage_key, pdf_bytes)
             conn = _SelectionPromptConn(
                 [
                     _selection_prompt_row(
@@ -709,7 +736,60 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                         display_name="scan.pdf",
                         mime_type="application/pdf",
                         source_extension=".pdf",
-                        byte_size=12,
+                        byte_size=len(pdf_bytes),
+                        file_status=workspace_files_store.STATUS_OCR_REQUIRED,
+                    )
+                ]
+            )
+            logger = _CaptureLogger()
+
+            documents = workspace_file_selection_prompt.list_selected_files_for_prompt(
+                conversation_id,
+                db_conn_func=lambda: conn,
+                storage_root=root,
+                logger=logger,
+            )
+
+        self.assertEqual(len(documents), 1)
+        document = documents[0]
+        self.assertTrue(document["injectable"])
+        self.assertEqual(document["media_kind"], "file")
+        self.assertEqual(document["media_type"], "application/pdf")
+        self.assertEqual(document["file_content"], pdf_bytes)
+        self.assertEqual(document["visual_source_status"], "ocr_required")
+        self.assertEqual(document["reason_code"], "")
+        self.assertNotIn("text_content", document)
+        self.assertNotIn("image_content", document)
+        encoded = str(document)
+        self.assertNotIn("storage_key", document)
+        self.assertNotIn("internal_path", document)
+        self.assertNotIn(storage_key, encoded)
+        self.assertNotIn(str(root), encoded)
+        logged = "\n".join(logger.lines)
+        self.assertIn("workspace_files_selection_prompt_pdf_visual_candidate", logged)
+        self.assertIn("reason_code=workspace_file_ocr_required", logged)
+        self.assertNotIn(storage_key, logged)
+        self.assertNotIn(str(root), logged)
+
+    def test_workspace_file_selection_prompt_keeps_non_pdf_ocr_required_excluded(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        folder_id = "22222222-2222-4222-8222-222222222222"
+        file_id = "33333333-3333-4333-8333-333333333333"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            storage_key = workspace_files_store.storage_key_for(folder_id, file_id, ".txt")
+            workspace_files_store.write_file_bytes(root, storage_key, b"scan")
+            conn = _SelectionPromptConn(
+                [
+                    _selection_prompt_row(
+                        conversation_id=conversation_id,
+                        folder_id=folder_id,
+                        file_id=file_id,
+                        storage_key=storage_key,
+                        display_name="scan.txt",
+                        mime_type="text/plain",
+                        source_extension=".txt",
+                        byte_size=4,
                         file_status=workspace_files_store.STATUS_OCR_REQUIRED,
                     )
                 ]
@@ -729,7 +809,86 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(document["reason_code"], "workspace_file_ocr_required")
         self.assertNotIn("text_content", document)
         self.assertNotIn("image_content", document)
+        self.assertNotIn("file_content", document)
         self.assertIn("reason_code=workspace_file_ocr_required", "\n".join(logger.lines))
+
+    def test_workspace_file_ocr_required_pdf_payload_uses_text_then_file(self) -> None:
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+
+        lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+            prompt_messages,
+            [
+                {
+                    "source": "workspace_file_selection",
+                    "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                    "filename": "scan.pdf",
+                    "media_type": "application/pdf",
+                    "source_extension": ".pdf",
+                    "byte_size": 12,
+                    "media_kind": "file",
+                    "content_sha256_12": "abc123def456",
+                    "file_content": b"%PDF scanned",
+                    "injectable": True,
+                }
+            ],
+            model="openai/gpt-5.1",
+            count_tokens_func=lambda _messages, _model: 10,
+            max_tokens=1000,
+        )
+
+        content = next(message["content"] for message in prompt_messages if isinstance(message.get("content"), list))
+        self.assertEqual(lane.injected_count, 1)
+        self.assertEqual(lane.not_injected_count, 0)
+        self.assertEqual(lane.decisions[0].media_kind, "file")
+        self.assertEqual(lane.decisions[0].payload_order, "text_then_file")
+        self.assertIsInstance(content, list)
+        self.assertEqual(content[0]["type"], "text")
+        self.assertEqual(content[1]["type"], "file")
+        self.assertEqual(content[1]["file"]["filename"], "scan.pdf")
+        self.assertEqual(content[1]["file"]["file_data"], "data:application/pdf;base64,JVBERiBzY2FubmVk")
+        self.assertNotIn("imageUrl", str(content))
+
+    def test_workspace_file_pdf_visual_over_provider_cap_is_excluded(self) -> None:
+        prompt_messages = [{"role": "system", "content": "SYSTEM"}, {"role": "user", "content": "question"}]
+
+        with (
+            mock.patch.object(active_document_prompt_lane, "ACTIVE_FILE_PROVIDER_MAX_BYTES", 4),
+            mock.patch.object(
+                active_document_prompt_lane,
+                "_file_data_url",
+                side_effect=AssertionError("_file_data_url must not run"),
+            ),
+        ):
+            lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+                prompt_messages,
+                [
+                    {
+                        "source": "workspace_file_selection",
+                        "document_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                        "workspace_file_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+                        "filename": "scan.pdf",
+                        "media_type": "application/pdf",
+                        "source_extension": ".pdf",
+                        "byte_size": 12,
+                        "media_kind": "file",
+                        "content_sha256_12": "abc123def456",
+                        "file_content": b"%PDF scanned",
+                        "injectable": True,
+                    }
+                ],
+                model="openai/gpt-5.1",
+                count_tokens_func=lambda _messages, _model: 10,
+                max_tokens=1000,
+            )
+
+        self.assertEqual(lane.injected_count, 0)
+        self.assertEqual(lane.not_injected_count, 1)
+        self.assertEqual(lane.decisions[0].reason_code, "workspace_file_pdf_visual_too_large")
+        joined = "\n".join(str(message.get("content") or "") for message in prompt_messages)
+        self.assertIn("workspace_file_pdf_visual_too_large", joined)
+        self.assertNotIn("file_data", joined)
+        self.assertNotIn("data:application/pdf", joined)
 
     def test_chat_decision_record_routes_workspace_files_to_selection_store(self) -> None:
         class _SelectionStore:

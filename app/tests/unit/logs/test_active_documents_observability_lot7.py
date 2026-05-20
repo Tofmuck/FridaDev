@@ -154,6 +154,44 @@ class ActiveDocumentsObservabilityLot7Tests(unittest.TestCase):
         self.assertNotIn('image_content', encoded)
         self.assertNotIn('data:image', encoded)
 
+    def test_file_prompt_decision_payload_records_injection_without_base64(self) -> None:
+        lane = SimpleNamespace(
+            decisions=(
+                SimpleNamespace(
+                    document_id='pdf-1',
+                    filename='scan.pdf',
+                    media_type='application/pdf',
+                    source_extension='.pdf',
+                    byte_size=1234,
+                    text_chars=0,
+                    token_estimate=0,
+                    text_sha256_12='',
+                    media_kind='file',
+                    content_sha256_12='pdf456abcdef',
+                    injected=True,
+                    reason_code='',
+                    payload_order='text_then_file',
+                    provider_model='openai/gpt-5.1',
+                    file_content=b'RAW PDF BYTES MUST NOT LEAK',
+                ),
+            )
+        )
+
+        payload = active_documents_observability.build_prompt_decision_payload(lane)
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+        document = payload['documents'][0]
+        self.assertEqual(document['media_kind'], 'file')
+        self.assertEqual(document['media_type'], 'application/pdf')
+        self.assertEqual(document['content_sha256_12'], 'pdf456abcdef')
+        self.assertEqual(document['decision'], 'injected')
+        self.assertEqual(document['payload_order'], 'text_then_file')
+        self.assertEqual(document['provider_model'], 'openai/gpt-5.1')
+        self.assertNotIn('RAW PDF BYTES MUST NOT LEAK', encoded)
+        self.assertNotIn('file_content', encoded)
+        self.assertNotIn('file_data', encoded)
+        self.assertNotIn('data:application/pdf', encoded)
+
     def test_image_prompt_decision_payload_records_exclusion_without_base64(self) -> None:
         lane = SimpleNamespace(
             decisions=(
