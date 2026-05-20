@@ -157,3 +157,14 @@ curl --max-time 12 -sSI https://fridadev.frida-system.fr/admin | sed -n '1,12p'
 - Pas de changement de l'outil lateral de generation d'images.
 - Pas de migration DB.
 - Pas de test image privee dans ce chantier.
+
+## Cloture
+
+Cloture du 2026-05-20:
+
+- Bascule runtime effectuee: `main_model.model = openai/gpt-5.1`.
+- Parametres conserves autant que possible: `temperature=0.7`, `top_p=1.0`, `response_max_tokens=8192`, base URL, token et projet OpenRouter inchanges.
+- `openai/gpt-5.1` ajoute a l'allowlist des images actives V0.
+- L'audit tokens a conclu a une difference de tokenizer/reporting provider, sans nouveau resume conversationnel et sans reduction reelle de contexte.
+- Les investigations de cout sont arretees.
+- Retour arriere possible via runtime settings vers `anthropic/claude-sonnet-4.6` si besoin, hors scope maintenant.

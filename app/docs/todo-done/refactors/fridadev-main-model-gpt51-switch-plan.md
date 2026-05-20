@@ -1,7 +1,7 @@
 # Plan de bascule du modele principal vers GPT-5.1
 
 Statut: plan ouvert initial, maintenant complete par le TODO d'execution
-`app/docs/todo-todo/refactors/fridadev-main-model-gpt51-switch-todo.md`.
+`app/docs/todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md`.
 
 Date: 2026-05-20.
 
@@ -49,7 +49,7 @@ Sources principales:
 Constats:
 
 - Le chat principal lit le modele dans la section runtime `main_model`.
-- Le modele live OVH releve le 2026-05-20 est `anthropic/claude-sonnet-4.6`.
+- Le modele live OVH releve avant bascule le 2026-05-20 etait `anthropic/claude-sonnet-4.6`.
 - Les petits agents ne doivent pas etre touches par cette bascule: memory arbiter, identity extractor, identity periodic, summary, web reformulation, Stimmung et validation ont leurs slots propres.
 - Le transport OpenRouter partage le secret applicatif `main_model.api_key`; la bascule de modele ne demande pas de nouveau secret.
 - La V0 images actives utilisait une allowlist applicative stricte limitee a `anthropic/claude-sonnet-4.6`; le chantier `feature/main-model-gpt51` l'etend a `openai/gpt-5.1` tout en conservant Claude pour rollback.
@@ -353,3 +353,14 @@ No-go si:
 - les garde-fous temporels ou documentaires regressent;
 - l'observabilite OpenRouter ne permet plus de suivre provider/tokens/cout;
 - le rollback n'est pas clair au moment du GO.
+
+## Cloture
+
+Cloture du 2026-05-20:
+
+- Bascule runtime effectuee: `main_model.model = openai/gpt-5.1`.
+- Parametres conserves autant que possible: `temperature=0.7`, `top_p=1.0`, `response_max_tokens=8192`, base URL, token et projet OpenRouter inchanges.
+- `openai/gpt-5.1` ajoute a l'allowlist des images actives V0.
+- L'audit tokens a conclu a une difference de tokenizer/reporting provider entre Claude et GPT-5.1, sans nouveau resume et sans reduction reelle du contexte envoye.
+- Les investigations de cout sont arretees pour ce chantier.
+- Retour arriere possible via runtime settings vers `anthropic/claude-sonnet-4.6` si besoin, hors scope de cette cloture.

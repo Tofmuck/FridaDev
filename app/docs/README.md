@@ -19,14 +19,14 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Archive du benchmark / organisation progressive des callers modeles: `todo-done/refactors/fridadev-model-caller-benchmark-todo.md`
 - Archive produit generation d'images OpenRouter V0: `todo-done/product/fridadev-image-generation-openrouter-todo.md`
-- Roadmap active lecture d'images comme documents actifs: `todo-todo/product/fridadev-active-image-documents-todo.md`
+- Archive lecture d'images comme documents actifs: `todo-done/product/fridadev-active-image-documents-todo.md`
 - Audit court du contrat courant `identity_periodic_agent` 2026-05-19: `states/audits/identity-periodic-current-contract-audit-2026-05-19.md`
 - Audit global de verite temporelle 2026-05-18: `states/audits/fridadev-temporal-system-audit-2026-05-18.md`
 - Remediation archivee de comprehension temporelle modele: `todo-done/audits/fridadev-temporal-truth-remediation-todo.md`
 - Archive de cloture de la remediation de l'audit global: `todo-done/audits/fridadev-global-audit-remediation-todo.md`
 - Synthese francaise du pipeline complet FridaDev 2026-05-19: `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md`
-- TODO actif de bascule du modele principal vers GPT-5.1: `todo-todo/refactors/fridadev-main-model-gpt51-switch-todo.md`
-- Plan ouvert de bascule du modele principal vers GPT-5.1: `todo-todo/refactors/fridadev-main-model-gpt51-switch-plan.md`
+- Archive de bascule du modele principal vers GPT-5.1: `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md`
+- Plan archive de bascule du modele principal vers GPT-5.1: `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md`
 - Cartographie runtime one-glance: `states/architecture/fridadev-current-runtime-pipeline.md`
 - Etats projet dates du 2026-04-03: `states/project/Frida-State-french-03-04-26.md` et `states/project/Frida-State-english-03-04-26.md`
 
@@ -71,8 +71,8 @@ But: relire le cleanup priorise livre et les decisions de sortie sans reouvrir u
 ### Runtime courant / chat
 
 Lire d'abord:
-- `todo-todo/refactors/fridadev-main-model-gpt51-switch-todo.md` pour le chantier actif de bascule runtime vers `openai/gpt-5.1`.
-- `todo-todo/refactors/fridadev-main-model-gpt51-switch-plan.md` avant toute bascule du modele principal vers `openai/gpt-5.1`, pour verifier cout, compatibilite images actives, smoke live et rollback.
+- `todo-done/refactors/fridadev-main-model-gpt51-switch-todo.md` pour l'archive de bascule runtime vers `openai/gpt-5.1`.
+- `todo-done/refactors/fridadev-main-model-gpt51-switch-plan.md` pour relire le plan de bascule du modele principal vers `openai/gpt-5.1`, cout, compatibilite images actives, smoke live et rollback.
 - `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md` pour une synthese francaise lisible du pipeline complet, du navigateur aux derives apres reponse.
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
@@ -93,7 +93,7 @@ Archives utiles:
 
 Lire d'abord:
 - `states/specs/active-conversation-documents-contract.md`
-- `todo-todo/product/fridadev-active-image-documents-todo.md` pour le chantier ouvert de lecture d'images comme pieces actives de conversation.
+- `todo-done/product/fridadev-active-image-documents-todo.md` pour l'archive de lecture d'images comme pieces actives de conversation.
 - `todo-done/product/active-conversation-documents-audit-plan.md`
 - `todo-done/product/active-conversation-documents-todo.md`
 - `todo-done/product/active-conversation-documents-ocr-todo.md` pour l'archive de l'extension OCR bornee des PDF scannes.

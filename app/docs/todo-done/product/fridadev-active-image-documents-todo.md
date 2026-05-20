@@ -43,7 +43,7 @@ upload image -> agent vision autonome -> description persistante -> memoire / id
 
 Preuve technique prealable du 2026-05-19:
 
-- le modele principal live verifie est `anthropic/claude-sonnet-4.6`;
+- le modele principal live verifie le 2026-05-19 etait `anthropic/claude-sonnet-4.6`;
 - OpenRouter declare ce modele en `text+image+file -> text`;
 - l'API modeles declare `input_modalities = text, image, file` et `output_modalities = text`;
 - le payload teste utilise `POST /api/v1/chat/completions`;
@@ -276,7 +276,7 @@ Lot 2 livre:
 - les images actives restent injectees au meme point que les autres documents actifs, apres les signaux amont/validation et avant l'appel OpenRouter principal;
 - elles ne sont jamais ajoutees a `conversation["messages"]`;
 - le message provider contient un tableau multimodal `content[0]=text`, puis `content[1]=image_url`;
-- la compatibilite V0 est allowlistee sur le modele principal verifie `anthropic/claude-sonnet-4.6`;
+- la compatibilite V0 a d'abord ete allowlistee sur le modele principal verifie `anthropic/claude-sonnet-4.6`, puis etendue a `openai/gpt-5.1` lors de la bascule du 2026-05-20;
 - l'upload actif accepte toujours les images source jusqu'a `32 MiB`, mais l'injection provider V0 est bornee a `8 MiB` pour eviter un JSON OpenRouter base64 geant;
 - si le modele courant n'est pas compatible, l'image est exclue entierement avec `reason_code=image_model_unsupported`;
 - si les bytes actifs manquent, l'image est exclue entierement avec `reason_code=image_bytes_missing`;
@@ -336,7 +336,7 @@ Lot 4 livre:
 
 Lot 5 livre le 2026-05-19:
 
-- modele demande live: `anthropic/claude-sonnet-4.6`;
+- modele demande lors du smoke du 2026-05-19: `anthropic/claude-sonnet-4.6`;
 - modele provider observe: `anthropic/claude-4.6-sonnet-20260217`;
 - image nominale: PNG non sensible generee en memoire, `32 x 32 px`, `102 bytes`, `sha256_12=e8b1ef09769d`;
 - ordre payload verifie avant appel: `content[0].type=text`, puis `content[1].type=image_url`;
@@ -420,3 +420,17 @@ Ce chantier ne doit pas livrer:
 - Une description automatique d'image serait une interpretation, pas l'image elle-meme; elle exige un contrat ulterieur.
 - Toute normalisation image, comme redimensionnement ou conversion, doit etre explicite. Sinon, elle viole potentiellement la regle injection entiere.
 - Le contrat `injection entiere ou exclusion entiere` doit rester comprehensible pour l'utilisateur: si Frida ne voit pas l'image, elle doit pouvoir le dire simplement.
+
+## Cloture
+
+Cloture du 2026-05-20:
+
+- V0 livree: les images sont traitees comme documents actifs de conversation.
+- Upload image valide et integre a la surface des documents actifs.
+- Injection multimodale livree avec payload ordonne `text` puis `image_url`.
+- Plafond provider V0: `8 MiB`.
+- UI integree aux documents actifs existants.
+- Non-contamination preservee: pas de memoire, pas d'identity, pas de summary, pas de Biblio, pas d'historique durable par defaut.
+- Smoke provider minimal reussi.
+- Pas de stockage durable serveur en V0.
+- Branche `feature/active-image-documents` mergee vers `main`, puis incluse dans `feature/main-model-gpt51`.

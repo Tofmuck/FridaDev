@@ -307,7 +307,7 @@ Preuves Lot 4:
 
 Preuve provider Lot 5:
 
-- smoke OpenRouter reel realise le 2026-05-19 sur le modele live `anthropic/claude-sonnet-4.6`;
+- smoke OpenRouter reel realise le 2026-05-19 sur le modele live de ce jour, `anthropic/claude-sonnet-4.6`;
 - provider model observe: `anthropic/claude-4.6-sonnet-20260217`;
 - fixture nominale: PNG non sensible generee en memoire, `32 x 32 px`, `102 bytes`, `sha256_12=e8b1ef09769d`;
 - payload confirme en ordre `text_then_image_url`;
