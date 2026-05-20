@@ -84,6 +84,7 @@ def delete_workspace_folder(
     folder_id: str,
     *,
     workspace_folders_module: Any,
+    workspace_files_module: Any = None,
 ) -> Tuple[dict[str, Any], int]:
     normalized = workspace_folders_module.normalize_workspace_folder_id(folder_id)
     if not normalized:
@@ -92,4 +93,6 @@ def delete_workspace_folder(
     folder = workspace_folders_module.soft_delete_workspace_folder(normalized)
     if folder is None:
         return {"ok": False, "error": "repertoire introuvable", "reason_code": "workspace_folder_not_found"}, 404
+    if workspace_files_module is not None:
+        folder["files_deleted"] = workspace_files_module.delete_workspace_files_for_folder(normalized)
     return {"ok": True, "folder": folder}, 200

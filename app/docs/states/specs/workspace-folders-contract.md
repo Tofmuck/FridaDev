@@ -263,7 +263,7 @@ suppression fichier -> non liste, non selectionnable, non injectable, bytes abse
 Suppression d'un repertoire:
 
 - confirmation forte si le repertoire contient fichiers ou conversations;
-- fichiers supprimes physiquement apres confirmation si la decision produit le demande;
+- fichiers supprimes physiquement apres confirmation;
 - conversations non supprimees automatiquement;
 - conversations replacees hors repertoire;
 - selections liees aux fichiers du repertoire supprimees ou invalidees;
@@ -282,7 +282,9 @@ Premiere liste stable pour les futurs lots:
 - `workspace_file_unreadable`;
 - `workspace_file_ocr_required`;
 - `workspace_file_ocr_failed`;
+- `workspace_file_runtime_unavailable`;
 - `workspace_file_not_selected`;
+- `workspace_folder_not_found`;
 - `workspace_folder_deleted`;
 - `workspace_selection_stale`;
 - `workspace_file_tombstone`;
@@ -417,3 +419,31 @@ Decision Lot 1:
 
 - le glisser-deposer conversation -> repertoire reste au Lot 5 / polish;
 - aucun fichier persistant, stockage disque, selection multi-fichiers, OCR `.ocr.md` ou injection documentaire n'est ouvert par Lot 1.
+
+## 17. Mise en oeuvre Lot 2
+
+Lot 2 livre le 2026-05-20:
+
+- table `workspace_files`;
+- stockage des bytes sous un prefixe disque stable par `workspace_folder.id`;
+- racine disque par defaut `WORKSPACE_FILES_DIR`, pointee vers le volume persistant `/app/conv/_workspace_files` en runtime OVH;
+- `storage_key` interne construit avec `workspace_folder.id` + `workspace_file.id`, jamais avec les noms humains;
+- routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`;
+- upload multipart d'un fichier de repertoire;
+- reutilisation du plafond d'upload actif `40 MiB`;
+- reutilisation de `active_document_text_extraction` pour `TXT`, `MD`, `PDF`, `DOCX`, `ODT`;
+- reutilisation de `active_document_image_validation` pour `PNG`, `JPEG`, `WEBP`, avec refus GIF V0;
+- stockage metadata content-free: nom logique, MIME, extension, taille, hash court, dimensions image, statut, reason code;
+- listing par repertoire sans contenu brut, sans chemin physique, sans `storage_key`;
+- suppression utilisateur d'un fichier avec suppression physique des bytes puis tombstone DB content-free;
+- detection de l'incoherence DB presente / disque absent via statut de listing `disk_missing` et reason code `workspace_file_disk_missing`;
+- suppression d'un repertoire supprime aussi les fichiers actifs du repertoire, sans supprimer les conversations;
+- UI minimale dans la sidebar: liste compacte des fichiers du repertoire, ajout explicite, suppression explicite.
+
+Decision Lot 2:
+
+- l'upload `active_document` de conversation reste l'action existante et continue a creer un document actif de conversation;
+- l'upload `workspace_file` est une action separee de repertoire et ne cree pas d'`active_document`;
+- aucun fichier de repertoire n'est selectionne, injecte, resume, memorise ou lu par le modele dans Lot 2;
+- les PDF scannes peuvent etre conserves comme fichiers de repertoire avec statut `ocr_required` / reason code `workspace_file_ocr_required`; le derive `.ocr.md` reste Lot 4;
+- les fichiers de repertoire ne nourrissent ni memoire, ni identity, ni summary, ni Biblio, ni RAG documentaire par repertoire.

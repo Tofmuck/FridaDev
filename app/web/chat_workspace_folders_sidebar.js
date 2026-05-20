@@ -1,14 +1,24 @@
 'use strict';
 
+const WorkspaceFolderUiHelpers = (
+  typeof window !== 'undefined' && window.FridaWorkspaceFolders
+    ? window.FridaWorkspaceFolders
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folders.js') : null)
+);
+
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
   getWorkspaceFolders,
+  getWorkspaceFiles,
   refreshThreadsFromServer,
+  refreshWorkspaceFiles,
   renderThreads,
   setThreadStatus,
   createWorkspaceFolderOnServer,
   updateWorkspaceFolderOnServer,
   deleteWorkspaceFolderOnServer,
+  uploadWorkspaceFileOnServer,
+  deleteWorkspaceFileOnServer,
   consoleObj,
 } = {}) {
   const logger = consoleObj || (typeof console !== 'undefined' ? console : { warn() {} });
@@ -52,7 +62,7 @@ function createWorkspaceFolderSidebarRenderer({
 
   const requestDelete = async (folder) => {
     const ok = typeof window !== 'undefined'
-      ? window.confirm(`Supprimer le répertoire "${folder.display_name}" ? Les conversations resteront hors répertoire.`)
+      ? window.confirm(`Supprimer le répertoire "${folder.display_name}" ? Les conversations resteront hors répertoire et les fichiers du répertoire seront supprimés.`)
       : false;
     if (!ok) return;
     try {
@@ -61,6 +71,64 @@ function createWorkspaceFolderSidebarRenderer({
     } catch (err) {
       logger.warn('Suppression répertoire échouée', err);
       setThreadStatus('Suppression du répertoire impossible.', true);
+    }
+  };
+
+  const requestUploadFile = async (folder) => {
+    if (!folder?.id || typeof document === 'undefined') return;
+    if (typeof uploadWorkspaceFileOnServer !== 'function' || typeof refreshWorkspaceFiles !== 'function') {
+      setThreadStatus('Stockage de répertoire indisponible.', true);
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.pdf,.docx,.odt,.md,.txt,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,image/png,image/jpeg,image/webp';
+    input.className = 'sr-only';
+    const cleanup = () => {
+      if (input.parentNode) input.parentNode.removeChild(input);
+    };
+    input.addEventListener('change', async () => {
+      const files = Array.from(input.files || []).filter(Boolean);
+      if (!files.length) {
+        cleanup();
+        return;
+      }
+      try {
+        for (const file of files) {
+          await uploadWorkspaceFileOnServer(folder.id, file);
+        }
+        await refreshWorkspaceFiles(folder.id);
+        renderThreads();
+        setThreadStatus(files.length === 1 ? 'Fichier ajouté au répertoire.' : `${files.length} fichiers ajoutés au répertoire.`);
+      } catch (err) {
+        logger.warn('Upload fichier répertoire échoué', err);
+        setThreadStatus('Ajout du fichier de répertoire impossible.', true);
+      } finally {
+        cleanup();
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  };
+
+  const requestDeleteFile = async (folder, file) => {
+    if (typeof deleteWorkspaceFileOnServer !== 'function' || typeof refreshWorkspaceFiles !== 'function') {
+      setThreadStatus('Stockage de répertoire indisponible.', true);
+      return;
+    }
+    const ok = typeof window !== 'undefined'
+      ? window.confirm(`Supprimer le fichier "${file.display_name}" du répertoire ?`)
+      : false;
+    if (!ok) return;
+    try {
+      await deleteWorkspaceFileOnServer(folder.id, file.id);
+      await refreshWorkspaceFiles(folder.id);
+      renderThreads();
+      setThreadStatus('Fichier supprimé du répertoire.');
+    } catch (err) {
+      logger.warn('Suppression fichier répertoire échouée', err);
+      setThreadStatus('Suppression du fichier impossible.', true);
     }
   };
 
@@ -128,6 +196,7 @@ function createWorkspaceFolderSidebarRenderer({
     [
       ['↑', 'Monter', index === 0, () => reorder(folder.id, -1)],
       ['↓', 'Descendre', index >= folders.length - 1, () => reorder(folder.id, 1)],
+      ['+F', 'Ajouter un fichier au répertoire', false, () => requestUploadFile(folder)],
       ['··', 'Renommer', false, () => requestRename(folder)],
       ['×', 'Supprimer', false, () => requestDelete(folder)],
     ].forEach(([text, title, disabled, handler]) => {
@@ -146,6 +215,8 @@ function createWorkspaceFolderSidebarRenderer({
     li.appendChild(main);
     threadsUl.appendChild(li);
 
+    appendFileRows(folder);
+
     if (!folderThreads.length) {
       const empty = document.createElement('li');
       empty.className = 'workspace-folder-empty';
@@ -154,6 +225,45 @@ function createWorkspaceFolderSidebarRenderer({
       return;
     }
     folderThreads.forEach((thread) => appendThreadRow(thread, true));
+  };
+
+  const appendFileRows = (folder) => {
+    const files = typeof getWorkspaceFiles === 'function' ? getWorkspaceFiles(folder.id) : [];
+    if (!files.length) return;
+    const li = document.createElement('li');
+    li.className = 'workspace-folder-files';
+    files.forEach((file) => {
+      const row = document.createElement('div');
+      row.className = 'workspace-folder-file';
+      if (file.status && file.status !== 'active') {
+        row.dataset.status = file.status;
+      }
+
+      const name = document.createElement('span');
+      name.className = 'workspace-folder-file-name';
+      name.textContent = file.display_name || 'fichier';
+      row.appendChild(name);
+
+      const meta = document.createElement('span');
+      meta.className = 'workspace-folder-file-meta';
+      meta.textContent = WorkspaceFolderUiHelpers?.compactWorkspaceFileMeta
+        ? WorkspaceFolderUiHelpers.compactWorkspaceFileMeta(file)
+        : '';
+      row.appendChild(meta);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'workspace-folder-file-delete';
+      del.textContent = '×';
+      del.title = 'Supprimer le fichier';
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        void requestDeleteFile(folder, file);
+      });
+      row.appendChild(del);
+      li.appendChild(row);
+    });
+    threadsUl.appendChild(li);
   };
 
   return Object.freeze({

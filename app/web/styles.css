@@ -176,7 +176,8 @@ body {
 .workspace-folder-toolbar,
 .workspace-folder-row,
 .workspace-folder-separator,
-.workspace-folder-empty {
+.workspace-folder-empty,
+.workspace-folder-files {
   cursor: default;
   border-left-color: transparent;
 }
@@ -197,9 +198,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
-  padding: 0;
+  padding: 0 3px;
   border: none;
   border-radius: 3px;
   background: transparent;
@@ -260,6 +261,60 @@ body {
   padding: 3px 10px 6px 32px;
   color: var(--fg-subtle);
   font-size: 11px;
+}
+
+.workspace-folder-files {
+  padding: 3px 8px 4px 30px;
+  color: var(--fg-muted);
+}
+
+.workspace-folder-file {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 4px;
+  align-items: center;
+  padding: 3px 0;
+}
+
+.workspace-folder-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.workspace-folder-file-meta {
+  grid-column: 1 / span 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-subtle);
+  font-size: 10px;
+}
+
+.workspace-folder-file-delete {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-subtle);
+  cursor: pointer;
+}
+
+.workspace-folder-file-delete:hover {
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.workspace-folder-file[data-status="ocr_required"] .workspace-folder-file-meta,
+.workspace-folder-file[data-status="disk_missing"] .workspace-folder-file-meta {
+  color: #9a6a1f;
 }
 
 .workspace-folder-separator {

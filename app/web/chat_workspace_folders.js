@@ -70,6 +70,67 @@ function normalizeWorkspaceFoldersPayload(payload) {
     .sort((a, b) => (a.sort_order - b.sort_order) || a.display_name.localeCompare(b.display_name));
 }
 
+function normalizeWorkspaceFileItem(item) {
+  const id = String(item?.id || item?.file_id || '').trim();
+  const folderId = normalizeWorkspaceFolderId(item?.workspace_folder_id);
+  if (!id || !folderId) return null;
+  const displayName = String(item?.display_name || item?.original_filename || 'fichier')
+    .replace(/\s+/g, ' ')
+    .trim() || 'fichier';
+  return {
+    id,
+    workspace_folder_id: folderId,
+    display_name: displayName,
+    original_filename: String(item?.original_filename || displayName).replace(/\s+/g, ' ').trim(),
+    content_kind: String(item?.content_kind || 'document').trim(),
+    media_kind: String(item?.media_kind || 'text').trim(),
+    mime_type: String(item?.mime_type || '').trim(),
+    source_extension: String(item?.source_extension || '').trim(),
+    byte_size: Number(item?.byte_size || 0),
+    text_chars: Number(item?.text_chars || 0),
+    image_width: Number(item?.image_width || 0),
+    image_height: Number(item?.image_height || 0),
+    status: String(item?.status || 'active').trim(),
+    reason_code: String(item?.reason_code || '').trim(),
+    source_kind: String(item?.source_kind || 'upload').trim(),
+    created_at: item?.created_at || null,
+    updated_at: item?.updated_at || item?.created_at || null,
+    deleted_at: item?.deleted_at || null,
+  };
+}
+
+function normalizeWorkspaceFilesPayload(payload) {
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return items.map(normalizeWorkspaceFileItem).filter(Boolean);
+}
+
+function formatWorkspaceFileBytes(value) {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} Mo`;
+}
+
+function compactWorkspaceFileMeta(item) {
+  const parts = [];
+  const ext = String(item?.source_extension || '').replace(/^\./, '').toUpperCase();
+  if (ext) parts.push(ext);
+  const size = formatWorkspaceFileBytes(item?.byte_size);
+  if (size) parts.push(size);
+  if (item?.media_kind === 'image' && item.image_width && item.image_height) {
+    parts.push(`${Number(item.image_width)} x ${Number(item.image_height)} px`);
+  } else if (Number(item?.text_chars || 0) > 0) {
+    parts.push(`${Number(item.text_chars)} caractères`);
+  }
+  if (item?.status === 'ocr_required') {
+    parts.push('OCR requis');
+  } else if (item?.status === 'disk_missing') {
+    parts.push('Fichier absent du disque');
+  }
+  return parts.join(' · ');
+}
+
 function groupThreadsByWorkspaceFolder(threads, folders) {
   const folderIds = new Set((folders || []).map((folder) => folder.id));
   const byFolder = new Map();
@@ -94,6 +155,10 @@ const FridaWorkspaceFolders = Object.freeze({
   normalizeWorkspaceFolderId,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
+  normalizeWorkspaceFileItem,
+  normalizeWorkspaceFilesPayload,
+  formatWorkspaceFileBytes,
+  compactWorkspaceFileMeta,
   groupThreadsByWorkspaceFolder,
 });
 

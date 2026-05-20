@@ -382,16 +382,18 @@ Note Lot 1 livré le 2026-05-20: socle DB/API/UI minimal livré pour répertoire
 
 ### Lot 2 - Stockage fichiers de répertoire
 
-- [ ] Ajouter upload de fichiers dans un répertoire.
-- [ ] Définir stockage physique serveur.
-- [ ] Créer références DB des fichiers.
-- [ ] Stocker nom logique, chemin interne, hash, taille, MIME, type, dates, répertoire.
-- [ ] Ajouter listing fichiers par répertoire.
-- [ ] Ajouter suppression DB + disque.
-- [ ] Ajouter garde incohérences DB/disque.
-- [ ] Refuser les types non supportés.
-- [ ] Ne pas exposer les chemins physiques à l'UI.
-- [ ] Journaliser content-free.
+- [x] Ajouter upload de fichiers dans un répertoire.
+- [x] Définir stockage physique serveur.
+- [x] Créer références DB des fichiers.
+- [x] Stocker nom logique, chemin interne, hash, taille, MIME, type, dates, répertoire.
+- [x] Ajouter listing fichiers par répertoire.
+- [x] Ajouter suppression DB + disque.
+- [x] Ajouter garde incohérences DB/disque.
+- [x] Refuser les types non supportés.
+- [x] Ne pas exposer les chemins physiques à l'UI.
+- [x] Journaliser content-free.
+
+Note Lot 2 livré le 2026-05-20: stockage durable `workspace_files` livré avec DB + disque sous préfixe stable par identifiant de répertoire, routes `GET/POST/DELETE /api/workspace-folders/<folder_id>/files`, UI minimale de listing/upload/suppression et réutilisation des validateurs documents actifs. L'upload document actif de conversation reste inchangé et séparé. Aucun fichier de répertoire n'est sélectionné, injecté, lu par le modèle, mémorisé, résumé, ajouté à identity/Biblio ou OCRisé en `.ocr.md` dans ce lot.
 
 ### Lot 3 - Sélection/injection
 

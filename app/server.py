@@ -28,6 +28,8 @@ from core import active_document_upload_service
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
+from core import workspace_files
+from core import workspace_files_service
 from core import workspace_folders
 from core import workspace_folders_service
 from core import whisper_transcription_service
@@ -1225,6 +1227,46 @@ def api_delete_workspace_folder(folder_id: str):
     payload, status = workspace_folders_service.delete_workspace_folder(
         folder_id,
         workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+# ── /api/workspace-folders/<id>/files* ───────────────────────────────────────
+
+@app.get('/api/workspace-folders/<folder_id>/files')
+def api_list_workspace_folder_files(folder_id: str):
+    payload, status = workspace_files_service.list_workspace_files_response(
+        folder_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.post('/api/workspace-folders/<folder_id>/files')
+def api_upload_workspace_folder_file(folder_id: str):
+    body_guard = workspace_files_service.upload_body_size_guard_response(request.content_length)
+    if body_guard:
+        payload, status = body_guard
+        return jsonify(payload), status
+
+    payload, status = workspace_files_service.upload_workspace_file_response(
+        folder_id,
+        request.files,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
+    )
+    return jsonify(payload), status
+
+
+@app.delete('/api/workspace-folders/<folder_id>/files/<file_id>')
+def api_delete_workspace_folder_file(folder_id: str, file_id: str):
+    payload, status = workspace_files_service.delete_workspace_file_response(
+        folder_id,
+        file_id,
+        workspace_folders_module=workspace_folders,
+        workspace_files_module=workspace_files,
     )
     return jsonify(payload), status
 

@@ -194,6 +194,13 @@ ACTIVE_DOCUMENT_OCR_LANGUAGES = os.environ.get('ACTIVE_DOCUMENT_OCR_LANGUAGES', 
 ACTIVE_DOCUMENT_OCR_MAX_PAGES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_PAGES', 25)
 ACTIVE_DOCUMENT_OCR_MAX_BYTES = _env_int('ACTIVE_DOCUMENT_OCR_MAX_BYTES', 25 * 1024 * 1024)
 
+# Durable workspace folder files live under the mounted conversation volume on
+# OVH by default. Paths remain internal and are never exposed to the browser.
+WORKSPACE_FILES_DIR = os.environ.get(
+    'WORKSPACE_FILES_DIR',
+    str(Path(__file__).resolve().parent / 'conv' / '_workspace_files'),
+).strip()
+
 # Prompt files
 MAIN_SYSTEM_PROMPT_PATH = os.environ.get('MAIN_SYSTEM_PROMPT_PATH', 'prompts/main_system.txt')
 MAIN_HERMENEUTICAL_PROMPT_PATH = os.environ.get(

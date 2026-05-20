@@ -5,6 +5,9 @@ const {
   WORKSPACE_FOLDER_ICON_KEYS,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
+  normalizeWorkspaceFileItem,
+  normalizeWorkspaceFilesPayload,
+  compactWorkspaceFileMeta,
   groupThreadsByWorkspaceFolder,
 } = require("../../../web/chat_workspace_folders.js");
 
@@ -62,4 +65,41 @@ test("groupThreadsByWorkspaceFolder keeps unassigned conversations below the sep
 
   assert.deepEqual(grouped.byFolder.get("folder-1").map((item) => item.id), ["conv-in"]);
   assert.deepEqual(grouped.outside.map((item) => item.id), ["conv-out", "conv-stale"]);
+});
+
+test("workspace file payloads stay content-free and compact", () => {
+  const file = normalizeWorkspaceFileItem({
+    id: "file-1",
+    workspace_folder_id: "folder-1",
+    display_name: "  Capture  ",
+    original_filename: "capture.png",
+    media_kind: "image",
+    source_extension: ".png",
+    byte_size: 4096,
+    image_width: 80,
+    image_height: 64,
+    storage_key: "SHOULD NOT SURVIVE",
+    text: "RAW SHOULD NOT RENDER",
+  });
+
+  assert.equal(file.display_name, "Capture");
+  assert.equal(file.storage_key, undefined);
+  assert.equal(file.text, undefined);
+  assert.equal(compactWorkspaceFileMeta(file), "PNG · 4 ko · 80 x 64 px");
+});
+
+test("workspace files payload normalizer handles OCR-required metadata", () => {
+  const files = normalizeWorkspaceFilesPayload({
+    items: [{
+      id: "file-ocr",
+      workspace_folder_id: "folder-1",
+      display_name: "scan.pdf",
+      source_extension: ".pdf",
+      byte_size: 2048,
+      status: "ocr_required",
+    }],
+  });
+
+  assert.equal(files.length, 1);
+  assert.equal(compactWorkspaceFileMeta(files[0]), "PDF · 2 ko · OCR requis");
 });

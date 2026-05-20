@@ -34,7 +34,23 @@ function workspaceFoldersMockScript() {
             workspace_folder_id: null,
           },
         ],
+        files: [{
+          id: "file-1",
+          workspace_folder_id: "folder-1",
+          display_name: "note.md",
+          original_filename: "note.md",
+          content_kind: "document",
+          media_kind: "text",
+          source_extension: ".md",
+          byte_size: 2048,
+          text_chars: 42,
+          status: "active",
+          reason_code: "",
+          source_kind: "upload",
+        }],
         patchCalls: [],
+        workspaceUploadCalls: [],
+        activeDocumentUploadCalls: [],
       };
       window.__fridaWorkspaceFolderState = state;
       window.fetch = async (input, init = {}) => {
@@ -55,6 +71,35 @@ function workspaceFoldersMockScript() {
               deleted_at: null,
             }],
           }), { status: 200, headers: { "Content-Type": "application/json" } });
+        }
+
+        if (url.pathname === "/api/workspace-folders/folder-1/files" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, workspace_folder_id: "folder-1", items: state.files }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.pathname === "/api/workspace-folders/folder-1/files" && method === "POST") {
+          state.workspaceUploadCalls.push({ pathname: url.pathname, method });
+          return new Response(JSON.stringify({
+            ok: true,
+            workspace_folder_id: "folder-1",
+            file: {
+              id: "file-2",
+              workspace_folder_id: "folder-1",
+              display_name: "upload.txt",
+              original_filename: "upload.txt",
+              content_kind: "document",
+              media_kind: "text",
+              source_extension: ".txt",
+              byte_size: 7,
+              text_chars: 7,
+              status: "active",
+              reason_code: "",
+              source_kind: "upload",
+            },
+          }), { status: 201, headers: { "Content-Type": "application/json" } });
         }
 
         if (url.pathname === "/api/conversations" && method === "GET") {
@@ -93,6 +138,14 @@ function workspaceFoldersMockScript() {
           });
         }
 
+        if (activeDocsMatch && method === "POST") {
+          state.activeDocumentUploadCalls.push({ pathname: url.pathname, method });
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
         throw new Error("Unexpected fetch " + method + " " + url.pathname + url.search);
       };
     })();
@@ -103,6 +156,8 @@ test('workspace folders render above outside conversations and move by select', 
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
+    await assertTextContains(page.locator('.workspace-folder-files'), 'note.md');
+    await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
     await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
 
@@ -115,5 +170,21 @@ test('workspace folders render above outside conversations and move by select', 
       conversationId: 'conv-out',
       payload: { workspace_folder_id: 'folder-1' },
     }]);
+
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.locator('.workspace-folder-action[title="Ajouter un fichier au répertoire"]').click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+      name: 'upload.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('bonjour'),
+    });
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.workspaceUploadCalls.length === 1);
+    const uploadState = await page.evaluate(() => ({
+      workspace: window.__fridaWorkspaceFolderState.workspaceUploadCalls,
+      active: window.__fridaWorkspaceFolderState.activeDocumentUploadCalls,
+    }));
+    assert.deepEqual(uploadState.workspace, [{ pathname: '/api/workspace-folders/folder-1/files', method: 'POST' }]);
+    assert.deepEqual(uploadState.active, []);
   });
 });
