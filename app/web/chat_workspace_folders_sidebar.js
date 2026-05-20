@@ -336,7 +336,9 @@ function createWorkspaceFolderSidebarRenderer({
 
     const icon = document.createElement('span');
     icon.className = 'workspace-folder-icon';
-    icon.textContent = folder.icon_label || 'F';
+    icon.title = folder.icon_label || 'Dossier';
+    icon.innerHTML = folder.icon_svg || '';
+    if (!icon.innerHTML) icon.textContent = folder.icon_label || 'Dossier';
     main.appendChild(icon);
 
     const name = document.createElement('span');
@@ -349,6 +351,8 @@ function createWorkspaceFolderSidebarRenderer({
     count.textContent = String(folderThreads.length);
     main.appendChild(count);
 
+    const actions = document.createElement('span');
+    actions.className = 'workspace-folder-actions';
     [
       ['↑', 'Monter', index === 0, () => reorder(folder.id, -1)],
       ['↓', 'Descendre', index >= folders.length - 1, () => reorder(folder.id, 1)],
@@ -365,8 +369,9 @@ function createWorkspaceFolderSidebarRenderer({
         event.stopPropagation();
         void handler();
       });
-      main.appendChild(btn);
+      actions.appendChild(btn);
     });
+    main.appendChild(actions);
 
     li.appendChild(main);
     if (typeof bindConversationDropTarget === 'function') {

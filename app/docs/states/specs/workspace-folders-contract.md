@@ -151,7 +151,7 @@ Implementation Lot 5 livree:
 - le select de deplacement conversation reste disponible comme fallback explicite;
 - le glisser-deposer de conversations vers un repertoire est supporte;
 - le glisser-deposer vers la separation `Conversations hors repertoire` sort la conversation du repertoire;
-- les icones restent allowlistees (`icon_key`) et sans chargement externe;
+- les icones restent allowlistees (`icon_key`), rendues comme mini-repertoires SVG locaux, sans chargement externe ni upload d'icone custom;
 - l'ordre manuel reste porte par `sort_order` et les actions monter/descendre;
 - les etats vides `Aucun repertoire`, `Aucun fichier`, `Aucune conversation` sont visibles;
 - les etats fichier `OCR requis`, `Fichier absent`, `Supprimé`, `Erreur` sont affiches par libelles humains content-free;

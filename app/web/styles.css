@@ -4,7 +4,7 @@ html, body { height: 100%; }
 
 /* ===== Design tokens ===== */
 :root {
-  --sidebar-w: 232px;
+  --sidebar-w: 272px;
 
   /* Fonds */
   --bg-base:    #f8f6f3;
@@ -69,10 +69,10 @@ body {
   width: var(--sidebar-w);
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
-  padding: 14px 10px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   z-index: 10;
 }
 
@@ -135,7 +135,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 2px 0;
+  padding: 2px 0 10px;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.10) transparent;
 }
@@ -151,8 +151,8 @@ body {
 
 .threads li {
   position: relative;
-  padding: 8px 10px;
-  border-radius: var(--radius);
+  padding: 7px 10px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   color: var(--fg-muted);
   font-size: 13px;
@@ -167,9 +167,10 @@ body {
 }
 
 .threads li.active {
-  background: var(--accent-bg);
+  background: rgba(90, 62, 27, 0.055);
   color: var(--fg);
   border-left-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(90, 62, 27, 0.045);
   font-weight: 500;
 }
 
@@ -187,9 +188,11 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-top: 2px;
-  padding: 6px 10px 4px;
-  color: var(--fg-subtle);
-  font-size: 11px;
+  padding: 8px 9px 5px;
+  color: rgba(25, 23, 20, 0.42);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -198,13 +201,13 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 3px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: var(--fg-subtle);
+  color: rgba(25, 23, 20, 0.35);
   cursor: pointer;
   font: inherit;
 }
@@ -223,22 +226,69 @@ body {
 .workspace-folder-main {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 7px;
   min-width: 0;
+}
+
+.workspace-folder-row {
+  padding: 6px 8px 5px;
 }
 
 .workspace-folder-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border-muted);
-  border-radius: 50%;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
+  width: 28px;
+  height: 22px;
   flex-shrink: 0;
+  color: var(--accent);
+}
+
+.workspace-folder-svg {
+  display: block;
+  width: 28px;
+  height: 22px;
+  overflow: visible;
+}
+
+.workspace-folder-svg-back,
+.workspace-folder-svg-tab,
+.workspace-folder-svg-front,
+.workspace-folder-svg-mark path,
+.workspace-folder-svg-mark circle,
+.workspace-folder-svg-mark rect {
+  vector-effect: non-scaling-stroke;
+}
+
+.workspace-folder-svg-back {
+  fill: rgba(90, 62, 27, 0.09);
+  stroke: rgba(90, 62, 27, 0.24);
+  stroke-width: 1.15;
+}
+
+.workspace-folder-svg-tab {
+  fill: rgba(248, 246, 243, 0.92);
+  stroke: rgba(90, 62, 27, 0.34);
+  stroke-width: 1.15;
+}
+
+.workspace-folder-svg-front {
+  fill: rgba(248, 246, 243, 0.78);
+  stroke: rgba(90, 62, 27, 0.38);
+  stroke-width: 1.15;
+}
+
+.workspace-folder-svg-mark {
+  fill: none;
+  stroke: rgba(90, 62, 27, 0.82);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.workspace-folder-svg-mark circle,
+.workspace-folder-svg-mark rect {
+  fill: rgba(90, 62, 27, 0.06);
 }
 
 .workspace-folder-name {
@@ -248,18 +298,42 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--fg);
+  font-weight: 520;
 }
 
 .workspace-folder-count {
-  min-width: 16px;
-  color: var(--fg-subtle);
-  text-align: right;
-  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(25, 23, 20, 0.045);
+  color: rgba(25, 23, 20, 0.42);
+  text-align: center;
+  font-size: 10px;
+  line-height: 18px;
+}
+
+.workspace-folder-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, width 120ms ease;
+}
+
+.workspace-folder-row:hover .workspace-folder-actions,
+.workspace-folder-row:focus-within .workspace-folder-actions,
+.workspace-folder-drop-target .workspace-folder-actions {
+  width: auto;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .workspace-folder-empty {
-  padding: 3px 10px 6px 32px;
-  color: var(--fg-subtle);
+  padding: 4px 10px 7px 44px;
+  color: rgba(25, 23, 20, 0.34);
   font-size: 11px;
 }
 
@@ -268,20 +342,21 @@ body {
 }
 
 .workspace-folder-files {
-  padding: 3px 8px 4px 30px;
+  padding: 2px 8px 5px 43px;
   color: var(--fg-muted);
 }
 
 .workspace-folder-file-empty {
-  padding: 3px 0 5px;
-  color: var(--fg-subtle);
-  font-size: 10px;
+  padding: 4px 0 8px;
+  color: rgba(25, 23, 20, 0.32);
+  font-size: 10.5px;
+  font-style: italic;
 }
 
 .workspace-folder-file {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto auto auto auto;
-  gap: 2px 4px;
+  grid-template-columns: 15px minmax(0, 1fr) auto auto auto auto;
+  gap: 2px 5px;
   align-items: center;
   padding: 3px 0;
 }
@@ -443,30 +518,32 @@ body {
 }
 
 .workspace-folder-separator {
-  margin: 8px 10px 4px;
-  padding: 8px 0 0;
-  border-top: 1px solid var(--border-muted);
+  margin: 10px 8px 5px;
+  padding: 9px 0 1px;
+  border-top: 1px solid rgba(25, 23, 20, 0.075);
   border-radius: 0;
-  color: var(--fg-subtle);
+  color: rgba(25, 23, 20, 0.40);
   font-size: 11px;
+  line-height: 1.25;
 }
 
 .threads li.in-workspace-folder {
-  margin-left: 12px;
-  padding-left: 8px;
+  margin-left: 28px;
+  padding-left: 9px;
 }
 
 .thread-folder-select {
   display: block;
-  width: calc(100% - 18px);
-  margin: 4px 0 0 18px;
-  border: 1px solid var(--border-muted);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.42);
-  color: var(--fg-muted);
+  width: calc(100% - 34px);
+  margin: 5px 0 0 34px;
+  border: 1px solid rgba(25, 23, 20, 0.07);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.46);
+  color: rgba(25, 23, 20, 0.48);
   font: inherit;
   font-size: 11px;
-  padding: 2px 4px;
+  line-height: 1.2;
+  padding: 3px 6px;
 }
 
 /* Afficher les boutons au hover du li */
@@ -490,6 +567,15 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.threads li:not(.active) .thread-folder-select {
+  opacity: 0.78;
+}
+
+.threads li:not(.active):not(:hover) .thread-folder-select {
+  background: transparent;
+  border-color: transparent;
 }
 
 /* Bouton crayon (renommer) */
@@ -1365,4 +1451,12 @@ body {
   .image-generation-controls {
     grid-template-columns: 1fr;
   }
+}
+
+.workspace-folder-row .workspace-folder-action {
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.workspace-folder-row .workspace-folder-action:disabled {
+  opacity: 0.25;
 }

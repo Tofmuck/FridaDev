@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   WORKSPACE_FOLDER_ICON_KEYS,
+  WORKSPACE_FOLDER_ICON_SVGS,
   normalizeWorkspaceIconKey,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
@@ -20,6 +21,8 @@ test("workspace folders module exposes the allowlisted icon keys", () => {
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("folder"), true);
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("spark"), true);
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("<svg>"), false);
+  assert.equal(WORKSPACE_FOLDER_ICON_SVGS.folder.includes("workspace-folder-svg"), true);
+  assert.equal(WORKSPACE_FOLDER_ICON_SVGS.spark.includes("workspace-folder-svg-mark"), true);
   assert.equal(normalizeWorkspaceIconKey("spark"), "spark");
   assert.equal(normalizeWorkspaceIconKey("<svg>"), "folder");
 });
@@ -37,7 +40,8 @@ test("normalizeWorkspaceFolderItem keeps stable UI metadata only", () => {
     id: "folder-1",
     display_name: "Projet Tulu",
     icon_key: "spark",
-    icon_label: "+",
+    icon_label: "Eclat",
+    icon_svg: WORKSPACE_FOLDER_ICON_SVGS.spark,
     description: "visible UI",
     sort_order: 20,
     created_at: null,

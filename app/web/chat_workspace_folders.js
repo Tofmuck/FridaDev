@@ -18,22 +18,49 @@ const WORKSPACE_FOLDER_ICON_KEYS = [
   'spark',
 ];
 
+function workspaceFolderIconSvg(symbolMarkup = '') {
+  return `<svg class="workspace-folder-svg" viewBox="0 0 28 22" aria-hidden="true" focusable="false">
+    <path class="workspace-folder-svg-back" d="M2.5 7.5h8.2l1.9 2.4h12.9v8.7c0 1.1-.8 1.9-1.9 1.9H4.4c-1.1 0-1.9-.8-1.9-1.9V7.5Z"/>
+    <path class="workspace-folder-svg-tab" d="M3.4 4.2h6.9l2 2.5h12.3c.9 0 1.6.7 1.6 1.6v2.1H2.5V5.1c0-.5.4-.9.9-.9Z"/>
+    <path class="workspace-folder-svg-front" d="M2.5 9.3h23v9.3c0 1.1-.8 1.9-1.9 1.9H4.4c-1.1 0-1.9-.8-1.9-1.9V9.3Z"/>
+    <g class="workspace-folder-svg-mark">${symbolMarkup}</g>
+  </svg>`;
+}
+
+const WORKSPACE_FOLDER_ICON_SVGS = Object.freeze({
+  book: workspaceFolderIconSvg('<path d="M11.1 13.1c1.2-.6 2.6-.6 3.8 0v4.1c-1.2-.6-2.6-.6-3.8 0v-4.1Z"/><path d="M14.9 13.1c1.2-.6 2.6-.6 3.8 0v4.1c-1.2-.6-2.6-.6-3.8 0v-4.1Z"/>'),
+  feather: workspaceFolderIconSvg('<path d="M11.2 17.2c3.2-.7 5.6-2.6 7-5.4-2.9-.2-5.2.9-6.7 3.1-.5.7-.7 1.5-.3 2.3Z"/><path d="M12 16.4l5.2-3.7"/>'),
+  star: workspaceFolderIconSvg('<path d="m15 12.4.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3.9-1.9Z"/>'),
+  leaf: workspaceFolderIconSvg('<path d="M11.1 17.8c4.1-.2 6.9-2.4 7.8-6.2-3.9.1-6.8 2.3-7.8 6.2Z"/><path d="M12.2 16.8c1.5-1.6 3.1-2.7 5.2-3.7"/>'),
+  folder: workspaceFolderIconSvg(''),
+  moon: workspaceFolderIconSvg('<path d="M17.8 17.7a4.5 4.5 0 0 1-5.7-5.7 5.1 5.1 0 1 0 5.7 5.7Z"/>'),
+  circle: workspaceFolderIconSvg('<circle cx="15" cy="15.2" r="3.2"/>'),
+  fragment: workspaceFolderIconSvg('<path d="M11.4 13.2h3.2v2.1h-2v2.7h-1.2v-4.8Z"/><path d="M16 12.6h2.8v4.8H16v-1.2h1.6v-2.4H16v-1.2Z"/>'),
+  archive: workspaceFolderIconSvg('<path d="M11.2 13.1h7.6v4.7h-7.6v-4.7Z"/><path d="M12.3 14.6h5.4"/>'),
+  search: workspaceFolderIconSvg('<circle cx="14.3" cy="14.5" r="2.5"/><path d="m16.2 16.4 2 2"/>'),
+  note: workspaceFolderIconSvg('<path d="M12 12.6h5.4l1.1 1.1v4.3H12v-5.4Z"/><path d="M17.4 12.6v1.2h1.1"/><path d="M13.2 15h3.5M13.2 16.8h4"/>'),
+  image: workspaceFolderIconSvg('<rect x="11.5" y="12.6" width="7" height="5.1" rx=".7"/><path d="m12.5 16.8 1.7-1.7 1.2 1.1 1.1-1.3 1.1 1.9"/><circle cx="16.9" cy="13.9" r=".5"/>'),
+  map: workspaceFolderIconSvg('<path d="m11.2 13.1 2.4-.9 2.8.9 2.4-.9v4.9l-2.4.9-2.8-.9-2.4.9v-4.9Z"/><path d="M13.6 12.2v4.9M16.4 13.1V18"/>'),
+  dialog: workspaceFolderIconSvg('<path d="M11.5 12.8h7v4.1h-3.1l-2.3 1.4.4-1.4h-2v-4.1Z"/>'),
+  spark: workspaceFolderIconSvg('<path d="M15 11.9v6.5M11.8 15.2h6.4M12.7 12.9l4.6 4.6M17.3 12.9l-4.6 4.6"/>'),
+});
+
 const WORKSPACE_FOLDER_ICON_LABELS = Object.freeze({
-  book: 'B',
-  feather: 'P',
-  star: '*',
-  leaf: 'L',
-  folder: 'F',
-  moon: 'M',
-  circle: 'O',
-  fragment: 'K',
-  archive: 'A',
-  search: 'Q',
-  note: 'N',
-  image: 'I',
-  map: 'C',
-  dialog: 'D',
-  spark: '+',
+  book: 'Livre',
+  feather: 'Plume',
+  star: 'Etoile',
+  leaf: 'Feuille',
+  folder: 'Dossier',
+  moon: 'Lune',
+  circle: 'Cercle',
+  fragment: 'Fragment',
+  archive: 'Archive',
+  search: 'Recherche',
+  note: 'Note',
+  image: 'Image',
+  map: 'Carte',
+  dialog: 'Dialogue',
+  spark: 'Eclat',
 });
 
 const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
@@ -65,6 +92,7 @@ function normalizeWorkspaceFolderItem(item) {
     display_name: displayName,
     icon_key: iconKey,
     icon_label: WORKSPACE_FOLDER_ICON_LABELS[iconKey] || WORKSPACE_FOLDER_ICON_LABELS.folder,
+    icon_svg: WORKSPACE_FOLDER_ICON_SVGS[iconKey] || WORKSPACE_FOLDER_ICON_SVGS.folder,
     description: String(item?.description || '').replace(/\s+/g, ' ').trim(),
     sort_order: Number(item?.sort_order || 0),
     created_at: item?.created_at || null,
@@ -215,6 +243,7 @@ function groupThreadsByWorkspaceFolder(threads, folders) {
 const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_ICON_KEYS,
   WORKSPACE_FOLDER_ICON_LABELS,
+  WORKSPACE_FOLDER_ICON_SVGS,
   WORKSPACE_FILE_STATUS_LABELS,
   normalizeWorkspaceFolderId,
   normalizeWorkspaceIconKey,

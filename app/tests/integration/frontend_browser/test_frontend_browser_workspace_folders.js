@@ -243,6 +243,9 @@ test('workspace folders render above outside conversations and move by select', 
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
+    assert.equal(await page.locator('.workspace-folder-svg').count(), 1);
+    assert.equal(await page.locator('.workspace-folder-svg-front').count(), 1);
+    assert.equal(await page.locator('.workspace-folder-icon').first().getAttribute('title'), 'Dossier');
     await assertTextContains(page.locator('.workspace-folder-files'), 'note.md');
     await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.pdf');

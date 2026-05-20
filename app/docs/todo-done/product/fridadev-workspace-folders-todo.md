@@ -114,6 +114,7 @@ Contraintes V0:
 - pas d'emoji système criard;
 - pas d'upload de logo custom en V0;
 - stocker une clé d'icône allowlistée, par exemple `icon_key`;
+- rendu livré après clôture V0: mini-répertoires SVG locaux, avec symbole interne choisi depuis l'allowlist, sans asset externe;
 - icônes petites, lisibles, mignonnes, sobres.
 
 Familles possibles:
