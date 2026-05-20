@@ -3,12 +3,14 @@ const assert = require("node:assert/strict");
 
 const {
   WORKSPACE_FOLDER_ICON_KEYS,
+  normalizeWorkspaceIconKey,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
   normalizeWorkspaceFilesPayload,
   normalizeWorkspaceFileSelectionsPayload,
   compactWorkspaceFileMeta,
+  workspaceFileStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,
@@ -18,6 +20,8 @@ test("workspace folders module exposes the allowlisted icon keys", () => {
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("folder"), true);
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("spark"), true);
   assert.equal(WORKSPACE_FOLDER_ICON_KEYS.includes("<svg>"), false);
+  assert.equal(normalizeWorkspaceIconKey("spark"), "spark");
+  assert.equal(normalizeWorkspaceIconKey("<svg>"), "folder");
 });
 
 test("normalizeWorkspaceFolderItem keeps stable UI metadata only", () => {
@@ -105,7 +109,23 @@ test("workspace files payload normalizer handles OCR-required metadata", () => {
 
   assert.equal(files.length, 1);
   assert.equal(compactWorkspaceFileMeta(files[0]), "PDF · 2 ko · OCR requis");
+  assert.equal(workspaceFileStatusLabel(files[0]), "OCR requis");
   assert.equal(canRunWorkspaceOcr(files[0]), true);
+});
+
+test("workspace file status labels stay human and content-free", () => {
+  const missing = normalizeWorkspaceFileItem({
+    id: "missing",
+    workspace_folder_id: "folder-1",
+    display_name: "scan.pdf",
+    source_extension: ".pdf",
+    status: "disk_missing",
+    reason_code: "workspace_file_disk_missing",
+    storage_key: "_workspace_files/folder-1/missing.pdf",
+  });
+
+  assert.equal(workspaceFileStatusLabel(missing), "Fichier absent");
+  assert.equal(JSON.stringify(missing).includes("_workspace_files"), false);
 });
 
 test("workspace OCR markdown derivatives are editable metadata-only files", () => {

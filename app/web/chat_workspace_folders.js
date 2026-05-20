@@ -36,9 +36,22 @@ const WORKSPACE_FOLDER_ICON_LABELS = Object.freeze({
   spark: '+',
 });
 
+const WORKSPACE_FILE_STATUS_LABELS = Object.freeze({
+  active: '',
+  ocr_required: 'OCR requis',
+  disk_missing: 'Fichier absent',
+  deleted: 'Supprimé',
+  error: 'Erreur',
+});
+
 function normalizeWorkspaceFolderId(value) {
   const raw = String(value || '').trim();
   return raw || null;
+}
+
+function normalizeWorkspaceIconKey(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return WORKSPACE_FOLDER_ICON_KEYS.includes(key) ? key : 'folder';
 }
 
 function normalizeWorkspaceFolderItem(item) {
@@ -46,9 +59,7 @@ function normalizeWorkspaceFolderItem(item) {
   if (!id) return null;
   const displayName = String(item?.display_name || item?.name || '').replace(/\s+/g, ' ').trim();
   if (!displayName) return null;
-  const iconKey = WORKSPACE_FOLDER_ICON_KEYS.includes(String(item?.icon_key || '').trim())
-    ? String(item.icon_key).trim()
-    : 'folder';
+  const iconKey = normalizeWorkspaceIconKey(item?.icon_key);
   return {
     id,
     display_name: displayName,
@@ -158,6 +169,14 @@ function compactWorkspaceFileMeta(item) {
   return parts.join(' · ');
 }
 
+function workspaceFileStatusLabel(item) {
+  const status = String(item?.status || 'active').trim();
+  if (WORKSPACE_FILE_STATUS_LABELS[status] !== undefined) {
+    return WORKSPACE_FILE_STATUS_LABELS[status];
+  }
+  return status && status !== 'active' ? 'Etat fichier' : '';
+}
+
 function canRunWorkspaceOcr(item) {
   const mime = String(item?.mime_type || '').split(';', 1)[0].trim().toLowerCase();
   const ext = String(item?.source_extension || '').trim().toLowerCase();
@@ -196,7 +215,9 @@ function groupThreadsByWorkspaceFolder(threads, folders) {
 const FridaWorkspaceFolders = Object.freeze({
   WORKSPACE_FOLDER_ICON_KEYS,
   WORKSPACE_FOLDER_ICON_LABELS,
+  WORKSPACE_FILE_STATUS_LABELS,
   normalizeWorkspaceFolderId,
+  normalizeWorkspaceIconKey,
   normalizeWorkspaceFolderItem,
   normalizeWorkspaceFoldersPayload,
   normalizeWorkspaceFileItem,
@@ -205,6 +226,7 @@ const FridaWorkspaceFolders = Object.freeze({
   normalizeWorkspaceFileSelectionsPayload,
   formatWorkspaceFileBytes,
   compactWorkspaceFileMeta,
+  workspaceFileStatusLabel,
   canRunWorkspaceOcr,
   canEditWorkspaceOcrMarkdown,
   groupThreadsByWorkspaceFolder,

@@ -263,9 +263,19 @@ body {
   font-size: 11px;
 }
 
+.workspace-folder-empty-global {
+  padding-left: 10px;
+}
+
 .workspace-folder-files {
   padding: 3px 8px 4px 30px;
   color: var(--fg-muted);
+}
+
+.workspace-folder-file-empty {
+  padding: 3px 0 5px;
+  color: var(--fg-subtle);
+  font-size: 10px;
 }
 
 .workspace-folder-file {
@@ -314,6 +324,7 @@ body {
   grid-column: 3;
   color: #9a6a1f;
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .workspace-folder-file-delete,
@@ -353,6 +364,15 @@ body {
 .workspace-folder-file[data-status="ocr_required"] .workspace-folder-file-meta,
 .workspace-folder-file[data-status="disk_missing"] .workspace-folder-file-meta {
   color: #9a6a1f;
+}
+
+.threads li.dragging {
+  opacity: 0.58;
+}
+
+.workspace-folder-drop-target {
+  outline: 1px solid rgba(90, 120, 95, 0.36);
+  background: rgba(90, 120, 95, 0.08);
 }
 
 .workspace-ocr-editor-overlay {

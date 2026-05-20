@@ -269,6 +269,28 @@ test('workspace folders render above outside conversations and move by select', 
       payload: { workspace_folder_id: 'folder-1' },
     }]);
 
+    await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-separator'), {
+      sourcePosition: { x: 12, y: 8 },
+      targetPosition: { x: 12, y: 8 },
+    });
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 2);
+    let dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
+    assert.deepEqual(dragCalls[1], {
+      conversationId: 'conv-out',
+      payload: { workspace_folder_id: null },
+    });
+
+    await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-row'), {
+      sourcePosition: { x: 12, y: 8 },
+      targetPosition: { x: 12, y: 8 },
+    });
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.patchCalls.length === 3);
+    dragCalls = await page.evaluate(() => window.__fridaWorkspaceFolderState.patchCalls);
+    assert.deepEqual(dragCalls[2], {
+      conversationId: 'conv-out',
+      payload: { workspace_folder_id: 'folder-1' },
+    });
+
     const chooserPromise = page.waitForEvent('filechooser');
     await page.locator('.workspace-folder-action[title="Ajouter un fichier au répertoire"]').click();
     const chooser = await chooserPromise;
@@ -292,6 +314,7 @@ test('workspace folders render above outside conversations and move by select', 
       pathname: '/api/workspace-folders/folder-1/files/file-ocr-source/ocr',
       method: 'POST',
     }]);
+    await page.waitForFunction(() => document.querySelector('.workspace-folder-files')?.textContent.includes('scan.ocr.md'));
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.ocr.md');
   });
 });

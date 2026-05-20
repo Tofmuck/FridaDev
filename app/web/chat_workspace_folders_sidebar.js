@@ -27,9 +27,12 @@ function createWorkspaceFolderSidebarRenderer({
   selectWorkspaceFileOnServer,
   deselectWorkspaceFileOnServer,
   refreshWorkspaceFileSelections,
+  bindConversationDropTarget,
   consoleObj,
 } = {}) {
   const logger = consoleObj || (typeof console !== 'undefined' ? console : { warn() {} });
+  const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
+  const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
 
   const syncAndRender = async () => {
     await refreshThreadsFromServer({ keepSelection: true });
@@ -40,8 +43,11 @@ function createWorkspaceFolderSidebarRenderer({
     const raw = typeof window !== 'undefined' ? window.prompt('Nom du répertoire de travail') : '';
     const displayName = String(raw || '').replace(/\s+/g, ' ').trim();
     if (!displayName) return;
+    const rawIcon = typeof window !== 'undefined'
+      ? window.prompt(`Icône (${iconKeys.join(', ')})`, 'folder')
+      : 'folder';
     try {
-      await createWorkspaceFolderOnServer(displayName);
+      await createWorkspaceFolderOnServer(displayName, normalizeIconKey(rawIcon));
       await syncAndRender();
     } catch (err) {
       logger.warn('Création répertoire échouée', err);
@@ -56,9 +62,13 @@ function createWorkspaceFolderSidebarRenderer({
     const rawDescription = typeof window !== 'undefined'
       ? window.prompt('Description courte (non injectée)', folder.description || '')
       : '';
+    const rawIcon = typeof window !== 'undefined'
+      ? window.prompt(`Icône (${iconKeys.join(', ')})`, folder.icon_key || 'folder')
+      : folder.icon_key || 'folder';
     try {
       await updateWorkspaceFolderOnServer(folder.id, {
         display_name: displayName,
+        icon_key: normalizeIconKey(rawIcon),
         description: String(rawDescription || '').replace(/\s+/g, ' ').trim(),
       });
       await syncAndRender();
@@ -308,6 +318,13 @@ function createWorkspaceFolderSidebarRenderer({
     threadsUl.appendChild(li);
   };
 
+  const appendNoFoldersEmpty = () => {
+    const empty = document.createElement('li');
+    empty.className = 'workspace-folder-empty workspace-folder-empty-global';
+    empty.textContent = 'Aucun répertoire';
+    threadsUl.appendChild(empty);
+  };
+
   const appendFolderRow = (folder, folderThreads, index, appendThreadRow) => {
     const folders = getWorkspaceFolders();
     const li = document.createElement('li');
@@ -352,6 +369,9 @@ function createWorkspaceFolderSidebarRenderer({
     });
 
     li.appendChild(main);
+    if (typeof bindConversationDropTarget === 'function') {
+      bindConversationDropTarget(li, folder.id);
+    }
     threadsUl.appendChild(li);
 
     appendFileRows(folder);
@@ -368,9 +388,16 @@ function createWorkspaceFolderSidebarRenderer({
 
   const appendFileRows = (folder) => {
     const files = typeof getWorkspaceFiles === 'function' ? getWorkspaceFiles(folder.id) : [];
-    if (!files.length) return;
     const li = document.createElement('li');
     li.className = 'workspace-folder-files';
+    if (!files.length) {
+      const empty = document.createElement('div');
+      empty.className = 'workspace-folder-file-empty';
+      empty.textContent = 'Aucun fichier';
+      li.appendChild(empty);
+      threadsUl.appendChild(li);
+      return;
+    }
     files.forEach((file) => {
       const current = typeof getCurrentThread === 'function' ? getCurrentThread() : null;
       const selections = typeof getWorkspaceFileSelections === 'function' && current?.id
@@ -414,10 +441,11 @@ function createWorkspaceFolderSidebarRenderer({
         : '';
       row.appendChild(meta);
 
-      if (selection?.selection_status === 'stale') {
+      const statusLabel = WorkspaceFolderUiHelpers?.workspaceFileStatusLabel?.(file) || '';
+      if (selection?.selection_status === 'stale' || statusLabel) {
         const stale = document.createElement('span');
         stale.className = 'workspace-folder-file-state';
-        stale.textContent = 'stale';
+        stale.textContent = selection?.selection_status === 'stale' ? 'Sélection invalide' : statusLabel;
         row.appendChild(stale);
       }
 
@@ -464,6 +492,7 @@ function createWorkspaceFolderSidebarRenderer({
 
   return Object.freeze({
     appendToolbar,
+    appendNoFoldersEmpty,
     appendFolderRow,
   });
 }

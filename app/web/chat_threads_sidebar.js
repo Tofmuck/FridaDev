@@ -10,6 +10,7 @@ const WorkspaceFoldersSidebar = (
     ? window.FridaWorkspaceFoldersSidebar
     : (typeof require !== "undefined" ? require("./chat_workspace_folders_sidebar.js") : null)
 );
+const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
   const normalized = String(value || "").replace(/\s+/g, " ").trim();
@@ -196,11 +197,11 @@ function createChatThreadsSidebar({
     return data.conversation || null;
   }
 
-  async function createWorkspaceFolderOnServer(displayName) {
+  async function createWorkspaceFolderOnServer(displayName, iconKey = "folder") {
     const res = await httpFetch("/api/workspace-folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ display_name: displayName, icon_key: "folder" }),
+      body: JSON.stringify({ display_name: displayName, icon_key: iconKey || "folder" }),
     });
     const data = await parseServerResponse(res);
     return data.folder || null;
@@ -370,9 +371,13 @@ function createChatThreadsSidebar({
     }
   };
 
-  const moveThreadToWorkspaceFolder = async (thread, folderId) => {
+  const moveThreadToWorkspaceFolder = async (threadOrId, folderId) => {
+    const thread = typeof threadOrId === "string" ? getThreadById(threadOrId) : threadOrId;
+    if (!thread?.id) return;
+    const nextFolderId = folderId || null;
+    if ((thread.workspace_folder_id || null) === nextFolderId) return;
     try {
-      const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, folderId);
+      const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, nextFolderId);
       if (updated) syncThreadFromServer(updated);
       await refreshWorkspaceFileSelections(thread.id);
       await refreshThreadsFromServer({ keepSelection: true });
@@ -382,6 +387,51 @@ function createChatThreadsSidebar({
       setThreadStatus("Déplacement non synchronisé.", true);
       renderThreads();
     }
+  };
+
+  const clearConversationDropTargets = () => {
+    if (!threadsUl) return;
+    threadsUl.querySelectorAll(".workspace-folder-drop-target, .dragging").forEach((node) => {
+      node.classList.remove("workspace-folder-drop-target", "dragging");
+    });
+  };
+
+  const hasConversationDrag = (event) => {
+    if (!event?.dataTransfer) return "";
+    const types = Array.from(event.dataTransfer.types || []);
+    return types.includes(WORKSPACE_CONVERSATION_DRAG_MIME) || types.includes("text/plain");
+  };
+
+  const draggedConversationId = (event) => {
+    if (!event?.dataTransfer || !hasConversationDrag(event)) return "";
+    return event.dataTransfer.getData(WORKSPACE_CONVERSATION_DRAG_MIME)
+      || event.dataTransfer.getData("text/plain")
+      || "";
+  };
+
+  const bindConversationDropTarget = (node, folderId) => {
+    if (!node) return;
+    node.addEventListener("dragenter", (event) => {
+      if (!hasConversationDrag(event)) return;
+      event.preventDefault();
+      node.classList.add("workspace-folder-drop-target");
+    });
+    node.addEventListener("dragover", (event) => {
+      if (!hasConversationDrag(event)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      node.classList.add("workspace-folder-drop-target");
+    });
+    node.addEventListener("dragleave", () => {
+      node.classList.remove("workspace-folder-drop-target");
+    });
+    node.addEventListener("drop", (event) => {
+      const conversationId = draggedConversationId(event);
+      if (!conversationId) return;
+      event.preventDefault();
+      clearConversationDropTargets();
+      void moveThreadToWorkspaceFolder(conversationId, folderId || null);
+    });
   };
 
   const refreshWorkspaceFiles = async (folderId) => {
@@ -427,6 +477,7 @@ function createChatThreadsSidebar({
     selectWorkspaceFileOnServer,
     deselectWorkspaceFileOnServer,
     refreshWorkspaceFileSelections,
+    bindConversationDropTarget,
     consoleObj: logger,
   });
 
@@ -442,8 +493,10 @@ function createChatThreadsSidebar({
       if (nested) li.classList.add("in-workspace-folder");
       if (t.id === current) li.classList.add("active");
       li.tabIndex = 0;
+      li.draggable = true;
       li.setAttribute("role", "button");
       li.setAttribute("aria-label", t.title || "Conversation");
+      li.dataset.conversationId = t.id;
 
       const main = document.createElement("div");
       main.className = "thread-main";
@@ -550,11 +603,26 @@ function createChatThreadsSidebar({
         renderThreads();
         closeSidebar();
       });
+      li.addEventListener("dragstart", (event) => {
+        const interactiveTarget = event.target?.closest?.("button, input");
+        if (editingThreadId || interactiveTarget) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(WORKSPACE_CONVERSATION_DRAG_MIME, t.id);
+        event.dataTransfer.setData("text/plain", t.id);
+        li.classList.add("dragging");
+      });
+      li.addEventListener("dragend", clearConversationDropTargets);
 
       threadsUl.appendChild(li);
     };
 
     workspaceFolderRenderer?.appendToolbar();
+    if (!folders.length) {
+      workspaceFolderRenderer?.appendNoFoldersEmpty?.();
+    }
     folders.forEach((folder, index) => {
       workspaceFolderRenderer?.appendFolderRow(folder, grouped.byFolder.get(folder.id) || [], index, appendThreadRow);
     });
@@ -562,6 +630,7 @@ function createChatThreadsSidebar({
       const separator = document.createElement("li");
       separator.className = "workspace-folder-separator";
       separator.textContent = "Conversations hors répertoire";
+      bindConversationDropTarget(separator, null);
       threadsUl.appendChild(separator);
     }
     (grouped.outside || []).forEach((thread) => appendThreadRow(thread, false));
@@ -818,6 +887,7 @@ function createChatThreadsSidebar({
 const FridaChatThreadsSidebar = Object.freeze({
   THREADS_PAGE_SIZE,
   MAX_TITLE_LENGTH,
+  WORKSPACE_CONVERSATION_DRAG_MIME,
   clampThreadTitle,
   normalizeThreadItem,
   createChatThreadsSidebar,

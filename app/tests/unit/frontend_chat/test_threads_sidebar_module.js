@@ -4,12 +4,14 @@ const assert = require("node:assert/strict");
 const {
   THREADS_PAGE_SIZE,
   MAX_TITLE_LENGTH,
+  WORKSPACE_CONVERSATION_DRAG_MIME,
   clampThreadTitle,
   normalizeThreadItem,
 } = require("../../../web/chat_threads_sidebar.js");
 
 test("threads sidebar module exposes the conversations page size contract", () => {
   assert.equal(THREADS_PAGE_SIZE, 200);
+  assert.equal(WORKSPACE_CONVERSATION_DRAG_MIME, "application/x-fridadev-conversation-id");
 });
 
 test("clampThreadTitle normalizes whitespace and preserves the fallback contract", () => {

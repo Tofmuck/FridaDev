@@ -145,6 +145,19 @@ Regles UX:
 
 Supprimer un repertoire ne supprime pas automatiquement les conversations. Les conversations reviennent hors repertoire, sauf decision future explicitement documentee.
 
+Implementation Lot 5 livree:
+
+- les repertoires restent affiches au-dessus des conversations hors repertoire avec separation fine;
+- le select de deplacement conversation reste disponible comme fallback explicite;
+- le glisser-deposer de conversations vers un repertoire est supporte;
+- le glisser-deposer vers la separation `Conversations hors repertoire` sort la conversation du repertoire;
+- les icones restent allowlistees (`icon_key`) et sans chargement externe;
+- l'ordre manuel reste porte par `sort_order` et les actions monter/descendre;
+- les etats vides `Aucun repertoire`, `Aucun fichier`, `Aucune conversation` sont visibles;
+- les etats fichier `OCR requis`, `Fichier absent`, `Supprimé`, `Erreur` sont affiches par libelles humains content-free;
+- aucun contenu fichier, chemin disque, base64, prompt ou description de repertoire n'est injecte ou expose dans le DOM;
+- le nommage automatique des conversations reste un futur mini-lot non-LLM tant qu'aucune decision explicite ne l'ouvre.
+
 ## 6. Description courte
 
 La description courte d'un repertoire est autorisee uniquement comme metadonnee UI.

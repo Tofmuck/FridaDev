@@ -430,16 +430,18 @@ Note Lot 4 livré le 2026-05-20: OCR manuel workspace livré pour images PNG/JPE
 
 ### Lot 5 - UI sidebar/polish
 
-- [ ] Afficher les répertoires au-dessus des conversations hors répertoire.
-- [ ] Ajouter ligne fine entre répertoires et conversations hors répertoire.
-- [ ] Ajouter glisser-déposer des conversations dans un répertoire si faisable.
-- [ ] Ajouter action de sortie d'un répertoire.
-- [ ] Ajouter icônes allowlistées.
-- [ ] Ajouter ordre manuel.
-- [ ] Ajouter états vides.
-- [ ] Ajouter états erreur/suppression.
-- [ ] Préserver le comportement mobile/responsive si applicable.
-- [ ] Prévoir le nommage automatique des conversations dans ce chantier ou un lot proche.
+- [x] Afficher les répertoires au-dessus des conversations hors répertoire.
+- [x] Ajouter ligne fine entre répertoires et conversations hors répertoire.
+- [x] Ajouter glisser-déposer des conversations dans un répertoire si faisable.
+- [x] Ajouter action de sortie d'un répertoire.
+- [x] Ajouter icônes allowlistées.
+- [x] Ajouter ordre manuel.
+- [x] Ajouter états vides.
+- [x] Ajouter états erreur/suppression.
+- [x] Préserver le comportement mobile/responsive si applicable.
+- [x] Prévoir le nommage automatique des conversations dans ce chantier ou un lot proche.
+
+Note Lot 5 livré le 2026-05-20: polish sidebar livré sans nouveau backend documentaire. Les répertoires restent au-dessus des conversations hors répertoire, la séparation fine reste la zone de sortie, et le select de déplacement reste disponible comme fallback. Le glisser-déposer permet maintenant de ranger une conversation dans un répertoire ou de la sortir vers `Conversations hors répertoire`; les sélections workspace restent invalidées côté backend par le mouvement existant. Les icônes restent allowlistées via `icon_key`, l'ordre manuel reste porté par `sort_order`, et les états vides/erreur/suppression sont affichés par libellés humains content-free (`Aucun répertoire`, `Aucun fichier`, `Aucune conversation`, `OCR requis`, `Fichier absent`, `Supprimé`, `Erreur`). Aucun contenu fichier, base64, chemin disque, Biblio/RAG, mémoire, identity, summary ou prompt de répertoire n'est ajouté. Le nommage automatique de conversation est seulement prévu comme futur mini-lot local/non-LLM; il n'est pas implémenté ici. Lot 6/preuves finales reste ouvert.
 
 ### Lot 6 - Tests et preuves finales
 
