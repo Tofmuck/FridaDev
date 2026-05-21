@@ -62,6 +62,10 @@ Reference d'audit ouverte pour ce chantier:
 
 - `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
 
+TODO actif de renforcement local SearXNG/Crawl4AI, avec bras benchmark `local_profiled`:
+
+- `app/docs/todo-todo/product/fridadev-local-web-search-hardening-todo.md`
+
 ## 3. Biblio native / catalogue Tulu
 
 Objectif principal pour l'instance Tof: construire une Biblio native / catalogue Tulu comme fonds durable, classe, consultable.

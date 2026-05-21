@@ -73,6 +73,9 @@ def build_web_search_campaign(
             if arm == "local":
                 arm_results.append(_run_local_arm(config=config, case=case))
                 continue
+            if arm == "local_profiled":
+                arm_results.append(_run_local_profiled_arm(config=config, case=case))
+                continue
             for model in config.models:
                 engine = adapter.openrouter_engine_for_arm(arm)
                 arm_results.append(
@@ -112,9 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "SearXNG + Crawl4AI + existing web reformulation when needed",
+            "mode": "SearXNG + Crawl4AI + existing web reformulation when needed; local_profiled is a Lot 1 stub over the same runtime path",
             "runtime_changed": False,
             "chat_pipeline_changed": False,
+            "local_profiled_stub": "current_local_pipeline_until_profiled_runtime_exists",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -124,15 +128,21 @@ def build_web_search_campaign(
     }
 
 
-def _run_local_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str, Any]:
-    arm = "local"
+def _run_local_arm(
+    *,
+    config: CampaignConfig,
+    case: dict[str, Any],
+    arm: str = "local",
+    mode: str = "local_searxng_crawl4ai",
+    engine: str = "searxng_crawl4ai",
+) -> dict[str, Any]:
     if config.dry_run:
         source = adapter.dry_run_source(case, arm=arm)
         return {
             "arm": arm,
-            "mode": "local_searxng_crawl4ai",
+            "mode": mode,
             "model": None,
-            "engine": "searxng_crawl4ai",
+            "engine": engine,
             "ok": True,
             "status": "dry_run",
             "elapsed_ms": 0.0,
@@ -152,7 +162,7 @@ def _run_local_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str,
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
             "raw_text_sha256": "",
             "raw_text_chars": 0,
-            "request_signature": _local_request_signature(case),
+            "request_signature": _local_request_signature(case, arm=arm),
         }
 
     app_dir = config.repo_root / "app"
@@ -167,9 +177,9 @@ def _run_local_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str,
         sources = [_local_source(source) for source in payload.get("sources") or []]
         return {
             "arm": arm,
-            "mode": "local_searxng_crawl4ai",
+            "mode": mode,
             "model": None,
-            "engine": "searxng_crawl4ai",
+            "engine": engine,
             "ok": str(payload.get("status") or "") == "ok",
             "status": str(payload.get("status") or ""),
             "elapsed_ms": round(elapsed_ms, 3),
@@ -191,15 +201,15 @@ def _run_local_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str,
             "answer_preview": _bounded_preview(payload.get("context_block"), max_chars=ANSWER_PREVIEW_CHARS),
             "raw_text_sha256": _sha256_text(str(payload.get("context_block") or "")),
             "raw_text_chars": len(str(payload.get("context_block") or "")),
-            "request_signature": _local_request_signature(case),
+            "request_signature": _local_request_signature(case, arm=arm),
         }
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - start) * 1000
         return {
             "arm": arm,
-            "mode": "local_searxng_crawl4ai",
+            "mode": mode,
             "model": None,
-            "engine": "searxng_crawl4ai",
+            "engine": engine,
             "ok": False,
             "status": "error",
             "elapsed_ms": round(elapsed_ms, 3),
@@ -212,8 +222,34 @@ def _run_local_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str,
             "answer_preview": "",
             "raw_text_sha256": "",
             "raw_text_chars": 0,
-            "request_signature": _local_request_signature(case),
+            "request_signature": _local_request_signature(case, arm=arm),
         }
+
+
+def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> dict[str, Any]:
+    result = _run_local_arm(
+        config=config,
+        case=case,
+        arm="local_profiled",
+        mode="local_profiled_stub_current_local",
+        engine="searxng_crawl4ai_profiled_stub",
+    )
+    local = dict(result.get("local") or {})
+    local.update(
+        {
+            "search_profile": "stub_not_implemented",
+            "local_profiled_stub": True,
+        }
+    )
+    result["local"] = local
+    result["profiled_stub"] = {
+        "status": "current_local_pipeline",
+        "runtime_changed": False,
+        "fixture_path": str(adapter.local_bad_order_fixture_path(config.repo_root).relative_to(config.repo_root)),
+    }
+    if config.dry_run:
+        result["answer_preview"] = "Dry-run local_profiled: stub Lot 1, alias du local actuel sans profil runtime."
+    return result
 
 
 def _run_openrouter_search_arm(
@@ -515,6 +551,10 @@ def _result_markdown_block(result: dict[str, Any]) -> list[str]:
                 f"  - `context_chars`: `{local.get('context_chars')}`",
             ]
         )
+        if "search_profile" in local:
+            lines.append(f"  - `search_profile`: `{local.get('search_profile')}`")
+        if bool(local.get("local_profiled_stub", False)):
+            lines.append("  - `local_profiled_stub`: `True`")
     lines.extend(
         [
             "- Sources / URLs:",
@@ -657,8 +697,11 @@ def _estimate_openrouter_web_cost(
     return round(total, 8), "openrouter_model_pricing_plus_server_tool_estimate"
 
 
-def _local_request_signature(case: dict[str, Any]) -> dict[str, Any]:
-    return {"user_query_sha256": _sha256_text(str(case.get("user_query") or ""))}
+def _local_request_signature(case: dict[str, Any], *, arm: str = "local") -> dict[str, Any]:
+    return {
+        "arm": str(arm or "local"),
+        "user_query_sha256": _sha256_text(str(case.get("user_query") or "")),
+    }
 
 
 def _message(data: dict[str, Any]) -> dict[str, Any]:
@@ -782,6 +825,10 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         f"kinds={','.join(local.get('used_content_kinds') or []) or 'none'}",
         f"chars={local.get('injected_chars')}",
     ]
+    if local.get("search_profile"):
+        bits.append(f"profile={local.get('search_profile')}")
+    if local.get("local_profiled_stub"):
+        bits.append("stub=true")
     return _markdown_cell("; ".join(bits))
 
 

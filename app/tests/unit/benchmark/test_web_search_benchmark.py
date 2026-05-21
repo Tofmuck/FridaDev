@@ -27,7 +27,7 @@ from benchmark.suites.web_search import campaign as web_campaign
 class WebSearchBenchmarkSuiteTests(unittest.TestCase):
     def test_default_web_search_models_and_arms_are_bounded(self) -> None:
         self.assertEqual(DEFAULT_WEB_SEARCH_MODELS, ["openai/gpt-5.1"])
-        self.assertEqual(web_adapter.DEFAULT_ARMS, ["local", "openrouter_exa", "openrouter_parallel"])
+        self.assertEqual(web_adapter.DEFAULT_ARMS, ["local", "local_profiled", "openrouter_exa", "openrouter_parallel"])
         self.assertEqual(web_adapter.DEFAULT_MAX_RESULTS, 5)
         self.assertEqual(web_adapter.DEFAULT_MAX_TOTAL_RESULTS, 5)
         self.assertEqual(web_adapter.DEFAULT_SEARCH_CONTEXT_SIZE, "low")
@@ -126,9 +126,11 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             self.assertEqual(json_payload["arms"], web_adapter.DEFAULT_ARMS)
             self.assertIn("Grille d'évaluation humaine", markdown)
             self.assertIn("openrouter:web_search", markdown)
+            self.assertIn("local_profiled", markdown)
             self.assertIn("web_search_requests", json.dumps(json_payload, ensure_ascii=False))
-            self.assertEqual(set(system_paths), {"local", "openrouter_exa", "openrouter_parallel"})
+            self.assertEqual(set(system_paths), {"local", "local_profiled", "openrouter_exa", "openrouter_parallel"})
             self.assertEqual(system_paths["local"].name, "local.md")
+            self.assertEqual(system_paths["local_profiled"].name, "local-profiled.md")
             self.assertEqual(system_paths["openrouter_exa"].name, "openrouter-exa.md")
             self.assertEqual(system_paths["openrouter_parallel"].name, "openrouter-parallel.md")
             case_ids = [case["id"] for case in web_adapter.load_cases(REPO_ROOT)]
@@ -137,6 +139,8 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 self.assertTrue(all(position >= 0 for position in positions), positions)
                 self.assertEqual(positions, sorted(positions))
             self.assertIn("read_state", system_markdowns["local"])
+            self.assertIn("search_profile", system_markdowns["local_profiled"])
+            self.assertIn("local_profiled_stub", system_markdowns["local_profiled"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_exa"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_parallel"])
             for forbidden in (
@@ -153,6 +157,69 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
     def test_unknown_arm_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
+
+    def test_local_profiled_arm_is_a_stub_over_current_local_pipeline(self) -> None:
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            config = CampaignConfig(
+                campaign_id="web-search-local-profiled-dry",
+                suite="web_search",
+                repo_root=REPO_ROOT,
+                output_dir=tmp_path / "results",
+                models=["openai/gpt-5.1"],
+                dry_run=True,
+                timeout_s=1,
+            )
+
+            campaign = web_campaign.build_web_search_campaign(
+                config=config,
+                client=None,
+                arms=["local", "local_profiled"],
+            )
+
+        self.assertEqual(campaign["arms"], ["local", "local_profiled"])
+        first_case_arms = campaign["results"][0]["arms"]
+        self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
+        profiled = first_case_arms[1]
+        self.assertEqual(profiled["mode"], "local_profiled_stub_current_local")
+        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_stub")
+        self.assertTrue(profiled["local"]["local_profiled_stub"])
+        self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
+        self.assertFalse(profiled["profiled_stub"]["runtime_changed"])
+        self.assertEqual(
+            profiled["profiled_stub"]["fixture_path"],
+            "benchmark/suites/web_search/fixtures/local_bad_orders.json",
+        )
+
+    def test_local_bad_order_fixtures_capture_live_local_failures(self) -> None:
+        fixtures = web_adapter.load_local_bad_order_fixtures(REPO_ROOT)
+        self.assertEqual(
+            {fixture["case_id"] for fixture in fixtures},
+            {
+                "recent_ai_policy_news",
+                "official_openrouter_server_tools",
+                "conceptual_philosophy_search",
+                "french_admin_service_public",
+            },
+        )
+        self.assertEqual(
+            {fixture["target_profile"] for fixture in fixtures},
+            {
+                "actualite",
+                "technique_officielle",
+                "academique_philosophique",
+                "institutionnel_francais",
+            },
+        )
+        problem_labels = {
+            str(result["problem"])
+            for fixture in fixtures
+            for result in fixture["results"]
+        }
+        self.assertIn("dictionnaire", problem_labels)
+        self.assertIn("conjugueur", problem_labels)
+        self.assertIn("homonyme_hors_sujet", problem_labels)
+        self.assertIn("source_officielle_trop_basse", problem_labels)
 
 
 if __name__ == "__main__":

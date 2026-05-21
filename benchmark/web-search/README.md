@@ -9,6 +9,7 @@ Il sert à préparer le chantier produit "Recherche internet" de la roadmap fina
 Par défaut:
 
 - `local`: pipeline FridaDev actuel, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante quand nécessaire;
+- `local_profiled`: bras Lot 1 qui pointe provisoirement vers le local actuel, avec un statut de stub explicite, pour préparer la comparaison future du pipeline profilé;
 - `openrouter_exa`: `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: `openrouter:web_search` avec `engine=parallel`.
 
@@ -52,6 +53,7 @@ Artefacts produits:
 - `dry-run-web-search.jsonl`;
 - `dry-run-web-search.md`.
 - `local.md`;
+- `local-profiled.md`;
 - `openrouter-exa.md`;
 - `openrouter-parallel.md`.
 
@@ -72,6 +74,7 @@ Le dossier live contient aussi un Markdown par système. Ce sont les fichiers à
 ouvrir côte à côte pour la lecture humaine:
 
 - `local.md`;
+- `local-profiled.md`;
 - `openrouter-exa.md`;
 - `openrouter-parallel.md`.
 
@@ -112,6 +115,19 @@ python3 benchmark/run_benchmark.py \
 ```
 
 Le bras local peut tout de même utiliser la reformulation web FridaDev selon les settings runtime existants. C'est volontaire: on mesure le pipeline local réel, pas un pipeline réduit artificiellement.
+
+Pour préparer la comparaison du futur pipeline profilé sans appeler OpenRouter:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite web_search \
+  --dry-run \
+  --web-search-arms local local_profiled \
+  --campaign-id web-search-local-profiled-dry-run \
+  --output-dir /tmp/fridadev-web-search-local-profiled-dry-run
+```
+
+Tant que le runtime profilé n'existe pas, `local_profiled` est un stub qui reflète le local actuel et expose `search_profile=stub_not_implemented`.
 
 ## Sorties et métriques
 
@@ -164,3 +180,4 @@ La décision produit reste humaine. Les sorties doivent aider à choisir plus ta
 - Exa et Parallel ajoutent un coût serveur en plus des tokens du modèle.
 - Le bras local dépend de l'état runtime SearXNG/Crawl4AI et des settings services de l'instance.
 - Le benchmark ne teste pas encore `openrouter:web_fetch` par défaut, pour ne pas mélanger recherche et lecture d'URL dans le premier banc.
+- `local_profiled` n'est pas encore une amélioration qualité: c'est un bras de mesure préparatoire pour les lots profil/reranking.

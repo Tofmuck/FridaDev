@@ -6,7 +6,8 @@ from typing import Any
 
 
 FIXTURE_PATH = Path("benchmark/suites/web_search/fixtures/cases.json")
-DEFAULT_ARMS = ["local", "openrouter_exa", "openrouter_parallel"]
+LOCAL_BAD_ORDER_FIXTURE_PATH = Path("benchmark/suites/web_search/fixtures/local_bad_orders.json")
+DEFAULT_ARMS = ["local", "local_profiled", "openrouter_exa", "openrouter_parallel"]
 OPENROUTER_SEARCH_TOOL_TYPE = "openrouter:web_search"
 DEFAULT_SEARCH_CONTEXT_SIZE = "low"
 DEFAULT_MAX_RESULTS = 5
@@ -18,6 +19,10 @@ def fixture_path(repo_root: Path) -> Path:
     return repo_root / FIXTURE_PATH
 
 
+def local_bad_order_fixture_path(repo_root: Path) -> Path:
+    return repo_root / LOCAL_BAD_ORDER_FIXTURE_PATH
+
+
 def load_cases(repo_root: Path) -> list[dict[str, Any]]:
     raw = json.loads(fixture_path(repo_root).read_text(encoding="utf-8"))
     cases = [dict(item) for item in raw if isinstance(item, dict)]
@@ -25,11 +30,19 @@ def load_cases(repo_root: Path) -> list[dict[str, Any]]:
     return cases
 
 
+def load_local_bad_order_fixtures(repo_root: Path) -> list[dict[str, Any]]:
+    raw = json.loads(local_bad_order_fixture_path(repo_root).read_text(encoding="utf-8"))
+    fixtures = [dict(item) for item in raw if isinstance(item, dict)]
+    case_ids = {case["id"] for case in load_cases(repo_root)}
+    _validate_local_bad_order_fixtures(fixtures, known_case_ids=case_ids)
+    return fixtures
+
+
 def normalize_arms(values: list[str] | None) -> list[str]:
     raw = values or list(DEFAULT_ARMS)
     seen: set[str] = set()
     arms: list[str] = []
-    allowed = {"local", "openrouter_exa", "openrouter_parallel", "openrouter_native"}
+    allowed = {"local", "local_profiled", "openrouter_exa", "openrouter_parallel", "openrouter_native"}
     for value in raw:
         arm = str(value or "").strip()
         if not arm:
@@ -127,3 +140,32 @@ def _validate_cases(cases: list[dict[str, Any]]) -> None:
                 raise ValueError(f"web_search_case_missing_{key}:{case_id}")
         if not isinstance(case.get("expected_source_kinds"), list):
             raise ValueError(f"web_search_case_invalid_expected_source_kinds:{case_id}")
+
+
+def _validate_local_bad_order_fixtures(
+    fixtures: list[dict[str, Any]],
+    *,
+    known_case_ids: set[str],
+) -> None:
+    if not fixtures:
+        raise ValueError("web_search_local_bad_order_fixtures_empty")
+    seen: set[str] = set()
+    for fixture in fixtures:
+        case_id = str(fixture.get("case_id") or "").strip()
+        if not case_id:
+            raise ValueError("web_search_local_bad_order_fixture_missing_case_id")
+        if case_id in seen:
+            raise ValueError(f"web_search_local_bad_order_fixture_duplicate:{case_id}")
+        if case_id not in known_case_ids:
+            raise ValueError(f"web_search_local_bad_order_fixture_unknown_case:{case_id}")
+        seen.add(case_id)
+        if not str(fixture.get("target_profile") or "").strip():
+            raise ValueError(f"web_search_local_bad_order_fixture_missing_profile:{case_id}")
+        if not isinstance(fixture.get("results"), list) or not fixture.get("results"):
+            raise ValueError(f"web_search_local_bad_order_fixture_missing_results:{case_id}")
+        for result in fixture.get("results") or []:
+            if not isinstance(result, dict):
+                raise ValueError(f"web_search_local_bad_order_fixture_invalid_result:{case_id}")
+            for key in ("rank", "title", "url", "domain", "problem"):
+                if result.get(key) in (None, ""):
+                    raise ValueError(f"web_search_local_bad_order_fixture_missing_{key}:{case_id}")
