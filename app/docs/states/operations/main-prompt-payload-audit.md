@@ -46,7 +46,12 @@ Ces éléments peuvent influencer le pipeline, mais ne deviennent pas automatiqu
 
 ## Outil local d'export synthétique
 
-Le script `app/scripts/export_main_prompt_payload.py` reconstruit un payload synthétique non sensible avec les mêmes briques que le pipeline principal:
+Le script `app/scripts/export_main_prompt_payload.py` sait produire deux types d'artefacts:
+
+- un export synthétique non sensible;
+- un export local d'une conversation réelle, expurgé, non committé.
+
+Le mode synthétique reconstruit un payload non sensible avec les mêmes briques que le pipeline principal:
 
 - prompts sources réels;
 - bloc temps;
@@ -78,6 +83,40 @@ python3 app/scripts/export_main_prompt_payload.py synthetic \
 
 L'artefact généré peut être relu localement. Il ne doit pas être committé.
 
+## Export local d'une conversation réelle
+
+Le mode `conversation` charge une conversation réelle depuis le store runtime, garde les messages jusqu'au dernier tour utilisateur, reconstruit le payload principal sans appeler OpenRouter, puis écrit un Markdown ou JSON expurgé.
+
+Exemple par identifiant explicite:
+
+```bash
+python3 app/scripts/export_main_prompt_payload.py conversation \
+  --conversation-id <conversation-id> \
+  --output /tmp/fridadev-real-main-prompt.md
+```
+
+Exemple JSON:
+
+```bash
+python3 app/scripts/export_main_prompt_payload.py conversation \
+  --conversation-id <conversation-id> \
+  --format json \
+  --output /tmp/fridadev-real-main-prompt.json
+```
+
+Le mode `latest` choisit la conversation non supprimée la plus récemment mise à jour:
+
+```bash
+python3 app/scripts/export_main_prompt_payload.py latest \
+  --output /tmp/fridadev-real-main-prompt.md
+```
+
+Sur OVH, l'hôte peut ne pas avoir les dépendances Python runtime (`psycopg`, accès DB). Dans ce cas, lancer le script dans le conteneur applicatif ou copier le script comme outil temporaire avec `FRIDA_APP_DIR=/app`.
+
+Limite importante: le prompt historique exact n'est pas stocké en clair. Le mode réel reconstruit le chemin actuel depuis la DB et le code courant. Il ne rejoue pas les appels provider secondaires: Stimmung fraîche, `validation_agent` frais et contexte web live ne sont pas reproduits sans nouvel appel externe. La section `Limites de reconstruction` de l'export le rappelle explicitement.
+
+Par défaut, le mode réel ne rejoue pas la retrieval mémoire pour éviter un appel embedding/provider. L'option `--include-current-memory` peut reconstruire les traces depuis l'état mémoire courant, mais elle peut appeler le provider d'embeddings configuré et ne garantit pas l'identité parfaite avec le tour historique.
+
 ## Sécurité d'export
 
 Règles opératoires:
@@ -85,7 +124,7 @@ Règles opératoires:
 - ne jamais committer un export de conversation réelle;
 - ne jamais committer une data URL image/PDF réelle;
 - ne jamais afficher `Authorization`, token OpenRouter, `.env`, `api_key` ou secret runtime;
-- si un export local réel est ajouté plus tard, il devra expurger les data URLs sous une forme du type `[image_url data URL redacted: mime=image/png bytes=...]`;
+- les data URLs doivent être expurgées sous une forme du type `[redacted data URL: mime=image/png, chars=..., sha256_12=...]`;
 - l'export synthétique actuel est destiné à comprendre la structure du prompt effectif, pas à auditer le contenu privé d'un tour.
 
 ## Lecture rapide

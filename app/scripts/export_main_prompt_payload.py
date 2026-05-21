@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""Export a redacted, synthetic main-chat OpenRouter payload.
+"""Export a redacted main-chat OpenRouter payload.
 
-This script is an audit aid. It does not call OpenRouter, does not read secrets,
-does not query the runtime DB, and must not be used as a production endpoint.
+This script is an audit aid. It does not call the main OpenRouter chat endpoint,
+does not print secrets, and must not be used as a production endpoint.
 """
 
 import argparse
-import base64
+import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any, Mapping, Sequence
 
 
-APP_DIR = Path(__file__).resolve().parents[1]
+APP_DIR = Path(os.environ.get("FRIDA_APP_DIR") or Path(__file__).resolve().parents[1])
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
@@ -53,12 +54,9 @@ def _redact_data_url(value: Any, *, label: str) -> Any:
     if not text.startswith("data:") or ";base64," not in text:
         return value
     mime = text.split(";", 1)[0].removeprefix("data:") or "application/octet-stream"
-    encoded = text.split(";base64,", 1)[1]
-    try:
-        byte_count = len(base64.b64decode(encoded.encode("ascii"), validate=False))
-    except Exception:
-        byte_count = 0
-    return f"[{label} data URL redacted: mime={mime} bytes={byte_count}]"
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+    prefix = "file " if label == "file" else ""
+    return f"[redacted {prefix}data URL: mime={mime}, chars={len(text)}, sha256_12={digest}]"
 
 
 def _redact_payload(value: Any) -> Any:
@@ -106,17 +104,56 @@ def _message_section(index: int, message: Mapping[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_markdown(payload: Mapping[str, Any], *, notes: Sequence[str]) -> str:
+def _role_table(messages: Sequence[Mapping[str, Any]]) -> list[str]:
+    lines = ["| # | role | content |", "| --- | --- | --- |"]
+    for index, message in enumerate(messages, start=1):
+        content = message.get("content")
+        if isinstance(content, list):
+            part_types = ", ".join(str(part.get("type") or "?") for part in content if isinstance(part, Mapping))
+            summary = f"multimodal parts: {part_types}"
+        else:
+            summary = f"{len(str(content or ''))} chars"
+        lines.append(f"| {index} | `{message.get('role') or 'unknown'}` | {summary} |")
+    return lines
+
+
+def _system_final_section(messages: Sequence[Mapping[str, Any]]) -> list[str]:
+    for message in messages:
+        if str(message.get("role") or "") != "system":
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            return ["## SYSTEM FINAL", "", "```text", content, "```", ""]
+    return ["## SYSTEM FINAL", "", "Aucun message system textuel trouvé.", ""]
+
+
+def _render_markdown(
+    payload: Mapping[str, Any],
+    *,
+    notes: Sequence[str],
+    title: str = "Export synthétique du prompt effectif FridaDev",
+    limits: Sequence[str] = (),
+    metadata: Mapping[str, Any] | None = None,
+) -> str:
     redacted = _redact_payload(dict(payload))
     messages = list(redacted.get("messages") or [])
     lines = [
-        "# Export synthétique du prompt effectif FridaDev",
+        f"# {title}",
         "",
-        "Cet artefact est généré localement, sans appel provider, sans secret et sans conversation réelle.",
+        "Cet artefact est généré localement, sans appel provider et sans secret.",
         "Les data URLs multimodales sont expurgées.",
         "",
-        "## Résumé payload",
+        "## Métadonnées générales",
         "",
+    ]
+    for key, value in dict(metadata or {}).items():
+        lines.append(f"- {key}: `{value}`")
+    if metadata:
+        lines.append("")
+    lines.extend(
+        [
+            "## Paramètres provider",
+            "",
         f"- model: `{redacted.get('model')}`",
         f"- message_count: `{len(messages)}`",
         f"- temperature: `{redacted.get('temperature')}`",
@@ -124,10 +161,15 @@ def _render_markdown(payload: Mapping[str, Any], *, notes: Sequence[str]) -> str
         f"- max_tokens: `{redacted.get('max_tokens')}`",
         f"- stream: `{bool(redacted.get('stream'))}`",
         "",
-        "## Notes",
-        "",
-    ]
+        ]
+    )
+    lines.extend(["## Table des rôles", "", *_role_table(messages), ""])
+    lines.extend(_system_final_section(messages))
+    lines.extend(["## Notes", ""])
     lines.extend(f"- {note}" for note in notes)
+    if limits:
+        lines.extend(["", "## Limites de reconstruction", ""])
+        lines.extend(f"- {limit}" for limit in limits)
     lines.extend(["", "## Messages", ""])
     for index, message in enumerate(messages, start=1):
         lines.append(_message_section(index, message))
@@ -147,6 +189,276 @@ def _render_markdown(payload: Mapping[str, Any], *, notes: Sequence[str]) -> str
 
 def _render_json(payload: Mapping[str, Any]) -> str:
     return json.dumps(_redact_payload(dict(payload)), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+class _NoopLogger:
+    @staticmethod
+    def info(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    @staticmethod
+    def warning(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    @staticmethod
+    def error(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
+def _latest_user_turn_prefix(conversation: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any], int]:
+    messages = [dict(message or {}) for message in list(conversation.get("messages") or [])]
+    latest_user_index = -1
+    for index, message in enumerate(messages):
+        if str(message.get("role") or "").strip().lower() == "user":
+            latest_user_index = index
+    if latest_user_index < 0:
+        raise RuntimeError("conversation_has_no_user_turn")
+    prefix = dict(conversation)
+    prefix["messages"] = messages[: latest_user_index + 1]
+    return prefix, messages[latest_user_index], latest_user_index
+
+
+def _runtime_main_settings() -> dict[str, Any]:
+    from admin import runtime_settings
+
+    view = runtime_settings.get_main_model_settings()
+    payload = view.payload
+    return {
+        "model": str(payload["model"]["value"]),
+        "temperature": float(payload["temperature"]["value"]),
+        "top_p": float(payload["top_p"]["value"]),
+        "max_tokens": int(payload["response_max_tokens"]["value"]),
+    }
+
+
+def _load_conversation_by_id(conversation_id: str) -> tuple[dict[str, Any], str, str]:
+    from core import chat_prompt_context
+    from core import conv_store
+    from core import prompt_loader
+
+    system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader)
+    conversation = conv_store.read_conversation(conversation_id, system_prompt)
+    if not conversation:
+        raise RuntimeError(f"conversation_not_found:{conversation_id}")
+    return conversation, system_prompt, hermeneutical_prompt
+
+
+def _latest_conversation_id(*, search_limit: int) -> str:
+    from core import conv_store
+
+    result = conv_store.list_conversations(limit=max(1, min(int(search_limit or 20), 100)))
+    for item in list(result.get("items") or []):
+        conversation_id = str((item or {}).get("id") or "").strip()
+        if conversation_id:
+            return conversation_id
+    raise RuntimeError("no_conversation_available")
+
+
+def _prepare_memory_for_real_export(
+    *,
+    conversation: Mapping[str, Any],
+    user_msg: str,
+    now_iso: str,
+    include_current_memory: bool,
+    limits: list[str],
+) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
+    from core import chat_memory_flow
+    import config
+
+    current_mode = chat_memory_flow.resolve_hermeneutic_mode(config)
+    if not include_current_memory:
+        limits.append(
+            "Mémoire: retrieval/arbitrage non rejoués par défaut pour éviter tout appel embedding/provider et toute écriture d'audit; le prompt réel historique peut avoir contenu des souvenirs."
+        )
+        return current_mode, [], []
+
+    from core.hermeneutic_node.inputs import memory_retrieved_input
+    from memory import memory_pre_arbiter_basket
+    from memory import memory_store
+
+    top_k_requested = chat_memory_flow._resolve_retrieval_top_k_requested(  # type: ignore[attr-defined]
+        memory_store_module=memory_store,
+        config_module=config,
+    )
+    retrieval_outcome = chat_memory_flow._retrieve_raw_traces(  # type: ignore[attr-defined]
+        memory_store_module=memory_store,
+        user_msg=user_msg,
+        top_k_requested=top_k_requested,
+    )
+    raw_traces = retrieval_outcome.traces
+    if not raw_traces:
+        context_hints = memory_store.get_recent_context_hints(
+            max_items=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MAX_ITEMS"),  # type: ignore[attr-defined]
+            max_age_days=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MAX_AGE_DAYS"),  # type: ignore[attr-defined]
+            min_confidence=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MIN_CONFIDENCE"),  # type: ignore[attr-defined]
+        )
+        return current_mode, [], list(context_hints or [])
+
+    retrieved_candidates = chat_memory_flow._enrich_retrieved_candidates(  # type: ignore[attr-defined]
+        memory_store_module=memory_store,
+        traces=raw_traces,
+    )
+    memory_retrieved = memory_retrieved_input.build_memory_retrieved_input(
+        retrieval_query=user_msg,
+        top_k_requested=retrieval_outcome.top_k_requested,
+        traces=retrieved_candidates,
+        status=retrieval_outcome.status,
+        reason_code=retrieval_outcome.reason_code,
+        error_code=retrieval_outcome.error_code,
+        error_class=retrieval_outcome.error_class,
+    )
+    pre_arbiter_basket = memory_pre_arbiter_basket.build_pre_arbiter_basket(
+        memory_retrieved=memory_retrieved,
+        retrieved_candidates=retrieved_candidates,
+        internal_traces=raw_traces,
+    )
+    memory_traces = memory_pre_arbiter_basket.select_prompt_candidates(pre_arbiter_basket)
+    if current_mode == "enforced_all":
+        limits.append(
+            "Mémoire: le mode enforced_all dépend de l'arbitre LLM; l'export utilise le panier pré-arbitre courant et peut différer du tour réel."
+        )
+    else:
+        limits.append(
+            "Mémoire: traces reconstruites depuis l'état mémoire courant; cela peut différer du tour historique si la mémoire ou les embeddings ont changé."
+        )
+    context_hints = memory_store.get_recent_context_hints(
+        max_items=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MAX_ITEMS"),  # type: ignore[attr-defined]
+        max_age_days=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MAX_AGE_DAYS"),  # type: ignore[attr-defined]
+        min_confidence=chat_memory_flow._governed_config_value(config, "CONTEXT_HINTS_MIN_CONFIDENCE"),  # type: ignore[attr-defined]
+    )
+    return current_mode, memory_traces, list(context_hints or [])
+
+
+def build_real_conversation_payload(
+    *,
+    conversation_id: str,
+    stream: bool,
+    include_current_memory: bool,
+) -> tuple[dict[str, Any], list[str], list[str], dict[str, Any]]:
+    from core import active_document_prompt_lane
+    from core import chat_prompt_context
+    from core import chat_service
+    from core import conv_store
+    from core import llm_client
+    from core import token_utils
+    from identity import identity as identity_module
+    import config
+
+    conversation, system_prompt, hermeneutical_prompt = _load_conversation_by_id(conversation_id)
+    prefix_conversation, target_user, target_index = _latest_user_turn_prefix(conversation)
+    user_msg = str(target_user.get("content") or "")
+    now_iso = str(target_user.get("timestamp") or conversation.get("updated_at") or "")
+    settings = _runtime_main_settings()
+    runtime_main_model = settings["model"]
+
+    augmented_system, identity_ids = chat_prompt_context.build_augmented_system(
+        system_prompt=system_prompt,
+        hermeneutical_prompt=hermeneutical_prompt,
+        config_module=config,
+        identity_module=identity_module,
+        now_iso=now_iso,
+    )
+    limits = [
+        "Reconstruction depuis l'état actuel de la DB: les prompts sources, settings, identité, résumé actif, documents actifs et sélections workspace peuvent avoir changé depuis le tour historique.",
+        "Le prompt historique exact n'est pas stocké en clair dans les logs; cet export reconstruit le chemin actuel jusqu'au payload sans appeler le main model.",
+        "Stimmung fraîche, validation_agent fraîche et jugement herméneutique final du tour historique ne sont pas rejoués sans appel provider; le bloc [JUGEMENT HERMENEUTIQUE] historique n'est donc pas reconstruit ici.",
+        "Web: le contexte web runtime du tour historique n'est pas stocké en clair; il n'est présent que s'il existe déjà dans les messages persistés, ce qui n'est normalement pas le cas.",
+    ]
+
+    chat_prompt_context.apply_augmented_system(prefix_conversation, augmented_system)
+    current_mode, memory_traces, context_hints = _prepare_memory_for_real_export(
+        conversation=prefix_conversation,
+        user_msg=user_msg,
+        now_iso=now_iso,
+        include_current_memory=include_current_memory,
+        limits=limits,
+    )
+    try:
+        time_payload = chat_service._resolve_time_input(now_iso=now_iso, config_module=config)  # type: ignore[attr-defined]
+        summary_payload = chat_service._resolve_summary_input(  # type: ignore[attr-defined]
+            conversation_id=prefix_conversation.get("id"),
+            conv_store_module=conv_store,
+        )
+        recent_context_payload = chat_service._resolve_recent_context_input(  # type: ignore[attr-defined]
+            conversation=prefix_conversation,
+            summary_payload=summary_payload,
+        )
+        recent_window_payload = chat_service._resolve_recent_window_input(  # type: ignore[attr-defined]
+            recent_context_payload=recent_context_payload,
+        )
+        user_turn_payload, user_turn_signals_payload = chat_service._resolve_user_turn_runtime_inputs(  # type: ignore[attr-defined]
+            user_msg=user_msg,
+            recent_window_payload=recent_window_payload,
+            time_payload=time_payload,
+        )
+        direct_identity_guard_block = chat_prompt_context.build_direct_identity_revelation_guard_block(
+            user_msg=user_msg,
+            user_turn_input=user_turn_payload,
+            user_turn_signals=user_turn_signals_payload,
+        )
+        augmented_system = chat_prompt_context.inject_direct_identity_revelation_guard_block(
+            augmented_system,
+            direct_identity_guard_block,
+        )
+    except Exception as exc:
+        limits.append(
+            f"Garde de révélation identitaire directe non reconstruite: {exc.__class__.__name__}."
+        )
+    plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(user_msg=user_msg)
+    augmented_system = chat_prompt_context.inject_plain_text_guard_block(augmented_system, plain_text_guard_block)
+    input_mode = str((target_user.get("meta") or {}).get("input_mode") or "")
+    voice_guard_block = chat_prompt_context.build_voice_transcription_guard_block(input_mode=input_mode)
+    augmented_system = chat_prompt_context.inject_voice_transcription_guard_block(augmented_system, voice_guard_block)
+    chat_prompt_context.apply_augmented_system(prefix_conversation, augmented_system)
+
+    active_read = chat_service._active_documents_for_prompt(  # type: ignore[attr-defined]
+        conversation=prefix_conversation,
+        logger=_NoopLogger(),
+    )
+    workspace_read = chat_service._workspace_files_for_prompt(  # type: ignore[attr-defined]
+        conversation=prefix_conversation,
+        logger=_NoopLogger(),
+    )
+    document_read = chat_service._merge_document_prompt_reads(active_read, workspace_read)  # type: ignore[attr-defined]
+    prompt_messages = conv_store.build_prompt_messages(
+        prefix_conversation,
+        runtime_main_model,
+        now=now_iso,
+        memory_traces=memory_traces or None,
+        context_hints=context_hints or None,
+    )
+    lane = active_document_prompt_lane.inject_active_document_prompt_lane(
+        prompt_messages,
+        document_read.documents,
+        model=runtime_main_model,
+        count_tokens_func=chat_service._prompt_token_counter(token_utils),  # type: ignore[attr-defined]
+        max_tokens=chat_service._active_document_prompt_max_tokens(config),  # type: ignore[attr-defined]
+        read_status=document_read.status,
+        read_reason_code=document_read.reason_code,
+    )
+    payload = llm_client.build_payload(
+        prompt_messages,
+        settings["temperature"],
+        settings["top_p"],
+        settings["max_tokens"],
+        stream=stream,
+    )
+    notes = [
+        "Conversation réelle chargée depuis le store runtime.",
+        "Préfixe retenu: messages jusqu'au dernier message utilisateur; les réponses assistant postérieures sont exclues.",
+        f"Mode mémoire runtime détecté: {current_mode}.",
+        f"Identités injectées: {len(identity_ids)}.",
+        f"Documents/fichiers prompt-time: injected={lane.injected_count}, excluded={lane.not_injected_count}.",
+        "Aucun appel au modèle principal OpenRouter n'est effectué par cet export.",
+    ]
+    metadata = {
+        "conversation_id": conversation_id,
+        "target_user_message_index": target_index,
+        "target_user_timestamp": now_iso,
+        "reconstruction_kind": "real_conversation_best_effort",
+        "include_current_memory": include_current_memory,
+    }
+    return payload, notes, limits, metadata
 
 
 def _delta_label(ts_msg: str, ts_now: str) -> str:
@@ -399,7 +711,7 @@ def _write_output(path: Path, text: str) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Export a redacted synthetic main-chat prompt payload for FridaDev audit.",
+        description="Export a redacted main-chat prompt payload for FridaDev audit.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     synthetic = subparsers.add_parser("synthetic", help="build a synthetic non-sensitive main-chat payload")
@@ -409,18 +721,76 @@ def main(argv: Sequence[str] | None = None) -> int:
     synthetic.add_argument("--now", default="2026-05-21T12:00:00Z")
     synthetic.add_argument("--stream", action="store_true")
 
+    conversation = subparsers.add_parser(
+        "conversation",
+        help="reconstruct a redacted payload for the latest user turn of one real conversation",
+    )
+    conversation.add_argument("--conversation-id", required=True)
+    conversation.add_argument("--output", required=True, help="output .md or .json path")
+    conversation.add_argument("--format", choices=("auto", "md", "json"), default="auto")
+    conversation.add_argument("--stream", action="store_true")
+    conversation.add_argument(
+        "--include-current-memory",
+        action="store_true",
+        help="recompute current memory/context hints; may call the configured embedding provider",
+    )
+
+    latest = subparsers.add_parser(
+        "latest",
+        help="reconstruct a redacted payload for the latest non-deleted conversation",
+    )
+    latest.add_argument("--output", required=True, help="output .md or .json path")
+    latest.add_argument("--format", choices=("auto", "md", "json"), default="auto")
+    latest.add_argument("--stream", action="store_true")
+    latest.add_argument("--search-limit", type=int, default=20)
+    latest.add_argument(
+        "--include-current-memory",
+        action="store_true",
+        help="recompute current memory/context hints; may call the configured embedding provider",
+    )
+
     args = parser.parse_args(argv)
     output_path = Path(args.output)
-    payload, notes = build_synthetic_payload(
-        model=str(args.model),
-        now_iso=str(args.now),
-        stream=bool(args.stream),
-    )
+    title = "Export synthétique du prompt effectif FridaDev"
+    limits: list[str] = []
+    metadata: dict[str, Any] = {}
+    if args.command == "synthetic":
+        payload, notes = build_synthetic_payload(
+            model=str(args.model),
+            now_iso=str(args.now),
+            stream=bool(args.stream),
+        )
+    else:
+        try:
+            conversation_id = (
+                str(args.conversation_id)
+                if args.command == "conversation"
+                else _latest_conversation_id(search_limit=int(args.search_limit))
+            )
+            payload, notes, limits, metadata = build_real_conversation_payload(
+                conversation_id=conversation_id,
+                stream=bool(args.stream),
+                include_current_memory=bool(args.include_current_memory),
+            )
+        except ModuleNotFoundError as exc:
+            if getattr(exc, "name", "") == "psycopg":
+                parser.error(
+                    "real export requires runtime dependencies; run inside the app container "
+                    "or set FRIDA_APP_DIR=/app with the container Python"
+                )
+            raise
+        title = "Export local d'un prompt effectif réel FridaDev"
     output_format = _format_from_output(output_path, str(args.format))
     if output_format == "json":
         rendered = _render_json(payload)
     else:
-        rendered = _render_markdown(payload, notes=notes)
+        rendered = _render_markdown(
+            payload,
+            notes=notes,
+            title=title,
+            limits=limits,
+            metadata=metadata,
+        )
     _write_output(output_path, rendered)
     print(f"wrote {output_path}")
     return 0
