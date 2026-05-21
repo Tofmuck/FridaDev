@@ -27,22 +27,18 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertEqual(prompt_loader.get_main_system_prompt(), path.read_text(encoding='utf-8').strip())
         self.assertIn('Cadre de réponse', prompt_loader.get_main_system_prompt())
 
-    def test_main_system_prompt_enforces_strict_plain_text_contract(self) -> None:
+    def test_main_system_prompt_enforces_sober_readable_format_contract(self) -> None:
         prompt = prompt_loader.get_main_system_prompt()
 
         self.assertNotIn('Tu adoptes un ton clair, calme, adulte et professionnel.', prompt)
 
         for snippet in [
             "Tu aides à analyser, structurer, reformuler, documenter et faire avancer un travail intellectuel ou technique.",
-            'Par défaut, tu réponds en texte brut strict',
-            "Tu n'utilises pas de mise en forme Markdown visible",
-            "pas de titres `#`",
-            "pas de `**`",
-            "pas de `---`",
-            "pas de blockquotes `>`",
-            "Par défaut, tu n'utilises ni puces, ni listes numérotées",
-            "Tu n'utilises pas de code fences sauf si l'utilisateur demande explicitement du code.",
-            "Si l'utilisateur demande explicitement un plan, des étapes ou une liste",
+            "Tu privilégies une forme sobre et lisible",
+            "sans Markdown décoratif ou spectaculaire",
+            "Par défaut, tu réponds en paragraphes clairs",
+            "tu peux utiliser des titres sobres, des listes simples ou un tableau",
+            "Tu n'utilises pas de code fences sauf si l'utilisateur demande explicitement du code ou si le format l'exige vraiment.",
         ]:
             self.assertIn(snippet, prompt)
 

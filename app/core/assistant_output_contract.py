@@ -34,8 +34,6 @@ _EXPLICIT_CODE_REQUEST_PATTERNS = (
 _HEADER_RE = re.compile(r'^(\s*)#{1,6}\s+')
 _BLOCKQUOTE_RE = re.compile(r'^(\s*)>\s*')
 _HORIZONTAL_RULE_RE = re.compile(r'^\s*(?:-{3,}|\*{3,}|_{3,})\s*$')
-_BULLET_RE = re.compile(r'^(\s*)[-*•]\s+')
-_NUMBERED_RE = re.compile(r'^(\s*)\d+[.)]\s+')
 _CODE_FENCE_RE = re.compile(r'^\s*```')
 _BOLD_RE = re.compile(r'\*\*(.+?)\*\*|__(.+?)__')
 _ITALIC_STAR_RE = re.compile(r'(?<!\*)\*([^*\n]+)\*(?!\*)')
@@ -65,23 +63,23 @@ def resolve_assistant_output_policy(user_msg: str) -> AssistantOutputPolicy:
 def build_plain_text_guard_block(policy: AssistantOutputPolicy) -> str:
     lines = [
         '[CONTRAT TEXTE BRUT]',
-        'Réponds pour cette surface en texte brut strict, lisible sans rendu Markdown.',
-        'Interdit: titres Markdown, gras/italique Markdown, règles horizontales, blockquotes, tableaux Markdown.',
+        'Privilégie une forme sobre et lisible, sans Markdown décoratif ou spectaculaire.',
+        'Par défaut, réponds en paragraphes clairs.',
+        "Quand l'analyse est longue ou structurée, tu peux utiliser des titres sobres, des listes simples ou un tableau si cela rend la réponse plus claire.",
     ]
     if policy.allow_structure:
         lines.append(
-            "L'utilisateur demande explicitement un plan, des étapes ou une liste: une structure textuelle minimale est autorisée, sans décoration Markdown."
+            "L'utilisateur demande explicitement un plan, des étapes ou une liste: une structure simple est bienvenue si elle aide la lecture."
         )
     else:
         lines.append(
-            "Pour ce tour, n'utilise ni puces, ni listes numérotées, ni lignes commençant par `-`, `*`, `•`, `1)` ou `1.`."
+            "N'ajoute pas de structure gratuite: utilise titres ou listes seulement s'ils clarifient vraiment la réponse."
         )
-        lines.append('Réponds en courts paragraphes continus.')
 
     if policy.allow_code:
         lines.append("L'utilisateur demande explicitement du code: un bloc de code est autorisé seulement si c'est vraiment utile.")
     else:
-        lines.append("Pour ce tour, n'utilise pas de code fences ni de blocs de code.")
+        lines.append("N'utilise pas de code fences ni de blocs de code, sauf si le format de la réponse l'exige vraiment.")
 
     return '\n'.join(lines)
 
@@ -103,10 +101,6 @@ def _normalize_line(line: str, policy: AssistantOutputPolicy) -> str:
 
     normalized = _HEADER_RE.sub(r'\1', line)
     normalized = _BLOCKQUOTE_RE.sub(r'\1', normalized)
-
-    if not policy.allow_structure:
-        normalized = _BULLET_RE.sub(r'\1', normalized)
-        normalized = _NUMBERED_RE.sub(r'\1', normalized)
 
     if not policy.allow_code and normalized.lstrip().startswith('```'):
         return ''
