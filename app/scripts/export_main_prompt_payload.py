@@ -8,6 +8,8 @@ does not print secrets, and must not be used as a production endpoint.
 """
 
 import argparse
+from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -37,6 +39,16 @@ class _IdentityModule:
 
 class _Config:
     FRIDA_TIMEZONE = "Europe/Paris"
+
+
+@dataclass(frozen=True)
+class PostureBlock:
+    name: str
+    origin: str
+    activation: str
+    block_type: str
+    weight: str
+    text: str
 
 
 def _count_tokens(messages: Sequence[Mapping[str, Any]], _model: str) -> int:
@@ -698,6 +710,288 @@ def build_synthetic_payload(*, model: str, now_iso: str, stream: bool) -> tuple[
     return payload, notes
 
 
+def _posture_time_reference_block(*, now_iso: str) -> str:
+    from core.hermeneutic_node.inputs import time_input
+
+    canonical_time_input = time_input.build_time_input(
+        now_utc_iso=now_iso,
+        timezone_name=_Config.FRIDA_TIMEZONE,
+    )
+    return time_input.build_time_reference_block(canonical_time_input)
+
+
+def _posture_document_contract_block(*, model: str) -> str:
+    from core import active_document_prompt_lane
+
+    documents = [
+        {
+            "document_id": "posture-text-synthetic",
+            "filename": "document-synthetique.txt",
+            "media_type": "text/plain",
+            "source_extension": ".txt",
+            "byte_size": 64,
+            "text_chars": 52,
+            "token_estimate": 13,
+            "text_sha256_12": "posturetxt12",
+            "text_content": "Texte synthétique content-free pour déclencher le contrat documentaire.",
+        },
+        {
+            "source": "workspace_file_selection",
+            "document_id": "posture-image-synthetic",
+            "workspace_file_id": "posture-image-synthetic",
+            "workspace_folder_id": "posture-folder-synthetic",
+            "filename": "capture-synthetique.png",
+            "media_type": "image/png",
+            "source_extension": ".png",
+            "byte_size": len(b"synthetic posture image bytes"),
+            "media_kind": "image",
+            "content_sha256_12": "postureimg12",
+            "image_width": 320,
+            "image_height": 180,
+            "image_content": b"synthetic posture image bytes",
+        },
+        {
+            "source": "workspace_file_selection",
+            "document_id": "posture-pdf-synthetic",
+            "workspace_file_id": "posture-pdf-synthetic",
+            "workspace_folder_id": "posture-folder-synthetic",
+            "filename": "scan-synthetique.pdf",
+            "media_type": "application/pdf",
+            "source_extension": ".pdf",
+            "byte_size": len(b"%PDF-1.4 synthetic posture pdf bytes"),
+            "media_kind": "file",
+            "content_sha256_12": "posturepdf12",
+            "file_content": b"%PDF-1.4 synthetic posture pdf bytes",
+        },
+        {
+            "source": "workspace_file_selection",
+            "document_id": "posture-excluded-synthetic",
+            "workspace_file_id": "posture-excluded-synthetic",
+            "workspace_folder_id": "posture-folder-synthetic",
+            "filename": "non-injecte.pdf",
+            "media_type": "application/pdf",
+            "source_extension": ".pdf",
+            "byte_size": 0,
+            "media_kind": "file",
+            "injectable": False,
+            "reason_code": "workspace_file_disk_missing",
+        },
+    ]
+    lane = active_document_prompt_lane.build_active_document_prompt_lane(
+        documents,
+        model=model,
+        base_messages=[],
+        count_tokens_func=_count_tokens,
+        max_tokens=0,
+        read_status=active_document_prompt_lane.READ_STATUS_OK,
+    )
+    contract = lane.contract_message or {}
+    return str(contract.get("content") or "")
+
+
+def build_posture_pack(*, model: str, now_iso: str) -> tuple[list[PostureBlock], dict[str, Any], list[str]]:
+    from core import chat_prompt_context
+    from core import prompt_loader
+    from core.web_read_state import READ_STATE_PAGE_PARTIALLY_READ
+
+    system_prompt, hermeneutical_prompt = chat_prompt_context.resolve_backend_prompts(prompt_loader)
+    identity_block, identity_ids = _IdentityModule.build_identity_block()
+    hermeneutic_judgment_block = chat_prompt_context.build_hermeneutic_judgment_block(
+        validated_output={
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "pipeline_directives_final": [
+                "répondre depuis les traces effectivement visibles",
+                "ne pas prétendre avoir lu une pièce non injectée",
+            ],
+        }
+    )
+    direct_identity_guard_block = chat_prompt_context.build_direct_identity_revelation_guard_block(
+        user_msg="Je suis Camille.",
+        user_turn_input={"geste_dialogique_dominant": "exposition"},
+        user_turn_signals={},
+    )
+    voice_guard_block = chat_prompt_context.build_voice_transcription_guard_block(input_mode="voice")
+    web_guard_block = chat_prompt_context.build_web_reading_guard_block(
+        web_input={
+            "read_state": READ_STATE_PAGE_PARTIALLY_READ,
+            "explicit_url": "https://example.invalid/source",
+        }
+    )
+    plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
+        user_msg="Explique-moi simplement ce que ces traces impliquent."
+    )
+    blocks = [
+        PostureBlock(
+            name="Cadre de réponse général",
+            origin="app/prompts/main_system.txt",
+            activation="toujours actif",
+            block_type="voix, style, forme, vérité",
+            weight="fort",
+            text=system_prompt,
+        ),
+        PostureBlock(
+            name="Contrat herméneutique augmenté",
+            origin="app/prompts/main_hermeneutical.txt",
+            activation="toujours actif",
+            block_type="source-priority, vérité, trace, temporalité, identity",
+            weight="fort",
+            text=hermeneutical_prompt,
+        ),
+        PostureBlock(
+            name="Référence temporelle du tour",
+            origin="core.hermeneutic_node.inputs.time_input.build_time_reference_block",
+            activation="toujours actif, avec NOW runtime",
+            block_type="temporalité, guard",
+            weight="fort",
+            text=_posture_time_reference_block(now_iso=now_iso),
+        ),
+        PostureBlock(
+            name="Identité injectée",
+            origin="identity.build_identity_block via chat_prompt_context.build_augmented_system",
+            activation="toujours actif si identité disponible",
+            block_type="identity, voix, relation",
+            weight="fort",
+            text=identity_block,
+        ),
+        PostureBlock(
+            name="Jugement herméneutique final",
+            origin="chat_prompt_context.build_hermeneutic_judgment_block",
+            activation="conditionnel: validation herméneutique avec posture et directives finales",
+            block_type="jugement herméneutique, guard, forme",
+            weight="fort",
+            text=hermeneutic_judgment_block,
+        ),
+        PostureBlock(
+            name="Contrat texte brut",
+            origin="assistant_output_contract.build_plain_text_guard_block",
+            activation="toujours injecté pour le tour, modulé par la demande utilisateur",
+            block_type="style, forme",
+            weight="fort",
+            text=plain_text_guard_block,
+        ),
+        PostureBlock(
+            name="Garde de révélation identitaire",
+            origin="chat_prompt_context.build_direct_identity_revelation_guard_block",
+            activation="conditionnel: révélation identitaire explicite et non ambiguë",
+            block_type="identity, guard",
+            weight="moyen",
+            text=direct_identity_guard_block,
+        ),
+        PostureBlock(
+            name="Garde de lecture vocale",
+            origin="chat_prompt_context.build_voice_transcription_guard_block",
+            activation="conditionnel: tour courant issu d'une transcription vocale",
+            block_type="style, vérité, guard",
+            weight="moyen",
+            text=voice_guard_block,
+        ),
+        PostureBlock(
+            name="Garde de lecture web",
+            origin="chat_prompt_context.build_web_reading_guard_block",
+            activation="conditionnel: contexte web avec read_state",
+            block_type="web, vérité, guard",
+            weight="moyen",
+            text=web_guard_block,
+        ),
+        PostureBlock(
+            name="Contrat documents actifs et fichiers sélectionnés",
+            origin="active_document_prompt_lane.build_active_document_prompt_lane",
+            activation="conditionnel: documents actifs ou fichiers workspace sélectionnés/exclus",
+            block_type="document, image, source-priority, vérité, guard",
+            weight="fort",
+            text=_posture_document_contract_block(model=model),
+        ),
+    ]
+    metadata = {
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "model": model,
+        "source": "prompt sources + générateurs runtime synthétiques content-free",
+        "now_example": now_iso,
+        "identity_ids_example_count": len(identity_ids),
+    }
+    limits = [
+        "Ce rapport isole les blocs normatifs/posturaux; il exclut volontairement historique, documents, web et contenu utilisateur long.",
+        "Les blocs conditionnels sont rendus avec des exemples synthétiques non privés pour montrer leur texte exact quand ils sont actifs.",
+        "Le jugement herméneutique d'un vrai tour peut varier selon validated_output; le bloc affiché ici montre la forme exacte injectée.",
+        "L'identité affichée est synthétique: un vrai tour peut contenir une identité utilisateur ou modèle plus précise.",
+    ]
+    return blocks, metadata, limits
+
+
+def _render_posture_pack(blocks: Sequence[PostureBlock], *, metadata: Mapping[str, Any], limits: Sequence[str]) -> str:
+    lines = [
+        "# Posture pack du modèle principal FridaDev",
+        "",
+        "Cet export isole ce qui dit au modèle principal comment répondre: voix, forme, hiérarchie, prudence, vérité, temporalité et guards.",
+        "Il n'est pas un export complet du payload et ne contient pas de conversation privée.",
+        "",
+        "## Métadonnées",
+        "",
+    ]
+    for key, value in dict(metadata).items():
+        lines.append(f"- {key}: `{value}`")
+    lines.extend(
+        [
+            "",
+            "## Limites",
+            "",
+            *[f"- {limit}" for limit in limits],
+            "",
+            "## Table des blocs posturaux",
+            "",
+            "| Bloc | Origine | Activation | Type | Poids estimé |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+    for block in blocks:
+        lines.append(
+            f"| {block.name} | `{block.origin}` | {block.activation} | {block.block_type} | {block.weight} |"
+        )
+
+    lines.extend(["", "## Texte exact des blocs posturaux", ""])
+    for index, block in enumerate(blocks, start=1):
+        lines.extend(
+            [
+                f"### {index}. {block.name}",
+                "",
+                f"- origine: `{block.origin}`",
+                f"- activation: {block.activation}",
+                f"- type: {block.block_type}",
+                f"- poids estimé: {block.weight}",
+                "",
+                "```text",
+                block.text,
+                "```",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Ce qui n'est pas postural",
+            "",
+            "- L'historique conversationnel complet: il apporte du contexte, mais n'est pas en soi un contrat de posture.",
+            "- Le contenu documentaire, web, image ou PDF: il fournit des traces et des faits possibles, pas une autorité système.",
+            "- Les réponses assistant passées: elles peuvent orienter la continuité locale, mais ne remplacent pas le contrat courant.",
+            "- Les souvenirs factuels et résumés: ils éclairent la demande, mais leur poids est cadré par le contrat herméneutique.",
+            "- Les fichiers workspace non cochés, les documents exclus et les bytes multimodaux: ils ne sont pas visibles au modèle.",
+            "- Le JSON complet du payload, les data URLs, les secrets, les logs et les artefacts privés.",
+            "",
+            "## Lecture courte",
+            "",
+            "- Le plus structurant est le couple `main_system.txt` + `main_hermeneutical.txt`: voix, forme, hiérarchie des sources, prudence et ontologie de la trace.",
+            "- Le bloc temps et le bloc identité ajoutent une contrainte forte de situation: Frida reçoit un NOW, une timezone et une identité active; elle ne les invente pas.",
+            "- Le jugement herméneutique, quand il est présent, est le cadrage aval le plus immédiat: il ne rédige pas la réponse, mais fixe posture, régime et directives finales.",
+            "- Les guards texte brut, web, voix, identité directe et documents actifs sont conditionnels ou locaux, mais ils peuvent fortement contraindre la formulation du tour.",
+            "- Les redondances utiles portent surtout sur la prudence: ne pas inventer, ne pas prétendre avoir lu ce qui n'est pas injecté, distinguer trace, preuve, interprétation et autorité.",
+            "- Le pack reste dense: si une future simplification est décidée, le premier candidat serait la consolidation des règles de forme entre `main_system.txt` et `[CONTRAT TEXTE BRUT]`.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _format_from_output(path: Path, explicit_format: str) -> str:
     if explicit_format != "auto":
         return explicit_format
@@ -749,6 +1043,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="recompute current memory/context hints; may call the configured embedding provider",
     )
 
+    posture = subparsers.add_parser(
+        "posture",
+        help="export only the normative posture blocks that constrain the main model",
+    )
+    posture.add_argument("--output", required=True, help="output Markdown path")
+    posture.add_argument("--model", default="openai/gpt-5.1")
+    posture.add_argument("--now", default="2026-05-21T12:00:00Z")
+
     args = parser.parse_args(argv)
     output_path = Path(args.output)
     title = "Export synthétique du prompt effectif FridaDev"
@@ -760,6 +1062,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             now_iso=str(args.now),
             stream=bool(args.stream),
         )
+    elif args.command == "posture":
+        blocks, metadata, limits = build_posture_pack(
+            model=str(args.model),
+            now_iso=str(args.now),
+        )
+        rendered = _render_posture_pack(blocks, metadata=metadata, limits=limits)
+        _write_output(output_path, rendered)
+        print(f"wrote {output_path}")
+        return 0
     else:
         try:
             conversation_id = (

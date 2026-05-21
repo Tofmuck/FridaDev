@@ -46,10 +46,11 @@ Ces éléments peuvent influencer le pipeline, mais ne deviennent pas automatiqu
 
 ## Outil local d'export synthétique
 
-Le script `app/scripts/export_main_prompt_payload.py` sait produire deux types d'artefacts:
+Le script `app/scripts/export_main_prompt_payload.py` sait produire trois types d'artefacts:
 
 - un export synthétique non sensible;
 - un export local d'une conversation réelle, expurgé, non committé.
+- un export court du `posture pack`, qui isole seulement les blocs normatifs et posturaux du modèle principal.
 
 Le mode synthétique reconstruit un payload non sensible avec les mêmes briques que le pipeline principal:
 
@@ -82,6 +83,28 @@ python3 app/scripts/export_main_prompt_payload.py synthetic \
 ```
 
 L'artefact généré peut être relu localement. Il ne doit pas être committé.
+
+## Export court du posture pack
+
+Le mode `posture` ne reconstruit pas toute la conversation et ne dump pas le payload complet. Il extrait les blocs qui disent au modèle principal comment répondre:
+
+- voix, style et contrat de forme;
+- hiérarchie des sources et prudence herméneutique;
+- ontologie de la trace;
+- référence temporelle;
+- identité, sous forme synthétique non privée;
+- guards runtime conditionnels;
+- jugement herméneutique final, sous forme synthétique;
+- contrat postural des documents actifs, images et fichiers workspace sélectionnés.
+
+Exemple:
+
+```bash
+python3 app/scripts/export_main_prompt_payload.py posture \
+  --output /tmp/fridadev-posture-pack.md
+```
+
+Ce mode produit un Markdown court avec une table des blocs posturaux, le texte exact des blocs sources ou générés, une section "Ce qui n'est pas postural" et une lecture courte. Les blocs conditionnels sont rendus avec des exemples synthétiques content-free: ils montrent la forme exacte quand ils sont actifs, sans inclure de conversation privée, de document réel, de web réel ou de data URL.
 
 ## Export local d'une conversation réelle
 
