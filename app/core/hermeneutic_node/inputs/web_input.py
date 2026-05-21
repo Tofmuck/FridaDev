@@ -37,6 +37,23 @@ def _canonical_runtime(runtime_payload: Mapping[str, Any] | None) -> dict[str, A
     }
 
 
+def _canonical_query_plan(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'query_plan_kind': _optional_str(data.get('query_plan_kind')),
+        'query_count': _optional_int(data.get('query_count')) or 0,
+        'primary_query_sha256_12': _optional_str(data.get('primary_query_sha256_12')),
+        'secondary_query_count': _optional_int(data.get('secondary_query_count')) or 0,
+        'secondary_query_sha256_12': [
+            str(value)
+            for value in data.get('secondary_query_sha256_12') or []
+            if str(value or '')
+        ],
+        'raw_result_count': _optional_int(data.get('raw_result_count')) or 0,
+        'deduped_result_count': _optional_int(data.get('deduped_result_count')) or 0,
+    }
+
+
 def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
     return {
         'rank': _optional_int(source.get('rank')),
@@ -160,6 +177,7 @@ def build_web_input(
     fallback_used: bool = False,
     collection_path: str | None = None,
     runtime: Mapping[str, Any] | None = None,
+    query_plan: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
     used_content_kinds: Sequence[Any] | None = None,
@@ -209,6 +227,7 @@ def build_web_input(
         'fallback_used': bool(fallback_used),
         'collection_path': _optional_str(collection_path),
         'runtime': _canonical_runtime(runtime),
+        'query_plan': _canonical_query_plan(query_plan),
         'used_content_kinds': canonical_used_content_kinds,
         'injected_chars': canonical_injected_chars,
         'context_chars': canonical_context_chars,
@@ -240,6 +259,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         fallback_used=bool(payload.get('fallback_used', False)),
         collection_path=_optional_str(payload.get('collection_path')),
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
+        query_plan=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),
         used_content_kinds=payload.get('used_content_kinds') if isinstance(payload.get('used_content_kinds'), Sequence) else (),

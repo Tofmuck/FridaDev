@@ -19,7 +19,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 0 - Spec / contrat local web renforce
 - [x] Lot 1 - Fixtures et benchmark `local_profiled`
 - [x] Lot 2 - Profil de recherche
-- [ ] Lot 3 - Requetes specialisees bornees
+- [x] Lot 3 - Requetes specialisees bornees
 - [ ] Lot 4 - Parametres SearXNG par profil
 - [ ] Lot 5 - Reranking avant crawl
 - [ ] Lot 6 - Crawl4AI oriente profil
@@ -30,8 +30,9 @@ Lecture rapide:
 
 - Lots 0 et 1 sont livres comme socle docs/spec/benchmark.
 - Lot 2 est livre comme signal runtime passif: `search_profile` est classe, propage et observe, sans effet sur la recherche.
-- Lots 3 a 8 restent a implementer.
-- Aucun plan multi-requetes, parametre SearXNG par profil, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
+- Lot 3 est livre: les profils non URL peuvent ajouter 0 a 2 requetes secondaires, avec aggregation bornee et deduplication URL.
+- Lots 4 a 8 restent a implementer.
+- Aucun parametre SearXNG par profil, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -205,23 +206,42 @@ Risques:
 
 ## Lot 3 - Requetes specialisees bornees
 
-Statut: a faire.
+Statut: livre.
 
-Construire un plan de recherche:
+Plan de recherche livre:
 
-- requete principale;
-- 0 a 2 requetes secondaires;
-- domaines attendus;
-- exclusions souples;
-- langue attendue;
-- `time_range` optionnel.
+- requete principale issue de la reformulation existante;
+- 0 a 2 requetes secondaires via `app/tools/web_search_query_plan.py`;
+- deduplication stricte des requetes;
+- aggregation round-robin simple des resultats par requete;
+- deduplication des resultats par URL normalisee;
+- budget total de resultats borne par `searxng_results`;
+- trace content-free du plan dans le payload et les evenements web.
 
-Exemples:
+Regles implementees:
 
-- `actualite`: actualite + source institutionnelle + fraicheur;
-- `technique_officielle`: domaine docs officiel en premier;
-- `institutionnel_francais`: Service Public / ANTS / domaines publics;
-- `academique_philosophique`: termes conceptuels + sources academiques, souvent francais/anglais.
+- `explicit_url`: aucune requete secondaire; lecture directe prioritaire inchangee.
+- `actualite`: variante actualite recente / sources officielles; pour IA Europe, variante `AI Act` ciblee `site:ec.europa.eu`.
+- `technique_officielle`: variantes documentation officielle; OpenRouter cible `site:openrouter.ai/docs`.
+- `institutionnel_francais`: variantes `service-public.fr`, `ants.gouv.fr`, `legifrance.gouv.fr` ou `gouv.fr` selon le contenu.
+- `academique_philosophique`: variantes sources universitaires / OpenEdition / Cairn / Persee / Stanford Encyclopedia.
+- `general`: pas de requete secondaire par defaut.
+
+Non-objectifs confirmes:
+
+- pas de categories, engines ou `time_range` SearXNG par profil;
+- pas de reranking par score;
+- pas de BM25 Crawl4AI;
+- pas de fallback OpenRouter runtime;
+- pas d'auto-web.
+
+Definition of done Lot 3:
+
+- [x] `build_specialized_queries()` couvre les profils attendus et reste borne a 2 secondaires.
+- [x] `explicit_url` ne produit aucune requete secondaire.
+- [x] Les resultats multi-requetes sont dedupes par URL normalisee et bornes par `searxng_results`.
+- [x] L'observabilite expose `query_count`, `primary_query_sha256_12`, `secondary_query_count`, `secondary_query_sha256_12`, `deduped_result_count` et `query_plan_kind` sans requete brute.
+- [x] Le benchmark peut comparer `local` baseline mono-requete et `local_profiled` avec requetes specialisees.
 
 ## Lot 4 - Parametres SearXNG par profil
 

@@ -140,7 +140,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 self.assertEqual(positions, sorted(positions))
             self.assertIn("read_state", system_markdowns["local"])
             self.assertIn("search_profile", system_markdowns["local_profiled"])
-            self.assertIn("local_profiled_stub", system_markdowns["local_profiled"])
+            self.assertIn("query_plan_kind", system_markdowns["local_profiled"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_exa"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_parallel"])
             for forbidden in (
@@ -158,7 +158,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
 
-    def test_local_profiled_arm_is_a_stub_over_current_local_pipeline(self) -> None:
+    def test_local_profiled_arm_exposes_lot3_query_plan_shape(self) -> None:
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             config = CampaignConfig(
@@ -181,11 +181,13 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         first_case_arms = campaign["results"][0]["arms"]
         self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
         profiled = first_case_arms[1]
-        self.assertEqual(profiled["mode"], "local_profiled_stub_current_local")
-        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_stub")
-        self.assertTrue(profiled["local"]["local_profiled_stub"])
+        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries")
+        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries")
+        self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
-        self.assertFalse(profiled["profiled_stub"]["runtime_changed"])
+        self.assertEqual(profiled["local"]["query_plan_kind"], "dry_run")
+        self.assertEqual(profiled["local"]["secondary_query_count"], 0)
+        self.assertTrue(profiled["profiled_stub"]["runtime_changed"])
         self.assertEqual(
             profiled["profiled_stub"]["fixture_path"],
             "benchmark/suites/web_search/fixtures/local_bad_orders.json",

@@ -314,6 +314,10 @@ def inject_web_context(
         original_user_message_chars=len(original_text),
         original_user_message_sha256_12=_sha256_12(original_text),
         search_profile=str(web_context_payload.get('search_profile') or ''),
+        query_plan_kind=str(web_context_payload.get('query_plan_kind') or ''),
+        query_count=web_context_payload.get('query_count'),
+        secondary_query_count=web_context_payload.get('secondary_query_count'),
+        deduped_result_count=web_context_payload.get('deduped_result_count'),
         results=web_context_payload.get('results_count'),
     )
     return web_context_payload

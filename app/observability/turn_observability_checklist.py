@@ -372,6 +372,10 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'web_event_count': len(web_events),
         'context_injected': bool(payload.get('context_injected')),
         'search_profile': _payload_text(payload, 'search_profile'),
+        'query_plan_kind': _payload_text(payload, 'query_plan_kind'),
+        'query_count': _to_int(payload.get('query_count')),
+        'secondary_query_count': _to_int(payload.get('secondary_query_count')),
+        'deduped_result_count': _to_int(payload.get('deduped_result_count')),
         'results_count': _to_int(payload.get('results_count')),
         'read_state': _payload_text(payload, 'read_state'),
     }

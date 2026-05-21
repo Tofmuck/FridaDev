@@ -8,8 +8,8 @@ Il sert à préparer le chantier produit "Recherche internet" de la roadmap fina
 
 Par défaut:
 
-- `local`: pipeline FridaDev actuel, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante quand nécessaire;
-- `local_profiled`: bras Lot 1/2 qui pointe provisoirement vers le local actuel, avec un statut de stub explicite et le signal `search_profile` quand le runtime le fournit;
+- `local`: baseline locale à requête unique, c'est-à-dire SearXNG + Crawl4AI + reformulation web existante sans requêtes spécialisées;
+- `local_profiled`: bras Lot 3 qui utilise le profil runtime et les requêtes spécialisées bornées, sans reranking ni paramètres SearXNG par profil;
 - `openrouter_exa`: `openrouter:web_search` avec `engine=exa`;
 - `openrouter_parallel`: `openrouter:web_search` avec `engine=parallel`.
 
@@ -114,7 +114,7 @@ python3 benchmark/run_benchmark.py \
   --output-dir /tmp/fridadev-web-search-local
 ```
 
-Le bras local peut tout de même utiliser la reformulation web FridaDev selon les settings runtime existants. C'est volontaire: on mesure le pipeline local réel, pas un pipeline réduit artificiellement.
+Le bras local peut tout de même utiliser la reformulation web FridaDev selon les settings runtime existants. Depuis le Lot 3, il désactive seulement les requêtes spécialisées pour conserver une baseline à requête unique face à `local_profiled`.
 
 Pour préparer la comparaison du futur pipeline profilé sans appeler OpenRouter:
 
@@ -127,7 +127,7 @@ python3 benchmark/run_benchmark.py \
   --output-dir /tmp/fridadev-web-search-local-profiled-dry-run
 ```
 
-Tant que les lots 3-6 ne sont pas livres, `local_profiled` reste un stub de qualite qui reflete le local actuel. Depuis le Lot 2, il expose le `search_profile` runtime quand il est disponible; en dry-run il garde `search_profile=stub_not_implemented`.
+Depuis le Lot 3, `local_profiled` n'est plus un simple stub qualité: il active le plan de requêtes spécialisées bornées dans les runs live locaux. En dry-run, il ne lance toujours aucun appel SearXNG/Crawl4AI et expose seulement la forme du bras.
 
 ## Sorties et métriques
 
@@ -141,7 +141,7 @@ Pour chaque cas et chaque bras, le JSON/Markdown garde:
 - tokens d'entrée/sortie quand disponibles;
 - URLs et domaines cités;
 - aperçu borné des extraits, jamais le dump complet;
-- pour le local: `read_state`, `collection_path`, `used_content_kinds`, `injected_chars`, `context_chars`.
+- pour le local: `read_state`, `collection_path`, `search_profile`, `query_plan_kind`, `query_count`, `secondary_query_count`, `deduped_result_count`, `used_content_kinds`, `injected_chars`, `context_chars`.
 
 Les résultats ne doivent jamais contenir:
 
@@ -180,4 +180,4 @@ La décision produit reste humaine. Les sorties doivent aider à choisir plus ta
 - Exa et Parallel ajoutent un coût serveur en plus des tokens du modèle.
 - Le bras local dépend de l'état runtime SearXNG/Crawl4AI et des settings services de l'instance.
 - Le benchmark ne teste pas encore `openrouter:web_fetch` par défaut, pour ne pas mélanger recherche et lecture d'URL dans le premier banc.
-- `local_profiled` n'est pas encore une amélioration qualité: il porte le signal `search_profile`, mais reste un bras de mesure préparatoire pour les lots requetes specialisees/reranking.
+- `local_profiled` porte les requêtes spécialisées bornées, mais pas encore les paramètres SearXNG par profil, le reranking, BM25 Crawl4AI ou la confiance finale.

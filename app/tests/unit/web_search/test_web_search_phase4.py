@@ -366,6 +366,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertTrue(payload['explicit_url_detected'])
         self.assertEqual(payload['explicit_url'], url)
         self.assertEqual(payload['search_profile'], 'explicit_url')
+        self.assertEqual(payload['query_plan_kind'], 'explicit_url_direct')
+        self.assertEqual(payload['query_count'], 0)
+        self.assertEqual(payload['secondary_query_count'], 0)
         self.assertEqual(payload['primary_source_kind'], 'explicit_url')
         self.assertTrue(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'success')
@@ -585,6 +588,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['read_state'], 'page_not_read_snippet_fallback')
         self.assertTrue(payload['fallback_used'])
         self.assertEqual(payload['collection_path'], 'explicit_url_fallback_search')
+        self.assertEqual(payload['query_plan_kind'], 'single_query')
+        self.assertEqual(payload['query_count'], 1)
+        self.assertEqual(payload['secondary_query_count'], 0)
         self.assertEqual(payload['query'], 'requete fallback')
         self.assertEqual(payload['results_count'], 2)
         self.assertEqual(payload['sources'][0]['url'], url)
@@ -855,6 +861,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
 
     def test_build_context_payload_search_only_keeps_fit_crawl_without_raw_fallback(self) -> None:
         observed_calls: list[tuple[str, str]] = []
+        observed_search_queries: list[str] = []
         observed_event: dict[str, object] = {}
         original_runtime_services_value = web_search._runtime_services_value
         original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
@@ -880,9 +887,14 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
 
         web_search._crawl_markdown_with_status = fake_crawl_markdown_with_status
         web_search.reformulate = lambda _msg: 'requete search only'
-        web_search.search = lambda _query: [
-            {'title': 'Resultat', 'url': 'https://result.example/article', 'content': 'snippet'},
-        ]
+
+        def fake_search(query: str):
+            observed_search_queries.append(query)
+            return [
+                {'title': 'Resultat', 'url': 'https://result.example/article', 'content': 'snippet'},
+            ]
+
+        web_search.search = fake_search
         web_search._emit_web_search_runtime_event = lambda **kwargs: observed_event.update(kwargs)
         try:
             payload = web_search.build_context_payload(
@@ -896,8 +908,13 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
             web_search._emit_web_search_runtime_event = original_emit
 
         self.assertEqual(observed_calls, [('fit', 'https://result.example/article')])
+        self.assertEqual(len(observed_search_queries), 3)
         self.assertFalse(payload['explicit_url_detected'])
         self.assertEqual(payload['search_profile'], 'technique_officielle')
+        self.assertEqual(payload['query_plan_kind'], 'profiled_bounded')
+        self.assertEqual(payload['query_count'], 3)
+        self.assertEqual(payload['secondary_query_count'], 2)
+        self.assertEqual(payload['deduped_result_count'], 1)
         self.assertEqual(payload['collection_path'], 'search_only')
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
@@ -906,6 +923,77 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
         self.assertEqual(observed_event['search_profile'], 'technique_officielle')
         self.assertEqual(observed_event['collection_path'], 'search_only')
+        self.assertEqual(observed_event['query_plan_kind'], 'profiled_bounded')
+        self.assertEqual(observed_event['query_count'], 3)
+        self.assertEqual(observed_event['secondary_query_count'], 2)
+        self.assertEqual(observed_event['deduped_result_count'], 1)
+
+    def test_build_context_payload_aggregates_specialized_queries_with_stable_deduped_order(self) -> None:
+        observed_search_queries: list[str] = []
+        observed_event: dict[str, object] = {}
+        original_runtime_services_value = web_search._runtime_services_value
+        original_reformulate = web_search.reformulate
+        original_search = web_search.search
+        original_emit = web_search._emit_web_search_runtime_event
+
+        web_search._runtime_services_value = lambda field: {
+            'searxng_results': 4,
+            'crawl4ai_top_n': 0,
+            'crawl4ai_max_chars': 80,
+            'crawl4ai_explicit_url_max_chars': 25000,
+        }[field]
+        web_search.reformulate = lambda _msg: 'renouveler carte nationale identité procédure officielle'
+
+        def fake_search(query: str):
+            observed_search_queries.append(query)
+            if 'service-public.fr' in query:
+                return [
+                    {'title': 'Service Public CNI', 'url': 'https://www.service-public.fr/particuliers/vosdroits/N358', 'content': 'source administrative'},
+                    {'title': 'Doublon Service Public', 'url': 'https://www.service-public.fr/particuliers/vosdroits/N358/', 'content': 'doublon'},
+                ]
+            if 'ants.gouv.fr' in query:
+                return [
+                    {'title': 'ANTS identité', 'url': 'https://ants.gouv.fr/demarches/identite', 'content': 'ANTS'},
+                ]
+            return [
+                {'title': 'Conjugaison renouveler', 'url': 'https://leconjugueur.lefigaro.fr/conjugaison/verbe/renouveler.html', 'content': 'conjugaison'},
+                {'title': 'Service Public CNI duplicate', 'url': 'https://www.service-public.fr/particuliers/vosdroits/N358', 'content': 'duplicate primary'},
+            ]
+
+        web_search.search = fake_search
+        web_search._emit_web_search_runtime_event = lambda **kwargs: observed_event.update(kwargs)
+        try:
+            payload = web_search.build_context_payload(
+                "Quelle est la procédure officielle actuelle pour renouveler une carte nationale d'identité française ?"
+            )
+        finally:
+            web_search._runtime_services_value = original_runtime_services_value
+            web_search.reformulate = original_reformulate
+            web_search.search = original_search
+            web_search._emit_web_search_runtime_event = original_emit
+
+        self.assertEqual(len(observed_search_queries), 3)
+        self.assertEqual(payload['query_plan_kind'], 'profiled_bounded')
+        self.assertEqual(payload['query_count'], 3)
+        self.assertEqual(payload['secondary_query_count'], 2)
+        self.assertEqual(payload['raw_result_count'], 5)
+        self.assertEqual(payload['deduped_result_count'], 3)
+        self.assertEqual(payload['results_count'], 3)
+        self.assertEqual(
+            [source['url'] for source in payload['sources']],
+            [
+                'https://leconjugueur.lefigaro.fr/conjugaison/verbe/renouveler.html',
+                'https://www.service-public.fr/particuliers/vosdroits/N358',
+                'https://ants.gouv.fr/demarches/identite',
+            ],
+        )
+        self.assertEqual(payload['sources'][0]['query_source_kind'], 'primary')
+        self.assertEqual(payload['sources'][1]['query_source_kind'], 'secondary')
+        self.assertEqual(payload['sources'][2]['query_source_kind'], 'secondary')
+        self.assertEqual(observed_event['primary_query_sha256_12'], payload['primary_query_sha256_12'])
+        self.assertEqual(observed_event['secondary_query_count'], 2)
+        self.assertEqual(len(observed_event['secondary_query_sha256_12']), 2)
+        self.assertNotIn('secondary_queries', observed_event)
 
 
 if __name__ == '__main__':

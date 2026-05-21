@@ -21,7 +21,7 @@ from core.web_read_state import (
     READ_STATE_PAGE_READ,
 )
 from observability import chat_turn_logger
-from tools import web_reformulation_settings, web_search_profile
+from tools import web_reformulation_settings, web_search_profile, web_search_query_plan
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
@@ -250,7 +250,7 @@ def _crawl_explicit_url_primary_with_status(url: str) -> dict[str, Any]:
 
 def _build_source_payload(
     rank: int,
-    result: dict[str, str],
+    result: dict[str, Any],
     *,
     crawl4ai_top_n: int,
     crawl4ai_max_chars: int,
@@ -261,6 +261,16 @@ def _build_source_payload(
     title = str(result.get('title') or '')
     url = str(result.get('url') or '')
     search_snippet = str(result.get('content') or '')
+    query_source_kind = str(result.get('query_source_kind') or result.get('_query_source_kind') or 'primary')
+    try:
+        query_source_index = int(result.get('query_source_index') or result.get('_query_source_index') or 0)
+    except (TypeError, ValueError):
+        query_source_index = 0
+    query_source_sha256_12 = str(
+        result.get('query_source_sha256_12')
+        or result.get('_query_source_sha256_12')
+        or ''
+    )
     used_in_prompt = False
     used_content_kind = 'none'
     content_used = ''
@@ -301,6 +311,9 @@ def _build_source_payload(
         'source_origin': str(source_origin or 'search_result'),
         'is_primary_source': bool(is_primary_source),
         'crawl_status': crawl_status,
+        'query_source_kind': query_source_kind,
+        'query_source_index': query_source_index,
+        'query_source_sha256_12': query_source_sha256_12,
     }
 
 
@@ -364,9 +377,138 @@ def _augment_payload_observability(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _empty_query_plan(kind: str) -> dict[str, Any]:
+    return {
+        'query_plan_kind': str(kind or 'none'),
+        'queries': [],
+        'query_count': 0,
+        'primary_query_sha256_12': '',
+        'secondary_query_count': 0,
+        'secondary_query_sha256_12': [],
+        'raw_result_count': 0,
+        'deduped_result_count': 0,
+    }
+
+
+def _build_query_plan(
+    *,
+    user_msg: str,
+    primary_query: str,
+    search_profile: str,
+    enable_specialized_queries: bool,
+) -> dict[str, Any]:
+    primary = str(primary_query or '').strip()
+    secondary_queries = (
+        web_search_query_plan.build_specialized_queries(user_msg, primary, search_profile)
+        if enable_specialized_queries
+        else []
+    )
+    queries: list[dict[str, Any]] = []
+    if primary:
+        queries.append(
+            {
+                'query': primary,
+                'query_source_kind': 'primary',
+                'query_source_index': 0,
+                'query_source_sha256_12': _sha256_12(primary),
+            }
+        )
+    for offset, query in enumerate(secondary_queries, 1):
+        queries.append(
+            {
+                'query': query,
+                'query_source_kind': 'secondary',
+                'query_source_index': offset,
+                'query_source_sha256_12': _sha256_12(query),
+            }
+        )
+    query_count = len(queries)
+    secondary_hashes = [_sha256_12(query) for query in secondary_queries]
+    return {
+        'query_plan_kind': 'profiled_bounded' if secondary_queries else 'single_query',
+        'queries': queries,
+        'query_count': query_count,
+        'primary_query_sha256_12': _sha256_12(primary),
+        'secondary_query_count': len(secondary_queries),
+        'secondary_query_sha256_12': secondary_hashes,
+        'raw_result_count': 0,
+        'deduped_result_count': 0,
+    }
+
+
+def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[str, Any]:
+    plan = dict(query_plan or {})
+    return {
+        'query_plan_kind': str(plan.get('query_plan_kind') or 'none'),
+        'query_count': int(plan.get('query_count') or 0),
+        'primary_query_sha256_12': str(plan.get('primary_query_sha256_12') or ''),
+        'secondary_query_count': int(plan.get('secondary_query_count') or 0),
+        'secondary_query_sha256_12': list(plan.get('secondary_query_sha256_12') or []),
+        'raw_result_count': int(plan.get('raw_result_count') or 0),
+        'deduped_result_count': int(plan.get('deduped_result_count') or 0),
+    }
+
+
+def _with_query_source(result: dict[str, Any], query_entry: dict[str, Any]) -> dict[str, Any]:
+    enriched = dict(result or {})
+    enriched['query_source_kind'] = str(query_entry.get('query_source_kind') or 'primary')
+    enriched['query_source_index'] = int(query_entry.get('query_source_index') or 0)
+    enriched['query_source_sha256_12'] = str(query_entry.get('query_source_sha256_12') or '')
+    return enriched
+
+
+def _interleave_and_dedupe_query_results(
+    query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]],
+    *,
+    max_results: int,
+) -> tuple[list[dict[str, Any]], int]:
+    raw_result_count = sum(len(results) for _, results in query_result_groups)
+    max_group_length = max((len(results) for _, results in query_result_groups), default=0)
+    seen_urls: set[str] = set()
+    merged: list[dict[str, Any]] = []
+    for result_index in range(max_group_length):
+        for query_entry, results in query_result_groups:
+            if result_index >= len(results):
+                continue
+            result = results[result_index]
+            normalized_url = _normalized_source_url(str(result.get('url') or ''))
+            if normalized_url and normalized_url in seen_urls:
+                continue
+            if normalized_url:
+                seen_urls.add(normalized_url)
+            merged.append(_with_query_source(dict(result), query_entry))
+            if max_results > 0 and len(merged) >= max_results:
+                return merged, raw_result_count
+    return merged, raw_result_count
+
+
+def _run_search_query_plan(query_plan: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    queries = list(query_plan.get('queries') or [])
+    if not queries:
+        plan = dict(query_plan)
+        plan['raw_result_count'] = 0
+        plan['deduped_result_count'] = 0
+        return [], plan
+
+    max_results = int(_safe_runtime_services_value('searxng_results') or 0)
+    query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]] = []
+    for query_entry in queries:
+        query = str(query_entry.get('query') or '')
+        query_result_groups.append((query_entry, search(query)))
+
+    merged_results, raw_result_count = _interleave_and_dedupe_query_results(
+        query_result_groups,
+        max_results=max_results,
+    )
+    plan = dict(query_plan)
+    plan['raw_result_count'] = raw_result_count
+    plan['deduped_result_count'] = len(merged_results)
+    return merged_results, plan
+
+
 def _build_context_material(
     query: str,
-    results: list[dict[str, str]],
+    results: list[dict[str, Any]],
     *,
     now_iso: str | None = None,
 ) -> dict[str, Any]:
@@ -376,7 +518,7 @@ def _build_context_material(
 def _build_explicit_url_fallback_source(
     explicit_url: str,
     *,
-    matching_result: dict[str, str] | None,
+    matching_result: dict[str, Any] | None,
     primary_read_status: str,
     crawl4ai_top_n: int,
     crawl4ai_max_chars: int,
@@ -477,7 +619,7 @@ def _derive_read_state(
 
 def _build_search_context_material(
     query: str,
-    results: list[dict[str, str]],
+    results: list[dict[str, Any]],
     *,
     explicit_url: str | None = None,
     primary_read_status: str = 'not_attempted',
@@ -492,8 +634,8 @@ def _build_search_context_material(
     fallback_results = list(results or [])
 
     if explicit_url:
-        matching_result: dict[str, str] | None = None
-        deduped_results: list[dict[str, str]] = []
+        matching_result: dict[str, Any] | None = None
+        deduped_results: list[dict[str, Any]] = []
         for result in fallback_results:
             result_url = str(result.get('url') or '')
             if matching_result is None and _urls_match(result_url, explicit_url):
@@ -793,6 +935,13 @@ def _emit_web_search_runtime_event(
     fallback_used: bool = False,
     collection_path: str = 'search_only',
     search_profile: str | None = None,
+    query_plan_kind: str = 'none',
+    query_count: int = 0,
+    primary_query_sha256_12: str | None = None,
+    secondary_query_count: int = 0,
+    secondary_query_sha256_12: list[str] | None = None,
+    raw_result_count: int = 0,
+    deduped_result_count: int = 0,
     used_content_kinds: list[str] | None = None,
     injected_chars: int | None = None,
     context_chars: int | None = None,
@@ -831,6 +980,13 @@ def _emit_web_search_runtime_event(
         'fallback_used': bool(fallback_used),
         'collection_path': str(collection_path or 'search_only'),
         'search_profile': str(search_profile or ''),
+        'query_plan_kind': str(query_plan_kind or 'none'),
+        'query_count': int(query_count or 0),
+        'primary_query_sha256_12': str(primary_query_sha256_12 or ''),
+        'secondary_query_count': int(secondary_query_count or 0),
+        'secondary_query_sha256_12': list(secondary_query_sha256_12 or []),
+        'raw_result_count': int(raw_result_count or 0),
+        'deduped_result_count': int(deduped_result_count or 0),
         'used_content_kinds': list(used_content_kinds or []),
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
@@ -863,11 +1019,13 @@ def _build_payload_from_collection(
     user_msg: str,
     explicit_url: str | None,
     search_profile: str,
+    enable_specialized_queries: bool = True,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     if explicit_url:
+        direct_query_plan = _empty_query_plan('explicit_url_direct')
         primary_crawl = _crawl_explicit_url_primary_with_status(explicit_url)
         primary_read_status = str(primary_crawl.get('status') or 'error')
         primary_read_filter = str(primary_crawl.get('filter') or CRAWL4AI_FILTER_FIT)
@@ -889,6 +1047,7 @@ def _build_payload_from_collection(
                 'reason_code': None,
                 'original_user_message': str(user_msg or ''),
                 'search_profile': str(search_profile or ''),
+                **_query_plan_observability_fields(direct_query_plan),
                 'query': '',
                 'results_count': int(material['results_count']),
                 'runtime': dict(material['runtime']),
@@ -913,7 +1072,13 @@ def _build_payload_from_collection(
             llm_module=llm_module,
             now_iso=now_iso,
         )
-        results = search(query)
+        query_plan = _build_query_plan(
+            user_msg=user_msg,
+            primary_query=query,
+            search_profile=search_profile,
+            enable_specialized_queries=enable_specialized_queries,
+        )
+        results, query_plan = _run_search_query_plan(query_plan)
         material = _build_search_context_material(
             query,
             results,
@@ -934,6 +1099,7 @@ def _build_payload_from_collection(
             'reason_code': None if has_results else 'no_data',
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
+            **_query_plan_observability_fields(query_plan),
             'query': str(query),
             'results_count': int(material['results_count']),
             'runtime': dict(material['runtime']),
@@ -958,7 +1124,13 @@ def _build_payload_from_collection(
         llm_module=llm_module,
         now_iso=now_iso,
     )
-    results = search(query)
+    query_plan = _build_query_plan(
+        user_msg=user_msg,
+        primary_query=query,
+        search_profile=search_profile,
+        enable_specialized_queries=enable_specialized_queries,
+    )
+    results, query_plan = _run_search_query_plan(query_plan)
     material = _build_search_context_material(query, results, now_iso=now_iso)
     has_results = int(material['results_count']) > 0
     return {
@@ -967,6 +1139,7 @@ def _build_payload_from_collection(
         'reason_code': None if has_results else 'no_data',
         'original_user_message': str(user_msg or ''),
         'search_profile': str(search_profile or ''),
+        **_query_plan_observability_fields(query_plan),
         'query': str(query),
         'results_count': int(material['results_count']),
         'runtime': dict(material['runtime']),
@@ -992,6 +1165,7 @@ def build_context_payload(
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
+    enable_specialized_queries: bool = True,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1003,6 +1177,7 @@ def build_context_payload(
             user_msg=user_msg,
             explicit_url=explicit_url,
             search_profile=search_profile,
+            enable_specialized_queries=enable_specialized_queries,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1027,6 +1202,13 @@ def build_context_payload(
             fallback_used=bool(payload['fallback_used']),
             collection_path=str(payload['collection_path']),
             search_profile=str(payload.get('search_profile') or search_profile),
+            query_plan_kind=str(payload.get('query_plan_kind') or 'none'),
+            query_count=int(payload.get('query_count') or 0),
+            primary_query_sha256_12=str(payload.get('primary_query_sha256_12') or ''),
+            secondary_query_count=int(payload.get('secondary_query_count') or 0),
+            secondary_query_sha256_12=list(payload.get('secondary_query_sha256_12') or []),
+            raw_result_count=int(payload.get('raw_result_count') or 0),
+            deduped_result_count=int(payload.get('deduped_result_count') or 0),
             used_content_kinds=list(payload.get('used_content_kinds') or []),
             injected_chars=int(payload.get('injected_chars') or 0),
             context_chars=int(payload.get('context_chars') or 0),
@@ -1040,6 +1222,7 @@ def build_context_payload(
             'reason_code': 'upstream_error',
             'original_user_message': str(user_msg or ''),
             'search_profile': str(search_profile or ''),
+            **_query_plan_observability_fields(_empty_query_plan('error')),
             'query': str(user_msg or ''),
             'results_count': 0,
             'runtime': _runtime_collection_settings(),
@@ -1079,6 +1262,13 @@ def build_context_payload(
             fallback_used=bool(error_payload['fallback_used']),
             collection_path=str(error_payload['collection_path']),
             search_profile=str(error_payload.get('search_profile') or search_profile),
+            query_plan_kind=str(error_payload.get('query_plan_kind') or 'error'),
+            query_count=int(error_payload.get('query_count') or 0),
+            primary_query_sha256_12=str(error_payload.get('primary_query_sha256_12') or ''),
+            secondary_query_count=int(error_payload.get('secondary_query_count') or 0),
+            secondary_query_sha256_12=list(error_payload.get('secondary_query_sha256_12') or []),
+            raw_result_count=int(error_payload.get('raw_result_count') or 0),
+            deduped_result_count=int(error_payload.get('deduped_result_count') or 0),
             used_content_kinds=list(error_payload.get('used_content_kinds') or []),
             injected_chars=int(error_payload.get('injected_chars') or 0),
             context_chars=int(error_payload.get('context_chars') or 0),
@@ -1093,6 +1283,7 @@ def build_context(
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
+    enable_specialized_queries: bool = True,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1109,6 +1300,7 @@ def build_context(
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
+            enable_specialized_queries=enable_specialized_queries,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -1119,7 +1311,13 @@ def build_context(
             llm_module=llm_module,
             now_iso=now_iso,
         )
-        results = search(query)
+        query_plan = _build_query_plan(
+            user_msg=user_msg,
+            primary_query=query,
+            search_profile=search_profile,
+            enable_specialized_queries=enable_specialized_queries,
+        )
+        results, query_plan = _run_search_query_plan(query_plan)
         ctx_parts = []
         if results:
             if now_iso:
@@ -1147,6 +1345,7 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
+            **_query_plan_observability_fields(query_plan),
         )
         return ctx, query, len(results)
     except Exception as exc:
@@ -1170,5 +1369,6 @@ def build_context(
             fallback_used=False,
             collection_path='search_only',
             search_profile=search_profile,
+            **_query_plan_observability_fields(_empty_query_plan('error')),
         )
         return '', str(user_msg or ''), 0
