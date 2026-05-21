@@ -75,6 +75,37 @@ def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict
     }
 
 
+def _canonical_reranking(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    reason_counts = data.get('rerank_reason_counts')
+    if not isinstance(reason_counts, Mapping):
+        reason_counts = {}
+    return {
+        'rerank_applied': bool(data.get('rerank_applied', False)),
+        'rerank_policy': _optional_str(data.get('rerank_policy')),
+        'rerank_input_count': _optional_int(data.get('rerank_input_count')) or 0,
+        'rerank_output_count': _optional_int(data.get('rerank_output_count')) or 0,
+        'rerank_profile': _optional_str(data.get('rerank_profile')),
+        'rerank_top_domains_before': [
+            str(value)
+            for value in data.get('rerank_top_domains_before') or []
+            if str(value or '')
+        ],
+        'rerank_top_domains_after': [
+            str(value)
+            for value in data.get('rerank_top_domains_after') or []
+            if str(value or '')
+        ],
+        'rerank_reason_counts': {
+            str(key): _optional_int(value) or 0
+            for key, value in dict(reason_counts).items()
+            if str(key or '')
+        },
+        'rerank_promoted_count': _optional_int(data.get('rerank_promoted_count')) or 0,
+        'rerank_downranked_count': _optional_int(data.get('rerank_downranked_count')) or 0,
+    }
+
+
 def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
     return {
         'rank': _optional_int(source.get('rank')),
@@ -89,6 +120,15 @@ def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
         'source_origin': str(source.get('source_origin') or 'search_result'),
         'is_primary_source': bool(source.get('is_primary_source', False)),
         'crawl_status': str(source.get('crawl_status') or 'not_attempted'),
+        'raw_rank': _optional_int(source.get('raw_rank')),
+        'reranked_rank': _optional_int(source.get('reranked_rank')),
+        'rerank_score': source.get('rerank_score'),
+        'rerank_bucket': _optional_str(source.get('rerank_bucket')),
+        'rerank_reason_codes': [
+            str(value)
+            for value in source.get('rerank_reason_codes') or []
+            if str(value or '')
+        ],
     }
 
 
@@ -200,6 +240,7 @@ def build_web_input(
     runtime: Mapping[str, Any] | None = None,
     query_plan: Mapping[str, Any] | None = None,
     searxng_profile_params: Mapping[str, Any] | None = None,
+    reranking: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
     used_content_kinds: Sequence[Any] | None = None,
@@ -251,6 +292,7 @@ def build_web_input(
         'runtime': _canonical_runtime(runtime),
         'query_plan': _canonical_query_plan(query_plan),
         'searxng_profile_params': _canonical_searxng_profile_params(searxng_profile_params),
+        'reranking': _canonical_reranking(reranking),
         'used_content_kinds': canonical_used_content_kinds,
         'injected_chars': canonical_injected_chars,
         'context_chars': canonical_context_chars,
@@ -284,6 +326,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
         query_plan=payload,
         searxng_profile_params=payload,
+        reranking=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),
         used_content_kinds=payload.get('used_content_kinds') if isinstance(payload.get('used_content_kinds'), Sequence) else (),

@@ -931,6 +931,8 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['query_count'], 3)
         self.assertEqual(payload['secondary_query_count'], 2)
         self.assertEqual(payload['deduped_result_count'], 1)
+        self.assertFalse(payload['rerank_applied'])
+        self.assertEqual(payload['rerank_policy'], 'none')
         self.assertEqual(payload['searxng_profile_params_kind'], 'profiled_technique_officielle_general_all')
         self.assertEqual(payload['searxng_profile_params_policy'], 'soft_broad_hints')
         self.assertEqual(payload['searxng_categories'], ['general'])
@@ -1008,6 +1010,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['secondary_query_count'], 2)
         self.assertEqual(payload['raw_result_count'], 5)
         self.assertEqual(payload['deduped_result_count'], 3)
+        self.assertTrue(payload['rerank_applied'])
+        self.assertEqual(payload['rerank_policy'], 'soft_reorder_no_drop_v0')
+        self.assertIn('conjugator_soft_downrank', payload['rerank_reason_counts'])
         self.assertEqual(
             payload['searxng_profile_params_kind'],
             'profiled_institutionnel_francais_general_fr',
@@ -1020,17 +1025,22 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(
             [source['url'] for source in payload['sources']],
             [
-                'https://leconjugueur.lefigaro.fr/conjugaison/verbe/renouveler.html',
                 'https://www.service-public.fr/particuliers/vosdroits/N358',
                 'https://ants.gouv.fr/demarches/identite',
+                'https://leconjugueur.lefigaro.fr/conjugaison/verbe/renouveler.html',
             ],
         )
-        self.assertEqual(payload['sources'][0]['query_source_kind'], 'primary')
+        self.assertEqual(payload['sources'][0]['query_source_kind'], 'secondary')
         self.assertEqual(payload['sources'][1]['query_source_kind'], 'secondary')
-        self.assertEqual(payload['sources'][2]['query_source_kind'], 'secondary')
+        self.assertEqual(payload['sources'][2]['query_source_kind'], 'primary')
+        self.assertEqual(payload['sources'][0]['rerank_bucket'], 'promoted')
+        self.assertEqual(payload['sources'][2]['rerank_bucket'], 'downranked')
         self.assertEqual(observed_event['primary_query_sha256_12'], payload['primary_query_sha256_12'])
         self.assertEqual(observed_event['secondary_query_count'], 2)
         self.assertEqual(len(observed_event['secondary_query_sha256_12']), 2)
+        self.assertTrue(observed_event['rerank_applied'])
+        self.assertEqual(observed_event['rerank_policy'], 'soft_reorder_no_drop_v0')
+        self.assertIn('conjugator_soft_downrank', observed_event['rerank_reason_counts'])
         self.assertNotIn('secondary_queries', observed_event)
 
 

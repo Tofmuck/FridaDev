@@ -21,7 +21,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 2 - Profil de recherche
 - [x] Lot 3 - Requetes specialisees bornees
 - [x] Lot 4 - Parametres SearXNG par profil
-- [ ] Lot 5 - Reranking avant crawl
+- [x] Lot 5 - Reranking avant crawl
 - [ ] Lot 6 - Crawl4AI oriente profil
 - [ ] Lot 7 - Observabilite + confiance + fallback futur
 - [ ] Lot 8 - Benchmark final et decision Exa/Parallel
@@ -32,8 +32,9 @@ Lecture rapide:
 - Lot 2 est livre comme signal runtime passif: `search_profile` est classe, propage et observe, sans effet sur la recherche.
 - Lot 3 est livre: les profils non URL peuvent ajouter 0 a 2 requetes secondaires, avec aggregation bornee et deduplication URL.
 - Lot 4 est livre: `local_profiled` applique des parametres SearXNG applicatifs par profil, sans modifier la config globale SearXNG.
-- Lots 5 a 8 restent a implementer.
-- Aucun reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
+- Lot 5 est livre: `local_profiled` rerank les resultats SearXNG de facon souple avant Crawl4AI, sans suppression dure.
+- Lots 6 a 8 restent a implementer.
+- Aucun BM25 runtime, score de confiance actionnable ou fallback OpenRouter runtime n'est encore livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -297,19 +298,66 @@ Regle: ne pas modifier globalement `/opt/platform/searxng/settings.yml` dans ce 
 
 ## Lot 5 - Reranking avant crawl
 
-Statut: a faire.
+Statut: livre.
 
 Ajouter un reranker applicatif avant Crawl4AI:
 
-- bonus domaines officiels attendus;
-- bonus co-presence des termes essentiels;
-- bonus fraicheur pour actualite;
-- diversite domaines;
-- malus dictionnaires/conjugueurs hors profil definitionnel;
-- malus homonymes;
-- score de confiance.
+- module pur `app/tools/web_search_rerank.py`;
+- application apres aggregation/deduplication SearXNG multi-requetes et avant construction/crawl des sources;
+- active seulement pour `actualite`, `technique_officielle`, `institutionnel_francais` et `academique_philosophique`;
+- `explicit_url` et `general` gardent un comportement sans reranking;
+- `local` benchmark garde la baseline historique;
+- `local_profiled` porte requetes specialisees + params SearXNG + reranking souple.
+
+Regles implementees:
+
+- bonus souple pour domaines officiels ou academiques attendus selon profil;
+- bonus souple de co-presence des termes essentiels;
+- bonus souple de fraicheur pour actualite quand des marqueurs recents existent;
+- malus souple dictionnaires/conjugueurs hors profil definitionnel;
+- malus souple homonymes evidents, notamment `Trace Colmar` sur Derrida/trace;
+- diversite simple de domaines pour eviter qu'un seul domaine occupe toute la tete si d'autres domaines plausibles existent;
+- aucun resultat n'est supprime par le reranker; le budget reste borne par `searxng_results`;
+- les sources hors profil restent presentes quand elles sont dans le budget.
 
 Le crawl ne doit plus enrichir aveuglement les deux premiers resultats SearXNG.
+
+Garde-fous politiques source:
+
+- le reranking reordonne, mais ne censure pas;
+- les bonus/malus sont explicites et souples;
+- aucun domaine, moteur ou type de source unique n'est impose;
+- Wikipedia, dictionnaires et conjugueurs ne sont pas bannis globalement;
+- la diversite est un garde-fou de pluralite, pas un filtre dur;
+- aucun score de confiance actionnable n'est livre dans ce lot;
+- Exa, Parallel et OpenRouter restent hors runtime.
+
+Observabilite content-free livree:
+
+- `rerank_applied`;
+- `rerank_policy`;
+- `rerank_input_count`;
+- `rerank_output_count`;
+- `rerank_profile`;
+- `rerank_top_domains_before`;
+- `rerank_top_domains_after`;
+- `rerank_reason_counts`;
+- `rerank_promoted_count`;
+- `rerank_downranked_count`;
+- champs source internes `raw_rank`, `reranked_rank`, `rerank_score`, `rerank_bucket`, `rerank_reason_codes`.
+
+Definition of done Lot 5:
+
+- [x] Dictionnaires/conjugueurs downrankes dans `institutionnel_francais` quand Service Public/ANTS sont plausibles.
+- [x] Documentation officielle promue dans `technique_officielle`.
+- [x] Source UE/officielle promue dans `actualite`.
+- [x] Source academique promue dans `academique_philosophique`.
+- [x] Diversite minimale de domaines preservee sans imposer un domaine unique.
+- [x] Resultats hors profil non supprimes brutalement.
+- [x] Reason codes observables sans contenu brut.
+- [x] URL explicite directe inchangee.
+- [x] Benchmark `local` reste baseline; `local_profiled` porte le reranking.
+- [x] Aucun BM25, cache policy, OpenRouter, Exa, Parallel, auto-web ou fallback externe runtime.
 
 ## Lot 6 - Crawl4AI oriente profil
 

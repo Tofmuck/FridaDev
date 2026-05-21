@@ -654,6 +654,24 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'searxng_time_range': _text(payload.get('searxng_time_range')),
         'searxng_language': _text(payload.get('searxng_language')),
         'searxng_safesearch': _text(payload.get('searxng_safesearch')),
+        'rerank_applied': bool(payload.get('rerank_applied', False)),
+        'rerank_policy': _text(payload.get('rerank_policy')),
+        'rerank_input_count': _to_int(payload.get('rerank_input_count')),
+        'rerank_output_count': _to_int(payload.get('rerank_output_count')),
+        'rerank_profile': _text(payload.get('rerank_profile')),
+        'rerank_top_domains_before': [
+            _text(value)
+            for value in payload.get('rerank_top_domains_before') or []
+            if _text(value)
+        ],
+        'rerank_top_domains_after': [
+            _text(value)
+            for value in payload.get('rerank_top_domains_after') or []
+            if _text(value)
+        ],
+        'rerank_reason_counts': dict(_mapping(payload.get('rerank_reason_counts'))),
+        'rerank_promoted_count': _to_int(payload.get('rerank_promoted_count')),
+        'rerank_downranked_count': _to_int(payload.get('rerank_downranked_count')),
         'results_count': _to_int(payload.get('results_count')),
         'injected': bool(payload.get('context_injected')) or injected_chars > 0,
         'injected_chars': injected_chars,

@@ -325,6 +325,16 @@ def inject_web_context(
         searxng_time_range=str(web_context_payload.get('searxng_time_range') or ''),
         searxng_language=str(web_context_payload.get('searxng_language') or ''),
         searxng_safesearch=str(web_context_payload.get('searxng_safesearch') or ''),
+        rerank_applied=bool(web_context_payload.get('rerank_applied', False)),
+        rerank_policy=str(web_context_payload.get('rerank_policy') or ''),
+        rerank_input_count=web_context_payload.get('rerank_input_count'),
+        rerank_output_count=web_context_payload.get('rerank_output_count'),
+        rerank_profile=str(web_context_payload.get('rerank_profile') or ''),
+        rerank_top_domains_before=list(web_context_payload.get('rerank_top_domains_before') or []),
+        rerank_top_domains_after=list(web_context_payload.get('rerank_top_domains_after') or []),
+        rerank_reason_counts=dict(web_context_payload.get('rerank_reason_counts') or {}),
+        rerank_promoted_count=web_context_payload.get('rerank_promoted_count'),
+        rerank_downranked_count=web_context_payload.get('rerank_downranked_count'),
         results=web_context_payload.get('results_count'),
     )
     return web_context_payload

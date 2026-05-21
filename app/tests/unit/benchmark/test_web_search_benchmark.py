@@ -160,7 +160,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
 
-    def test_local_profiled_arm_exposes_lot4_query_and_searxng_param_shape(self) -> None:
+    def test_local_profiled_arm_exposes_lot5_query_searxng_and_rerank_shape(self) -> None:
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             config = CampaignConfig(
@@ -183,8 +183,8 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         first_case_arms = campaign["results"][0]["arms"]
         self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
         profiled = first_case_arms[1]
-        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params")
-        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params")
+        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params_rerank")
+        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params_rerank")
         self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
         self.assertEqual(profiled["local"]["query_plan_kind"], "dry_run")
@@ -193,6 +193,9 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "dry_run")
         self.assertEqual(profiled["local"]["searxng_categories"], [])
         self.assertEqual(profiled["local"]["searxng_engines"], [])
+        self.assertFalse(profiled["local"]["rerank_applied"])
+        self.assertEqual(profiled["local"]["rerank_policy"], "dry_run")
+        self.assertEqual(profiled["local"]["rerank_reason_counts"], {})
         self.assertTrue(profiled["profiled_stub"]["runtime_changed"])
         self.assertEqual(
             profiled["profiled_stub"]["fixture_path"],
@@ -205,6 +208,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         def fake_build_context_payload(_user_query: str, **kwargs: object) -> dict[str, object]:
             observed_kwargs.append(dict(kwargs))
             enabled_params = bool(kwargs.get("enable_profiled_searxng_params"))
+            enabled_rerank = bool(kwargs.get("enable_reranking"))
             return {
                 "status": "ok",
                 "reason_code": None,
@@ -224,6 +228,16 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 "searxng_time_range": "year" if enabled_params else "",
                 "searxng_language": "fr-FR",
                 "searxng_safesearch": "0",
+                "rerank_applied": enabled_rerank,
+                "rerank_policy": "soft_reorder_no_drop_v0" if enabled_rerank else "none",
+                "rerank_input_count": 4 if enabled_rerank else 0,
+                "rerank_output_count": 4 if enabled_rerank else 0,
+                "rerank_profile": "actualite" if enabled_rerank else "",
+                "rerank_top_domains_before": ["fr.wikipedia.org", "digital-strategy.ec.europa.eu"] if enabled_rerank else [],
+                "rerank_top_domains_after": ["digital-strategy.ec.europa.eu", "fr.wikipedia.org"] if enabled_rerank else [],
+                "rerank_reason_counts": {"profile_official_domain_soft_bonus": 1} if enabled_rerank else {},
+                "rerank_promoted_count": 1 if enabled_rerank else 0,
+                "rerank_downranked_count": 1 if enabled_rerank else 0,
                 "used_content_kinds": [],
                 "injected_chars": 0,
                 "context_chars": 0,
@@ -257,12 +271,21 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
 
         self.assertFalse(observed_kwargs[0]["enable_specialized_queries"])
         self.assertFalse(observed_kwargs[0]["enable_profiled_searxng_params"])
+        self.assertFalse(observed_kwargs[0]["enable_reranking"])
         self.assertTrue(observed_kwargs[1]["enable_specialized_queries"])
         self.assertTrue(observed_kwargs[1]["enable_profiled_searxng_params"])
+        self.assertTrue(observed_kwargs[1]["enable_reranking"])
         self.assertEqual(local["local"]["searxng_profile_params_kind"], "historical")
         self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "profiled_actualite_year_general")
         self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "soft_broad_hints")
         self.assertEqual(profiled["local"]["searxng_time_range"], "year")
+        self.assertFalse(local["local"]["rerank_applied"])
+        self.assertTrue(profiled["local"]["rerank_applied"])
+        self.assertEqual(profiled["local"]["rerank_policy"], "soft_reorder_no_drop_v0")
+        self.assertEqual(
+            profiled["local"]["rerank_reason_counts"],
+            {"profile_official_domain_soft_bonus": 1},
+        )
 
     def test_local_bad_order_fixtures_capture_live_local_failures(self) -> None:
         fixtures = web_adapter.load_local_bad_order_fixtures(REPO_ROOT)

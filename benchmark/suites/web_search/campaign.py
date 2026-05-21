@@ -115,10 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 4 bounded queries plus profiled SearXNG params",
+            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 5 bounded queries, profiled SearXNG params and soft reranking",
             "runtime_changed": True,
             "chat_pipeline_changed": False,
-            "local_profiled_stub": "false_after_lot4_searxng_profile_params",
+            "local_profiled_stub": "false_after_lot5_soft_reranking",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -137,6 +137,7 @@ def _run_local_arm(
     engine: str = "searxng_crawl4ai",
     enable_specialized_queries: bool = False,
     enable_profiled_searxng_params: bool = False,
+    enable_reranking: bool = False,
 ) -> dict[str, Any]:
     if config.dry_run:
         source = adapter.dry_run_source(case, arm=arm)
@@ -170,6 +171,16 @@ def _run_local_arm(
                 "searxng_time_range": "",
                 "searxng_language": "",
                 "searxng_safesearch": "",
+                "rerank_applied": False,
+                "rerank_policy": "dry_run",
+                "rerank_input_count": 0,
+                "rerank_output_count": 0,
+                "rerank_profile": "",
+                "rerank_top_domains_before": [],
+                "rerank_top_domains_after": [],
+                "rerank_reason_counts": {},
+                "rerank_promoted_count": 0,
+                "rerank_downranked_count": 0,
             },
             "sources": [source],
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
@@ -189,6 +200,7 @@ def _run_local_arm(
             str(case.get("user_query") or ""),
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            enable_reranking=enable_reranking,
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
         sources = [_local_source(source) for source in payload.get("sources") or []]
@@ -219,6 +231,16 @@ def _run_local_arm(
                 "searxng_time_range": payload.get("searxng_time_range"),
                 "searxng_language": payload.get("searxng_language"),
                 "searxng_safesearch": payload.get("searxng_safesearch"),
+                "rerank_applied": bool(payload.get("rerank_applied", False)),
+                "rerank_policy": payload.get("rerank_policy"),
+                "rerank_input_count": int(payload.get("rerank_input_count") or 0),
+                "rerank_output_count": int(payload.get("rerank_output_count") or 0),
+                "rerank_profile": payload.get("rerank_profile"),
+                "rerank_top_domains_before": list(payload.get("rerank_top_domains_before") or []),
+                "rerank_top_domains_after": list(payload.get("rerank_top_domains_after") or []),
+                "rerank_reason_counts": dict(payload.get("rerank_reason_counts") or {}),
+                "rerank_promoted_count": int(payload.get("rerank_promoted_count") or 0),
+                "rerank_downranked_count": int(payload.get("rerank_downranked_count") or 0),
                 "used_content_kinds": list(payload.get("used_content_kinds") or []),
                 "injected_chars": int(payload.get("injected_chars") or 0),
                 "context_chars": int(payload.get("context_chars") or 0),
@@ -260,10 +282,11 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
         config=config,
         case=case,
         arm="local_profiled",
-        mode="local_profiled_specialized_queries_searxng_params",
-        engine="searxng_crawl4ai_profiled_queries_params",
+        mode="local_profiled_specialized_queries_searxng_params_rerank",
+        engine="searxng_crawl4ai_profiled_queries_params_rerank",
         enable_specialized_queries=True,
         enable_profiled_searxng_params=True,
+        enable_reranking=True,
     )
     local = dict(result.get("local") or {})
     runtime_profile = str(local.get("search_profile") or "").strip()
@@ -275,12 +298,12 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
     )
     result["local"] = local
     result["profiled_stub"] = {
-        "status": "searxng_profile_params_lot4",
+        "status": "soft_reranking_lot5",
         "runtime_changed": True,
         "fixture_path": str(adapter.local_bad_order_fixture_path(config.repo_root).relative_to(config.repo_root)),
     }
     if config.dry_run:
-        result["answer_preview"] = "Dry-run local_profiled: Lot 4 shape only, no SearXNG, Crawl4AI or OpenRouter call."
+        result["answer_preview"] = "Dry-run local_profiled: Lot 5 shape only, no SearXNG, Crawl4AI or OpenRouter call."
     return result
 
 
@@ -598,6 +621,16 @@ def _result_markdown_block(result: dict[str, Any]) -> list[str]:
             lines.append(f"  - `searxng_time_range`: `{local.get('searxng_time_range') or ''}`")
             lines.append(f"  - `searxng_language`: `{local.get('searxng_language') or ''}`")
             lines.append(f"  - `searxng_safesearch`: `{local.get('searxng_safesearch') or ''}`")
+        if "rerank_applied" in local:
+            lines.append(f"  - `rerank_applied`: `{bool(local.get('rerank_applied', False))}`")
+            lines.append(f"  - `rerank_policy`: `{local.get('rerank_policy') or ''}`")
+            lines.append(f"  - `rerank_input_count`: `{local.get('rerank_input_count')}`")
+            lines.append(f"  - `rerank_output_count`: `{local.get('rerank_output_count')}`")
+            lines.append(f"  - `rerank_top_domains_before`: `{','.join(local.get('rerank_top_domains_before') or [])}`")
+            lines.append(f"  - `rerank_top_domains_after`: `{','.join(local.get('rerank_top_domains_after') or [])}`")
+            lines.append(
+                f"  - `rerank_reason_counts`: `{json.dumps(local.get('rerank_reason_counts') or {}, ensure_ascii=False, sort_keys=True)}`"
+            )
         if bool(local.get("local_profiled_stub", False)):
             lines.append("  - `local_profiled_stub`: `True`")
     lines.extend(
@@ -625,6 +658,10 @@ def _sources_markdown_lines(sources: list[dict[str, Any]]) -> list[str]:
         bits = [f"`{domain or 'domain_unknown'}`"]
         if url:
             bits.append(url)
+        if source.get("rerank_bucket"):
+            bits.append(f"rerank={source.get('rerank_bucket')}")
+        if source.get("rerank_reason_codes"):
+            bits.append(f"reasons={','.join(source.get('rerank_reason_codes') or [])}")
         if preview:
             bits.append(f"extrait: {preview}")
         lines.append(f"  - {title}: " + " ; ".join(bits))
@@ -672,6 +709,11 @@ def _local_source(source: dict[str, Any]) -> dict[str, Any]:
         "content_sha256_12": _sha256_text(content)[:12] if content else "",
         "content_preview": _bounded_preview(content, max_chars=SNIPPET_MAX_CHARS),
         "truncated": bool(source.get("truncated", False)),
+        "raw_rank": source.get("raw_rank"),
+        "reranked_rank": source.get("reranked_rank"),
+        "rerank_score": source.get("rerank_score"),
+        "rerank_bucket": str(source.get("rerank_bucket") or ""),
+        "rerank_reason_codes": list(source.get("rerank_reason_codes") or []),
     }
 
 
@@ -878,6 +920,10 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         bits.append(f"secondary={local.get('secondary_query_count')}")
     if local.get("searxng_profile_params_kind"):
         bits.append(f"searxng={local.get('searxng_profile_params_kind')}")
+    if "rerank_applied" in local:
+        bits.append(f"rerank={bool(local.get('rerank_applied', False))}")
+        if local.get("rerank_policy"):
+            bits.append(f"rerank_policy={local.get('rerank_policy')}")
     if local.get("local_profiled_stub"):
         bits.append("stub=true")
     return _markdown_cell("; ".join(bits))

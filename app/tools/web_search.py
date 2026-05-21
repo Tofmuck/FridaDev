@@ -25,6 +25,7 @@ from tools import (
     web_reformulation_settings,
     web_search_profile,
     web_search_query_plan,
+    web_search_rerank,
     web_search_searxng_params,
 )
 
@@ -319,6 +320,11 @@ def _build_source_payload(
         'query_source_kind': query_source_kind,
         'query_source_index': query_source_index,
         'query_source_sha256_12': query_source_sha256_12,
+        'raw_rank': result.get('raw_rank'),
+        'reranked_rank': result.get('reranked_rank'),
+        'rerank_score': result.get('rerank_score'),
+        'rerank_bucket': str(result.get('rerank_bucket') or ''),
+        'rerank_reason_codes': list(result.get('rerank_reason_codes') or []),
     }
 
 
@@ -393,6 +399,7 @@ def _empty_query_plan(kind: str) -> dict[str, Any]:
         'raw_result_count': 0,
         'deduped_result_count': 0,
         **web_search_searxng_params.empty_observability_fields(kind='none'),
+        **web_search_rerank.empty_observability_fields(applied=False),
     }
 
 
@@ -466,6 +473,16 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'searxng_time_range': str(plan.get('searxng_time_range') or ''),
         'searxng_language': str(plan.get('searxng_language') or ''),
         'searxng_safesearch': str(plan.get('searxng_safesearch') or ''),
+        'rerank_applied': bool(plan.get('rerank_applied', False)),
+        'rerank_policy': str(plan.get('rerank_policy') or 'none'),
+        'rerank_input_count': int(plan.get('rerank_input_count') or 0),
+        'rerank_output_count': int(plan.get('rerank_output_count') or 0),
+        'rerank_profile': str(plan.get('rerank_profile') or ''),
+        'rerank_top_domains_before': list(plan.get('rerank_top_domains_before') or []),
+        'rerank_top_domains_after': list(plan.get('rerank_top_domains_after') or []),
+        'rerank_reason_counts': dict(plan.get('rerank_reason_counts') or {}),
+        'rerank_promoted_count': int(plan.get('rerank_promoted_count') or 0),
+        'rerank_downranked_count': int(plan.get('rerank_downranked_count') or 0),
     }
 
 
@@ -522,12 +539,20 @@ def _call_search_with_profile_params(
     return search(query)
 
 
-def _run_search_query_plan(query_plan: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _run_search_query_plan(
+    query_plan: dict[str, Any],
+    *,
+    user_msg: str,
+    primary_query: str,
+    search_profile: str,
+    enable_reranking: bool,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     queries = list(query_plan.get('queries') or [])
     if not queries:
         plan = dict(query_plan)
         plan['raw_result_count'] = 0
         plan['deduped_result_count'] = 0
+        plan.update(web_search_rerank.empty_observability_fields(applied=False))
         return [], plan
 
     max_results = int(_safe_runtime_services_value('searxng_results') or 0)
@@ -544,7 +569,16 @@ def _run_search_query_plan(query_plan: dict[str, Any]) -> tuple[list[dict[str, A
     plan = dict(query_plan)
     plan['raw_result_count'] = raw_result_count
     plan['deduped_result_count'] = len(merged_results)
-    return merged_results, plan
+    reranked_results, rerank_observability = web_search_rerank.rerank_results(
+        merged_results,
+        user_msg=user_msg,
+        primary_query=primary_query,
+        search_profile=search_profile,
+        max_results=max_results,
+        enabled=enable_reranking,
+    )
+    plan.update(rerank_observability)
+    return reranked_results, plan
 
 
 def _build_context_material(
@@ -996,6 +1030,16 @@ def _emit_web_search_runtime_event(
     searxng_time_range: str = '',
     searxng_language: str = '',
     searxng_safesearch: str = '',
+    rerank_applied: bool = False,
+    rerank_policy: str = 'none',
+    rerank_input_count: int = 0,
+    rerank_output_count: int = 0,
+    rerank_profile: str = '',
+    rerank_top_domains_before: list[str] | None = None,
+    rerank_top_domains_after: list[str] | None = None,
+    rerank_reason_counts: dict[str, int] | None = None,
+    rerank_promoted_count: int = 0,
+    rerank_downranked_count: int = 0,
     used_content_kinds: list[str] | None = None,
     injected_chars: int | None = None,
     context_chars: int | None = None,
@@ -1048,6 +1092,16 @@ def _emit_web_search_runtime_event(
         'searxng_time_range': str(searxng_time_range or ''),
         'searxng_language': str(searxng_language or ''),
         'searxng_safesearch': str(searxng_safesearch or ''),
+        'rerank_applied': bool(rerank_applied),
+        'rerank_policy': str(rerank_policy or 'none'),
+        'rerank_input_count': int(rerank_input_count or 0),
+        'rerank_output_count': int(rerank_output_count or 0),
+        'rerank_profile': str(rerank_profile or ''),
+        'rerank_top_domains_before': list(rerank_top_domains_before or []),
+        'rerank_top_domains_after': list(rerank_top_domains_after or []),
+        'rerank_reason_counts': dict(rerank_reason_counts or {}),
+        'rerank_promoted_count': int(rerank_promoted_count or 0),
+        'rerank_downranked_count': int(rerank_downranked_count or 0),
         'used_content_kinds': list(used_content_kinds or []),
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
@@ -1082,6 +1136,7 @@ def _build_payload_from_collection(
     search_profile: str,
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
+    enable_reranking: bool = True,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
@@ -1141,7 +1196,13 @@ def _build_payload_from_collection(
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
-        results, query_plan = _run_search_query_plan(query_plan)
+        results, query_plan = _run_search_query_plan(
+            query_plan,
+            user_msg=user_msg,
+            primary_query=query,
+            search_profile=search_profile,
+            enable_reranking=enable_reranking,
+        )
         material = _build_search_context_material(
             query,
             results,
@@ -1194,7 +1255,13 @@ def _build_payload_from_collection(
         enable_specialized_queries=enable_specialized_queries,
         enable_profiled_searxng_params=enable_profiled_searxng_params,
     )
-    results, query_plan = _run_search_query_plan(query_plan)
+    results, query_plan = _run_search_query_plan(
+        query_plan,
+        user_msg=user_msg,
+        primary_query=query,
+        search_profile=search_profile,
+        enable_reranking=enable_reranking,
+    )
     material = _build_search_context_material(query, results, now_iso=now_iso)
     has_results = int(material['results_count']) > 0
     return {
@@ -1231,6 +1298,7 @@ def build_context_payload(
     now_iso: str | None = None,
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
+    enable_reranking: bool = True,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1244,6 +1312,7 @@ def build_context_payload(
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            enable_reranking=enable_reranking,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1282,6 +1351,16 @@ def build_context_payload(
             searxng_time_range=str(payload.get('searxng_time_range') or ''),
             searxng_language=str(payload.get('searxng_language') or ''),
             searxng_safesearch=str(payload.get('searxng_safesearch') or ''),
+            rerank_applied=bool(payload.get('rerank_applied', False)),
+            rerank_policy=str(payload.get('rerank_policy') or 'none'),
+            rerank_input_count=int(payload.get('rerank_input_count') or 0),
+            rerank_output_count=int(payload.get('rerank_output_count') or 0),
+            rerank_profile=str(payload.get('rerank_profile') or ''),
+            rerank_top_domains_before=list(payload.get('rerank_top_domains_before') or []),
+            rerank_top_domains_after=list(payload.get('rerank_top_domains_after') or []),
+            rerank_reason_counts=dict(payload.get('rerank_reason_counts') or {}),
+            rerank_promoted_count=int(payload.get('rerank_promoted_count') or 0),
+            rerank_downranked_count=int(payload.get('rerank_downranked_count') or 0),
             used_content_kinds=list(payload.get('used_content_kinds') or []),
             injected_chars=int(payload.get('injected_chars') or 0),
             context_chars=int(payload.get('context_chars') or 0),
@@ -1349,6 +1428,16 @@ def build_context_payload(
             searxng_time_range=str(error_payload.get('searxng_time_range') or ''),
             searxng_language=str(error_payload.get('searxng_language') or ''),
             searxng_safesearch=str(error_payload.get('searxng_safesearch') or ''),
+            rerank_applied=bool(error_payload.get('rerank_applied', False)),
+            rerank_policy=str(error_payload.get('rerank_policy') or 'none'),
+            rerank_input_count=int(error_payload.get('rerank_input_count') or 0),
+            rerank_output_count=int(error_payload.get('rerank_output_count') or 0),
+            rerank_profile=str(error_payload.get('rerank_profile') or ''),
+            rerank_top_domains_before=list(error_payload.get('rerank_top_domains_before') or []),
+            rerank_top_domains_after=list(error_payload.get('rerank_top_domains_after') or []),
+            rerank_reason_counts=dict(error_payload.get('rerank_reason_counts') or {}),
+            rerank_promoted_count=int(error_payload.get('rerank_promoted_count') or 0),
+            rerank_downranked_count=int(error_payload.get('rerank_downranked_count') or 0),
             used_content_kinds=list(error_payload.get('used_content_kinds') or []),
             injected_chars=int(error_payload.get('injected_chars') or 0),
             context_chars=int(error_payload.get('context_chars') or 0),
@@ -1365,6 +1454,7 @@ def build_context(
     now_iso: str | None = None,
     enable_specialized_queries: bool = True,
     enable_profiled_searxng_params: bool = True,
+    enable_reranking: bool = True,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1383,6 +1473,7 @@ def build_context(
             now_iso=now_iso,
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
+            enable_reranking=enable_reranking,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -1400,7 +1491,13 @@ def build_context(
             enable_specialized_queries=enable_specialized_queries,
             enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
-        results, query_plan = _run_search_query_plan(query_plan)
+        results, query_plan = _run_search_query_plan(
+            query_plan,
+            user_msg=user_msg,
+            primary_query=query,
+            search_profile=search_profile,
+            enable_reranking=enable_reranking,
+        )
         ctx_parts = []
         if results:
             if now_iso:

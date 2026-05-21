@@ -167,6 +167,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
     query_plan = _mapping(data.get('query_plan'))
     searxng_params = _mapping(data.get('searxng_profile_params'))
+    reranking = _mapping(data.get('reranking'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
         source = _mapping(item)
@@ -225,6 +226,30 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         'searxng_language': str(data.get('searxng_language') or searxng_params.get('searxng_language') or ''),
         'searxng_safesearch': str(
             data.get('searxng_safesearch') or searxng_params.get('searxng_safesearch') or ''
+        ),
+        'rerank_applied': bool(data.get('rerank_applied', reranking.get('rerank_applied', False))),
+        'rerank_policy': str(data.get('rerank_policy') or reranking.get('rerank_policy') or ''),
+        'rerank_input_count': int(data.get('rerank_input_count') or reranking.get('rerank_input_count') or 0),
+        'rerank_output_count': int(data.get('rerank_output_count') or reranking.get('rerank_output_count') or 0),
+        'rerank_profile': str(data.get('rerank_profile') or reranking.get('rerank_profile') or ''),
+        'rerank_top_domains_before': [
+            str(value)
+            for value in _sequence(data.get('rerank_top_domains_before') or reranking.get('rerank_top_domains_before'))
+            if str(value)
+        ],
+        'rerank_top_domains_after': [
+            str(value)
+            for value in _sequence(data.get('rerank_top_domains_after') or reranking.get('rerank_top_domains_after'))
+            if str(value)
+        ],
+        'rerank_reason_counts': dict(
+            _mapping(data.get('rerank_reason_counts') or reranking.get('rerank_reason_counts'))
+        ),
+        'rerank_promoted_count': int(
+            data.get('rerank_promoted_count') or reranking.get('rerank_promoted_count') or 0
+        ),
+        'rerank_downranked_count': int(
+            data.get('rerank_downranked_count') or reranking.get('rerank_downranked_count') or 0
         ),
         'results_count': int(data.get('results_count') or 0),
         'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
