@@ -58,6 +58,10 @@ Le chantier doit d'abord comprendre le contrat actuel:
 
 Le but n'est pas de refondre par principe. Si l'existant est correct, le bon resultat peut etre une clarification, quelques garde-fous, de meilleures preuves et une observabilite plus lisible.
 
+Reference d'audit ouverte pour ce chantier:
+
+- `app/docs/states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`
+
 ## 3. Biblio native / catalogue Tulu
 
 Objectif principal pour l'instance Tof: construire une Biblio native / catalogue Tulu comme fonds durable, classe, consultable.
