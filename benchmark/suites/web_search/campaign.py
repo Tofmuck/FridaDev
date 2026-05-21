@@ -43,6 +43,7 @@ def run_web_search_campaign(
     json_path = output_dir / f"{config.campaign_id}.json"
     jsonl_path = output_dir / f"{config.campaign_id}.jsonl"
     markdown_path = output_dir / f"{config.campaign_id}.md"
+    system_markdown_paths = _write_system_markdown_reports(output_dir, campaign)
     write_json(json_path, campaign)
     jsonl_path.write_text(_render_jsonl(campaign), encoding="utf-8")
     markdown_path.write_text(render_markdown_report(campaign), encoding="utf-8")
@@ -50,6 +51,7 @@ def run_web_search_campaign(
         "json_path": str(json_path),
         "jsonl_path": str(jsonl_path),
         "markdown_path": str(markdown_path),
+        "system_markdown_paths": {key: str(value) for key, value in system_markdown_paths.items()},
     }
 
 
@@ -338,7 +340,7 @@ def _call_openrouter(
             "cost_estimate_usd": None,
             "cost_estimate_source": "exception",
             "usage": {},
-            "openrouter": {"web_search_requests": 0},
+            "openrouter": {"web_search_requests": None},
             "sources": [],
             "answer_preview": "",
             "raw_text_sha256": "",
@@ -410,7 +412,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
                         "oui" if result.get("ok") else "non",
                         f"{float(result.get('elapsed_ms') or 0.0):.0f} ms",
                         _format_cost(result.get("cost_estimate_usd")),
-                        str(_web_search_requests(result.get("usage") or {})),
+                        _web_search_requests_text(result.get("usage") or {}),
                         _token_summary(result.get("usage") or {}),
                         _source_domains_summary(result.get("sources") or []),
                         _local_signal_summary(result),
@@ -435,6 +437,41 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_system_markdown_report(campaign: dict[str, Any], *, arm: str) -> str:
+    params = campaign.get("openrouter_parameters") or {}
+    lines = [
+        f"# Benchmark recherche web - {arm.replace('_', '-')}",
+        "",
+        f"- Campaign: `{campaign['campaign_id']}`",
+        f"- Created UTC: `{campaign['created_at_utc']}`",
+        f"- Dry run: `{campaign['dry_run']}`",
+        f"- OpenRouter tool: `{params.get('tool_type')}`",
+        f"- OpenRouter params: `max_results={params.get('max_results')}`, `max_total_results={params.get('max_total_results')}`, `search_context_size={params.get('search_context_size')}`",
+        "- Runtime FridaDev modifié: `False`",
+        "",
+        "Ce fichier isole un seul système pour comparer les bras côte à côte.",
+        "",
+    ]
+    for case_result in campaign.get("results") or []:
+        case = case_result.get("case") or {}
+        matching = [result for result in case_result.get("arms") or [] if result.get("arm") == arm]
+        lines.extend(
+            [
+                f"## {case.get('id')} - {case.get('title')}",
+                "",
+                f"- Catégorie: `{case.get('category')}`",
+                f"- Question utilisateur: {case.get('user_query')}",
+            ]
+        )
+        if not matching:
+            lines.extend(["- Statut: `not_run`", ""])
+            continue
+        for result in matching:
+            lines.extend(_result_markdown_block(result))
+        lines.append("")
+    return "\n".join(lines)
+
+
 def _render_jsonl(campaign: dict[str, Any]) -> str:
     lines: list[str] = []
     for case_result in campaign.get("results") or []:
@@ -442,6 +479,73 @@ def _render_jsonl(campaign: dict[str, Any]) -> str:
         for result in case_result.get("arms") or []:
             lines.append(json.dumps({"case_id": case.get("id"), "result": result}, ensure_ascii=False, sort_keys=True))
     return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _write_system_markdown_reports(output_dir: Path, campaign: dict[str, Any]) -> dict[str, Path]:
+    paths: dict[str, Path] = {}
+    for arm in campaign.get("arms") or []:
+        file_name = f"{str(arm).replace('_', '-')}.md"
+        path = output_dir / file_name
+        path.write_text(render_system_markdown_report(campaign, arm=str(arm)), encoding="utf-8")
+        paths[str(arm)] = path
+    return paths
+
+
+def _result_markdown_block(result: dict[str, Any]) -> list[str]:
+    usage = result.get("usage") or {}
+    lines = [
+        f"- Système: `{_arm_label(result)}`",
+        f"- Statut: `{result.get('status')}` (`{'ok' if result.get('ok') else 'error'}`)",
+        f"- Latence: `{float(result.get('elapsed_ms') or 0.0):.0f} ms`",
+        f"- Coût estimé: `{_format_cost(result.get('cost_estimate_usd'))}` ({result.get('cost_estimate_source') or 'n/a'})",
+        f"- Tokens input/output/total: `{_token_summary(usage)}`",
+        f"- Requêtes web OpenRouter: `{_web_search_requests_text(usage)}`",
+    ]
+    if result.get("error"):
+        lines.append(f"- Erreur: `{_markdown_inline(str(result.get('error') or ''))}`")
+    local = result.get("local") or {}
+    if local:
+        lines.extend(
+            [
+                "- Signaux locaux:",
+                f"  - `read_state`: `{local.get('read_state')}`",
+                f"  - `collection_path`: `{local.get('collection_path')}`",
+                f"  - `used_content_kinds`: `{', '.join(local.get('used_content_kinds') or []) or 'none'}`",
+                f"  - `injected_chars`: `{local.get('injected_chars')}`",
+                f"  - `context_chars`: `{local.get('context_chars')}`",
+            ]
+        )
+    lines.extend(
+        [
+            "- Sources / URLs:",
+            *_sources_markdown_lines(result.get("sources") or []),
+            "- Extrait borné:",
+            "",
+            f"> {_markdown_quote(str(result.get('answer_preview') or 'n/a'))}",
+            "",
+        ]
+    )
+    return lines
+
+
+def _sources_markdown_lines(sources: list[dict[str, Any]]) -> list[str]:
+    if not sources:
+        return ["  - n/a"]
+    lines: list[str] = []
+    for source in sources[:8]:
+        url = str(source.get("url") or "")
+        domain = str(source.get("domain") or _domain(url) or "")
+        title = _markdown_inline(str(source.get("title") or "source"))
+        preview = _markdown_inline(str(source.get("content_preview") or ""))
+        bits = [f"`{domain or 'domain_unknown'}`"]
+        if url:
+            bits.append(url)
+        if preview:
+            bits.append(f"extrait: {preview}")
+        lines.append(f"  - {title}: " + " ; ".join(bits))
+    if len(sources) > 8:
+        lines.append(f"  - ... {len(sources) - 8} source(s) supplémentaire(s) bornées dans le JSON")
+    return lines
 
 
 def _public_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -545,7 +649,7 @@ def _estimate_openrouter_web_cost(
     model_cost = None
     if prompt_price is not None and completion_price is not None:
         model_cost = (input_tokens * prompt_price) + (output_tokens * completion_price)
-    web_requests = _web_search_requests(usage)
+    web_requests = _web_search_requests(usage) or 0
     tool_cost = web_requests * WEB_SEARCH_TOOL_COST_USD if engine in {"exa", "parallel"} else 0.0
     if model_cost is None and web_requests <= 0:
         return None, "unavailable"
@@ -599,11 +703,16 @@ def _compact_error(data: Any) -> str:
     return ""
 
 
-def _web_search_requests(usage: dict[str, Any]) -> int:
+def _web_search_requests(usage: dict[str, Any]) -> int | None:
     server_tool_use = usage.get("server_tool_use")
     if isinstance(server_tool_use, dict):
         return _int_or_zero(server_tool_use.get("web_search_requests"))
-    return 0
+    return None
+
+
+def _web_search_requests_text(usage: dict[str, Any]) -> str:
+    value = _web_search_requests(usage)
+    return str(value) if value is not None else "n/a"
 
 
 def _token_summary(usage: dict[str, Any]) -> str:
@@ -687,8 +796,13 @@ def _markdown_cell(value: str) -> str:
     return text if len(text) <= 180 else text[:179].rstrip() + "…"
 
 
-def _public_case_ids(campaign: dict[str, Any]) -> list[str]:
-    return [str((item.get("case") or {}).get("id") or "") for item in campaign.get("results") or []]
+def _markdown_inline(value: str) -> str:
+    return str(value or "").replace("`", "'").replace("\n", " ")
+
+
+def _markdown_quote(value: str) -> str:
+    text = str(value or "").replace("\n", " ")
+    return text.replace(">", "\\>")
 
 
 def _int_or_zero(value: Any) -> int:

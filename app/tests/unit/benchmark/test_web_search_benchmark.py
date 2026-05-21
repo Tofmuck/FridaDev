@@ -108,7 +108,16 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
             markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
             jsonl = Path(result["jsonl_path"]).read_text(encoding="utf-8")
-            combined = "\n".join([json.dumps(json_payload, ensure_ascii=False), markdown, jsonl])
+            system_paths = {key: Path(value) for key, value in result["system_markdown_paths"].items()}
+            system_markdowns = {key: path.read_text(encoding="utf-8") for key, path in system_paths.items()}
+            combined = "\n".join(
+                [
+                    json.dumps(json_payload, ensure_ascii=False),
+                    markdown,
+                    jsonl,
+                    *system_markdowns.values(),
+                ]
+            )
 
             self.assertFalse(json_payload["production_runtime_changed"])
             self.assertFalse(json_payload["secrets_written"])
@@ -118,6 +127,18 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("Grille d'évaluation humaine", markdown)
             self.assertIn("openrouter:web_search", markdown)
             self.assertIn("web_search_requests", json.dumps(json_payload, ensure_ascii=False))
+            self.assertEqual(set(system_paths), {"local", "openrouter_exa", "openrouter_parallel"})
+            self.assertEqual(system_paths["local"].name, "local.md")
+            self.assertEqual(system_paths["openrouter_exa"].name, "openrouter-exa.md")
+            self.assertEqual(system_paths["openrouter_parallel"].name, "openrouter-parallel.md")
+            case_ids = [case["id"] for case in web_adapter.load_cases(REPO_ROOT)]
+            for text in system_markdowns.values():
+                positions = [text.find(f"## {case_id} -") for case_id in case_ids]
+                self.assertTrue(all(position >= 0 for position in positions), positions)
+                self.assertEqual(positions, sorted(positions))
+            self.assertIn("read_state", system_markdowns["local"])
+            self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_exa"])
+            self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_parallel"])
             for forbidden in (
                 "OPENROUTER_API_KEY",
                 "Authorization",

@@ -51,6 +51,9 @@ Artefacts produits:
 - `dry-run-web-search.json`;
 - `dry-run-web-search.jsonl`;
 - `dry-run-web-search.md`.
+- `local.md`;
+- `openrouter-exa.md`;
+- `openrouter-parallel.md`.
 
 Ces artefacts peuvent rester dans `/tmp`. Ne committe pas de résultats live volumineux ou privés.
 
@@ -64,6 +67,13 @@ OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --campaign-id 2026-05-21-web-search-comparison \
   --output-dir /tmp/fridadev-web-search-live
 ```
+
+Le dossier live contient aussi un Markdown par système. Ce sont les fichiers à
+ouvrir côte à côte pour la lecture humaine:
+
+- `local.md`;
+- `openrouter-exa.md`;
+- `openrouter-parallel.md`.
 
 Paramètres OpenRouter par défaut:
 

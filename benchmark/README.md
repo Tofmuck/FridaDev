@@ -493,6 +493,10 @@ pipeline signals such as `read_state`, `collection_path`,
 `used_content_kinds`, `injected_chars` and `context_chars`. It does not use the
 deprecated OpenRouter web plugin syntax or `:online` model variants.
 
+It also writes one Markdown report per system (`local.md`,
+`openrouter-exa.md`, `openrouter-parallel.md`) so the five cases can be read in
+the same order across the three approaches.
+
 ## Scope
 
 This workspace is outside the nominal chat runtime. It must not change
