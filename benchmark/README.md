@@ -29,6 +29,11 @@ primary OpenRouter validation caller. It checks the final hermeneutic posture
 contract (`answer|clarify|suspend`, `simple|meta`) without touching the
 deterministic `primary_node` or the production runtime settings.
 
+The seventh implemented suite is `web_search`, which compares the local
+FridaDev web pipeline (SearXNG + Crawl4AI) with OpenRouter server tools
+`openrouter:web_search` on bounded Exa and Parallel runs. It is an operator
+benchmark for the next product decision, not a runtime integration.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -437,6 +442,56 @@ remains auditable without versioning response dumps.
 The report is a decision aid, not an automatic production verdict. It must not
 be used to change `validation_agent_model` without a separate decision and
 runtime settings lot.
+
+## Web search comparison benchmark
+
+The web search suite compares three arms by default:
+
+- `local`: current FridaDev local pipeline, SearXNG + Crawl4AI + existing web
+  reformulation when needed;
+- `openrouter_exa`: OpenRouter `openrouter:web_search` with `engine=exa`;
+- `openrouter_parallel`: OpenRouter `openrouter:web_search` with
+  `engine=parallel`.
+
+The first campaign is intentionally bounded:
+
+- `max_results=5`;
+- `max_total_results=5`;
+- `search_context_size=low`;
+- default benchmark model: `openai/gpt-5.1`.
+
+Dry run without SearXNG, Crawl4AI or OpenRouter calls:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite web_search \
+  --dry-run \
+  --campaign-id dry-run-web-search \
+  --output-dir /tmp/fridadev-web-search-dry-run
+```
+
+Example live comparison:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite web_search \
+  --campaign-id <date>-web-search-comparison \
+  --output-dir /tmp/fridadev-web-search-live
+```
+
+Operator documentation lives in:
+
+- `benchmark/web-search/README.md`
+
+Fixtures live in:
+
+- `benchmark/suites/web_search/fixtures/cases.json`
+
+The suite writes JSON, JSONL and Markdown artifacts with source domains,
+latency, estimated cost, OpenRouter web request counts when reported, and local
+pipeline signals such as `read_state`, `collection_path`,
+`used_content_kinds`, `injected_chars` and `context_chars`. It does not use the
+deprecated OpenRouter web plugin syntax or `:online` model variants.
 
 ## Scope
 

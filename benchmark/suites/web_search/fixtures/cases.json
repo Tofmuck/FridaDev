@@ -1,0 +1,47 @@
+[
+  {
+    "id": "recent_ai_policy_news",
+    "title": "Actualité récente IA",
+    "category": "actualite_recente",
+    "user_query": "Quels sont les principaux changements récents annoncés en 2026 sur la régulation de l'intelligence artificielle en Europe ? Cite les sources.",
+    "expected_source_kinds": ["news", "official", "regulatory"],
+    "must_include_domains": ["ec.europa.eu", "artificialintelligenceact.eu"],
+    "notes": "Vérifie fraîcheur, diversité et capacité à ne pas inventer une actualité non sourcée."
+  },
+  {
+    "id": "official_openrouter_server_tools",
+    "title": "Documentation technique officielle",
+    "category": "tech_doc_officielle",
+    "user_query": "Dans la documentation OpenRouter actuelle, comment faut-il utiliser openrouter:web_search et quels paramètres contrôlent le coût ?",
+    "expected_source_kinds": ["official_documentation"],
+    "must_include_domains": ["openrouter.ai"],
+    "notes": "Doit privilégier la doc officielle plutôt que des blogs ou snippets secondaires."
+  },
+  {
+    "id": "explicit_url_reading_contract",
+    "title": "URL explicite à lire",
+    "category": "url_explicite",
+    "user_query": "Lis cette page officielle et résume uniquement ce qu'elle dit sur le web fetch : https://openrouter.ai/docs/guides/features/server-tools/web-fetch",
+    "expected_source_kinds": ["explicit_url", "official_documentation"],
+    "must_include_domains": ["openrouter.ai"],
+    "notes": "Mesure la vérité de lecture d'une URL cible et la différence entre lecture directe et fallback."
+  },
+  {
+    "id": "conceptual_philosophy_search",
+    "title": "Recherche philosophique conceptuelle",
+    "category": "philosophie_academique",
+    "user_query": "Trouve des sources solides sur la notion de trace chez Derrida et distingue sources primaires, encyclopédiques et commentaires académiques.",
+    "expected_source_kinds": ["primary", "encyclopedic", "academic"],
+    "must_include_domains": ["plato.stanford.edu", "jstor.org", "wikipedia.org"],
+    "notes": "Cas moins récent: mesure autorité, nuance et capacité à cartographier les régimes de sources."
+  },
+  {
+    "id": "french_admin_service_public",
+    "title": "Recherche institutionnelle française",
+    "category": "institutionnel_francais",
+    "user_query": "Quelle est la procédure officielle actuelle pour renouveler une carte nationale d'identité française ? Cite les sources administratives.",
+    "expected_source_kinds": ["official", "administrative"],
+    "must_include_domains": ["service-public.fr", "ants.gouv.fr"],
+    "notes": "Doit favoriser les sources institutionnelles françaises et éviter les sites SEO."
+  }
+]
