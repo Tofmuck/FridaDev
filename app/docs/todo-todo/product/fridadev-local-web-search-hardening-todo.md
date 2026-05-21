@@ -14,6 +14,24 @@ Le chemin par defaut reste SearXNG pour chercher, Crawl4AI pour lire, et FridaDe
 
 OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcement local. Ce TODO ne les branche pas dans `/api/chat`.
 
+## Avancement
+
+- [x] Lot 0 - Spec / contrat local web renforce
+- [x] Lot 1 - Fixtures et benchmark `local_profiled`
+- [ ] Lot 2 - Profil de recherche
+- [ ] Lot 3 - Requetes specialisees bornees
+- [ ] Lot 4 - Parametres SearXNG par profil
+- [ ] Lot 5 - Reranking avant crawl
+- [ ] Lot 6 - Crawl4AI oriente profil
+- [ ] Lot 7 - Observabilite + confiance + fallback futur
+- [ ] Lot 8 - Benchmark final et decision Exa/Parallel
+
+Lecture rapide:
+
+- Lots 0 et 1 sont livres comme socle docs/spec/benchmark.
+- Lots 2 a 8 restent a implementer et ne sont pas runtime aujourd'hui.
+- Aucun profil runtime, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
+
 ## Question prealable: existe-t-il un meilleur plan ?
 
 Oui: le meilleur plan est de ne pas commencer par modifier le runtime web. Le bon ordre est de figer le contrat local renforce, d'ajouter les fixtures qui reproduisent les echecs locaux observes, de preparer le benchmark `local_profiled`, puis seulement ensuite d'implementer profil, requetes specialisees, parametres SearXNG, reranking et Crawl4AI query-aware.
