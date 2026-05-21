@@ -115,10 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "local keeps the single-query baseline in benchmark; local_profiled uses Lot 3 bounded specialized queries over the same SearXNG + Crawl4AI runtime",
+            "mode": "local keeps the single-query historical SearXNG baseline; local_profiled uses Lot 4 bounded queries plus profiled SearXNG params",
             "runtime_changed": True,
             "chat_pipeline_changed": False,
-            "local_profiled_stub": "false_after_lot3_specialized_queries",
+            "local_profiled_stub": "false_after_lot4_searxng_profile_params",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -136,6 +136,7 @@ def _run_local_arm(
     mode: str = "local_searxng_crawl4ai",
     engine: str = "searxng_crawl4ai",
     enable_specialized_queries: bool = False,
+    enable_profiled_searxng_params: bool = False,
 ) -> dict[str, Any]:
     if config.dry_run:
         source = adapter.dry_run_source(case, arm=arm)
@@ -162,6 +163,13 @@ def _run_local_arm(
                 "query_count": 0,
                 "secondary_query_count": 0,
                 "deduped_result_count": 1,
+                "searxng_profile_params_kind": "dry_run",
+                "searxng_profile_params_policy": "dry_run",
+                "searxng_categories": [],
+                "searxng_engines": [],
+                "searxng_time_range": "",
+                "searxng_language": "",
+                "searxng_safesearch": "",
             },
             "sources": [source],
             "answer_preview": "Dry-run local: aucun appel SearXNG, Crawl4AI ou OpenRouter.",
@@ -180,6 +188,7 @@ def _run_local_arm(
         payload = web_search.build_context_payload(
             str(case.get("user_query") or ""),
             enable_specialized_queries=enable_specialized_queries,
+            enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
         sources = [_local_source(source) for source in payload.get("sources") or []]
@@ -203,6 +212,13 @@ def _run_local_arm(
                 "query_count": int(payload.get("query_count") or 0),
                 "secondary_query_count": int(payload.get("secondary_query_count") or 0),
                 "deduped_result_count": int(payload.get("deduped_result_count") or 0),
+                "searxng_profile_params_kind": payload.get("searxng_profile_params_kind"),
+                "searxng_profile_params_policy": payload.get("searxng_profile_params_policy"),
+                "searxng_categories": list(payload.get("searxng_categories") or []),
+                "searxng_engines": list(payload.get("searxng_engines") or []),
+                "searxng_time_range": payload.get("searxng_time_range"),
+                "searxng_language": payload.get("searxng_language"),
+                "searxng_safesearch": payload.get("searxng_safesearch"),
                 "used_content_kinds": list(payload.get("used_content_kinds") or []),
                 "injected_chars": int(payload.get("injected_chars") or 0),
                 "context_chars": int(payload.get("context_chars") or 0),
@@ -244,9 +260,10 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
         config=config,
         case=case,
         arm="local_profiled",
-        mode="local_profiled_specialized_queries",
-        engine="searxng_crawl4ai_profiled_queries",
+        mode="local_profiled_specialized_queries_searxng_params",
+        engine="searxng_crawl4ai_profiled_queries_params",
         enable_specialized_queries=True,
+        enable_profiled_searxng_params=True,
     )
     local = dict(result.get("local") or {})
     runtime_profile = str(local.get("search_profile") or "").strip()
@@ -258,12 +275,12 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
     )
     result["local"] = local
     result["profiled_stub"] = {
-        "status": "specialized_queries_lot3",
+        "status": "searxng_profile_params_lot4",
         "runtime_changed": True,
         "fixture_path": str(adapter.local_bad_order_fixture_path(config.repo_root).relative_to(config.repo_root)),
     }
     if config.dry_run:
-        result["answer_preview"] = "Dry-run local_profiled: Lot 3 shape only, no SearXNG, Crawl4AI or OpenRouter call."
+        result["answer_preview"] = "Dry-run local_profiled: Lot 4 shape only, no SearXNG, Crawl4AI or OpenRouter call."
     return result
 
 
@@ -573,6 +590,14 @@ def _result_markdown_block(result: dict[str, Any]) -> list[str]:
             lines.append(f"  - `query_count`: `{local.get('query_count')}`")
             lines.append(f"  - `secondary_query_count`: `{local.get('secondary_query_count')}`")
             lines.append(f"  - `deduped_result_count`: `{local.get('deduped_result_count')}`")
+        if "searxng_profile_params_kind" in local:
+            lines.append(f"  - `searxng_profile_params_kind`: `{local.get('searxng_profile_params_kind')}`")
+            lines.append(f"  - `searxng_profile_params_policy`: `{local.get('searxng_profile_params_policy')}`")
+            lines.append(f"  - `searxng_categories`: `{','.join(local.get('searxng_categories') or [])}`")
+            lines.append(f"  - `searxng_engines`: `{','.join(local.get('searxng_engines') or [])}`")
+            lines.append(f"  - `searxng_time_range`: `{local.get('searxng_time_range') or ''}`")
+            lines.append(f"  - `searxng_language`: `{local.get('searxng_language') or ''}`")
+            lines.append(f"  - `searxng_safesearch`: `{local.get('searxng_safesearch') or ''}`")
         if bool(local.get("local_profiled_stub", False)):
             lines.append("  - `local_profiled_stub`: `True`")
     lines.extend(
@@ -851,6 +876,8 @@ def _local_signal_summary(result: dict[str, Any]) -> str:
         bits.append(f"plan={local.get('query_plan_kind')}")
     if local.get("secondary_query_count") is not None:
         bits.append(f"secondary={local.get('secondary_query_count')}")
+    if local.get("searxng_profile_params_kind"):
+        bits.append(f"searxng={local.get('searxng_profile_params_kind')}")
     if local.get("local_profiled_stub"):
         bits.append("stub=true")
     return _markdown_cell("; ".join(bits))

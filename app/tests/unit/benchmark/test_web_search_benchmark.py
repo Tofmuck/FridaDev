@@ -5,6 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import ModuleType
 
 
 def _repo_root() -> Path:
@@ -141,6 +142,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("read_state", system_markdowns["local"])
             self.assertIn("search_profile", system_markdowns["local_profiled"])
             self.assertIn("query_plan_kind", system_markdowns["local_profiled"])
+            self.assertIn("searxng_profile_params_kind", system_markdowns["local_profiled"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_exa"])
             self.assertIn("Requêtes web OpenRouter", system_markdowns["openrouter_parallel"])
             for forbidden in (
@@ -158,7 +160,7 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             web_adapter.normalize_arms(["local", "plugins_web"])
 
-    def test_local_profiled_arm_exposes_lot3_query_plan_shape(self) -> None:
+    def test_local_profiled_arm_exposes_lot4_query_and_searxng_param_shape(self) -> None:
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             config = CampaignConfig(
@@ -181,17 +183,86 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
         first_case_arms = campaign["results"][0]["arms"]
         self.assertEqual([result["arm"] for result in first_case_arms], ["local", "local_profiled"])
         profiled = first_case_arms[1]
-        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries")
-        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries")
+        self.assertEqual(profiled["mode"], "local_profiled_specialized_queries_searxng_params")
+        self.assertEqual(profiled["engine"], "searxng_crawl4ai_profiled_queries_params")
         self.assertFalse(profiled["local"]["local_profiled_stub"])
         self.assertEqual(profiled["local"]["search_profile"], "stub_not_implemented")
         self.assertEqual(profiled["local"]["query_plan_kind"], "dry_run")
         self.assertEqual(profiled["local"]["secondary_query_count"], 0)
+        self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "dry_run")
+        self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "dry_run")
+        self.assertEqual(profiled["local"]["searxng_categories"], [])
+        self.assertEqual(profiled["local"]["searxng_engines"], [])
         self.assertTrue(profiled["profiled_stub"]["runtime_changed"])
         self.assertEqual(
             profiled["profiled_stub"]["fixture_path"],
             "benchmark/suites/web_search/fixtures/local_bad_orders.json",
         )
+
+    def test_live_local_and_local_profiled_toggle_profiled_runtime_flags(self) -> None:
+        observed_kwargs: list[dict[str, object]] = []
+
+        def fake_build_context_payload(_user_query: str, **kwargs: object) -> dict[str, object]:
+            observed_kwargs.append(dict(kwargs))
+            enabled_params = bool(kwargs.get("enable_profiled_searxng_params"))
+            return {
+                "status": "ok",
+                "reason_code": None,
+                "sources": [],
+                "context_block": "",
+                "read_state": None,
+                "collection_path": "search_only",
+                "search_profile": "actualite",
+                "query_plan_kind": "profiled_bounded" if bool(kwargs.get("enable_specialized_queries")) else "single_query",
+                "query_count": 3 if bool(kwargs.get("enable_specialized_queries")) else 1,
+                "secondary_query_count": 2 if bool(kwargs.get("enable_specialized_queries")) else 0,
+                "deduped_result_count": 0,
+                "searxng_profile_params_kind": "profiled_actualite_year_general" if enabled_params else "historical",
+                "searxng_profile_params_policy": "soft_broad_hints" if enabled_params else "historical_baseline",
+                "searxng_categories": ["general"] if enabled_params else [],
+                "searxng_engines": [],
+                "searxng_time_range": "year" if enabled_params else "",
+                "searxng_language": "fr-FR",
+                "searxng_safesearch": "0",
+                "used_content_kinds": [],
+                "injected_chars": 0,
+                "context_chars": 0,
+                "results_count": 0,
+                "primary_read_status": "not_attempted",
+                "fallback_used": False,
+            }
+
+        fake_web_search = ModuleType("tools.web_search")
+        fake_web_search.build_context_payload = fake_build_context_payload  # type: ignore[attr-defined]
+        original_web_search_module = sys.modules.get("tools.web_search")
+        sys.modules["tools.web_search"] = fake_web_search
+        config = CampaignConfig(
+            campaign_id="web-search-live-toggle",
+            suite="web_search",
+            repo_root=REPO_ROOT,
+            output_dir=REPO_ROOT / "tmp-test-output-unused",
+            models=["openai/gpt-5.1"],
+            dry_run=False,
+            timeout_s=1,
+        )
+        case = {"user_query": "Actualité IA Europe"}
+        try:
+            local = web_campaign._run_local_arm(config=config, case=case)
+            profiled = web_campaign._run_local_profiled_arm(config=config, case=case)
+        finally:
+            if original_web_search_module is None:
+                sys.modules.pop("tools.web_search", None)
+            else:
+                sys.modules["tools.web_search"] = original_web_search_module
+
+        self.assertFalse(observed_kwargs[0]["enable_specialized_queries"])
+        self.assertFalse(observed_kwargs[0]["enable_profiled_searxng_params"])
+        self.assertTrue(observed_kwargs[1]["enable_specialized_queries"])
+        self.assertTrue(observed_kwargs[1]["enable_profiled_searxng_params"])
+        self.assertEqual(local["local"]["searxng_profile_params_kind"], "historical")
+        self.assertEqual(profiled["local"]["searxng_profile_params_kind"], "profiled_actualite_year_general")
+        self.assertEqual(profiled["local"]["searxng_profile_params_policy"], "soft_broad_hints")
+        self.assertEqual(profiled["local"]["searxng_time_range"], "year")
 
     def test_local_bad_order_fixtures_capture_live_local_failures(self) -> None:
         fixtures = web_adapter.load_local_bad_order_fixtures(REPO_ROOT)

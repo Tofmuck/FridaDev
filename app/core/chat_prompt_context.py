@@ -318,6 +318,13 @@ def inject_web_context(
         query_count=web_context_payload.get('query_count'),
         secondary_query_count=web_context_payload.get('secondary_query_count'),
         deduped_result_count=web_context_payload.get('deduped_result_count'),
+        searxng_profile_params_kind=str(web_context_payload.get('searxng_profile_params_kind') or ''),
+        searxng_profile_params_policy=str(web_context_payload.get('searxng_profile_params_policy') or ''),
+        searxng_categories=list(web_context_payload.get('searxng_categories') or []),
+        searxng_engines=list(web_context_payload.get('searxng_engines') or []),
+        searxng_time_range=str(web_context_payload.get('searxng_time_range') or ''),
+        searxng_language=str(web_context_payload.get('searxng_language') or ''),
+        searxng_safesearch=str(web_context_payload.get('searxng_safesearch') or ''),
         results=web_context_payload.get('results_count'),
     )
     return web_context_payload

@@ -20,7 +20,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 - [x] Lot 1 - Fixtures et benchmark `local_profiled`
 - [x] Lot 2 - Profil de recherche
 - [x] Lot 3 - Requetes specialisees bornees
-- [ ] Lot 4 - Parametres SearXNG par profil
+- [x] Lot 4 - Parametres SearXNG par profil
 - [ ] Lot 5 - Reranking avant crawl
 - [ ] Lot 6 - Crawl4AI oriente profil
 - [ ] Lot 7 - Observabilite + confiance + fallback futur
@@ -31,8 +31,9 @@ Lecture rapide:
 - Lots 0 et 1 sont livres comme socle docs/spec/benchmark.
 - Lot 2 est livre comme signal runtime passif: `search_profile` est classe, propage et observe, sans effet sur la recherche.
 - Lot 3 est livre: les profils non URL peuvent ajouter 0 a 2 requetes secondaires, avec aggregation bornee et deduplication URL.
-- Lots 4 a 8 restent a implementer.
-- Aucun parametre SearXNG par profil, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
+- Lot 4 est livre: `local_profiled` applique des parametres SearXNG applicatifs par profil, sans modifier la config globale SearXNG.
+- Lots 5 a 8 restent a implementer.
+- Aucun reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -245,16 +246,52 @@ Definition of done Lot 3:
 
 ## Lot 4 - Parametres SearXNG par profil
 
-Statut: a faire.
+Statut: livre.
 
-Mapper prudemment:
+Mapper prudemment, cote applicatif seulement:
 
 - `categories`;
 - `engines`;
 - `time_range`;
 - `language`;
-- `site:` / domaines;
-- limites de resultats.
+- `safesearch`.
+
+Regles implementees:
+
+- `explicit_url`: aucune application de parametres au direct read; fallback search historique si le fallback existant est appele.
+- `general`: comportement historique, `language=fr-FR`, `safesearch=0`, pas de categorie/engine/time_range ajoute.
+- `actualite`: `categories=general`, `time_range=year`, `language=fr-FR`, `safesearch=0`.
+- `technique_officielle`: `categories=general`, `language=all`, `safesearch=0`.
+- `institutionnel_francais`: `categories=general`, `language=fr-FR`, `safesearch=0`.
+- `academique_philosophique`: `categories=general`, `language=all`, `safesearch=0`.
+- `engines` reste vide en V0: la config SearXNG globale locale n'est pas lisible par l'utilisateur applicatif, donc le lot evite de viser des moteurs incertains.
+
+Garde-fous politiques source:
+
+- ces parametres sont marques `soft_broad_hints`, pas comme une police invisible des sources legitimes;
+- aucune source, domaine ou moteur unique n'est impose dans ce lot;
+- aucune nouvelle contrainte `site:` n'est ajoutee ici, pour eviter un enfermement de domaine;
+- la diversite minimale reste preservee par l'aggregation et la deduplication URL du Lot 3; le Lot 5 devra reranker sans censurer;
+- la confiance future devra rester visible et explicable, sans pouvoir automatique d'appeler Exa, Parallel ou OpenRouter.
+
+Observabilite content-free livree:
+
+- `searxng_profile_params_kind`;
+- `searxng_profile_params_policy`;
+- `searxng_categories`;
+- `searxng_engines`;
+- `searxng_time_range`;
+- `searxng_language`;
+- `searxng_safesearch`.
+
+Definition of done Lot 4:
+
+- [x] Aucun fichier `/opt/platform/searxng/*` ou Docker n'est modifie.
+- [x] `local` benchmark garde la baseline historique mono-requete / params historiques.
+- [x] `local_profiled` porte requetes specialisees + params SearXNG par profil.
+- [x] URL explicite directe ne lance aucune recherche et n'applique aucun parametre SearXNG.
+- [x] Aucun `site:` nouveau n'est introduit dans ce lot; les domaines restent dans les requetes secondaires Lot 3.
+- [x] Aucun reranking, BM25 Crawl4AI ou fallback OpenRouter runtime n'est livre.
 
 Regle: ne pas modifier globalement `/opt/platform/searxng/settings.yml` dans ce lot.
 

@@ -54,6 +54,27 @@ def _canonical_query_plan(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _canonical_searxng_profile_params(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    data = payload if isinstance(payload, Mapping) else {}
+    return {
+        'searxng_profile_params_kind': _optional_str(data.get('searxng_profile_params_kind')),
+        'searxng_profile_params_policy': _optional_str(data.get('searxng_profile_params_policy')),
+        'searxng_categories': [
+            str(value)
+            for value in data.get('searxng_categories') or []
+            if str(value or '')
+        ],
+        'searxng_engines': [
+            str(value)
+            for value in data.get('searxng_engines') or []
+            if str(value or '')
+        ],
+        'searxng_time_range': _optional_str(data.get('searxng_time_range')),
+        'searxng_language': _optional_str(data.get('searxng_language')),
+        'searxng_safesearch': _optional_str(data.get('searxng_safesearch')),
+    }
+
+
 def _canonical_source(source: Mapping[str, Any]) -> dict[str, Any]:
     return {
         'rank': _optional_int(source.get('rank')),
@@ -178,6 +199,7 @@ def build_web_input(
     collection_path: str | None = None,
     runtime: Mapping[str, Any] | None = None,
     query_plan: Mapping[str, Any] | None = None,
+    searxng_profile_params: Mapping[str, Any] | None = None,
     sources: Sequence[Mapping[str, Any]] = (),
     context_block: str = '',
     used_content_kinds: Sequence[Any] | None = None,
@@ -228,6 +250,7 @@ def build_web_input(
         'collection_path': _optional_str(collection_path),
         'runtime': _canonical_runtime(runtime),
         'query_plan': _canonical_query_plan(query_plan),
+        'searxng_profile_params': _canonical_searxng_profile_params(searxng_profile_params),
         'used_content_kinds': canonical_used_content_kinds,
         'injected_chars': canonical_injected_chars,
         'context_chars': canonical_context_chars,
@@ -260,6 +283,7 @@ def build_web_input_from_runtime_payload(runtime_payload: Mapping[str, Any] | No
         collection_path=_optional_str(payload.get('collection_path')),
         runtime=payload.get('runtime') if isinstance(payload.get('runtime'), Mapping) else None,
         query_plan=payload,
+        searxng_profile_params=payload,
         sources=payload.get('sources') if isinstance(payload.get('sources'), Sequence) else (),
         context_block=str(payload.get('context_block') or ''),
         used_content_kinds=payload.get('used_content_kinds') if isinstance(payload.get('used_content_kinds'), Sequence) else (),

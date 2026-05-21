@@ -165,6 +165,8 @@ def _summarize_stimmung(payload: Mapping[str, Any] | None) -> dict[str, Any]:
 
 def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     data = _mapping(payload)
+    query_plan = _mapping(data.get('query_plan'))
+    searxng_params = _mapping(data.get('searxng_profile_params'))
     source_material_summary = []
     for item in _sequence(data.get('source_material_summary')):
         source = _mapping(item)
@@ -191,10 +193,39 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
         ),
         'reason_code': str(data.get('reason_code') or ''),
         'search_profile': str(data.get('search_profile') or ''),
-        'query_plan_kind': str(data.get('query_plan_kind') or ''),
-        'query_count': int(data.get('query_count') or 0),
-        'secondary_query_count': int(data.get('secondary_query_count') or 0),
-        'deduped_result_count': int(data.get('deduped_result_count') or 0),
+        'query_plan_kind': str(data.get('query_plan_kind') or query_plan.get('query_plan_kind') or ''),
+        'query_count': int(data.get('query_count') or query_plan.get('query_count') or 0),
+        'secondary_query_count': int(
+            data.get('secondary_query_count') or query_plan.get('secondary_query_count') or 0
+        ),
+        'deduped_result_count': int(data.get('deduped_result_count') or query_plan.get('deduped_result_count') or 0),
+        'searxng_profile_params_kind': str(
+            data.get('searxng_profile_params_kind')
+            or searxng_params.get('searxng_profile_params_kind')
+            or ''
+        ),
+        'searxng_profile_params_policy': str(
+            data.get('searxng_profile_params_policy')
+            or searxng_params.get('searxng_profile_params_policy')
+            or ''
+        ),
+        'searxng_categories': [
+            str(value)
+            for value in _sequence(data.get('searxng_categories') or searxng_params.get('searxng_categories'))
+            if str(value)
+        ],
+        'searxng_engines': [
+            str(value)
+            for value in _sequence(data.get('searxng_engines') or searxng_params.get('searxng_engines'))
+            if str(value)
+        ],
+        'searxng_time_range': str(
+            data.get('searxng_time_range') or searxng_params.get('searxng_time_range') or ''
+        ),
+        'searxng_language': str(data.get('searxng_language') or searxng_params.get('searxng_language') or ''),
+        'searxng_safesearch': str(
+            data.get('searxng_safesearch') or searxng_params.get('searxng_safesearch') or ''
+        ),
         'results_count': int(data.get('results_count') or 0),
         'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
         'explicit_url': str(data.get('explicit_url') or ''),

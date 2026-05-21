@@ -21,7 +21,12 @@ from core.web_read_state import (
     READ_STATE_PAGE_READ,
 )
 from observability import chat_turn_logger
-from tools import web_reformulation_settings, web_search_profile, web_search_query_plan
+from tools import (
+    web_reformulation_settings,
+    web_search_profile,
+    web_search_query_plan,
+    web_search_searxng_params,
+)
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
@@ -387,6 +392,7 @@ def _empty_query_plan(kind: str) -> dict[str, Any]:
         'secondary_query_sha256_12': [],
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        **web_search_searxng_params.empty_observability_fields(kind='none'),
     }
 
 
@@ -396,12 +402,17 @@ def _build_query_plan(
     primary_query: str,
     search_profile: str,
     enable_specialized_queries: bool,
+    enable_profiled_searxng_params: bool,
 ) -> dict[str, Any]:
     primary = str(primary_query or '').strip()
     secondary_queries = (
         web_search_query_plan.build_specialized_queries(user_msg, primary, search_profile)
         if enable_specialized_queries
         else []
+    )
+    searxng_profile_params = web_search_searxng_params.build_profile_params(
+        search_profile,
+        enabled=enable_profiled_searxng_params,
     )
     queries: list[dict[str, Any]] = []
     if primary:
@@ -433,6 +444,8 @@ def _build_query_plan(
         'secondary_query_sha256_12': secondary_hashes,
         'raw_result_count': 0,
         'deduped_result_count': 0,
+        'searxng_request_params': searxng_profile_params.as_request_params(),
+        **searxng_profile_params.as_observability_fields(),
     }
 
 
@@ -446,6 +459,13 @@ def _query_plan_observability_fields(query_plan: dict[str, Any] | None) -> dict[
         'secondary_query_sha256_12': list(plan.get('secondary_query_sha256_12') or []),
         'raw_result_count': int(plan.get('raw_result_count') or 0),
         'deduped_result_count': int(plan.get('deduped_result_count') or 0),
+        'searxng_profile_params_kind': str(plan.get('searxng_profile_params_kind') or 'none'),
+        'searxng_profile_params_policy': str(plan.get('searxng_profile_params_policy') or 'none'),
+        'searxng_categories': list(plan.get('searxng_categories') or []),
+        'searxng_engines': list(plan.get('searxng_engines') or []),
+        'searxng_time_range': str(plan.get('searxng_time_range') or ''),
+        'searxng_language': str(plan.get('searxng_language') or ''),
+        'searxng_safesearch': str(plan.get('searxng_safesearch') or ''),
     }
 
 
@@ -482,6 +502,26 @@ def _interleave_and_dedupe_query_results(
     return merged, raw_result_count
 
 
+def _call_search_with_profile_params(
+    query: str,
+    searxng_params: dict[str, str] | None,
+) -> list[dict[str, str]]:
+    try:
+        signature = inspect.signature(search)
+        accepts_profile_params = (
+            'searxng_params' in signature.parameters
+            or any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in signature.parameters.values()
+            )
+        )
+    except (TypeError, ValueError):
+        accepts_profile_params = False
+    if accepts_profile_params:
+        return search(query, searxng_params=searxng_params)
+    return search(query)
+
+
 def _run_search_query_plan(query_plan: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     queries = list(query_plan.get('queries') or [])
     if not queries:
@@ -491,10 +531,11 @@ def _run_search_query_plan(query_plan: dict[str, Any]) -> tuple[list[dict[str, A
         return [], plan
 
     max_results = int(_safe_runtime_services_value('searxng_results') or 0)
+    searxng_params = dict(query_plan.get('searxng_request_params') or {})
     query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]] = []
     for query_entry in queries:
         query = str(query_entry.get('query') or '')
-        query_result_groups.append((query_entry, search(query)))
+        query_result_groups.append((query_entry, _call_search_with_profile_params(query, searxng_params)))
 
     merged_results, raw_result_count = _interleave_and_dedupe_query_results(
         query_result_groups,
@@ -864,12 +905,18 @@ def reformulate(
         return user_msg
 
 
-def search(query: str, max_results: int | None = None) -> list[dict[str, str]]:
+def search(
+    query: str,
+    max_results: int | None = None,
+    *,
+    searxng_params: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
     """Interroge SearXNG et retourne les résultats."""
     if max_results is None:
         max_results = int(_runtime_services_value('searxng_results'))
     try:
         params = {"q": query, "format": "json", "language": "fr-FR", "safesearch": "0"}
+        params.update({key: value for key, value in dict(searxng_params or {}).items() if value})
         searxng_url = str(_runtime_services_value('searxng_url')).rstrip('/')
         resp = requests.get(f"{searxng_url}/search", params=params, timeout=10)
         resp.raise_for_status()
@@ -942,6 +989,13 @@ def _emit_web_search_runtime_event(
     secondary_query_sha256_12: list[str] | None = None,
     raw_result_count: int = 0,
     deduped_result_count: int = 0,
+    searxng_profile_params_kind: str = 'none',
+    searxng_profile_params_policy: str = 'none',
+    searxng_categories: list[str] | None = None,
+    searxng_engines: list[str] | None = None,
+    searxng_time_range: str = '',
+    searxng_language: str = '',
+    searxng_safesearch: str = '',
     used_content_kinds: list[str] | None = None,
     injected_chars: int | None = None,
     context_chars: int | None = None,
@@ -987,6 +1041,13 @@ def _emit_web_search_runtime_event(
         'secondary_query_sha256_12': list(secondary_query_sha256_12 or []),
         'raw_result_count': int(raw_result_count or 0),
         'deduped_result_count': int(deduped_result_count or 0),
+        'searxng_profile_params_kind': str(searxng_profile_params_kind or 'none'),
+        'searxng_profile_params_policy': str(searxng_profile_params_policy or 'none'),
+        'searxng_categories': list(searxng_categories or []),
+        'searxng_engines': list(searxng_engines or []),
+        'searxng_time_range': str(searxng_time_range or ''),
+        'searxng_language': str(searxng_language or ''),
+        'searxng_safesearch': str(searxng_safesearch or ''),
         'used_content_kinds': list(used_content_kinds or []),
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
@@ -1020,6 +1081,7 @@ def _build_payload_from_collection(
     explicit_url: str | None,
     search_profile: str,
     enable_specialized_queries: bool = True,
+    enable_profiled_searxng_params: bool = True,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
@@ -1077,6 +1139,7 @@ def _build_payload_from_collection(
             primary_query=query,
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
+            enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
         results, query_plan = _run_search_query_plan(query_plan)
         material = _build_search_context_material(
@@ -1129,6 +1192,7 @@ def _build_payload_from_collection(
         primary_query=query,
         search_profile=search_profile,
         enable_specialized_queries=enable_specialized_queries,
+        enable_profiled_searxng_params=enable_profiled_searxng_params,
     )
     results, query_plan = _run_search_query_plan(query_plan)
     material = _build_search_context_material(query, results, now_iso=now_iso)
@@ -1166,6 +1230,7 @@ def build_context_payload(
     llm_module: Any | None = None,
     now_iso: str | None = None,
     enable_specialized_queries: bool = True,
+    enable_profiled_searxng_params: bool = True,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
     search_profile = web_search_profile.classify_search_profile(
@@ -1178,6 +1243,7 @@ def build_context_payload(
             explicit_url=explicit_url,
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
+            enable_profiled_searxng_params=enable_profiled_searxng_params,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1209,6 +1275,13 @@ def build_context_payload(
             secondary_query_sha256_12=list(payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(payload.get('raw_result_count') or 0),
             deduped_result_count=int(payload.get('deduped_result_count') or 0),
+            searxng_profile_params_kind=str(payload.get('searxng_profile_params_kind') or 'none'),
+            searxng_profile_params_policy=str(payload.get('searxng_profile_params_policy') or 'none'),
+            searxng_categories=list(payload.get('searxng_categories') or []),
+            searxng_engines=list(payload.get('searxng_engines') or []),
+            searxng_time_range=str(payload.get('searxng_time_range') or ''),
+            searxng_language=str(payload.get('searxng_language') or ''),
+            searxng_safesearch=str(payload.get('searxng_safesearch') or ''),
             used_content_kinds=list(payload.get('used_content_kinds') or []),
             injected_chars=int(payload.get('injected_chars') or 0),
             context_chars=int(payload.get('context_chars') or 0),
@@ -1269,6 +1342,13 @@ def build_context_payload(
             secondary_query_sha256_12=list(error_payload.get('secondary_query_sha256_12') or []),
             raw_result_count=int(error_payload.get('raw_result_count') or 0),
             deduped_result_count=int(error_payload.get('deduped_result_count') or 0),
+            searxng_profile_params_kind=str(error_payload.get('searxng_profile_params_kind') or 'none'),
+            searxng_profile_params_policy=str(error_payload.get('searxng_profile_params_policy') or 'none'),
+            searxng_categories=list(error_payload.get('searxng_categories') or []),
+            searxng_engines=list(error_payload.get('searxng_engines') or []),
+            searxng_time_range=str(error_payload.get('searxng_time_range') or ''),
+            searxng_language=str(error_payload.get('searxng_language') or ''),
+            searxng_safesearch=str(error_payload.get('searxng_safesearch') or ''),
             used_content_kinds=list(error_payload.get('used_content_kinds') or []),
             injected_chars=int(error_payload.get('injected_chars') or 0),
             context_chars=int(error_payload.get('context_chars') or 0),
@@ -1284,6 +1364,7 @@ def build_context(
     llm_module: Any | None = None,
     now_iso: str | None = None,
     enable_specialized_queries: bool = True,
+    enable_profiled_searxng_params: bool = True,
 ) -> tuple[str, str, int]:
     """
     Pipeline complet : reformulation → SearXNG/Crawl4AI.
@@ -1301,6 +1382,7 @@ def build_context(
             llm_module=llm_module,
             now_iso=now_iso,
             enable_specialized_queries=enable_specialized_queries,
+            enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
         query = str(payload.get('query') or payload.get('explicit_url') or user_msg or '')
         return str(payload.get('context_block') or ''), query, int(payload.get('results_count') or 0)
@@ -1316,6 +1398,7 @@ def build_context(
             primary_query=query,
             search_profile=search_profile,
             enable_specialized_queries=enable_specialized_queries,
+            enable_profiled_searxng_params=enable_profiled_searxng_params,
         )
         results, query_plan = _run_search_query_plan(query_plan)
         ctx_parts = []

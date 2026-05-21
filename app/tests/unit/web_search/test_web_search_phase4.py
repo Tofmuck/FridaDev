@@ -369,6 +369,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['query_plan_kind'], 'explicit_url_direct')
         self.assertEqual(payload['query_count'], 0)
         self.assertEqual(payload['secondary_query_count'], 0)
+        self.assertEqual(payload['searxng_profile_params_kind'], 'none')
+        self.assertEqual(payload['searxng_profile_params_policy'], 'none')
+        self.assertEqual(payload['searxng_categories'], [])
         self.assertEqual(payload['primary_source_kind'], 'explicit_url')
         self.assertTrue(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'success')
@@ -591,6 +594,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['query_plan_kind'], 'single_query')
         self.assertEqual(payload['query_count'], 1)
         self.assertEqual(payload['secondary_query_count'], 0)
+        self.assertEqual(payload['searxng_profile_params_kind'], 'historical')
+        self.assertEqual(payload['searxng_profile_params_policy'], 'historical_baseline')
+        self.assertEqual(payload['searxng_language'], 'fr-FR')
         self.assertEqual(payload['query'], 'requete fallback')
         self.assertEqual(payload['results_count'], 2)
         self.assertEqual(payload['sources'][0]['url'], url)
@@ -862,6 +868,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
     def test_build_context_payload_search_only_keeps_fit_crawl_without_raw_fallback(self) -> None:
         observed_calls: list[tuple[str, str]] = []
         observed_search_queries: list[str] = []
+        observed_search_params: list[dict[str, str] | None] = []
         observed_event: dict[str, object] = {}
         original_runtime_services_value = web_search._runtime_services_value
         original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
@@ -888,8 +895,9 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         web_search._crawl_markdown_with_status = fake_crawl_markdown_with_status
         web_search.reformulate = lambda _msg: 'requete search only'
 
-        def fake_search(query: str):
+        def fake_search(query: str, *, searxng_params: dict[str, str] | None = None):
             observed_search_queries.append(query)
+            observed_search_params.append(dict(searxng_params or {}))
             return [
                 {'title': 'Resultat', 'url': 'https://result.example/article', 'content': 'snippet'},
             ]
@@ -909,12 +917,26 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
 
         self.assertEqual(observed_calls, [('fit', 'https://result.example/article')])
         self.assertEqual(len(observed_search_queries), 3)
+        self.assertEqual(
+            observed_search_params,
+            [
+                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
+                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
+                {'language': 'all', 'safesearch': '0', 'categories': 'general'},
+            ],
+        )
         self.assertFalse(payload['explicit_url_detected'])
         self.assertEqual(payload['search_profile'], 'technique_officielle')
         self.assertEqual(payload['query_plan_kind'], 'profiled_bounded')
         self.assertEqual(payload['query_count'], 3)
         self.assertEqual(payload['secondary_query_count'], 2)
         self.assertEqual(payload['deduped_result_count'], 1)
+        self.assertEqual(payload['searxng_profile_params_kind'], 'profiled_technique_officielle_general_all')
+        self.assertEqual(payload['searxng_profile_params_policy'], 'soft_broad_hints')
+        self.assertEqual(payload['searxng_categories'], ['general'])
+        self.assertEqual(payload['searxng_engines'], [])
+        self.assertEqual(payload['searxng_language'], 'all')
+        self.assertEqual(payload['searxng_safesearch'], '0')
         self.assertEqual(payload['collection_path'], 'search_only')
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
@@ -927,6 +949,14 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_event['query_count'], 3)
         self.assertEqual(observed_event['secondary_query_count'], 2)
         self.assertEqual(observed_event['deduped_result_count'], 1)
+        self.assertEqual(
+            observed_event['searxng_profile_params_kind'],
+            'profiled_technique_officielle_general_all',
+        )
+        self.assertEqual(observed_event['searxng_profile_params_policy'], 'soft_broad_hints')
+        self.assertEqual(observed_event['searxng_categories'], ['general'])
+        self.assertEqual(observed_event['searxng_engines'], [])
+        self.assertEqual(observed_event['searxng_language'], 'all')
 
     def test_build_context_payload_aggregates_specialized_queries_with_stable_deduped_order(self) -> None:
         observed_search_queries: list[str] = []
@@ -978,6 +1008,14 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(payload['secondary_query_count'], 2)
         self.assertEqual(payload['raw_result_count'], 5)
         self.assertEqual(payload['deduped_result_count'], 3)
+        self.assertEqual(
+            payload['searxng_profile_params_kind'],
+            'profiled_institutionnel_francais_general_fr',
+        )
+        self.assertEqual(payload['searxng_profile_params_policy'], 'soft_broad_hints')
+        self.assertEqual(payload['searxng_categories'], ['general'])
+        self.assertEqual(payload['searxng_time_range'], '')
+        self.assertEqual(payload['searxng_language'], 'fr-FR')
         self.assertEqual(payload['results_count'], 3)
         self.assertEqual(
             [source['url'] for source in payload['sources']],
