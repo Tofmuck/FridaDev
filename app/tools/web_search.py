@@ -21,7 +21,7 @@ from core.web_read_state import (
     READ_STATE_PAGE_READ,
 )
 from observability import chat_turn_logger
-from tools import web_reformulation_settings
+from tools import web_reformulation_settings, web_search_profile
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
@@ -792,6 +792,7 @@ def _emit_web_search_runtime_event(
     primary_read_raw_fallback_used: bool = False,
     fallback_used: bool = False,
     collection_path: str = 'search_only',
+    search_profile: str | None = None,
     used_content_kinds: list[str] | None = None,
     injected_chars: int | None = None,
     context_chars: int | None = None,
@@ -829,6 +830,7 @@ def _emit_web_search_runtime_event(
         'primary_read_raw_fallback_used': bool(primary_read_raw_fallback_used),
         'fallback_used': bool(fallback_used),
         'collection_path': str(collection_path or 'search_only'),
+        'search_profile': str(search_profile or ''),
         'used_content_kinds': list(used_content_kinds or []),
         'injected_chars': int(injected_chars or 0),
         'context_chars': int(context_chars or 0),
@@ -860,6 +862,7 @@ def _build_payload_from_collection(
     *,
     user_msg: str,
     explicit_url: str | None,
+    search_profile: str,
     requests_module: Any = requests,
     llm_module: Any | None = None,
     now_iso: str | None = None,
@@ -885,6 +888,7 @@ def _build_payload_from_collection(
                 'status': 'ok',
                 'reason_code': None,
                 'original_user_message': str(user_msg or ''),
+                'search_profile': str(search_profile or ''),
                 'query': '',
                 'results_count': int(material['results_count']),
                 'runtime': dict(material['runtime']),
@@ -929,6 +933,7 @@ def _build_payload_from_collection(
             'status': 'ok' if has_results else 'skipped',
             'reason_code': None if has_results else 'no_data',
             'original_user_message': str(user_msg or ''),
+            'search_profile': str(search_profile or ''),
             'query': str(query),
             'results_count': int(material['results_count']),
             'runtime': dict(material['runtime']),
@@ -961,6 +966,7 @@ def _build_payload_from_collection(
         'status': 'ok' if has_results else 'skipped',
         'reason_code': None if has_results else 'no_data',
         'original_user_message': str(user_msg or ''),
+        'search_profile': str(search_profile or ''),
         'query': str(query),
         'results_count': int(material['results_count']),
         'runtime': dict(material['runtime']),
@@ -988,10 +994,15 @@ def build_context_payload(
     now_iso: str | None = None,
 ) -> dict[str, Any]:
     explicit_url = _extract_explicit_url(user_msg)
+    search_profile = web_search_profile.classify_search_profile(
+        user_msg,
+        explicit_url=explicit_url,
+    )
     try:
         payload = _augment_payload_observability(_build_payload_from_collection(
             user_msg=user_msg,
             explicit_url=explicit_url,
+            search_profile=search_profile,
             requests_module=requests_module,
             llm_module=llm_module,
             now_iso=now_iso,
@@ -1015,6 +1026,7 @@ def build_context_payload(
             primary_read_raw_fallback_used=bool(payload.get('primary_read_raw_fallback_used', False)),
             fallback_used=bool(payload['fallback_used']),
             collection_path=str(payload['collection_path']),
+            search_profile=str(payload.get('search_profile') or search_profile),
             used_content_kinds=list(payload.get('used_content_kinds') or []),
             injected_chars=int(payload.get('injected_chars') or 0),
             context_chars=int(payload.get('context_chars') or 0),
@@ -1027,6 +1039,7 @@ def build_context_payload(
             'status': 'error',
             'reason_code': 'upstream_error',
             'original_user_message': str(user_msg or ''),
+            'search_profile': str(search_profile or ''),
             'query': str(user_msg or ''),
             'results_count': 0,
             'runtime': _runtime_collection_settings(),
@@ -1065,6 +1078,7 @@ def build_context_payload(
             primary_read_raw_fallback_used=bool(error_payload.get('primary_read_raw_fallback_used', False)),
             fallback_used=bool(error_payload['fallback_used']),
             collection_path=str(error_payload['collection_path']),
+            search_profile=str(error_payload.get('search_profile') or search_profile),
             used_content_kinds=list(error_payload.get('used_content_kinds') or []),
             injected_chars=int(error_payload.get('injected_chars') or 0),
             context_chars=int(error_payload.get('context_chars') or 0),
@@ -1085,6 +1099,10 @@ def build_context(
     Retourne (contexte, query_reformulee, nb_resultats_web).
     """
     explicit_url = _extract_explicit_url(user_msg)
+    search_profile = web_search_profile.classify_search_profile(
+        user_msg,
+        explicit_url=explicit_url,
+    )
     if explicit_url:
         payload = build_context_payload(
             user_msg,
@@ -1128,6 +1146,7 @@ def build_context(
             primary_read_status='not_attempted',
             fallback_used=False,
             collection_path='search_only',
+            search_profile=search_profile,
         )
         return ctx, query, len(results)
     except Exception as exc:
@@ -1150,5 +1169,6 @@ def build_context(
             primary_read_status='not_attempted',
             fallback_used=False,
             collection_path='search_only',
+            search_profile=search_profile,
         )
         return '', str(user_msg or ''), 0

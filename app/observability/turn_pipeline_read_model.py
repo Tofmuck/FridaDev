@@ -634,6 +634,7 @@ def _web_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         'skipped': status == 'skipped',
         'error': status == 'error',
         'reason_code': reason,
+        'search_profile': _text(payload.get('search_profile')),
         'results_count': _to_int(payload.get('results_count')),
         'injected': bool(payload.get('context_injected')) or injected_chars > 0,
         'injected_chars': injected_chars,

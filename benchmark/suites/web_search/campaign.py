@@ -115,10 +115,10 @@ def build_web_search_campaign(
             "deprecated_paths_forbidden": ["plugins:[{id:web}]", ":online"],
         },
         "local_pipeline": {
-            "mode": "SearXNG + Crawl4AI + existing web reformulation when needed; local_profiled is a Lot 1 stub over the same runtime path",
-            "runtime_changed": False,
+            "mode": "SearXNG + Crawl4AI + existing web reformulation when needed; local_profiled carries Lot 2 search_profile but remains a quality stub until Lots 3-6",
+            "runtime_changed": True,
             "chat_pipeline_changed": False,
-            "local_profiled_stub": "current_local_pipeline_until_profiled_runtime_exists",
+            "local_profiled_stub": "current_local_pipeline_with_profile_signal_until_profiled_search_exists",
         },
         "evaluation_grid": _evaluation_grid(),
         "secrets_written": False,
@@ -190,6 +190,7 @@ def _run_local_arm(
             "local": {
                 "read_state": payload.get("read_state"),
                 "collection_path": payload.get("collection_path"),
+                "search_profile": payload.get("search_profile"),
                 "used_content_kinds": list(payload.get("used_content_kinds") or []),
                 "injected_chars": int(payload.get("injected_chars") or 0),
                 "context_chars": int(payload.get("context_chars") or 0),
@@ -235,9 +236,10 @@ def _run_local_profiled_arm(*, config: CampaignConfig, case: dict[str, Any]) -> 
         engine="searxng_crawl4ai_profiled_stub",
     )
     local = dict(result.get("local") or {})
+    runtime_profile = str(local.get("search_profile") or "").strip()
     local.update(
         {
-            "search_profile": "stub_not_implemented",
+            "search_profile": runtime_profile or "stub_not_implemented",
             "local_profiled_stub": True,
         }
     )

@@ -63,6 +63,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
                 'status': 'ok',
                 'reason_code': None,
                 'original_user_message': 'Bonjour',
+                'search_profile': 'explicit_url',
                 'query': 'query test',
                 'results_count': 1,
                 'explicit_url_detected': True,
@@ -137,6 +138,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertTrue(observed['web_input']['enabled'])
         self.assertEqual(observed['web_input']['status'], 'ok')
         self.assertEqual(observed['web_input']['activation_mode'], 'manual')
+        self.assertEqual(observed['web_input']['search_profile'], 'explicit_url')
         self.assertEqual(observed['web_input']['query'], 'query test')
         self.assertEqual(observed['web_input']['results_count'], 1)
         self.assertTrue(observed['web_input']['explicit_url_detected'])

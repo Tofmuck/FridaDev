@@ -313,6 +313,7 @@ def inject_web_context(
         query_sha256_12=_sha256_12(query_text),
         original_user_message_chars=len(original_text),
         original_user_message_sha256_12=_sha256_12(original_text),
+        search_profile=str(web_context_payload.get('search_profile') or ''),
         results=web_context_payload.get('results_count'),
     )
     return web_context_payload

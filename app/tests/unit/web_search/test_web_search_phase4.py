@@ -365,6 +365,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         self.assertEqual(observed_calls, [('fit', url)])
         self.assertTrue(payload['explicit_url_detected'])
         self.assertEqual(payload['explicit_url'], url)
+        self.assertEqual(payload['search_profile'], 'explicit_url')
         self.assertEqual(payload['primary_source_kind'], 'explicit_url')
         self.assertTrue(payload['primary_read_attempted'])
         self.assertEqual(payload['primary_read_status'], 'success')
@@ -854,6 +855,7 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
 
     def test_build_context_payload_search_only_keeps_fit_crawl_without_raw_fallback(self) -> None:
         observed_calls: list[tuple[str, str]] = []
+        observed_event: dict[str, object] = {}
         original_runtime_services_value = web_search._runtime_services_value
         original_crawl_markdown_with_status = web_search._crawl_markdown_with_status
         original_reformulate = web_search.reformulate
@@ -881,9 +883,11 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
         web_search.search = lambda _query: [
             {'title': 'Resultat', 'url': 'https://result.example/article', 'content': 'snippet'},
         ]
-        web_search._emit_web_search_runtime_event = lambda **_kwargs: None
+        web_search._emit_web_search_runtime_event = lambda **kwargs: observed_event.update(kwargs)
         try:
-            payload = web_search.build_context_payload('Trouve-moi cet article')
+            payload = web_search.build_context_payload(
+                'Dans la documentation officielle OpenRouter API, trouve-moi cet article'
+            )
         finally:
             web_search._runtime_services_value = original_runtime_services_value
             web_search._crawl_markdown_with_status = original_crawl_markdown_with_status
@@ -893,12 +897,15 @@ class WebSearchPhase4WebReformulationModelTests(unittest.TestCase):
 
         self.assertEqual(observed_calls, [('fit', 'https://result.example/article')])
         self.assertFalse(payload['explicit_url_detected'])
+        self.assertEqual(payload['search_profile'], 'technique_officielle')
         self.assertEqual(payload['collection_path'], 'search_only')
         self.assertIsNone(payload['primary_read_filter'])
         self.assertFalse(payload['primary_read_raw_fallback_used'])
         self.assertTrue(payload['sources'][0]['truncated'])
         self.assertEqual(payload['read_state'], None)
         self.assertEqual(payload['context_chars'], len(payload['context_block']))
+        self.assertEqual(observed_event['search_profile'], 'technique_officielle')
+        self.assertEqual(observed_event['collection_path'], 'search_only')
 
 
 if __name__ == '__main__':

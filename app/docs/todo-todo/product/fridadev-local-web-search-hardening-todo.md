@@ -18,7 +18,7 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 
 - [x] Lot 0 - Spec / contrat local web renforce
 - [x] Lot 1 - Fixtures et benchmark `local_profiled`
-- [ ] Lot 2 - Profil de recherche
+- [x] Lot 2 - Profil de recherche
 - [ ] Lot 3 - Requetes specialisees bornees
 - [ ] Lot 4 - Parametres SearXNG par profil
 - [ ] Lot 5 - Reranking avant crawl
@@ -29,8 +29,9 @@ OpenRouter Exa/Parallel restent des soupapes futures a evaluer apres renforcemen
 Lecture rapide:
 
 - Lots 0 et 1 sont livres comme socle docs/spec/benchmark.
-- Lots 2 a 8 restent a implementer et ne sont pas runtime aujourd'hui.
-- Aucun profil runtime, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
+- Lot 2 est livre comme signal runtime passif: `search_profile` est classe, propage et observe, sans effet sur la recherche.
+- Lots 3 a 8 restent a implementer.
+- Aucun plan multi-requetes, parametre SearXNG par profil, reranking runtime, BM25 runtime ou fallback OpenRouter runtime n'est encore livre.
 
 ## Question prealable: existe-t-il un meilleur plan ?
 
@@ -168,14 +169,34 @@ Definition of done Lot 1:
 
 ## Lot 2 - Profil de recherche
 
-Statut: a faire.
+Statut: livre comme signal runtime passif.
 
-Implementer le profil minimal:
+Profil minimal implemente:
 
-- determination explicite et testee;
-- pas de declenchement web autonome;
-- propagation dans le payload web et l'observabilite;
+- determination deterministe dans `app/tools/web_search_profile.py`;
+- profils: `explicit_url`, `actualite`, `technique_officielle`, `institutionnel_francais`, `academique_philosophique`, `general`;
+- priorite URL explicite: toute URL explicite classe `explicit_url`;
+- pas de declenchement web autonome: la classification ne s'executera que dans le chemin web deja active;
+- propagation dans le payload web runtime, `web_input`, logs/evenements content-free, read model d'observabilite et benchmark `local_profiled`;
 - fallback `general` en cas d'incertitude.
+
+Non-objectifs confirmes:
+
+- pas de modification des requetes;
+- pas de parametres SearXNG par profil;
+- pas de changement du nombre de resultats;
+- pas de reranking;
+- pas de BM25 Crawl4AI;
+- pas d'OpenRouter runtime;
+- pas de reactivation auto-web.
+
+Definition of done Lot 2:
+
+- [x] Classification unitaire couverte pour URL explicite, actualite, documentation officielle, institutionnel francais, academique/philosophique et fallback general.
+- [x] `search_profile` present dans `build_context_payload()` et l'evenement `web_search`.
+- [x] `search_profile` present dans le `web_input` canonique transmis au noeud hermeneutique.
+- [x] Observabilite content-free enrichie sans contenu brut, prompt ni secret.
+- [x] Benchmark `local_profiled` expose le profil runtime quand disponible, tout en restant un stub qualite jusqu'aux lots 3-6.
 
 Risques:
 

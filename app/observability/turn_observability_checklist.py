@@ -371,6 +371,7 @@ def _web_observability_item(grouped: Mapping[str, Sequence[Mapping[str, Any]]]) 
         'web_requested': web_requested,
         'web_event_count': len(web_events),
         'context_injected': bool(payload.get('context_injected')),
+        'search_profile': _payload_text(payload, 'search_profile'),
         'results_count': _to_int(payload.get('results_count')),
         'read_state': _payload_text(payload, 'read_state'),
     }

@@ -190,6 +190,7 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
             or ('manual' if bool(data.get('enabled', False)) else 'not_requested')
         ),
         'reason_code': str(data.get('reason_code') or ''),
+        'search_profile': str(data.get('search_profile') or ''),
         'results_count': int(data.get('results_count') or 0),
         'explicit_url_detected': bool(data.get('explicit_url_detected', False)),
         'explicit_url': str(data.get('explicit_url') or ''),
